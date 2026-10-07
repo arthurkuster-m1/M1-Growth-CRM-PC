@@ -58,9 +58,9 @@ const FIXTURE = [
 describe("extrairRegua — os pares saem do globals.css, nunca de lista à mão", () => {
   it("acha os dois temas, a rampa do produto e os neutros", () => {
     expect(REGUA.rampaDoProduto).toHaveLength(11);
-    expect(REGUA.rampaDoProduto[6]).toBe("#506d48");
+    expect(REGUA.rampaDoProduto[6]).toBe("#366d6f");
     expect(REGUA.claro.neutros).toHaveLength(11);
-    expect(REGUA.escuro.neutros[9]).toBe("#161510");
+    expect(REGUA.escuro.neutros[9]).toBe("#0f151d");
     expect(REGUA.claro.base.map((b) => b.chave)).toEqual([
       "--color-bg",
       "--color-surface",
@@ -119,9 +119,9 @@ describe("extrairRegua — os pares saem do globals.css, nunca de lista à mão"
     const razao = (papel: string, superficie: string) =>
       pares.find((p) => p.papel === papel && p.superficie === superficie)?.razao ?? 0;
 
-    expect(razao("--color-accent", "--color-bg")).toBeCloseTo(5.51, 2);
-    expect(razao(":focus-visible/outline", "--color-bg")).toBeCloseTo(3.79, 2);
-    expect(razao(":focus-visible/outline", "--color-surface-elevated")).toBeCloseTo(3.6, 2);
+    expect(razao("--color-accent", "--color-bg")).toBeCloseTo(5.427, 2);
+    expect(razao(":focus-visible/outline", "--color-bg")).toBeCloseTo(3.74, 2);
+    expect(razao(":focus-visible/outline", "--color-surface-elevated")).toBeCloseTo(3.574, 2);
   });
 
   it("a Sage inteira, como está no CSS, cabe nos pisos", () => {
@@ -304,12 +304,12 @@ describe("derivarMarca — as 16 sementes adversariais", () => {
 
 describe("reconciliação — quem se move são as NOSSAS semânticas", () => {
   it("a Sage pura já nasce colidida e dispara a reconciliação (controle positivo)", () => {
-    // `--color-success` do bloco escuro é `#82a077`, a MESMA string de
-    // `--color-accent-400` (globals.css:167 e :193). Δ = 0,0°. Se o mecanismo não
-    // disparasse aqui, ele não dispararia em lugar nenhum.
-    expect(REGUA.escuro.semanticas.find((s) => s.nome === "success")?.hex).toBe(
-      REGUA.rampaDoProduto[4],
-    );
+    // `--color-success` do bloco escuro é `#82a077`. Na paleta Sage ele era a MESMA string
+    // de `--color-accent-400`; com o accent teal do M1 isso deixou de ser verdade (e foi
+    // melhoria: "sucesso" não se confunde mais com a marca). O controle positivo continua
+    // valendo: um cliente que escolha a Sage como cor da marca colide com ele, e o
+    // mecanismo tem de disparar. Se não disparasse aqui, não dispararia em lugar nenhum.
+    expect(REGUA.escuro.semanticas.find((s) => s.nome === "success")?.hex).toBe("#82a077");
 
     const sage = derivarMarca("#506d48", REGUA);
     const movidas = sage.motivos.filter((m) => m.codigo === "semantica_deslocada");
@@ -375,8 +375,8 @@ describe("reconciliação — quem se move são as NOSSAS semânticas", () => {
         }
       }
     }
-    // Guarda de vacuidade do run inteiro: 23 movimentos medidos nas 16 sementes.
-    expect(movimentosNoRun).toBe(23);
+    // Guarda de vacuidade do run inteiro: 15 movimentos medidos nas 16 sementes (eram 23 na paleta Sage; o accent teal colide menos).
+    expect(movimentosNoRun).toBe(15);
   });
 });
 
@@ -411,8 +411,8 @@ describe("marca acromática — o accent do produto permanece", () => {
     // escuro (accent-400 × neutral-400). São eles que mostram por que o piso do briefing
     // (8, na convenção ×100 — ou seja 0,08 aqui) não podia ser aceito sem medir: ele
     // reprovaria o controle positivo do próprio produto no tema claro.
-    expect(separacaoDoNeutro(REGUA.claro, marca.claro.grauDoAccent, marca.claro.accent)).toBeCloseTo(0.0681, 4);
-    expect(separacaoDoNeutro(REGUA.escuro, marca.escuro.grauDoAccent, marca.escuro.accent)).toBeCloseTo(0.1994, 4);
+    expect(separacaoDoNeutro(REGUA.claro, marca.claro.grauDoAccent, marca.claro.accent)).toBeCloseTo(0.0505, 4);
+    expect(separacaoDoNeutro(REGUA.escuro, marca.escuro.grauDoAccent, marca.escuro.accent)).toBeCloseTo(0.1298, 4);
     expect(separacaoDoNeutro(REGUA.claro, marca.claro.grauDoAccent, marca.claro.accent)).toBeLessThan(0.08);
 
     // Controle negativo: um accent cinza reprovaria as duas guardas. Sem esta linha, os
