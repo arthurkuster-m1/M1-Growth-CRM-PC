@@ -129,6 +129,9 @@ export function interfaceTemDestino(
 export function homeDaInterface(raw: unknown, platform: boolean, role: Role | null): string {
   const visible = destinosDaInterface(raw, platform, role);
   return (
+    // Visual M1: a primeira tela depois do login é o Início. Quem escolheu uma interface
+    // sem ele (preset simplificada ou destinos próprios) cai no Inbox, como antes.
+    visible.find((d) => d.href === "/app/inicio")?.href ??
     visible.find((d) => d.href === "/app/inbox")?.href ??
     visible.find((d) => !essencial(d, role, platform))?.href ??
     "/app/settings/profile"
