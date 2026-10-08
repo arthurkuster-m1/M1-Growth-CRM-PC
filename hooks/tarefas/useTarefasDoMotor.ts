@@ -6,6 +6,7 @@ import { useCallback, useMemo } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
 import { lacunaAcabou, posicaoEntre, renumerar } from "@/lib/motor/ordem";
+import type { MudancasEmMassa } from "@/lib/tarefas/edicao-em-massa";
 import type { EdicaoDaTarefa, NovaTarefa, Tarefa } from "@/lib/tarefas/tipos";
 
 const BASE = "/api/v1/tasks";
@@ -90,6 +91,57 @@ export function useTarefasDoMotor() {
     onSettled: invalidar,
   });
 
+  /**
+   * Muda várias tarefas de uma vez (UMA requisição). Otimista como a edição individual: a
+   * tabela mostra o resultado na hora, e volta ao que era se o servidor recusa.
+   */
+  const emMassa = useMutation({
+    mutationFn: ({
+      ids,
+      mudancas,
+    }: {
+      ids: string[];
+      mudancas: MudancasEmMassa;
+      local?: Partial<Tarefa>;
+    }) =>
+      apiClient.patch<{ data: { updated: number } }>(`${BASE}/bulk`, { ids, changes: mudancas }),
+    onMutate: async ({ ids, mudancas, local }) => {
+      await queryClient.cancelQueries({ queryKey: CHAVE });
+      const antes = queryClient.getQueryData<Tarefa[]>(CHAVE);
+      const alvo = new Set(ids);
+      queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
+        (lista ?? []).map((t) =>
+          alvo.has(t.id) ? ({ ...t, ...mudancas, ...local } as Tarefa) : t,
+        ),
+      );
+      return { antes };
+    },
+    onError: (err, _vars, contexto) => {
+      if (contexto?.antes) queryClient.setQueryData(CHAVE, contexto.antes);
+      showApiError(err);
+    },
+    onSettled: invalidar,
+  });
+
+  const apagarVarias = useMutation({
+    mutationFn: (ids: string[]) =>
+      apiClient.delete<{ data: { deleted: number } }>(`${BASE}/bulk`, { ids }),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: CHAVE });
+      const antes = queryClient.getQueryData<Tarefa[]>(CHAVE);
+      const alvo = new Set(ids);
+      queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
+        (lista ?? []).filter((t) => !alvo.has(t.id)),
+      );
+      return { antes };
+    },
+    onError: (err, _ids, contexto) => {
+      if (contexto?.antes) queryClient.setQueryData(CHAVE, contexto.antes);
+      showApiError(err);
+    },
+    onSettled: invalidar,
+  });
+
   /** `local` é o que a tela já mostra enquanto o servidor não responde (ex.: o grupo da opção). */
   const editarTarefa = useCallback(
     (id: string, enviar: EdicaoDaTarefa, local?: Partial<Tarefa>) =>
@@ -133,6 +185,9 @@ export function useTarefasDoMotor() {
     editarTarefa,
     reordenar,
     criarTarefa: (entrada: NovaTarefa) => criar.mutateAsync(entrada),
+    editarVarias: (ids: string[], mudancas: MudancasEmMassa, local?: Partial<Tarefa>) =>
+      emMassa.mutateAsync({ ids, mudancas, local }).catch(() => undefined),
+    apagarVarias: (ids: string[]) => apagarVarias.mutateAsync(ids).catch(() => undefined),
     apagarTarefa: (id: string) => apagar.mutateAsync(id).catch(() => undefined),
   };
 }

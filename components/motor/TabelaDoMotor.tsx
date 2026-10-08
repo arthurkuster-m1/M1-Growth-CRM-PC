@@ -18,11 +18,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type MouseEvent as EventoDeMouse, type ReactNode } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { limitarLargura, type DefinicaoDeColuna } from "@/lib/motor/layout";
-import { DotsSixVertical, Plus } from "@/lib/ui/icons";
+import { estadoDoMarcarTodas } from "@/lib/motor/selecao";
+import { Check, DotsSixVertical, Minus, Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface ColunaDoMotor<T> extends DefinicaoDeColuna {
@@ -47,6 +48,12 @@ interface Props<T> {
   /** `destino` = o índice em que a linha ficou, na lista já sem ela. */
   aoReordenar: (id: string, destino: number) => void;
   podeReordenar: boolean;
+  /** Os ids das linhas selecionadas. Sem `aoSelecionar`, a tabela não tem coluna de seleção. */
+  selecionadas?: ReadonlySet<string>;
+  /** Clicou na caixa de uma linha; `faixa` = Shift apertado (seleciona do último clique até aqui). */
+  aoSelecionar?: (id: string, opcoes: { faixa: boolean }) => void;
+  /** Clicou na caixa do cabeçalho: marca todas (ou desmarca, se já estavam todas). */
+  aoSelecionarTodas?: (marcar: boolean) => void;
   carregando?: boolean;
   /** O botão "⋯" do fim da linha (menu de ações). */
   acoesDaLinha?: (linha: T) => ReactNode;
@@ -57,6 +64,7 @@ interface Props<T> {
   rotuloDaTabela: string;
 }
 
+const LARGURA_DA_SELECAO = 32;
 const LARGURA_DO_ARRASTE = 32;
 const LARGURA_DAS_ACOES = 44;
 const LARGURA_DO_FIM = 44;
@@ -65,17 +73,56 @@ const LARGURA_DO_FIM = 44;
 const soVertical: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 const soHorizontal: Modifier = ({ transform }) => ({ ...transform, y: 0 });
 
+/** A caixinha de seleção: some até o mouse chegar na linha — a menos que já haja algo selecionado. */
+function CaixaDeSelecao({
+  estado,
+  rotulo,
+  visivel,
+  aoClicar,
+}: {
+  estado: "marcada" | "mista" | "vazia";
+  rotulo: string;
+  visivel: boolean;
+  aoClicar: (e: EventoDeMouse) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={estado === "mista" ? "mixed" : estado === "marcada"}
+      aria-label={rotulo}
+      onClick={aoClicar}
+      className={cn(
+        "grid h-5 w-5 place-items-center rounded-md border-2 transition-colors",
+        estado === "vazia"
+          ? "border-border-strong hover:border-primary"
+          : "border-primary bg-primary text-primary-foreground",
+        estado === "vazia" &&
+          !visivel &&
+          "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+      )}
+    >
+      {estado === "marcada" ? <Check size={12} weight="bold" aria-hidden /> : null}
+      {estado === "mista" ? <Minus size={12} weight="bold" aria-hidden /> : null}
+    </button>
+  );
+}
+
 function LinhaOrdenavel({
   id,
   grade,
   rotuloDoArraste,
   podeReordenar,
+  selecionada,
+  celulaDeSelecao,
   children,
 }: {
   id: string;
   grade: string;
   rotuloDoArraste: string;
   podeReordenar: boolean;
+  selecionada: boolean;
+  celulaDeSelecao?: ReactNode;
   children: ReactNode;
 }) {
   const {
@@ -98,10 +145,16 @@ function LinhaOrdenavel({
         gridTemplateColumns: grade,
       }}
       className={cn(
-        "group grid items-center border-b bg-card last:border-b-0",
+        "group grid items-center border-b last:border-b-0",
+        selecionada ? "bg-accent-soft/50" : "bg-card",
         isDragging && "relative z-10 rounded-lg shadow-lg ring-1 ring-primary/30",
       )}
     >
+      {celulaDeSelecao ? (
+        <div role="cell" className="grid place-items-center">
+          {celulaDeSelecao}
+        </div>
+      ) : null}
       <div role="cell" className="grid place-items-center">
         {podeReordenar ? (
           <button
@@ -236,6 +289,9 @@ export function TabelaDoMotor<T>({
   fimDoCabecalho,
   aoReordenar,
   podeReordenar,
+  selecionadas = new Set<string>(),
+  aoSelecionar,
+  aoSelecionarTodas,
   carregando = false,
   acoesDaLinha,
   aoCriar,
@@ -252,12 +308,15 @@ export function TabelaDoMotor<T>({
   const larguraDe = (c: ColunaDoMotor<T>) => (aoVivo?.id === c.id ? aoVivo.largura : c.largura);
   const comAcoes = Boolean(acoesDaLinha);
   const comFim = Boolean(fimDoCabecalho);
+  const comSelecao = Boolean(aoSelecionar);
   const grade = [
+    ...(comSelecao ? [`${LARGURA_DA_SELECAO}px`] : []),
     `${LARGURA_DO_ARRASTE}px`,
     ...colunas.map((c) => `${larguraDe(c)}px`),
     ...(comAcoes || comFim ? [`${comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM}px`] : []),
   ].join(" ");
   const larguraTotal =
+    (comSelecao ? LARGURA_DA_SELECAO : 0) +
     LARGURA_DO_ARRASTE +
     colunas.reduce((soma, c) => soma + larguraDe(c), 0) +
     (comAcoes || comFim ? (comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM) : 0);
@@ -273,6 +332,7 @@ export function TabelaDoMotor<T>({
   );
 
   const ids = linhas.map(idDe);
+  const estadoDeTodas = estadoDoMarcarTodas(selecionadas, ids);
   const idsDasColunasMoveis = colunas.filter((c) => !c.fixa).map((c) => c.id);
 
   function aoSoltarLinha({ active, over }: DragEndEvent) {
@@ -302,6 +362,24 @@ export function TabelaDoMotor<T>({
               style={{ gridTemplateColumns: grade }}
               className="grid items-stretch border-b bg-secondary/50 text-xs font-medium text-muted-foreground"
             >
+              {comSelecao ? (
+                <div role="columnheader" className="grid place-items-center">
+                  {aoSelecionarTodas ? (
+                    <CaixaDeSelecao
+                      estado={
+                        estadoDeTodas === "todas"
+                          ? "marcada"
+                          : estadoDeTodas === "algumas"
+                            ? "mista"
+                            : "vazia"
+                      }
+                      rotulo={t("Selecionar todas")}
+                      visivel
+                      aoClicar={() => aoSelecionarTodas(estadoDeTodas !== "todas")}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
               <div role="columnheader" aria-hidden />
               {colunas.map((c) => {
                 const titulo = (
@@ -366,6 +444,17 @@ export function TabelaDoMotor<T>({
                     grade={grade}
                     rotuloDoArraste={t("Arrastar para reordenar")}
                     podeReordenar={podeReordenar}
+                    selecionada={selecionadas.has(idDe(linha))}
+                    celulaDeSelecao={
+                      comSelecao ? (
+                        <CaixaDeSelecao
+                          estado={selecionadas.has(idDe(linha)) ? "marcada" : "vazia"}
+                          rotulo={t("Selecionar linha")}
+                          visivel={selecionadas.size > 0}
+                          aoClicar={(e) => aoSelecionar!(idDe(linha), { faixa: e.shiftKey })}
+                        />
+                      ) : undefined
+                    }
                   >
                     {colunas.map((c) => (
                       <div key={c.id} role="cell" className="min-w-0 px-0.5 py-1">

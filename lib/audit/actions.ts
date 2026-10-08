@@ -708,6 +708,8 @@ export const AUDIT_ACTIONS = [
   "crm_task_property.created",
   "crm_task_property.updated",
   "crm_task_property.deleted",
+  "crm_task.bulk_updated",
+  "crm_task.bulk_deleted",
 
   // A proposta comercial. Rascunho, edição, ajuste pelo assistente, envio e
   // decisão do cliente — cada um muda o que o negócio vale ou o que foi

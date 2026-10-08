@@ -14831,6 +14831,16 @@ export const DICIONARIO: Traducoes = {
   "Opções demais.": { es: "Demasiadas opciones." },
   "Valor inválido.": { es: "Valor inválido." },
   "Link inválido.": { es: "Enlace inválido." },
+  "Selecionar linha": { es: "Seleccionar fila" },
+  "Selecionar todas": { es: "Seleccionar todas" },
+  "Ações para as linhas selecionadas": { es: "Acciones para las filas seleccionadas" },
+  "selecionada": { es: "seleccionada" },
+  "selecionadas": { es: "seleccionadas" },
+  "Limpar prazo": { es: "Quitar plazo" },
+  "Apagar tarefas selecionadas?": { es: "¿Eliminar las tareas seleccionadas?" },
+  "As tarefas selecionadas serão apagadas. Esta ação não pode ser desfeita.": { es: "Las tareas seleccionadas se eliminarán. Esta acción no se puede deshacer." },
+  "Erro ao salvar as tarefas.": { es: "Error al guardar las tareas." },
+  "Erro ao apagar as tarefas.": { es: "Error al eliminar las tareas." },
 };
 
 /**

@@ -160,4 +160,5 @@ export {
   Hash,
   CheckSquare,
   LinkSimple,
+  Minus,
 } from "@phosphor-icons/react/dist/ssr";

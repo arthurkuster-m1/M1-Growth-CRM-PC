@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
@@ -42,6 +42,7 @@ import { usePropriedadesDaTarefa } from "@/hooks/tarefas/usePropriedadesDaTarefa
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import { rotuloDaData } from "@/lib/motor/datas-do-campo";
 import { moverColuna, resolverColunas } from "@/lib/motor/layout";
+import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
 import {
@@ -61,6 +62,7 @@ import {
   UserCircle,
 } from "@/lib/ui/icons";
 
+import { AcoesEmMassa } from "./AcoesEmMassa";
 import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
 
@@ -94,8 +96,17 @@ export function TarefasMotorClient({
   const tag = useTagDeIdioma();
   const agora = useMemo(() => new Date(agoraIso), [agoraIso]);
 
-  const { tarefas, carregando, falhou, editarTarefa, reordenar, criarTarefa, apagarTarefa } =
-    useTarefasDoMotor();
+  const {
+    tarefas,
+    carregando,
+    falhou,
+    editarTarefa,
+    reordenar,
+    criarTarefa,
+    apagarTarefa,
+    editarVarias,
+    apagarVarias,
+  } = useTarefasDoMotor();
   const { opcoes, criarOpcao, editarOpcao, apagarOpcao } = useOpcoesDeStatus();
   const { propriedades, criarPropriedade, editarPropriedade, apagarPropriedade } =
     usePropriedadesDaTarefa();
@@ -108,6 +119,9 @@ export function TarefasMotorClient({
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [apagarId, setApagarId] = useState<string | null>(null);
   const [apagarPropriedadeId, setApagarPropriedadeId] = useState<string | null>(null);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
+  const [apagarVariasAberto, setApagarVariasAberto] = useState(false);
+  const ultimoMarcado = useRef<string | null>(null);
 
   const titulosDosGrupos = {
     pending: t("A fazer"),
@@ -340,6 +354,32 @@ export function TarefasMotorClient({
     atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
   }
 
+  // ── seleção de linhas e ações em massa ──────────────────────────────────────────────
+  // A seleção é derivada: ids de tarefas que já não existem (apagadas por outra aba, ou por
+  // esta mesma ação) saem dela sozinhos, e a contagem nunca mente.
+  const idsDaTabela = tarefas.map((tarefa) => tarefa.id);
+  const selecionadasVivas = podarSelecao(selecionadas, idsDaTabela);
+  const idsSelecionados = idsDaTabela.filter((id) => selecionadasVivas.has(id));
+
+  function selecionar(id: string, { faixa }: { faixa: boolean }) {
+    setSelecionadas((atual) => {
+      const base = podarSelecao(atual, idsDaTabela);
+      if (faixa && ultimoMarcado.current) {
+        const proximo = new Set(base);
+        for (const marcada of faixaEntre(idsDaTabela, ultimoMarcado.current, id))
+          proximo.add(marcada);
+        return proximo;
+      }
+      return alternarId(base, id);
+    });
+    ultimoMarcado.current = id;
+  }
+
+  function selecionarTodas(marcar: boolean) {
+    setSelecionadas(marcar ? new Set(idsDaTabela) : new Set());
+    ultimoMarcado.current = null;
+  }
+
   async function novaTarefa() {
     // No fim da lista: acima da maior posição existente E do relógio, para a tarefa nova
     // não ficar atrás de uma que foi arrastada para o fim.
@@ -450,6 +490,9 @@ export function TarefasMotorClient({
         }}
         carregando={carregando}
         podeReordenar={podeEditar}
+        selecionadas={selecionadasVivas}
+        aoSelecionar={podeEditar ? selecionar : undefined}
+        aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
         aoReordenar={(id, destino) => void reordenar(id, destino)}
         aoCriar={podeEditar ? () => void novaTarefa() : undefined}
         rotuloDeCriar={t("Nova tarefa")}
@@ -481,6 +524,43 @@ export function TarefasMotorClient({
             : undefined
         }
       />
+
+      {podeEditar ? (
+        <AcoesEmMassa
+          quantidade={idsSelecionados.length}
+          opcoesDeStatus={opcoes}
+          titulosDosGrupos={titulosDosGrupos}
+          prioridades={prioridades}
+          membros={membros}
+          fuso={fuso}
+          aoAplicar={(mudancas, local) => void editarVarias(idsSelecionados, mudancas, local)}
+          aoApagar={() => setApagarVariasAberto(true)}
+          aoLimpar={() => setSelecionadas(new Set())}
+        />
+      ) : null}
+
+      <AlertDialog open={apagarVariasAberto} onOpenChange={setApagarVariasAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Apagar tarefas selecionadas?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("As tarefas selecionadas serão apagadas. Esta ação não pode ser desfeita.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                void apagarVarias(idsSelecionados);
+                setSelecionadas(new Set());
+                setApagarVariasAberto(false);
+              }}
+            >
+              {t("Apagar")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={apagarId !== null} onOpenChange={(aberto) => !aberto && setApagarId(null)}>
         <AlertDialogContent>
