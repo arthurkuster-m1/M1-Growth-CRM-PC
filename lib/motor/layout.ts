@@ -32,6 +32,8 @@ export const preferenciasDaTabelaSchema = z
       .record(z.string().min(1).max(80), z.boolean())
       .refine((r) => Object.keys(r).length <= MAXIMO_DE_COLUNAS)
       .optional(),
+    /** Como a pessoa vê os dados: tabela, quadro, calendário ou linha do tempo. */
+    visualizacao: z.enum(["tabela", "kanban", "calendario", "linha"]).optional(),
     /** Filtros, ordenação e agrupamento (ver `consulta.ts`). */
     ...consultaSchema.shape,
   })

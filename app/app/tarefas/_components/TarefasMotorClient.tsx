@@ -64,6 +64,8 @@ import {
 import {
   CalendarBlank,
   DotsThree,
+  Kanban,
+  Rows,
   Flag,
   Plus,
   Tag,
@@ -75,6 +77,7 @@ import {
 import { AcoesEmMassa } from "./AcoesEmMassa";
 import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
+import { QuadroKanban } from "./QuadroKanban";
 
 interface Props {
   fuso: string;
@@ -339,6 +342,7 @@ export function TarefasMotorClient({
   const { preferencias, atualizar } = useVisualizacao("tarefas");
   const resolvidas = resolverColunas(colunas, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
+  const visualizacao = preferencias.visualizacao === "kanban" ? "kanban" : "tabela";
 
   function moverColunaNoLayout(idMovido: string, idAlvo: string) {
     // A ordem completa, escondidas inclusive: esconder uma coluna não pode embaralhar as
@@ -523,6 +527,33 @@ export function TarefasMotorClient({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div
+            role="group"
+            aria-label={t("Forma de ver as tarefas")}
+            className="inline-flex h-9 items-center rounded-xl bg-secondary p-0.5"
+          >
+            {(
+              [
+                { id: "tabela", rotulo: t("Tabela"), icone: <Rows size={14} aria-hidden /> },
+                { id: "kanban", rotulo: t("Quadro"), icone: <Kanban size={14} aria-hidden /> },
+              ] as const
+            ).map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={visualizacao === v.id}
+                onClick={() => atualizar((p) => ({ ...p, visualizacao: v.id }))}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors ${
+                  visualizacao === v.id
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {v.icone}
+                {v.rotulo}
+              </button>
+            ))}
+          </div>
           <MenuDePropriedades
             propriedades={resolvidas.map((c) => ({
               id: c.id,
@@ -553,102 +584,123 @@ export function TarefasMotorClient({
 
       <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
 
-      <TabelaDoMotor
-        rotuloDaTabela={t("Tarefas")}
-        linhas={tarefasVisiveis}
-        grupos={gruposDaTabela}
-        idDe={(tarefa) => tarefa.id}
-        colunas={mostradas}
-        aoMoverColuna={moverColunaNoLayout}
-        aoRedimensionarColuna={redimensionarColuna}
-        fimDoCabecalho={podeConfigurar ? <NovaPropriedade aoCriar={criarPropriedade} /> : undefined}
-        menuDaColuna={(coluna, titulo) => {
-          const propriedade = propriedades.find((p) => `prop:${p.id}` === coluna.id);
-          const comOpcoes = propriedade && TIPOS_COM_OPCOES.includes(propriedade.type);
-          return (
-            <MenuDaColuna
-              titulo={titulo}
-              nome={
-                propriedade && podeConfigurar
-                  ? {
-                      valor: propriedade.name,
-                      aoSalvar: (name) => void editarPropriedade(propriedade.id, { name }),
-                    }
-                  : undefined
-              }
-              tipo={propriedade ? rotuloDoTipo(t, propriedade.type) : undefined}
-              aoOcultar={coluna.fixa ? undefined : () => alternarColuna(coluna.id)}
-              aoLarguraPadrao={coluna.fixa ? undefined : () => larguraPadrao(coluna.id)}
-              aoApagar={
-                propriedade && podeConfigurar
-                  ? () => setApagarPropriedadeId(propriedade.id)
-                  : undefined
-              }
-              renderizarEditor={
-                propriedade && podeConfigurar && comOpcoes
-                  ? (voltar) => (
-                      <EditorDeOpcoesDePropriedade
-                        opcoes={propriedade.options}
-                        aoMudar={(options) => void editarPropriedade(propriedade.id, { options })}
-                        voltar={voltar}
-                      />
-                    )
-                  : coluna.id === "status" && podeConfigurar
+      {visualizacao === "kanban" ? (
+        <QuadroKanban
+          tarefas={tarefasVisiveis}
+          opcoes={opcoes}
+          prioridades={prioridades}
+          membros={membros}
+          agora={agora}
+          rotuloDoPrazo={(iso) => rotuloDaData(iso, fuso, tag, agora)}
+          podeEditar={podeEditar}
+          aoMudarStatus={(tarefa, opcao) =>
+            void editarTarefa(
+              tarefa.id,
+              { status_option_id: opcao.id },
+              { status_option_id: opcao.id, status: opcao.grupo },
+            )
+          }
+        />
+      ) : (
+        <TabelaDoMotor
+          rotuloDaTabela={t("Tarefas")}
+          linhas={tarefasVisiveis}
+          grupos={gruposDaTabela}
+          idDe={(tarefa) => tarefa.id}
+          colunas={mostradas}
+          aoMoverColuna={moverColunaNoLayout}
+          aoRedimensionarColuna={redimensionarColuna}
+          fimDoCabecalho={
+            podeConfigurar ? <NovaPropriedade aoCriar={criarPropriedade} /> : undefined
+          }
+          menuDaColuna={(coluna, titulo) => {
+            const propriedade = propriedades.find((p) => `prop:${p.id}` === coluna.id);
+            const comOpcoes = propriedade && TIPOS_COM_OPCOES.includes(propriedade.type);
+            return (
+              <MenuDaColuna
+                titulo={titulo}
+                nome={
+                  propriedade && podeConfigurar
+                    ? {
+                        valor: propriedade.name,
+                        aoSalvar: (name) => void editarPropriedade(propriedade.id, { name }),
+                      }
+                    : undefined
+                }
+                tipo={propriedade ? rotuloDoTipo(t, propriedade.type) : undefined}
+                aoOcultar={coluna.fixa ? undefined : () => alternarColuna(coluna.id)}
+                aoLarguraPadrao={coluna.fixa ? undefined : () => larguraPadrao(coluna.id)}
+                aoApagar={
+                  propriedade && podeConfigurar
+                    ? () => setApagarPropriedadeId(propriedade.id)
+                    : undefined
+                }
+                renderizarEditor={
+                  propriedade && podeConfigurar && comOpcoes
                     ? (voltar) => (
-                        <EditorDeOpcoesDeStatus
-                          opcoes={opcoes}
-                          titulosDosGrupos={titulosDosGrupos}
+                        <EditorDeOpcoesDePropriedade
+                          opcoes={propriedade.options}
+                          aoMudar={(options) => void editarPropriedade(propriedade.id, { options })}
                           voltar={voltar}
-                          aoCriar={criarOpcao}
-                          aoEditar={editarOpcao}
-                          aoApagar={apagarOpcao}
                         />
                       )
-                    : undefined
-              }
-            />
-          );
-        }}
-        carregando={carregando}
-        podeReordenar={podeEditar && !consultaAtiva(preferencias)}
-        selecionadas={selecionadasVivas}
-        aoSelecionar={podeEditar ? selecionar : undefined}
-        aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
-        aoReordenar={(id, destino) => void reordenar(id, destino)}
-        aoCriar={podeEditar ? () => void novaTarefa() : undefined}
-        rotuloDeCriar={t("Nova tarefa")}
-        vazio={
-          tarefas.length > 0 ? t("Nenhuma tarefa com esses filtros.") : t("Nenhuma tarefa ainda.")
-        }
-        acoesDaLinha={
-          podeEditar
-            ? (tarefa) => (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={t("Ações da tarefa")}
-                      className="grid h-8 w-8 place-items-center rounded-md text-text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 data-[state=open]:opacity-100"
-                    >
-                      <DotsThree size={18} weight="bold" aria-hidden />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      className="gap-2 text-error-fg"
-                      onSelect={() => setApagarId(tarefa.id)}
-                    >
-                      <Trash size={14} aria-hidden />
-                      {t("Apagar")}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )
-            : undefined
-        }
-      />
+                    : coluna.id === "status" && podeConfigurar
+                      ? (voltar) => (
+                          <EditorDeOpcoesDeStatus
+                            opcoes={opcoes}
+                            titulosDosGrupos={titulosDosGrupos}
+                            voltar={voltar}
+                            aoCriar={criarOpcao}
+                            aoEditar={editarOpcao}
+                            aoApagar={apagarOpcao}
+                          />
+                        )
+                      : undefined
+                }
+              />
+            );
+          }}
+          carregando={carregando}
+          podeReordenar={podeEditar && !consultaAtiva(preferencias)}
+          selecionadas={selecionadasVivas}
+          aoSelecionar={podeEditar ? selecionar : undefined}
+          aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
+          aoReordenar={(id, destino) => void reordenar(id, destino)}
+          aoCriar={podeEditar ? () => void novaTarefa() : undefined}
+          rotuloDeCriar={t("Nova tarefa")}
+          vazio={
+            tarefas.length > 0 ? t("Nenhuma tarefa com esses filtros.") : t("Nenhuma tarefa ainda.")
+          }
+          acoesDaLinha={
+            podeEditar
+              ? (tarefa) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t("Ações da tarefa")}
+                        className="grid h-8 w-8 place-items-center rounded-md text-text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 data-[state=open]:opacity-100"
+                      >
+                        <DotsThree size={18} weight="bold" aria-hidden />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="gap-2 text-error-fg"
+                        onSelect={() => setApagarId(tarefa.id)}
+                      >
+                        <Trash size={14} aria-hidden />
+                        {t("Apagar")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )
+              : undefined
+          }
+        />
+      )}
 
-      {podeEditar ? (
+      {podeEditar && visualizacao === "tabela" ? (
         <AcoesEmMassa
           quantidade={idsSelecionados.length}
           opcoesDeStatus={opcoes}
