@@ -18,6 +18,10 @@ interface Props {
   permitirVazio?: boolean;
   /** O que aparece, em cinza, quando o valor é vazio. */
   vazioRotulo?: string;
+  /** O que aparece quando NÃO está editando, se for diferente do valor (ex.: um número formatado). */
+  exibir?: string;
+  /** Teclado/validação sugeridos ao editar (número, link…). */
+  inputMode?: "text" | "decimal" | "numeric" | "url";
   className?: string;
 }
 
@@ -36,6 +40,8 @@ export function CelulaDeTexto({
   riscado,
   permitirVazio = false,
   vazioRotulo,
+  exibir,
+  inputMode,
   className,
 }: Props) {
   const [editando, setEditando] = useState(iniciarEditando);
@@ -78,7 +84,7 @@ export function CelulaDeTexto({
           className,
         )}
       >
-        {valor || vazioRotulo}
+        {valor ? (exibir ?? valor) : vazioRotulo}
       </button>
     );
   }
@@ -88,7 +94,8 @@ export function CelulaDeTexto({
       ref={campo}
       value={rascunho}
       aria-label={rotulo}
-      maxLength={255}
+      maxLength={permitirVazio ? 2000 : 255}
+      inputMode={inputMode}
       onChange={(e) => setRascunho(e.target.value)}
       onBlur={terminar}
       onKeyDown={(e) => {

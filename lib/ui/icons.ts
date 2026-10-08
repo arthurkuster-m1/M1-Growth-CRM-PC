@@ -157,4 +157,7 @@ export {
   DotsSixVertical,
   TextAa,
   SlidersHorizontal,
+  Hash,
+  CheckSquare,
+  LinkSimple,
 } from "@phosphor-icons/react/dist/ssr";

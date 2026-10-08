@@ -22,12 +22,17 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
+import {
+  alteracoesDeCamposSchema,
+  mesclarCamposPersonalizados,
+  type PropriedadeDaTarefa,
+} from "@/lib/tarefas/propriedades";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
 
 export const dynamic = "force-dynamic";
 
 const COLUNAS =
-  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position";
+  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields";
 
 const edicaoSchema = z
   .object({
@@ -41,6 +46,9 @@ const edicaoSchema = z
     assigned_to: z.string().uuid().nullable().optional(),
     status_option_id: z.string().uuid().nullable().optional(),
     position: z.number().finite().optional(),
+    // Só as propriedades que mudam (id → valor, `null` limpa). A rota valida cada valor
+    // contra o tipo da propriedade e mescla com o que a tarefa já tem (migration 0584).
+    custom_fields: alteracoesDeCamposSchema.optional(),
   })
   // PATCH vazio gravaria só o `updated_at` e devolveria 200: a tela diria
   // "salvo" sobre uma edição que não existiu.
@@ -76,14 +84,38 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
   // timeline do negócio — e a segunda seria mentira.
   const { data: antes } = await supabase
     .from("crm_tasks")
-    .select("status")
+    .select("status, custom_fields")
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
 
+  // `custom_fields` chega como ALTERAÇÕES e vai para o banco já MESCLADO. Só chaves de
+  // propriedades que existem NESTA organização entram, e cada valor é conferido contra o
+  // tipo — um id forjado ou um texto numa coluna de número é recusado antes de gravar.
+  const atualizacao: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.custom_fields) {
+    if (!antes) return fail("not_found", t("Tarefa não encontrada."), 404, { requestId });
+    const { data: definicoes } = await supabase
+      .from("crm_task_properties")
+      .select("id, organization_id, name, type, options, position")
+      .eq("organization_id", authz.org.orgId);
+    const mesclado = mesclarCamposPersonalizados(
+      (antes as { custom_fields?: Record<string, unknown> }).custom_fields ?? {},
+      parsed.data.custom_fields,
+      (definicoes ?? []) as unknown as PropriedadeDaTarefa[],
+    );
+    if (!mesclado.ok) {
+      return fail("validation_failed", t(mesclado.erro), 422, {
+        requestId,
+        details: { custom_fields: [mesclado.erro], propriedade: mesclado.propriedadeId },
+      });
+    }
+    atualizacao.custom_fields = mesclado.campos;
+  }
+
   const { data, error } = await supabase
     .from("crm_tasks")
-    .update(parsed.data)
+    .update(atualizacao)
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .select(COLUNAS)

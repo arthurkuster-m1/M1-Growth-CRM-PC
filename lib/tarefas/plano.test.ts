@@ -347,7 +347,10 @@ describe("aplicarPlanoDeTarefas", () => {
     const resultado = await aplicarPlanoDeTarefas(db as unknown as SupabaseClient, pedido);
 
     expect(resultado).toEqual({ ok: false, codigo: "titulo_vazio" });
-    expect(db.tarefasInseridas(), "o passo 1 passaria — mas o plano inteiro foi recusado").toHaveLength(0);
+    expect(
+      db.tarefasInseridas(),
+      "o passo 1 passaria — mas o plano inteiro foi recusado",
+    ).toHaveLength(0);
     expect(db.escritas).toHaveLength(0);
   });
   it("negócio de OUTRA organização é `sem_alvo` e não escreve nada, mesmo com o plano igual lá", async () => {
@@ -355,7 +358,13 @@ describe("aplicarPlanoDeTarefas", () => {
     const db = new DbFalso({
       organizations: [{ id: OUTRA_ORG, settings: { task_plans: [PLANO_3_PASSOS] } }],
       crm_leads: [
-        { id: LEAD, organization_id: ORG, title: "Renovação", contact_id: null, owner_user_id: DONO },
+        {
+          id: LEAD,
+          organization_id: ORG,
+          title: "Renovação",
+          contact_id: null,
+          owner_user_id: DONO,
+        },
       ],
       contacts: [],
       crm_tasks: [],

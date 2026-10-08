@@ -114,7 +114,8 @@ class Cadeia {
   // e a cadeia do supabase é PromiseLike — `await db.from(...).insert(...)` e
   // `await ...maybeSingle()` passam pelas duas pontas por aqui.
   then<TResult>(
-    onfulfilled?: ((v: { data: Linha | null; error: null }) => TResult | PromiseLike<TResult>) | null,
+    onfulfilled?:
+      ((v: { data: Linha | null; error: null }) => TResult | PromiseLike<TResult>) | null,
   ): PromiseLike<TResult> {
     return Promise.resolve({ data: this.inserido, error: null }).then(
       onfulfilled ?? ((v) => v as unknown as TResult),

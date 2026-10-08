@@ -6,9 +6,17 @@ import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { EditorDeOpcoesDePropriedade } from "@/components/motor/EditorDeOpcoesDePropriedade";
+import { MenuDaColuna } from "@/components/motor/MenuDaColuna";
 import { MenuDePropriedades } from "@/components/motor/MenuDePropriedades";
+import { NovaPropriedade } from "@/components/motor/NovaPropriedade";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
+import {
+  LARGURA_DO_TIPO,
+  iconeDoTipo,
+  rotuloDoTipo,
+} from "@/components/motor/tipos-de-propriedade";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,10 +38,12 @@ import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
+import { usePropriedadesDaTarefa } from "@/hooks/tarefas/usePropriedadesDaTarefa";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import { rotuloDaData } from "@/lib/motor/datas-do-campo";
 import { moverColuna, resolverColunas } from "@/lib/motor/layout";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
 import {
   SITUACOES_DA_TAREFA,
   estaAtrasada,
@@ -51,6 +61,7 @@ import {
   UserCircle,
 } from "@/lib/ui/icons";
 
+import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
 
 interface Props {
@@ -86,6 +97,8 @@ export function TarefasMotorClient({
   const { tarefas, carregando, falhou, editarTarefa, reordenar, criarTarefa, apagarTarefa } =
     useTarefasDoMotor();
   const { opcoes, criarOpcao, editarOpcao, apagarOpcao } = useOpcoesDeStatus();
+  const { propriedades, criarPropriedade, editarPropriedade, apagarPropriedade } =
+    usePropriedadesDaTarefa();
   const membrosDaEquipe = useAssignableMembers(podeEditar);
   const membros = (membrosDaEquipe.data ?? []).map((m) => ({
     id: m.user_id,
@@ -94,6 +107,7 @@ export function TarefasMotorClient({
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [apagarId, setApagarId] = useState<string | null>(null);
+  const [apagarPropriedadeId, setApagarPropriedadeId] = useState<string | null>(null);
 
   const titulosDosGrupos = {
     pending: t("A fazer"),
@@ -108,7 +122,7 @@ export function TarefasMotorClient({
     { id: "urgent", rotulo: t("Urgente"), cor: "red" },
   ];
 
-  const colunas: ColunaDoMotor<Tarefa>[] = [
+  const colunasDeFabrica: ColunaDoMotor<Tarefa>[] = [
     {
       id: "titulo",
       titulo: t("Título"),
@@ -267,6 +281,36 @@ export function TarefasMotorClient({
     },
   ];
 
+  // As propriedades que a organização criou: uma coluna cada, depois das de fábrica. O id
+  // da coluna é `prop:<uuid>` — o mesmo que o layout da pessoa guarda.
+  const colunasPersonalizadas: ColunaDoMotor<Tarefa>[] = propriedades.map((p) => ({
+    id: `prop:${p.id}`,
+    titulo: p.name,
+    icone: iconeDoTipo(p.type),
+    largura: LARGURA_DO_TIPO[p.type],
+    celula: (tarefa) => (
+      <CelulaDePropriedade
+        propriedade={p}
+        valor={tarefa.custom_fields?.[p.id]}
+        podeEditar={podeEditar}
+        podeConfigurar={podeConfigurar}
+        tag={tag}
+        aoSalvar={(valor) => {
+          const restantes = { ...tarefa.custom_fields };
+          if (valor === null) delete restantes[p.id];
+          else restantes[p.id] = valor;
+          void editarTarefa(
+            tarefa.id,
+            { custom_fields: { [p.id]: valor } },
+            { custom_fields: restantes },
+          );
+        }}
+        aoMudarOpcoes={(options) => void editarPropriedade(p.id, { options })}
+      />
+    ),
+  }));
+  const colunas = [...colunasDeFabrica, ...colunasPersonalizadas];
+
   // O layout (ordem, largura, visibilidade) é da PESSOA e mora na conta dela.
   const { preferencias, atualizar } = useVisualizacao("tarefas");
   const resolvidas = resolverColunas(colunas, preferencias);
@@ -281,6 +325,13 @@ export function TarefasMotorClient({
 
   function redimensionarColuna(id: string, largura: number) {
     atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }));
+  }
+
+  function larguraPadrao(id: string) {
+    atualizar((p) => ({
+      ...p,
+      larguras: Object.fromEntries(Object.entries(p.larguras ?? {}).filter(([k]) => k !== id)),
+    }));
   }
 
   function alternarColuna(id: string) {
@@ -349,6 +400,54 @@ export function TarefasMotorClient({
         colunas={mostradas}
         aoMoverColuna={moverColunaNoLayout}
         aoRedimensionarColuna={redimensionarColuna}
+        fimDoCabecalho={podeConfigurar ? <NovaPropriedade aoCriar={criarPropriedade} /> : undefined}
+        menuDaColuna={(coluna, titulo) => {
+          const propriedade = propriedades.find((p) => `prop:${p.id}` === coluna.id);
+          const comOpcoes = propriedade && TIPOS_COM_OPCOES.includes(propriedade.type);
+          return (
+            <MenuDaColuna
+              titulo={titulo}
+              nome={
+                propriedade && podeConfigurar
+                  ? {
+                      valor: propriedade.name,
+                      aoSalvar: (name) => void editarPropriedade(propriedade.id, { name }),
+                    }
+                  : undefined
+              }
+              tipo={propriedade ? rotuloDoTipo(t, propriedade.type) : undefined}
+              aoOcultar={coluna.fixa ? undefined : () => alternarColuna(coluna.id)}
+              aoLarguraPadrao={coluna.fixa ? undefined : () => larguraPadrao(coluna.id)}
+              aoApagar={
+                propriedade && podeConfigurar
+                  ? () => setApagarPropriedadeId(propriedade.id)
+                  : undefined
+              }
+              renderizarEditor={
+                propriedade && podeConfigurar && comOpcoes
+                  ? (voltar) => (
+                      <EditorDeOpcoesDePropriedade
+                        opcoes={propriedade.options}
+                        aoMudar={(options) => void editarPropriedade(propriedade.id, { options })}
+                        voltar={voltar}
+                      />
+                    )
+                  : coluna.id === "status" && podeConfigurar
+                    ? (voltar) => (
+                        <EditorDeOpcoesDeStatus
+                          opcoes={opcoes}
+                          titulosDosGrupos={titulosDosGrupos}
+                          voltar={voltar}
+                          aoCriar={criarOpcao}
+                          aoEditar={editarOpcao}
+                          aoApagar={apagarOpcao}
+                        />
+                      )
+                    : undefined
+              }
+            />
+          );
+        }}
         carregando={carregando}
         podeReordenar={podeEditar}
         aoReordenar={(id, destino) => void reordenar(id, destino)}
@@ -395,6 +494,32 @@ export function TarefasMotorClient({
               onClick={() => {
                 if (apagarId) void apagarTarefa(apagarId);
                 setApagarId(null);
+              }}
+            >
+              {t("Apagar")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={apagarPropriedadeId !== null}
+        onOpenChange={(aberto) => !aberto && setApagarPropriedadeId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Apagar propriedade?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "Os valores desta propriedade em todas as tarefas serão apagados. Esta ação não pode ser desfeita.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (apagarPropriedadeId) void apagarPropriedade(apagarPropriedadeId);
+                setApagarPropriedadeId(null);
               }}
             >
               {t("Apagar")}

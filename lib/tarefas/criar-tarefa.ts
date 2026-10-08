@@ -167,7 +167,9 @@ export async function criarTarefaInterna(
   if (recusa) return { ok: false, codigo: recusa };
 
   const assignedTo =
-    typeof pedido.atribuirA === "object" ? pedido.atribuirA.usuario_id : (lead?.owner_user_id ?? null);
+    typeof pedido.atribuirA === "object"
+      ? pedido.atribuirA.usuario_id
+      : (lead?.owner_user_id ?? null);
   const titulo = interpolarTitulo(pedido.titulo, { lead, contact });
 
   const dueDate = new Date(agora.getTime() + pedido.venceEmDias * 86_400_000).toISOString();

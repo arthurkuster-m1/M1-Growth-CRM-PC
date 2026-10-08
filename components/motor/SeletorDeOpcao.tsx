@@ -26,6 +26,8 @@ interface Props {
   children: ReactNode;
   /** Rótulo de acessibilidade do botão (ex.: "Status da tarefa"). */
   rotulo: string;
+  /** Quando passado, o painel ganha "Limpar" (propriedades que podem ficar vazias). */
+  aoLimpar?: () => void;
   /** Título de cada seção, na ordem em que aparecem. Sem isto a lista é plana. */
   secoes?: ReadonlyArray<{ grupo: string; titulo: string }>;
   /**
@@ -46,6 +48,7 @@ export function SeletorDeOpcao({
   podeEditar,
   children,
   rotulo,
+  aoLimpar,
   secoes,
   renderizarEditor,
 }: Props) {
@@ -113,6 +116,20 @@ export function SeletorDeOpcao({
                   })
                 : opcoes.map(item)}
             </div>
+            {aoLimpar && valorId ? (
+              <div className="mt-1 border-t pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    aoLimpar();
+                    setAberto(false);
+                  }}
+                  className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+                >
+                  {t("Limpar")}
+                </button>
+              </div>
+            ) : null}
             {renderizarEditor ? (
               <div className="mt-1 border-t pt-1">
                 <button

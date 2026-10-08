@@ -50,6 +50,8 @@ export interface Tarefa {
    */
   status_option_id?: string | null;
   position?: number;
+  /** Valor de cada propriedade personalizada, por id de `crm_task_properties` (migration 0584). */
+  custom_fields?: Record<string, unknown>;
 }
 
 export interface NovaTarefa {
@@ -63,6 +65,8 @@ export interface NovaTarefa {
   assigned_to?: string | null;
   status_option_id?: string | null;
   position?: number;
+  /** Só as propriedades que mudam: id → valor (ou `null` para limpar). */
+  custom_fields?: Record<string, unknown>;
 }
 
 export type EdicaoDaTarefa = Partial<NovaTarefa>;
