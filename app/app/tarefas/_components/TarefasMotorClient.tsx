@@ -41,10 +41,11 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
 import { usePropriedadesDaTarefa } from "@/hooks/tarefas/usePropriedadesDaTarefa";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
-import { chaveDoDia } from "@/lib/inicio/datas";
+import { chaveDoDia, inicioDoDia } from "@/lib/inicio/datas";
 import {
   aplicarConsulta,
   consultaAtiva,
+  valoresDeNascimento,
   type CampoConsultavel,
   type ConsultaDaTabela,
   type TipoDeCampo,
@@ -63,6 +64,8 @@ import {
 } from "@/lib/tarefas/tipos";
 import {
   CalendarBlank,
+  CalendarDots,
+  ChartBar,
   DotsThree,
   Kanban,
   Rows,
@@ -77,6 +80,8 @@ import {
 import { AcoesEmMassa } from "./AcoesEmMassa";
 import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
+import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
+import { LinhaDoTempo } from "./LinhaDoTempo";
 import { QuadroKanban } from "./QuadroKanban";
 
 interface Props {
@@ -342,7 +347,7 @@ export function TarefasMotorClient({
   const { preferencias, atualizar } = useVisualizacao("tarefas");
   const resolvidas = resolverColunas(colunas, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
-  const visualizacao = preferencias.visualizacao === "kanban" ? "kanban" : "tabela";
+  const visualizacao = preferencias.visualizacao ?? "tabela";
 
   function moverColunaNoLayout(idMovido: string, idAlvo: string) {
     // A ordem completa, escondidas inclusive: esconder uma coluna não pode embaralhar as
@@ -502,15 +507,36 @@ export function TarefasMotorClient({
     ultimoMarcado.current = null;
   }
 
-  async function novaTarefa() {
+  async function novaTarefa(diaEscolhido?: string) {
     // No fim da lista: acima da maior posição existente E do relógio, para a tarefa nova
     // não ficar atrás de uma que foi arrastada para o fim.
     const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
+    // Filtros ativos: a tarefa já nasce com o que eles pedem (como no Notion).
+    const herdados = valoresDeNascimento(preferencias.filtros, camposConsultaveis, {
+      hoje: hojeNoFuso(agora, fuso),
+    });
+    const texto = (id: string) =>
+      typeof herdados[id] === "string" ? (herdados[id] as string) : null;
+    const opcaoHerdada = opcoes.find((o) => o.id === texto("status"));
+    const diaHerdado = diaEscolhido ?? texto("prazo");
+    const personalizados: Record<string, unknown> = {};
+    for (const p of propriedades) {
+      const v = herdados[`prop:${p.id}`];
+      if (v !== undefined && p.type !== "text" && p.type !== "url") personalizados[p.id] = v;
+    }
     try {
       const criada = await criarTarefa({
         title: t("Sem título"),
         position: Math.max(maiorPosicao + 1, Date.now() / 1000),
+        ...(opcaoHerdada ? { status_option_id: opcaoHerdada.id } : {}),
+        ...(texto("prioridade") ? { priority: texto("prioridade") as PrioridadeDaTarefa } : {}),
+        ...(texto("responsavel") ? { assigned_to: texto("responsavel") } : {}),
+        ...(diaHerdado ? { due_date: inicioDoDia(diaHerdado, fuso).toISOString() } : {}),
       });
+      // A criação não aceita propriedades personalizadas: elas entram logo em seguida.
+      if (Object.keys(personalizados).length > 0) {
+        void editarTarefa(criada.id, { custom_fields: personalizados });
+      }
       setEditandoId(criada.id);
     } catch {
       // O hook já mostrou o erro da API.
@@ -519,23 +545,46 @@ export function TarefasMotorClient({
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("Clique para editar. Arraste pelo ícone para reordenar.")}
-          </p>
+      <header className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
+            <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
+              {t("Clique para editar. Arraste pelo ícone para reordenar.")}
+            </p>
+          </div>
+          {podeEditar ? (
+            <button
+              aria-label={t("Nova tarefa")}
+              type="button"
+              onClick={() => void novaTarefa()}
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-[var(--color-accent-hover)]"
+            >
+              <Plus size={16} weight="bold" aria-hidden />
+              <span className="hidden sm:inline">{t("Nova tarefa")}</span>
+            </button>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <div
             role="group"
             aria-label={t("Forma de ver as tarefas")}
-            className="inline-flex h-9 items-center rounded-xl bg-secondary p-0.5"
+            className="inline-flex h-9 flex-1 items-center rounded-xl bg-secondary p-0.5 sm:flex-none"
           >
             {(
               [
                 { id: "tabela", rotulo: t("Tabela"), icone: <Rows size={14} aria-hidden /> },
                 { id: "kanban", rotulo: t("Quadro"), icone: <Kanban size={14} aria-hidden /> },
+                {
+                  id: "calendario",
+                  rotulo: t("Calendário"),
+                  icone: <CalendarDots size={14} aria-hidden />,
+                },
+                {
+                  id: "timeline",
+                  rotulo: t("Linha do tempo"),
+                  icone: <ChartBar size={14} aria-hidden />,
+                },
               ] as const
             ).map((v) => (
               <button
@@ -543,7 +592,7 @@ export function TarefasMotorClient({
                 type="button"
                 aria-pressed={visualizacao === v.id}
                 onClick={() => atualizar((p) => ({ ...p, visualizacao: v.id }))}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors ${
+                className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors sm:flex-none ${
                   visualizacao === v.id
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -563,16 +612,6 @@ export function TarefasMotorClient({
             }))}
             aoAlternar={alternarColuna}
           />
-          {podeEditar ? (
-            <button
-              type="button"
-              onClick={() => void novaTarefa()}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-[var(--color-accent-hover)]"
-            >
-              <Plus size={16} weight="bold" aria-hidden />
-              {t("Nova tarefa")}
-            </button>
-          ) : null}
         </div>
       </header>
 
@@ -584,7 +623,28 @@ export function TarefasMotorClient({
 
       <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
 
-      {visualizacao === "kanban" ? (
+      {visualizacao === "calendario" ? (
+        <CalendarioDeTarefas
+          tarefas={tarefasVisiveis}
+          opcoes={opcoes}
+          fuso={fuso}
+          tag={tag}
+          hoje={hojeNoFuso(agora, fuso)}
+          podeEditar={podeEditar}
+          aoMudarPrazo={(tarefa, due_date) =>
+            void editarTarefa(tarefa.id, { due_date }, { due_date })
+          }
+          aoCriarNoDia={(dia) => void novaTarefa(dia)}
+        />
+      ) : visualizacao === "timeline" ? (
+        <LinhaDoTempo
+          tarefas={tarefasVisiveis}
+          opcoes={opcoes}
+          fuso={fuso}
+          tag={tag}
+          hoje={hojeNoFuso(agora, fuso)}
+        />
+      ) : visualizacao === "kanban" ? (
         <QuadroKanban
           tarefas={tarefasVisiveis}
           opcoes={opcoes}

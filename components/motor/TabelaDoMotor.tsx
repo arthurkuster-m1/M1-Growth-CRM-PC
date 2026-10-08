@@ -27,6 +27,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useCelular } from "@/hooks/motor/useCelular";
 import { useT } from "@/hooks/i18n/useT";
 import { limitarLargura, type DefinicaoDeColuna } from "@/lib/motor/layout";
 import { estadoDoMarcarTodas } from "@/lib/motor/selecao";
@@ -313,6 +314,7 @@ export function TabelaDoMotor<T>({
   rotuloDaTabela,
 }: Props<T>) {
   const t = useT();
+  const celular = useCelular();
   // Ids estáveis para as duas áreas de arraste: sem eles o dnd-kit numera por um contador
   // global, que difere entre servidor e navegador (aviso de hidratação).
   const idDoMotor = useId();
@@ -359,6 +361,97 @@ export function TabelaDoMotor<T>({
   function aoSoltarColuna({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
     aoMoverColuna?.(String(active.id), String(over.id));
+  }
+
+  // No celular a tabela larga vira uma lista de cartões: nada de deslizar para os lados.
+  if (celular) {
+    return (
+      <div className="flex flex-col gap-2" role="list" aria-label={rotuloDaTabela}>
+        {carregando && linhas.length === 0 ? (
+          <div className="space-y-2" aria-busy="true">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-secondary" />
+            ))}
+          </div>
+        ) : linhas.length === 0 ? (
+          <div className="rounded-2xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+            {vazio}
+          </div>
+        ) : (
+          blocos.map((bloco) => (
+            <Fragment key={bloco.chave}>
+              {grupos ? (
+                <button
+                  type="button"
+                  aria-expanded={!recolhidos.has(bloco.chave)}
+                  onClick={() =>
+                    setRecolhidos((atual) => {
+                      const proximo = new Set(atual);
+                      if (proximo.has(bloco.chave)) proximo.delete(bloco.chave);
+                      else proximo.add(bloco.chave);
+                      return proximo;
+                    })
+                  }
+                  className="flex w-full items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2 text-left text-sm"
+                >
+                  {recolhidos.has(bloco.chave) ? (
+                    <CaretRight size={12} weight="bold" aria-hidden />
+                  ) : (
+                    <CaretDown size={12} weight="bold" aria-hidden />
+                  )}
+                  {bloco.titulo}
+                  <span className="text-xs text-muted-foreground">{bloco.linhas.length}</span>
+                </button>
+              ) : null}
+              {recolhidos.has(bloco.chave)
+                ? null
+                : bloco.linhas.map((linha) => {
+                    const [primeira, ...demais] = colunas;
+                    return (
+                      <div
+                        key={idDe(linha)}
+                        role="listitem"
+                        className="rounded-2xl border bg-card p-3 shadow-sm"
+                      >
+                        <div className="flex items-start gap-1">
+                          <div className="min-w-0 flex-1 text-base font-medium">
+                            {primeira?.celula(linha)}
+                          </div>
+                          {comAcoes ? (
+                            <div className="shrink-0">{acoesDaLinha?.(linha)}</div>
+                          ) : null}
+                        </div>
+                        {demais.length > 0 ? (
+                          <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5">
+                            {demais.map((c) => (
+                              <div key={c.id} className="min-w-0">
+                                <dt className="flex items-center gap-1 px-2 text-[11px] text-muted-foreground">
+                                  {c.icone}
+                                  <span className="truncate">{c.titulo}</span>
+                                </dt>
+                                <dd className="min-w-0">{c.celula(linha)}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+            </Fragment>
+          ))
+        )}
+        {aoCriar ? (
+          <button
+            type="button"
+            onClick={aoCriar}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-3 text-sm text-muted-foreground"
+          >
+            <Plus size={14} aria-hidden />
+            {rotuloDeCriar}
+          </button>
+        ) : null}
+      </div>
+    );
   }
 
   return (

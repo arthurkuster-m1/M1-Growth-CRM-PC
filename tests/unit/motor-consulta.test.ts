@@ -7,6 +7,7 @@ import {
   consultaSchema,
   filtrar,
   ordenar,
+  valoresDeNascimento,
   type CampoConsultavel,
 } from "@/lib/motor/consulta";
 import { preferenciasDaTabelaSchema } from "@/lib/motor/layout";
@@ -352,5 +353,58 @@ describe("a consulta guardada", () => {
     });
     expect(ok.success).toBe(true);
     expect(preferenciasDaTabelaSchema.safeParse({ intruso: true }).success).toBe(false);
+  });
+});
+
+describe("valoresDeNascimento — a linha nova herda os filtros", () => {
+  it("opção/pessoa 'é', caixa, data 'hoje', número e multi viram valores", () => {
+    const v = valoresDeNascimento(
+      [
+        { campo: "status", operador: "e", valor: "andando" },
+        { campo: "quem", operador: "e", valor: ["u1", "u2"] },
+        { campo: "feita", operador: "marcado" },
+        { campo: "prazo", operador: "e", valor: "hoje" },
+        { campo: "nota", operador: "igual", valor: 7 },
+        { campo: "tags", operador: "contem", valor: ["a", "b"] },
+      ],
+      campos,
+      contexto,
+    );
+    expect(v).toEqual({
+      status: "andando",
+      quem: "u1",
+      feita: true,
+      prazo: "2026-10-08",
+      nota: 7,
+      tags: ["a", "b"],
+    });
+  });
+
+  it("ignora o que não aponta para um valor certo (não é, antes, texto, vazio, campo apagado)", () => {
+    const v = valoresDeNascimento(
+      [
+        { campo: "status", operador: "nao_e", valor: "feito" },
+        { campo: "prazo", operador: "antes", valor: "2026-10-01" },
+        { campo: "titulo", operador: "contem", valor: "x" },
+        { campo: "quem", operador: "vazio" },
+        { campo: "sumiu", operador: "e", valor: "z" },
+        { campo: "status", operador: "e", valor: "" },
+      ],
+      campos,
+      contexto,
+    );
+    expect(v).toEqual({});
+  });
+
+  it("dois filtros no mesmo campo: o último vence", () => {
+    const v = valoresDeNascimento(
+      [
+        { campo: "status", operador: "e", valor: "fazer" },
+        { campo: "status", operador: "e", valor: "feito" },
+      ],
+      campos,
+      contexto,
+    );
+    expect(v).toEqual({ status: "feito" });
   });
 });

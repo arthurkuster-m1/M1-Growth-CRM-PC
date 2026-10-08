@@ -18325,6 +18325,11 @@ export const DICIONARIO: Traducoes = {
   },
   "Nenhuma opção de status.": { es: "Ninguna opción de estado." },
   "Solte aqui": { es: "Suelta aquí" },
+  "Semana anterior": { es: "Semana anterior" },
+  "Próxima semana": { es: "Semana siguiente" },
+  "Nenhuma tarefa neste dia.": { es: "Ninguna tarea en este día." },
+  "Nenhuma tarefa com prazo nestas semanas.": { es: "Ninguna tarea con plazo en estas semanas." },
+  "sem prazo, fora da linha do tempo.": { es: "sin plazo, fuera de la línea de tiempo." },
 };
 
 /**

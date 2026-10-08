@@ -2,7 +2,8 @@
 
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -47,7 +48,11 @@ export function QuadroKanban({
 }: Props) {
   const t = useT();
   // 6 px de arrasto antes de começar: um clique simples não vira arrasto sem querer.
-  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensores = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    // No toque, segurar um instante para arrastar: deslizar o dedo continua rolando a tela.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  );
 
   const porOpcao = new Map<string, Tarefa[]>(opcoes.map((o) => [o.id, []]));
   for (const tarefa of tarefas) {
@@ -69,7 +74,7 @@ export function QuadroKanban({
 
   return (
     <DndContext sensors={sensores} onDragEnd={aoSoltar}>
-      <div className="flex items-start gap-3 overflow-x-auto pb-3">
+      <div className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-3 md:snap-none">
         {opcoes.map((opcao) => (
           <Coluna key={opcao.id} opcao={opcao} quantidade={porOpcao.get(opcao.id)?.length ?? 0}>
             {(porOpcao.get(opcao.id) ?? []).map((tarefa) => {
@@ -136,7 +141,7 @@ function Coluna({
       ref={setNodeRef}
       aria-label={opcao.name}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-2 rounded-2xl bg-secondary/50 p-2.5 transition-colors",
+        "flex w-[85vw] max-w-72 shrink-0 snap-start flex-col gap-2 rounded-2xl bg-secondary/50 p-2.5 transition-colors md:w-72",
         isOver && "bg-primary/10 ring-2 ring-primary/40",
       )}
     >
@@ -177,7 +182,7 @@ function Cartao({
       }
       className={cn(
         "rounded-xl border border-border bg-card p-3 shadow-sm",
-        arrastavel && "cursor-grab touch-none active:cursor-grabbing",
+        arrastavel && "cursor-grab active:cursor-grabbing",
         isDragging && "relative z-10 opacity-90 shadow-lg",
       )}
     >

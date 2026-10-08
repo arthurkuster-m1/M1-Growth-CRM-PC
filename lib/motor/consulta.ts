@@ -310,3 +310,57 @@ export function aplicarConsulta<T>(
   const grupos = agrupar(final, campoDoGrupo);
   return { linhas: grupos ? grupos.flatMap((g) => g.linhas) : final, grupos };
 }
+
+/**
+ * O que uma linha NOVA já traz por causa dos filtros ativos — como no Notion: com o filtro
+ * "Status é Em andamento" ligado, a tarefa criada nasce "Em andamento", senão ela sumiria
+ * da tela no instante em que é criada.
+ *
+ * Só vale o filtro que aponta para UM valor certo: opção/pessoa "é" (o primeiro, se houver
+ * vários), multi "contém" (todos), caixa marcado/desmarcado, data "é" e número "igual".
+ * "Não é", "antes", "contém" de texto etc. não dizem o que a linha deve ter e são ignorados.
+ * Havendo dois filtros sobre o mesmo campo, o último vence.
+ */
+export function valoresDeNascimento<T>(
+  filtros: readonly Filtro[] | undefined,
+  campos: readonly CampoConsultavel<T>[],
+  contexto: ContextoDaConsulta,
+): Record<string, string | number | boolean | string[]> {
+  const porId = new Map(campos.map((c) => [c.id, c]));
+  const saida: Record<string, string | number | boolean | string[]> = {};
+  for (const f of filtros ?? []) {
+    const campo = porId.get(f.campo);
+    if (!campo || !filtroUtil(f, campo)) continue;
+    const lista = Array.isArray(f.valor) ? f.valor : f.valor === undefined ? [] : [String(f.valor)];
+    switch (campo.tipo) {
+      case "opcao":
+      case "pessoa":
+        if (f.operador === "e" && lista[0]) saida[campo.id] = lista[0];
+        break;
+      case "multi":
+        if (f.operador === "contem" && lista.length > 0) saida[campo.id] = lista;
+        break;
+      case "caixa":
+        if (f.operador === "marcado") saida[campo.id] = true;
+        else if (f.operador === "desmarcado") saida[campo.id] = false;
+        break;
+      case "data":
+        if (f.operador === "e" && lista[0]) {
+          saida[campo.id] = lista[0] === "hoje" ? contexto.hoje : lista[0];
+        }
+        break;
+      case "numero":
+        if (
+          f.operador === "igual" &&
+          typeof f.valor !== "object" &&
+          Number.isFinite(Number(f.valor))
+        ) {
+          saida[campo.id] = Number(f.valor);
+        }
+        break;
+      case "texto":
+        break;
+    }
+  }
+  return saida;
+}
