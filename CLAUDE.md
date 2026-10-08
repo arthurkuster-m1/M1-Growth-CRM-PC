@@ -1,5 +1,7 @@
 # CLAUDE.md — DeskcommCRM
 
+> ⚠️ **Este repositório é o M1 Growth CRM (fork). LEIA PRIMEIRO [`CONTEXTO-M1.md`](CONTEXTO-M1.md)**: estado do projeto, ambiente da VPS, banco, como trabalhar com o Arthur e os próximos passos.
+
 > Instruções pra futuras sessões Claude trabalhando neste repo. Leitura obrigatória antes de qualquer task de código.
 
 **Este arquivo é a doutrina — a autoridade final sobre convenção e anti-pattern.** Complementos, na ordem em que ajudam:
