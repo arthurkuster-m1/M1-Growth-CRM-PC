@@ -157,6 +157,16 @@ export const NAV_CATALOG = [
     contador: "fila",
   },
   {
+    // A tela de abertura do dia (visual M1). O link dela é desenhado pelo Sidebar, ACIMA dos grupos,
+    // como no desenho de referência — por isso não leva sidebar: true: no menu ela não é item de
+    // grupo. Aqui ela existe para o ⌘K e para o teste de completude (tela sem porta reprova o CI).
+    href: "/app/inicio",
+    label: "Início",
+    description: "Saudação, tarefas do dia, calendário da semana e alertas num só lugar.",
+    icon: "House",
+    group: "atendimento",
+  },
+  {
     href: "/app/radar",
     label: "Radar",
     description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
