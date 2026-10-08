@@ -18,12 +18,19 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useRef, useState, type MouseEvent as EventoDeMouse, type ReactNode } from "react";
+import {
+  Fragment,
+  useId,
+  useRef,
+  useState,
+  type MouseEvent as EventoDeMouse,
+  type ReactNode,
+} from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { limitarLargura, type DefinicaoDeColuna } from "@/lib/motor/layout";
 import { estadoDoMarcarTodas } from "@/lib/motor/selecao";
-import { Check, DotsSixVertical, Minus, Plus } from "@/lib/ui/icons";
+import { CaretDown, CaretRight, Check, DotsSixVertical, Minus, Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface ColunaDoMotor<T> extends DefinicaoDeColuna {
@@ -55,6 +62,11 @@ interface Props<T> {
   /** Clicou na caixa do cabeçalho: marca todas (ou desmarca, se já estavam todas). */
   aoSelecionarTodas?: (marcar: boolean) => void;
   carregando?: boolean;
+  /**
+   * Agrupamento: as mesmas `linhas`, partidas em blocos com título. `linhas` continua sendo a
+   * lista inteira NA ORDEM em que os grupos a mostram (a seleção por faixa depende disso).
+   */
+  grupos?: readonly { chave: string; titulo: ReactNode; linhas: readonly T[] }[];
   /** O botão "⋯" do fim da linha (menu de ações). */
   acoesDaLinha?: (linha: T) => ReactNode;
   aoCriar?: () => void;
@@ -293,6 +305,7 @@ export function TabelaDoMotor<T>({
   aoSelecionar,
   aoSelecionarTodas,
   carregando = false,
+  grupos,
   acoesDaLinha,
   aoCriar,
   rotuloDeCriar,
@@ -331,6 +344,8 @@ export function TabelaDoMotor<T>({
     useSensor(KeyboardSensor),
   );
 
+  const [recolhidos, setRecolhidos] = useState<ReadonlySet<string>>(() => new Set());
+  const blocos = grupos ?? [{ chave: "", titulo: null, linhas }];
   const ids = linhas.map(idDe);
   const estadoDeTodas = estadoDoMarcarTodas(selecionadas, ids);
   const idsDasColunasMoveis = colunas.filter((c) => !c.fixa).map((c) => c.id);
@@ -437,36 +452,67 @@ export function TabelaDoMotor<T>({
               onDragEnd={aoSoltarLinha}
             >
               <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                {linhas.map((linha) => (
-                  <LinhaOrdenavel
-                    key={idDe(linha)}
-                    id={idDe(linha)}
-                    grade={grade}
-                    rotuloDoArraste={t("Arrastar para reordenar")}
-                    podeReordenar={podeReordenar}
-                    selecionada={selecionadas.has(idDe(linha))}
-                    celulaDeSelecao={
-                      comSelecao ? (
-                        <CaixaDeSelecao
-                          estado={selecionadas.has(idDe(linha)) ? "marcada" : "vazia"}
-                          rotulo={t("Selecionar linha")}
-                          visivel={selecionadas.size > 0}
-                          aoClicar={(e) => aoSelecionar!(idDe(linha), { faixa: e.shiftKey })}
-                        />
-                      ) : undefined
-                    }
-                  >
-                    {colunas.map((c) => (
-                      <div key={c.id} role="cell" className="min-w-0 px-0.5 py-1">
-                        {c.celula(linha)}
-                      </div>
-                    ))}
-                    {comAcoes || comFim ? (
-                      <div role="cell" className="grid place-items-center">
-                        {acoesDaLinha?.(linha)}
-                      </div>
+                {blocos.map((bloco) => (
+                  <Fragment key={bloco.chave}>
+                    {grupos ? (
+                      <button
+                        type="button"
+                        aria-expanded={!recolhidos.has(bloco.chave)}
+                        onClick={() =>
+                          setRecolhidos((atual) => {
+                            const proximo = new Set(atual);
+                            if (proximo.has(bloco.chave)) proximo.delete(bloco.chave);
+                            else proximo.add(bloco.chave);
+                            return proximo;
+                          })
+                        }
+                        className="flex w-full items-center gap-2 border-b bg-secondary/30 px-3 py-2 text-left text-sm"
+                      >
+                        {recolhidos.has(bloco.chave) ? (
+                          <CaretRight size={12} weight="bold" aria-hidden />
+                        ) : (
+                          <CaretDown size={12} weight="bold" aria-hidden />
+                        )}
+                        {bloco.titulo}
+                        <span className="text-xs text-muted-foreground">{bloco.linhas.length}</span>
+                      </button>
                     ) : null}
-                  </LinhaOrdenavel>
+                    {recolhidos.has(bloco.chave)
+                      ? null
+                      : bloco.linhas.map((linha) => (
+                          <LinhaOrdenavel
+                            key={idDe(linha)}
+                            id={idDe(linha)}
+                            grade={grade}
+                            rotuloDoArraste={t("Arrastar para reordenar")}
+                            podeReordenar={podeReordenar}
+                            selecionada={selecionadas.has(idDe(linha))}
+                            celulaDeSelecao={
+                              comSelecao ? (
+                                <CaixaDeSelecao
+                                  estado={selecionadas.has(idDe(linha)) ? "marcada" : "vazia"}
+                                  rotulo={t("Selecionar linha")}
+                                  visivel={selecionadas.size > 0}
+                                  aoClicar={(e) =>
+                                    aoSelecionar!(idDe(linha), { faixa: e.shiftKey })
+                                  }
+                                />
+                              ) : undefined
+                            }
+                          >
+                            {colunas.map((c) => (
+                              <div key={c.id} role="cell" className="min-w-0 px-0.5 py-1">
+                                {c.celula(linha)}
+                              </div>
+                            ))}
+                            {comAcoes || comFim ? (
+                              <div role="cell" className="grid place-items-center">
+                                {acoesDaLinha?.(linha)}
+                              </div>
+                            ) : null}
+                          </LinhaOrdenavel>
+                        ))}
+                  </Fragment>
                 ))}
               </SortableContext>
             </DndContext>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { consultaSchema } from "./consulta";
+
 /**
  * O LAYOUT de uma tabela estilo Notion: a ordem, a largura e a visibilidade das colunas.
  *
@@ -30,6 +32,8 @@ export const preferenciasDaTabelaSchema = z
       .record(z.string().min(1).max(80), z.boolean())
       .refine((r) => Object.keys(r).length <= MAXIMO_DE_COLUNAS)
       .optional(),
+    /** Filtros, ordenação e agrupamento (ver `consulta.ts`). */
+    ...consultaSchema.shape,
   })
   .strict();
 

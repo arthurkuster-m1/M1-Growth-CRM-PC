@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 
+import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
@@ -40,7 +41,16 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
 import { usePropriedadesDaTarefa } from "@/hooks/tarefas/usePropriedadesDaTarefa";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
-import { rotuloDaData } from "@/lib/motor/datas-do-campo";
+import { chaveDoDia } from "@/lib/inicio/datas";
+import {
+  aplicarConsulta,
+  consultaAtiva,
+  type CampoConsultavel,
+  type ConsultaDaTabela,
+  type TipoDeCampo,
+  type ValorDoCampo,
+} from "@/lib/motor/consulta";
+import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
 import { moverColuna, resolverColunas } from "@/lib/motor/layout";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -354,10 +364,118 @@ export function TarefasMotorClient({
     atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
   }
 
+  // ── filtros, ordenação e agrupamento ────────────────────────────────────────────────
+  const metasDeCampo: (CampoDaBarra & { valorDe: CampoConsultavel<Tarefa>["valorDe"] })[] = [
+    { id: "titulo", titulo: t("Título"), tipo: "texto", valorDe: (x) => x.title },
+    {
+      id: "status",
+      titulo: t("Status"),
+      tipo: "opcao",
+      valorDe: (x) => opcaoDaTarefa(x, opcoes)?.id,
+      opcoes: opcoes.map((o) => ({ id: o.id, rotulo: o.name, cor: o.color })),
+    },
+    {
+      id: "prioridade",
+      titulo: t("Prioridade"),
+      tipo: "opcao",
+      valorDe: (x) => x.priority,
+      opcoes: prioridades.map((p) => ({ id: p.id, rotulo: p.rotulo, cor: p.cor })),
+    },
+    {
+      id: "prazo",
+      titulo: t("Prazo"),
+      tipo: "data",
+      valorDe: (x) => (x.due_date ? chaveDoDia(new Date(x.due_date), fuso) : null),
+    },
+    {
+      id: "responsavel",
+      titulo: t("Responsável"),
+      tipo: "pessoa",
+      valorDe: (x) => x.assigned_to,
+      opcoes: membros.map((m) => ({ id: m.id, rotulo: m.nome })),
+    },
+    { id: "descricao", titulo: t("Descrição"), tipo: "texto", valorDe: (x) => x.description },
+    {
+      id: "criada",
+      titulo: t("Criada em"),
+      tipo: "data",
+      valorDe: (x) => chaveDoDia(new Date(x.created_at), fuso),
+    },
+    ...propriedades.map((p): (typeof metasDeCampo)[number] => {
+      const tipo: TipoDeCampo = {
+        text: "texto",
+        url: "texto",
+        number: "numero",
+        select: "opcao",
+        multi_select: "multi",
+        date: "data",
+        checkbox: "caixa",
+      }[p.type] as TipoDeCampo;
+      const bruto = (x: Tarefa) => x.custom_fields?.[p.id];
+      return {
+        id: `prop:${p.id}`,
+        titulo: p.name,
+        tipo,
+        opcoes: TIPOS_COM_OPCOES.includes(p.type)
+          ? p.options.map((o) => ({ id: o.id, rotulo: o.name, cor: o.color }))
+          : undefined,
+        valorDe: (x) => bruto(x) as ValorDoCampo,
+      };
+    }),
+  ];
+  const camposConsultaveis: CampoConsultavel<Tarefa>[] = metasDeCampo.map((m) => ({
+    id: m.id,
+    tipo: m.tipo,
+    valorDe: m.valorDe,
+    rotuloDoValor: m.opcoes
+      ? (v) => m.opcoes!.find((o) => o.id === v)?.rotulo ?? v
+      : m.tipo === "caixa"
+        ? (v) => (v === "1" ? t("Marcado") : t("Desmarcado"))
+        : undefined,
+    ordemDoValor:
+      m.opcoes && m.tipo !== "pessoa" ? (v) => m.opcoes!.findIndex((o) => o.id === v) : undefined,
+  }));
+  const camposDaBarra: CampoDaBarra[] = metasDeCampo.map(({ valorDe, ...resto }) => {
+    void valorDe;
+    return resto;
+  });
+
+  const resultado = aplicarConsulta(tarefas, camposConsultaveis, preferencias, {
+    hoje: hojeNoFuso(agora, fuso),
+  });
+  const tarefasVisiveis = resultado.linhas;
+  const gruposDaTabela = resultado.grupos?.map((g) => {
+    const meta = metasDeCampo.find((m) => m.id === preferencias.agrupar);
+    const cor = meta?.opcoes?.find((o) => o.id === g.chave)?.cor;
+    const nome =
+      g.chave === ""
+        ? t("Sem valor")
+        : meta?.tipo === "caixa"
+          ? g.chave === "1"
+            ? t("Marcado")
+            : t("Desmarcado")
+          : g.rotulo;
+    return {
+      chave: g.chave || "__vazio",
+      titulo: cor ? <Etiqueta cor={cor}>{nome}</Etiqueta> : <strong>{nome}</strong>,
+      linhas: g.linhas,
+    };
+  });
+
+  function mudarConsulta(c: ConsultaDaTabela) {
+    atualizar((p) => ({
+      ...p,
+      filtros: c.filtros?.length ? c.filtros : undefined,
+      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
+      agrupar: c.agrupar,
+    }));
+  }
+
   // ── seleção de linhas e ações em massa ──────────────────────────────────────────────
   // A seleção é derivada: ids de tarefas que já não existem (apagadas por outra aba, ou por
-  // esta mesma ação) saem dela sozinhos, e a contagem nunca mente.
-  const idsDaTabela = tarefas.map((tarefa) => tarefa.id);
+  // esta mesma ação) saem dela sozinhos, e a contagem nunca mente. Vale o que está À VISTA:
+  // linha escondida por um filtro não entra numa ação em massa.
+  const idsDaTabela = tarefasVisiveis.map((tarefa) => tarefa.id);
   const selecionadasVivas = podarSelecao(selecionadas, idsDaTabela);
   const idsSelecionados = idsDaTabela.filter((id) => selecionadasVivas.has(id));
 
@@ -433,9 +551,12 @@ export function TarefasMotorClient({
         </p>
       ) : null}
 
+      <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
+
       <TabelaDoMotor
         rotuloDaTabela={t("Tarefas")}
-        linhas={tarefas}
+        linhas={tarefasVisiveis}
+        grupos={gruposDaTabela}
         idDe={(tarefa) => tarefa.id}
         colunas={mostradas}
         aoMoverColuna={moverColunaNoLayout}
@@ -489,14 +610,16 @@ export function TarefasMotorClient({
           );
         }}
         carregando={carregando}
-        podeReordenar={podeEditar}
+        podeReordenar={podeEditar && !consultaAtiva(preferencias)}
         selecionadas={selecionadasVivas}
         aoSelecionar={podeEditar ? selecionar : undefined}
         aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
         aoReordenar={(id, destino) => void reordenar(id, destino)}
         aoCriar={podeEditar ? () => void novaTarefa() : undefined}
         rotuloDeCriar={t("Nova tarefa")}
-        vazio={t("Nenhuma tarefa ainda.")}
+        vazio={
+          tarefas.length > 0 ? t("Nenhuma tarefa com esses filtros.") : t("Nenhuma tarefa ainda.")
+        }
         acoesDaLinha={
           podeEditar
             ? (tarefa) => (

@@ -161,4 +161,6 @@ export {
   CheckSquare,
   LinkSimple,
   Minus,
+  ArrowsDownUp,
+  Rows,
 } from "@phosphor-icons/react/dist/ssr";
