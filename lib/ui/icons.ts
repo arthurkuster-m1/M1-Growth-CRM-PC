@@ -153,4 +153,8 @@ export {
   ArrowsOutSimple,
   // /admin/modulos: módulo opcional com tabela própria (ADR-0002)
   Stack,
+  // motor de tabelas estilo Notion (components/motor)
+  DotsSixVertical,
+  TextAa,
+  SlidersHorizontal,
 } from "@phosphor-icons/react/dist/ssr";

@@ -43,6 +43,13 @@ export interface Tarefa {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * A opção de status escolhida (migration 0582) e a ordem manual. Opcionais no tipo
+   * porque as telas antigas e os dublês de teste não os conhecem; o banco sempre os
+   * preenche.
+   */
+  status_option_id?: string | null;
+  position?: number;
 }
 
 export interface NovaTarefa {
@@ -54,6 +61,8 @@ export interface NovaTarefa {
   lead_id?: string | null;
   contact_id?: string | null;
   assigned_to?: string | null;
+  status_option_id?: string | null;
+  position?: number;
 }
 
 export type EdicaoDaTarefa = Partial<NovaTarefa>;

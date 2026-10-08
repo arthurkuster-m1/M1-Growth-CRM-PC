@@ -1,0 +1,101 @@
+"use client";
+
+import { useState } from "react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useT } from "@/hooks/i18n/useT";
+import { Check } from "@/lib/ui/icons";
+import { cn } from "@/lib/utils";
+
+export interface PessoaDoSeletor {
+  id: string;
+  nome: string;
+}
+
+interface Props {
+  pessoas: readonly PessoaDoSeletor[];
+  valorId: string | null;
+  aoEscolher: (id: string | null) => void;
+  podeEditar: boolean;
+  rotulo: string;
+}
+
+const inicialDe = (nome: string) => [...nome.trim()][0]?.toUpperCase() ?? "?";
+
+function Avatar({ nome }: { nome: string }) {
+  return (
+    <span
+      aria-hidden
+      className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent-soft text-[10px] font-bold text-primary"
+    >
+      {inicialDe(nome)}
+    </span>
+  );
+}
+
+/** A coluna "Pessoa" do Notion: avatar + nome, e uma lista para escolher quem responde. */
+export function CelulaDePessoa({ pessoas, valorId, aoEscolher, podeEditar, rotulo }: Props) {
+  const t = useT();
+  const [aberto, setAberto] = useState(false);
+  const atual = pessoas.find((p) => p.id === valorId);
+
+  return (
+    <Popover open={aberto} onOpenChange={setAberto}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={!podeEditar}
+          aria-label={rotulo}
+          className={cn(
+            "flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left text-sm",
+            podeEditar && "hover:bg-secondary",
+            !atual && "text-text-subtle",
+          )}
+        >
+          {atual ? (
+            <>
+              <Avatar nome={atual.nome} />
+              <span className="truncate">{atual.nome}</span>
+            </>
+          ) : (
+            t("Vazio")
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-1.5">
+        <div className="max-h-64 space-y-0.5 overflow-y-auto">
+          <button
+            type="button"
+            onClick={() => {
+              aoEscolher(null);
+              setAberto(false);
+            }}
+            className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-secondary"
+          >
+            {t("Ninguém")}
+          </button>
+          {pessoas.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                aoEscolher(p.id);
+                setAberto(false);
+              }}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-secondary",
+                p.id === valorId && "bg-secondary",
+              )}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <Avatar nome={p.nome} />
+                <span className="truncate">{p.nome}</span>
+              </span>
+              {p.id === valorId ? <Check size={14} className="text-primary" aria-hidden /> : null}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

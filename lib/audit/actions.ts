@@ -700,6 +700,11 @@ export const AUDIT_ACTIONS = [
   "crm_task.created",
   "crm_task.updated",
   "crm_task.deleted",
+  // As opções de status das tarefas (migration 0582): mudar o vocabulário de status
+  // de uma organização muda o que cada tarefa "está", e quem mexeu importa.
+  "crm_task_status_option.created",
+  "crm_task_status_option.updated",
+  "crm_task_status_option.deleted",
 
   // A proposta comercial. Rascunho, edição, ajuste pelo assistente, envio e
   // decisão do cliente — cada um muda o que o negócio vale ou o que foi
