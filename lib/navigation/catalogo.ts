@@ -167,6 +167,13 @@ export const NAV_CATALOG = [
     group: "atendimento",
   },
   {
+    href: "/app/tarefas",
+    label: "Tarefas",
+    description: "Tabela estilo Notion: edite no lugar, escolha as propriedades e arraste para reordenar.",
+    icon: "ListChecks",
+    group: "atendimento",
+  },
+  {
     href: "/app/radar",
     label: "Radar",
     description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",

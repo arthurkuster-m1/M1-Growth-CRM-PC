@@ -54,21 +54,21 @@ export function SeletorDeOpcao({
   const [editando, setEditando] = useState(false);
 
   const item = (opcao: OpcaoDoSeletor) => (
-      <button
-        key={opcao.id}
-        type="button"
-        onClick={() => {
-          aoEscolher(opcao.id);
-          setAberto(false);
-        }}
-        className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-secondary",
-          opcao.id === valorId && "bg-secondary",
-        )}
-      >
-        <Etiqueta cor={opcao.cor}>{opcao.rotulo}</Etiqueta>
-        {opcao.id === valorId ? <Check size={14} className="text-primary" aria-hidden /> : null}
-      </button>
+    <button
+      key={opcao.id}
+      type="button"
+      onClick={() => {
+        aoEscolher(opcao.id);
+        setAberto(false);
+      }}
+      className={cn(
+        "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-secondary",
+        opcao.id === valorId && "bg-secondary",
+      )}
+    >
+      <Etiqueta cor={opcao.cor}>{opcao.rotulo}</Etiqueta>
+      {opcao.id === valorId ? <Check size={14} className="text-primary" aria-hidden /> : null}
+    </button>
   );
 
   return (
@@ -104,7 +104,7 @@ export function SeletorDeOpcao({
                     if (doGrupo.length === 0) return null;
                     return (
                       <div key={grupo} className="pb-1">
-                        <p className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+                        <p className="px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wider text-text-subtle uppercase">
                           {titulo}
                         </p>
                         {doGrupo.map(item)}

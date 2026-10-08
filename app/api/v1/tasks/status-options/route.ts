@@ -20,7 +20,11 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
-import { CORES_DA_OPCAO, GRUPOS_DA_OPCAO, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
+import {
+  CORES_DA_OPCAO,
+  GRUPOS_DA_OPCAO,
+  type OpcaoDeStatus,
+} from "@/lib/tarefas/opcoes-de-status";
 
 export const dynamic = "force-dynamic";
 

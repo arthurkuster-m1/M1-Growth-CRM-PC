@@ -20,7 +20,11 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
-import { CORES_DA_OPCAO, GRUPOS_DA_OPCAO, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
+import {
+  CORES_DA_OPCAO,
+  GRUPOS_DA_OPCAO,
+  type OpcaoDeStatus,
+} from "@/lib/tarefas/opcoes-de-status";
 
 export const dynamic = "force-dynamic";
 
@@ -76,12 +80,9 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
         .eq("organization_id", authz.org.orgId)
         .eq("grupo", grupoAtual);
       if ((count ?? 0) <= 1) {
-        return fail(
-          "validation_failed",
-          t("Cada grupo precisa de pelo menos uma opção."),
-          422,
-          { requestId },
-        );
+        return fail("validation_failed", t("Cada grupo precisa de pelo menos uma opção."), 422, {
+          requestId,
+        });
       }
     }
   }

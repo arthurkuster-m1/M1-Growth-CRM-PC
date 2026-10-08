@@ -14,6 +14,7 @@ import {
   House,
   Inbox,
   Kanban,
+  ListChecks,
   PlugsConnected,
   Robot,
 } from "@/lib/ui/icons";
@@ -291,30 +292,42 @@ export function SidebarContent({
         o PR: cada linha custa 32px (28px de altura + 4px de `space-y-1`), e
         trocar N destinos do menu por um único link de hub devolve (N-1)×32px.
       */}
-      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2" aria-label={t("Navegação principal")}>
-        {/* Visual M1: "Início" fica solto, acima dos grupos. A porta também está no
-            catálogo (⌘K e teste de completude); aqui só é desenhada. */}
-        <Link
-          href="/app/inicio"
-          title={collapsed ? t("Início") : undefined}
-          aria-current={pathname.startsWith("/app/inicio") ? "page" : undefined}
-          onClick={onNavigate}
-          className={cn(
-            "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-            pathname.startsWith("/app/inicio")
-              ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-              : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-            collapsed && "justify-center px-2",
-          )}
-        >
-          <House
-            size={18}
-            weight={pathname.startsWith("/app/inicio") ? "fill" : "regular"}
-            className={pathname.startsWith("/app/inicio") ? "text-primary" : undefined}
-            aria-hidden
-          />
-          {!collapsed && <span className="truncate">{t("Início")}</span>}
-        </Link>
+      <nav
+        className="flex-1 space-y-3 overflow-y-auto px-3 py-2"
+        aria-label={t("Navegação principal")}
+      >
+        {/* Visual M1: itens SOLTOS, acima dos grupos. As portas também estão no catálogo
+            (⌘K e teste de completude); aqui só são desenhadas. */}
+        {[
+          { href: "/app/inicio", rotulo: t("Início"), Icone: House },
+          { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
+        ].map(({ href, rotulo, Icone }) => {
+          const ativo = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              title={collapsed ? rotulo : undefined}
+              aria-current={ativo ? "page" : undefined}
+              onClick={onNavigate}
+              className={cn(
+                "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                ativo
+                  ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                collapsed && "justify-center px-2",
+              )}
+            >
+              <Icone
+                size={18}
+                weight={ativo ? "fill" : "regular"}
+                className={ativo ? "text-primary" : undefined}
+                aria-hidden
+              />
+              {!collapsed && <span className="truncate">{rotulo}</span>}
+            </Link>
+          );
+        })}{" "}
         {grupos.map(({ group, items }) => {
           const tituloId = `nav-grupo-${group.id}`;
           // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra
@@ -332,7 +345,7 @@ export function SidebarContent({
                     type="button"
                     onClick={() => toggleGrupo(group.id)}
                     aria-expanded={aberto}
-                    className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
+                    className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-card/60 hover:text-foreground"
                   >
                     <span className="flex items-center gap-2.5">
                       <span
@@ -375,14 +388,19 @@ export function SidebarContent({
                           aria-current={isActive ? "page" : undefined}
                           onClick={onNavigate}
                           className={cn(
-                            "relative flex items-center gap-3 relative rounded-xl px-3 py-2 text-[13px] transition-colors",
+                            "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
                             isActive
-                              ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                              ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
                               : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                             collapsed && "justify-center px-2",
                           )}
                         >
-                          <Icon size={18} weight={isActive ? "fill" : "regular"} className={isActive ? "text-primary" : undefined} aria-hidden />
+                          <Icon
+                            size={18}
+                            weight={isActive ? "fill" : "regular"}
+                            className={isActive ? "text-primary" : undefined}
+                            aria-hidden
+                          />
                           {!collapsed && <span className="truncate">{t(item.label)}</span>}
                           {item.healthDot && (
                             <ConnectionHealthDot
@@ -403,9 +421,9 @@ export function SidebarContent({
                         aria-current={pathname === group.hub.href ? "page" : undefined}
                         onClick={onNavigate}
                         className={cn(
-                          "flex items-center gap-3 relative rounded-xl px-3 py-2 text-[13px] transition-colors",
+                          "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
                           pathname === group.hub.href
-                            ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                            ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
                             : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                           collapsed && "justify-center px-2",
                         )}
@@ -429,9 +447,9 @@ export function SidebarContent({
             aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "mb-1 flex items-center gap-3 relative rounded-xl px-3 py-2 text-[13px] transition-colors",
+              "relative mb-1 flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
               pathname.startsWith(rodape.href)
-                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
                 : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
               collapsed && "justify-center px-2",
             )}

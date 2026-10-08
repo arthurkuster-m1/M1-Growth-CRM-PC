@@ -78,7 +78,9 @@ export function useTarefasDoMotor() {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: CHAVE });
       const antes = queryClient.getQueryData<Tarefa[]>(CHAVE);
-      queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) => (lista ?? []).filter((t) => t.id !== id));
+      queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
+        (lista ?? []).filter((t) => t.id !== id),
+      );
       return { antes };
     },
     onError: (err, _id, contexto) => {
@@ -107,7 +109,11 @@ export function useTarefasDoMotor() {
       const anterior = semEla[destino - 1];
       const proximo = semEla[destino];
       if (lacunaAcabou(anterior && posicaoDe(anterior), proximo && posicaoDe(proximo))) {
-        const ordem = [...semEla.slice(0, destino), tarefas.find((t) => t.id === id)!, ...semEla.slice(destino)];
+        const ordem = [
+          ...semEla.slice(0, destino),
+          tarefas.find((t) => t.id === id)!,
+          ...semEla.slice(destino),
+        ];
         const novas = renumerar(ordem.map(posicaoDe));
         await Promise.all(
           ordem.map((t, i) => editarTarefa(t.id, { position: novas[i]! }, { position: novas[i]! })),

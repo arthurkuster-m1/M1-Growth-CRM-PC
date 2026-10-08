@@ -14,6 +14,10 @@ interface Props {
   /** Texto de acessibilidade do campo (ex.: "Título da tarefa"). */
   rotulo: string;
   riscado?: boolean;
+  /** Aceita salvar texto vazio (ex.: apagar a descrição). O título, não. */
+  permitirVazio?: boolean;
+  /** O que aparece, em cinza, quando o valor é vazio. */
+  vazioRotulo?: string;
   className?: string;
 }
 
@@ -30,6 +34,8 @@ export function CelulaDeTexto({
   podeEditar,
   rotulo,
   riscado,
+  permitirVazio = false,
+  vazioRotulo,
   className,
 }: Props) {
   const [editando, setEditando] = useState(iniciarEditando);
@@ -50,7 +56,7 @@ export function CelulaDeTexto({
     cancelando.current = false;
     setEditando(false);
     aoTerminarEdicao?.();
-    if (!desfazer && novo && novo !== valor) aoSalvar(novo);
+    if (!desfazer && (novo || permitirVazio) && novo !== valor) aoSalvar(novo);
     else setRascunho(valor);
   }
 
@@ -68,10 +74,11 @@ export function CelulaDeTexto({
           "block w-full truncate rounded-md px-2 py-1.5 text-left text-sm",
           podeEditar && "hover:bg-secondary",
           riscado && "text-muted-foreground line-through",
+          !valor && "text-text-subtle",
           className,
         )}
       >
-        {valor}
+        {valor || vazioRotulo}
       </button>
     );
   }
@@ -91,7 +98,7 @@ export function CelulaDeTexto({
           e.currentTarget.blur();
         }
       }}
-      className="w-full rounded-md border border-primary/50 bg-background px-2 py-1.5 text-sm outline-none ring-2 ring-primary/20"
+      className="w-full rounded-md border border-primary/50 bg-background px-2 py-1.5 text-sm ring-2 ring-primary/20 outline-none"
     />
   );
 }
