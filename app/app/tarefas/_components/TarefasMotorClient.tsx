@@ -25,13 +25,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePropriedadesVisiveis } from "@/hooks/motor/usePropriedadesVisiveis";
+import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import { rotuloDaData } from "@/lib/motor/datas-do-campo";
+import { moverColuna, resolverColunas } from "@/lib/motor/layout";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import {
   SITUACOES_DA_TAREFA,
@@ -62,9 +63,6 @@ interface Props {
   /** O instante em que o servidor pintou a tela — o mesmo "agora" do Início. */
   agoraIso: string;
 }
-
-const PADRAO = ["status", "prioridade", "prazo", "responsavel"];
-const FIXAS = ["titulo"];
 
 /**
  * TAREFAS — a tabela estilo Notion. Células que se editam no lugar, status com nome e cor
@@ -269,7 +267,27 @@ export function TarefasMotorClient({
     },
   ];
 
-  const { visiveis, alternar } = usePropriedadesVisiveis("tarefas", PADRAO, FIXAS);
+  // O layout (ordem, largura, visibilidade) é da PESSOA e mora na conta dela.
+  const { preferencias, atualizar } = useVisualizacao("tarefas");
+  const resolvidas = resolverColunas(colunas, preferencias);
+  const mostradas = resolvidas.filter((c) => c.visivel);
+
+  function moverColunaNoLayout(idMovido: string, idAlvo: string) {
+    // A ordem completa, escondidas inclusive: esconder uma coluna não pode embaralhar as
+    // outras quando ela voltar. A coluna fixa (o título) fica de fora, sempre primeira.
+    const ordemAtual = resolvidas.filter((c) => !c.fixa).map((c) => c.id);
+    atualizar((p) => ({ ...p, ordem: moverColuna(ordemAtual, idMovido, idAlvo) }));
+  }
+
+  function redimensionarColuna(id: string, largura: number) {
+    atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }));
+  }
+
+  function alternarColuna(id: string) {
+    const atual = resolvidas.find((c) => c.id === id);
+    if (!atual || atual.fixa) return;
+    atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+  }
 
   async function novaTarefa() {
     // No fim da lista: acima da maior posição existente E do relógio, para a tarefa nova
@@ -297,9 +315,13 @@ export function TarefasMotorClient({
         </div>
         <div className="flex items-center gap-2">
           <MenuDePropriedades
-            propriedades={colunas.map((c) => ({ id: c.id, titulo: c.titulo, fixa: c.fixa }))}
-            visiveis={visiveis}
-            aoAlternar={alternar}
+            propriedades={resolvidas.map((c) => ({
+              id: c.id,
+              titulo: c.titulo,
+              fixa: c.fixa,
+              visivel: c.visivel,
+            }))}
+            aoAlternar={alternarColuna}
           />
           {podeEditar ? (
             <button
@@ -324,8 +346,9 @@ export function TarefasMotorClient({
         rotuloDaTabela={t("Tarefas")}
         linhas={tarefas}
         idDe={(tarefa) => tarefa.id}
-        colunas={colunas}
-        visiveis={visiveis}
+        colunas={mostradas}
+        aoMoverColuna={moverColunaNoLayout}
+        aoRedimensionarColuna={redimensionarColuna}
         carregando={carregando}
         podeReordenar={podeEditar}
         aoReordenar={(id, destino) => void reordenar(id, destino)}

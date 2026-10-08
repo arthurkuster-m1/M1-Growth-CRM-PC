@@ -14799,6 +14799,9 @@ export const DICIONARIO: Traducoes = {
   "Já existe uma opção com esse nome.": { es: "Ya existe una opción con ese nombre." },
   "Opção não encontrada.": { es: "Opción no encontrada." },
   "Erro ao apagar a opção de status.": { es: "Error al eliminar la opción de estado." },
+  "Largura da coluna": { es: "Ancho de la columna" },
+  "Erro ao carregar a preferência.": { es: "Error al cargar la preferencia." },
+  "Erro ao salvar a preferência.": { es: "Error al guardar la preferencia." },
 };
 
 /**

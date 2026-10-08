@@ -10,16 +10,15 @@ export interface PropriedadeDoMenu {
   titulo: string;
   /** O título não pode ser escondido: sem ele a linha perde o nome. */
   fixa?: boolean;
+  visivel: boolean;
 }
 
 /** "Propriedades": o painel que liga e desliga as colunas da tabela. */
 export function MenuDePropriedades({
   propriedades,
-  visiveis,
   aoAlternar,
 }: {
   propriedades: readonly PropriedadeDoMenu[];
-  visiveis: readonly string[];
   aoAlternar: (id: string) => void;
 }) {
   const t = useT();
@@ -41,7 +40,7 @@ export function MenuDePropriedades({
         </p>
         <ul className="space-y-1">
           {propriedades.map((p) => {
-            const ligada = p.fixa || visiveis.includes(p.id);
+            const ligada = p.fixa || p.visivel;
             return (
               <li key={p.id} className="flex items-center justify-between gap-3 py-1 text-sm">
                 <span className={p.fixa ? "text-muted-foreground" : undefined}>{p.titulo}</span>
