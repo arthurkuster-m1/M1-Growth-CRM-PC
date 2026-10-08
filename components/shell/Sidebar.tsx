@@ -3,7 +3,19 @@ import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, Gear } from "@/lib/ui/icons";
+import {
+  ArrowRight,
+  Buildings,
+  CaretDoubleLeft,
+  CaretDoubleRight,
+  CaretDown,
+  ChartBar,
+  Gear,
+  Inbox,
+  Kanban,
+  PlugsConnected,
+  Robot,
+} from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -17,6 +29,16 @@ import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { GRUPO_NO_RODAPE, sidebarGroups } from "@/lib/navigation/registry";
 
 const CHAVE_GRUPOS_FECHADOS = "sidebar-grupos-fechados";
+
+/** O ícone de cada grupo — vira o "azulejo" colorido ao lado do título do grupo. */
+const ICONE_DO_GRUPO: Record<string, typeof Kanban> = {
+  atendimento: Inbox,
+  crm: Kanban,
+  ia: Robot,
+  canais: PlugsConnected,
+  analise: ChartBar,
+  organizacao: Buildings,
+};
 
 interface SidebarContentProps {
   collapsed: boolean;
@@ -62,15 +84,34 @@ export function SidebarContent({
    * `localStorage` tiver algo salvo. Guardar o CONJUNTO DOS FECHADOS, e não dos
    * abertos, é o que faz "sem preferência salva" já significar "tudo aberto".
    */
-  const [gruposFechados, setGruposFechados] = useState<Set<string>>(() => new Set());
+  // Visual M1: sem preferência salva, só o grupo da tela atual começa aberto. É o que
+  // deixa o menu curto e leve (e cabendo na dobra) com o espaçamento mais generoso.
+  const grupoAtivo = grupos.find(({ items }) =>
+    items.some((item) => pathname === item.href || pathname.startsWith(item.href + "/")),
+  )?.group.id;
+  const [gruposFechados, setGruposFechados] = useState<Set<string>>(
+    () => new Set(grupos.map((g) => g.group.id).filter((id) => id !== grupoAtivo)),
+  );
   useEffect(() => {
     try {
       const salvo = window.localStorage.getItem(CHAVE_GRUPOS_FECHADOS);
       if (salvo) setGruposFechados(new Set(JSON.parse(salvo) as string[]));
     } catch {
-      // Storage bloqueado (aba privada) — fica tudo aberto, que é o padrão.
+      // Storage bloqueado (aba privada) — vale o padrão: só o grupo atual aberto.
     }
   }, []);
+  // Navegou para outro grupo (pelo ⌘K, por um link…): abre o grupo da tela, sem gravar.
+  // Ajuste de estado durante a renderização (padrão do React para "reagir a uma prop
+  // que mudou"), e não um efeito: o efeito pintaria um quadro com o grupo ainda fechado.
+  const [grupoVisto, setGrupoVisto] = useState(grupoAtivo);
+  if (grupoAtivo !== grupoVisto) {
+    setGrupoVisto(grupoAtivo);
+    if (grupoAtivo && gruposFechados.has(grupoAtivo)) {
+      const next = new Set(gruposFechados);
+      next.delete(grupoAtivo);
+      setGruposFechados(next);
+    }
+  }
   function toggleGrupo(id: string) {
     setGruposFechados((prev) => {
       const next = new Set(prev);
@@ -129,7 +170,7 @@ export function SidebarContent({
     <>
       <div
         className={cn(
-          "flex h-14 items-center border-b px-4",
+          "flex h-16 items-center px-4",
           collapsed ? "justify-center" : "justify-start",
         )}
       >
@@ -177,16 +218,31 @@ export function SidebarContent({
             <LogotipoDoProduto nome={nome} className="h-8 w-auto" />
           )
         ) : (
-          <span className={cn("font-semibold tracking-tight", collapsed && "sr-only")}>{nome}</span>
-        )}
-        {collapsed && !marcaDoProduto && (
-          <span aria-hidden className="text-lg font-bold text-primary">
-            {/* Spread e não `[0]`: nome começando com emoji ou acento composto
-                quebraria no meio do code point. Mesma regra de `resolveBranding`
-                — a inicial precisa acompanhar o nome que a barra mostra, senão
-                recolher o menu troca a marca. */}
-            {[...nome][0]?.toUpperCase() ?? brand.initial}
-          </span>
+          // Visual M1: avatar arredondado com a inicial + nome da marca + nome da empresa.
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm"
+            >
+              {/* Spread e não `[0]`: nome começando com emoji ou acento composto
+                  quebraria no meio do code point. Mesma regra de `resolveBranding`
+                  — a inicial precisa acompanhar o nome que a barra mostra, senão
+                  recolher o menu troca a marca. */}
+              {[...nome][0]?.toUpperCase() ?? brand.initial}
+            </span>
+            {collapsed ? (
+              <span className="sr-only">{nome}</span>
+            ) : (
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-sm font-semibold tracking-tight">{nome}</span>
+                {activeOrg?.name && activeOrg.name !== nome ? (
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {activeOrg.name}
+                  </span>
+                ) : null}
+              </span>
+            )}
+          </div>
         )}
       </div>
       {/*
@@ -234,7 +290,7 @@ export function SidebarContent({
         o PR: cada linha custa 32px (28px de altura + 4px de `space-y-1`), e
         trocar N destinos do menu por um único link de hub devolve (N-1)×32px.
       */}
-      <nav className="flex-1 space-y-2 overflow-y-auto p-2" aria-label={t("Navegação principal")}>
+      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2" aria-label={t("Navegação principal")}>
         {grupos.map(({ group, items }) => {
           const tituloId = `nav-grupo-${group.id}`;
           // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra
@@ -252,9 +308,20 @@ export function SidebarContent({
                     type="button"
                     onClick={() => toggleGrupo(group.id)}
                     aria-expanded={aberto}
-                    className="flex w-full items-center justify-between rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                    className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
                   >
-                    {t(group.label)}
+                    <span className="flex items-center gap-2.5">
+                      <span
+                        aria-hidden
+                        className="grid h-6 w-6 place-items-center rounded-lg bg-accent-soft text-primary"
+                      >
+                        {(() => {
+                          const IconeDoGrupo = ICONE_DO_GRUPO[group.id] ?? Kanban;
+                          return <IconeDoGrupo size={14} weight="fill" />;
+                        })()}
+                      </span>
+                      {t(group.label)}
+                    </span>
                     <CaretDown
                       size={12}
                       weight="bold"
@@ -284,14 +351,14 @@ export function SidebarContent({
                           aria-current={isActive ? "page" : undefined}
                           onClick={onNavigate}
                           className={cn(
-                            "relative flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+                            "relative flex items-center gap-3 relative rounded-xl px-3 py-2 text-[13px] transition-colors",
                             isActive
-                              ? "bg-accent text-accent-foreground"
-                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                              ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                              : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                             collapsed && "justify-center px-2",
                           )}
                         >
-                          <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
+                          <Icon size={18} weight={isActive ? "fill" : "regular"} className={isActive ? "text-primary" : undefined} aria-hidden />
                           {!collapsed && <span className="truncate">{t(item.label)}</span>}
                           {item.healthDot && (
                             <ConnectionHealthDot
@@ -312,10 +379,10 @@ export function SidebarContent({
                         aria-current={pathname === group.hub.href ? "page" : undefined}
                         onClick={onNavigate}
                         className={cn(
-                          "flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+                          "flex items-center gap-3 relative rounded-xl px-3 py-2 text-[13px] transition-colors",
                           pathname === group.hub.href
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                            ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                            : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                           collapsed && "justify-center px-2",
                         )}
                       >
@@ -338,10 +405,10 @@ export function SidebarContent({
             aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "mb-1 flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+              "mb-1 flex items-center gap-3 relative rounded-xl px-3 py-2 text-[13px] transition-colors",
               pathname.startsWith(rodape.href)
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
               collapsed && "justify-center px-2",
             )}
           >
@@ -356,7 +423,7 @@ export function SidebarContent({
             onClick={() => startTransition(() => toggleSidebar(collapsed))}
             disabled={isPending}
             className={cn(
-              "flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              "flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-card/70 hover:text-foreground",
               collapsed && "justify-center px-2",
             )}
             aria-label={collapsed ? t("Expandir sidebar") : t("Recolher sidebar")}
@@ -408,8 +475,8 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         // `duration-base` em vez do `duration-200` literal: 200ms é o mesmo
         // número, mas vindo de `--duration-base`. A Lei de movimento fecha a
         // tabela de durações, e número solto é o que a faz apodrecer.
-        "sticky top-0 z-30 flex h-dvh shrink-0 flex-col border-r bg-card transition-[width] duration-base",
-        collapsed ? "w-16" : "w-60",
+        "sticky top-0 z-30 flex h-dvh shrink-0 flex-col border-r border-border/60 bg-[color-mix(in_oklab,var(--color-accent)_6%,var(--color-surface))] transition-[width] duration-base",
+        collapsed ? "w-16" : "w-64",
       )}
     >
       <SidebarContent collapsed={collapsed} />

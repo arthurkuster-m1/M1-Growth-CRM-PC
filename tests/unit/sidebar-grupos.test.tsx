@@ -10,7 +10,7 @@
  * `navegacao-registry.test.ts`; aqui é a superfície.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { Sidebar } from "@/components/shell/Sidebar";
 import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
@@ -57,12 +57,25 @@ function comoPapel(role: ActiveOrg["role"]) {
   authRef.activeOrg = { orgId: "org-1", name: "Org", role };
 }
 
-afterEach(cleanup);
+// A preferência de grupo aberto/fechado vive no localStorage, que sobrevive entre casos do mesmo arquivo.
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
+
+/**
+ * Visual M1: sem preferência salva, só o grupo da rota atual começa aberto. Os casos que
+ * medem ONDE cada porta mora abrem todos os grupos antes, como o usuário faria clicando.
+ */
+function abrirTodosOsGrupos() {
+  for (const botao of screen.queryAllByRole("button", { expanded: false })) fireEvent.click(botao);
+}
 
 describe("Sidebar agrupado", () => {
   it("renderiza os títulos de grupo na ordem de uso", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     const titulos = screen
       .getAllByRole("heading")
       .map((el) => el.textContent?.trim())
@@ -75,6 +88,7 @@ describe("Sidebar agrupado", () => {
   it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     // ⚠️ O CAMINHO MUDOU, A PROPRIEDADE NÃO. Etapas do funil saiu do menu para
     // dentro do hub do CRM quando Tarefas virou o quinto destino do grupo e o
     // menu passou a rolar. A porta continua sendo CRM — "Ver tudo em CRM" leva
@@ -91,6 +105,7 @@ describe("Sidebar agrupado", () => {
   it("o número de Casos mora no item de Casos, e o da Fila no item de Inbox", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     const casos = screen.getAllByTestId("marcador-casos");
     const fila = screen.getAllByTestId("marcador-fila");
     expect(casos).toHaveLength(1);
@@ -108,12 +123,14 @@ describe("Sidebar agrupado", () => {
   it("e os dois itens de funil não disputam o mesmo nome", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
   });
 
   it("desenterra Audit Log — e Nuvemshop ficou de fora, por escolha", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     // ⚠️ O CAMINHO MUDOU, A PROPRIEDADE NÃO. O que esta linha sempre prendeu é
     // que Audit Log deixou de existir só como card enterrado em Configurações.
     // Quando Atividades (PR #583) virou o quinto destino do grupo Análise e o
@@ -144,6 +161,7 @@ describe("Sidebar agrupado", () => {
   it("Configurações fica no rodapé, nunca dependendo de scroll", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     const config = screen.getByRole("link", { name: /Configurações/ });
     expect(config).toHaveAttribute("href", "/app/settings");
     // Fora da <nav> que rola.
@@ -155,6 +173,7 @@ describe("Sidebar agrupado", () => {
     // CANAIS é todo manager+/admin. Um agent não pode ver o título sozinho.
     comoPapel("agent");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
     expect(titulos).not.toContain("Canais");
     expect(titulos).toContain("Atendimento");
@@ -163,6 +182,7 @@ describe("Sidebar agrupado", () => {
   it("oferece o hub dos grupos que têm um", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     expect(screen.getByRole("link", { name: /Ver tudo em IA/ })).toHaveAttribute("href", "/app/ai");
   });
 
@@ -176,8 +196,23 @@ describe("Sidebar agrupado", () => {
   it("marca a rota atual com aria-current", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
     expect(screen.getByRole("link", { name: /Inbox/ })).toHaveAttribute("aria-current", "page");
     // "Kanban" saiu da interface; o item da mesma URL agora se chama "Funis".
     expect(screen.getByRole("link", { name: "Funis" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("só o grupo da rota atual começa aberto (menu curto, como no desenho do M1)", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    // A rota é /app/inbox, do grupo Atendimento: é o único aberto.
+    const abertos = screen
+      .getAllByRole("button", { expanded: true })
+      .map((el) => el.textContent?.trim());
+    expect(abertos).toEqual(["Atendimento"]);
+    // Os demais existem, fechados — e abrem com um clique.
+    const crm = screen.getByRole("button", { name: /CRM/, expanded: false });
+    fireEvent.click(crm);
+    expect(screen.getByRole("button", { name: /CRM/, expanded: true })).toBeTruthy();
   });
 });
