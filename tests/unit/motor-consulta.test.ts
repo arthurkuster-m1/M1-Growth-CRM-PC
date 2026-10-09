@@ -268,19 +268,37 @@ describe("agrupamento", () => {
     expect(g[0]!.rotulo).toBe("FAZER");
   });
 
-  it("caixa vira dois grupos; tipo não agrupável devolve null", () => {
+  it("caixa vira dois grupos; campo inexistente devolve null", () => {
     const g = agrupar(
       [L("a", { feita: true }), L("b")],
       campos.find((c) => c.id === "feita"),
     )!;
     expect(g.map((x) => x.chave).sort()).toEqual(["0", "1"]);
-    expect(
-      agrupar(
-        [L("a")],
-        campos.find((c) => c.id === "titulo"),
-      ),
-    ).toBeNull();
     expect(agrupar([L("a")], undefined)).toBeNull();
+  });
+
+  it("agrupa por QUALQUER tipo, como o filtro: texto, data, número e várias tags", () => {
+    const ls = [
+      L("a", { titulo: "Beta", prazo: "2026-10-09", nota: 10, tags: ["x", "y"] }),
+      L("b", { titulo: "Alfa", prazo: "2026-10-02", nota: 2, tags: ["y"] }),
+      L("c", { titulo: "Beta", nota: 2 }),
+    ];
+    const por = (id: string) =>
+      agrupar(
+        ls,
+        campos.find((c) => c.id === id),
+      )!;
+    // texto: por valor, em ordem alfabética
+    expect(por("titulo").map((x) => x.chave)).toEqual(["Alfa", "Beta"]);
+    // data: cronológica, "sem valor" por último
+    expect(por("prazo").map((x) => x.chave)).toEqual(["2026-10-02", "2026-10-09", ""]);
+    // número: numérica (2 antes de 10), e não por texto ("10" < "2")
+    expect(por("nota").map((x) => x.chave)).toEqual(["2", "10"]);
+    // várias tags: a linha entra em UM grupo por tag; sem tag, "sem valor"
+    const tags = por("tags");
+    expect(tags.map((x) => x.chave)).toEqual(["x", "y", ""]);
+    expect(ids(tags[1]!.linhas)).toEqual(["a", "b"]);
+    expect(ids(tags[2]!.linhas)).toEqual(["c"]);
   });
 });
 

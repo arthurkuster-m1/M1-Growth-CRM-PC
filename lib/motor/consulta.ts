@@ -264,13 +264,21 @@ export interface GrupoDeLinhas<T> {
   linhas: T[];
 }
 
-/** Os tipos que se podem agrupar: valor único e poucos valores distintos. */
-export const TIPOS_AGRUPAVEIS: readonly TipoDeCampo[] = ["opcao", "pessoa", "caixa"];
+/**
+ * Todos os tipos se agrupam — o agrupamento oferece os MESMOS campos que o filtro,
+ * inclusive as propriedades que a organização criar depois.
+ */
+export const TIPOS_AGRUPAVEIS: readonly TipoDeCampo[] = TIPOS_DE_CAMPO;
 
 /**
- * Parte as linhas em grupos pelo valor do campo. A ordem dos grupos segue a lista fixa do
- * campo (status, prioridade) quando há, senão o nome; "sem valor" fica por último. Dentro de
- * cada grupo a ordem de entrada é mantida.
+ * Parte as linhas em grupos pelo valor do campo.
+ *
+ * Ordem dos grupos: a lista fixa do campo (status, prioridade) quando há; datas em ordem
+ * cronológica; números em ordem numérica; o resto pelo nome. "Sem valor" fica por último.
+ * Dentro de cada grupo a ordem de entrada é mantida.
+ *
+ * Campo de VÁRIOS valores (multi): a linha entra em UM grupo por valor que tem — como no
+ * Notion. Por isso, com multi, a mesma linha pode aparecer em mais de um grupo.
  */
 export function agrupar<T>(
   linhas: readonly T[],
@@ -278,12 +286,17 @@ export function agrupar<T>(
 ): GrupoDeLinhas<T>[] | null {
   if (!campo || !TIPOS_AGRUPAVEIS.includes(campo.tipo)) return null;
   const mapa = new Map<string, T[]>();
-  for (const linha of linhas) {
-    const v = campo.valorDe(linha);
-    const chave = campo.tipo === "caixa" ? (v === true ? "1" : "0") : estaVazio(v) ? "" : String(v);
+  const poe = (chave: string, linha: T) => {
     const lista = mapa.get(chave);
     if (lista) lista.push(linha);
     else mapa.set(chave, [linha]);
+  };
+  for (const linha of linhas) {
+    const v = campo.valorDe(linha);
+    if (campo.tipo === "caixa") poe(v === true ? "1" : "0", linha);
+    else if (campo.tipo === "multi" && Array.isArray(v) && v.length > 0) {
+      for (const valor of new Set(v)) poe(String(valor), linha);
+    } else poe(estaVazio(v) ? "" : String(v), linha);
   }
   const rotulo = (chave: string) => (chave === "" ? "" : (campo.rotuloDoValor?.(chave) ?? chave));
   const posicao = (chave: string) => campo.ordemDoValor?.(chave) ?? 0;
@@ -292,7 +305,9 @@ export function agrupar<T>(
     .sort(([a], [b]) => {
       if (a === "" || b === "") return a === "" ? 1 : -1;
       if (campo.ordemDoValor) return posicao(a) - posicao(b);
-      return rotulo(a).localeCompare(rotulo(b), "pt-BR");
+      if (campo.tipo === "data") return a.localeCompare(b);
+      if (campo.tipo === "numero") return Number(a) - Number(b);
+      return rotulo(a).localeCompare(rotulo(b), "pt-BR", { numeric: true });
     })
     .map(([chave, lista]) => ({ chave, rotulo: rotulo(chave), linhas: lista }));
 }

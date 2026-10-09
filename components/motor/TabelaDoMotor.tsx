@@ -372,7 +372,8 @@ export function TabelaDoMotor<T>({
 
   const [recolhidos, setRecolhidos] = useState<ReadonlySet<string>>(() => new Set());
   const blocos = grupos ?? [{ chave: "", titulo: null, linhas }];
-  const ids = linhas.map(idDe);
+  // Único: agrupando por campo de vários valores, a mesma linha aparece em mais de um grupo.
+  const ids = [...new Set(linhas.map(idDe))];
   const estadoDeTodas = estadoDoMarcarTodas(selecionadas, ids);
   const idsDasColunasMoveis = colunas.filter((c) => !c.fixa).map((c) => c.id);
 

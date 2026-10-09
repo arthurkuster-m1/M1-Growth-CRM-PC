@@ -54,6 +54,7 @@ import {
   type TipoDeCampo,
   type ValorDoCampo,
 } from "@/lib/motor/consulta";
+import { formatarDiaBr } from "@/lib/motor/calendario";
 import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
@@ -533,7 +534,9 @@ export function TarefasMotorClient({
       ? (v) => m.opcoes!.find((o) => o.id === v)?.rotulo ?? v
       : m.tipo === "caixa"
         ? (v) => (v === "1" ? t("Marcado") : t("Desmarcado"))
-        : undefined,
+        : m.tipo === "data"
+          ? (v) => formatarDiaBr(v) || v
+          : undefined,
     ordemDoValor:
       m.opcoes && m.tipo !== "pessoa" ? (v) => m.opcoes!.findIndex((o) => o.id === v) : undefined,
   }));
@@ -582,7 +585,8 @@ export function TarefasMotorClient({
   // A seleção é derivada: ids de tarefas que já não existem (apagadas por outra aba, ou por
   // esta mesma ação) saem dela sozinhos, e a contagem nunca mente. Vale o que está À VISTA:
   // linha escondida por um filtro não entra numa ação em massa.
-  const idsDaTabela = tarefasVisiveis.map((tarefa) => tarefa.id);
+  // Agrupando por um campo de vários valores, a mesma tarefa pode aparecer em mais de um grupo.
+  const idsDaTabela = [...new Set(tarefasVisiveis.map((tarefa) => tarefa.id))];
   const selecionadasVivas = podarSelecao(selecionadas, idsDaTabela);
   const idsSelecionados = idsDaTabela.filter((id) => selecionadasVivas.has(id));
 
