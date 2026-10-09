@@ -72,6 +72,11 @@ export const PUBLIC_PATHS: RegExp[] = [
   // volta do Google não tem, e não pode ter, o cookie.
   /^\/api\/v1\/plataformas-de-anuncio\/google\/callback$/,
   /^\/api\/v1\/integrations\/nuvemshop\/callback$/,
+  // O LINK SEM LOGIN da aba Marketing (migration 0587): o cliente abre `/p/<token>` sem sessão.
+  // A autorização é o próprio token (segredo ao portador, 256 bits), resolvido NO SERVIDOR por
+  // `lib/marketing/publico.ts` — que só devolve conteúdo publicado e responde 404 a link
+  // inexistente, revogado ou vencido. Ancorado: só `/p/<token>` e `/p/<token>/<módulo>`.
+  /^\/p\/[A-Za-z0-9_-]{32,64}(\/[a-z0-9-]{1,64})?$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   // GET /api/v1/contacts aceita SESSÃO ou Bearer `dsk_...` (api_tokens) — a

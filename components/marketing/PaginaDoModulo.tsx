@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Apresentacao } from "@/components/marketing/Apresentacao";
+import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { BlocosRender, type RotulosDosBlocos } from "@/components/marketing/BlocosRender";
 import { EditorDeBlocos } from "@/components/marketing/EditorDeBlocos";
 import { OQueVem } from "@/components/marketing/PaginaDeMarketing";
@@ -12,7 +13,7 @@ import { usePaginaDeMarketing } from "@/hooks/marketing/usePaginaDeMarketing";
 import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
 import type { TomDaCapa } from "@/lib/marketing/modulos";
 import { randomId } from "@/lib/random-id";
-import { Presentation } from "@/lib/ui/icons";
+import { Presentation, ShareNetwork } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -48,6 +49,7 @@ export function PaginaDoModulo({
   const [modo, setModo] = useState<"editar" | "ver">("editar");
   const [apresentando, setApresentando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  const [compartilhando, setCompartilhando] = useState(false);
 
   if (carregando) {
     return <div className="h-48 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
@@ -132,6 +134,15 @@ export function PaginaDoModulo({
             {t("Apresentar")}
           </button>
 
+          <button
+            type="button"
+            onClick={() => setCompartilhando(true)}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary"
+          >
+            <ShareNetwork size={16} aria-hidden />
+            {t("Compartilhar")}
+          </button>
+
           <span
             className={cn(
               "ml-auto text-xs",
@@ -213,6 +224,15 @@ export function PaginaDoModulo({
           <BlocosRender blocos={visiveis} rotulos={rotulos} />
         </article>
       )}
+
+      {podeEditar ? (
+        <CompartilharPagina
+          aberto={compartilhando}
+          aoFechar={() => setCompartilhando(false)}
+          chave={chave}
+          temPublicado={publicado !== null}
+        />
+      ) : null}
 
       {apresentando ? (
         <Apresentacao
