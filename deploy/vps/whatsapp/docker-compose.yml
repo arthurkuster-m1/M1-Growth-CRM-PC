@@ -1,0 +1,62 @@
+# WhatsApp do M1: o WAHA (conector do WhatsApp) + o Redis de apoio (limites e filas do app).
+# Tudo escuta só em 127.0.0.1: nada disso é alcançável pela internet. O app (fora do Docker,
+# porta 3001) fala com o WAHA em 127.0.0.1:3100 e com o Redis (via SRH) em 127.0.0.1:8079; o WAHA
+# avisa o app de cada mensagem em http://host.docker.internal:3001/api/v1/webhooks/waha.
+#
+# ⚠️ WAHA Core (grátis) = UM número de WhatsApp. Vários números (um por cliente) pedem o WAHA Plus
+# (pago): troque a imagem em WAHA_IMAGE no .env.
+name: m1-whatsapp
+
+services:
+  waha:
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.7.2}
+    restart: unless-stopped
+    mem_limit: 1280m
+    ports: ["127.0.0.1:3100:3000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      WAHA_API_KEY: "sha512:${WAHA_API_KEY_SHA512}"
+      WHATSAPP_HOOK_URL: ${WAHA_WEBHOOK_BASE_URL}/api/v1/webhooks/waha
+      WHATSAPP_HOOK_EVENTS: "message.any,message.ack,message.edited,message.revoked,session.status,state.change"
+      WHATSAPP_HOOK_HMAC_KEY: ${WAHA_HMAC_SECRET}
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_DASHBOARD_ENABLED: "false"
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+    volumes:
+      - waha-data:/app/.sessions
+      - waha-media:/app/.media
+    networks: [interna]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks: [interna]
+
+  srh:
+    image: hiett/serverless-redis-http@sha256:5b0bb9239fce53abf87b2018a7a0deb9ec7bd900c5360738fe5fbeeb426f9150
+    restart: unless-stopped
+    ports: ["127.0.0.1:8079:80"]
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${SRH_TOKEN}
+      SRH_CONNECTION_STRING: "redis://redis:6379"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [interna]
+
+networks:
+  interna:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  waha-data:
+  waha-media:

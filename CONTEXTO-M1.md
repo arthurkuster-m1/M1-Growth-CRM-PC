@@ -66,6 +66,12 @@ Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estraté
 - Enquanto isso não estiver ligado, o jeito antigo continua valendo (build na VPS: `/tmp/m1-deploy.sh` ou os passos acima, mas reinicie com `systemctl restart m1-app`).
 - Push na main também dispara os workflows herdados do DeskcommCRM (ci, e2e, perf, publish-image, release…). `tests/unit/executor-proprio-so-roda-o-que-e-nosso.test.ts` já falhava antes (depende do nome do repo do fork).
 
+## Integrações montadas em 09/10/2026
+- **Google Agenda**: credenciais OAuth (cliente "Aplicativo da Web") cadastradas em /admin/google; escopos `calendar.events` + `calendar.readonly`; app do Google Cloud em modo TESTE (só e-mails cadastrados como "usuários de teste"; produção exige verificação do Google). Cada pessoa conecta em /app/agenda › Conectar Google.
+- **Chave de cifra dos segredos** (`private.app_secrets.nuvemshop_oauth_key`, cópia em `NUVEMSHOP_OAUTH_ENCRYPTION_KEY` no `.env.local`): semeada no banco de teste. NÃO trocar sem migrar o que já foi guardado cifrado. O Supabase cloud não aceita `ALTER DATABASE SET` de GUC; por isso a chave mora na tabela.
+- **WhatsApp**: WAHA + Redis(SRH) em Docker, pasta `/opt/m1-whatsapp` (ver `deploy/vps/whatsapp/LEIA-ME.md`). WAHA Core = 1 número; vários números = WAHA Plus (pago) ou API oficial da Meta.
+- ⚠️ **Crons**: `docker/scheduler/entrypoint.sh` lista dezenas de rotinas (sincronia do Google Agenda, lembretes, follow-up, retenção…) que num self-host rodam por um container `scheduler`. Na VPS do M1 só a de tarefas repetidas está agendada (systemd). As demais NÃO rodam ainda — a sincronia contínua do Google Agenda e os lembretes dependem disso.
+
 ## Padrões do motor (siga-os)
 - Edição otimista (`setQueryData` + rollback) nos hooks; posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guardando só os desvios (`lib/motor/layout.ts`); status = opção (nome/cor por organização) ligada a um grupo fixo (pending/in_progress/done/cancelled) via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas sempre no fuso da organização (`lib/inicio/datas.ts`, `lib/motor/datas-do-campo.ts`).
 - i18n: texto da tela = `t("português literal")` + espanhol obrigatório em `lib/i18n/dicionario.ts` (teste `i18n-espanhol-cobre-a-tela`; sem `t(variável)`, sem prosa fora de `t()`; cuidado com chave duplicada no objeto).
