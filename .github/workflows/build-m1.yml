@@ -1,0 +1,94 @@
+# O BUILD DO M1 GROWTH CRM, FEITO NO GITHUB.
+#
+# Por que existe: a VPS do M1 tem 2 núcleos e leva 10–15 min para construir o app; um
+# runner do GitHub faz o mesmo em poucos minutos. Este workflow constrói o app e o publica
+# como um arquivo (`m1-build.tgz`) num release público de nome fixo, `m1-build-latest`.
+# A VPS vigia esse release (serviço `m1-puxar-build`, a cada 2 min), baixa o arquivo novo,
+# troca a pasta `.next` e reinicia o app — sem nenhuma porta aberta e sem segredo no GitHub.
+#
+# ⚠️ O release `m1-build-latest` NÃO é uma versão do produto e não começa com `v`: a tag
+# `v*` é o gatilho de atualização do DeskcommCRM original (ver tag-so-nasce-da-main.test.ts).
+#
+# ⚠️ Constrói no MESMO caminho da VPS (`/opt/m1-growth-crm`). O build grava caminhos
+# absolutos em `.next/required-server-files.json`; construindo em outro lugar, o
+# `next start` da VPS procuraria pastas que não existem.
+#
+# Só as variáveis PÚBLICAS entram no build (`NEXT_PUBLIC_*` são embutidas no código que vai
+# para o navegador de qualquer jeito). Configurá-las: GitHub → Settings → Secrets and
+# variables → Actions → aba Variables. Segredos de runtime ficam só no `.env.local` da VPS;
+# `lib/env.ts` não os exige durante `next build`.
+name: build-m1
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Um build por vez; um push novo cancela o que está em andamento (só o último importa).
+concurrency:
+  group: build-m1
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: As variáveis públicas foram configuradas?
+        run: |
+          for v in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_APP_URL; do
+            if [ -z "${!v}" ]; then
+              echo "::error::Falta a variável $v (Settings → Secrets and variables → Actions → Variables)."
+              exit 1
+            fi
+          done
+
+      - uses: actions/checkout@v7
+
+      - name: Copiar para /opt/m1-growth-crm (o mesmo caminho da VPS)
+        run: |
+          sudo mkdir -p /opt/m1-growth-crm
+          sudo chown "$USER" /opt/m1-growth-crm
+          rsync -a --exclude .git ./ /opt/m1-growth-crm/
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: /opt/m1-growth-crm/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependências
+        working-directory: /opt/m1-growth-crm
+        run: pnpm install --frozen-lockfile
+
+      - name: Construir
+        working-directory: /opt/m1-growth-crm
+        run: pnpm build
+
+      - name: Empacotar (sem o cache e sem o standalone, que a VPS não usa)
+        working-directory: /opt/m1-growth-crm
+        run: |
+          tar --exclude=.next/cache --exclude=.next/standalone -czf "$RUNNER_TEMP/m1-build.tgz" .next
+          ls -lh "$RUNNER_TEMP/m1-build.tgz"
+
+      - name: Publicar no release m1-build-latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view m1-build-latest >/dev/null 2>&1 || \
+            gh release create m1-build-latest --title "Build do M1 (automático)" \
+              --notes "$GITHUB_SHA" --prerelease --target "$GITHUB_SHA"
+          gh release upload m1-build-latest "$RUNNER_TEMP/m1-build.tgz" --clobber
+          # O corpo do release é o commit que gerou o arquivo: é por ele que a VPS sabe se há novidade.
+          # (Editado DEPOIS do upload: a VPS nunca vê um commit novo com o arquivo velho.)
+          gh release edit m1-build-latest --notes "$GITHUB_SHA"

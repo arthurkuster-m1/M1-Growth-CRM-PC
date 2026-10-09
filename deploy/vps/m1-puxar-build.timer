@@ -1,0 +1,10 @@
+[Unit]
+Description=Vigia o release m1-build-latest (a cada 2 minutos)
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=20s
+
+[Install]
+WantedBy=timers.target

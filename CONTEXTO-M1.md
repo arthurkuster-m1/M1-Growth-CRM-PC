@@ -58,6 +58,14 @@ Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estraté
 - Caddyfile de produção aponta para a porta 3001 (backup em `/etc/caddy/Caddyfile.prod.bak`).
 - Remote Control foi ligado nesta sessão a pedido do Arthur (ele trabalha também pelo celular).
 
+## Build automático no GitHub (montado em 09/10/2026; falta o Arthur ligar 2 coisas no GitHub)
+- Fluxo: commit na VPS → `git push` → workflow `.github/workflows/build-m1.yml` constrói o app (em `/opt/m1-growth-crm` no runner, mesmo caminho da VPS) e publica `m1-build.tgz` no release público `m1-build-latest` (corpo do release = sha do commit) → timer `m1-puxar-build.timer` na VPS (a cada 2 min) roda `/usr/local/bin/m1-puxar-build.sh`: baixa, troca `.next`, reinicia `m1-app`, confere /login e volta ao build anterior se falhar. Arquivos em `deploy/vps/`.
+- O app agora é um serviço systemd: `systemctl status|restart m1-app` (log em /var/log/m1.log). Resolve a pendência "app não volta após reiniciar a VPS". NÃO use mais `nohup`.
+- A VPS não tem credencial para dar push no GitHub. Foi criada a chave `~/.ssh/m1_github_deploy` (alias `github-m1` em `~/.ssh/config`); o Arthur precisa cadastrar a parte pública em Settings → Deploy keys (com escrita). Depois: `git remote set-url origin git@github-m1:arthurkuster-m1/M1-Growth-CRM-PC.git`.
+- O workflow precisa de 3 Variables do repositório (Settings → Secrets and variables → Actions → Variables): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_APP_URL (valores no `.env.local`).
+- Enquanto isso não estiver ligado, o jeito antigo continua valendo (build na VPS: `/tmp/m1-deploy.sh` ou os passos acima, mas reinicie com `systemctl restart m1-app`).
+- Push na main também dispara os workflows herdados do DeskcommCRM (ci, e2e, perf, publish-image, release…). `tests/unit/executor-proprio-so-roda-o-que-e-nosso.test.ts` já falhava antes (depende do nome do repo do fork).
+
 ## Padrões do motor (siga-os)
 - Edição otimista (`setQueryData` + rollback) nos hooks; posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guardando só os desvios (`lib/motor/layout.ts`); status = opção (nome/cor por organização) ligada a um grupo fixo (pending/in_progress/done/cancelled) via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas sempre no fuso da organização (`lib/inicio/datas.ts`, `lib/motor/datas-do-campo.ts`).
 - i18n: texto da tela = `t("português literal")` + espanhol obrigatório em `lib/i18n/dicionario.ts` (teste `i18n-espanhol-cobre-a-tela`; sem `t(variável)`, sem prosa fora de `t()`; cuidado com chave duplicada no objeto).
@@ -68,4 +76,4 @@ Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estraté
 - **6c (próximo)**: criar tarefa dentro de um grupo/coluna do Quadro herdando o valor do grupo; **visualizações salvas e compartilháveis** (filtro+ordem+grupo+layout com nome), que passam a viver no banco (`user_view_preferences` hoje guarda só a preferência da própria pessoa).
 - Depois: adotar o motor no **CRM (leads)** POR CIMA da estrutura existente, com muito cuidado (leads alimentam inbox, automações, follow-up, IA, webhooks).
 - Depois: módulos da lista (Estratégico/Planejamento/Onboarding, Produtos, dashboards, etc.).
-- Pendências menores: serviço systemd para o app; trocar redirecionamento pós-onboarding de /app/inbox para /app; nome do usuário "Dono" → nome real; seletor de empresa no menu; instalar Redis/WAHA de verdade quando formos usar WhatsApp e IA.
+- Pendências menores: trocar redirecionamento pós-onboarding de /app/inbox para /app; nome do usuário "Dono" → nome real; seletor de empresa no menu; instalar Redis/WAHA de verdade quando formos usar WhatsApp e IA.

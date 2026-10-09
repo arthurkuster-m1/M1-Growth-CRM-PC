@@ -1,0 +1,17 @@
+[Unit]
+Description=M1 Growth CRM (Next.js, porta 3001)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/m1-growth-crm
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3001
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/m1.log
+StandardError=append:/var/log/m1.log
+
+[Install]
+WantedBy=multi-user.target

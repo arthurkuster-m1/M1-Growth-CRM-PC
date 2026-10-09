@@ -1,0 +1,7 @@
+[Unit]
+Description=Baixa o build novo do M1 no GitHub e reinicia o app
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/m1-puxar-build.sh
