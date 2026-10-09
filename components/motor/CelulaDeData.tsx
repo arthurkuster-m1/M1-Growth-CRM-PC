@@ -21,8 +21,10 @@ interface Props {
 }
 
 /**
- * A data da célula. Clicou, abre o seletor de data e hora; ao fechar (ou Enter) salva.
- * A hora é a do relógio da ORGANIZAÇÃO (`fuso`), nunca a do navegador — ver
+ * A data da célula. Clicou, abre o seletor de DATA; o horário é opcional ("Adicionar
+ * horário"). Sem horário, a data vale o dia todo (guardada como meia-noite do fuso da
+ * organização) e a célula mostra só o dia. Ao fechar (ou Enter) salva.
+ * O relógio é o da ORGANIZAÇÃO (`fuso`), nunca o do navegador — ver
  * `lib/motor/datas-do-campo.ts`.
  */
 export function CelulaDeData({
@@ -37,15 +39,19 @@ export function CelulaDeData({
 }: Props) {
   const t = useT();
   const [aberto, setAberto] = useState(false);
-  const [rascunho, setRascunho] = useState("");
+  const [dia, setDia] = useState("");
+  /** `null` = só a data; `"HH:mm"` = com horário (o campo de hora aparece). */
+  const [hora, setHora] = useState<string | null>(null);
 
   function abrirOuFechar(abrir: boolean) {
     if (abrir) {
-      setRascunho(paraCampoLocal(valor, fuso));
+      const [d = "", h = ""] = paraCampoLocal(valor, fuso).split("T");
+      setDia(d);
+      setHora(h && h !== "00:00" ? h : null);
     } else {
-      const novo = rascunho ? deCampoLocal(rascunho, fuso) : null;
+      const novo = dia ? deCampoLocal(`${dia}T${hora || "00:00"}`, fuso) : null;
       // Só grava o que mudou: abrir e fechar sem tocar em nada não pode virar uma edição.
-      if (novo !== valor && !(novo === null && rascunho !== "")) aoSalvar(novo);
+      if (novo !== valor && !(novo === null && dia !== "")) aoSalvar(novo);
     }
     setAberto(abrir);
   }
@@ -69,18 +75,51 @@ export function CelulaDeData({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 space-y-2 p-3">
         <input
-          type="datetime-local"
+          type="date"
           aria-label={rotulo}
-          value={rascunho}
-          onChange={(e) => setRascunho(e.target.value)}
+          value={dia}
+          onChange={(e) => setDia(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") abrirOuFechar(false);
           }}
           className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
         />
+        {hora === null ? (
+          <button
+            type="button"
+            disabled={!dia}
+            onClick={() => setHora("09:00")}
+            className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
+          >
+            {t("Adicionar horário")}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              type="time"
+              aria-label={t("Horário")}
+              value={hora}
+              onChange={(e) => setHora(e.target.value || null)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") abrirOuFechar(false);
+              }}
+              className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1.5 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setHora(null)}
+              className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              {t("Tirar horário")}
+            </button>
+          </div>
+        )}
         <button
           type="button"
-          onClick={() => setRascunho("")}
+          onClick={() => {
+            setDia("");
+            setHora(null);
+          }}
           className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
           {t("Limpar")}

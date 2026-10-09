@@ -317,8 +317,9 @@ export function aplicarConsulta<T>(
  * da tela no instante em que é criada.
  *
  * Só vale o filtro que aponta para UM valor certo: opção/pessoa "é" (o primeiro, se houver
- * vários), multi "contém" (todos), caixa marcado/desmarcado, data "é" e número "igual".
- * "Não é", "antes", "contém" de texto etc. não dizem o que a linha deve ter e são ignorados.
+ * vários), multi "contém" (todos), texto "contém" (o próprio texto), caixa
+ * marcado/desmarcado, data "é" e número "igual". "Não é", "antes", "depois", "não contém"
+ * etc. não dizem o que a linha deve ter e são ignorados.
  * Havendo dois filtros sobre o mesmo campo, o último vence.
  */
 export function valoresDeNascimento<T>(
@@ -359,6 +360,10 @@ export function valoresDeNascimento<T>(
         }
         break;
       case "texto":
+        // "Nome contém teste" → a linha nasce com o texto "teste" (como no Notion).
+        if (f.operador === "contem" && typeof f.valor === "string" && f.valor.trim() !== "") {
+          saida[campo.id] = f.valor.trim();
+        }
         break;
     }
   }

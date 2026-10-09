@@ -21,6 +21,8 @@
  * por um `Record` de objetos deixaria o par cego.
  */
 
+import { chaveDoDia, inicioDoDia, partesNoFuso, somarDias } from "@/lib/inicio/datas";
+
 export const PRIORIDADES_DA_TAREFA = ["low", "medium", "high", "urgent"] as const;
 export type PrioridadeDaTarefa = (typeof PRIORIDADES_DA_TAREFA)[number];
 
@@ -89,10 +91,28 @@ export function estaEncerrada(tarefa: Pick<Tarefa, "status">): boolean {
 export function estaAtrasada(
   tarefa: Pick<Tarefa, "due_date" | "status">,
   agora: Date = new Date(),
+  fuso?: string,
 ): boolean {
   if (!tarefa.due_date) return false;
   if (estaEncerrada(tarefa)) return false;
-  return new Date(tarefa.due_date).getTime() < agora.getTime();
+  const prazo = new Date(tarefa.due_date);
+  // Prazo SÓ com data (meia-noite no fuso da organização): vale o dia inteiro. "Vence
+  // hoje" não fica vermelho às 00:01 — só depois que o dia acaba.
+  if (fuso && prazoSemHorario(tarefa.due_date, fuso)) {
+    const fimDoDia = inicioDoDia(somarDias(chaveDoDia(prazo, fuso), 1), fuso);
+    return fimDoDia.getTime() <= agora.getTime();
+  }
+  return prazo.getTime() < agora.getTime();
+}
+
+/**
+ * O prazo (ou início) foi dado só como DATA? É quando o instante cai exatamente à meia-noite
+ * do fuso da organização — a tela guarda "só a data" assim, e o rótulo da célula já
+ * esconde a hora nesse caso.
+ */
+export function prazoSemHorario(iso: string, fuso: string): boolean {
+  const p = partesNoFuso(new Date(iso), fuso);
+  return p.hora === 0 && p.minuto === 0;
 }
 
 /**

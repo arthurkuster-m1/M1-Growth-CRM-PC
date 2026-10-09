@@ -71,6 +71,9 @@ interface Props<T> {
   /** O botão "⋯" do fim da linha (menu de ações). */
   acoesDaLinha?: (linha: T) => ReactNode;
   aoCriar?: () => void;
+  /** O "+" no título de cada grupo: cria uma linha já com o valor do grupo (`chave`). */
+  aoCriarNoGrupo?: (chave: string) => void;
+  rotuloDeCriarNoGrupo?: string;
   rotuloDeCriar?: string;
   /** Mostrado quando não há nenhuma linha. */
   vazio?: ReactNode;
@@ -128,10 +131,13 @@ function LinhaOrdenavel({
   podeReordenar,
   selecionada,
   celulaDeSelecao,
+  semAlca,
   children,
 }: {
   id: string;
   grade: string;
+  /** Celular: sem a coluna da alça (arrastar linha com o dedo brigaria com a rolagem). */
+  semAlca?: boolean;
   rotuloDoArraste: string;
   podeReordenar: boolean;
   selecionada: boolean;
@@ -158,7 +164,7 @@ function LinhaOrdenavel({
         gridTemplateColumns: grade,
       }}
       className={cn(
-        "group grid items-center border-b last:border-b-0",
+        "group grid min-h-10 items-center border-b last:border-b-0 md:min-h-0",
         selecionada ? "bg-accent-soft/50" : "bg-card",
         isDragging && "relative z-10 rounded-lg shadow-lg ring-1 ring-primary/30",
       )}
@@ -168,20 +174,22 @@ function LinhaOrdenavel({
           {celulaDeSelecao}
         </div>
       ) : null}
-      <div role="cell" className="grid place-items-center">
-        {podeReordenar ? (
-          <button
-            ref={setActivatorNodeRef}
-            type="button"
-            aria-label={rotuloDoArraste}
-            className="grid h-7 w-6 cursor-grab touch-none place-items-center rounded text-text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <DotsSixVertical size={16} weight="bold" aria-hidden />
-          </button>
-        ) : null}
-      </div>
+      {semAlca ? null : (
+        <div role="cell" className="grid place-items-center">
+          {podeReordenar ? (
+            <button
+              ref={setActivatorNodeRef}
+              type="button"
+              aria-label={rotuloDoArraste}
+              className="grid h-7 w-6 cursor-grab touch-none place-items-center rounded text-text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <DotsSixVertical size={16} weight="bold" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      )}
       {children}
     </div>
   );
@@ -251,10 +259,13 @@ function AlcaDeLargura({
 function CabecalhoOrdenavel({
   id,
   movel,
+  fixa = false,
   children,
 }: {
   id: string;
   movel: boolean;
+  /** Celular: a coluna do título fica presa à esquerda ao deslizar. */
+  fixa?: boolean;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -268,6 +279,7 @@ function CabecalhoOrdenavel({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         "relative flex items-center",
+        fixa && "sticky left-0 z-[5] border-r bg-secondary",
         movel && "cursor-grab active:cursor-grabbing",
         isDragging && "z-20 rounded-md bg-card shadow-md ring-1 ring-primary/30",
       )}
@@ -309,6 +321,8 @@ export function TabelaDoMotor<T>({
   grupos,
   acoesDaLinha,
   aoCriar,
+  aoCriarNoGrupo,
+  rotuloDeCriarNoGrupo,
   rotuloDeCriar,
   vazio,
   rotuloDaTabela,
@@ -320,19 +334,32 @@ export function TabelaDoMotor<T>({
   const idDoMotor = useId();
   const [aoVivo, setAoVivo] = useState<{ id: string; largura: number } | null>(null);
 
-  const larguraDe = (c: ColunaDoMotor<T>) => (aoVivo?.id === c.id ? aoVivo.largura : c.largura);
+  // Celular: colunas mais estreitas (cabem mais na tela) e o título fica fixo à esquerda
+  // enquanto o resto desliza — como a tabela do Notion no telefone.
+  const LARGURA_MAXIMA_NO_CELULAR = 156;
+  const LARGURA_DO_TITULO_NO_CELULAR = 184;
+  const larguraDe = (c: ColunaDoMotor<T>) =>
+    aoVivo?.id === c.id
+      ? aoVivo.largura
+      : celular
+        ? c.fixa
+          ? LARGURA_DO_TITULO_NO_CELULAR
+          : Math.min(c.largura, LARGURA_MAXIMA_NO_CELULAR)
+        : c.largura;
   const comAcoes = Boolean(acoesDaLinha);
   const comFim = Boolean(fimDoCabecalho);
-  const comSelecao = Boolean(aoSelecionar);
+  const comSelecao = Boolean(aoSelecionar) && !celular;
+  const comAlca = !celular;
+  const fixaNoCelular = (c: ColunaDoMotor<T>) => celular && c.fixa;
   const grade = [
     ...(comSelecao ? [`${LARGURA_DA_SELECAO}px`] : []),
-    `${LARGURA_DO_ARRASTE}px`,
+    ...(comAlca ? [`${LARGURA_DO_ARRASTE}px`] : []),
     ...colunas.map((c) => `${larguraDe(c)}px`),
     ...(comAcoes || comFim ? [`${comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM}px`] : []),
   ].join(" ");
   const larguraTotal =
     (comSelecao ? LARGURA_DA_SELECAO : 0) +
-    LARGURA_DO_ARRASTE +
+    (comAlca ? LARGURA_DO_ARRASTE : 0) +
     colunas.reduce((soma, c) => soma + larguraDe(c), 0) +
     (comAcoes || comFim ? (comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM) : 0);
 
@@ -363,99 +390,8 @@ export function TabelaDoMotor<T>({
     aoMoverColuna?.(String(active.id), String(over.id));
   }
 
-  // No celular a tabela larga vira uma lista de cartões: nada de deslizar para os lados.
-  if (celular) {
-    return (
-      <div className="flex flex-col gap-2" role="list" aria-label={rotuloDaTabela}>
-        {carregando && linhas.length === 0 ? (
-          <div className="space-y-2" aria-busy="true">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-secondary" />
-            ))}
-          </div>
-        ) : linhas.length === 0 ? (
-          <div className="rounded-2xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-            {vazio}
-          </div>
-        ) : (
-          blocos.map((bloco) => (
-            <Fragment key={bloco.chave}>
-              {grupos ? (
-                <button
-                  type="button"
-                  aria-expanded={!recolhidos.has(bloco.chave)}
-                  onClick={() =>
-                    setRecolhidos((atual) => {
-                      const proximo = new Set(atual);
-                      if (proximo.has(bloco.chave)) proximo.delete(bloco.chave);
-                      else proximo.add(bloco.chave);
-                      return proximo;
-                    })
-                  }
-                  className="flex w-full items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2 text-left text-sm"
-                >
-                  {recolhidos.has(bloco.chave) ? (
-                    <CaretRight size={12} weight="bold" aria-hidden />
-                  ) : (
-                    <CaretDown size={12} weight="bold" aria-hidden />
-                  )}
-                  {bloco.titulo}
-                  <span className="text-xs text-muted-foreground">{bloco.linhas.length}</span>
-                </button>
-              ) : null}
-              {recolhidos.has(bloco.chave)
-                ? null
-                : bloco.linhas.map((linha) => {
-                    const [primeira, ...demais] = colunas;
-                    return (
-                      <div
-                        key={idDe(linha)}
-                        role="listitem"
-                        className="rounded-2xl border bg-card p-3 shadow-sm"
-                      >
-                        <div className="flex items-start gap-1">
-                          <div className="min-w-0 flex-1 text-base font-medium">
-                            {primeira?.celula(linha)}
-                          </div>
-                          {comAcoes ? (
-                            <div className="shrink-0">{acoesDaLinha?.(linha)}</div>
-                          ) : null}
-                        </div>
-                        {demais.length > 0 ? (
-                          <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5">
-                            {demais.map((c) => (
-                              <div key={c.id} className="min-w-0">
-                                <dt className="flex items-center gap-1 px-2 text-[11px] text-muted-foreground">
-                                  {c.icone}
-                                  <span className="truncate">{c.titulo}</span>
-                                </dt>
-                                <dd className="min-w-0">{c.celula(linha)}</dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-            </Fragment>
-          ))
-        )}
-        {aoCriar ? (
-          <button
-            type="button"
-            onClick={aoCriar}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-3 text-sm text-muted-foreground"
-          >
-            <Plus size={14} aria-hidden />
-            {rotuloDeCriar}
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-x-auto rounded-2xl border bg-card shadow-sm">
+    <div className="-mx-4 overflow-x-auto overscroll-x-contain border-y bg-card sm:mx-0 sm:rounded-2xl sm:border">
       <div role="table" aria-label={rotuloDaTabela} style={{ minWidth: larguraTotal }}>
         <DndContext
           id={`${idDoMotor}-colunas`}
@@ -488,7 +424,7 @@ export function TabelaDoMotor<T>({
                   ) : null}
                 </div>
               ) : null}
-              <div role="columnheader" aria-hidden />
+              {comAlca ? <div role="columnheader" aria-hidden /> : null}
               {colunas.map((c) => {
                 const titulo = (
                   <span className="flex min-w-0 items-center gap-1.5 px-2 py-2.5">
@@ -500,12 +436,13 @@ export function TabelaDoMotor<T>({
                   <CabecalhoOrdenavel
                     key={c.id}
                     id={c.id}
-                    movel={Boolean(aoMoverColuna) && !c.fixa}
+                    movel={Boolean(aoMoverColuna) && !c.fixa && !celular}
+                    fixa={fixaNoCelular(c)}
                   >
                     <div className="min-w-0 flex-1">
                       {menuDaColuna ? menuDaColuna(c, titulo) : titulo}
                     </div>
-                    {aoRedimensionarColuna ? (
+                    {aoRedimensionarColuna && !celular ? (
                       <AlcaDeLargura
                         largura={larguraDe(c)}
                         rotulo={`${t("Largura da coluna")}: ${c.titulo}`}
@@ -548,27 +485,47 @@ export function TabelaDoMotor<T>({
                 {blocos.map((bloco) => (
                   <Fragment key={bloco.chave}>
                     {grupos ? (
-                      <button
-                        type="button"
-                        aria-expanded={!recolhidos.has(bloco.chave)}
-                        onClick={() =>
-                          setRecolhidos((atual) => {
-                            const proximo = new Set(atual);
-                            if (proximo.has(bloco.chave)) proximo.delete(bloco.chave);
-                            else proximo.add(bloco.chave);
-                            return proximo;
-                          })
-                        }
-                        className="flex w-full items-center gap-2 border-b bg-secondary/30 px-3 py-2 text-left text-sm"
-                      >
-                        {recolhidos.has(bloco.chave) ? (
-                          <CaretRight size={12} weight="bold" aria-hidden />
-                        ) : (
-                          <CaretDown size={12} weight="bold" aria-hidden />
+                      <div
+                        className={cn(
+                          "flex items-center border-b bg-secondary/30",
+                          celular && "sticky left-0 z-[6] w-screen",
                         )}
-                        {bloco.titulo}
-                        <span className="text-xs text-muted-foreground">{bloco.linhas.length}</span>
-                      </button>
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={!recolhidos.has(bloco.chave)}
+                          onClick={() =>
+                            setRecolhidos((atual) => {
+                              const proximo = new Set(atual);
+                              if (proximo.has(bloco.chave)) proximo.delete(bloco.chave);
+                              else proximo.add(bloco.chave);
+                              return proximo;
+                            })
+                          }
+                          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"
+                        >
+                          {recolhidos.has(bloco.chave) ? (
+                            <CaretRight size={12} weight="bold" aria-hidden />
+                          ) : (
+                            <CaretDown size={12} weight="bold" aria-hidden />
+                          )}
+                          {bloco.titulo}
+                          <span className="text-xs text-muted-foreground">
+                            {bloco.linhas.length}
+                          </span>
+                        </button>
+                        {aoCriarNoGrupo ? (
+                          <button
+                            type="button"
+                            aria-label={rotuloDeCriarNoGrupo}
+                            title={rotuloDeCriarNoGrupo}
+                            onClick={() => aoCriarNoGrupo(bloco.chave)}
+                            className="mr-2 grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                          >
+                            <Plus size={14} aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                     {recolhidos.has(bloco.chave)
                       ? null
@@ -578,7 +535,8 @@ export function TabelaDoMotor<T>({
                             id={idDe(linha)}
                             grade={grade}
                             rotuloDoArraste={t("Arrastar para reordenar")}
-                            podeReordenar={podeReordenar}
+                            podeReordenar={podeReordenar && comAlca}
+                            semAlca={!comAlca}
                             selecionada={selecionadas.has(idDe(linha))}
                             celulaDeSelecao={
                               comSelecao ? (
@@ -594,7 +552,14 @@ export function TabelaDoMotor<T>({
                             }
                           >
                             {colunas.map((c) => (
-                              <div key={c.id} role="cell" className="min-w-0 px-0.5 py-1">
+                              <div
+                                key={c.id}
+                                role="cell"
+                                className={cn(
+                                  "min-w-0 px-0.5 py-1",
+                                  fixaNoCelular(c) && "sticky left-0 z-[4] border-r bg-inherit",
+                                )}
+                              >
                                 {c.celula(linha)}
                               </div>
                             ))}
@@ -616,7 +581,10 @@ export function TabelaDoMotor<T>({
           <button
             type="button"
             onClick={aoCriar}
-            className="flex w-full items-center gap-2 border-t px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className={cn(
+              "flex w-full items-center gap-2 border-t px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+              celular && "sticky left-0 z-[6] w-screen bg-card",
+            )}
           >
             <Plus size={14} aria-hidden />
             {rotuloDeCriar}

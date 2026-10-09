@@ -297,7 +297,7 @@ export function TarefasMotorClient({
           tag={tag}
           agora={agora}
           podeEditar={podeEditar}
-          atrasada={estaAtrasada(tarefa, agora)}
+          atrasada={estaAtrasada(tarefa, agora, fuso)}
           rotulo={t("Prazo da tarefa")}
           aoSalvar={(due_date) => void editarTarefa(tarefa.id, { due_date }, { due_date })}
         />
@@ -575,37 +575,61 @@ export function TarefasMotorClient({
     ultimoMarcado.current = null;
   }
 
-  async function novaTarefa(diaEscolhido?: string) {
+  /**
+   * Cria uma tarefa. Ela já nasce com o que a tela está pedindo — como no Notion:
+   *  1. os FILTROS ativos (status "é" X, nome "contém" teste, início "é" hoje…);
+   *  2. o GRUPO em que a pessoa clicou no "+" (ou a coluna do Quadro): o valor do grupo
+   *     vale mais que o filtro sobre o mesmo campo; o grupo "Sem valor" deixa o campo vazio;
+   *  3. o DIA em que a pessoa clicou no Calendário (vira o prazo).
+   */
+  async function novaTarefa(origem?: { dia?: string; grupo?: { campo: string; chave: string } }) {
     // No fim da lista: acima da maior posição existente E do relógio, para a tarefa nova
     // não ficar atrás de uma que foi arrastada para o fim.
     const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
-    // Filtros ativos: a tarefa já nasce com o que eles pedem (como no Notion).
-    const herdados = valoresDeNascimento(preferencias.filtros, camposConsultaveis, {
-      hoje: hojeNoFuso(agora, fuso),
-    });
+    const herdados: Record<string, string | number | boolean | string[]> = {
+      ...valoresDeNascimento(preferencias.filtros, camposConsultaveis, {
+        hoje: hojeNoFuso(agora, fuso),
+      }),
+    };
+    const grupo = origem?.grupo;
+    if (grupo) {
+      const meta = metasDeCampo.find((m) => m.id === grupo.campo);
+      delete herdados[grupo.campo];
+      if (meta && grupo.chave !== "") {
+        if (meta.tipo === "multi") herdados[grupo.campo] = [grupo.chave];
+        else if (meta.tipo === "caixa") herdados[grupo.campo] = grupo.chave === "1";
+        else if (meta.tipo === "numero") herdados[grupo.campo] = Number(grupo.chave);
+        else herdados[grupo.campo] = grupo.chave;
+      }
+    }
+
     const texto = (id: string) =>
       typeof herdados[id] === "string" ? (herdados[id] as string) : null;
     const opcaoHerdada = opcoes.find((o) => o.id === texto("status"));
-    const diaHerdado = diaEscolhido ?? texto("prazo");
+    const diaDoPrazo = origem?.dia ?? texto("prazo");
+    const diaDoInicio = texto("inicio");
     const personalizados: Record<string, unknown> = {};
     for (const p of propriedades) {
       const v = herdados[`prop:${p.id}`];
-      if (v !== undefined && p.type !== "text" && p.type !== "url") personalizados[p.id] = v;
+      if (v !== undefined && p.type !== "url") personalizados[p.id] = v;
     }
     try {
       const criada = await criarTarefa({
-        title: t("Sem título"),
+        title: texto("titulo")?.slice(0, 255) || t("Sem título"),
         position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
+        ...(texto("descricao") ? { description: texto("descricao")!.slice(0, 5000) } : {}),
         ...(opcaoHerdada ? { status_option_id: opcaoHerdada.id } : {}),
         ...(texto("prioridade") ? { priority: texto("prioridade") as PrioridadeDaTarefa } : {}),
         ...(texto("responsavel") ? { assigned_to: texto("responsavel") } : {}),
-        ...(diaHerdado ? { due_date: inicioDoDia(diaHerdado, fuso).toISOString() } : {}),
+        ...(diaDoPrazo ? { due_date: inicioDoDia(diaDoPrazo, fuso).toISOString() } : {}),
+        ...(diaDoInicio ? { start_date: inicioDoDia(diaDoInicio, fuso).toISOString() } : {}),
       });
       // A criação não aceita propriedades personalizadas: elas entram logo em seguida.
       if (Object.keys(personalizados).length > 0) {
         void editarTarefa(criada.id, { custom_fields: personalizados });
       }
-      setEditandoId(criada.id);
+      // O título já veio do filtro? Então não há o que digitar; senão, abre para nomear.
+      if (!texto("titulo")) setEditandoId(criada.id);
     } catch {
       // O hook já mostrou o erro da API.
     }
@@ -689,7 +713,7 @@ export function TarefasMotorClient({
           aoMudarPrazo={(tarefa, due_date) =>
             void editarTarefa(tarefa.id, { due_date }, { due_date })
           }
-          aoCriarNoDia={(dia) => void novaTarefa(dia)}
+          aoCriarNoDia={(dia) => void novaTarefa({ dia })}
           aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
         />
       ) : visualizacao === "timeline" ? (
@@ -710,9 +734,15 @@ export function TarefasMotorClient({
           prioridades={prioridades}
           membros={membros}
           agora={agora}
+          fuso={fuso}
           rotuloDoPrazo={(iso) => rotuloDaData(iso, fuso, tag, agora)}
           podeEditar={podeEditar}
           aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
+          aoCriarNaColuna={
+            podeEditar
+              ? (opcao) => void novaTarefa({ grupo: { campo: "status", chave: opcao.id } })
+              : undefined
+          }
           aoMudarStatus={(tarefa, opcao) =>
             void editarTarefa(
               tarefa.id,
@@ -787,6 +817,18 @@ export function TarefasMotorClient({
           aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
           aoReordenar={(id, destino) => void reordenar(id, destino)}
           aoCriar={podeEditar ? () => void novaTarefa() : undefined}
+          aoCriarNoGrupo={
+            podeEditar && preferencias.agrupar
+              ? (chave) =>
+                  void novaTarefa({
+                    grupo: {
+                      campo: preferencias.agrupar!,
+                      chave: chave === "__vazio" ? "" : chave,
+                    },
+                  })
+              : undefined
+          }
+          rotuloDeCriarNoGrupo={t("Nova tarefa neste grupo")}
           rotuloDeCriar={t("Nova tarefa")}
           vazio={
             tarefas.length > 0 ? t("Nenhuma tarefa com esses filtros.") : t("Nenhuma tarefa ainda.")

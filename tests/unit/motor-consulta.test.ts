@@ -380,12 +380,12 @@ describe("valoresDeNascimento — a linha nova herda os filtros", () => {
     });
   });
 
-  it("ignora o que não aponta para um valor certo (não é, antes, texto, vazio, campo apagado)", () => {
+  it("ignora o que não aponta para um valor certo (não é, antes, não contém, vazio, campo apagado)", () => {
     const v = valoresDeNascimento(
       [
         { campo: "status", operador: "nao_e", valor: "feito" },
         { campo: "prazo", operador: "antes", valor: "2026-10-01" },
-        { campo: "titulo", operador: "contem", valor: "x" },
+        { campo: "titulo", operador: "nao_contem", valor: "x" },
         { campo: "quem", operador: "vazio" },
         { campo: "sumiu", operador: "e", valor: "z" },
         { campo: "status", operador: "e", valor: "" },
@@ -406,5 +406,16 @@ describe("valoresDeNascimento — a linha nova herda os filtros", () => {
       contexto,
     );
     expect(v).toEqual({ status: "feito" });
+  });
+});
+
+describe("valoresDeNascimento — texto", () => {
+  it("'título contém teste' faz a linha nascer com o texto 'teste'", () => {
+    const v = valoresDeNascimento(
+      [{ campo: "titulo", operador: "contem", valor: "  teste " }],
+      campos,
+      contexto,
+    );
+    expect(v).toEqual({ titulo: "teste" });
   });
 });

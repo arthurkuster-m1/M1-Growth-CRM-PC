@@ -15,6 +15,7 @@ import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
 import { opcaoDaTarefa, type CorDaOpcao, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
 import { estaAtrasada, type PrioridadeDaTarefa, type Tarefa } from "@/lib/tarefas/tipos";
+import { Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -23,11 +24,14 @@ interface Props {
   prioridades: { id: PrioridadeDaTarefa; rotulo: string; cor: CorDaOpcao }[];
   membros: { id: string; nome: string }[];
   agora: Date;
+  fuso: string;
   /** Texto do prazo já formatado no fuso da organização. */
   rotuloDoPrazo: (iso: string) => string;
   podeEditar: boolean;
   aoMudarStatus: (tarefa: Tarefa, opcao: OpcaoDeStatus) => void;
   aoAbrir: (tarefa: Tarefa) => void;
+  /** O "+ Nova tarefa" no pé da coluna: a tarefa já nasce com o status dela. */
+  aoCriarNaColuna?: (opcao: OpcaoDeStatus) => void;
 }
 
 /**
@@ -43,10 +47,12 @@ export function QuadroKanban({
   prioridades,
   membros,
   agora,
+  fuso,
   rotuloDoPrazo,
   podeEditar,
   aoMudarStatus,
   aoAbrir,
+  aoCriarNaColuna,
 }: Props) {
   const t = useT();
   // 6 px de arrasto antes de começar: um clique simples não vira arrasto sem querer.
@@ -78,7 +84,12 @@ export function QuadroKanban({
     <DndContext sensors={sensores} onDragEnd={aoSoltar}>
       <div className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-3 md:snap-none">
         {opcoes.map((opcao) => (
-          <Coluna key={opcao.id} opcao={opcao} quantidade={porOpcao.get(opcao.id)?.length ?? 0}>
+          <Coluna
+            key={opcao.id}
+            opcao={opcao}
+            quantidade={porOpcao.get(opcao.id)?.length ?? 0}
+            aoCriar={aoCriarNaColuna ? () => aoCriarNaColuna(opcao) : undefined}
+          >
             {(porOpcao.get(opcao.id) ?? []).map((tarefa) => {
               const prioridade = prioridades.find((p) => p.id === tarefa.priority);
               const responsavel = membros.find((m) => m.id === tarefa.assigned_to);
@@ -105,7 +116,7 @@ export function QuadroKanban({
                       <span
                         className={cn(
                           "text-xs text-muted-foreground",
-                          estaAtrasada(tarefa, agora) && "font-medium text-error-fg",
+                          estaAtrasada(tarefa, agora, fuso) && "font-medium text-error-fg",
                         )}
                       >
                         {rotuloDoPrazo(tarefa.due_date)}
@@ -135,10 +146,12 @@ export function QuadroKanban({
 function Coluna({
   opcao,
   quantidade,
+  aoCriar,
   children,
 }: {
   opcao: OpcaoDeStatus;
   quantidade: number;
+  aoCriar?: () => void;
   children: React.ReactNode;
 }) {
   const t = useT();
@@ -162,6 +175,16 @@ function Coluna({
           <p className="px-1 py-2 text-xs text-muted-foreground">{t("Solte aqui")}</p>
         ) : null}
       </div>
+      {aoCriar ? (
+        <button
+          type="button"
+          onClick={aoCriar}
+          className="flex h-9 items-center gap-1.5 rounded-xl px-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Plus size={14} aria-hidden />
+          {t("Nova tarefa")}
+        </button>
+      ) : null}
     </section>
   );
 }

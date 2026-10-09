@@ -18,6 +18,7 @@ import {
   diaLocalDoPrazo,
   estaAtrasada,
   faixaDePrazo,
+  prazoSemHorario,
   type Tarefa,
 } from "@/lib/tarefas/tipos";
 
@@ -63,7 +64,9 @@ describe("prazo da tarefa", () => {
     // deixaria de ser lida — que é como um alerta morre.
     for (const status of ["done", "cancelled"] as const) {
       expect(estaAtrasada(tarefa({ due_date: local(2026, 9, 1), status }), AGORA)).toBe(false);
-      expect(faixaDePrazo(tarefa({ due_date: local(2026, 9, 1), status }), AGORA)).toBe("encerrada");
+      expect(faixaDePrazo(tarefa({ due_date: local(2026, 9, 1), status }), AGORA)).toBe(
+        "encerrada",
+      );
     }
   });
 
@@ -124,5 +127,32 @@ describe("o dia do calendário é o dia de QUEM OLHA", () => {
 
   it("prazo de manhã também casa com o próprio dia", () => {
     expect(diaLocalDoPrazo(local(2026, 3, 5, 9))).toBe("2026-03-05");
+  });
+});
+
+describe("prazo só com data (sem horário) vale o dia inteiro", () => {
+  const SP = "America/Sao_Paulo";
+  // Meia-noite de 2026-10-08 em São Paulo (UTC-3) = 03:00Z.
+  const PRAZO_DO_DIA = "2026-10-08T03:00:00.000Z";
+
+  it("reconhece o prazo sem horário", () => {
+    expect(prazoSemHorario(PRAZO_DO_DIA, SP)).toBe(true);
+    expect(prazoSemHorario("2026-10-08T17:00:00.000Z", SP)).toBe(false);
+  });
+
+  it("no próprio dia (de manhã e à noite) a tarefa NÃO está atrasada", () => {
+    const t = tarefa({ due_date: PRAZO_DO_DIA });
+    expect(estaAtrasada(t, new Date("2026-10-08T03:01:00.000Z"), SP)).toBe(false);
+    expect(estaAtrasada(t, new Date("2026-10-09T02:59:00.000Z"), SP)).toBe(false);
+  });
+
+  it("no dia seguinte passa a estar atrasada", () => {
+    const t = tarefa({ due_date: PRAZO_DO_DIA });
+    expect(estaAtrasada(t, new Date("2026-10-09T03:00:00.000Z"), SP)).toBe(true);
+  });
+
+  it("sem fuso o comportamento antigo é mantido (as telas antigas não mudam)", () => {
+    const t = tarefa({ due_date: PRAZO_DO_DIA });
+    expect(estaAtrasada(t, new Date("2026-10-08T03:01:00.000Z"))).toBe(true);
   });
 });
