@@ -12,7 +12,6 @@ import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { EditorDeOpcoesDePropriedade } from "@/components/motor/EditorDeOpcoesDePropriedade";
 import { MenuDaColuna } from "@/components/motor/MenuDaColuna";
-import { MenuDePropriedades } from "@/components/motor/MenuDePropriedades";
 import { NovaPropriedade } from "@/components/motor/NovaPropriedade";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -706,9 +705,11 @@ export function TarefasMotorClient({
         </p>
       ) : null}
 
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+      {/* Uma fila só, que rola para o lado dentro dela mesma (como as abas): filtro novo não
+          derruba o último botão para a linha de baixo. */}
+      <div className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden">
         {buscaAberta ? (
-          <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border bg-background px-3 sm:max-w-xs sm:flex-none">
+          <div className="flex h-9 w-56 shrink-0 items-center gap-2 rounded-xl border bg-background px-3">
             <MagnifyingGlass size={16} className="shrink-0 text-muted-foreground" aria-hidden />
             <input
               autoFocus
@@ -742,22 +743,11 @@ export function TarefasMotorClient({
             aria-label={t("Buscar tarefas")}
             title={t("Buscar tarefas")}
             onClick={() => setBuscaAberta(true)}
-            className="grid h-9 w-9 place-items-center rounded-xl border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <MagnifyingGlass size={16} aria-hidden />
           </button>
         )}
-        {visualizacao === "tabela" ? (
-          <MenuDePropriedades
-            propriedades={resolvidas.map((c) => ({
-              id: c.id,
-              titulo: c.titulo,
-              fixa: c.fixa || c.semOcultar,
-              visivel: c.visivel,
-            }))}
-            aoAlternar={alternarColuna}
-          />
-        ) : null}
         <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
       </div>
 

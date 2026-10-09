@@ -50,7 +50,7 @@ function Gatilho({
       <button
         type="button"
         className={cn(
-          "inline-flex h-9 items-center gap-2 rounded-xl border bg-card px-3 text-sm transition-colors hover:text-foreground",
+          "inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border bg-card px-3 text-sm whitespace-nowrap transition-colors hover:text-foreground",
           quantidade > 0 ? "border-primary/40 text-primary" : "text-muted-foreground",
         )}
       >
@@ -207,7 +207,8 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // `contents`: os botões entram direto na fila de quem usa a barra, que decide rolar ou quebrar.
+    <div className="contents">
       <Popover>
         <Gatilho
           icone={<Funnel size={16} aria-hidden />}
@@ -376,7 +377,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
         <button
           type="button"
           onClick={() => aoMudar({})}
-          className="h-9 rounded-xl px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="h-9 shrink-0 rounded-xl px-2 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
         >
           {t("Limpar tudo")}
         </button>
