@@ -1,28 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
-import {
-  CalendarDots,
-  CaretDown,
-  ChartBar,
-  Copy,
-  Kanban,
-  PencilSimple,
-  Plus,
-  Rows,
-  Trash,
-} from "@/lib/ui/icons";
+import { CalendarDots, CaretDown, ChartBar, Kanban, Plus, Rows } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface AbaDeVisualizacao {
@@ -34,15 +17,11 @@ export interface AbaDeVisualizacao {
 interface Props {
   abas: AbaDeVisualizacao[];
   ativaId: string;
-  /** A aba de fábrica ("Tabela"): não se renomeia, não se apaga. */
-  idDaPadrao: string;
   podeEditar: boolean;
   aoEscolher: (id: string) => void;
   aoCriar: (nome: string, tipo: TipoDeVisualizacao) => void;
-  aoRenomear: (id: string, nome: string) => void;
-  aoTrocarTipo: (id: string, tipo: TipoDeVisualizacao) => void;
-  aoDuplicar: (id: string) => void;
-  aoApagar: (id: string) => void;
+  /** Abrir o painel "Configurar visualização" da aba ativa. */
+  aoConfigurar: () => void;
 }
 
 export const ICONE_DO_TIPO: Record<TipoDeVisualizacao, ReactNode> = {
@@ -71,26 +50,25 @@ function useRotuloDoTipo() {
  * As ABAS de visualização, no jeito do Notion: uma pílula por visualização, a ativa em
  * destaque, e um "+" que abre "Nova visualização" (nome + tipo). A fila rola para o lado
  * dentro dela mesma — a página nunca ganha barra de rolagem horizontal.
+ *
+ * Tocar na aba que JÁ está ativa (ou duplo clique, ou segurar o dedo, ou a setinha ▾) abre
+ * "Configurar visualização": nome, tipo e propriedades.
  */
 export function AbasDeVisualizacao({
   abas,
   ativaId,
-  idDaPadrao,
   podeEditar,
   aoEscolher,
   aoCriar,
-  aoRenomear,
-  aoTrocarTipo,
-  aoDuplicar,
-  aoApagar,
+  aoConfigurar,
 }: Props) {
   const t = useT();
   const rotuloDoTipo = useRotuloDoTipo();
   const [novaAberta, setNovaAberta] = useState(false);
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<TipoDeVisualizacao>("tabela");
-  const [renomeandoId, setRenomeandoId] = useState<string | null>(null);
-  const [rascunho, setRascunho] = useState("");
+  const segurando = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const abriuSegurando = useRef(false);
 
   function criar() {
     aoCriar(nome.trim() || rotuloDoTipo(tipo), tipo);
@@ -107,32 +85,6 @@ export function AbasDeVisualizacao({
     >
       {abas.map((aba) => {
         const ativa = aba.id === ativaId;
-        const comMenu = podeEditar && aba.id !== idDaPadrao;
-        if (renomeandoId === aba.id) {
-          return (
-            <input
-              key={aba.id}
-              autoFocus
-              value={rascunho}
-              maxLength={60}
-              aria-label={t("Nome da visualização")}
-              onChange={(e) => setRascunho(e.target.value)}
-              onBlur={() => {
-                const novo = rascunho.trim();
-                if (novo && novo !== aba.nome) aoRenomear(aba.id, novo);
-                setRenomeandoId(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-                if (e.key === "Escape") {
-                  setRascunho(aba.nome);
-                  setRenomeandoId(null);
-                }
-              }}
-              className="h-8 w-40 shrink-0 rounded-lg border border-primary/50 bg-background px-2 text-sm ring-2 ring-primary/20 outline-none"
-            />
-          );
-        }
         return (
           <div
             key={aba.id}
@@ -147,62 +99,49 @@ export function AbasDeVisualizacao({
               type="button"
               role="tab"
               aria-selected={ativa}
-              onClick={() => aoEscolher(aba.id)}
+              onClick={() => {
+                if (abriuSegurando.current) {
+                  abriuSegurando.current = false;
+                  return;
+                }
+                if (!ativa) aoEscolher(aba.id);
+                else aoConfigurar();
+              }}
+              onDoubleClick={() => {
+                if (ativa) aoConfigurar();
+              }}
+              onPointerDown={(e) => {
+                if (!ativa || e.pointerType !== "touch") return;
+                // Segurar o dedo na aba ativa também abre a configuração.
+                segurando.current = setTimeout(() => {
+                  abriuSegurando.current = true;
+                  aoConfigurar();
+                }, 500);
+              }}
+              onPointerUp={() => clearTimeout(segurando.current)}
+              onPointerLeave={() => clearTimeout(segurando.current)}
+              onPointerCancel={() => clearTimeout(segurando.current)}
+              onContextMenu={(e) => {
+                if (ativa) e.preventDefault();
+              }}
               className={cn(
-                "flex h-8 max-w-48 items-center gap-1.5 rounded-lg pl-2.5",
-                comMenu && ativa ? "pr-1" : "pr-2.5",
+                "flex h-8 max-w-48 items-center gap-1.5 rounded-lg pl-2.5 select-none",
+                ativa ? "pr-1" : "pr-2.5",
               )}
             >
               {ICONE_DO_TIPO[aba.tipo]}
               <span className="truncate">{aba.nome}</span>
             </button>
-            {comMenu && ativa ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t("Opções da visualização")}
-                    className="grid h-8 w-7 place-items-center rounded-lg text-muted-foreground hover:text-foreground"
-                  >
-                    <CaretDown size={12} weight="bold" aria-hidden />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
-                  <DropdownMenuItem
-                    className="gap-2"
-                    onSelect={() => {
-                      setRascunho(aba.nome);
-                      setRenomeandoId(aba.id);
-                    }}
-                  >
-                    <PencilSimple size={14} aria-hidden />
-                    {t("Renomear")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" onSelect={() => aoDuplicar(aba.id)}>
-                    <Copy size={14} aria-hidden />
-                    {t("Duplicar")}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {TIPOS.filter((x) => x !== aba.tipo).map((x) => (
-                    <DropdownMenuItem
-                      key={x}
-                      className="gap-2"
-                      onSelect={() => aoTrocarTipo(aba.id, x)}
-                    >
-                      {ICONE_DO_TIPO[x]}
-                      {t("Ver como")} {rotuloDoTipo(x)}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="gap-2 text-error-fg"
-                    onSelect={() => aoApagar(aba.id)}
-                  >
-                    <Trash size={14} aria-hidden />
-                    {t("Apagar")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {ativa ? (
+              <button
+                type="button"
+                aria-label={t("Configurar visualização")}
+                title={t("Configurar visualização")}
+                onClick={aoConfigurar}
+                className="grid h-8 w-7 place-items-center rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                <CaretDown size={12} weight="bold" aria-hidden />
+              </button>
             ) : null}
           </div>
         );

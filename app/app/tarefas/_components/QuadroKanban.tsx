@@ -12,21 +12,21 @@ import {
 } from "@dnd-kit/core";
 
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
-import { opcaoDaTarefa, type CorDaOpcao, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
-import { estaAtrasada, type PrioridadeDaTarefa, type Tarefa } from "@/lib/tarefas/tipos";
+import { opcaoDaTarefa, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
+import type { Tarefa } from "@/lib/tarefas/tipos";
 import { Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Props {
   tarefas: Tarefa[];
   opcoes: OpcaoDeStatus[];
-  prioridades: { id: PrioridadeDaTarefa; rotulo: string; cor: CorDaOpcao }[];
-  membros: { id: string; nome: string }[];
-  agora: Date;
-  fuso: string;
-  /** Texto do prazo já formatado no fuso da organização. */
-  rotuloDoPrazo: (iso: string) => string;
+  /**
+   * As propriedades que o cartão mostra (as visíveis da visualização, sem o título e sem o
+   * status, que já é a coluna). Cada uma é a MESMA célula editável da tabela.
+   */
+  colunas: ColunaDoMotor<Tarefa>[];
   podeEditar: boolean;
   aoMudarStatus: (tarefa: Tarefa, opcao: OpcaoDeStatus) => void;
   aoAbrir: (tarefa: Tarefa) => void;
@@ -44,11 +44,7 @@ interface Props {
 export function QuadroKanban({
   tarefas,
   opcoes,
-  prioridades,
-  membros,
-  agora,
-  fuso,
-  rotuloDoPrazo,
+  colunas,
   podeEditar,
   aoMudarStatus,
   aoAbrir,
@@ -90,47 +86,38 @@ export function QuadroKanban({
             quantidade={porOpcao.get(opcao.id)?.length ?? 0}
             aoCriar={aoCriarNaColuna ? () => aoCriarNaColuna(opcao) : undefined}
           >
-            {(porOpcao.get(opcao.id) ?? []).map((tarefa) => {
-              const prioridade = prioridades.find((p) => p.id === tarefa.priority);
-              const responsavel = membros.find((m) => m.id === tarefa.assigned_to);
-              return (
-                <Cartao
-                  key={tarefa.id}
-                  id={tarefa.id}
-                  arrastavel={podeEditar}
-                  aoAbrir={() => aoAbrir(tarefa)}
+            {(porOpcao.get(opcao.id) ?? []).map((tarefa) => (
+              <Cartao
+                key={tarefa.id}
+                id={tarefa.id}
+                arrastavel={podeEditar}
+                aoAbrir={() => aoAbrir(tarefa)}
+              >
+                <p
+                  className={cn(
+                    "text-sm leading-snug font-medium",
+                    tarefa.status === "done" && "text-muted-foreground line-through",
+                  )}
                 >
-                  <p
-                    className={cn(
-                      "text-sm leading-snug font-medium",
-                      tarefa.status === "done" && "text-muted-foreground line-through",
-                    )}
+                  {tarefa.title}
+                </p>
+                {colunas.length > 0 ? (
+                  // Mexer numa propriedade do cartão não pode abrir a tarefa nem começar um arrasto.
+                  <div
+                    className="mt-1.5 flex flex-col gap-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                   >
-                    {tarefa.title}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {prioridade ? (
-                      <Etiqueta cor={prioridade.cor}>{prioridade.rotulo}</Etiqueta>
-                    ) : null}
-                    {tarefa.due_date ? (
-                      <span
-                        className={cn(
-                          "text-xs text-muted-foreground",
-                          estaAtrasada(tarefa, agora, fuso) && "font-medium text-error-fg",
-                        )}
-                      >
-                        {rotuloDoPrazo(tarefa.due_date)}
-                      </span>
-                    ) : null}
+                    {colunas.map((c) => (
+                      <div key={c.id} className="-mx-1 min-w-0">
+                        {c.celula(tarefa)}
+                      </div>
+                    ))}
                   </div>
-                  {responsavel ? (
-                    <p className="mt-2 truncate text-xs text-muted-foreground">
-                      {responsavel.nome}
-                    </p>
-                  ) : null}
-                </Cartao>
-              );
-            })}
+                ) : null}
+              </Cartao>
+            ))}
           </Coluna>
         ))}
       </div>

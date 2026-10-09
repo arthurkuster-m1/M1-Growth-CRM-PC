@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
@@ -150,6 +151,7 @@ export function TarefasMotorClient({
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [abertaId, setAbertaId] = useState<string | null>(null);
+  const [configurando, setConfigurando] = useState(false);
   const [busca, setBusca] = useState("");
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [apagarVisaoId, setApagarVisaoId] = useState<string | null>(null);
@@ -412,10 +414,23 @@ export function TarefasMotorClient({
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
+  function duplicarVisao(id: string) {
+    const origem = visoes.find((v) => v.id === id);
+    if (!origem) return;
+    void criarVisao({
+      name: `${t("Cópia de")} ${origem.name}`.slice(0, 60),
+      type: origem.type,
+      config: origem.config,
+    }).then((v) => v && escolherAba(v.id));
+  }
   const escolherAba = (id: string) =>
     router.replace(id === ID_DA_PADRAO ? caminho : `${caminho}?v=${id}`, { scroll: false });
   const abas = [
-    { id: ID_DA_PADRAO, nome: t("Tabela"), tipo: "tabela" as TipoDeVisualizacao },
+    {
+      id: ID_DA_PADRAO,
+      nome: padrao.preferencias.nome ?? t("Tabela"),
+      tipo: "tabela" as TipoDeVisualizacao,
+    },
     ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
   ];
   const resolvidas = resolverColunas(colunas, preferencias);
@@ -676,24 +691,12 @@ export function TarefasMotorClient({
         <AbasDeVisualizacao
           abas={abas}
           ativaId={ativaId}
-          idDaPadrao={ID_DA_PADRAO}
           podeEditar={podeEditar}
           aoEscolher={escolherAba}
           aoCriar={(nome, tipo) =>
             void criarVisao({ name: nome, type: tipo }).then((v) => v && escolherAba(v.id))
           }
-          aoRenomear={(id, name) => void editarVisao(id, { name })}
-          aoTrocarTipo={(id, type) => void editarVisao(id, { type })}
-          aoDuplicar={(id) => {
-            const origem = visoes.find((v) => v.id === id);
-            if (!origem) return;
-            void criarVisao({
-              name: `${t("Cópia de")} ${origem.name}`.slice(0, 60),
-              type: origem.type,
-              config: origem.config,
-            }).then((v) => v && escolherAba(v.id));
-          }}
-          aoApagar={(id) => setApagarVisaoId(id)}
+          aoConfigurar={() => setConfigurando(true)}
         />
       </header>
 
@@ -787,11 +790,7 @@ export function TarefasMotorClient({
         <QuadroKanban
           tarefas={tarefasVisiveis}
           opcoes={opcoes}
-          prioridades={prioridades}
-          membros={membros}
-          agora={agora}
-          fuso={fuso}
-          rotuloDoPrazo={(iso) => rotuloDaData(iso, fuso, tag, agora)}
+          colunas={mostradas.filter((c) => c.id !== "titulo" && c.id !== "status")}
           podeEditar={podeEditar}
           aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
           aoCriarNaColuna={
@@ -933,6 +932,44 @@ export function TarefasMotorClient({
           aoLimpar={() => setSelecionadas(new Set())}
         />
       ) : null}
+
+      <ConfigurarVisualizacao
+        aberto={configurando}
+        aoFechar={() => setConfigurando(false)}
+        nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
+        tipo={visualizacao}
+        podeEditar={podeEditar}
+        ehPadrao={!visaoAtiva}
+        aoRenomear={(nome) =>
+          visaoAtiva
+            ? void editarVisao(visaoAtiva.id, { name: nome })
+            : padrao.atualizar((p) => ({ ...p, nome }))
+        }
+        aoTrocarTipo={(tipo) => visaoAtiva && void editarVisao(visaoAtiva.id, { type: tipo })}
+        propriedades={
+          visualizacao === "tabela" || visualizacao === "kanban"
+            ? resolvidas.map((c) => ({
+                id: c.id,
+                titulo: c.titulo,
+                icone: c.icone,
+                visivel: c.visivel,
+                obrigatoria: c.fixa || c.semOcultar,
+              }))
+            : []
+        }
+        aoMover={moverColunaNoLayout}
+        aoAlternar={alternarColuna}
+        aoMostrarTodas={(mostrar) =>
+          atualizar((p) => ({
+            ...p,
+            visiveis: Object.fromEntries(
+              resolvidas.filter((c) => !c.fixa && !c.semOcultar).map((c) => [c.id, mostrar]),
+            ),
+          }))
+        }
+        aoDuplicar={visaoAtiva ? () => duplicarVisao(visaoAtiva.id) : undefined}
+        aoApagar={visaoAtiva ? () => setApagarVisaoId(visaoAtiva.id) : undefined}
+      />
 
       <PainelDaTarefa
         tarefa={tarefas.find((x) => x.id === abertaId) ?? null}
