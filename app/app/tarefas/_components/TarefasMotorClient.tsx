@@ -46,15 +46,12 @@ import { useModelosDeTarefa } from "@/hooks/tarefas/useModelosDeTarefa";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
 import { usePropriedadesDaTarefa } from "@/hooks/tarefas/usePropriedadesDaTarefa";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
-import { chaveDoDia, inicioDoDia } from "@/lib/inicio/datas";
 import {
   aplicarConsulta,
   consultaAtiva,
   valoresDeNascimento,
   type CampoConsultavel,
   type ConsultaDaTabela,
-  type TipoDeCampo,
-  type ValorDoCampo,
 } from "@/lib/motor/consulta";
 import { formatarDiaBr } from "@/lib/motor/calendario";
 import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
@@ -62,7 +59,9 @@ import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/m
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { metasDaTarefa } from "@/lib/tarefas/campos-da-tarefa";
 import { tarefaDoModelo, type ModeloDeTarefa } from "@/lib/tarefas/modelos";
+import { tarefaQueNasce } from "@/lib/tarefas/nascer-com-filtros";
 import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
 import {
   SITUACOES_DA_TAREFA,
@@ -489,70 +488,9 @@ export function TarefasMotorClient({
   }
 
   // ── filtros, ordenação e agrupamento ────────────────────────────────────────────────
-  const metasDeCampo: (CampoDaBarra & { valorDe: CampoConsultavel<Tarefa>["valorDe"] })[] = [
-    { id: "titulo", titulo: t("Título"), tipo: "texto", valorDe: (x) => x.title },
-    {
-      id: "status",
-      titulo: t("Status"),
-      tipo: "opcao",
-      valorDe: (x) => opcaoDaTarefa(x, opcoes)?.id,
-      opcoes: opcoes.map((o) => ({ id: o.id, rotulo: o.name, cor: o.color })),
-    },
-    {
-      id: "prioridade",
-      titulo: t("Prioridade"),
-      tipo: "opcao",
-      valorDe: (x) => x.priority,
-      opcoes: prioridades.map((p) => ({ id: p.id, rotulo: p.rotulo, cor: p.cor })),
-    },
-    {
-      id: "inicio",
-      titulo: t("Início"),
-      tipo: "data",
-      valorDe: (x) => (x.start_date ? chaveDoDia(new Date(x.start_date), fuso) : null),
-    },
-    {
-      id: "prazo",
-      titulo: t("Prazo"),
-      tipo: "data",
-      valorDe: (x) => (x.due_date ? chaveDoDia(new Date(x.due_date), fuso) : null),
-    },
-    {
-      id: "responsavel",
-      titulo: t("Responsável"),
-      tipo: "pessoa",
-      valorDe: (x) => x.assigned_to,
-      opcoes: membros.map((m) => ({ id: m.id, rotulo: m.nome })),
-    },
-    { id: "descricao", titulo: t("Descrição"), tipo: "texto", valorDe: (x) => x.description },
-    {
-      id: "criada",
-      titulo: t("Criada em"),
-      tipo: "data",
-      valorDe: (x) => chaveDoDia(new Date(x.created_at), fuso),
-    },
-    ...propriedades.map((p): (typeof metasDeCampo)[number] => {
-      const tipo: TipoDeCampo = {
-        text: "texto",
-        url: "texto",
-        number: "numero",
-        select: "opcao",
-        multi_select: "multi",
-        date: "data",
-        checkbox: "caixa",
-      }[p.type] as TipoDeCampo;
-      const bruto = (x: Tarefa) => x.custom_fields?.[p.id];
-      return {
-        id: `prop:${p.id}`,
-        titulo: p.name,
-        tipo,
-        opcoes: TIPOS_COM_OPCOES.includes(p.type)
-          ? p.options.map((o) => ({ id: o.id, rotulo: o.name, cor: o.color }))
-          : undefined,
-        valorDe: (x) => bruto(x) as ValorDoCampo,
-      };
-    }),
-  ];
+  // Os campos consultáveis moram em `lib/tarefas/campos-da-tarefa.ts`: a MESMA lista serve à
+  // barra de filtros, ao motor de consulta e à regra "a tarefa nova nasce com os filtros".
+  const metasDeCampo = metasDaTarefa({ t, opcoes, prioridades, membros, propriedades, fuso });
   const camposConsultaveis: CampoConsultavel<Tarefa>[] = metasDeCampo.map((m) => ({
     id: m.id,
     tipo: m.tipo,
@@ -688,33 +626,24 @@ export function TarefasMotorClient({
       }
     }
 
-    const texto = (id: string) =>
-      typeof herdados[id] === "string" ? (herdados[id] as string) : null;
-    const opcaoHerdada = opcoes.find((o) => o.id === texto("status"));
-    const diaDoPrazo = origem?.dia ?? texto("prazo");
-    const diaDoInicio = texto("inicio");
-    const personalizados: Record<string, unknown> = {};
-    for (const p of propriedades) {
-      const v = herdados[`prop:${p.id}`];
-      if (v !== undefined && p.type !== "url") personalizados[p.id] = v;
-    }
+    const { tarefa, personalizados, tituloVeioDoFiltro } = tarefaQueNasce(herdados, {
+      opcoes,
+      propriedades,
+      fuso,
+      tituloPadrao: t("Sem título"),
+      dia: origem?.dia,
+    });
     try {
       const criada = await criarTarefa({
-        title: texto("titulo")?.slice(0, 255) || t("Sem título"),
+        ...tarefa,
         position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
-        ...(texto("descricao") ? { description: texto("descricao")!.slice(0, 5000) } : {}),
-        ...(opcaoHerdada ? { status_option_id: opcaoHerdada.id } : {}),
-        ...(texto("prioridade") ? { priority: texto("prioridade") as PrioridadeDaTarefa } : {}),
-        ...(texto("responsavel") ? { assigned_to: texto("responsavel") } : {}),
-        ...(diaDoPrazo ? { due_date: inicioDoDia(diaDoPrazo, fuso).toISOString() } : {}),
-        ...(diaDoInicio ? { start_date: inicioDoDia(diaDoInicio, fuso).toISOString() } : {}),
       });
       // A criação não aceita propriedades personalizadas: elas entram logo em seguida.
       if (Object.keys(personalizados).length > 0) {
         void editarTarefa(criada.id, { custom_fields: personalizados });
       }
       // O título já veio do filtro? Então não há o que digitar; senão, abre para nomear.
-      if (!texto("titulo")) setEditandoId(criada.id);
+      if (!tituloVeioDoFiltro) setEditandoId(criada.id);
     } catch {
       // O hook já mostrou o erro da API.
     }

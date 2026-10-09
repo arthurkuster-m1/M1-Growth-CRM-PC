@@ -398,11 +398,10 @@ describe("valoresDeNascimento — a linha nova herda os filtros", () => {
     });
   });
 
-  it("ignora o que não aponta para um valor certo (não é, antes, não contém, vazio, campo apagado)", () => {
+  it("ignora o que não aponta para um valor certo (não é, não contém, vazio, campo apagado)", () => {
     const v = valoresDeNascimento(
       [
         { campo: "status", operador: "nao_e", valor: "feito" },
-        { campo: "prazo", operador: "antes", valor: "2026-10-01" },
         { campo: "titulo", operador: "nao_contem", valor: "x" },
         { campo: "quem", operador: "vazio" },
         { campo: "sumiu", operador: "e", valor: "z" },
@@ -520,5 +519,17 @@ describe("agrupar datas por semana e por mês", () => {
   it("o pipeline aceita agruparPor no schema", () => {
     expect(consultaSchema.safeParse({ agrupar: "prazo", agruparPor: "semana" }).success).toBe(true);
     expect(consultaSchema.safeParse({ agrupar: "prazo", agruparPor: "ano" }).success).toBe(false);
+  });
+});
+
+describe("filtro de texto ignora espaço nas pontas", () => {
+  it("'contém \"teste \"' acha 'teste' (o espaço de quem ainda está digitando não esconde tudo)", () => {
+    const r = filtrar(
+      [L("a", { titulo: "teste" }), L("b", { titulo: "outro" })],
+      campos,
+      [{ campo: "titulo", operador: "contem", valor: "  teste " }],
+      contexto,
+    );
+    expect(ids(r)).toEqual(["a"]);
   });
 });

@@ -1,5 +1,7 @@
 ﻿import { z } from "zod";
 
+import { somarDias } from "@/lib/inicio/datas";
+
 import { chaveDoPeriodo } from "./calendario";
 
 /**
@@ -160,7 +162,9 @@ function aprova(
 
   switch (tipo) {
     case "texto": {
-      const achou = normalizar(String(valor ?? "")).includes(normalizar(String(f.valor ?? "")));
+      const achou = normalizar(String(valor ?? "")).includes(
+        normalizar(String(f.valor ?? "")).trim(),
+      );
       return op === "contem" ? achou : !achou;
     }
     case "opcao":
@@ -360,10 +364,12 @@ export function aplicarConsulta<T>(
  * "Status é Em andamento" ligado, a tarefa criada nasce "Em andamento", senão ela sumiria
  * da tela no instante em que é criada.
  *
- * Só vale o filtro que aponta para UM valor certo: opção/pessoa "é" (o primeiro, se houver
- * vários), multi "contém" (todos), texto "contém" (o próprio texto), caixa
- * marcado/desmarcado, data "é" e número "igual". "Não é", "antes", "depois", "não contém"
- * etc. não dizem o que a linha deve ter e são ignorados.
+ * A regra é uma só: a linha nova NASCE PASSANDO nos filtros, para não sumir da tela no
+ * instante em que é criada. Opção/pessoa "é" (o primeiro, se houver vários), multi "contém"
+ * (todos), texto "contém" (o próprio texto), caixa marcado/desmarcado, data "é" (o dia),
+ * "antes de" / "depois de" (o dia vizinho do limite), número "igual" (o valor), "maior que" /
+ * "menor que" (o vizinho que passa). O que não aponta para um valor ("não é", "não contém",
+ * "está preenchido") é ignorado: a linha nasce vazia nesse campo.
  * Havendo dois filtros sobre o mesmo campo, o último vence.
  */
 export function valoresDeNascimento<T>(
@@ -393,20 +399,25 @@ export function valoresDeNascimento<T>(
         if (f.operador === "marcado") saida[campo.id] = true;
         else if (f.operador === "desmarcado") saida[campo.id] = false;
         break;
-      case "data":
-        if (f.operador === "e" && lista[0]) {
-          saida[campo.id] = lista[0] === "hoje" ? contexto.hoje : lista[0];
-        }
+      case "data": {
+        if (!lista[0]) break;
+        const base = lista[0] === "hoje" ? contexto.hoje : lista[0];
+        // "é" → o próprio dia. "antes de" / "depois de" não dizem UM dia, mas a linha tem de
+        // ficar à vista: nasce no dia imediatamente anterior / posterior ao limite.
+        if (f.operador === "e") saida[campo.id] = base;
+        else if (f.operador === "antes") saida[campo.id] = somarDias(base, -1);
+        else if (f.operador === "depois") saida[campo.id] = somarDias(base, 1);
         break;
-      case "numero":
-        if (
-          f.operador === "igual" &&
-          typeof f.valor !== "object" &&
-          Number.isFinite(Number(f.valor))
-        ) {
-          saida[campo.id] = Number(f.valor);
-        }
+      }
+      case "numero": {
+        if (typeof f.valor === "object" || !Number.isFinite(Number(f.valor))) break;
+        const n = Number(f.valor);
+        // "maior que" / "menor que": o vizinho que passa no filtro.
+        if (f.operador === "igual") saida[campo.id] = n;
+        else if (f.operador === "maior") saida[campo.id] = n + 1;
+        else if (f.operador === "menor") saida[campo.id] = n - 1;
         break;
+      }
       case "texto":
         // "Nome contém teste" → a linha nasce com o texto "teste" (como no Notion).
         if (f.operador === "contem" && typeof f.valor === "string" && f.valor.trim() !== "") {
