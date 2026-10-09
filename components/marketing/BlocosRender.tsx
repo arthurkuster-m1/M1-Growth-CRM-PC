@@ -1,0 +1,283 @@
+import type { ReactNode } from "react";
+
+import type { Bloco } from "@/lib/marketing/blocos";
+import { Check } from "@/lib/ui/icons";
+import { cn } from "@/lib/utils";
+
+/**
+ * O RENDERIZADOR dos blocos — a página como o cliente a lê. Sem estado e sem tradução de
+ * conteúdo: o texto é DA AGÊNCIA (já está no idioma que ela escolheu); só os rótulos fixos
+ * ("Antes", "Depois") vêm por `rotulos`, já traduzidos por quem chama. Por isso serve igual ao
+ * painel logado, à apresentação em tela cheia e ao link público sem login.
+ *
+ * `escala`: "pagina" (rolagem, texto confortável) ou "slide" (apresentação, tudo maior).
+ */
+export interface RotulosDosBlocos {
+  antes: string;
+  depois: string;
+  abrirLink: string;
+}
+
+const TOM_DO_DESTAQUE = {
+  info: "border-primary/50 bg-primary/10",
+  sucesso: "border-success/50 bg-success-bg",
+  atencao: "border-warning/50 bg-warning-bg",
+} as const;
+
+function Paragrafos({ texto, className }: { texto: string; className?: string }) {
+  const partes = texto.split(/\n{2,}/).filter((p) => p.trim() !== "");
+  return (
+    <div className={cn("space-y-3", className)}>
+      {partes.map((p, i) => (
+        <p key={i} className="whitespace-pre-line">
+          {p}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+export function BlocosRender({
+  blocos,
+  rotulos,
+  escala = "pagina",
+}: {
+  blocos: readonly Bloco[];
+  rotulos: RotulosDosBlocos;
+  escala?: "pagina" | "slide";
+}) {
+  const slide = escala === "slide";
+  const corpo = slide ? "text-lg leading-relaxed sm:text-2xl" : "text-base leading-relaxed";
+
+  return (
+    <div className={cn("flex flex-col", slide ? "gap-6 sm:gap-8" : "gap-6")}>
+      {blocos.map((b): ReactNode => {
+        switch (b.tipo) {
+          case "titulo":
+            return b.nivel === 1 ? (
+              <h2
+                key={b.id}
+                className={cn(
+                  "font-bold tracking-tight",
+                  slide ? "text-3xl sm:text-5xl" : "border-b pb-2 text-2xl sm:text-3xl",
+                )}
+              >
+                {b.texto}
+              </h2>
+            ) : (
+              <h3
+                key={b.id}
+                className={cn("font-semibold", slide ? "text-2xl sm:text-3xl" : "text-xl")}
+              >
+                {b.texto}
+              </h3>
+            );
+
+          case "texto":
+            return <Paragrafos key={b.id} texto={b.texto} className={cn(corpo, "max-w-3xl")} />;
+
+          case "destaque":
+            return (
+              <div
+                key={b.id}
+                className={cn("rounded-2xl border-l-4 p-5", TOM_DO_DESTAQUE[b.tom], corpo)}
+              >
+                <Paragrafos texto={b.texto} />
+              </div>
+            );
+
+          case "lista": {
+            const itens = b.itens.filter((i) => i.trim() !== "");
+            if (b.estilo === "numerada") {
+              return (
+                <ol key={b.id} className={cn("ml-5 list-decimal space-y-2", corpo)}>
+                  {itens.map((i, n) => (
+                    <li key={n}>{i}</li>
+                  ))}
+                </ol>
+              );
+            }
+            return (
+              <ul key={b.id} className={cn("space-y-2", corpo)}>
+                {itens.map((i, n) => (
+                  <li key={n} className="flex gap-3">
+                    {b.estilo === "check" ? (
+                      <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground sm:mt-2">
+                        <Check size={12} weight="bold" aria-hidden />
+                      </span>
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-primary sm:mt-3.5"
+                      />
+                    )}
+                    <span>{i}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+
+          case "cards": {
+            const itens = b.itens.filter((i) => i.titulo.trim() !== "" || i.texto.trim() !== "");
+            return (
+              <div
+                key={b.id}
+                className={cn(
+                  "grid gap-4",
+                  itens.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2",
+                )}
+              >
+                {itens.map((i, n) => (
+                  <div key={n} className="rounded-2xl border bg-card p-5 shadow-sm">
+                    {i.titulo ? (
+                      <h4
+                        className={cn("font-semibold", slide ? "text-xl sm:text-2xl" : "text-base")}
+                      >
+                        {i.titulo}
+                      </h4>
+                    ) : null}
+                    {i.texto ? (
+                      <Paragrafos
+                        texto={i.texto}
+                        className={cn(
+                          "mt-2 text-muted-foreground",
+                          slide ? "text-base sm:text-lg" : "text-sm",
+                        )}
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            );
+          }
+
+          case "metricas": {
+            const itens = b.itens.filter((i) => i.valor.trim() !== "" || i.rotulo.trim() !== "");
+            return (
+              <div key={b.id} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {itens.map((i, n) => (
+                  <div key={n} className="rounded-2xl border bg-card p-5 shadow-sm">
+                    <p
+                      className={cn(
+                        "font-bold tracking-tight text-primary",
+                        slide ? "text-4xl sm:text-6xl" : "text-3xl",
+                      )}
+                    >
+                      {i.valor}
+                    </p>
+                    <p className={cn("mt-1 font-medium", slide ? "text-lg" : "text-sm")}>
+                      {i.rotulo}
+                    </p>
+                    {i.detalhe ? (
+                      <p
+                        className={cn(
+                          "mt-0.5 text-muted-foreground",
+                          slide ? "text-base" : "text-xs",
+                        )}
+                      >
+                        {i.detalhe}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            );
+          }
+
+          case "antes-depois":
+            return (
+              <div key={b.id} className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border bg-secondary/50 p-5">
+                  <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    {rotulos.antes}
+                  </span>
+                  {b.antes.titulo ? (
+                    <h4 className={cn("mt-1 font-semibold", slide ? "text-2xl" : "text-lg")}>
+                      {b.antes.titulo}
+                    </h4>
+                  ) : null}
+                  <Paragrafos
+                    texto={b.antes.texto}
+                    className={cn("mt-2 text-muted-foreground", slide ? "text-lg" : "text-sm")}
+                  />
+                </div>
+                <div className="rounded-2xl border-2 border-primary/50 bg-primary/10 p-5">
+                  <span className="text-xs font-semibold tracking-wider text-primary uppercase">
+                    {rotulos.depois}
+                  </span>
+                  {b.depois.titulo ? (
+                    <h4 className={cn("mt-1 font-semibold", slide ? "text-2xl" : "text-lg")}>
+                      {b.depois.titulo}
+                    </h4>
+                  ) : null}
+                  <Paragrafos
+                    texto={b.depois.texto}
+                    className={cn("mt-2", slide ? "text-lg" : "text-sm")}
+                  />
+                </div>
+              </div>
+            );
+
+          case "paleta":
+            return (
+              <div key={b.id} className="flex flex-wrap gap-4">
+                {b.cores.map((c, n) => (
+                  <div key={n} className="w-28">
+                    <div
+                      style={{ backgroundColor: c.hex }}
+                      className={cn("rounded-2xl border shadow-sm", slide ? "h-28" : "h-20")}
+                    />
+                    <p className="mt-2 truncate text-sm font-medium">{c.nome}</p>
+                    <p className="text-xs text-muted-foreground uppercase">{c.hex}</p>
+                  </div>
+                ))}
+              </div>
+            );
+
+          case "links": {
+            const itens = b.itens.filter((i) => i.url.trim() !== "");
+            return (
+              <ul key={b.id} className="flex flex-wrap gap-2">
+                {itens.map((i, n) => (
+                  <li key={n}>
+                    <a
+                      href={i.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={rotulos.abrirLink}
+                      className="inline-flex max-w-full items-center rounded-xl border bg-card px-4 py-2 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-secondary"
+                    >
+                      <span className="truncate">{i.rotulo || i.url}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+
+          case "citacao":
+            return (
+              <blockquote
+                key={b.id}
+                className={cn(
+                  "border-l-4 border-primary pl-5 italic",
+                  slide ? "text-2xl sm:text-4xl" : "text-xl",
+                )}
+              >
+                <Paragrafos texto={b.texto} />
+                {b.autor ? (
+                  <footer className="mt-2 text-sm text-muted-foreground not-italic">
+                    — {b.autor}
+                  </footer>
+                ) : null}
+              </blockquote>
+            );
+
+          case "separador":
+            return <hr key={b.id} className="border-border" />;
+        }
+      })}
+    </div>
+  );
+}

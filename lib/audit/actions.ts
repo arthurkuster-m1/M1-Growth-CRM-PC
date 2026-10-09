@@ -716,6 +716,12 @@ export const AUDIT_ACTIONS = [
   "crm_task_template.created",
   "crm_task_template.updated",
   "crm_task_template.deleted",
+  // Páginas de Marketing (migration 0587): só os eventos que importam (publicar, despublicar e os
+  // links sem login); gravar rascunho não audita, para o log não encher a cada tecla.
+  "marketing_page.published",
+  "marketing_page.unpublished",
+  "marketing_share_link.created",
+  "marketing_share_link.revoked",
   "crm_task.bulk_updated",
   "crm_task.bulk_deleted",
 
