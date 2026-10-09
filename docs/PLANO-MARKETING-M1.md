@@ -36,9 +36,14 @@ Tabelas novas (todas por organização, com RLS): `marketing_pages` (módulo, t�
 5. **Dashboards**: Tráfego (Meta/Google Ads — já há base de plataformas de anúncio e CAPI via n8n), Vendas (CRM/leads), Faturamento (compras/LTV; já existe `/app/faturamento`).
 6. **Cronograma** (reaproveita o motor de Tarefas: visão semanal/linha do tempo, dono = agência ou cliente) e **Geração de demanda** (registro de campanhas/criativos/textos com status ativo/pausado, links e resultados).
 
-## A decidir com o Arthur
+## Decisões já tomadas (Arthur, 09/10/2026)
+- Seguir exatamente este plano e a ordem das fases (começando pela Fase 0, a casca).
+- **O cliente pode receber um LINK sem login.** Desenho (Fase 1): tabela `marketing_share_links` (token aleatório longo, empresa, escopo = o painel inteiro ou uma página, validade opcional, revogado); rota pública `/p/<token>` mostrando só o conteúdo PUBLICADO, somente leitura, com `noindex`, limite de acessos por IP e a marca/cores do cliente; a agência gera, copia, regenera e revoga o link na própria página. Sem edição, sem menu do sistema, sem dados de outras áreas. (Depois, se quiser: senha opcional e validade padrão.)
+- Submenu de Estratégia: segue o Notion (Diagnóstico + Produto e Oferta); "Público-alvo / Estudo de mercado / Análise da concorrência" viram atalhos.
+
+## A decidir com o Arthur (o que ainda falta)
 1. Submenu de Estratégia: seguir o Notion (Diagnóstico + Produto e Oferta) ou a lista "Público-alvo / Estudo de mercado / Análise da concorrência"? (Proposta: o Notion como estrutura e esses três como atalhos: Público-alvo = Persona; Estudo de mercado = ZMOT + análise oculta; Concorrência = Análise de Concorrência.)
-2. O cliente também recebe um LINK público (sem login) da apresentação, ou só vê logado?
+2. (resolvido) link público sem login — ver acima.
 3. IA: qual provedor/chave e quais prompts (entregar por módulo).
 4. Quem é "agência" no banco: platform admin (modo suporte) + manager da empresa — confirmar.
 5. PDF/exportar a apresentação? (depois)
