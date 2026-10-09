@@ -27,6 +27,7 @@ interface Props {
   rotuloDoPrazo: (iso: string) => string;
   podeEditar: boolean;
   aoMudarStatus: (tarefa: Tarefa, opcao: OpcaoDeStatus) => void;
+  aoAbrir: (tarefa: Tarefa) => void;
 }
 
 /**
@@ -45,6 +46,7 @@ export function QuadroKanban({
   rotuloDoPrazo,
   podeEditar,
   aoMudarStatus,
+  aoAbrir,
 }: Props) {
   const t = useT();
   // 6 px de arrasto antes de começar: um clique simples não vira arrasto sem querer.
@@ -81,7 +83,12 @@ export function QuadroKanban({
               const prioridade = prioridades.find((p) => p.id === tarefa.priority);
               const responsavel = membros.find((m) => m.id === tarefa.assigned_to);
               return (
-                <Cartao key={tarefa.id} id={tarefa.id} arrastavel={podeEditar}>
+                <Cartao
+                  key={tarefa.id}
+                  id={tarefa.id}
+                  arrastavel={podeEditar}
+                  aoAbrir={() => aoAbrir(tarefa)}
+                >
                   <p
                     className={cn(
                       "text-sm leading-snug font-medium",
@@ -162,10 +169,12 @@ function Coluna({
 function Cartao({
   id,
   arrastavel,
+  aoAbrir,
   children,
 }: {
   id: string;
   arrastavel: boolean;
+  aoAbrir: () => void;
   children: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -177,6 +186,11 @@ function Cartao({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      onClick={aoAbrir}
+      onKeyDown={(e) => {
+        listeners?.onKeyDown?.(e);
+        if (e.key === "Enter") aoAbrir();
+      }}
       style={
         transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
       }

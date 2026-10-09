@@ -32,13 +32,14 @@ import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/t
 export const dynamic = "force-dynamic";
 
 const COLUNAS =
-  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields";
+  "id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields";
 
 const edicaoSchema = z
   .object({
     title: z.string().trim().min(1).max(255).optional(),
     description: z.string().max(5000).nullable().optional(),
     due_date: z.string().datetime({ offset: true }).nullable().optional(),
+    start_date: z.string().datetime({ offset: true }).nullable().optional(),
     priority: z.enum(PRIORIDADES_DA_TAREFA).optional(),
     status: z.enum(SITUACOES_DA_TAREFA).optional(),
     lead_id: z.string().uuid().nullable().optional(),

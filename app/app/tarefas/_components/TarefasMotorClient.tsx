@@ -1,7 +1,9 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
+import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
@@ -35,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
+import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
@@ -52,7 +55,8 @@ import {
   type ValorDoCampo,
 } from "@/lib/motor/consulta";
 import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
-import { moverColuna, resolverColunas } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
@@ -63,12 +67,9 @@ import {
   type Tarefa,
 } from "@/lib/tarefas/tipos";
 import {
+  ArrowsOutSimple,
   CalendarBlank,
-  CalendarDots,
-  ChartBar,
   DotsThree,
-  Kanban,
-  Rows,
   Flag,
   Plus,
   Tag,
@@ -80,9 +81,13 @@ import {
 import { AcoesEmMassa } from "./AcoesEmMassa";
 import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
+import { PainelDaTarefa } from "./PainelDaTarefa";
 import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { QuadroKanban } from "./QuadroKanban";
+
+/** O relógio fica fora do componente: é lido só quando a pessoa cria a tarefa, nunca ao desenhar a tela. */
+const relogioEmSegundos = () => Date.now() / 1000;
 
 interface Props {
   fuso: string;
@@ -135,6 +140,8 @@ export function TarefasMotorClient({
   }));
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [abertaId, setAbertaId] = useState<string | null>(null);
+  const [apagarVisaoId, setApagarVisaoId] = useState<string | null>(null);
   const [apagarId, setApagarId] = useState<string | null>(null);
   const [apagarPropriedadeId, setApagarPropriedadeId] = useState<string | null>(null);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
@@ -162,15 +169,30 @@ export function TarefasMotorClient({
       largura: 340,
       fixa: true,
       celula: (tarefa) => (
-        <CelulaDeTexto
-          valor={tarefa.title}
-          rotulo={t("Título da tarefa")}
-          podeEditar={podeEditar}
-          riscado={tarefa.status === "done"}
-          iniciarEditando={editandoId === tarefa.id}
-          aoTerminarEdicao={() => setEditandoId((atual) => (atual === tarefa.id ? null : atual))}
-          aoSalvar={(title) => void editarTarefa(tarefa.id, { title }, { title })}
-        />
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <CelulaDeTexto
+              valor={tarefa.title}
+              rotulo={t("Título da tarefa")}
+              podeEditar={podeEditar}
+              riscado={tarefa.status === "done"}
+              iniciarEditando={editandoId === tarefa.id}
+              aoTerminarEdicao={() =>
+                setEditandoId((atual) => (atual === tarefa.id ? null : atual))
+              }
+              aoSalvar={(title) => void editarTarefa(tarefa.id, { title }, { title })}
+            />
+          </div>
+          <button
+            type="button"
+            aria-label={t("Abrir tarefa")}
+            title={t("Abrir tarefa")}
+            onClick={() => setAbertaId(tarefa.id)}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-text-subtle transition-opacity hover:bg-secondary hover:text-foreground focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+          >
+            <ArrowsOutSimple size={14} aria-hidden />
+          </button>
+        </div>
       ),
     },
     {
@@ -243,6 +265,25 @@ export function TarefasMotorClient({
           </SeletorDeOpcao>
         );
       },
+    },
+    {
+      id: "inicio",
+      titulo: t("Início"),
+      icone: <CalendarBlank size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (tarefa) => (
+        <CelulaDeData
+          valor={tarefa.start_date ?? null}
+          fuso={fuso}
+          tag={tag}
+          agora={agora}
+          podeEditar={podeEditar}
+          atrasada={false}
+          rotulo={t("Início da tarefa")}
+          aoSalvar={(start_date) => void editarTarefa(tarefa.id, { start_date }, { start_date })}
+        />
+      ),
     },
     {
       id: "prazo",
@@ -344,10 +385,31 @@ export function TarefasMotorClient({
   const colunas = [...colunasDeFabrica, ...colunasPersonalizadas];
 
   // O layout (ordem, largura, visibilidade) é da PESSOA e mora na conta dela.
-  const { preferencias, atualizar } = useVisualizacao("tarefas");
+  const padrao = useVisualizacao("tarefas");
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+    "tarefas",
+    podeEditar,
+  );
+  const router = useRouter();
+  const caminho = usePathname();
+  const parametros = useSearchParams();
+  const ID_DA_PADRAO = "padrao";
+  const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
+  const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
+  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
+    if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
+    else padrao.atualizar(mudar);
+  };
+  const escolherAba = (id: string) =>
+    router.replace(id === ID_DA_PADRAO ? caminho : `${caminho}?v=${id}`, { scroll: false });
+  const abas = [
+    { id: ID_DA_PADRAO, nome: t("Tabela"), tipo: "tabela" as TipoDeVisualizacao },
+    ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
+  ];
   const resolvidas = resolverColunas(colunas, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
-  const visualizacao = preferencias.visualizacao ?? "tabela";
+  const visualizacao: TipoDeVisualizacao = visaoAtiva?.type ?? "tabela";
 
   function moverColunaNoLayout(idMovido: string, idAlvo: string) {
     // A ordem completa, escondidas inclusive: esconder uma coluna não pode embaralhar as
@@ -389,6 +451,12 @@ export function TarefasMotorClient({
       tipo: "opcao",
       valorDe: (x) => x.priority,
       opcoes: prioridades.map((p) => ({ id: p.id, rotulo: p.rotulo, cor: p.cor })),
+    },
+    {
+      id: "inicio",
+      titulo: t("Início"),
+      tipo: "data",
+      valorDe: (x) => (x.start_date ? chaveDoDia(new Date(x.start_date), fuso) : null),
     },
     {
       id: "prazo",
@@ -527,7 +595,7 @@ export function TarefasMotorClient({
     try {
       const criada = await criarTarefa({
         title: t("Sem título"),
-        position: Math.max(maiorPosicao + 1, Date.now() / 1000),
+        position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
         ...(opcaoHerdada ? { status_option_id: opcaoHerdada.id } : {}),
         ...(texto("prioridade") ? { priority: texto("prioridade") as PrioridadeDaTarefa } : {}),
         ...(texto("responsavel") ? { assigned_to: texto("responsavel") } : {}),
@@ -544,7 +612,7 @@ export function TarefasMotorClient({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-[1400px] min-w-0 flex-col gap-4 p-4 sm:p-6">
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -565,44 +633,38 @@ export function TarefasMotorClient({
             </button>
           ) : null}
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            role="group"
-            aria-label={t("Forma de ver as tarefas")}
-            className="inline-flex h-9 flex-1 items-center rounded-xl bg-secondary p-0.5 sm:flex-none"
-          >
-            {(
-              [
-                { id: "tabela", rotulo: t("Tabela"), icone: <Rows size={14} aria-hidden /> },
-                { id: "kanban", rotulo: t("Quadro"), icone: <Kanban size={14} aria-hidden /> },
-                {
-                  id: "calendario",
-                  rotulo: t("Calendário"),
-                  icone: <CalendarDots size={14} aria-hidden />,
-                },
-                {
-                  id: "timeline",
-                  rotulo: t("Linha do tempo"),
-                  icone: <ChartBar size={14} aria-hidden />,
-                },
-              ] as const
-            ).map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                aria-pressed={visualizacao === v.id}
-                onClick={() => atualizar((p) => ({ ...p, visualizacao: v.id }))}
-                className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors sm:flex-none ${
-                  visualizacao === v.id
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {v.icone}
-                {v.rotulo}
-              </button>
-            ))}
-          </div>
+        <AbasDeVisualizacao
+          abas={abas}
+          ativaId={ativaId}
+          idDaPadrao={ID_DA_PADRAO}
+          podeEditar={podeEditar}
+          aoEscolher={escolherAba}
+          aoCriar={(nome, tipo) =>
+            void criarVisao({ name: nome, type: tipo }).then((v) => v && escolherAba(v.id))
+          }
+          aoRenomear={(id, name) => void editarVisao(id, { name })}
+          aoTrocarTipo={(id, type) => void editarVisao(id, { type })}
+          aoDuplicar={(id) => {
+            const origem = visoes.find((v) => v.id === id);
+            if (!origem) return;
+            void criarVisao({
+              name: `${t("Cópia de")} ${origem.name}`.slice(0, 60),
+              type: origem.type,
+              config: origem.config,
+            }).then((v) => v && escolherAba(v.id));
+          }}
+          aoApagar={(id) => setApagarVisaoId(id)}
+        />
+      </header>
+
+      {falhou ? (
+        <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg">
+          {t("Não foi possível carregar as tarefas.")}
+        </p>
+      ) : null}
+
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {visualizacao === "tabela" ? (
           <MenuDePropriedades
             propriedades={resolvidas.map((c) => ({
               id: c.id,
@@ -612,16 +674,9 @@ export function TarefasMotorClient({
             }))}
             aoAlternar={alternarColuna}
           />
-        </div>
-      </header>
-
-      {falhou ? (
-        <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg">
-          {t("Não foi possível carregar as tarefas.")}
-        </p>
-      ) : null}
-
-      <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
+        ) : null}
+        <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
+      </div>
 
       {visualizacao === "calendario" ? (
         <CalendarioDeTarefas
@@ -635,6 +690,7 @@ export function TarefasMotorClient({
             void editarTarefa(tarefa.id, { due_date }, { due_date })
           }
           aoCriarNoDia={(dia) => void novaTarefa(dia)}
+          aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
         />
       ) : visualizacao === "timeline" ? (
         <LinhaDoTempo
@@ -643,6 +699,9 @@ export function TarefasMotorClient({
           fuso={fuso}
           tag={tag}
           hoje={hojeNoFuso(agora, fuso)}
+          podeEditar={podeEditar}
+          aoMudarDatas={(tarefa, datas) => void editarTarefa(tarefa.id, datas, datas)}
+          aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
         />
       ) : visualizacao === "kanban" ? (
         <QuadroKanban
@@ -653,6 +712,7 @@ export function TarefasMotorClient({
           agora={agora}
           rotuloDoPrazo={(iso) => rotuloDaData(iso, fuso, tag, agora)}
           podeEditar={podeEditar}
+          aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
           aoMudarStatus={(tarefa, opcao) =>
             void editarTarefa(
               tarefa.id,
@@ -773,6 +833,48 @@ export function TarefasMotorClient({
           aoLimpar={() => setSelecionadas(new Set())}
         />
       ) : null}
+
+      <PainelDaTarefa
+        tarefa={tarefas.find((x) => x.id === abertaId) ?? null}
+        colunas={colunas}
+        podeEditar={podeEditar}
+        aoSalvarDescricao={(tarefa, description) =>
+          void editarTarefa(tarefa.id, { description }, { description })
+        }
+        aoApagar={(tarefa) => {
+          setAbertaId(null);
+          setApagarId(tarefa.id);
+        }}
+        aoFechar={() => setAbertaId(null)}
+      />
+
+      <AlertDialog
+        open={apagarVisaoId !== null}
+        onOpenChange={(aberto) => !aberto && setApagarVisaoId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Apagar visualização?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("A visualização some para todos. As tarefas não são apagadas.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (apagarVisaoId) {
+                  if (apagarVisaoId === ativaId) escolherAba(ID_DA_PADRAO);
+                  void apagarVisao(apagarVisaoId);
+                }
+                setApagarVisaoId(null);
+              }}
+            >
+              {t("Apagar")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={apagarVariasAberto} onOpenChange={setApagarVariasAberto}>
         <AlertDialogContent>

@@ -31,7 +31,7 @@ import type { Tarefa } from "@/lib/tarefas/tipos";
 export const dynamic = "force-dynamic";
 
 const COLUNAS =
-  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields";
+  "id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields";
 
 export async function PATCH(req: NextRequest): Promise<Response> {
   const supportDenied = await requireSupportWrite();

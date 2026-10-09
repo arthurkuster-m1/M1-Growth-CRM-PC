@@ -1,4 +1,4 @@
-import { diaDaSemanaDaChave, somarDias } from "@/lib/inicio/datas";
+import { diaDaSemanaDaChave, inicioDoDia, partesNoFuso, somarDias } from "@/lib/inicio/datas";
 
 /**
  * Contas de calendário das visualizações Calendário e Linha do tempo. Puro, sobre CHAVES de
@@ -43,4 +43,15 @@ export function diferencaEmDias(a: string, b: string): number {
     return Date.UTC(ano!, mes! - 1, dia!);
   };
   return Math.round((ms(b) - ms(a)) / 86_400_000);
+}
+
+/**
+ * O mesmo instante, em outro DIA: muda a data e mantém a hora de parede no fuso (14:00
+ * continua 14:00). Sem instante de partida (`null`), vale o começo do dia.
+ */
+export function trocarODia(iso: string | null | undefined, dia: string, fuso: string): string {
+  const base = inicioDoDia(dia, fuso).getTime();
+  if (!iso) return new Date(base).toISOString();
+  const p = partesNoFuso(new Date(iso), fuso);
+  return new Date(base + (p.hora * 60 + p.minuto) * 60_000).toISOString();
 }

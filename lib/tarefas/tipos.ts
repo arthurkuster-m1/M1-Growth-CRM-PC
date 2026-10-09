@@ -35,6 +35,8 @@ export interface Tarefa {
   description: string | null;
   /** ISO-8601 com offset. Nula = sem prazo — ver o cabeçalho da migration 0210. */
   due_date: string | null;
+  /** Início da tarefa (barra da Linha do tempo), ISO-8601. Nulo = sem início (migration 0585). Opcional no tipo: telas antigas e dublês de teste não o conhecem. */
+  start_date?: string | null;
   priority: PrioridadeDaTarefa;
   status: SituacaoDaTarefa;
   lead_id: string | null;
@@ -58,6 +60,7 @@ export interface NovaTarefa {
   title: string;
   description?: string | null;
   due_date?: string | null;
+  start_date?: string | null;
   priority?: PrioridadeDaTarefa;
   status?: SituacaoDaTarefa;
   lead_id?: string | null;

@@ -708,6 +708,10 @@ export const AUDIT_ACTIONS = [
   "crm_task_property.created",
   "crm_task_property.updated",
   "crm_task_property.deleted",
+  // Visualizações salvas das telas estilo Notion (migration 0585).
+  "crm_saved_view.created",
+  "crm_saved_view.updated",
+  "crm_saved_view.deleted",
   "crm_task.bulk_updated",
   "crm_task.bulk_deleted",
 

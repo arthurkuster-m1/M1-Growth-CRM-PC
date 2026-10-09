@@ -14,8 +14,8 @@ import { useState } from "react";
 
 import { estiloDaEtiqueta } from "@/lib/motor/cores";
 import { useT } from "@/hooks/i18n/useT";
-import { chaveDoDia, inicioDoDia, partesNoFuso } from "@/lib/inicio/datas";
-import { diasDaGradeDoMes, inicioDoMes, somarMeses } from "@/lib/motor/calendario";
+import { chaveDoDia } from "@/lib/inicio/datas";
+import { diasDaGradeDoMes, inicioDoMes, somarMeses, trocarODia } from "@/lib/motor/calendario";
 import { opcaoDaTarefa, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
 import type { Tarefa } from "@/lib/tarefas/tipos";
 import { CaretLeft, CaretRight } from "@/lib/ui/icons";
@@ -32,6 +32,7 @@ interface Props {
   aoMudarPrazo: (tarefa: Tarefa, iso: string) => void;
   /** Cria uma tarefa já com prazo no dia. */
   aoCriarNoDia?: (dia: string) => void;
+  aoAbrir: (tarefa: Tarefa) => void;
 }
 
 /**
@@ -48,6 +49,7 @@ export function CalendarioDeTarefas({
   podeEditar,
   aoMudarPrazo,
   aoCriarNoDia,
+  aoAbrir,
 }: Props) {
   const t = useT();
   const [mes, setMes] = useState(() => inicioDoMes(hoje));
@@ -88,9 +90,7 @@ export function CalendarioDeTarefas({
     const atual = new Date(tarefa.due_date);
     if (chaveDoDia(atual, fuso) === destino) return;
     // Muda o DIA e mantém a hora de parede (14:00 continua 14:00).
-    const p = partesNoFuso(atual, fuso);
-    const novo = new Date(inicioDoDia(destino, fuso).getTime() + (p.hora * 60 + p.minuto) * 60_000);
-    aoMudarPrazo(tarefa, novo.toISOString());
+    aoMudarPrazo(tarefa, trocarODia(tarefa.due_date, destino, fuso));
   }
 
   const corDe = (tarefa: Tarefa) =>
@@ -150,6 +150,7 @@ export function CalendarioDeTarefas({
                 tarefas={porDia.get(dia) ?? []}
                 corDe={corDe}
                 podeEditar={podeEditar}
+                aoAbrir={aoAbrir}
               />
             ))}
           </div>
@@ -178,12 +179,15 @@ export function CalendarioDeTarefas({
         ) : (
           <ul className="flex flex-col gap-1.5">
             {doDiaEscolhido.map((tarefa) => (
-              <li
-                key={tarefa.id}
-                style={corDe(tarefa)}
-                className="truncate rounded-lg px-3 py-2 text-sm font-medium"
-              >
-                {tarefa.title}
+              <li key={tarefa.id}>
+                <button
+                  type="button"
+                  onClick={() => aoAbrir(tarefa)}
+                  style={corDe(tarefa)}
+                  className="block w-full truncate rounded-lg px-3 py-2 text-left text-sm font-medium"
+                >
+                  {tarefa.title}
+                </button>
               </li>
             ))}
           </ul>
@@ -197,12 +201,15 @@ export function CalendarioDeTarefas({
           </h3>
           <ul className="flex flex-wrap gap-1.5">
             {semPrazo.map((tarefa) => (
-              <li
-                key={tarefa.id}
-                style={corDe(tarefa)}
-                className="max-w-full truncate rounded-md px-2 py-1 text-xs font-medium"
-              >
-                {tarefa.title}
+              <li key={tarefa.id} className="max-w-full">
+                <button
+                  type="button"
+                  onClick={() => aoAbrir(tarefa)}
+                  style={corDe(tarefa)}
+                  className="block max-w-full truncate rounded-md px-2 py-1 text-xs font-medium"
+                >
+                  {tarefa.title}
+                </button>
               </li>
             ))}
           </ul>
@@ -221,6 +228,7 @@ function Dia({
   tarefas,
   corDe,
   podeEditar,
+  aoAbrir,
 }: {
   dia: string;
   doMes: boolean;
@@ -230,6 +238,7 @@ function Dia({
   tarefas: Tarefa[];
   corDe: (t: Tarefa) => React.CSSProperties;
   podeEditar: boolean;
+  aoAbrir: (tarefa: Tarefa) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dia });
   const MAXIMO = 3;
@@ -261,7 +270,13 @@ function Dia({
       {/* Computador: as tarefas, arrastáveis. */}
       <div className="mt-1 hidden flex-col gap-0.5 md:flex">
         {tarefas.slice(0, MAXIMO).map((tarefa) => (
-          <Chip key={tarefa.id} tarefa={tarefa} estilo={corDe(tarefa)} arrastavel={podeEditar} />
+          <Chip
+            key={tarefa.id}
+            tarefa={tarefa}
+            estilo={corDe(tarefa)}
+            arrastavel={podeEditar}
+            aoAbrir={aoAbrir}
+          />
         ))}
         {tarefas.length > MAXIMO ? (
           <span className="px-1 text-[11px] text-muted-foreground">+{tarefas.length - MAXIMO}</span>
@@ -275,10 +290,12 @@ function Chip({
   tarefa,
   estilo,
   arrastavel,
+  aoAbrir,
 }: {
   tarefa: Tarefa;
   estilo: React.CSSProperties;
   arrastavel: boolean;
+  aoAbrir: (tarefa: Tarefa) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: tarefa.id,
@@ -289,7 +306,10 @@ function Chip({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        aoAbrir(tarefa);
+      }}
       title={tarefa.title}
       style={{
         ...estilo,
