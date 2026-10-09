@@ -14,9 +14,8 @@ const FUSO_PADRAO = "America/Sao_Paulo";
 /**
  * TAREFAS (tabela estilo Notion) — o primeiro uso do motor de tabelas.
  *
- * É a mesma informação da tela `/app/tasks` (a tabela `crm_tasks`), com outra forma de
- * editar. A tela antiga continua de pé até esta ser aprovada; depois disso troca-se a
- * porta do menu, e não os dados.
+ * É a tela de Tarefas do produto (a tabela `crm_tasks`). A tela antiga, de dentro do CRM
+ * (`/app/tasks`), foi apagada: o endereço antigo redireciona para cá (`next.config.ts`).
  *
  * Quem pode o quê, como na tela antiga: `viewer` VÊ; `agent` cria, edita, reordena e
  * apaga; `manager` também edita as opções de status. A tela esconde o que a pessoa não

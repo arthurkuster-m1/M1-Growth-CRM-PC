@@ -24,12 +24,19 @@ interface Props {
   aoConfigurar: () => void;
 }
 
-export const ICONE_DO_TIPO: Record<TipoDeVisualizacao, ReactNode> = {
-  tabela: <Rows size={14} aria-hidden />,
-  kanban: <Kanban size={14} aria-hidden />,
-  calendario: <CalendarDots size={14} aria-hidden />,
-  timeline: <ChartBar size={14} aria-hidden />,
-};
+/** O ícone de cada tipo de visualização. */
+export function iconeDoTipo(tipo: TipoDeVisualizacao): ReactNode {
+  switch (tipo) {
+    case "kanban":
+      return <Kanban size={14} aria-hidden />;
+    case "calendario":
+      return <CalendarDots size={14} aria-hidden />;
+    case "timeline":
+      return <ChartBar size={14} aria-hidden />;
+    default:
+      return <Rows size={14} aria-hidden />;
+  }
+}
 
 const TIPOS: TipoDeVisualizacao[] = ["tabela", "kanban", "calendario", "timeline"];
 
@@ -129,7 +136,7 @@ export function AbasDeVisualizacao({
                 ativa ? "pr-1" : "pr-2.5",
               )}
             >
-              {ICONE_DO_TIPO[aba.tipo]}
+              {iconeDoTipo(aba.tipo)}
               <span className="truncate">{aba.nome}</span>
             </button>
             {ativa ? (
@@ -170,7 +177,7 @@ export function AbasDeVisualizacao({
               onKeyDown={(e) => {
                 if (e.key === "Enter") criar();
               }}
-              className="h-9 w-full rounded-lg border bg-background px-2.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              className="h-9 w-full rounded-lg border bg-background px-2.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
             <div
               className="mt-2 grid grid-cols-2 gap-1.5"
@@ -189,7 +196,7 @@ export function AbasDeVisualizacao({
                     tipo === x ? "border-primary bg-primary/10 font-medium" : "hover:bg-secondary",
                   )}
                 >
-                  {ICONE_DO_TIPO[x]}
+                  {iconeDoTipo(x)}
                   {rotuloDoTipo(x)}
                 </button>
               ))}

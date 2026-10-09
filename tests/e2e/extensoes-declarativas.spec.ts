@@ -733,7 +733,9 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
       headers: { [EXPECTED_ORGANIZATION_HEADER]: atores!.organizacaoB },
     });
     expect(resposta.status()).toBe(404);
-    expect((await resposta.json()) as unknown).toMatchObject({ error: { code: "extension_inactive" } });
+    expect((await resposta.json()) as unknown).toMatchObject({
+      error: { code: "extension_inactive" },
+    });
     const recusaDoGuiaB = adminB.waitForResponse(
       (response) =>
         response.request().method() === "GET" &&
@@ -837,7 +839,7 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
     await openTasks.focus();
     await expect(openTasks).toBeFocused();
     await page.keyboard.press("Enter");
-    await page.waitForURL("**/app/tasks");
+    await page.waitForURL("**/app/tarefas");
     await expect(page.getByRole("heading", { name: "Tarefas", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Nova tarefa", exact: true }).click();
@@ -884,7 +886,9 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
       headers: { [EXPECTED_ORGANIZATION_HEADER]: atores!.organizacaoA },
     });
     expect(direta.status()).toBe(404);
-    expect((await direta.json()) as unknown).toMatchObject({ error: { code: "extension_inactive" } });
+    expect((await direta.json()) as unknown).toMatchObject({
+      error: { code: "extension_inactive" },
+    });
     const recusaDaAcaoAntiga = staleGuide!.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&

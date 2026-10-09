@@ -105,7 +105,7 @@ export function CelulaDeTexto({
           e.currentTarget.blur();
         }
       }}
-      className="w-full rounded-md border border-primary/50 bg-background px-2 py-1.5 text-sm ring-2 ring-primary/20 outline-none"
+      className="w-full rounded-md border border-primary/50 bg-background px-2 py-1.5 text-sm ring-2 ring-primary/20 outline-hidden"
     />
   );
 }

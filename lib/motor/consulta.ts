@@ -1,5 +1,7 @@
 ﻿import { z } from "zod";
 
+import { chaveDoPeriodo } from "./calendario";
+
 /**
  * A CONSULTA de uma tabela estilo Notion: filtros, ordenação e agrupamento.
  *
@@ -84,6 +86,11 @@ export const filtroSchema = z
     valor: z
       .union([z.string().max(500), z.number().finite(), z.array(z.string().max(80)).max(100)])
       .optional(),
+    /**
+     * Como este filtro se liga ao ANTERIOR: `e` (padrão) ou `ou`. O "e" prende mais forte:
+     * `A e B ou C` é `(A e B) ou C`, como no Notion. Ignorado no primeiro filtro.
+     */
+    juncao: z.enum(["e", "ou"]).optional(),
   })
   .strict();
 export type Filtro = z.infer<typeof filtroSchema>;
@@ -99,6 +106,8 @@ export const consultaSchema = z
     filtros: z.array(filtroSchema).max(MAXIMO).optional(),
     ordenacao: z.array(ordemSchema).max(5).optional(),
     agrupar: idDeCampo.optional(),
+    /** Campo de data agrupado por dia, semana (começa na segunda) ou mês. Padrão: dia. */
+    agruparPor: z.enum(["dia", "semana", "mes"]).optional(),
   })
   .strict();
 export type ConsultaDaTabela = z.infer<typeof consultaSchema>;
@@ -185,7 +194,11 @@ function aprova(
   }
 }
 
-/** Fica só com as linhas que passam em TODOS os filtros (E). */
+/**
+ * Fica só com as linhas que passam nos filtros. Os filtros ligados por "e" formam um grupo
+ * (todos têm de passar); a linha vale se passar em QUALQUER grupo — os grupos são separados
+ * pelos filtros marcados "ou". Sem nenhum "ou", é o "todos os filtros" de sempre.
+ */
 export function filtrar<T>(
   linhas: readonly T[],
   campos: readonly CampoConsultavel<T>[],
@@ -193,13 +206,23 @@ export function filtrar<T>(
   contexto: ContextoDaConsulta,
 ): T[] {
   const porId = new Map(campos.map((c) => [c.id, c]));
-  const uteis = (filtros ?? []).flatMap((f) => {
+  const grupos: Array<Array<{ f: Filtro; campo: CampoConsultavel<T> }>> = [];
+  // Um filtro sem efeito (campo apagado, valor vazio) some, mas o "ou" que ele trazia
+  // continua valendo para o próximo — senão apagar uma propriedade fundiria dois grupos.
+  let novoGrupo = true;
+  (filtros ?? []).forEach((f, i) => {
+    if (i > 0 && f.juncao === "ou") novoGrupo = true;
     const campo = porId.get(f.campo);
-    return campo && filtroUtil(f, campo) ? [{ f, campo }] : [];
+    if (!campo || !filtroUtil(f, campo)) return;
+    if (novoGrupo || grupos.length === 0) grupos.push([]);
+    novoGrupo = false;
+    grupos[grupos.length - 1]!.push({ f, campo });
   });
-  if (uteis.length === 0) return [...linhas];
+  if (grupos.length === 0) return [...linhas];
   return linhas.filter((linha) =>
-    uteis.every(({ f, campo }) => aprova(campo.valorDe(linha), campo.tipo, f, contexto)),
+    grupos.some((g) =>
+      g.every(({ f, campo }) => aprova(campo.valorDe(linha), campo.tipo, f, contexto)),
+    ),
   );
 }
 
@@ -277,12 +300,16 @@ export const TIPOS_AGRUPAVEIS: readonly TipoDeCampo[] = TIPOS_DE_CAMPO;
  * cronológica; números em ordem numérica; o resto pelo nome. "Sem valor" fica por último.
  * Dentro de cada grupo a ordem de entrada é mantida.
  *
+ * Datas: `granularidade` junta os dias em semana (a chave é a segunda-feira) ou mês (a chave
+ * é o dia 1) — um grupo por dia vira dezenas de grupos.
+ *
  * Campo de VÁRIOS valores (multi): a linha entra em UM grupo por valor que tem — como no
  * Notion. Por isso, com multi, a mesma linha pode aparecer em mais de um grupo.
  */
 export function agrupar<T>(
   linhas: readonly T[],
   campo: CampoConsultavel<T> | undefined,
+  granularidade: "dia" | "semana" | "mes" = "dia",
 ): GrupoDeLinhas<T>[] | null {
   if (!campo || !TIPOS_AGRUPAVEIS.includes(campo.tipo)) return null;
   const mapa = new Map<string, T[]>();
@@ -296,6 +323,8 @@ export function agrupar<T>(
     if (campo.tipo === "caixa") poe(v === true ? "1" : "0", linha);
     else if (campo.tipo === "multi" && Array.isArray(v) && v.length > 0) {
       for (const valor of new Set(v)) poe(String(valor), linha);
+    } else if (campo.tipo === "data" && typeof v === "string" && v !== "") {
+      poe(chaveDoPeriodo(v, granularidade), linha);
     } else poe(estaVazio(v) ? "" : String(v), linha);
   }
   const rotulo = (chave: string) => (chave === "" ? "" : (campo.rotuloDoValor?.(chave) ?? chave));
@@ -322,7 +351,7 @@ export function aplicarConsulta<T>(
   const c = consulta ?? {};
   const final = ordenar(filtrar(linhas, campos, c.filtros, contexto), campos, c.ordenacao);
   const campoDoGrupo = c.agrupar ? campos.find((k) => k.id === c.agrupar) : undefined;
-  const grupos = agrupar(final, campoDoGrupo);
+  const grupos = agrupar(final, campoDoGrupo, c.agruparPor);
   return { linhas: grupos ? grupos.flatMap((g) => g.linhas) : final, grupos };
 }
 
@@ -344,7 +373,11 @@ export function valoresDeNascimento<T>(
 ): Record<string, string | number | boolean | string[]> {
   const porId = new Map(campos.map((c) => [c.id, c]));
   const saida: Record<string, string | number | boolean | string[]> = {};
-  for (const f of filtros ?? []) {
+  // Com "ou", só o PRIMEIRO grupo diz o que a linha deve ter: nascer com o valor dele a
+  // deixa à vista (passa em pelo menos um grupo); misturar os grupos a faria sumir.
+  const corte = (filtros ?? []).findIndex((f, i) => i > 0 && f.juncao === "ou");
+  const doGrupo = corte < 0 ? (filtros ?? []) : (filtros ?? []).slice(0, corte);
+  for (const f of doGrupo) {
     const campo = porId.get(f.campo);
     if (!campo || !filtroUtil(f, campo)) continue;
     const lista = Array.isArray(f.valor) ? f.valor : f.valor === undefined ? [] : [String(f.valor)];

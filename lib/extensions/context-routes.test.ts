@@ -78,9 +78,16 @@ const routes: Array<{
   {
     name: "abertura de Tarefas",
     call: (org) =>
-      open(request("POST", org, { capability: "tasks.open", expected_revision: 0, card_id: "prioridades" }), {
-        params: Promise.resolve({ id: INSTALLATION }),
-      }),
+      open(
+        request("POST", org, {
+          capability: "tasks.open",
+          expected_revision: 0,
+          card_id: "prioridades",
+        }),
+        {
+          params: Promise.resolve({ id: INSTALLATION }),
+        },
+      ),
   },
   {
     name: "recibo",
@@ -159,13 +166,20 @@ describe("contexto exibido pela extensão e cookie compartilhado entre abas", ()
       manifest: { contributions: { crm_cards: [card("prioridades")] } },
     });
     const abrir = (cardId: string) =>
-      open(request("POST", ORGANIZATION_B, { capability: "tasks.open", expected_revision: 2, card_id: cardId }), {
-        params: Promise.resolve({ id: INSTALLATION }),
-      });
+      open(
+        request("POST", ORGANIZATION_B, {
+          capability: "tasks.open",
+          expected_revision: 2,
+          card_id: cardId,
+        }),
+        {
+          params: Promise.resolve({ id: INSTALLATION }),
+        },
+      );
 
     const existente = await abrir("prioridades");
     expect(existente.status).toBe(200);
-    expect((await existente.json()).data).toEqual({ href: "/app/tasks" });
+    expect((await existente.json()).data).toEqual({ href: "/app/tarefas" });
 
     // Uma aba aberta antes de uma troca de versão pede um card que a versão vigente não tem.
     const ausente = await abrir("card-que-saiu");

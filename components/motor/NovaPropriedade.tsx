@@ -63,7 +63,7 @@ export function NovaPropriedade({
           onKeyDown={(e) => {
             if (e.key === "Enter") void criar();
           }}
-          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
         <div>
           <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-text-subtle uppercase">

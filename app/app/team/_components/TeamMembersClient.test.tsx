@@ -89,7 +89,7 @@ beforeEach(() => {
 describe("TeamMembersClient — seletor de papel (G2-02)", () => {
   it("não-admin não vê seletor de papel (só badge)", async () => {
     const rows = members();
-    rows[1]!.interface_settings = { preset: "completa", destinos: ["/app/tasks"] };
+    rows[1]!.interface_settings = { preset: "completa", destinos: ["/app/tarefas"] };
     vi.mocked(apiClient.get).mockResolvedValue({ data: rows });
     renderClient({ canManage: false });
     expect(await screen.findByText("agente@example.com")).toBeInTheDocument();

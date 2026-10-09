@@ -97,7 +97,7 @@ export function MenuDaColuna({
                 valor={nome.valor}
                 rotulo={t("Nome da propriedade")}
                 aoSalvar={nome.aoSalvar}
-                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             ) : null}
             {tipo ? <p className="px-1 pb-1 text-xs text-text-subtle">{tipo}</p> : null}

@@ -7,7 +7,7 @@ import { useAgendamentos } from "@/hooks/agenda/useAgendamentos";
 import { useAgentInbox } from "@/hooks/ai/useAgentInbox";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
-import { useTasks } from "@/hooks/tasks/useTasks";
+import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import {
   chaveDoDia,
   diasDaSemana,
@@ -17,8 +17,15 @@ import {
   somarDias,
 } from "@/lib/inicio/datas";
 import { tarefasDoDia } from "@/lib/inicio/tarefas-do-dia";
-import type { Tarefa } from "@/lib/tarefas/tipos";
-import { CalendarBlank, CaretLeft, CaretRight, CheckCircle, ListChecks, Plus } from "@/lib/ui/icons";
+import { estaEncerrada, prazoSemHorario, type Tarefa } from "@/lib/tarefas/tipos";
+import {
+  CalendarBlank,
+  CaretLeft,
+  CaretRight,
+  CheckCircle,
+  ListChecks,
+  Plus,
+} from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -29,8 +36,6 @@ interface Props {
   /** O instante em que o servidor pintou a tela — ver `page.tsx`. */
   agoraIso: string;
 }
-
-
 
 const COR_DA_PRIORIDADE: Record<Tarefa["priority"], string> = {
   urgent: "bg-error",
@@ -84,7 +89,7 @@ function CabecalhoDoCartao({
     <div className="mb-4 flex items-center justify-between gap-2">
       <h2
         id={id}
-        className="flex items-center gap-2 whitespace-nowrap text-base font-semibold tracking-tight"
+        className="flex items-center gap-2 text-base font-semibold tracking-tight whitespace-nowrap"
       >
         {icone ? <span className="text-muted-foreground">{icone}</span> : null}
         {titulo}
@@ -107,7 +112,9 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
   const semana = useMemo(() => diasDaSemana(selecionada), [selecionada]);
 
   // ── dados: as mesmas rotas e hooks das telas de origem ──────────────────────
-  const tarefas = useTasks({ aberto: true });
+  // As tarefas vêm do MESMO hook (e do mesmo cache) da tela de Tarefas: concluir aqui muda lá
+  // na hora, e o contrário também. As encerradas saem na hora de montar cada lista.
+  const tarefas = useTarefasDoMotor();
   const recorte = useMemo(
     () => ({
       de: inicioDoDia(semana[0]!, fuso).toISOString(),
@@ -185,7 +192,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
       });
     }
     for (const tarefa of tarefas.tarefas) {
-      if (!tarefa.due_date) continue;
+      if (!tarefa.due_date || estaEncerrada(tarefa)) continue;
       const prazo = new Date(tarefa.due_date);
       const dia = chaveDoDia(prazo, fuso);
       if (dia < semana[0]! || dia > semana[6]!) continue;
@@ -193,13 +200,14 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         id: `t-${tarefa.id}`,
         dia,
         inicio: prazo.getTime(),
-        hora: fmtHora.format(prazo),
+        // Prazo só com data: vale o dia todo, não "00:00".
+        hora: prazoSemHorario(tarefa.due_date, fuso) ? t("O dia todo") : fmtHora.format(prazo),
         titulo: tarefa.title,
         tipo: "tarefa",
       });
     }
     return lista.sort((x, y) => x.inicio - y.inicio);
-  }, [agenda.data, tarefas.tarefas, semana, fuso, fmtHora]);
+  }, [agenda.data, tarefas.tarefas, semana, fuso, fmtHora, t]);
 
   const diasComEvento = new Set(eventos.map((e) => e.dia));
   const diasVisiveis = modo === "dia" ? [selecionada] : semana;
@@ -228,7 +236,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
               {saudacao}, {nome}!
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">{dataPorExtenso}</p>
-            <blockquote className="mt-5 border-l-2 border-border-strong pl-3 text-sm italic text-muted-foreground">
+            <blockquote className="mt-5 border-l-2 border-border-strong pl-3 text-sm text-muted-foreground italic">
               “{frase}”
             </blockquote>
           </div>
@@ -275,15 +283,12 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
               {t("Não foi possível carregar as tarefas.")}
             </p>
           ) : tarefasDoDiaLista.length === 0 ? (
-            <Vazio
-              titulo={t("Nenhuma tarefa pendente!")}
-              texto={t("Você está em dia com tudo.")}
-            />
+            <Vazio titulo={t("Nenhuma tarefa pendente!")} texto={t("Você está em dia com tudo.")} />
           ) : (
             <ul className="flex flex-col gap-2">
               {tarefasDoDiaLista.map((tarefa) => {
                 const atrasada = atrasadas.includes(tarefa);
-                const prazo = new Date(tarefa.due_date!);
+                const prazo = tarefa.due_date ? new Date(tarefa.due_date) : null;
                 return (
                   <li
                     key={tarefa.id}
@@ -293,25 +298,39 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                       type="button"
                       aria-label={t("Concluir tarefa")}
                       disabled={!podeEditar}
-                      onClick={() => void tarefas.alternarConcluida(tarefa)}
+                      onClick={() =>
+                        void tarefas.editarTarefa(tarefa.id, { status: "done" }, { status: "done" })
+                      }
                       className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-border-strong transition-colors hover:border-primary hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{tarefa.title}</p>
+                      <Link
+                        href={`/app/tarefas?abrir=${tarefa.id}`}
+                        className="block truncate text-sm font-medium hover:underline"
+                      >
+                        {tarefa.title}
+                      </Link>
                       <p
                         className={cn(
                           "text-xs",
                           atrasada ? "font-medium text-error-fg" : "text-muted-foreground",
                         )}
                       >
-                        {atrasada
-                          ? `${t("Atrasada")} · ${rotuloDoDia(chaveDoDia(prazo, fuso), { day: "numeric", month: "short" })}`
-                          : fmtHora.format(prazo)}
+                        {!prazo
+                          ? t("Começa hoje")
+                          : atrasada
+                            ? `${t("Atrasada")} · ${rotuloDoDia(chaveDoDia(prazo, fuso), { day: "numeric", month: "short" })}`
+                            : prazoSemHorario(tarefa.due_date!, fuso)
+                              ? t("O dia todo")
+                              : fmtHora.format(prazo)}
                       </p>
                     </div>
                     <span
                       aria-hidden
-                      className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", COR_DA_PRIORIDADE[tarefa.priority])}
+                      className={cn(
+                        "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                        COR_DA_PRIORIDADE[tarefa.priority],
+                      )}
                     />
                   </li>
                 );
@@ -320,7 +339,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
           )}
 
           <Link
-            href="/app/tasks"
+            href="/app/tarefas"
             className="mt-auto pt-4 text-xs font-medium text-primary hover:underline"
           >
             {t("Ver todas as tarefas")} →
@@ -408,14 +427,18 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                   <span className="text-[11px] lowercase">
                     {rotuloDoDia(dia, { weekday: "short" }).replace(".", "")}
                   </span>
-                  <span className="text-base font-bold leading-none">
+                  <span className="text-base leading-none font-bold">
                     {rotuloDoDia(dia, { day: "numeric" })}
                   </span>
                   <span
                     aria-hidden
                     className={cn(
                       "h-1 w-1 rounded-full",
-                      diasComEvento.has(dia) ? (ativo ? "bg-primary-foreground" : "bg-primary") : "bg-transparent",
+                      diasComEvento.has(dia)
+                        ? ativo
+                          ? "bg-primary-foreground"
+                          : "bg-primary"
+                        : "bg-transparent",
                     )}
                   />
                 </button>
@@ -443,7 +466,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                   .filter((d) => diasComEvento.has(d))
                   .map((dia) => (
                     <div key={dia}>
-                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+                      <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-text-subtle uppercase">
                         {rotuloDoDia(dia, { weekday: "short", day: "numeric", month: "short" })}
                       </p>
                       <ul className="flex flex-col gap-1.5">
@@ -498,12 +521,17 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                     >
                       <span
                         aria-hidden
-                        className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", COR_DA_GRAVIDADE[item.severity] ?? "bg-info")}
+                        className={cn(
+                          "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                          COR_DA_GRAVIDADE[item.severity] ?? "bg-info",
+                        )}
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{item.title}</span>
                         {item.body ? (
-                          <span className="line-clamp-2 text-xs text-muted-foreground">{item.body}</span>
+                          <span className="line-clamp-2 text-xs text-muted-foreground">
+                            {item.body}
+                          </span>
                         ) : null}
                       </span>
                     </Link>

@@ -1,0 +1,7 @@
+[Unit]
+Description=Cria as tarefas dos modelos que repetem (M1)
+After=m1-app.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/m1-tarefas-repetidas.sh

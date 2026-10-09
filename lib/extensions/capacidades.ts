@@ -57,7 +57,7 @@ interface PortaDaCapacidade {
  * virar `undefined` em tempo de execução e cair num destino vazio.
  */
 export const PORTA_DA_CAPACIDADE: Record<ExtensionCapability, PortaDaCapacidade> = {
-  "tasks.open": { destino: "/app/tasks", permissao: "navigation.tasks" },
+  "tasks.open": { destino: "/app/tarefas", permissao: "navigation.tasks" },
   "inbox.open": { destino: "/app/inbox", permissao: "navigation.inbox" },
   "kanban.open": { destino: "/app/kanban", permissao: "navigation.kanban" },
   "contacts.open": { destino: "/app/contacts", permissao: "navigation.contacts" },

@@ -68,16 +68,14 @@ test("interface por membro atualiza ao vivo, preserva formulário e convite apli
       if (error) throw error;
       orgs.push(data.id);
     }
-    const membership = await db
-      .from("user_organizations")
-      .insert(
-        users.map((user_id, i) => ({
-          user_id,
-          organization_id: i === 3 ? orgs[1] : orgs[0],
-          role: i === 0 ? "admin" : "agent",
-          accepted_at: new Date().toISOString(),
-        })),
-      );
+    const membership = await db.from("user_organizations").insert(
+      users.map((user_id, i) => ({
+        user_id,
+        organization_id: i === 3 ? orgs[1] : orgs[0],
+        role: i === 0 ? "admin" : "agent",
+        accepted_at: new Date().toISOString(),
+      })),
+    );
     if (membership.error) throw membership.error;
     const member = await memberContext.newPage();
     const other = await otherContext.newPage();
@@ -153,7 +151,7 @@ test("interface por membro atualiza ao vivo, preserva formulário e convite apli
     await login(guest, emails[3]!);
     await guest.goto(link);
     await guest.getByRole("button", { name: /aceitar/i }).click();
-    await guest.waitForURL("**/app/tasks");
+    await guest.waitForURL("**/app/tarefas");
     await expect(nav(guest).getByRole("link", { name: "Inbox", exact: true })).toHaveCount(0);
     await expect(nav(guest).getByRole("link", { name: "Tarefas", exact: true })).toBeVisible();
     await expect(guest.getByRole("heading", { name: "Tarefas", exact: true })).toBeVisible();
@@ -168,7 +166,7 @@ test("interface por membro atualiza ao vivo, preserva formulário e convite apli
       .single();
     expect(persisted.data?.interface_settings).toEqual({
       preset: "simplificada",
-      destinos: ["/app/tasks"],
+      destinos: ["/app/tarefas"],
     });
     await page.goto("/app/team");
     await customize(page, emails[3]!, "Produtos");
@@ -181,7 +179,12 @@ test("interface por membro atualiza ao vivo, preserva formulário e convite apli
     await page.getByRole("option", { name: "manager", exact: true }).click();
     await expect(page.getByText("Papel atualizado.", { exact: true })).toBeVisible();
     await other.goto("/app/team");
-    await expect(other.getByRole("row").filter({ hasText: emails[2] }).getByText("Personalizada", { exact: true })).toBeVisible();
+    await expect(
+      other
+        .getByRole("row")
+        .filter({ hasText: emails[2] })
+        .getByText("Personalizada", { exact: true }),
+    ).toBeVisible();
   } finally {
     await memberContext.close();
     await otherContext.close();

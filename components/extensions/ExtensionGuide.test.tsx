@@ -76,7 +76,7 @@ describe("ExtensionGuide", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(json({ data: GUIDE }))
-      .mockResolvedValueOnce(json({ data: { href: "/app/tasks" } }));
+      .mockResolvedValueOnce(json({ data: { href: "/app/tarefas" } }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
@@ -93,7 +93,7 @@ describe("ExtensionGuide", () => {
     expect(screen.queryByRole("link", { name: "Abrir tarefas" })).toBeNull();
     await user.click(action);
 
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/app/tasks"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/app/tarefas"));
     const [, guideInit] = fetchMock.mock.calls[0] as [string, RequestInit];
     const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(new Headers(guideInit.headers).get("X-Expected-Organization-Id")).toBe(
@@ -140,7 +140,9 @@ describe("ExtensionGuide", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tentar novamente" })).toBeNull();
     expect(
-      screen.queryByText("Volte à gestão para conferir se ela está ativa e qual é o próximo passo."),
+      screen.queryByText(
+        "Volte à gestão para conferir se ela está ativa e qual é o próximo passo.",
+      ),
     ).toBeNull();
     expect(screen.getByRole("link", { name: "Voltar às extensões" })).toBeInTheDocument();
   });

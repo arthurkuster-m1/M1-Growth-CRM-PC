@@ -437,3 +437,88 @@ describe("valoresDeNascimento — texto", () => {
     expect(v).toEqual({ titulo: "teste" });
   });
 });
+
+describe("filtro com 'ou'", () => {
+  const ls = [
+    L("a", { status: "fazer", quem: "u1" }),
+    L("b", { status: "feito", quem: "u2" }),
+    L("c", { status: "andando", quem: "u1" }),
+    L("d", { status: "feito", quem: "u1" }),
+  ];
+  const f = (campo: string, valor: string, juncao?: "e" | "ou") => ({
+    campo,
+    operador: "e" as const,
+    valor,
+    ...(juncao ? { juncao } : {}),
+  });
+
+  it("sem 'ou' continua sendo 'todos os filtros'", () => {
+    expect(ids(filtrar(ls, campos, [f("status", "feito"), f("quem", "u1")], contexto))).toEqual([
+      "d",
+    ]);
+  });
+
+  it("'ou' une dois filtros: status feito OU responsável u2", () => {
+    const r = filtrar(ls, campos, [f("status", "fazer"), f("status", "feito", "ou")], contexto);
+    expect(ids(r)).toEqual(["a", "b", "d"]);
+  });
+
+  it("o 'e' prende mais forte: A e B ou C = (A e B) ou C", () => {
+    // (status feito e quem u1) ou (status andando) → d, c
+    const r = filtrar(
+      ls,
+      campos,
+      [f("status", "feito"), f("quem", "u1", "e"), f("status", "andando", "ou")],
+      contexto,
+    );
+    expect(ids(r)).toEqual(["c", "d"]);
+  });
+
+  it("filtro apagado/vazio não funde os grupos: o 'ou' dele passa para o próximo", () => {
+    const r = filtrar(
+      ls,
+      campos,
+      [f("status", "fazer"), f("sumiu", "x", "ou"), f("status", "andando", "e")],
+      contexto,
+    );
+    // grupos: [status fazer] ou [status andando] → a, c
+    expect(ids(r)).toEqual(["a", "c"]);
+  });
+
+  it("a linha nova herda só o primeiro grupo (com 'ou')", () => {
+    const v = valoresDeNascimento([f("status", "fazer"), f("quem", "u2", "ou")], campos, contexto);
+    expect(v).toEqual({ status: "fazer" });
+  });
+});
+
+describe("agrupar datas por semana e por mês", () => {
+  const ls = [
+    L("a", { prazo: "2026-10-05" }), // segunda
+    L("b", { prazo: "2026-10-11" }), // domingo da mesma semana
+    L("c", { prazo: "2026-10-12" }), // segunda seguinte
+    L("d", { prazo: "2026-11-02" }),
+    L("e"),
+  ];
+  const prazo = campos.find((c) => c.id === "prazo");
+
+  it("semana: a chave é a segunda-feira", () => {
+    const g = agrupar(ls, prazo, "semana")!;
+    expect(g.map((x) => x.chave)).toEqual(["2026-10-05", "2026-10-12", "2026-11-02", ""]);
+    expect(ids(g[0]!.linhas)).toEqual(["a", "b"]);
+  });
+
+  it("mês: a chave é o dia 1", () => {
+    const g = agrupar(ls, prazo, "mes")!;
+    expect(g.map((x) => x.chave)).toEqual(["2026-10-01", "2026-11-01", ""]);
+    expect(ids(g[0]!.linhas)).toEqual(["a", "b", "c"]);
+  });
+
+  it("dia (padrão) não junta nada", () => {
+    expect(agrupar(ls, prazo)!.length).toBe(5);
+  });
+
+  it("o pipeline aceita agruparPor no schema", () => {
+    expect(consultaSchema.safeParse({ agrupar: "prazo", agruparPor: "semana" }).success).toBe(true);
+    expect(consultaSchema.safeParse({ agrupar: "prazo", agruparPor: "ano" }).success).toBe(false);
+  });
+});

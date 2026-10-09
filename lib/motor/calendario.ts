@@ -79,3 +79,14 @@ export function lerDiaBr(texto: string): string | null {
   }
   return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
+
+/** A segunda-feira da semana de `chave` (`YYYY-MM-DD`). */
+export const inicioDaSemana = (chave: string): string =>
+  somarDias(chave, -diaDaSemanaDaChave(chave));
+
+/** A chave do período que contém o dia: o próprio dia, a segunda da semana ou o dia 1 do mês. */
+export function chaveDoPeriodo(chave: string, granularidade: "dia" | "semana" | "mes"): string {
+  if (granularidade === "semana") return inicioDaSemana(chave);
+  if (granularidade === "mes") return inicioDoMes(chave);
+  return chave;
+}

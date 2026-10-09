@@ -88,6 +88,10 @@ CRONS="
 # confirmado, futuro e ainda não avisado.
 */5 * * * *|45|api/v1/cron/agenda-reminder
 */15 * * * *|45|api/v1/cron/agenda-expira-pendentes
+# AS TAREFAS REPETIDAS. A cada 5 minutos: a tarefa "toda segunda às 7h" nasce até 5 min
+# depois da hora marcada. Rodada vazia (quase todas) não grava nada: só consulta os
+# modelos que repetem e já venceram.
+*/5 * * * *|60|api/v1/cron/tarefas-repetidas
 */15 * * * *|60|api/v1/cron/risk-watcher
 # O CASO PARADO. De hora em hora, e não a cada 5 minutos: o prazo é de 24h, e
 # uma varredura mais frequente só gastaria consulta para descobrir o mesmo nada.

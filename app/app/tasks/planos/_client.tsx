@@ -76,9 +76,8 @@ export function PlanosDeTarefa() {
   const q = useQuery({
     queryKey: CHAVE_DA_CONSULTA,
     queryFn: async () =>
-      (await apiClient.get<{ data: { planos: PlanoDeTarefas[] } }>(
-        "/api/v1/settings/task-plans",
-      )).data,
+      (await apiClient.get<{ data: { planos: PlanoDeTarefas[] } }>("/api/v1/settings/task-plans"))
+        .data,
   });
 
   const salvar = useMutation({
@@ -123,7 +122,9 @@ export function PlanosDeTarefa() {
       passos: rascunho.passos.map((p, i) => ({ ...p, ordem: i + 1 })),
     };
     const outraVez = planos.some((p) => p.id === pronto.id);
-    salvar.mutate(outraVez ? planos.map((p) => (p.id === pronto.id ? pronto : p)) : [...planos, pronto]);
+    salvar.mutate(
+      outraVez ? planos.map((p) => (p.id === pronto.id ? pronto : p)) : [...planos, pronto],
+    );
   }
 
   function excluir(plano: PlanoDeTarefas) {
@@ -134,7 +135,7 @@ export function PlanosDeTarefa() {
     <div className="mx-auto max-w-3xl space-y-4 p-6">
       <div>
         <Link
-          href="/app/tasks"
+          href="/app/tarefas"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-text"
         >
           <ArrowBendUpLeft size={14} aria-hidden />
@@ -163,7 +164,10 @@ export function PlanosDeTarefa() {
       </header>
 
       {erro ? (
-        <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm"
+        >
           {erro}
         </p>
       ) : null}
@@ -204,7 +208,11 @@ export function PlanosDeTarefa() {
                 variant="ghost"
                 onClick={() => {
                   setErro(null);
-                  setRascunho({ ...plano, descricao: plano.descricao, passos: plano.passos.map((p) => ({ ...p })) });
+                  setRascunho({
+                    ...plano,
+                    descricao: plano.descricao,
+                    passos: plano.passos.map((p) => ({ ...p })),
+                  });
                 }}
               >
                 {t("Editar")}
@@ -336,7 +344,9 @@ function Editor({
                 <Label>{t("Atribuir a")}</Label>
                 <Select
                   value={
-                    typeof passo.atribuir_a === "object" ? passo.atribuir_a.usuario_id : "dono_do_lead"
+                    typeof passo.atribuir_a === "object"
+                      ? passo.atribuir_a.usuario_id
+                      : "dono_do_lead"
                   }
                   onValueChange={(v) =>
                     mudarPasso(indice, {

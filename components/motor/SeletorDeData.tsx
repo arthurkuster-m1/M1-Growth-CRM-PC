@@ -95,7 +95,7 @@ export function SeletorDeData({
           onKeyDown={(e) => {
             if (e.key === "Enter") aoConfirmar();
           }}
-          className="h-11 w-full rounded-xl border bg-background px-3 text-base outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="h-11 w-full rounded-xl border bg-background px-3 text-base outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -146,7 +146,7 @@ export function SeletorDeData({
                     : ehHoje
                       ? "rounded-full bg-error text-white"
                       : "rounded-lg hover:bg-secondary",
-                  !doMes && !escolhido && !ehHoje && "text-muted-foreground/60",
+                  !doMes && !escolhido && !ehHoje && "text-muted-foreground opacity-70",
                 )}
               >
                 {Number(d.slice(8))}

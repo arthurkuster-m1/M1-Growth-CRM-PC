@@ -243,7 +243,7 @@ export async function criarTarefaInterna(
         title: "Nova tarefa",
         body: truncar(titulo),
         tag: `task:${tarefaId}`,
-        href: "/app/tasks",
+        href: "/app/tarefas",
       });
     } catch (err) {
       logger.warn("task_push_failed", {

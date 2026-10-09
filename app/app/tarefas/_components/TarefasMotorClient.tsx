@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
@@ -34,6 +34,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
@@ -41,6 +42,7 @@ import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
+import { useModelosDeTarefa } from "@/hooks/tarefas/useModelosDeTarefa";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
 import { usePropriedadesDaTarefa } from "@/hooks/tarefas/usePropriedadesDaTarefa";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
@@ -60,6 +62,7 @@ import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/m
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { tarefaDoModelo, type ModeloDeTarefa } from "@/lib/tarefas/modelos";
 import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
 import {
   SITUACOES_DA_TAREFA,
@@ -68,7 +71,9 @@ import {
   type Tarefa,
 } from "@/lib/tarefas/tipos";
 import {
+  ArrowsClockwise,
   CalendarBlank,
+  CaretDown,
   DotsThree,
   MagnifyingGlass,
   X,
@@ -84,9 +89,20 @@ import { AcoesEmMassa } from "./AcoesEmMassa";
 import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
 import { PainelDaTarefa } from "./PainelDaTarefa";
+import { ModelosDeTarefa } from "./ModelosDeTarefa";
 import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { QuadroKanban } from "./QuadroKanban";
+
+/** `2026-10-01` → "Outubro de 2026" (no idioma da pessoa). */
+const rotuloDoMes = (chave: string, tag: string) => {
+  const texto = new Intl.DateTimeFormat(tag, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${chave}T12:00:00Z`));
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+};
 
 /** Busca sem acento e sem diferença de maiúscula. */
 const normalizarBusca = (texto: string) =>
@@ -140,6 +156,7 @@ export function TarefasMotorClient({
     editarVarias,
     apagarVarias,
   } = useTarefasDoMotor();
+  const { modelos, criarModelo, editarModelo, apagarModelo } = useModelosDeTarefa();
   const { opcoes, criarOpcao, editarOpcao, apagarOpcao } = useOpcoesDeStatus();
   const { propriedades, criarPropriedade, editarPropriedade, apagarPropriedade } =
     usePropriedadesDaTarefa();
@@ -150,8 +167,12 @@ export function TarefasMotorClient({
   }));
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [abertaId, setAbertaId] = useState<string | null>(null);
+  const aoAbrirDoInicio = useSearchParams().get("abrir");
+  // `?abrir=<id>` (o link da tela Início) abre a tarefa direto no painel.
+  const [abertaId, setAbertaId] = useState<string | null>(aoAbrirDoInicio);
   const [configurando, setConfigurando] = useState(false);
+  const [modelosAberto, setModelosAberto] = useState(false);
+  const [modeloNovo, setModeloNovo] = useState(false);
   const [busca, setBusca] = useState("");
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [apagarVisaoId, setApagarVisaoId] = useState<string | null>(null);
@@ -406,6 +427,12 @@ export function TarefasMotorClient({
   const router = useRouter();
   const caminho = usePathname();
   const parametros = useSearchParams();
+  // Já abriu: tira o `?abrir=` do endereço, para recarregar ou voltar não reabrir a tarefa.
+  useEffect(() => {
+    if (aoAbrirDoInicio) router.replace(caminho, { scroll: false });
+    // Só na chegada à tela.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const ID_DA_PADRAO = "padrao";
   const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
@@ -564,7 +591,11 @@ export function TarefasMotorClient({
           ? g.chave === "1"
             ? t("Marcado")
             : t("Desmarcado")
-          : g.rotulo;
+          : meta?.tipo === "data" && preferencias.agruparPor === "semana"
+            ? `${t("Semana de")} ${formatarDiaBr(g.chave)}`
+            : meta?.tipo === "data" && preferencias.agruparPor === "mes"
+              ? rotuloDoMes(g.chave, tag)
+              : g.rotulo;
     return {
       chave: g.chave || "__vazio",
       titulo: cor ? <Etiqueta cor={cor}>{nome}</Etiqueta> : <strong>{nome}</strong>,
@@ -578,6 +609,7 @@ export function TarefasMotorClient({
       filtros: c.filtros?.length ? c.filtros : undefined,
       ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
       agrupar: c.agrupar,
+      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
     }));
   }
 
@@ -607,6 +639,25 @@ export function TarefasMotorClient({
   function selecionarTodas(marcar: boolean) {
     setSelecionadas(marcar ? new Set(idsDaTabela) : new Set());
     ultimoMarcado.current = null;
+  }
+
+  function abrirModelos(novo: boolean) {
+    setModeloNovo(novo);
+    setModelosAberto(true);
+  }
+
+  /** Cria a tarefa a partir de um modelo: início e prazo contados a partir de HOJE. */
+  async function novaDoModelo(modelo: ModeloDeTarefa) {
+    const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
+    try {
+      const criada = await criarTarefa({
+        ...tarefaDoModelo(modelo, hojeNoFuso(agora, fuso), fuso),
+        position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
+      });
+      setAbertaId(criada.id);
+    } catch {
+      // O hook já mostrou o erro da API.
+    }
   }
 
   /**
@@ -680,15 +731,64 @@ export function TarefasMotorClient({
             </p>
           </div>
           {podeEditar ? (
-            <button
-              aria-label={t("Nova tarefa")}
-              type="button"
-              onClick={() => void novaTarefa()}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-[var(--color-accent-hover)]"
-            >
-              <Plus size={16} weight="bold" aria-hidden />
-              <span className="hidden sm:inline">{t("Nova tarefa")}</span>
-            </button>
+            // Botão dividido, como no Notion: a parte grande cria em branco; a seta abre os modelos.
+            <div className="flex shrink-0 items-stretch rounded-xl bg-primary shadow-sm">
+              <button
+                aria-label={t("Nova tarefa")}
+                type="button"
+                onClick={() => void novaTarefa()}
+                className="inline-flex h-9 items-center gap-2 rounded-l-xl px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
+              >
+                <Plus size={16} weight="bold" aria-hidden />
+                <span className="hidden sm:inline">{t("Nova tarefa")}</span>
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={t("Modelos de tarefa")}
+                    title={t("Modelos de tarefa")}
+                    className="grid h-9 w-8 place-items-center rounded-r-xl border-l border-primary-foreground/25 text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
+                  >
+                    <CaretDown size={14} weight="bold" aria-hidden />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {modelos.length > 0 ? (
+                    <>
+                      <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {t("Criar a partir de um modelo")}
+                      </p>
+                      {modelos.map((m) => (
+                        <DropdownMenuItem
+                          key={m.id}
+                          className="gap-2"
+                          onSelect={() => void novaDoModelo(m)}
+                        >
+                          {m.repeat_enabled ? (
+                            <ArrowsClockwise
+                              size={14}
+                              className="shrink-0 text-primary"
+                              aria-hidden
+                            />
+                          ) : null}
+                          <span className="truncate">{m.name}</span>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
+                  <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(true)}>
+                    <Plus size={14} aria-hidden />
+                    {t("Novo modelo")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(false)}>
+                    <ArrowsClockwise size={14} aria-hidden />
+                    {t("Gerenciar modelos e repetições")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : null}
         </div>
         <AbasDeVisualizacao
@@ -727,7 +827,7 @@ export function TarefasMotorClient({
                   setBuscaAberta(false);
                 }
               }}
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-hidden"
             />
             <button
               type="button"
@@ -926,6 +1026,24 @@ export function TarefasMotorClient({
           aoLimpar={() => setSelecionadas(new Set())}
         />
       ) : null}
+
+      <ModelosDeTarefa
+        // `key`: reabrir pelo "Novo modelo" volta ao formulário em branco, e pelo "Gerenciar" à lista.
+        key={`${modelosAberto}-${modeloNovo}`}
+        aberto={modelosAberto}
+        aoFechar={() => setModelosAberto(false)}
+        modelos={modelos}
+        opcoesDeStatus={opcoes}
+        membros={membros}
+        fuso={fuso}
+        tag={tag}
+        agora={agora}
+        podeEditar={podeEditar}
+        comecarNovo={modeloNovo}
+        aoCriar={criarModelo}
+        aoEditar={editarModelo}
+        aoApagar={apagarModelo}
+      />
 
       <ConfigurarVisualizacao
         aberto={configurando}

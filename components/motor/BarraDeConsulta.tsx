@@ -34,7 +34,7 @@ interface Props {
 }
 
 const SELECT =
-  "h-8 min-w-0 rounded-lg border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+  "h-8 min-w-0 rounded-lg border bg-background px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40";
 
 function Gatilho({
   icone,
@@ -132,7 +132,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
   function trocarCampoDoFiltro(i: number, id: string) {
     const campo = campoDe(id);
     if (!campo) return;
-    mudarFiltro(i, { campo: id, operador: OPERADORES_DO_TIPO[campo.tipo][0]! });
+    mudarFiltro(i, {
+      campo: id,
+      operador: OPERADORES_DO_TIPO[campo.tipo][0]!,
+      ...(filtros[i]?.juncao ? { juncao: filtros[i]!.juncao } : {}),
+    });
   }
 
   function campoDeValor(i: number, f: Filtro, campo: CampoDaBarra) {
@@ -227,6 +231,26 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
                 if (!campo) return null;
                 return (
                   <li key={i} className="flex flex-wrap items-center gap-1.5">
+                    {i === 0 ? (
+                      <span className="w-14 shrink-0 px-1 text-sm text-muted-foreground">
+                        {t("Onde")}
+                      </span>
+                    ) : (
+                      <select
+                        value={f.juncao ?? "e"}
+                        aria-label={t("Ligação com o filtro anterior")}
+                        onChange={(e) =>
+                          mudarFiltro(i, {
+                            ...f,
+                            juncao: e.target.value === "ou" ? "ou" : "e",
+                          })
+                        }
+                        className={cn(SELECT, "w-14 shrink-0")}
+                      >
+                        <option value="e">{t("e")}</option>
+                        <option value="ou">{t("ou")}</option>
+                      </select>
+                    )}
                     <select
                       value={f.campo}
                       aria-label={t("Campo do filtro")}
@@ -246,6 +270,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
                         mudarFiltro(i, {
                           campo: f.campo,
                           operador: e.target.value as Operador,
+                          ...(f.juncao ? { juncao: f.juncao } : {}),
                         })
                       }
                       className={cn(SELECT, "w-32")}
@@ -370,6 +395,31 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
               </option>
             ))}
           </select>
+          {consulta.agrupar && campoDe(consulta.agrupar)?.tipo === "data" ? (
+            <>
+              <p className="mt-3 mb-2 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+                {t("Agrupar datas por")}
+              </p>
+              <select
+                value={consulta.agruparPor ?? "dia"}
+                aria-label={t("Agrupar datas por")}
+                onChange={(e) =>
+                  aoMudar({
+                    ...consulta,
+                    agruparPor:
+                      e.target.value === "semana" || e.target.value === "mes"
+                        ? e.target.value
+                        : undefined,
+                  })
+                }
+                className={cn(SELECT, "w-full")}
+              >
+                <option value="dia">{t("Dia")}</option>
+                <option value="semana">{t("Semana")}</option>
+                <option value="mes">{t("Mês")}</option>
+              </select>
+            </>
+          ) : null}
         </PopoverContent>
       </Popover>
 

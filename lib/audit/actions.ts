@@ -712,6 +712,10 @@ export const AUDIT_ACTIONS = [
   "crm_saved_view.created",
   "crm_saved_view.updated",
   "crm_saved_view.deleted",
+  // Modelos de tarefa e tarefas repetidas (migration 0586).
+  "crm_task_template.created",
+  "crm_task_template.updated",
+  "crm_task_template.deleted",
   "crm_task.bulk_updated",
   "crm_task.bulk_deleted",
 

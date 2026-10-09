@@ -33,7 +33,7 @@ export function CampoDeNome({
       }}
       className={
         className ??
-        "min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+        "min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
       }
     />
   );
@@ -62,7 +62,7 @@ export function CampoDeNovaOpcao({
           setTexto("");
         }
       }}
-      className="w-full rounded-md border border-dashed bg-background px-2 py-1 text-sm outline-none placeholder:text-text-subtle focus:border-primary/50"
+      className="w-full rounded-md border border-dashed bg-background px-2 py-1 text-sm outline-hidden placeholder:text-text-subtle focus:border-primary/50"
     />
   );
 }

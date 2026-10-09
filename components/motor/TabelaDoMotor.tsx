@@ -182,7 +182,7 @@ function LinhaOrdenavel({
               ref={setActivatorNodeRef}
               type="button"
               aria-label={rotuloDoArraste}
-              className="grid h-7 w-6 cursor-grab touch-none place-items-center rounded text-text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 active:cursor-grabbing"
+              className="grid h-7 w-6 cursor-grab touch-none place-items-center rounded-md text-text-subtle opacity-0 transition-opacity group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 active:cursor-grabbing"
               {...attributes}
               {...listeners}
             >

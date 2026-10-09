@@ -24,7 +24,7 @@ const SIMPLIFICADA: readonly NavDestinationId[] = [
   "/app/agenda",
   "/app/kanban",
   "/app/contacts",
-  "/app/tasks",
+  "/app/tarefas",
   "/app/connections",
 ];
 /** Portas pessoais e recuperação administrativa não são removíveis. Atualização
@@ -181,7 +181,8 @@ export function combinarInterfaces(daEmpresa: unknown, doVinculo: unknown): Inte
   const vinculo = conjuntoEscolhido(lerInterface(doVinculo).settings);
   if (!empresa && !vinculo) return INTERFACE_COMPLETA;
   const soUm = empresa ?? vinculo;
-  if (!empresa || !vinculo) return { preset: "completa", destinos: [...(soUm as readonly NavDestinationId[])] };
+  if (!empresa || !vinculo)
+    return { preset: "completa", destinos: [...(soUm as readonly NavDestinationId[])] };
   const comuns = empresa.filter((id) => vinculo.includes(id));
   return { preset: "completa", destinos: [...(comuns.length > 0 ? comuns : SO_O_ESSENCIAL)] };
 }

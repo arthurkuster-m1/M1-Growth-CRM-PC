@@ -29,7 +29,7 @@ describe("interface por vínculo é apresentação", () => {
         "/app/agenda",
         "/app/contacts",
         "/app/kanban",
-        "/app/tasks",
+        "/app/tarefas",
       ]),
     );
   });
@@ -62,8 +62,10 @@ describe("interface por vínculo é apresentação", () => {
     expect(interfaceSettingsSchema.safeParse({ preset: "completa", destinos: [] }).success).toBe(
       false,
     );
-    expect(lerInterface({ preset: "simplificada", destinos: ["/removed", "/app/tasks"] })).toEqual({
-      settings: { preset: "simplificada", destinos: ["/app/tasks"] },
+    expect(
+      lerInterface({ preset: "simplificada", destinos: ["/removed", "/app/tarefas"] }),
+    ).toEqual({
+      settings: { preset: "simplificada", destinos: ["/app/tarefas"] },
       needsAdjustment: true,
     });
     expect(lerInterface({ preset: "simplificada", destinos: ["/removed"] }).settings).toEqual(

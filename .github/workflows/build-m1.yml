@@ -53,23 +53,17 @@ jobs:
 
       - uses: actions/checkout@v7
 
+      - uses: ./.github/actions/preparar-node
+        # O teto do preâmbulo mora aqui porque passo de composite action não
+        # aceita `timeout-minutes`. Razão e medições: o cabeçalho da action.
+        timeout-minutes: 5
+
       - name: Copiar para /opt/m1-growth-crm (o mesmo caminho da VPS)
         run: |
           sudo mkdir -p /opt/m1-growth-crm
           sudo chown "$USER" /opt/m1-growth-crm
+          # `node_modules` vai junto: os atalhos do pnpm são relativos, então a cópia funciona.
           rsync -a --exclude .git ./ /opt/m1-growth-crm/
-
-      - uses: pnpm/action-setup@v6
-        with:
-          package_json_file: /opt/m1-growth-crm/package.json
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Instalar dependências
-        working-directory: /opt/m1-growth-crm
-        run: pnpm install --frozen-lockfile
 
       - name: Construir
         working-directory: /opt/m1-growth-crm

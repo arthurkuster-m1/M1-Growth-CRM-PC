@@ -89,6 +89,11 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.in" },
     ],
   },
+  // A tela antiga de Tarefas (/app/tasks, dentro do CRM) foi apagada: a de verdade é /app/tarefas.
+  // Só o endereço exato — /app/tasks/planos continua existindo.
+  async redirects() {
+    return [{ source: "/app/tasks", destination: "/app/tarefas", permanent: true }];
+  },
   async headers() {
     return [
       {

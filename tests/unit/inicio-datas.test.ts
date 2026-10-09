@@ -122,3 +122,48 @@ describe("tarefasDoDia", () => {
     expect(r.hoje.map((t) => t.id)).toEqual(["urgente-tarde", "media-cedo", "baixa-cedo"]);
   });
 });
+
+describe("tarefasDoDia — tarefas com início", () => {
+  const hoje = "2026-07-30"; // 04:00Z do dia 30/07 = 01:00 em São Paulo
+
+  it("a tarefa que COMEÇA hoje é do dia, mesmo com prazo adiante ou sem prazo", () => {
+    const r = tarefasDoDia(
+      [
+        tarefa({
+          id: "adiante",
+          start_date: "2026-07-30T04:00:00Z",
+          due_date: "2026-08-10T03:00:00Z",
+        }),
+        tarefa({ id: "so-inicio", start_date: "2026-07-30T04:00:00Z", due_date: null }),
+      ],
+      hoje,
+      SP,
+    );
+    expect(r.hoje.map((t) => t.id).sort()).toEqual(["adiante", "so-inicio"]);
+  });
+
+  it("a tarefa no MEIO de um intervalo longo não lota o Início", () => {
+    const r = tarefasDoDia(
+      [
+        tarefa({
+          id: "projeto",
+          start_date: "2026-07-01T03:00:00Z",
+          due_date: "2026-08-30T03:00:00Z",
+        }),
+      ],
+      hoje,
+      SP,
+    );
+    expect(r.hoje).toEqual([]);
+    expect(r.atrasadas).toEqual([]);
+  });
+
+  it("encerrada nunca aparece, nem começando hoje", () => {
+    const r = tarefasDoDia(
+      [tarefa({ id: "feita", status: "done", start_date: "2026-07-30T04:00:00Z", due_date: null })],
+      hoje,
+      SP,
+    );
+    expect(r.hoje).toEqual([]);
+  });
+});

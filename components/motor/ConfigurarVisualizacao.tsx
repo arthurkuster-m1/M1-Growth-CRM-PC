@@ -19,7 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useId, useState, type ReactNode } from "react";
 
-import { ICONE_DO_TIPO } from "@/components/motor/AbasDeVisualizacao";
+import { iconeDoTipo } from "@/components/motor/AbasDeVisualizacao";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -176,7 +176,7 @@ function Corpo({
           onKeyDown={(e) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
-          className="h-11 w-full rounded-xl border bg-background px-3 text-base outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="h-11 w-full rounded-xl border bg-background px-3 text-base outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -196,7 +196,7 @@ function Corpo({
                   tipo === x ? "border-primary bg-primary/10 font-medium" : "hover:bg-secondary",
                 )}
               >
-                {ICONE_DO_TIPO[x]}
+                {iconeDoTipo(x)}
                 {rotuloDoTipo(x)}
               </button>
             ))}
