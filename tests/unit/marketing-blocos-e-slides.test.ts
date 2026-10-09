@@ -112,3 +112,64 @@ describe("slidesDaPagina", () => {
     expect(slides.map((s) => s.titulo)).toEqual([null, "Seção", "Outra"]);
   });
 });
+
+describe("blocos de imagem", () => {
+  const arquivo = "0b5f2a3e-6c1d-4f7a-9d2e-123456789abc.png";
+
+  it("aceita imagem só pelo nome do arquivo e recusa caminho ou endereço", () => {
+    const ok = lerBlocos([
+      { id: "a", tipo: "imagem", arquivo, legenda: "", largura: "grande", alinhamento: "centro" },
+      {
+        id: "b",
+        tipo: "imagem",
+        arquivo: "",
+        legenda: "",
+        largura: "media",
+        alinhamento: "esquerda",
+      },
+    ]);
+    expect(ok).toHaveLength(2);
+
+    const ruins = lerBlocos([
+      {
+        id: "c",
+        tipo: "imagem",
+        arquivo: `outra-empresa/${arquivo}`,
+        legenda: "",
+        largura: "grande",
+        alinhamento: "centro",
+      },
+      {
+        id: "d",
+        tipo: "imagem",
+        arquivo: "https://x.com/a.png",
+        legenda: "",
+        largura: "grande",
+        alinhamento: "centro",
+      },
+      {
+        id: "e",
+        tipo: "imagem",
+        arquivo: "../../a.png",
+        legenda: "",
+        largura: "grande",
+        alinhamento: "centro",
+      },
+    ]);
+    expect(ruins).toHaveLength(0);
+  });
+
+  it("imagem com texto e antes/depois com imagem seguem válidos", () => {
+    const lidos = lerBlocos([
+      { id: "a", tipo: "imagem-texto", arquivo, titulo: "t", texto: "x", lado: "direita" },
+      {
+        id: "b",
+        tipo: "antes-depois",
+        antes: { titulo: "", texto: "", imagem: arquivo },
+        depois: { titulo: "", texto: "" },
+      },
+      { id: "c", tipo: "texto", texto: "oi", alinhamento: "centro" },
+    ]);
+    expect(lidos).toHaveLength(3);
+  });
+});

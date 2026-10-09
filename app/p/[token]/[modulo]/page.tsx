@@ -10,6 +10,7 @@ import { iconeDoModulo } from "@/components/marketing/icones";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
+import { baseDasImagensDoLink } from "@/lib/marketing/imagens";
 import { moduloPorChave } from "@/lib/marketing/modulos";
 import {
   acessoPermitido,
@@ -43,7 +44,12 @@ export default async function PaginaPublicaPage({
   const t = (texto: string) => traduzir(texto, empresa.idioma);
   const textos = textosDoModulo(t, chave);
   if (!textos) notFound();
-  const rotulos = { antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") };
+  const rotulos = {
+    antes: t("Antes"),
+    depois: t("Depois"),
+    abrirLink: t("Abrir link"),
+    baseDasImagens: baseDasImagensDoLink(token),
+  };
   const icone = iconeDoModulo(modulo.icone, 64);
 
   return (

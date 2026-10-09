@@ -75,8 +75,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   // O LINK SEM LOGIN da aba Marketing (migration 0587): o cliente abre `/p/<token>` sem sessão.
   // A autorização é o próprio token (segredo ao portador, 256 bits), resolvido NO SERVIDOR por
   // `lib/marketing/publico.ts` — que só devolve conteúdo publicado e responde 404 a link
-  // inexistente, revogado ou vencido. Ancorado: só `/p/<token>` e `/p/<token>/<módulo>`.
-  /^\/p\/[A-Za-z0-9_-]{32,64}(\/[a-z0-9-]{1,64})?$/,
+  // inexistente, revogado ou vencido. Ancorado: só `/p/<token>`, `/p/<token>/<módulo>` e a imagem
+  // `/p/<token>/img/<uuid>.<png|jpg>` (migration 0588), que passa pelo mesmo crivo do token.
+  /^\/p\/[A-Za-z0-9_-]{32,64}(\/[a-z0-9-]{1,64}|\/img\/[0-9a-f-]{36}\.(?:png|jpg))?$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   // GET /api/v1/contacts aceita SESSÃO ou Bearer `dsk_...` (api_tokens) — a

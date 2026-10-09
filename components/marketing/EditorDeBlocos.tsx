@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import {
+  ALINHAMENTOS,
+  LADOS_DA_IMAGEM,
   LADOS_DO_ANTES_DEPOIS,
+  LARGURAS_DA_IMAGEM,
   TIPOS_DE_BLOCO,
   blocoEmBranco,
   type Bloco,
   type TipoDeBloco,
 } from "@/lib/marketing/blocos";
+import { BASE_DAS_IMAGENS_DO_PAINEL, TAMANHO_MAXIMO_DA_IMAGEM } from "@/lib/marketing/imagens";
 import { CaretDown, CaretUp, Copy, Plus, Trash, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -46,10 +50,143 @@ function useNomesDosTipos() {
         return t("Links");
       case "citacao":
         return t("Citação");
+      case "imagem":
+        return t("Imagem");
+      case "imagem-texto":
+        return t("Imagem com texto");
       case "separador":
         return t("Quebra de slide");
     }
   };
+}
+
+function useRotulosDeAlinhamento() {
+  const t = useT();
+  return (a: (typeof ALINHAMENTOS)[number]): string =>
+    a === "esquerda" ? t("Esquerda") : a === "centro" ? t("Centro") : t("Direita");
+}
+
+function SeletorDeAlinhamento({
+  valor,
+  aoMudar,
+}: {
+  valor: (typeof ALINHAMENTOS)[number];
+  aoMudar: (a: (typeof ALINHAMENTOS)[number]) => void;
+}) {
+  const t = useT();
+  const rotulo = useRotulosDeAlinhamento();
+  return (
+    <Rotulo texto={t("Alinhamento")}>
+      <select
+        value={valor}
+        onChange={(e) => aoMudar(e.target.value as (typeof ALINHAMENTOS)[number])}
+        className={CAMPO}
+      >
+        {ALINHAMENTOS.map((a) => (
+          <option key={a} value={a}>
+            {rotulo(a)}
+          </option>
+        ))}
+      </select>
+    </Rotulo>
+  );
+}
+
+/**
+ * Escolher uma imagem do computador (ou da galeria do celular): sobe na hora, mostra a prévia e
+ * devolve só o NOME do arquivo. Troca e remoção são do bloco — o arquivo antigo fica no bucket
+ * (poucos KB de custo; apagar exigiria saber se outra página ainda o usa).
+ */
+function SeletorDeImagem({
+  arquivo,
+  aoMudar,
+}: {
+  arquivo: string;
+  aoMudar: (arquivo: string) => void;
+}) {
+  const t = useT();
+  const entrada = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function enviar(file: File) {
+    setErro(null);
+    if (file.size > TAMANHO_MAXIMO_DA_IMAGEM) {
+      setErro(t("A imagem precisa ter até 5 MB."));
+      return;
+    }
+    setEnviando(true);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const resposta = await fetch("/api/v1/marketing/imagens", { method: "POST", body: form });
+      const corpo = (await resposta.json().catch(() => null)) as {
+        data?: { arquivo?: string };
+        error?: { message?: string };
+      } | null;
+      if (!resposta.ok || !corpo?.data?.arquivo) {
+        setErro(corpo?.error?.message ?? t("Erro ao enviar a imagem."));
+        return;
+      }
+      aoMudar(corpo.data.arquivo);
+    } catch {
+      setErro(t("Erro ao enviar a imagem."));
+    } finally {
+      setEnviando(false);
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {arquivo ? (
+        // eslint-disable-next-line @next/next/no-img-element -- prévia da imagem da agência
+        <img
+          src={`${BASE_DAS_IMAGENS_DO_PAINEL}${arquivo}`}
+          alt=""
+          className="max-h-48 w-fit max-w-full rounded-xl border object-contain"
+        />
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={entrada}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="sr-only"
+          aria-label={t("Escolher imagem")}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void enviar(f);
+          }}
+        />
+        <button
+          type="button"
+          disabled={enviando}
+          onClick={() => entrada.current?.click()}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+        >
+          <Plus size={14} weight="bold" aria-hidden />
+          {enviando ? t("Enviando…") : arquivo ? t("Trocar imagem") : t("Escolher imagem")}
+        </button>
+        {arquivo ? (
+          <button
+            type="button"
+            onClick={() => aoMudar("")}
+            className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-muted-foreground hover:bg-secondary hover:text-error-fg"
+          >
+            {t("Remover imagem")}
+          </button>
+        ) : null}
+      </div>
+      {erro ? (
+        <p role="alert" className="text-xs text-error-fg">
+          {erro}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">{t("PNG ou JPG, até 5 MB.")}</p>
+      )}
+    </div>
+  );
 }
 
 function Rotulo({ texto, children }: { texto: string; children: ReactNode }) {
@@ -209,7 +346,7 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
   switch (bloco.tipo) {
     case "titulo":
       return (
-        <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
+        <div className="grid gap-3 sm:grid-cols-[9rem_9rem_1fr]">
           <Rotulo texto={t("Tamanho")}>
             <select
               value={bloco.nivel}
@@ -220,6 +357,10 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
               <option value={2}>{t("Subtítulo")}</option>
             </select>
           </Rotulo>
+          <SeletorDeAlinhamento
+            valor={bloco.alinhamento ?? "esquerda"}
+            aoMudar={(alinhamento) => aoMudar({ ...bloco, alinhamento })}
+          />
           <Rotulo texto={t("Texto do título")}>
             <input
               value={bloco.texto}
@@ -233,15 +374,23 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
 
     case "texto":
       return (
-        <Rotulo texto={t("Texto (uma linha em branco separa os parágrafos)")}>
-          <textarea
-            value={bloco.texto}
-            rows={5}
-            maxLength={5000}
-            onChange={(e) => aoMudar({ ...bloco, texto: e.target.value })}
-            className={cn(CAMPO, "resize-y")}
-          />
-        </Rotulo>
+        <div className="grid gap-3">
+          <Rotulo texto={t("Texto (uma linha em branco separa os parágrafos)")}>
+            <textarea
+              value={bloco.texto}
+              rows={5}
+              maxLength={5000}
+              onChange={(e) => aoMudar({ ...bloco, texto: e.target.value })}
+              className={cn(CAMPO, "resize-y")}
+            />
+          </Rotulo>
+          <div className="sm:w-40">
+            <SeletorDeAlinhamento
+              valor={bloco.alinhamento ?? "esquerda"}
+              aoMudar={(alinhamento) => aoMudar({ ...bloco, alinhamento })}
+            />
+          </div>
+        </div>
       );
 
     case "destaque":
@@ -397,6 +546,10 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
                 }
                 className={cn(CAMPO, "resize-y")}
               />
+              <SeletorDeImagem
+                arquivo={bloco[lado].imagem ?? ""}
+                aoMudar={(imagem) => aoMudar({ ...bloco, [lado]: { ...bloco[lado], imagem } })}
+              />
             </div>
           ))}
         </div>
@@ -485,6 +638,97 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
               maxLength={200}
               onChange={(e) => aoMudar({ ...bloco, autor: e.target.value })}
               className={CAMPO}
+            />
+          </Rotulo>
+          <div className="sm:w-40">
+            <SeletorDeAlinhamento
+              valor={bloco.alinhamento ?? "esquerda"}
+              aoMudar={(alinhamento) => aoMudar({ ...bloco, alinhamento })}
+            />
+          </div>
+        </div>
+      );
+
+    case "imagem":
+      return (
+        <div className="grid gap-3">
+          <SeletorDeImagem
+            arquivo={bloco.arquivo}
+            aoMudar={(arquivo) => aoMudar({ ...bloco, arquivo })}
+          />
+          <Rotulo texto={t("Legenda (opcional)")}>
+            <input
+              value={bloco.legenda}
+              maxLength={200}
+              onChange={(e) => aoMudar({ ...bloco, legenda: e.target.value })}
+              className={CAMPO}
+            />
+          </Rotulo>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Rotulo texto={t("Largura")}>
+              <select
+                value={bloco.largura}
+                onChange={(e) =>
+                  aoMudar({ ...bloco, largura: e.target.value as typeof bloco.largura })
+                }
+                className={CAMPO}
+              >
+                {LARGURAS_DA_IMAGEM.map((l) => (
+                  <option key={l} value={l}>
+                    {l === "pequena"
+                      ? t("Pequena")
+                      : l === "media"
+                        ? t("Média")
+                        : l === "grande"
+                          ? t("Grande")
+                          : t("Largura total")}
+                  </option>
+                ))}
+              </select>
+            </Rotulo>
+            <SeletorDeAlinhamento
+              valor={bloco.alinhamento}
+              aoMudar={(alinhamento) => aoMudar({ ...bloco, alinhamento })}
+            />
+          </div>
+        </div>
+      );
+
+    case "imagem-texto":
+      return (
+        <div className="grid gap-3">
+          <SeletorDeImagem
+            arquivo={bloco.arquivo}
+            aoMudar={(arquivo) => aoMudar({ ...bloco, arquivo })}
+          />
+          <Rotulo texto={t("Imagem fica à")}>
+            <select
+              value={bloco.lado}
+              onChange={(e) => aoMudar({ ...bloco, lado: e.target.value as typeof bloco.lado })}
+              className={cn(CAMPO, "sm:w-40")}
+            >
+              {LADOS_DA_IMAGEM.map((l) => (
+                <option key={l} value={l}>
+                  {l === "esquerda" ? t("Esquerda") : t("Direita")}
+                </option>
+              ))}
+            </select>
+          </Rotulo>
+          <Rotulo texto={t("Título")}>
+            <input
+              value={bloco.titulo}
+              maxLength={200}
+              onChange={(e) => aoMudar({ ...bloco, titulo: e.target.value })}
+              className={CAMPO}
+            />
+          </Rotulo>
+          <Rotulo texto={t("Texto")}>
+            <textarea
+              value={bloco.texto}
+              rows={4}
+              maxLength={2500}
+              onChange={(e) => aoMudar({ ...bloco, texto: e.target.value })}
+              className={cn(CAMPO, "resize-y")}
             />
           </Rotulo>
         </div>

@@ -147,6 +147,9 @@ describe("proxy: o que fica público", () => {
     expect(publico(`/p/${tk}/onboarding`)).toBe(true);
     expect(publico(`/p/${tk}/onboarding/extra`)).toBe(false);
     expect(publico("/p/curto")).toBe(false);
+    expect(publico(`/p/${tk}/img/0b5f2a3e-6c1d-4f7a-9d2e-123456789abc.png`)).toBe(true);
+    expect(publico(`/p/${tk}/img/../../x.png`)).toBe(false);
+    expect(publico(`/p/${tk}/img/qualquer.svg`)).toBe(false);
     expect(publico("/p/")).toBe(false);
     // As rotas da AGÊNCIA continuam exigindo sessão.
     expect(publico("/api/v1/marketing/share-links")).toBe(false);

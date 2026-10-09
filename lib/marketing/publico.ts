@@ -1,3 +1,4 @@
+import { ehOperante } from "@/lib/organizacao/operante";
 import { createHash } from "node:crypto";
 
 import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
@@ -78,7 +79,7 @@ export async function resolverLink(token: string): Promise<LinkResolvido | null>
     .select("status")
     .eq("id", linha.organization_id)
     .maybeSingle();
-  if ((org as { status?: string } | null)?.status !== "active") return null;
+  if (!ehOperante((org as { status?: string } | null)?.status)) return null;
 
   // Anota o uso no máximo uma vez por minuto (não vira uma escrita por clique).
   const ultimo = linha.last_used_at ? new Date(linha.last_used_at).getTime() : 0;

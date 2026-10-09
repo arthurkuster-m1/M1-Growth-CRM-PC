@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { Bloco } from "@/lib/marketing/blocos";
+import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
+import { BASE_DAS_IMAGENS_DO_PAINEL } from "@/lib/marketing/imagens";
 import { Check } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,50 @@ export interface RotulosDosBlocos {
   antes: string;
   depois: string;
   abrirLink: string;
+  /** De onde a imagem vem: o painel logado (padrão) ou o link público (`/p/<token>/img/`). */
+  baseDasImagens?: string;
+}
+
+const LARGURA_DA_IMAGEM: Record<LarguraDaImagem, string> = {
+  pequena: "max-w-xs",
+  media: "max-w-xl",
+  grande: "max-w-3xl",
+  total: "max-w-full",
+};
+
+const ALINHAMENTO_DO_BLOCO: Record<Alinhamento, string> = {
+  esquerda: "mr-auto",
+  centro: "mx-auto",
+  direita: "ml-auto",
+};
+
+const ALINHAMENTO_DO_TEXTO: Record<Alinhamento, string> = {
+  esquerda: "text-left",
+  centro: "text-center",
+  direita: "text-right",
+};
+
+function Imagem({
+  arquivo,
+  base,
+  legenda,
+  className,
+}: {
+  arquivo: string;
+  base: string;
+  legenda?: string;
+  className?: string;
+}) {
+  if (!arquivo) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- imagem da agência, servida pela rota própria
+    <img
+      src={`${base}${arquivo}`}
+      alt={legenda ?? ""}
+      loading="lazy"
+      className={cn("h-auto w-full rounded-2xl border object-cover shadow-sm", className)}
+    />
+  );
 }
 
 const TOM_DO_DESTAQUE = {
@@ -47,6 +92,7 @@ export function BlocosRender({
   escala?: "pagina" | "slide";
 }) {
   const slide = escala === "slide";
+  const base = rotulos.baseDasImagens ?? BASE_DAS_IMAGENS_DO_PAINEL;
   const corpo = slide ? "text-lg leading-relaxed sm:text-2xl" : "text-base leading-relaxed";
 
   return (
@@ -60,6 +106,7 @@ export function BlocosRender({
                 className={cn(
                   "font-bold tracking-tight",
                   slide ? "text-3xl sm:text-5xl" : "border-b pb-2 text-2xl sm:text-3xl",
+                  ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
                 )}
               >
                 {b.texto}
@@ -67,14 +114,30 @@ export function BlocosRender({
             ) : (
               <h3
                 key={b.id}
-                className={cn("font-semibold", slide ? "text-2xl sm:text-3xl" : "text-xl")}
+                className={cn(
+                  "font-semibold",
+                  slide ? "text-2xl sm:text-3xl" : "text-xl",
+                  ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
+                )}
               >
                 {b.texto}
               </h3>
             );
 
           case "texto":
-            return <Paragrafos key={b.id} texto={b.texto} className={cn(corpo, "max-w-3xl")} />;
+            return (
+              <Paragrafos
+                key={b.id}
+                texto={b.texto}
+                className={cn(
+                  corpo,
+                  "max-w-3xl",
+                  ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
+                  b.alinhamento === "centro" && "mx-auto",
+                  b.alinhamento === "direita" && "ml-auto",
+                )}
+              />
+            );
 
           case "destaque":
             return (
@@ -197,6 +260,12 @@ export function BlocosRender({
                       {b.antes.titulo}
                     </h4>
                   ) : null}
+                  <Imagem
+                    arquivo={b.antes.imagem ?? ""}
+                    base={base}
+                    legenda={b.antes.titulo}
+                    className="mt-3"
+                  />
                   <Paragrafos
                     texto={b.antes.texto}
                     className={cn("mt-2 text-muted-foreground", slide ? "text-lg" : "text-sm")}
@@ -211,6 +280,12 @@ export function BlocosRender({
                       {b.depois.titulo}
                     </h4>
                   ) : null}
+                  <Imagem
+                    arquivo={b.depois.imagem ?? ""}
+                    base={base}
+                    legenda={b.depois.titulo}
+                    className="mt-3"
+                  />
                   <Paragrafos
                     texto={b.depois.texto}
                     className={cn("mt-2", slide ? "text-lg" : "text-sm")}
@@ -263,6 +338,7 @@ export function BlocosRender({
                 className={cn(
                   "border-l-4 border-primary pl-5 italic",
                   slide ? "text-2xl sm:text-4xl" : "text-xl",
+                  ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
                 )}
               >
                 <Paragrafos texto={b.texto} />
@@ -272,6 +348,53 @@ export function BlocosRender({
                   </footer>
                 ) : null}
               </blockquote>
+            );
+
+          case "imagem":
+            return b.arquivo ? (
+              <figure
+                key={b.id}
+                className={cn(
+                  "w-full",
+                  LARGURA_DA_IMAGEM[b.largura],
+                  ALINHAMENTO_DO_BLOCO[b.alinhamento],
+                )}
+              >
+                <Imagem arquivo={b.arquivo} base={base} legenda={b.legenda} />
+                {b.legenda ? (
+                  <figcaption
+                    className={cn(
+                      "mt-2 text-muted-foreground",
+                      slide ? "text-base" : "text-sm",
+                      ALINHAMENTO_DO_TEXTO[b.alinhamento],
+                    )}
+                  >
+                    {b.legenda}
+                  </figcaption>
+                ) : null}
+              </figure>
+            ) : null;
+
+          case "imagem-texto":
+            return (
+              <div key={b.id} className="grid items-center gap-6 sm:grid-cols-2 sm:gap-10">
+                <div className={cn(b.lado === "direita" && "sm:order-2")}>
+                  <Imagem arquivo={b.arquivo} base={base} legenda={b.titulo} />
+                </div>
+                <div className={cn(corpo)}>
+                  {b.titulo ? (
+                    <h3
+                      className={cn(
+                        "mb-2 font-semibold",
+                        slide ? "text-2xl sm:text-3xl" : "text-xl",
+                      )}
+                    >
+                      {b.titulo}
+                    </h3>
+                  ) : null}
+                  <Paragrafos texto={b.texto} />
+                </div>
+              </div>
             );
 
           case "separador":

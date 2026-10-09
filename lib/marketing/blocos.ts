@@ -22,6 +22,8 @@ export const TIPOS_DE_BLOCO = [
   "paleta",
   "links",
   "citacao",
+  "imagem",
+  "imagem-texto",
   "separador",
 ] as const;
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
@@ -30,6 +32,29 @@ export const MAXIMO_DE_BLOCOS = 150;
 
 /** Os dois lados do bloco "antes e depois" (as chaves do dado, não texto de tela). */
 export const LADOS_DO_ANTES_DEPOIS = ["antes", "depois"] as const;
+
+/** Onde o bloco fica na linha (as chaves do dado; o rótulo de tela vem do editor). */
+export const ALINHAMENTOS = ["esquerda", "centro", "direita"] as const;
+export type Alinhamento = (typeof ALINHAMENTOS)[number];
+
+/** O quanto da largura uma imagem ocupa. */
+export const LARGURAS_DA_IMAGEM = ["pequena", "media", "grande", "total"] as const;
+export type LarguraDaImagem = (typeof LARGURAS_DA_IMAGEM)[number];
+
+/** De que lado fica a imagem no bloco "imagem + texto". */
+export const LADOS_DA_IMAGEM = ["esquerda", "direita"] as const;
+
+/**
+ * A imagem de um bloco é só o NOME do arquivo (`<uuid>.<png|jpg>`) — a empresa dona vem da
+ * sessão (ou do link), nunca do conteúdo. Assim uma página não consegue apontar para a imagem
+ * de outra empresa. Vazio = ainda sem imagem (o rascunho em construção).
+ */
+export const NOME_DE_IMAGEM =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:png|jpg)$/;
+const arquivoDeImagem = z.string().refine((a) => a === "" || NOME_DE_IMAGEM.test(a), {
+  message: "Imagem inválida.",
+});
+const alinhamento = z.enum(ALINHAMENTOS).optional();
 
 const id = z.string().min(1).max(40);
 const curto = z.string().trim().max(200);
@@ -48,8 +73,9 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     tipo: z.literal("titulo"),
     nivel: z.union([z.literal(1), z.literal(2)]),
     texto: curto,
+    alinhamento,
   }),
-  z.object({ id, tipo: z.literal("texto"), texto: longo }),
+  z.object({ id, tipo: z.literal("texto"), texto: longo, alinhamento }),
   z.object({
     id,
     tipo: z.literal("destaque"),
@@ -77,8 +103,8 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   z.object({
     id,
     tipo: z.literal("antes-depois"),
-    antes: z.object({ titulo: curto, texto: longo.max(1500) }),
-    depois: z.object({ titulo: curto, texto: longo.max(1500) }),
+    antes: z.object({ titulo: curto, texto: longo.max(1500), imagem: arquivoDeImagem.optional() }),
+    depois: z.object({ titulo: curto, texto: longo.max(1500), imagem: arquivoDeImagem.optional() }),
   }),
   z.object({
     id,
@@ -90,7 +116,23 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     tipo: z.literal("links"),
     itens: z.array(z.object({ rotulo: curto, url: enderecoWeb })).max(30),
   }),
-  z.object({ id, tipo: z.literal("citacao"), texto: longo.max(1000), autor: curto }),
+  z.object({ id, tipo: z.literal("citacao"), texto: longo.max(1000), autor: curto, alinhamento }),
+  z.object({
+    id,
+    tipo: z.literal("imagem"),
+    arquivo: arquivoDeImagem,
+    legenda: curto,
+    largura: z.enum(LARGURAS_DA_IMAGEM),
+    alinhamento: z.enum(ALINHAMENTOS),
+  }),
+  z.object({
+    id,
+    tipo: z.literal("imagem-texto"),
+    arquivo: arquivoDeImagem,
+    titulo: curto,
+    texto: longo.max(2500),
+    lado: z.enum(LADOS_DA_IMAGEM),
+  }),
   z.object({ id, tipo: z.literal("separador") }),
 ]);
 
@@ -147,6 +189,17 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
       return { id: novoId, tipo, itens: [{ rotulo: "", url: "" }] };
     case "citacao":
       return { id: novoId, tipo, texto: "", autor: "" };
+    case "imagem":
+      return {
+        id: novoId,
+        tipo,
+        arquivo: "",
+        legenda: "",
+        largura: "grande",
+        alinhamento: "centro",
+      };
+    case "imagem-texto":
+      return { id: novoId, tipo, arquivo: "", titulo: "", texto: "", lado: "esquerda" };
     case "separador":
       return { id: novoId, tipo };
   }
