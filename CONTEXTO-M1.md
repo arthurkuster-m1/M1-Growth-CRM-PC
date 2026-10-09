@@ -72,6 +72,9 @@ Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estraté
 - **WhatsApp**: WAHA + Redis(SRH) em Docker, pasta `/opt/m1-whatsapp` (ver `deploy/vps/whatsapp/LEIA-ME.md`). WAHA Core = 1 número; vários números = WAHA Plus (pago) ou API oficial da Meta.
 - ⚠️ **Crons**: `docker/scheduler/entrypoint.sh` lista dezenas de rotinas (sincronia do Google Agenda, lembretes, follow-up, retenção…) que num self-host rodam por um container `scheduler`. Na VPS do M1 só a de tarefas repetidas está agendada (systemd). As demais NÃO rodam ainda — a sincronia contínua do Google Agenda e os lembretes dependem disso.
 
+## Próximo grande passo (definido em 09/10/2026): aba MARKETING
+Plano completo em `docs/PLANO-MARKETING-M1.md` (menu toggle Marketing + painelzão + páginas de estratégia em blocos, Página/Apresentar, IA ajudante, dashboards, cronograma). Começa pela Fase 0 (casca do menu e do painelzão). Continuam no plano, DEPOIS: Inbox, CRM (leads), configuração de Conexões e de Agenda.
+
 ## Padrões do motor (siga-os)
 - Edição otimista (`setQueryData` + rollback) nos hooks; posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guardando só os desvios (`lib/motor/layout.ts`); status = opção (nome/cor por organização) ligada a um grupo fixo (pending/in_progress/done/cancelled) via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas sempre no fuso da organização (`lib/inicio/datas.ts`, `lib/motor/datas-do-campo.ts`).
 - i18n: texto da tela = `t("português literal")` + espanhol obrigatório em `lib/i18n/dicionario.ts` (teste `i18n-espanhol-cobre-a-tela`; sem `t(variável)`, sem prosa fora de `t()`; cuidado com chave duplicada no objeto).
