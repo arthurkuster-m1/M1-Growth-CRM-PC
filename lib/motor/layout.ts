@@ -49,6 +49,8 @@ export interface DefinicaoDeColuna {
   fixa?: boolean;
   /** `false` = começa escondida. Padrão: visível. */
   padrao?: boolean;
+  /** Sempre visível, mas se move e se redimensiona como as outras (o título, como no Notion). */
+  semOcultar?: boolean;
 }
 
 export type ColunaResolvida<T extends DefinicaoDeColuna> = T & { visivel: boolean };
@@ -81,7 +83,7 @@ export function resolverColunas<T extends DefinicaoDeColuna>(
   return [...fixas, ...escolhidas, ...novas].map((d) => ({
     ...d,
     largura: limitarLargura(prefs.larguras?.[d.id] ?? d.largura),
-    visivel: d.fixa ? true : (prefs.visiveis?.[d.id] ?? d.padrao !== false),
+    visivel: d.fixa || d.semOcultar ? true : (prefs.visiveis?.[d.id] ?? d.padrao !== false),
   }));
 }
 

@@ -67,9 +67,10 @@ import {
   type Tarefa,
 } from "@/lib/tarefas/tipos";
 import {
-  ArrowsOutSimple,
   CalendarBlank,
   DotsThree,
+  MagnifyingGlass,
+  X,
   Flag,
   Plus,
   Tag,
@@ -85,6 +86,14 @@ import { PainelDaTarefa } from "./PainelDaTarefa";
 import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { QuadroKanban } from "./QuadroKanban";
+
+/** Busca sem acento e sem diferença de maiúscula. */
+const normalizarBusca = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 /** O relógio fica fora do componente: é lido só quando a pessoa cria a tarefa, nunca ao desenhar a tela. */
 const relogioEmSegundos = () => Date.now() / 1000;
@@ -141,6 +150,8 @@ export function TarefasMotorClient({
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [abertaId, setAbertaId] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+  const [buscaAberta, setBuscaAberta] = useState(false);
   const [apagarVisaoId, setApagarVisaoId] = useState<string | null>(null);
   const [apagarId, setApagarId] = useState<string | null>(null);
   const [apagarPropriedadeId, setApagarPropriedadeId] = useState<string | null>(null);
@@ -167,10 +178,10 @@ export function TarefasMotorClient({
       titulo: t("Título"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 340,
-      fixa: true,
+      semOcultar: true,
       celula: (tarefa) => (
         <div className="flex min-w-0 items-center gap-1">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 max-md:[&_button]:text-base">
             <CelulaDeTexto
               valor={tarefa.title}
               rotulo={t("Título da tarefa")}
@@ -188,9 +199,9 @@ export function TarefasMotorClient({
             aria-label={t("Abrir tarefa")}
             title={t("Abrir tarefa")}
             onClick={() => setAbertaId(tarefa.id)}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-text-subtle transition-opacity hover:bg-secondary hover:text-foreground focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+            className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase transition-opacity hover:bg-secondary hover:text-foreground focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
           >
-            <ArrowsOutSimple size={14} aria-hidden />
+            {t("Abrir")}
           </button>
         </div>
       ),
@@ -236,7 +247,7 @@ export function TarefasMotorClient({
                 : undefined
             }
           >
-            <Etiqueta cor={atual?.color ?? "gray"}>
+            <Etiqueta ponto cor={atual?.color ?? "gray"}>
               {atual?.name ?? titulosDosGrupos[tarefa.status]}
             </Etiqueta>
           </SeletorDeOpcao>
@@ -431,7 +442,7 @@ export function TarefasMotorClient({
 
   function alternarColuna(id: string) {
     const atual = resolvidas.find((c) => c.id === id);
-    if (!atual || atual.fixa) return;
+    if (!atual || atual.fixa || atual.semOcultar) return;
     atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
   }
 
@@ -517,7 +528,12 @@ export function TarefasMotorClient({
     return resto;
   });
 
-  const resultado = aplicarConsulta(tarefas, camposConsultaveis, preferencias, {
+  // A busca é só desta tela (não se salva na visualização): olha título e descrição.
+  const termo = normalizarBusca(busca);
+  const tarefasBuscadas = termo
+    ? tarefas.filter((x) => normalizarBusca(`${x.title} ${x.description ?? ""}`).includes(termo))
+    : tarefas;
+  const resultado = aplicarConsulta(tarefasBuscadas, camposConsultaveis, preferencias, {
     hoje: hojeNoFuso(agora, fuso),
   });
   const tarefasVisiveis = resultado.linhas;
@@ -688,12 +704,52 @@ export function TarefasMotorClient({
       ) : null}
 
       <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {buscaAberta ? (
+          <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border bg-background px-3 sm:max-w-xs sm:flex-none">
+            <MagnifyingGlass size={16} className="shrink-0 text-muted-foreground" aria-hidden />
+            <input
+              autoFocus
+              value={busca}
+              aria-label={t("Buscar tarefas")}
+              placeholder={t("Buscar tarefas")}
+              onChange={(e) => setBusca(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setBusca("");
+                  setBuscaAberta(false);
+                }
+              }}
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+            <button
+              type="button"
+              aria-label={t("Fechar busca")}
+              onClick={() => {
+                setBusca("");
+                setBuscaAberta(false);
+              }}
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary"
+            >
+              <X size={14} aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-label={t("Buscar tarefas")}
+            title={t("Buscar tarefas")}
+            onClick={() => setBuscaAberta(true)}
+            className="grid h-9 w-9 place-items-center rounded-xl border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <MagnifyingGlass size={16} aria-hidden />
+          </button>
+        )}
         {visualizacao === "tabela" ? (
           <MenuDePropriedades
             propriedades={resolvidas.map((c) => ({
               id: c.id,
               titulo: c.titulo,
-              fixa: c.fixa,
+              fixa: c.fixa || c.semOcultar,
               visivel: c.visivel,
             }))}
             aoAlternar={alternarColuna}
@@ -778,7 +834,9 @@ export function TarefasMotorClient({
                     : undefined
                 }
                 tipo={propriedade ? rotuloDoTipo(t, propriedade.type) : undefined}
-                aoOcultar={coluna.fixa ? undefined : () => alternarColuna(coluna.id)}
+                aoOcultar={
+                  coluna.fixa || coluna.semOcultar ? undefined : () => alternarColuna(coluna.id)
+                }
                 aoLarguraPadrao={coluna.fixa ? undefined : () => larguraPadrao(coluna.id)}
                 aoApagar={
                   propriedade && podeConfigurar

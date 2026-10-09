@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 
+import { SeletorDeData } from "@/components/motor/SeletorDeData";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useCelular } from "@/hooks/motor/useCelular";
 import { useT } from "@/hooks/i18n/useT";
-import { deCampoLocal, paraCampoLocal, rotuloDaData } from "@/lib/motor/datas-do-campo";
+import { deCampoLocal, hojeNoFuso, paraCampoLocal, rotuloDaData } from "@/lib/motor/datas-do-campo";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -38,6 +41,7 @@ export function CelulaDeData({
   rotulo,
 }: Props) {
   const t = useT();
+  const celular = useCelular();
   const [aberto, setAberto] = useState(false);
   const [dia, setDia] = useState("");
   /** `null` = só a data; `"HH:mm"` = com horário (o campo de hora aparece). */
@@ -56,74 +60,62 @@ export function CelulaDeData({
     setAberto(abrir);
   }
 
+  const gatilho = (
+    <button
+      type="button"
+      disabled={!podeEditar}
+      aria-label={rotulo}
+      onClick={celular ? () => abrirOuFechar(true) : undefined}
+      className={cn(
+        "block w-full truncate rounded-md px-2 py-1.5 text-left text-sm",
+        podeEditar && "hover:bg-secondary",
+        !valor && "text-text-subtle",
+        atrasada && "font-medium text-error-fg",
+      )}
+    >
+      {valor ? rotuloDaData(valor, fuso, tag, agora) : t("Vazio")}
+    </button>
+  );
+  const seletor = (
+    <SeletorDeData
+      dia={dia}
+      hora={hora}
+      hoje={hojeNoFuso(agora, fuso)}
+      tag={tag}
+      aoMudarDia={setDia}
+      aoMudarHora={setHora}
+      aoLimpar={() => {
+        setDia("");
+        setHora(null);
+      }}
+      aoConfirmar={() => abrirOuFechar(false)}
+    />
+  );
+
+  // No celular o seletor sobe de baixo, como uma gaveta (igual ao Notion); no computador,
+  // abre ao lado da célula.
+  if (celular) {
+    return (
+      <>
+        {gatilho}
+        <Sheet open={aberto} onOpenChange={abrirOuFechar}>
+          <SheetContent
+            side="bottom"
+            className="max-h-[92dvh] gap-3 overflow-y-auto rounded-t-3xl p-4 pb-8"
+          >
+            <SheetTitle className="text-center text-base font-semibold">{t("Data")}</SheetTitle>
+            {seletor}
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
+
   return (
     <Popover open={aberto} onOpenChange={abrirOuFechar}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={!podeEditar}
-          aria-label={rotulo}
-          className={cn(
-            "block w-full truncate rounded-md px-2 py-1.5 text-left text-sm",
-            podeEditar && "hover:bg-secondary",
-            !valor && "text-text-subtle",
-            atrasada && "font-medium text-error-fg",
-          )}
-        >
-          {valor ? rotuloDaData(valor, fuso, tag, agora) : t("Vazio")}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 space-y-2 p-3">
-        <input
-          type="date"
-          aria-label={rotulo}
-          value={dia}
-          onChange={(e) => setDia(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") abrirOuFechar(false);
-          }}
-          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
-        />
-        {hora === null ? (
-          <button
-            type="button"
-            disabled={!dia}
-            onClick={() => setHora("09:00")}
-            className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-          >
-            {t("Adicionar horário")}
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <input
-              type="time"
-              aria-label={t("Horário")}
-              value={hora}
-              onChange={(e) => setHora(e.target.value || null)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") abrirOuFechar(false);
-              }}
-              className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1.5 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => setHora(null)}
-              className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              {t("Tirar horário")}
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            setDia("");
-            setHora(null);
-          }}
-          className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
-        >
-          {t("Limpar")}
-        </button>
+      <PopoverTrigger asChild>{gatilho}</PopoverTrigger>
+      <PopoverContent align="start" className="w-[330px] p-3">
+        {seletor}
       </PopoverContent>
     </Popover>
   );

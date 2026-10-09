@@ -20,6 +20,22 @@ const DEFINICOES: DefinicaoDeColuna[] = [
   { id: "descricao", largura: 280, padrao: false },
 ];
 
+describe("coluna que não se oculta (semOcultar): o título do Notion", () => {
+  const defs: DefinicaoDeColuna[] = [
+    { id: "titulo", largura: 340, semOcultar: true },
+    { id: "status", largura: 190 },
+    { id: "prazo", largura: 170 },
+  ];
+  it("pode ir para outro lugar na ordem, mas continua sempre visível", () => {
+    const r = resolverColunas(defs, {
+      ordem: ["status", "titulo", "prazo"],
+      visiveis: { titulo: false },
+    });
+    expect(r.map((c) => c.id)).toEqual(["status", "titulo", "prazo"]);
+    expect(r.find((c) => c.id === "titulo")?.visivel).toBe(true);
+  });
+});
+
 const ids = (colunas: { id: string }[]) => colunas.map((c) => c.id);
 
 describe("resolverColunas", () => {

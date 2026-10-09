@@ -18325,6 +18325,8 @@ export const DICIONARIO: Traducoes = {
   },
   "Nenhuma opção de status.": { es: "Ninguna opción de estado." },
   "Solte aqui": { es: "Suelta aquí" },
+  "Incluir hora": { es: "Incluir hora" },
+  "Buscar tarefas": { es: "Buscar tareas" },
   "Nova tarefa neste grupo": { es: "Nueva tarea en este grupo" },
   "Adicionar horário": { es: "Añadir hora" },
   "Tirar horário": { es: "Quitar hora" },

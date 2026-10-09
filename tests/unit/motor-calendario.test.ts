@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   diasDaGradeDoMes,
   diferencaEmDias,
+  formatarDiaBr,
+  lerDiaBr,
   inicioDoMes,
   somarMeses,
   trocarODia,
@@ -34,5 +36,21 @@ describe("calendário do motor", () => {
     );
     // sem instante de partida: começo do dia no fuso (00:00 = 03:00Z)
     expect(trocarODia(null, "2026-10-12", "America/Sao_Paulo")).toBe("2026-10-12T03:00:00.000Z");
+  });
+
+  it("a grade que começa no domingo (estilo Notion)", () => {
+    const g = diasDaGradeDoMes("2026-10-08", true);
+    // 1º de outubro de 2026 é quinta: a primeira linha começa no domingo 27/09.
+    expect(g[0]).toBe("2026-09-27");
+    expect(g.at(-1)).toBe("2026-10-31");
+    expect(g.length % 7).toBe(0);
+  });
+
+  it("lê e escreve dia/mês/ano", () => {
+    expect(formatarDiaBr("2026-10-09")).toBe("09/10/2026");
+    expect(lerDiaBr("9/10/2026")).toBe("2026-10-09");
+    expect(lerDiaBr("09/10/26")).toBe("2026-10-09");
+    expect(lerDiaBr("31/02/2026")).toBeNull();
+    expect(lerDiaBr("abc")).toBeNull();
   });
 });

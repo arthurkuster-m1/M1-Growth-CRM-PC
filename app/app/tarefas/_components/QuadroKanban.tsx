@@ -166,7 +166,9 @@ function Coluna({
       )}
     >
       <header className="flex items-center gap-2 px-1 py-0.5">
-        <Etiqueta cor={opcao.color}>{opcao.name}</Etiqueta>
+        <Etiqueta ponto cor={opcao.color}>
+          {opcao.name}
+        </Etiqueta>
         <span className="text-xs text-muted-foreground">{quantidade}</span>
       </header>
       <div className="flex min-h-12 flex-col gap-2">

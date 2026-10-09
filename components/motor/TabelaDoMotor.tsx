@@ -164,7 +164,7 @@ function LinhaOrdenavel({
         gridTemplateColumns: grade,
       }}
       className={cn(
-        "group grid min-h-10 items-center border-b last:border-b-0 md:min-h-0",
+        "group grid min-h-12 items-center border-b last:border-b-0 md:min-h-0",
         selecionada ? "bg-accent-soft/50" : "bg-card",
         isDragging && "relative z-10 rounded-lg shadow-lg ring-1 ring-primary/30",
       )}
@@ -259,13 +259,10 @@ function AlcaDeLargura({
 function CabecalhoOrdenavel({
   id,
   movel,
-  fixa = false,
   children,
 }: {
   id: string;
   movel: boolean;
-  /** Celular: a coluna do título fica presa à esquerda ao deslizar. */
-  fixa?: boolean;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -279,7 +276,6 @@ function CabecalhoOrdenavel({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         "relative flex items-center",
-        fixa && "sticky left-0 z-[5] border-r bg-secondary",
         movel && "cursor-grab active:cursor-grabbing",
         isDragging && "z-20 rounded-md bg-card shadow-md ring-1 ring-primary/30",
       )}
@@ -334,15 +330,15 @@ export function TabelaDoMotor<T>({
   const idDoMotor = useId();
   const [aoVivo, setAoVivo] = useState<{ id: string; largura: number } | null>(null);
 
-  // Celular: colunas mais estreitas (cabem mais na tela) e o título fica fixo à esquerda
-  // enquanto o resto desliza — como a tabela do Notion no telefone.
+  // Celular: colunas mais estreitas (cabem mais na tela). A tabela inteira desliza junto,
+  // título inclusive — nada fica preso à esquerda, como no Notion.
   const LARGURA_MAXIMA_NO_CELULAR = 156;
   const LARGURA_DO_TITULO_NO_CELULAR = 184;
   const larguraDe = (c: ColunaDoMotor<T>) =>
     aoVivo?.id === c.id
       ? aoVivo.largura
       : celular
-        ? c.fixa
+        ? c.fixa || c.semOcultar
           ? LARGURA_DO_TITULO_NO_CELULAR
           : Math.min(c.largura, LARGURA_MAXIMA_NO_CELULAR)
         : c.largura;
@@ -350,7 +346,6 @@ export function TabelaDoMotor<T>({
   const comFim = Boolean(fimDoCabecalho);
   const comSelecao = Boolean(aoSelecionar) && !celular;
   const comAlca = !celular;
-  const fixaNoCelular = (c: ColunaDoMotor<T>) => celular && c.fixa;
   const grade = [
     ...(comSelecao ? [`${LARGURA_DA_SELECAO}px`] : []),
     ...(comAlca ? [`${LARGURA_DO_ARRASTE}px`] : []),
@@ -437,7 +432,6 @@ export function TabelaDoMotor<T>({
                     key={c.id}
                     id={c.id}
                     movel={Boolean(aoMoverColuna) && !c.fixa && !celular}
-                    fixa={fixaNoCelular(c)}
                   >
                     <div className="min-w-0 flex-1">
                       {menuDaColuna ? menuDaColuna(c, titulo) : titulo}
@@ -485,12 +479,7 @@ export function TabelaDoMotor<T>({
                 {blocos.map((bloco) => (
                   <Fragment key={bloco.chave}>
                     {grupos ? (
-                      <div
-                        className={cn(
-                          "flex items-center border-b bg-secondary/30",
-                          celular && "sticky left-0 z-[6] w-screen",
-                        )}
-                      >
+                      <div className="flex items-center border-b bg-secondary/30">
                         <button
                           type="button"
                           aria-expanded={!recolhidos.has(bloco.chave)}
@@ -552,14 +541,7 @@ export function TabelaDoMotor<T>({
                             }
                           >
                             {colunas.map((c) => (
-                              <div
-                                key={c.id}
-                                role="cell"
-                                className={cn(
-                                  "min-w-0 px-0.5 py-1",
-                                  fixaNoCelular(c) && "sticky left-0 z-[4] border-r bg-inherit",
-                                )}
-                              >
+                              <div key={c.id} role="cell" className="min-w-0 px-0.5 py-1">
                                 {c.celula(linha)}
                               </div>
                             ))}
@@ -581,10 +563,7 @@ export function TabelaDoMotor<T>({
           <button
             type="button"
             onClick={aoCriar}
-            className={cn(
-              "flex w-full items-center gap-2 border-t px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
-              celular && "sticky left-0 z-[6] w-screen bg-card",
-            )}
+            className="flex w-full items-center gap-2 border-t px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <Plus size={14} aria-hidden />
             {rotuloDeCriar}
