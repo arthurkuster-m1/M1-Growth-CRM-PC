@@ -41,6 +41,8 @@ import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { toast } from "sonner";
+
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useModelosDeTarefa } from "@/hooks/tarefas/useModelosDeTarefa";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
@@ -49,6 +51,8 @@ import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import {
   aplicarConsulta,
   consultaAtiva,
+  filtrar,
+  filtrosQueReprovam,
   valoresDeNascimento,
   type CampoConsultavel,
   type ConsultaDaTabela,
@@ -111,6 +115,8 @@ const normalizarBusca = (texto: string) =>
     .toLowerCase()
     .trim();
 
+const SEM_IDS: ReadonlySet<string> = new Set();
+
 /** O relógio fica fora do componente: é lido só quando a pessoa cria a tarefa, nunca ao desenhar a tela. */
 const relogioEmSegundos = () => Date.now() / 1000;
 
@@ -172,6 +178,10 @@ export function TarefasMotorClient({
   const [configurando, setConfigurando] = useState(false);
   const [modelosAberto, setModelosAberto] = useState(false);
   const [modeloNovo, setModeloNovo] = useState(false);
+  const [fixadas, setFixadas] = useState<{ chave: string; ids: ReadonlySet<string> }>({
+    chave: "",
+    ids: new Set(),
+  });
   const [busca, setBusca] = useState("");
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [apagarVisaoId, setApagarVisaoId] = useState<string | null>(null);
@@ -515,9 +525,31 @@ export function TarefasMotorClient({
   const tarefasBuscadas = termo
     ? tarefas.filter((x) => normalizarBusca(`${x.title} ${x.description ?? ""}`).includes(termo))
     : tarefas;
-  const resultado = aplicarConsulta(tarefasBuscadas, camposConsultaveis, preferencias, {
-    hoje: hojeNoFuso(agora, fuso),
-  });
+  // GARANTIA: a tarefa que a pessoa acabou de criar SEMPRE aparece. Normalmente ela já nasce
+  // passando nos filtros; se por qualquer motivo não passar, ela fica à vista (e a tela avisa
+  // em qual filtro) até a pessoa mudar os filtros — em vez de sumir como se não tivesse sido criada.
+  const contextoDaConsulta = { hoje: hojeNoFuso(agora, fuso) };
+  const chaveDosFiltros = JSON.stringify(preferencias.filtros ?? []);
+  const idsFixados = fixadas.chave === chaveDosFiltros ? fixadas.ids : SEM_IDS;
+  const passamNosFiltros =
+    idsFixados.size === 0
+      ? null
+      : new Set(
+          filtrar(
+            tarefasBuscadas,
+            camposConsultaveis,
+            preferencias.filtros,
+            contextoDaConsulta,
+          ).map((x) => x.id),
+        );
+  const resultado = aplicarConsulta(
+    passamNosFiltros
+      ? tarefasBuscadas.filter((x) => passamNosFiltros.has(x.id) || idsFixados.has(x.id))
+      : tarefasBuscadas,
+    camposConsultaveis,
+    passamNosFiltros ? { ...preferencias, filtros: undefined } : preferencias,
+    contextoDaConsulta,
+  );
   const tarefasVisiveis = resultado.linhas;
   const gruposDaTabela = resultado.grupos?.map((g) => {
     const meta = metasDeCampo.find((m) => m.id === preferencias.agrupar);
@@ -579,6 +611,27 @@ export function TarefasMotorClient({
     ultimoMarcado.current = null;
   }
 
+  /** A tarefa recém-criada não passa nos filtros? Mantém à vista e diz em qual. */
+  function garantirQueAparece(criada: Tarefa) {
+    const reprovam = filtrosQueReprovam(
+      criada,
+      camposConsultaveis,
+      preferencias.filtros,
+      contextoDaConsulta,
+    );
+    if (reprovam.length === 0) return;
+    setFixadas((atual) => ({
+      chave: chaveDosFiltros,
+      ids: new Set([...(atual.chave === chaveDosFiltros ? atual.ids : []), criada.id]),
+    }));
+    const nomes = [
+      ...new Set(
+        reprovam.map((f) => metasDeCampo.find((m) => m.id === f.campo)?.titulo ?? f.campo),
+      ),
+    ].join(", ");
+    toast.info(`${t("Tarefa criada, mas ela não combina com o filtro")}: ${nomes}`);
+  }
+
   function abrirModelos(novo: boolean) {
     setModeloNovo(novo);
     setModelosAberto(true);
@@ -592,6 +645,7 @@ export function TarefasMotorClient({
         ...tarefaDoModelo(modelo, hojeNoFuso(agora, fuso), fuso),
         position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
       });
+      garantirQueAparece(criada);
       setAbertaId(criada.id);
     } catch {
       // O hook já mostrou o erro da API.
@@ -642,6 +696,10 @@ export function TarefasMotorClient({
       if (Object.keys(personalizados).length > 0) {
         void editarTarefa(criada.id, { custom_fields: personalizados });
       }
+      garantirQueAparece({
+        ...criada,
+        custom_fields: { ...criada.custom_fields, ...personalizados },
+      });
       // O título já veio do filtro? Então não há o que digitar; senão, abre para nomear.
       if (!tituloVeioDoFiltro) setEditandoId(criada.id);
     } catch {

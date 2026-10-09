@@ -18325,6 +18325,9 @@ export const DICIONARIO: Traducoes = {
   },
   "Nenhuma opção de status.": { es: "Ninguna opción de estado." },
   "Solte aqui": { es: "Suelta aquí" },
+  "Tarefa criada, mas ela não combina com o filtro": {
+    es: "Tarea creada, pero no coincide con el filtro",
+  },
   "Começa hoje": { es: "Empieza hoy" },
   "O dia todo": { es: "Todo el día" },
   "Modelos de tarefa": { es: "Plantillas de tarea" },

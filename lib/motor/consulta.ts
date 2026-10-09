@@ -230,6 +230,26 @@ export function filtrar<T>(
   );
 }
 
+/**
+ * Os filtros em que a linha NÃO passa. Vazio = ela passa na consulta inteira.
+ *
+ * Serve para AVISAR: a linha que acabou de ser criada e não combina com os filtros ligados
+ * ficaria invisível; a tela a mantém à vista e diz em quais filtros ela não passa.
+ */
+export function filtrosQueReprovam<T>(
+  linha: T,
+  campos: readonly CampoConsultavel<T>[],
+  filtros: readonly Filtro[] | undefined,
+  contexto: ContextoDaConsulta,
+): Filtro[] {
+  if (filtrar([linha], campos, filtros, contexto).length === 1) return [];
+  const porId = new Map(campos.map((c) => [c.id, c]));
+  return (filtros ?? []).filter((f) => {
+    const campo = porId.get(f.campo);
+    return campo && filtroUtil(f, campo) && !aprova(campo.valorDe(linha), campo.tipo, f, contexto);
+  });
+}
+
 type Comparavel = number | string | null;
 
 /** O valor de uma linha como coisa comparável: posição fixa > nome > valor cru. `null` = vazio. */
