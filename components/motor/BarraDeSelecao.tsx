@@ -31,9 +31,9 @@ export function BarraDeSelecao({
     <div
       role="region"
       aria-label={t("Ações para as linhas selecionadas")}
-      className="fixed inset-x-0 bottom-20 z-40 mx-auto flex w-fit max-w-[calc(100vw-1.5rem)] flex-wrap items-center justify-center gap-1 rounded-2xl border bg-card p-1.5 shadow-xl md:bottom-6"
+      className="fixed inset-x-0 bottom-20 z-40 mx-auto flex w-fit max-w-[calc(100vw-1.5rem)] [scrollbar-width:none] flex-nowrap items-center gap-1 overflow-x-auto rounded-2xl border bg-card p-1.5 shadow-xl md:bottom-6 [&::-webkit-scrollbar]:hidden"
     >
-      <span className="px-3 text-sm font-medium">
+      <span className="shrink-0 px-3 text-sm font-medium whitespace-nowrap">
         {quantidade} {t(quantidade === 1 ? "selecionada" : "selecionadas")}
       </span>
       <span aria-hidden className="h-5 w-px bg-border" />
@@ -76,7 +76,7 @@ export function AcaoEmMassa({
       type="button"
       onClick={aoClicar}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors hover:bg-secondary",
+        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm whitespace-nowrap transition-colors hover:bg-secondary",
         destrutivo ? "text-error-fg" : "text-foreground",
       )}
     >

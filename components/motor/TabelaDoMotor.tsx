@@ -81,6 +81,7 @@ interface Props<T> {
 }
 
 const LARGURA_DA_SELECAO = 32;
+const LARGURA_DA_SELECAO_NO_CELULAR = 44;
 const LARGURA_DO_ARRASTE = 32;
 const LARGURA_DAS_ACOES = 44;
 const LARGURA_DO_FIM = 44;
@@ -344,16 +345,17 @@ export function TabelaDoMotor<T>({
         : c.largura;
   const comAcoes = Boolean(acoesDaLinha);
   const comFim = Boolean(fimDoCabecalho);
-  const comSelecao = Boolean(aoSelecionar) && !celular;
+  const comSelecao = Boolean(aoSelecionar);
+  const larguraDaSelecao = celular ? LARGURA_DA_SELECAO_NO_CELULAR : LARGURA_DA_SELECAO;
   const comAlca = !celular;
   const grade = [
-    ...(comSelecao ? [`${LARGURA_DA_SELECAO}px`] : []),
+    ...(comSelecao ? [`${larguraDaSelecao}px`] : []),
     ...(comAlca ? [`${LARGURA_DO_ARRASTE}px`] : []),
     ...colunas.map((c) => `${larguraDe(c)}px`),
     ...(comAcoes || comFim ? [`${comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM}px`] : []),
   ].join(" ");
   const larguraTotal =
-    (comSelecao ? LARGURA_DA_SELECAO : 0) +
+    (comSelecao ? larguraDaSelecao : 0) +
     (comAlca ? LARGURA_DO_ARRASTE : 0) +
     colunas.reduce((soma, c) => soma + larguraDe(c), 0) +
     (comAcoes || comFim ? (comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM) : 0);
@@ -532,7 +534,7 @@ export function TabelaDoMotor<T>({
                                 <CaixaDeSelecao
                                   estado={selecionadas.has(idDe(linha)) ? "marcada" : "vazia"}
                                   rotulo={t("Selecionar linha")}
-                                  visivel={selecionadas.size > 0}
+                                  visivel={celular || selecionadas.size > 0}
                                   aoClicar={(e) =>
                                     aoSelecionar!(idDe(linha), { faixa: e.shiftKey })
                                   }

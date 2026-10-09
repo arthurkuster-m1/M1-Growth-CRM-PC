@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { AcaoEmMassa, BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { Switch } from "@/components/ui/switch";
 import { useT } from "@/hooks/i18n/useT";
 import { deCampoLocal } from "@/lib/motor/datas-do-campo";
 import type { MudancasEmMassa } from "@/lib/tarefas/edicao-em-massa";
@@ -31,51 +32,78 @@ interface Props {
 
 const ITEM = "flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm hover:bg-secondary";
 
-/** O prazo em massa: escolhe o dia e a hora e aplica; ou limpa o prazo de todas. */
-function PainelDePrazo({
+/**
+ * Uma data em massa (prazo ou início): escolhe o DIA, e o horário só se quiser ("Incluir
+ * hora"); aplica a todas ou limpa a data de todas. Sem horário, vale o dia todo.
+ */
+function PainelDeData({
+  campo,
+  rotulo,
+  rotuloDeLimpar,
   fuso,
   fechar,
   aoAplicar,
 }: {
+  campo: "due_date" | "start_date";
+  rotulo: string;
+  rotuloDeLimpar: string;
   fuso: string;
   fechar: () => void;
   aoAplicar: Props["aoAplicar"];
 }) {
   const t = useT();
-  const [valor, setValor] = useState("");
+  const [dia, setDia] = useState("");
+  const [hora, setHora] = useState<string | null>(null);
+  const iso = dia ? deCampoLocal(`${dia}T${hora || "00:00"}`, fuso) : null;
 
   return (
     <div className="space-y-2 p-1.5">
       <input
-        type="datetime-local"
-        aria-label={t("Prazo")}
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+        type="date"
+        aria-label={rotulo}
+        value={dia}
+        onChange={(e) => setDia(e.target.value)}
+        className="h-10 w-full rounded-md border bg-background px-2 text-sm"
       />
+      <label className="flex min-h-9 items-center justify-between gap-2 px-1 text-sm">
+        {t("Incluir hora")}
+        <Switch
+          checked={hora !== null}
+          disabled={!dia}
+          onCheckedChange={(ligado) => setHora(ligado ? "09:00" : null)}
+        />
+      </label>
+      {hora !== null ? (
+        <input
+          type="time"
+          aria-label={t("Horário")}
+          value={hora}
+          onChange={(e) => setHora(e.target.value || "09:00")}
+          className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+        />
+      ) : null}
       <div className="flex gap-1.5">
         <button
           type="button"
-          disabled={!deCampoLocal(valor, fuso)}
+          disabled={!iso}
           onClick={() => {
-            const due_date = deCampoLocal(valor, fuso);
-            if (!due_date) return;
-            aoAplicar({ due_date }, { due_date });
+            if (!iso) return;
+            aoAplicar({ [campo]: iso }, { [campo]: iso });
             fechar();
           }}
-          className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("Aplicar")}
         </button>
         <button
           type="button"
           onClick={() => {
-            aoAplicar({ due_date: null }, { due_date: null });
+            aoAplicar({ [campo]: null }, { [campo]: null });
             fechar();
           }}
-          className="rounded-lg border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="rounded-lg border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
-          {t("Limpar prazo")}
+          {rotuloDeLimpar}
         </button>
       </div>
     </div>
@@ -180,8 +208,30 @@ export function AcoesEmMassa({
         )}
       </AcaoEmMassa>
 
+      <AcaoEmMassa rotulo={t("Início")} icone={<CalendarBlank size={14} aria-hidden />}>
+        {(fechar) => (
+          <PainelDeData
+            campo="start_date"
+            rotulo={t("Início")}
+            rotuloDeLimpar={t("Limpar início")}
+            fuso={fuso}
+            fechar={fechar}
+            aoAplicar={aoAplicar}
+          />
+        )}
+      </AcaoEmMassa>
+
       <AcaoEmMassa rotulo={t("Prazo")} icone={<CalendarBlank size={14} aria-hidden />}>
-        {(fechar) => <PainelDePrazo fuso={fuso} fechar={fechar} aoAplicar={aoAplicar} />}
+        {(fechar) => (
+          <PainelDeData
+            campo="due_date"
+            rotulo={t("Prazo")}
+            rotuloDeLimpar={t("Limpar prazo")}
+            fuso={fuso}
+            fechar={fechar}
+            aoAplicar={aoAplicar}
+          />
+        )}
       </AcaoEmMassa>
 
       <AcaoEmMassa

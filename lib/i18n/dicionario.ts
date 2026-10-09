@@ -18325,6 +18325,7 @@ export const DICIONARIO: Traducoes = {
   },
   "Nenhuma opção de status.": { es: "Ninguna opción de estado." },
   "Solte aqui": { es: "Suelta aquí" },
+  "Limpar início": { es: "Quitar inicio" },
   "Configurar visualização": { es: "Configurar vista" },
   "Nome, tipo e propriedades da visualização": { es: "Nombre, tipo y propiedades de la vista" },
   "Ocultar todas": { es: "Ocultar todas" },

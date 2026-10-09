@@ -28,6 +28,7 @@ export const mudancasEmMassaSchema = z
     priority: z.enum(PRIORIDADES_DA_TAREFA).optional(),
     assigned_to: z.string().uuid().nullable().optional(),
     due_date: z.string().datetime({ offset: true }).nullable().optional(),
+    start_date: z.string().datetime({ offset: true }).nullable().optional(),
   })
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: "Nada para alterar." });
