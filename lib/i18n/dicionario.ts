@@ -18325,6 +18325,160 @@ export const DICIONARIO: Traducoes = {
   },
   "Nenhuma opção de status.": { es: "Ninguna opción de estado." },
   "Solte aqui": { es: "Suelta aquí" },
+  "Estratégia e oferta": { es: "Estrategia y oferta" },
+  "Execução e resultados": { es: "Ejecución y resultados" },
+  "01 | Diagnóstico": { es: "01 | Diagnóstico" },
+  "02 | Produto e Oferta": { es: "02 | Producto y Oferta" },
+  "03 | Geração de Demanda": { es: "03 | Generación de Demanda" },
+  "A reunião inicial, os materiais e as pastas do cliente.": {
+    es: "La reunión inicial, los materiales y las carpetas del cliente.",
+  },
+  "Mapeamento do funil atual | Kick Off": { es: "Mapeo del embudo actual | Kick Off" },
+  "Como o cliente vende hoje: o funil atual, mapeado na reunião de kick-off.": {
+    es: "Cómo vende hoy el cliente: el embudo actual, mapeado en la reunión de kick-off.",
+  },
+  "Posicionamento | ZMOT": { es: "Posicionamiento | ZMOT" },
+  "Como a marca é encontrada e escolhida antes da compra.": {
+    es: "Cómo se encuentra y se elige la marca antes de la compra.",
+  },
+  "Análise oculta de vendas": { es: "Análisis oculto de ventas" },
+  "Um cliente oculto testa o atendimento e a venda, de ponta a ponta.": {
+    es: "Un cliente oculto prueba la atención y la venta, de punta a punta.",
+  },
+  "Identidade da marca": { es: "Identidad de la marca" },
+  "Cores, identidade visual e tom de voz.": { es: "Colores, identidad visual y tono de voz." },
+  "Estudo de persona": { es: "Estudio de persona" },
+  "Quem é o cliente ideal: dores, desejos e objeções.": {
+    es: "Quién es el cliente ideal: dolores, deseos y objeciones.",
+  },
+  "Análise de concorrência": { es: "Análisis de la competencia" },
+  "Quem disputa a atenção do seu cliente, e como.": {
+    es: "Quién disputa la atención de tu cliente, y cómo.",
+  },
+  "Planejamento empresarial": { es: "Planificación empresarial" },
+  "Metas, números e o caminho do negócio.": { es: "Metas, números y el camino del negocio." },
+  "Produtos e ofertas": { es: "Productos y ofertas" },
+  "O que é vendido, por quanto e com qual promessa.": {
+    es: "Qué se vende, por cuánto y con qué promesa.",
+  },
+  "Lead magnets": { es: "Lead magnets" },
+  "Iscas digitais que atraem e qualificam contatos.": {
+    es: "Cebos digitales que atraen y califican contactos.",
+  },
+  "Estratégia de marketing": { es: "Estrategia de marketing" },
+  "A ideia e a estratégia por trás das campanhas.": {
+    es: "La idea y la estrategia detrás de las campañas.",
+  },
+  "Tráfego pago": { es: "Tráfico pago" },
+  "Campanhas, criativos e textos que estão ativos.": {
+    es: "Campañas, creativos y textos que están activos.",
+  },
+  "Outbound marketing": { es: "Outbound marketing" },
+  "Prospecção ativa: abordar quem ainda não conhece a marca.": {
+    es: "Prospección activa: abordar a quien aún no conoce la marca.",
+  },
+  "Programas de indicação": { es: "Programas de referidos" },
+  "Clientes que trazem novos clientes.": { es: "Clientes que traen nuevos clientes." },
+  "Social media": { es: "Redes sociales" },
+  "Presença e conteúdo nas redes sociais.": { es: "Presencia y contenido en las redes sociales." },
+  "Parcerias e influenciadores": { es: "Alianzas e influencers" },
+  "Quem fala da marca para a audiência certa.": {
+    es: "Quién habla de la marca a la audiencia correcta.",
+  },
+  "Em breve": { es: "Próximamente" },
+  Marketing: { es: "Marketing" },
+  "A estratégia do seu negócio, do diagnóstico aos resultados — num só lugar.": {
+    es: "La estrategia de tu negocio, del diagnóstico a los resultados, en un solo lugar.",
+  },
+  "Áreas de Marketing": { es: "Áreas de Marketing" },
+  Estratégia: { es: "Estrategia" },
+  "Do diagnóstico à oferta: o mapa de tudo o que foi construído para a sua marca.": {
+    es: "Del diagnóstico a la oferta: el mapa de todo lo que se construyó para tu marca.",
+  },
+  "O que você vende e como isso é apresentado ao mercado.": {
+    es: "Lo que vendes y cómo se presenta al mercado.",
+  },
+  Cronograma: { es: "Cronograma" },
+  "As tarefas da semana: o que é da agência e o que é do cliente.": {
+    es: "Las tareas de la semana: lo que es de la agencia y lo que es del cliente.",
+  },
+  "Geração de demanda": { es: "Generación de demanda" },
+  "Campanhas, criativos e textos que trazem clientes.": {
+    es: "Campañas, creativos y textos que traen clientes.",
+  },
+  Dashboards: { es: "Dashboards" },
+  "Tráfego, vendas e faturamento, em números.": {
+    es: "Tráfico, ventas y facturación, en números.",
+  },
+  "O método, passo a passo": { es: "El método, paso a paso" },
+  "As etapas que a agência percorre com cada cliente.": {
+    es: "Las etapas que la agencia recorre con cada cliente.",
+  },
+  "Telas relacionadas": { es: "Pantallas relacionadas" },
+  Métricas: { es: "Métricas" },
+  "Os números do atendimento e das vendas": { es: "Los números de la atención y de las ventas" },
+  "Compras e receita": { es: "Compras e ingresos" },
+  "Resultados das campanhas pagas": { es: "Resultados de las campañas pagas" },
+  "O que vem aqui": { es: "Lo que viene aquí" },
+  "Tráfego pago: investimento, cliques, leads e custo por lead.": {
+    es: "Tráfico pago: inversión, clics, leads y costo por lead.",
+  },
+  "Vendas: do primeiro contato ao fechamento.": { es: "Ventas: del primer contacto al cierre." },
+  "Faturamento: receita e valor do cliente ao longo do tempo.": {
+    es: "Facturación: ingresos y valor del cliente a lo largo del tiempo.",
+  },
+  "O diagnóstico do negócio e a construção do produto e da oferta, etapa por etapa.": {
+    es: "El diagnóstico del negocio y la construcción del producto y de la oferta, etapa por etapa.",
+  },
+  "Atalhos da estratégia": { es: "Atajos de la estrategia" },
+  "Público-alvo": { es: "Público objetivo" },
+  "Estudo de mercado": { es: "Estudio de mercado" },
+  "Análise da concorrência": { es: "Análisis de la competencia" },
+  "Quem disputa a atenção do seu cliente": { es: "Quién disputa la atención de tu cliente" },
+  "Cada etapa vira uma página de apresentação, bonita, com os resultados do seu negócio.": {
+    es: "Cada etapa se convierte en una página de presentación, bonita, con los resultados de tu negocio.",
+  },
+  "Você vê em tela cheia, slide a slide, ou rolando a página como num site.": {
+    es: "Lo ves a pantalla completa, diapositiva a diapositiva, o desplazando la página como en un sitio web.",
+  },
+  "A agência cria e atualiza; você acompanha tudo por aqui.": {
+    es: "La agencia crea y actualiza; tú sigues todo desde aquí.",
+  },
+  "Uma página de apresentação, bonita, com os resultados desta etapa.": {
+    es: "Una página de presentación, bonita, con los resultados de esta etapa.",
+  },
+  "Campanhas, criativos e textos, cada um com o estado: ativo ou pausado.": {
+    es: "Campañas, creativos y textos, cada uno con su estado: activo o pausado.",
+  },
+  "Os links e os resultados de cada peça, num só painel.": {
+    es: "Los enlaces y los resultados de cada pieza, en un solo panel.",
+  },
+  "A estratégia por trás de cada campanha, contada em uma página.": {
+    es: "La estrategia detrás de cada campaña, contada en una página.",
+  },
+  "Tabela, quadro, calendário e linha do tempo": {
+    es: "Tabla, tablero, calendario y línea de tiempo",
+  },
+  "A semana do projeto numa linha do tempo clara, com o que cabe a cada lado.": {
+    es: "La semana del proyecto en una línea de tiempo clara, con lo que le toca a cada lado.",
+  },
+  "Tarefas da agência e do cliente separadas, com prazos e responsáveis.": {
+    es: "Tareas de la agencia y del cliente por separado, con plazos y responsables.",
+  },
+  "Usa o mesmo motor de Tarefas do sistema: o que muda lá aparece aqui.": {
+    es: "Usa el mismo motor de Tareas del sistema: lo que cambia allí aparece aquí.",
+  },
+  "O catálogo de produtos do CRM": { es: "El catálogo de productos del CRM" },
+  "Cada produto com a sua oferta: promessa, preço, garantias e bônus.": {
+    es: "Cada producto con su oferta: promesa, precio, garantías y bonos.",
+  },
+  "A apresentação da oferta em página bonita, para você revisar e aprovar.": {
+    es: "La presentación de la oferta en una página bonita, para que la revises y apruebes.",
+  },
+  "Ligação com o catálogo de produtos que já existe no CRM.": {
+    es: "Conexión con el catálogo de productos que ya existe en el CRM.",
+  },
+  "Ver tudo em Marketing": { es: "Ver todo en Marketing" },
   "Tarefa criada, mas ela não combina com o filtro": {
     es: "Tarea creada, pero no coincide con el filtro",
   },

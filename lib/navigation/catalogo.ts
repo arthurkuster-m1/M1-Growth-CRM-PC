@@ -17,7 +17,8 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+export type NavGroupId =
+  "atendimento" | "marketing" | "crm" | "ia" | "canais" | "analise" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -88,6 +89,13 @@ export interface NavMetadata {
  */
 export const NAV_GROUPS: NavGroup[] = [
   { id: "atendimento", label: "Atendimento" },
+  // O trabalho de marketing da agência para o cliente (estratégia, oferta, cronograma, demanda e
+  // dashboards). É vitrine: a agência cria, o cliente acompanha. O hub é o "painelzão".
+  {
+    id: "marketing",
+    label: "Marketing",
+    hub: { href: "/app/marketing", label: "Ver tudo em Marketing" },
+  },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
   { id: "canais", label: "Canais" },
@@ -173,6 +181,53 @@ export const NAV_CATALOG = [
       "Tabela estilo Notion: edite no lugar, escolha as propriedades e arraste para reordenar.",
     icon: "ListChecks",
     group: "atendimento",
+  },
+  {
+    // MARKETING — a vitrine do trabalho da agência. Quatro de cinco telas sobem para o menu
+    // porque o Arthur quer entrar direto em cada uma; a visão geral é o hub do grupo.
+    href: "/app/marketing/estrategia",
+    label: "Estratégia",
+    description: "O diagnóstico do negócio e a construção do produto e da oferta, etapa por etapa.",
+    icon: "Lightbulb",
+    group: "marketing",
+    section: "Estratégia e oferta",
+    sidebar: true,
+  },
+  {
+    href: "/app/marketing/produtos-e-ofertas",
+    label: "Produtos e ofertas",
+    description: "O que você vende e como isso é apresentado ao mercado.",
+    icon: "Tag",
+    group: "marketing",
+    section: "Estratégia e oferta",
+    sidebar: true,
+  },
+  {
+    href: "/app/marketing/cronograma",
+    label: "Cronograma",
+    description: "As tarefas da semana: o que é da agência e o que é do cliente.",
+    icon: "CalendarBlank",
+    group: "marketing",
+    section: "Execução e resultados",
+    sidebar: true,
+  },
+  {
+    href: "/app/marketing/geracao-de-demanda",
+    label: "Geração de demanda",
+    description: "Campanhas, criativos e textos que trazem clientes.",
+    icon: "Megaphone",
+    group: "marketing",
+    section: "Execução e resultados",
+    sidebar: true,
+  },
+  {
+    href: "/app/marketing/dashboards",
+    label: "Dashboards",
+    description: "Tráfego, vendas e faturamento, em números.",
+    icon: "ChartLineUp",
+    group: "marketing",
+    section: "Execução e resultados",
+    sidebar: true,
   },
   {
     href: "/app/radar",
