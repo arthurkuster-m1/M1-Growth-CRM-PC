@@ -49,7 +49,14 @@ Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estraté
 3. `/app/inicio` (home pós-login).
 4. `/app/tarefas` — motor de tabela estilo Notion (`components/motor/*`, `hooks/tarefas/*`, `lib/motor/*`, `lib/tarefas/*`).
 5. 5a colunas arrastáveis/redimensionáveis/ocultáveis (layout por pessoa em `user_view_preferences`); 5b propriedades personalizadas (texto, número, seleção, múltipla, data, caixa, link); 5c seleção + ações em massa (`/api/v1/tasks/bulk`).
-6. **6a (último commit `7ae8cd8`)**: filtros, ordenação e agrupamento — regras puras em `lib/motor/consulta.ts` (22 testes em `tests/unit/motor-consulta.test.ts`), barra `components/motor/BarraDeConsulta.tsx`, grupos recolhíveis em `TabelaDoMotor`. Guardados no mesmo `config` do layout (`preferenciasDaTabelaSchema`). **Ainda NÃO foi visto funcionando na tela** (o PC estava travando) — o primeiro passo é abrir /app/tarefas no domínio e conferir: Filtrar → Status "é" X; Agrupar por Status; recarregar e ver se persiste; selecionar linhas e usar ações em massa com filtro ativo.
+6. **6a (último commit `7ae8cd8`)**: filtros, ordenação e agrupamento — regras puras em `lib/motor/consulta.ts` (22 testes em `tests/unit/motor-consulta.test.ts`), barra `components/motor/BarraDeConsulta.tsx`, grupos recolhíveis em `TabelaDoMotor`. Guardados no mesmo `config` do layout (`preferenciasDaTabelaSchema`). **Validado pelo Arthur na tela (08/10/2026): funciona.**
+7. **6b (commit `bd9139b`)**: alternador de visualização Tabela | Quadro (Kanban) | Calendário | Linha do tempo em `/app/tarefas` (`QuadroKanban.tsx`, `CalendarioDeTarefas.tsx`, `LinhaDoTempo.tsx`; escolha guardada em `config.visualizacao`: tabela/kanban/calendario/timeline; contas de calendário em `lib/motor/calendario.ts`). No celular (<768px, hook `useCelular`) a tabela vira lista de cartões. Tarefa nova herda os filtros ativos (`valoresDeNascimento` em `lib/motor/consulta.ts`). **Aguardando o Arthur testar na tela** (build feito, ver abaixo).
+
+## Aprendizados desta rodada (08/10/2026)
+- Modo dev (`next dev`) foi testado na VPS e DESCARTADO: lento demais (compila cada tela na 1ª visita). Mantemos produção + build. Ideia aprovada em princípio: build automático no GitHub Actions (máquina maior, 3–5 min) enviando o pronto para a VPS; ainda não feito. Enquanto isso: juntar várias mudanças em UM build.
+- NUNCA use `pkill -f "next ..."` num comando que contém esse texto: o pkill mata o próprio shell (exit 144). Use PIDs (`pgrep`/`ps`) ou um script em arquivo (`/tmp/m1-deploy.sh`: build → mata next-server → `setsid nohup pnpm exec next start -p 3001`).
+- Caddyfile de produção aponta para a porta 3001 (backup em `/etc/caddy/Caddyfile.prod.bak`).
+- Remote Control foi ligado nesta sessão a pedido do Arthur (ele trabalha também pelo celular).
 
 ## Padrões do motor (siga-os)
 - Edição otimista (`setQueryData` + rollback) nos hooks; posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guardando só os desvios (`lib/motor/layout.ts`); status = opção (nome/cor por organização) ligada a um grupo fixo (pending/in_progress/done/cancelled) via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas sempre no fuso da organização (`lib/inicio/datas.ts`, `lib/motor/datas-do-campo.ts`).
@@ -58,7 +65,7 @@ Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estraté
 - Verificação antes de commitar: `tsc` zerado, `eslint` sem erros (warnings aceitos), `prettier`, testes unitários dos arquivos tocados + os guardas de i18n/navegação/sidebar.
 
 ## Próximos passos (plano aprovado)
-- **6b**: alternador de visualização na tela de Tarefas — Tabela / Kanban / Calendário / Linha do tempo — reutilizando o mesmo dado (`useTarefasDoMotor`); depois **visualizações salvas e compartilháveis** (filtro+ordem+grupo+layout com nome), que passam a viver no banco (`user_view_preferences` hoje guarda só a preferência da própria pessoa).
+- **6c (próximo)**: criar tarefa dentro de um grupo/coluna do Quadro herdando o valor do grupo; **visualizações salvas e compartilháveis** (filtro+ordem+grupo+layout com nome), que passam a viver no banco (`user_view_preferences` hoje guarda só a preferência da própria pessoa).
 - Depois: adotar o motor no **CRM (leads)** POR CIMA da estrutura existente, com muito cuidado (leads alimentam inbox, automações, follow-up, IA, webhooks).
 - Depois: módulos da lista (Estratégico/Planejamento/Onboarding, Produtos, dashboards, etc.).
 - Pendências menores: serviço systemd para o app; trocar redirecionamento pós-onboarding de /app/inbox para /app; nome do usuário "Dono" → nome real; seletor de empresa no menu; instalar Redis/WAHA de verdade quando formos usar WhatsApp e IA.
