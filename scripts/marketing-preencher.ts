@@ -5,7 +5,7 @@
  *
  *   npx tsx scripts/marketing-preencher.ts <id-da-empresa> <modulo> <blocos.json> [--modelo]
  *
- * `--modelo` ignora o JSON e grava o modelo padrão do módulo. Os blocos passam pelo MESMO
+ * `--titulo=Texto` define o título (subpáginas). `--modelo` ignora o JSON e grava o modelo padrão do módulo. Os blocos passam pelo MESMO
  * schema da tela (inválido = recusa, nada é gravado). Usa SUPABASE_DB_URL do .env.local.
  * Imagens: suba o arquivo para o bucket `marketing-images` em `<empresa>/<uuid>.<png|jpg>` e
  * use só `<uuid>.<png|jpg>` no campo `arquivo`.
@@ -17,7 +17,7 @@ import { Client } from "pg";
 
 import { blocosSchema } from "../lib/marketing/blocos";
 import { modeloDoModulo } from "../lib/marketing/modelos";
-import { moduloPorChave } from "../lib/marketing/modulos";
+import { lerChaveDePagina } from "../lib/marketing/modulos";
 
 function urlDoBanco(): string {
   const env = readFileSync(new URL("../.env.local", import.meta.url), "utf8");
@@ -27,8 +27,10 @@ function urlDoBanco(): string {
 }
 
 async function main() {
-  const [org, modulo, arquivo, flag] = process.argv.slice(2);
-  if (!org || !modulo || !moduloPorChave(modulo)) {
+  const [org, modulo, arquivo, ...resto] = process.argv.slice(2);
+  const flag = resto.find((x) => x === "--modelo");
+  const titulo = resto.find((x) => x.startsWith("--titulo="))?.slice(9);
+  if (!org || !modulo || !lerChaveDePagina(modulo)) {
     throw new Error("Uso: marketing-preencher.ts <id-da-empresa> <modulo> <blocos.json|--modelo>");
   }
   const bruto =
@@ -42,11 +44,12 @@ async function main() {
   try {
     await c.query("begin");
     const p = await c.query(
-      `insert into public.marketing_pages (organization_id, module_key)
-       values ($1, $2)
-       on conflict (organization_id, module_key) do update set updated_at = now()
+      `insert into public.marketing_pages (organization_id, module_key, title)
+       values ($1, $2, coalesce($3, ''))
+       on conflict (organization_id, module_key)
+       do update set updated_at = now(), title = coalesce($3, public.marketing_pages.title)
        returning id`,
-      [org, modulo],
+      [org, modulo, titulo ?? null],
     );
     await c.query(
       `insert into public.marketing_page_drafts (page_id, organization_id, blocks)
