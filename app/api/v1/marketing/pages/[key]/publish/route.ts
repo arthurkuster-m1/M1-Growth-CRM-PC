@@ -12,6 +12,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { lerBlocos } from "@/lib/marketing/blocos";
 import { chaveDePaginaSchema } from "@/lib/marketing/paginas";
+import { sincronizarOfertas } from "@/lib/marketing/sincronizar-ofertas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,8 @@ export async function POST(_req: NextRequest, ctx: Contexto): Promise<Response> 
     requestId,
     metadata: { module_key: chave.data, blocos: blocos.length },
   });
+
+  await sincronizarOfertas(authz.org.orgId);
 
   return ok({ published_at: agora, blocos: blocos.length }, { requestId });
 }

@@ -87,8 +87,8 @@ export default async function EstrategiaPage() {
               )}
               destaque={
                 totalDeProdutos > 0
-                  ? t("{n} produtos cadastrados").replace("{n}", String(totalDeProdutos))
-                  : t("Nenhum produto cadastrado ainda")
+                  ? t("{n} ofertas publicadas").replace("{n}", String(totalDeProdutos))
+                  : t("Nenhuma oferta publicada ainda")
               }
               abrir={t("Abrir o cadastro")}
             />

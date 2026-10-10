@@ -21,6 +21,7 @@ import {
   chaveDePaginaSchema,
   type PaginaDeMarketing,
 } from "@/lib/marketing/paginas";
+import { sincronizarOfertas } from "@/lib/marketing/sincronizar-ofertas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -130,5 +131,7 @@ export async function DELETE(_req: NextRequest, ctx: Contexto): Promise<Response
     requestId,
     metadata: { module_key: chave },
   });
+  await sincronizarOfertas(authz.org.orgId);
+
   return ok({ deleted: true }, { requestId });
 }

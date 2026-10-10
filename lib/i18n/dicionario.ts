@@ -18367,6 +18367,8 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  "{n} ofertas publicadas": { es: "{n} ofertas publicadas" },
+  "Nenhuma oferta publicada ainda": { es: "Aún no hay ofertas publicadas" },
   Bônus: { es: "Bonos" },
   "A central de tudo o que a empresa vende: da ficha simples à oferta completa.": {
     es: "La central de todo lo que vende la empresa: de la ficha simple a la oferta completa.",

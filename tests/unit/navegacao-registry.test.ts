@@ -190,7 +190,6 @@ describe("hubSections", () => {
       "/app/tasks/planos",
       "/app/calls",
       "/app/comandas",
-      "/app/products",
       "/app/imports",
       "/app/settings/tenant/pipelines",
       "/app/proposals",

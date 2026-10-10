@@ -11,7 +11,7 @@ import { sidebarGroups, searchable, hubSections } from "@/lib/navigation/registr
 import { signInviteToken, verifyInviteToken } from "@/lib/auth/invite-token";
 const complete = { preset: "completa" } as const;
 const simplified = { preset: "simplificada" } as const;
-const granular = { preset: "completa", destinos: ["/app/products"] } as const;
+const granular = { preset: "completa", destinos: ["/app/companies"] } as const;
 const hrefs = (settings: unknown, role: "agent" | "admin" = "admin", platform = false) =>
   destinosDaInterface(settings, platform, role).map((d) => d.href);
 describe("interface por vínculo é apresentação", () => {
@@ -47,9 +47,9 @@ describe("interface por vínculo é apresentação", () => {
       hubSections("crm", false, "admin", settings)
         .flatMap((s) => s.items)
         .map((d) => d.href),
-    ).toEqual(["/app/products"]);
-    expect(searchable(false, "admin", settings).map((d) => d.href)).toContain("/app/products");
-    expect(homeDaInterface(settings, false, "admin")).toBe("/app/products");
+    ).toEqual(["/app/companies"]);
+    expect(searchable(false, "admin", settings).map((d) => d.href)).toContain("/app/companies");
+    expect(homeDaInterface(settings, false, "admin")).toBe("/app/companies");
     expect(hrefs(settings)).toEqual(
       expect.arrayContaining(["/app/team", "/app/settings/profile", "/app/settings/security"]),
     );

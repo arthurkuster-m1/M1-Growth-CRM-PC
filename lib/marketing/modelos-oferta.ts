@@ -14,18 +14,7 @@ export function centralDeProdutos(n: NovoId): Bloco[] {
       id: n(),
       tipo: "texto",
       texto:
-        "Como os produtos e as ofertas se conectam: do primeiro contato até o cliente que fica e compra de novo.",
-    },
-    {
-      id: n(),
-      tipo: "fluxo",
-      itens: [
-        { titulo: "Isca", texto: "O que atrai e qualifica o contato" },
-        { titulo: "Entrada", texto: "O primeiro produto, de baixo risco" },
-        { titulo: "Principal", texto: "A oferta que sustenta o negócio" },
-        { titulo: "Expansão", texto: "O que o cliente compra a mais" },
-        { titulo: "Recorrência", texto: "O que o mantém por perto" },
-      ],
+        "Como os produtos e as ofertas se conectam: do primeiro contato até o cliente que fica e compra de novo. A escada abaixo se monta sozinha, a partir da etapa de cada oferta.",
     },
   ];
 }

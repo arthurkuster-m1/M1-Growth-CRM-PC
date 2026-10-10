@@ -94,10 +94,16 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/app/tasks", destination: "/app/tarefas", permanent: true },
-      // Produtos e ofertas saiu de Marketing: a tela de verdade é a de Produtos.
+      // Produtos e ofertas moraram em Marketing e em /app/products. Hoje a única fonte de produto
+      // e preço é a central de ofertas da Estratégia.
       {
         source: "/app/marketing/produtos-e-ofertas",
-        destination: "/app/products",
+        destination: "/app/marketing/estrategia/produtos-e-ofertas",
+        permanent: true,
+      },
+      {
+        source: "/app/products",
+        destination: "/app/marketing/estrategia/produtos-e-ofertas",
         permanent: true,
       },
     ];

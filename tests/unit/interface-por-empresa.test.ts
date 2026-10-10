@@ -65,25 +65,25 @@ describe("portas por empresa (issue #1341)", () => {
     const resultado = hrefs(combinarInterfaces(daEmpresa, completa));
     expect(resultado).toContain("/app/inbox");
     expect(resultado).toContain("/app/contacts");
-    expect(resultado).not.toContain("/app/products");
+    expect(resultado).not.toContain("/app/companies");
     expect(resultado).not.toContain("/app/ai/agents");
   });
 
   it("o vínculo estreita DENTRO da empresa, e nunca além dela", () => {
     const daEmpresa = {
       preset: "completa",
-      destinos: ["/app/inbox", "/app/contacts", "/app/products", "/app/ai/agents"],
+      destinos: ["/app/inbox", "/app/contacts", "/app/companies", "/app/ai/agents"],
     } as const;
-    const doVinculo = { preset: "completa", destinos: ["/app/inbox", "/app/products"] } as const;
+    const doVinculo = { preset: "completa", destinos: ["/app/inbox", "/app/companies"] } as const;
     expect(hrefs(combinarInterfaces(daEmpresa, doVinculo)).sort()).toEqual(
-      [...essenciais(), "/app/inbox", "/app/products"].sort(),
+      [...essenciais(), "/app/inbox", "/app/companies"].sort(),
     );
   });
 
   it("empresa simplificada estreita o vínculo completo (o limite vale dos dois lados)", () => {
     const soEmpresa = hrefs(combinarInterfaces(simplificada, completa));
     expect(soEmpresa).toEqual(hrefs(simplificada));
-    expect(soEmpresa).not.toContain("/app/products");
+    expect(soEmpresa).not.toContain("/app/companies");
   });
 
   it("sem interseção sobram as essenciais — nunca `destinos: []` (seria falha ABERTA)", () => {
@@ -94,7 +94,7 @@ describe("portas por empresa (issue #1341)", () => {
       false,
     );
     const daEmpresa = { preset: "completa", destinos: ["/app/inbox"] } as const;
-    const doVinculo = { preset: "completa", destinos: ["/app/products"] } as const;
+    const doVinculo = { preset: "completa", destinos: ["/app/companies"] } as const;
     const resultado = combinarInterfaces(daEmpresa, doVinculo);
     expect(resultado.destinos).not.toEqual([]);
     expect(interfaceSettingsSchema.safeParse(resultado).success).toBe(true);
@@ -227,7 +227,7 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
     const casos: unknown[] = [
       simplificada,
       { preset: "completa", destinos: ["/app/inbox"] },
-      { preset: "completa", destinos: ["/app/inbox", "/app/contacts", "/app/products"] },
+      { preset: "completa", destinos: ["/app/inbox", "/app/contacts", "/app/companies"] },
       { preset: "completa", destinos: essenciais() },
     ];
     for (const daEmpresa of casos) {

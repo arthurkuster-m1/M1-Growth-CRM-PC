@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { blocosSchema, type Bloco } from "./blocos";
+import { blocosSchema, type Bloco, type EtapaDaOferta } from "./blocos";
 import { lerChaveDePagina, moduloPorChave, tiposDeSubpagina } from "./modulos";
 
 /** A chave de módulo vem da URL: só vale se é um dos módulos da estratégia. */
@@ -30,6 +30,8 @@ export interface ResumoDeSubpagina {
   tipo: string;
   title: string;
   publicada: boolean;
+  /** Só nas ofertas: o que a escada de valor precisa (etapa, carro-chefe e preço). */
+  oferta?: { etapa: EtapaDaOferta; carroChefe: boolean; preco: string };
 }
 
 /** O que a agência manda ao gravar o rascunho. */

@@ -376,34 +376,6 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
-    // ⚠️ Esta tela nasceu porque a FERRAMENTA já existia sem ela. O agente de IA
-    // vinha com "procurar produto na loja" ligada por padrão, lendo uma tabela
-    // que ninguém nunca preencheu — e o efeito não era silêncio: era o agente
-    // respondendo "não tenho nada com esse nome" para uma loja de estoque cheio.
-    //
-    // Fica no grupo do CRM, e não em Configurações, porque o catálogo é insumo
-    // de VENDA: ele existe para o agente responder preço na conversa.
-    //
-    // ⚠️ ESTA FRASE DIZIA "consultar preço é trabalho de quem ATENDE, todo dia",
-    // e era o argumento para o `sidebar: true`. Ela se contradizia com a própria
-    // descrição do destino, uma linha abaixo: quem responde o preço é o
-    // atendente de IA, dentro do Inbox. O humano não abre esta tela para
-    // vender — abre para cadastrar o que vende.
-    href: "/app/products",
-    label: "Produtos",
-    description: "O catálogo da loja, com o preço que o atendente de IA responde.",
-    icon: "Storefront",
-    group: "crm",
-    section: "Preparar a venda",
-    // SEM `sidebar`: mora atrás de "Ver tudo em CRM".
-    //
-    // O critério é QUEM CONSOME a tela, e a descrição acima já o entrega: o
-    // preço quem responde é o atendente de IA, dentro da conversa. Esta tela é
-    // onde o catálogo se CADASTRA — trabalho de quando entra produto novo ou
-    // muda preço, não de toda manhã. Quem atende não a abre para vender; abre o
-    // Inbox e o funil, que continuam no menu.
-  },
-  {
     href: "/app/imports",
     label: "Importações",
     description: "Lotes CSV/XLSX de empresas, pessoas e telefones.",

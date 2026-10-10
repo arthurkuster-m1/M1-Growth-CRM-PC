@@ -13,6 +13,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { lerBlocos } from "@/lib/marketing/blocos";
 import { publicacaoEmMassaSchema } from "@/lib/marketing/paginas";
+import { sincronizarOfertas } from "@/lib/marketing/sincronizar-ofertas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +101,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     requestId,
     metadata: { solicitadas: keys.length, feitas, ignoradas, paginas: keys.slice(0, 50) },
   });
+
+  await sincronizarOfertas(orgId);
 
   return ok({ feitas, ignoradas }, { requestId });
 }

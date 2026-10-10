@@ -15,6 +15,9 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { baseDasImagensDoLink } from "@/lib/marketing/imagens";
 import { ArrowRight } from "@/lib/ui/icons";
+import { EscadaDeValor } from "@/components/marketing/EscadaDeValor";
+import { lerBlocos } from "@/lib/marketing/blocos";
+import { ofertaDosBlocos, precoEmTexto } from "@/lib/marketing/oferta";
 import { lerChaveDePagina, moduloPorChave } from "@/lib/marketing/modulos";
 import {
   acessoPermitido,
@@ -60,6 +63,22 @@ export default async function PaginaPublicaPage({
   const filhas = lida.tipo
     ? []
     : paginas.filter((p) => p.module_key.startsWith(`${chave}--`) && p.blocos.length > 0);
+  // A escada de valor da central de ofertas: cada oferta publicada na sua etapa.
+  const escada = filhas.flatMap((f) => {
+    const o = ofertaDosBlocos(lerBlocos(f.blocos));
+    return o
+      ? [
+          {
+            chave: f.module_key,
+            titulo: f.title,
+            etapa: o.etapa,
+            carroChefe: o.carroChefe,
+            preco: precoEmTexto(o),
+            href: `/p/${token}/${f.module_key}`,
+          },
+        ]
+      : [];
+  });
   const rotulos = {
     antes: t("Antes"),
     depois: t("Depois"),
@@ -121,6 +140,7 @@ export default async function PaginaPublicaPage({
             <article className="rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
               <BlocosRender blocos={pagina.blocos} rotulos={rotulos} />
             </article>
+            {escada.length > 0 ? <EscadaDeValor ofertas={escada} /> : null}
             {filhas.length > 0 ? (
               <section aria-label={t("Subpáginas")} className="flex flex-col gap-3">
                 <h2 className="text-lg font-semibold tracking-tight">{t("Aprofundamento")}</h2>

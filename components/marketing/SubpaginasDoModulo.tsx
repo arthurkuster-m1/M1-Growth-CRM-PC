@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { EscadaDeValor } from "@/components/marketing/EscadaDeValor";
 import { EtiquetaDeEstado } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { textosDoTipoDeSubpagina } from "@/components/marketing/textos";
@@ -57,6 +58,20 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
   // O cliente (ou a agência em "ver como cliente") só vê as subpáginas publicadas.
   const visiveis = podeEditar ? subpaginas : subpaginas.filter((s) => s.publicada);
   if (!podeEditar && visiveis.length === 0 && !carregando) return null;
+  const escada = visiveis.flatMap((s) =>
+    s.oferta
+      ? [
+          {
+            chave: s.key,
+            titulo: s.title,
+            etapa: s.oferta.etapa,
+            carroChefe: s.oferta.carroChefe,
+            preco: s.oferta.preco,
+            href: `${base}/${s.key}`,
+          },
+        ]
+      : [],
+  );
 
   return (
     <section aria-label={t("Subpáginas")} className="flex flex-col gap-3">
@@ -101,6 +116,8 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
           </div>
         ) : null}
       </div>
+
+      {modulo === "produtos-e-ofertas" ? <EscadaDeValor ofertas={escada} /> : null}
 
       {carregando ? (
         <div className="h-24 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />

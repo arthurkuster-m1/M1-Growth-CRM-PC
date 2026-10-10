@@ -11,6 +11,7 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { chaveDePaginaSchema } from "@/lib/marketing/paginas";
+import { sincronizarOfertas } from "@/lib/marketing/sincronizar-ofertas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,8 @@ export async function POST(_req: NextRequest, ctx: Contexto): Promise<Response> 
     requestId,
     metadata: { module_key: chave.data },
   });
+
+  await sincronizarOfertas(authz.org.orgId);
 
   return ok({ unpublished: true }, { requestId });
 }

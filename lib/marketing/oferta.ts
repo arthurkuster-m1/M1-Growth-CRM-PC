@@ -115,3 +115,46 @@ export function ofertaParaTexto(titulo: string, o: Oferta): string {
   bloco("NUNCA prometer", lista(o.nuncaPrometer));
   return partes.join("\n\n");
 }
+
+/** A oferta de uma página (o primeiro bloco `oferta`), ou null. */
+export function ofertaDosBlocos(blocos: readonly Bloco[]): Oferta | null {
+  const achado = blocos.find((b): b is Oferta => b.tipo === "oferta");
+  return achado ?? null;
+}
+
+/**
+ * O preço que o catálogo guarda, em centavos: a mensalidade (ou o valor único). Sob consulta e
+ * gratuito viram 0 — o texto da oferta, que a IA lê, diz o que isso significa.
+ */
+export function precoEmCentavos(o: Oferta): number {
+  if (o.preco.tipo === "sob-consulta" || o.preco.tipo === "gratuito") return 0;
+  const valor = lerNumero(o.preco.valor);
+  return valor === null ? 0 : Math.round(valor * 100);
+}
+
+/** O código estável do produto no catálogo, derivado da chave da página. */
+export function codigoDaOferta(chaveDaPagina: string): string {
+  return `OFERTA-${chaveDaPagina.split("--").slice(1).join("-").toUpperCase()}`.slice(0, 60);
+}
+
+export interface LinhaDoCatalogo {
+  codigo: string;
+  nome: string;
+  descricao: string;
+  categoria: string;
+  preco_cents: number;
+}
+
+/**
+ * Como uma oferta PUBLICADA vira linha do catálogo que a IA consulta. A oferta é a única fonte:
+ * o cliente cadastra uma vez, aqui, e o catálogo (preço, descrição, nome) é derivado.
+ */
+export function linhaDoCatalogo(chaveDaPagina: string, titulo: string, o: Oferta): LinhaDoCatalogo {
+  return {
+    codigo: codigoDaOferta(chaveDaPagina),
+    nome: titulo.trim() || "Oferta",
+    descricao: ofertaParaTexto(titulo.trim() || "Oferta", o),
+    categoria: ROTULO_DA_ETAPA[o.etapa],
+    preco_cents: precoEmCentavos(o),
+  };
+}

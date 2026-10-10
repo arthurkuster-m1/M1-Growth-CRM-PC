@@ -13,6 +13,8 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { lerBlocos } from "@/lib/marketing/blocos";
+import { ofertaDosBlocos, precoEmTexto } from "@/lib/marketing/oferta";
 import { modeloDoModulo } from "@/lib/marketing/modelos";
 import { chaveDeSubpagina, lerChaveDePagina, tiposDeSubpagina } from "@/lib/marketing/modulos";
 import { novaSubpaginaSchema, type ResumoDeSubpagina } from "@/lib/marketing/paginas";
@@ -45,7 +47,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("marketing_pages")
-    .select("module_key, title, published_blocks")
+    .select("id, module_key, title, published_blocks")
     .eq("organization_id", authz.org.orgId)
     .like("module_key", `${modulo}--%`)
     .order("sort_order", { ascending: true })
@@ -56,17 +58,39 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const podeEditar =
     roleAtLeast(authz.org.role, "manager") || (authz.user.is_platform_admin && !authz.user.support);
-  const subpaginas: ResumoDeSubpagina[] = [];
-  for (const l of (data ?? []) as Array<{
+  const linhas = (data ?? []) as Array<{
+    id: string;
     module_key: string;
     title: string;
     published_blocks: unknown;
-  }>) {
+  }>;
+  // A escada de valor lê a oferta de cada página: a agência vê o rascunho; o cliente, o publicado.
+  const rascunhos = new Map<string, unknown>();
+  if (podeEditar && modulo === "produtos-e-ofertas" && linhas.length > 0) {
+    const { data: ds } = await supabase
+      .from("marketing_page_drafts")
+      .select("page_id, blocks")
+      .in(
+        "page_id",
+        linhas.map((l) => l.id),
+      );
+    for (const d of (ds ?? []) as Array<{ page_id: string; blocks: unknown }>) {
+      rascunhos.set(d.page_id, d.blocks);
+    }
+  }
+  const subpaginas: ResumoDeSubpagina[] = [];
+  for (const l of linhas) {
     const chave = lerChaveDePagina(l.module_key);
     if (!chave?.tipo) continue;
     const publicada = l.published_blocks !== null;
     if (!publicada && !podeEditar) continue;
-    subpaginas.push({ key: l.module_key, tipo: chave.tipo, title: l.title, publicada });
+    let oferta: ResumoDeSubpagina["oferta"];
+    if (modulo === "produtos-e-ofertas") {
+      const fonte = podeEditar ? (rascunhos.get(l.id) ?? l.published_blocks) : l.published_blocks;
+      const o = ofertaDosBlocos(lerBlocos(fonte));
+      if (o) oferta = { etapa: o.etapa, carroChefe: o.carroChefe, preco: precoEmTexto(o) };
+    }
+    subpaginas.push({ key: l.module_key, tipo: chave.tipo, title: l.title, publicada, oferta });
   }
   return ok({ subpaginas, pode_editar: podeEditar }, { requestId });
 }

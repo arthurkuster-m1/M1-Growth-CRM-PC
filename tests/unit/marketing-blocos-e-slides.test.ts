@@ -284,3 +284,30 @@ describe("oferta", () => {
     expect(texto).toContain("Valor total de referência (não é o preço)");
   });
 });
+
+describe("oferta vira linha do catálogo", () => {
+  it("preço em centavos e código estável; sob consulta vira zero", async () => {
+    const { blocoEmBranco } = await import("@/lib/marketing/blocos");
+    const { linhaDoCatalogo, precoEmCentavos, codigoDaOferta } =
+      await import("@/lib/marketing/oferta");
+    const base = blocoEmBranco("oferta", "o1");
+    if (base.tipo !== "oferta") throw new Error("tipo");
+    const mensal = {
+      ...base,
+      preco: { tipo: "mensal" as const, valor: "R$ 1.500,50", setup: "", condicoes: "" },
+    };
+    expect(precoEmCentavos(mensal)).toBe(150050);
+    const consulta = {
+      ...base,
+      preco: { tipo: "sob-consulta" as const, valor: "", setup: "", condicoes: "" },
+    };
+    expect(precoEmCentavos(consulta)).toBe(0);
+    expect(codigoDaOferta("produtos-e-ofertas--oferta-assessoria")).toBe(
+      "OFERTA-OFERTA-ASSESSORIA",
+    );
+    const l = linhaDoCatalogo("produtos-e-ofertas--oferta-assessoria", "Assessoria M1", mensal);
+    expect(l.nome).toBe("Assessoria M1");
+    expect(l.descricao).toContain("OFERTA: Assessoria M1");
+    expect(l.preco_cents).toBe(150050);
+  });
+});
