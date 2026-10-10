@@ -23,30 +23,20 @@ export function textosDoModulo(
   chave: string,
 ): { titulo: string; descricao: string } | null {
   switch (chave) {
-    case "onboarding":
-      return {
-        titulo: t("Onboarding"),
-        descricao: t("A reunião inicial, os materiais e as pastas do cliente."),
-      };
     case "mapeamento-do-funil":
       return {
-        titulo: t("Mapeamento do funil atual | Kick Off"),
-        descricao: t("Como o cliente vende hoje: o funil atual, mapeado na reunião de kick-off."),
+        titulo: t("Mapeamento do funil atual"),
+        descricao: t("Onde a empresa está hoje: o funil, o processo de vendas e as oportunidades."),
       };
     case "posicionamento-zmot":
       return {
-        titulo: t("Posicionamento | ZMOT"),
-        descricao: t("Como a marca é encontrada e escolhida antes da compra."),
-      };
-    case "analise-oculta-de-vendas":
-      return {
-        titulo: t("Análise oculta de vendas"),
-        descricao: t("Um cliente oculto testa o atendimento e a venda, de ponta a ponta."),
+        titulo: t("Posicionamento"),
+        descricao: t("Onde a marca aparece online hoje: links e imagens de cada canal."),
       };
     case "identidade-da-marca":
       return {
-        titulo: t("Identidade da marca"),
-        descricao: t("Cores, identidade visual e tom de voz."),
+        titulo: t("Branding"),
+        descricao: t("Logo, cores, fontes e tom de voz da marca."),
       };
     case "estudo-de-persona":
       return {

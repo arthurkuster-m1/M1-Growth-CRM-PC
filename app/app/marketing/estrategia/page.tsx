@@ -39,7 +39,7 @@ export default async function EstrategiaPage() {
         <Atalho
           href="/app/marketing/estrategia/posicionamento-zmot"
           titulo={t("Estudo de mercado")}
-          descricao={t("Posicionamento | ZMOT")}
+          descricao={t("Posicionamento")}
         />
         <Atalho
           href="/app/marketing/estrategia/analise-de-concorrencia"

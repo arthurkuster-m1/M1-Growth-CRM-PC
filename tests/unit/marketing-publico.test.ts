@@ -72,11 +72,11 @@ describe("resolverLink", () => {
   });
 
   it("link vigente da empresa ativa: resolve, com a empresa e o escopo do link", async () => {
-    linhasPorTabela.marketing_share_links = linha({ module_key: "onboarding" });
+    linhasPorTabela.marketing_share_links = linha({ module_key: "mapeamento-do-funil" });
     expect(await resolverLink(gerarToken())).toEqual({
       linkId: "l1",
       organizationId: ORG,
-      moduloDoEscopo: "onboarding",
+      moduloDoEscopo: "mapeamento-do-funil",
     });
   });
 
@@ -113,17 +113,17 @@ describe("paginasPublicadas", () => {
 
   it("link de uma página: filtra por aquele módulo", async () => {
     linhasPorTabela.marketing_pages = [];
-    await paginasPublicadas({ ...link, moduloDoEscopo: "onboarding" });
+    await paginasPublicadas({ ...link, moduloDoEscopo: "mapeamento-do-funil" });
     const c = chamadas.find((x) => x.tabela === "marketing_pages")!;
     expect(c.filtros.map(([n, a]) => `${n}:${JSON.stringify(a)}`)).toContain(
-      `eq:${JSON.stringify(["module_key", "onboarding"])}`,
+      `eq:${JSON.stringify(["module_key", "mapeamento-do-funil"])}`,
     );
   });
 
   it("descarta módulo desconhecido e bloco inválido (nunca quebra a página do cliente)", async () => {
     linhasPorTabela.marketing_pages = [
       {
-        module_key: "onboarding",
+        module_key: "mapeamento-do-funil",
         published_at: "x",
         published_blocks: [{ id: "a", tipo: "texto", texto: "ok" }, { tipo: "lixo" }],
       },
@@ -134,7 +134,7 @@ describe("paginasPublicadas", () => {
       },
     ];
     const r = await paginasPublicadas(link);
-    expect(r.map((p) => p.module_key)).toEqual(["onboarding"]);
+    expect(r.map((p) => p.module_key)).toEqual(["mapeamento-do-funil"]);
     expect(r[0]!.blocos).toHaveLength(1);
   });
 });

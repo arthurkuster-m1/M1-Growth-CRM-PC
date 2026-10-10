@@ -1,5 +1,6 @@
 "use client";
 
+import { modeloDoModulo } from "@/lib/marketing/modelos";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +11,7 @@ import { EditorDeBlocos } from "@/components/marketing/EditorDeBlocos";
 import { OQueVem } from "@/components/marketing/PaginaDeMarketing";
 import { useT } from "@/hooks/i18n/useT";
 import { usePaginaDeMarketing } from "@/hooks/marketing/usePaginaDeMarketing";
-import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
+import { type Bloco } from "@/lib/marketing/blocos";
 import type { TomDaCapa } from "@/lib/marketing/modulos";
 import { randomId } from "@/lib/random-id";
 import { Presentation, ShareNetwork } from "@/lib/ui/icons";
@@ -81,12 +82,7 @@ export function PaginaDoModulo({
     setOcupado(false);
   }
   function comecarComModelo() {
-    editar([
-      blocoEmBranco("titulo", randomId()),
-      blocoEmBranco("texto", randomId()),
-      { ...blocoEmBranco("titulo", randomId()), texto: t("Próximos passos") } as Bloco,
-      blocoEmBranco("lista", randomId()),
-    ]);
+    editar(modeloDoModulo(chave, randomId));
   }
 
   const textoDoEstado =

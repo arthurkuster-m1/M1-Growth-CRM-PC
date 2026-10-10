@@ -51,10 +51,8 @@ export const TOM_DA_FASE: Record<FaseDaEstrategia, TomDaCapa> = {
 
 export const MODULOS_DA_ESTRATEGIA: readonly ModuloDaEstrategia[] = [
   // 01 | Diagnóstico
-  { chave: "onboarding", fase: "diagnostico", tom: "orange", icone: "Rocket" },
   { chave: "mapeamento-do-funil", fase: "diagnostico", tom: "orange", icone: "Funnel" },
   { chave: "posicionamento-zmot", fase: "diagnostico", tom: "orange", icone: "Compass" },
-  { chave: "analise-oculta-de-vendas", fase: "diagnostico", tom: "orange", icone: "Eye" },
   { chave: "identidade-da-marca", fase: "diagnostico", tom: "orange", icone: "Palette" },
   // 02 | Produto e Oferta
   { chave: "estudo-de-persona", fase: "produto-e-oferta", tom: "purple", icone: "UsersThree" },

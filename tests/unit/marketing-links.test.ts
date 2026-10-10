@@ -51,7 +51,7 @@ describe("link sem login", () => {
   it("criação: escopo é um módulo conhecido (ou o painel inteiro); validade de 1 a 365 dias", () => {
     expect(criacaoDeLinkSchema.safeParse({}).success).toBe(true);
     expect(
-      criacaoDeLinkSchema.safeParse({ module_key: "onboarding", expires_in_days: 30 }).success,
+      criacaoDeLinkSchema.safeParse({ module_key: "mapeamento-do-funil", expires_in_days: 30 }).success,
     ).toBe(true);
     expect(criacaoDeLinkSchema.safeParse({ module_key: "inventado" }).success).toBe(false);
     expect(criacaoDeLinkSchema.safeParse({ expires_in_days: 0 }).success).toBe(false);

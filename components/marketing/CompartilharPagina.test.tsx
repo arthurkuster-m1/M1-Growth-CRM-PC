@@ -18,7 +18,7 @@ import { CompartilharPagina } from "./CompartilharPagina";
 const TOKEN = "T".repeat(43);
 const link = (sobre: Partial<LinkDeMarketing> = {}): LinkDeMarketing => ({
   id: "l1",
-  module_key: "onboarding",
+  module_key: "mapeamento-do-funil",
   token: TOKEN,
   expires_at: null,
   revoked_at: null,
@@ -34,7 +34,7 @@ function montar(temPublicado = true) {
       <CompartilharPagina
         aberto
         aoFechar={() => {}}
-        chave="onboarding"
+        chave="mapeamento-do-funil"
         temPublicado={temPublicado}
       />
     </QueryClientProvider>,
@@ -64,7 +64,7 @@ describe("Compartilhar com o cliente", () => {
     await userEvent.click(screen.getByRole("button", { name: "Gerar link" }));
     await waitFor(() =>
       expect(apiClient.post).toHaveBeenCalledWith("/api/v1/marketing/share-links", {
-        module_key: "onboarding",
+        module_key: "mapeamento-do-funil",
         expires_in_days: 30,
       }),
     );

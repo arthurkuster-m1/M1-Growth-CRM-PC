@@ -87,10 +87,10 @@ describe("módulos da estratégia", () => {
     }
   });
 
-  it("chaves únicas, e as três fases do método têm módulos (5, 5 e 6)", () => {
+  it("chaves únicas, e as três fases do método têm módulos (3, 5 e 6)", () => {
     const chaves = MODULOS_DA_ESTRATEGIA.map((m) => m.chave);
     expect(new Set(chaves).size).toBe(chaves.length);
-    expect(modulosDaFase("diagnostico")).toHaveLength(5);
+    expect(modulosDaFase("diagnostico")).toHaveLength(3);
     expect(modulosDaFase("produto-e-oferta")).toHaveLength(5);
     expect(modulosDaFase("geracao-de-demanda")).toHaveLength(6);
   });

@@ -47,3 +47,11 @@ Tabelas novas (todas por organização, com RLS): `marketing_pages` (módulo, t�
 3. IA: qual provedor/chave e quais prompts (entregar por módulo).
 4. Quem é "agência" no banco: platform admin (modo suporte) + manager da empresa — confirmar.
 5. PDF/exportar a apresentação? (depois)
+
+
+## Atualização 10/10/2026 — Fase 2 (Diagnóstico) e imagens
+
+- **Imagens** (migration 0588, bucket privado `marketing-images`): blocos "Imagem" e "Imagem com texto", imagem nos dois lados do "Antes e depois", alinhamento em título/texto/citação. Link público serve a imagem por `/p/<token>/img/<arquivo>`.
+- **Decisão do Arthur:** o **Onboarding** (passos internos da agência) e a **Análise oculta de vendas** (virá da análise do Inbox) saem do sistema. O Diagnóstico passa a ter **3 páginas**: **Mapeamento do Funil Atual** (kick-off + resumo do funil, processo de vendas atual, SWOT, oportunidades, alvo), **Posicionamento** (links e imagens de todos os canais online) e **Branding** (fundamentos, logo, cores, tipografia, elementos visuais, tom de voz, framework Why/How/What — modelo baseado no manual de identidade M1).
+- Modelos de página por módulo em `lib/marketing/modelos.ts` ("Começar com um modelo"). Próximo: Fase 3 (Produto e Oferta), módulo a módulo, com os exports do Notion do Arthur.
+- Ideia futura: tema escuro/"futurista" opcional para a apresentação.
