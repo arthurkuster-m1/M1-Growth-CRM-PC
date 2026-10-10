@@ -201,3 +201,59 @@ describe("blocos visuais", () => {
     expect(lidos.map((b) => b.id)).toEqual(["a", "b", "c"]);
   });
 });
+
+describe("calculadora da meta e tabela", () => {
+  it("lê números como a pessoa escreve", async () => {
+    const { lerNumero, calcular } = await import("@/lib/marketing/calculadora");
+    expect(lerNumero("R$ 1.500,50")).toBe(1500.5);
+    expect(lerNumero("8.000")).toBe(8000);
+    expect(lerNumero("12%")).toBe(12);
+    expect(lerNumero("")).toBeNull();
+    const r = calcular({
+      meta: "8000",
+      ticket: "1500",
+      conversao: "10",
+      cpl: "25",
+      margem: "60",
+      retencao: "7",
+    });
+    expect(r.vendas).toBe(6);
+    expect(r.leads).toBe(60);
+    expect(r.investimento).toBe(1500);
+    expect(r.cac).toBe(250);
+    expect(r.ltv).toBe(10500);
+    expect(r.ltvSobreCac).toBe(42);
+  });
+
+  it("sem os dados, não calcula (nunca inventa)", async () => {
+    const { calcular } = await import("@/lib/marketing/calculadora");
+    const r = calcular({
+      meta: "8000",
+      ticket: "",
+      conversao: "",
+      cpl: "",
+      margem: "",
+      retencao: "",
+    });
+    expect(r.vendas).toBeNull();
+    expect(r.investimento).toBeNull();
+  });
+
+  it("valida os blocos tabela e calculadora", () => {
+    const lidos = lerBlocos([
+      { id: "t", tipo: "tabela", colunas: ["A", "B"], linhas: [["1", "2"]] },
+      { id: "x", tipo: "tabela", colunas: [], linhas: [] },
+      {
+        id: "c",
+        tipo: "calculadora",
+        meta: "1",
+        ticket: "",
+        conversao: "",
+        cpl: "",
+        margem: "",
+        retencao: "",
+      },
+    ]);
+    expect(lidos.map((b) => b.id)).toEqual(["t", "c"]);
+  });
+});

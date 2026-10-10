@@ -28,6 +28,8 @@ export const TIPOS_DE_BLOCO = [
   "fluxo",
   "matriz",
   "ficha",
+  "tabela",
+  "calculadora",
   "separador",
 ] as const;
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
@@ -171,6 +173,24 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
       .array(z.object({ rotulo: curto.max(60), url: enderecoWeb, destaque: z.boolean() }))
       .max(12),
   }),
+  z.object({
+    id,
+    tipo: z.literal("tabela"),
+    colunas: z.array(curto.max(60)).min(1).max(8),
+    /** Cada linha tem uma célula por coluna (a tela completa o que faltar). */
+    linhas: z.array(z.array(z.string().max(300)).max(8)).max(40),
+  }),
+  z.object({
+    id,
+    tipo: z.literal("calculadora"),
+    /** Números digitados como a pessoa escreve ("R$ 8.000", "12%"); vazio = ainda não definido. */
+    meta: z.string().max(24),
+    ticket: z.string().max(24),
+    conversao: z.string().max(24),
+    cpl: z.string().max(24),
+    margem: z.string().max(24),
+    retencao: z.string().max(24),
+  }),
   z.object({ id, tipo: z.literal("separador") }),
 ]);
 
@@ -261,6 +281,27 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
       };
     case "ficha":
       return { id: novoId, tipo, intro: "", links: [] };
+    case "tabela":
+      return {
+        id: novoId,
+        tipo,
+        colunas: ["Item", "Valor"],
+        linhas: [
+          ["", ""],
+          ["", ""],
+        ],
+      };
+    case "calculadora":
+      return {
+        id: novoId,
+        tipo,
+        meta: "",
+        ticket: "",
+        conversao: "",
+        cpl: "",
+        margem: "",
+        retencao: "",
+      };
     case "matriz":
       return {
         id: novoId,

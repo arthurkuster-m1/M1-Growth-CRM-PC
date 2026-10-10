@@ -64,6 +64,10 @@ function useNomesDosTipos() {
         return t("Matriz 2x2 (SWOT)");
       case "ficha":
         return t("Ficha com links");
+      case "tabela":
+        return t("Tabela");
+      case "calculadora":
+        return t("Calculadora da meta");
       case "separador":
         return t("Quebra de slide");
     }
@@ -710,6 +714,160 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
             </div>
           )}
         />
+      );
+
+    case "tabela":
+      return (
+        <div className="grid gap-2">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[28rem] border-separate border-spacing-1">
+              <thead>
+                <tr>
+                  {bloco.colunas.map((c, i) => (
+                    <th key={i} className="font-normal">
+                      <div className="flex items-center gap-1">
+                        <input
+                          value={c}
+                          maxLength={60}
+                          aria-label={`${t("Coluna")} ${i + 1}`}
+                          onChange={(e) =>
+                            aoMudar({
+                              ...bloco,
+                              colunas: bloco.colunas.map((x, k) => (k === i ? e.target.value : x)),
+                            })
+                          }
+                          className={cn(CAMPO, "font-semibold")}
+                        />
+                        {bloco.colunas.length > 1 ? (
+                          <BotaoDeIcone
+                            rotulo={t("Remover coluna")}
+                            perigo
+                            aoClicar={() =>
+                              aoMudar({
+                                ...bloco,
+                                colunas: bloco.colunas.filter((_, k) => k !== i),
+                                linhas: bloco.linhas.map((l) => l.filter((_, k) => k !== i)),
+                              })
+                            }
+                          >
+                            <X size={14} aria-hidden />
+                          </BotaoDeIcone>
+                        ) : null}
+                      </div>
+                    </th>
+                  ))}
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {bloco.linhas.map((linha, r) => (
+                  <tr key={r}>
+                    {bloco.colunas.map((_, i) => (
+                      <td key={i}>
+                        <input
+                          value={linha[i] ?? ""}
+                          maxLength={300}
+                          aria-label={`${t("Linha")} ${r + 1}, ${t("Coluna")} ${i + 1}`}
+                          onChange={(e) =>
+                            aoMudar({
+                              ...bloco,
+                              linhas: bloco.linhas.map((l, k) =>
+                                k === r
+                                  ? bloco.colunas.map((__, c) =>
+                                      c === i ? e.target.value : (l[c] ?? ""),
+                                    )
+                                  : l,
+                              ),
+                            })
+                          }
+                          className={CAMPO}
+                        />
+                      </td>
+                    ))}
+                    <td>
+                      <BotaoDeIcone
+                        rotulo={t("Remover linha")}
+                        perigo
+                        aoClicar={() =>
+                          aoMudar({ ...bloco, linhas: bloco.linhas.filter((_, k) => k !== r) })
+                        }
+                      >
+                        <X size={14} aria-hidden />
+                      </BotaoDeIcone>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {bloco.linhas.length < 40 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  aoMudar({ ...bloco, linhas: [...bloco.linhas, bloco.colunas.map(() => "")] })
+                }
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm text-primary hover:bg-secondary"
+              >
+                <Plus size={14} weight="bold" aria-hidden />
+                {t("Adicionar linha")}
+              </button>
+            ) : null}
+            {bloco.colunas.length < 8 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  aoMudar({
+                    ...bloco,
+                    colunas: [...bloco.colunas, ""],
+                    linhas: bloco.linhas.map((l) => [
+                      ...bloco.colunas.map((_, k) => l[k] ?? ""),
+                      "",
+                    ]),
+                  })
+                }
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm text-primary hover:bg-secondary"
+              >
+                <Plus size={14} weight="bold" aria-hidden />
+                {t("Adicionar coluna")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      );
+
+    case "calculadora":
+      return (
+        <div className="grid gap-3">
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "Preencha o que souber. Vendas, leads, investimento e retorno são calculados sozinhos.",
+            )}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(
+              [
+                ["meta", t("Meta de faturamento (R$)"), "8000"],
+                ["ticket", t("Ticket médio (R$)"), "1500"],
+                ["conversao", t("Conversão de lead em venda (%)"), "10"],
+                ["cpl", t("Custo por lead (R$)"), "25"],
+                ["margem", t("Margem de contribuição (%)"), "60"],
+                ["retencao", t("Meses de retenção do cliente"), "6"],
+              ] as const
+            ).map(([campo, rotulo, exemplo]) => (
+              <Rotulo key={campo} texto={rotulo}>
+                <input
+                  value={bloco[campo]}
+                  maxLength={24}
+                  inputMode="decimal"
+                  placeholder={exemplo}
+                  onChange={(e) => aoMudar({ ...bloco, [campo]: e.target.value })}
+                  className={CAMPO}
+                />
+              </Rotulo>
+            ))}
+          </div>
+        </div>
       );
 
     case "ficha":

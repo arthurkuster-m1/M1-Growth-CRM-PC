@@ -3,10 +3,12 @@ import type { CSSProperties, ReactNode } from "react";
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
 import {
   BORDA_DA_MARCA,
+  CalculadoraDaMeta,
   FichaDaPagina,
   FluxoDeEtapas,
   MatrizDois,
   Niveis,
+  TabelaDaPagina,
 } from "@/components/marketing/VisuaisDosBlocos";
 import { BASE_DAS_IMAGENS_DO_PAINEL } from "@/lib/marketing/imagens";
 import { Check } from "@/lib/ui/icons";
@@ -424,6 +426,12 @@ export function BlocosRender({
 
           case "ficha":
             return <FichaDaPagina key={b.id} bloco={b} slide={slide} />;
+
+          case "tabela":
+            return <TabelaDaPagina key={b.id} bloco={b} slide={slide} />;
+
+          case "calculadora":
+            return <CalculadoraDaMeta key={b.id} bloco={b} slide={slide} />;
 
           case "separador":
             return <hr key={b.id} className="border-border" />;

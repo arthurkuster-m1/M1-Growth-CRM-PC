@@ -1,4 +1,5 @@
 import type { Bloco } from "@/lib/marketing/blocos";
+import { calcular, moeda } from "@/lib/marketing/calculadora";
 import { ArrowSquareOut } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,8 @@ type Piramide = Extract<Bloco, { tipo: "piramide" }>;
 type Fluxo = Extract<Bloco, { tipo: "fluxo" }>;
 type Matriz = Extract<Bloco, { tipo: "matriz" }>;
 type Ficha = Extract<Bloco, { tipo: "ficha" }>;
+type Tabela = Extract<Bloco, { tipo: "tabela" }>;
+type Calculadora = Extract<Bloco, { tipo: "calculadora" }>;
 
 /** A borda dos cartões: um contorno sólido na cor da marca, sem brilho nem sombra. */
 export const BORDA_DA_MARCA = "border-[1.5px] border-primary";
@@ -242,6 +245,112 @@ export function FichaDaPagina({ bloco, slide }: { bloco: Ficha; slide: boolean }
           ))}
         </ul>
       ) : null}
+    </div>
+  );
+}
+
+/** Uma tabela simples: cabeçalho na cor da marca, primeira coluna em destaque, rola no celular. */
+export function TabelaDaPagina({ bloco, slide }: { bloco: Tabela; slide: boolean }) {
+  return (
+    <div className={cn("overflow-x-auto rounded-2xl bg-card", BORDA_DA_MARCA)}>
+      <table
+        className={cn(
+          "w-full min-w-[32rem] border-collapse text-left",
+          slide ? "text-base sm:text-lg" : "text-sm",
+        )}
+      >
+        <thead>
+          <tr className="bg-primary/10">
+            {bloco.colunas.map((c, i) => (
+              <th key={i} scope="col" className="px-4 py-3 font-semibold">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {bloco.linhas.map((linha, r) => (
+            <tr key={r} className="border-t">
+              {bloco.colunas.map((_, i) => (
+                <td
+                  key={i}
+                  className={cn(
+                    "px-4 py-2.5 align-top whitespace-pre-line",
+                    i === 0 && "font-medium",
+                  )}
+                >
+                  {linha[i] ?? ""}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** A calculadora da meta: mostra as entradas e o que elas exigem (vendas, leads, investimento…). */
+export function CalculadoraDaMeta({ bloco, slide }: { bloco: Calculadora; slide: boolean }) {
+  const r = calcular(bloco);
+  const traco = "—";
+  const peca = (rotulo: string, valor: string, detalhe?: string) => ({ rotulo, valor, detalhe });
+  const entradas = [
+    peca("Meta de faturamento", bloco.meta || traco),
+    peca("Ticket médio", bloco.ticket || traco),
+    peca("Conversão de lead em venda", bloco.conversao || traco),
+    peca("Custo por lead", bloco.cpl || traco),
+    peca("Margem de contribuição", bloco.margem || traco),
+    peca("Meses de retenção", bloco.retencao || traco),
+  ];
+  const saidas = [
+    peca("Vendas necessárias", r.vendas === null ? traco : String(r.vendas), "no período"),
+    peca("Leads necessários", r.leads === null ? traco : String(r.leads), "para essas vendas"),
+    peca("Investimento em mídia", r.investimento === null ? traco : moeda(r.investimento)),
+    peca("CAC", r.cac === null ? traco : moeda(r.cac), "custo para conquistar um cliente"),
+    peca(
+      "Retorno sobre o investimento",
+      r.roas === null ? traco : `${r.roas.toFixed(1)}x`,
+      "faturamento ÷ investimento",
+    ),
+    peca("Lucro estimado", r.lucro === null ? traco : moeda(r.lucro), "margem − investimento"),
+    peca("LTV", r.ltv === null ? traco : moeda(r.ltv), "ticket × meses de retenção"),
+    peca(
+      "LTV ÷ CAC",
+      r.ltvSobreCac === null ? traco : `${r.ltvSobreCac.toFixed(1)}x`,
+      "acima de 3x é saudável",
+    ),
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      <ul className="flex flex-wrap gap-2">
+        {entradas.map((e) => (
+          <li key={e.rotulo} className={cn("rounded-xl bg-card px-3 py-2", BORDA_DA_MARCA)}>
+            <span className="block text-[11px] tracking-wide text-muted-foreground uppercase">
+              {e.rotulo}
+            </span>
+            <span className={cn("font-semibold", slide ? "text-xl" : "text-base")}>{e.valor}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {saidas.map((s) => (
+          <div key={s.rotulo} className="rounded-2xl bg-primary/10 p-4">
+            <span className="block text-xs font-medium text-muted-foreground">{s.rotulo}</span>
+            <span
+              className={cn(
+                "mt-1 block font-bold tracking-tight text-primary",
+                slide ? "text-3xl sm:text-4xl" : "text-2xl",
+              )}
+            >
+              {s.valor}
+            </span>
+            {s.detalhe ? (
+              <span className="mt-0.5 block text-xs text-muted-foreground">{s.detalhe}</span>
+            ) : null}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
