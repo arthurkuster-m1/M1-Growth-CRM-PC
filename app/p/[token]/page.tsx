@@ -3,12 +3,12 @@ import { notFound, redirect } from "next/navigation";
 
 import { EstiloDaMarcaDaOrganizacao } from "@/app/app/_components/EstiloDaMarcaDaOrganizacao";
 import { CabecalhoPublico } from "@/components/marketing/CabecalhoPublico";
-import { CartaoDeModulo } from "@/components/marketing/Cartoes";
+import { CartaoDeModulo, CartaoLargo, classeDaGaleria } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
-import { FASES_DA_ESTRATEGIA, modulosDaFase } from "@/lib/marketing/modulos";
+import { FASES_DA_ESTRATEGIA, moduloLargoDaFase, modulosDaFase } from "@/lib/marketing/modulos";
 import {
   acessoPermitido,
   empresaDoLink,
@@ -66,13 +66,15 @@ export default async function PainelPublicoPage({
             ) : (
               FASES_DA_ESTRATEGIA.map((fase) => {
                 const modulos = modulosDaFase(fase).filter((m) => publicados.has(m.chave));
-                if (modulos.length === 0) return null;
+                const largo = moduloLargoDaFase(fase);
+                const largoPublicado = largo && publicados.has(largo.chave) ? largo : undefined;
+                if (modulos.length === 0 && !largoPublicado) return null;
                 return (
                   <section key={fase} className="flex flex-col gap-3">
                     <h2 className="text-sm font-semibold text-muted-foreground">
                       {nomeDaFase(t, fase)}
                     </h2>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    <div className={classeDaGaleria(modulos.length)}>
                       {modulos.map((m) => {
                         const textos = textosDoModulo(t, m.chave);
                         if (!textos) return null;
@@ -89,6 +91,16 @@ export default async function PainelPublicoPage({
                         );
                       })}
                     </div>
+                    {largoPublicado ? (
+                      <CartaoLargo
+                        href={`/p/${token}/${largoPublicado.chave}`}
+                        tom={largoPublicado.tom}
+                        icone={iconeDoModulo(largoPublicado.icone)}
+                        titulo={textosDoModulo(t, largoPublicado.chave)?.titulo ?? ""}
+                        descricao={textosDoModulo(t, largoPublicado.chave)?.descricao ?? ""}
+                        abrir={t("Abrir")}
+                      />
+                    ) : null}
                   </section>
                 );
               })

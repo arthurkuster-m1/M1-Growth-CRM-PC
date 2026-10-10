@@ -257,3 +257,30 @@ describe("calculadora da meta e tabela", () => {
     expect(lidos.map((b) => b.id)).toEqual(["t", "c"]);
   });
 });
+
+describe("oferta", () => {
+  it("o bloco em branco é válido e o texto para a IA cita a garantia exata", async () => {
+    const { blocoEmBranco, blocoSchema } = await import("@/lib/marketing/blocos");
+    const { ofertaParaTexto, valorTotalDaOferta, precoEmTexto } =
+      await import("@/lib/marketing/oferta");
+    const base = blocoEmBranco("oferta", "o1");
+    expect(blocoSchema.safeParse(base).success).toBe(true);
+    if (base.tipo !== "oferta") throw new Error("tipo");
+    const o = {
+      ...base,
+      nivel: "completa" as const,
+      resumo: "Sistema completo.",
+      preco: { tipo: "setup-mensal" as const, valor: "R$ 1.500", setup: "R$ 3.500", condicoes: "" },
+      entregaveis: [{ nome: "A", descricao: "x", valor: "R$ 3.500" }],
+      bonus: [{ nome: "B", descricao: "y", valor: "R$ 1.200" }],
+      garantia: "Se não cobrir, trabalhamos de graça.",
+      nuncaPrometer: ["Resultado garantido em 7 dias"],
+    };
+    expect(valorTotalDaOferta(o)).toBe(4700);
+    expect(precoEmTexto(o)).toBe("Setup R$ 3.500 + R$ 1.500/mês");
+    const texto = ofertaParaTexto("Minha oferta", o);
+    expect(texto).toContain('"Se não cobrir, trabalhamos de graça."');
+    expect(texto).toContain("NUNCA prometer");
+    expect(texto).toContain("Valor total de referência (não é o preço)");
+  });
+});

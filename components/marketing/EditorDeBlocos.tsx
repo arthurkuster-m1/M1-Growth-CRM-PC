@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 
+import { EditorDeOferta } from "@/components/marketing/EditorDeOferta";
 import { useT } from "@/hooks/i18n/useT";
 import {
   ALINHAMENTOS,
@@ -68,6 +69,8 @@ function useNomesDosTipos() {
         return t("Tabela");
       case "calculadora":
         return t("Calculadora da meta");
+      case "oferta":
+        return t("Oferta");
       case "separador":
         return t("Quebra de slide");
     }
@@ -246,10 +249,13 @@ export function EditorDeBlocos({
   blocos,
   aoMudar,
   novoId,
+  tituloDaPagina,
 }: {
   blocos: Bloco[];
   aoMudar: (blocos: Bloco[]) => void;
   novoId: () => string;
+  /** O título da página (entra no texto para a IA das ofertas). */
+  tituloDaPagina?: string;
 }) {
   const t = useT();
   const nomeDoTipo = useNomesDosTipos();
@@ -309,7 +315,11 @@ export function EditorDeBlocos({
               </BotaoDeIcone>
             </div>
           </div>
-          <FormularioDoBloco bloco={b} aoMudar={(novo) => trocar(i, novo)} />
+          <FormularioDoBloco
+            bloco={b}
+            aoMudar={(novo) => trocar(i, novo)}
+            tituloDaPagina={tituloDaPagina}
+          />
         </section>
       ))}
 
@@ -354,7 +364,15 @@ export function EditorDeBlocos({
   );
 }
 
-function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloco) => void }) {
+function FormularioDoBloco({
+  bloco,
+  aoMudar,
+  tituloDaPagina,
+}: {
+  bloco: Bloco;
+  aoMudar: (b: Bloco) => void;
+  tituloDaPagina?: string;
+}) {
   const t = useT();
 
   switch (bloco.tipo) {
@@ -835,6 +853,9 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
           </div>
         </div>
       );
+
+    case "oferta":
+      return <EditorDeOferta bloco={bloco} titulo={tituloDaPagina ?? ""} aoMudar={aoMudar} />;
 
     case "calculadora":
       return (

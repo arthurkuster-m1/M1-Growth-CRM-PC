@@ -282,7 +282,12 @@ export function PaginaDoModulo({
               </button>
             </div>
           ) : null}
-          <EditorDeBlocos blocos={blocos} aoMudar={editar} novoId={randomId} />
+          <EditorDeBlocos
+            blocos={blocos}
+            aoMudar={editar}
+            novoId={randomId}
+            tituloDaPagina={tituloAtual}
+          />
         </>
       ) : vazio ? (
         <OQueVem titulo={textosDeEspera.titulo} itens={textosDeEspera.itens} />

@@ -53,6 +53,13 @@ export function textosDoModulo(
         titulo: t("Planejamento empresarial"),
         descricao: t("Metas, números e o caminho do negócio."),
       };
+    case "produtos-e-ofertas":
+      return {
+        titulo: t("Produtos e ofertas"),
+        descricao: t(
+          "A central de tudo o que a empresa vende: da ficha simples à oferta completa.",
+        ),
+      };
     case "estrategia-de-marketing":
       return {
         titulo: t("Estratégia de marketing"),
@@ -118,6 +125,13 @@ export function textosDoTipoDeSubpagina(
       return {
         titulo: t("Porquês (brainstorming)"),
         descricao: t("Os motivos que levam alguém a comprar, e as palavras que filtram o público."),
+      };
+    case "oferta":
+      return {
+        titulo: t("Oferta"),
+        descricao: t(
+          "Um produto ou uma oferta: o que é, para quem, o que inclui, preço e garantia.",
+        ),
       };
     case "perguntas-chave":
       return {

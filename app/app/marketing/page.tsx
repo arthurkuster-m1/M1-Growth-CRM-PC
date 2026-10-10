@@ -126,7 +126,7 @@ export default async function MarketingPage() {
             </div>
             {fase === "produto-e-oferta" ? (
               <CartaoLargo
-                href="/app/products"
+                href="/app/marketing/estrategia/produtos-e-ofertas"
                 tom="purple"
                 icone={<Package weight="duotone" aria-hidden />}
                 titulo={t("Produtos e ofertas")}

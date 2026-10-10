@@ -78,11 +78,13 @@ export default async function EstrategiaPage() {
           </div>
           {fase === "produto-e-oferta" ? (
             <CartaoLargo
-              href="/app/products"
+              href="/app/marketing/estrategia/produtos-e-ofertas"
               tom="purple"
               icone={<Package weight="duotone" aria-hidden />}
               titulo={t("Produtos e ofertas")}
-              descricao={t("O cadastro de tudo o que a empresa oferece: produtos, preços e fotos.")}
+              descricao={t(
+                "A central de tudo o que a empresa vende: da ficha simples à oferta completa.",
+              )}
               destaque={
                 totalDeProdutos > 0
                   ? t("{n} produtos cadastrados").replace("{n}", String(totalDeProdutos))

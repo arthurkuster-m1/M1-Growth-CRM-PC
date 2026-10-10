@@ -23,6 +23,8 @@ export interface ModuloDaEstrategia {
   chave: string;
   fase: FaseDaEstrategia;
   tom: TomDaCapa;
+  /** Aparece como cartão LARGO embaixo da galeria da fase, e não como um dos cartões. */
+  largo?: boolean;
   /** Nome do ícone em `lib/ui/icons`. */
   icone:
     | "Rocket"
@@ -68,6 +70,13 @@ export const MODULOS_DA_ESTRATEGIA: readonly ModuloDaEstrategia[] = [
     tom: "purple",
     icone: "Briefcase",
   },
+  {
+    chave: "produtos-e-ofertas",
+    fase: "produto-e-oferta",
+    tom: "purple",
+    icone: "Package",
+    largo: true,
+  },
   // 03 | Geração de Demanda
   { chave: "estrategia-de-marketing", fase: "geracao-de-demanda", tom: "blue", icone: "Lightbulb" },
   { chave: "trafego-pago", fase: "geracao-de-demanda", tom: "blue", icone: "Target" },
@@ -85,8 +94,13 @@ export const MODULOS_DA_ESTRATEGIA: readonly ModuloDaEstrategia[] = [
 export const moduloPorChave = (chave: string): ModuloDaEstrategia | undefined =>
   MODULOS_DA_ESTRATEGIA.find((m) => m.chave === chave);
 
+/** Os módulos que viram CARTÕES da galeria da fase (o cartão largo fica de fora). */
 export const modulosDaFase = (fase: FaseDaEstrategia): ModuloDaEstrategia[] =>
-  MODULOS_DA_ESTRATEGIA.filter((m) => m.fase === fase);
+  MODULOS_DA_ESTRATEGIA.filter((m) => m.fase === fase && !m.largo);
+
+/** O módulo do cartão largo da fase, se houver (Produtos e ofertas, na fase 02). */
+export const moduloLargoDaFase = (fase: FaseDaEstrategia): ModuloDaEstrategia | undefined =>
+  MODULOS_DA_ESTRATEGIA.find((m) => m.fase === fase && m.largo);
 
 /**
  * SUBPÁGINAS — páginas filhas de um módulo (ex.: as várias personas dentro de "Estudo de
@@ -109,6 +123,7 @@ export const SUBPAGINAS_DOS_MODULOS: Readonly<Record<string, readonly TipoDeSubp
     { tipo: "arquitetura-de-premissas", repetivel: false, icone: "Lightbulb" },
     { tipo: "porques", repetivel: false, icone: "Compass" },
   ],
+  "produtos-e-ofertas": [{ tipo: "oferta", repetivel: true, icone: "Package" }],
   "analise-de-concorrencia": [
     { tipo: "pesquisa-de-mercado", repetivel: false, icone: "Binoculars" },
     { tipo: "perguntas-chave", repetivel: false, icone: "Lightbulb" },

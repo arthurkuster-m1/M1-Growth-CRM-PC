@@ -30,6 +30,7 @@ export const TIPOS_DE_BLOCO = [
   "ficha",
   "tabela",
   "calculadora",
+  "oferta",
   "separador",
 ] as const;
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
@@ -47,6 +48,26 @@ export type Alinhamento = (typeof ALINHAMENTOS)[number];
 export const FORMAS_DOS_NIVEIS = ["piramide", "funil"] as const;
 /** O estilo da matriz 2x2: SWOT clássico (S, W, O, T com cores) ou neutra. */
 export const ESTILOS_DA_MATRIZ = ["swot", "neutro"] as const;
+
+/** Onde a oferta está na escada de valor (as chaves do dado; o rótulo vem da tela). */
+export const ETAPAS_DA_OFERTA = [
+  "isca",
+  "entrada",
+  "principal",
+  "expansao",
+  "recorrencia",
+] as const;
+export type EtapaDaOferta = (typeof ETAPAS_DA_OFERTA)[number];
+/** Simples = ficha curta; completa = oferta com promessa, valor empilhado, garantia e objeções. */
+export const NIVEIS_DA_OFERTA = ["simples", "completa"] as const;
+/** Como o preço é cobrado. */
+export const TIPOS_DE_PRECO = [
+  "unico",
+  "mensal",
+  "setup-mensal",
+  "sob-consulta",
+  "gratuito",
+] as const;
 
 /** O quanto da largura uma imagem ocupa. */
 export const LARGURAS_DA_IMAGEM = ["pequena", "media", "grande", "total"] as const;
@@ -191,6 +212,41 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     margem: z.string().max(24),
     retencao: z.string().max(24),
   }),
+  z.object({
+    id,
+    tipo: z.literal("oferta"),
+    nivel: z.enum(NIVEIS_DA_OFERTA),
+    etapa: z.enum(ETAPAS_DA_OFERTA),
+    /** O produto-carro-chefe que a agência quer empurrar primeiro. */
+    carroChefe: z.boolean(),
+    resumo: longo.max(800),
+    paraQuem: longo.max(600),
+    naoEParaQuem: longo.max(600),
+    inclui: z.array(curto).max(14),
+    naoInclui: z.array(curto).max(8),
+    prazo: curto,
+    preco: z.object({
+      tipo: z.enum(TIPOS_DE_PRECO),
+      valor: z.string().trim().max(24),
+      setup: z.string().trim().max(24),
+      condicoes: longo.max(400),
+    }),
+    faq: z.array(z.object({ pergunta: curto, resposta: longo.max(600) })).max(10),
+    /** O que a IA e o time NUNCA devem prometer sobre esta oferta. */
+    nuncaPrometer: z.array(curto).max(8),
+    // ── só na oferta completa ───────────────────────────────────────────────
+    promessa: longo.max(500),
+    entregaveis: z
+      .array(z.object({ nome: curto, descricao: longo.max(400), valor: z.string().trim().max(24) }))
+      .max(10),
+    bonus: z
+      .array(z.object({ nome: curto, descricao: longo.max(400), valor: z.string().trim().max(24) }))
+      .max(6),
+    custoDaInacao: longo.max(500),
+    garantia: longo.max(900),
+    escassez: longo.max(600),
+    objecoes: z.array(z.object({ objecao: curto, resposta: longo.max(600) })).max(10),
+  }),
   z.object({ id, tipo: z.literal("separador") }),
 ]);
 
@@ -290,6 +346,30 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
           ["", ""],
           ["", ""],
         ],
+      };
+    case "oferta":
+      return {
+        id: novoId,
+        tipo,
+        nivel: "simples",
+        etapa: "principal",
+        carroChefe: false,
+        resumo: "",
+        paraQuem: "",
+        naoEParaQuem: "",
+        inclui: [""],
+        naoInclui: [],
+        prazo: "",
+        preco: { tipo: "unico", valor: "", setup: "", condicoes: "" },
+        faq: [],
+        nuncaPrometer: [],
+        promessa: "",
+        entregaveis: [],
+        bonus: [],
+        custoDaInacao: "",
+        garantia: "",
+        escassez: "",
+        objecoes: [],
       };
     case "calculadora":
       return {

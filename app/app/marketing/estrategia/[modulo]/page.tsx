@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { iconeDoModulo } from "@/components/marketing/icones";
@@ -55,6 +56,14 @@ export default async function ModuloDaEstrategiaPage({
           ],
         }}
       />
+      {modulo.chave === "produtos-e-ofertas" ? (
+        <Link
+          href="/app/products"
+          className="inline-flex w-fit items-center gap-2 rounded-xl border-[1.5px] border-primary bg-card px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-primary/10"
+        >
+          {t("Abrir o catálogo de preços e fotos")}
+        </Link>
+      ) : null}
       <SubpaginasDoModulo
         modulo={modulo.chave}
         base={`/app/marketing/estrategia/${modulo.chave}`}

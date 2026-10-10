@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
+import { OfertaDaPagina } from "@/components/marketing/OfertaDaPagina";
 import {
   BORDA_DA_MARCA,
   CalculadoraDaMeta,
@@ -432,6 +433,9 @@ export function BlocosRender({
 
           case "calculadora":
             return <CalculadoraDaMeta key={b.id} bloco={b} slide={slide} />;
+
+          case "oferta":
+            return <OfertaDaPagina key={b.id} oferta={b} slide={slide} />;
 
           case "separador":
             return <hr key={b.id} className="border-border" />;

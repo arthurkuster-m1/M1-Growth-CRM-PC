@@ -1,4 +1,5 @@
 import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
+import { centralDeProdutos, oferta } from "@/lib/marketing/modelos-oferta";
 import { planejamentoEmpresarial } from "@/lib/marketing/modelos-planejamento";
 import { concorrente, perguntasChave } from "@/lib/marketing/modelos-concorrencia";
 import {
@@ -271,6 +272,8 @@ export function modeloDoModulo(chave: string, novoId: NovoId): Bloco[] {
       return porques(novoId);
     case "concorrente":
       return concorrente(novoId);
+    case "oferta":
+      return oferta(novoId);
     case "perguntas-chave":
       return perguntasChave(novoId);
   }
@@ -279,6 +282,8 @@ export function modeloDoModulo(chave: string, novoId: NovoId): Bloco[] {
       return mapeamentoDoFunil(novoId);
     case "planejamento-empresarial":
       return planejamentoEmpresarial(novoId);
+    case "produtos-e-ofertas":
+      return centralDeProdutos(novoId);
     case "identidade-da-marca":
       return branding(novoId);
     case "posicionamento-zmot":

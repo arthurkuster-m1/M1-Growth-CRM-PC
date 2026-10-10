@@ -71,3 +71,15 @@ describe("subpáginas da análise de concorrência", () => {
     }
   });
 });
+
+describe("produtos e ofertas", () => {
+  it("o módulo é largo, fica fora da galeria e tem subpágina de oferta", async () => {
+    const { modulosDaFase, moduloLargoDaFase, tiposDeSubpagina } =
+      await import("@/lib/marketing/modulos");
+    expect(moduloLargoDaFase("produto-e-oferta")?.chave).toBe("produtos-e-ofertas");
+    expect(modulosDaFase("produto-e-oferta").some((m) => m.chave === "produtos-e-ofertas")).toBe(
+      false,
+    );
+    expect(tiposDeSubpagina("produtos-e-ofertas").map((t) => t.tipo)).toEqual(["oferta"]);
+  });
+});
