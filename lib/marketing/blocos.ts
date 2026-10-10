@@ -24,6 +24,9 @@ export const TIPOS_DE_BLOCO = [
   "citacao",
   "imagem",
   "imagem-texto",
+  "piramide",
+  "fluxo",
+  "matriz",
   "separador",
 ] as const;
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
@@ -36,6 +39,11 @@ export const LADOS_DO_ANTES_DEPOIS = ["antes", "depois"] as const;
 /** Onde o bloco fica na linha (as chaves do dado; o rótulo de tela vem do editor). */
 export const ALINHAMENTOS = ["esquerda", "centro", "direita"] as const;
 export type Alinhamento = (typeof ALINHAMENTOS)[number];
+
+/** A forma do bloco de níveis: pirâmide (base larga embaixo) ou funil (largo em cima). */
+export const FORMAS_DOS_NIVEIS = ["piramide", "funil"] as const;
+/** O estilo da matriz 2x2: SWOT clássico (S, W, O, T com cores) ou neutra. */
+export const ESTILOS_DA_MATRIZ = ["swot", "neutro"] as const;
 
 /** O quanto da largura uma imagem ocupa. */
 export const LARGURAS_DA_IMAGEM = ["pequena", "media", "grande", "total"] as const;
@@ -133,6 +141,25 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     texto: longo.max(2500),
     lado: z.enum(LADOS_DA_IMAGEM),
   }),
+  z.object({
+    id,
+    tipo: z.literal("piramide"),
+    forma: z.enum(FORMAS_DOS_NIVEIS),
+    /** Do TOPO para a base (pirâmide) ou do topo largo para a ponta (funil). */
+    itens: z.array(z.object({ titulo: curto, texto: longo.max(600) })).max(8),
+  }),
+  z.object({
+    id,
+    tipo: z.literal("fluxo"),
+    itens: z.array(z.object({ titulo: curto, texto: curto })).max(24),
+  }),
+  z.object({
+    id,
+    tipo: z.literal("matriz"),
+    estilo: z.enum(ESTILOS_DA_MATRIZ),
+    /** Na ordem: alto-esquerda, alto-direita, baixo-esquerda, baixo-direita. */
+    celulas: z.array(z.object({ titulo: curto, texto: longo.max(1500) })).max(4),
+  }),
   z.object({ id, tipo: z.literal("separador") }),
 ]);
 
@@ -200,6 +227,39 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
       };
     case "imagem-texto":
       return { id: novoId, tipo, arquivo: "", titulo: "", texto: "", lado: "esquerda" };
+    case "piramide":
+      return {
+        id: novoId,
+        tipo,
+        forma: "piramide",
+        itens: [
+          { titulo: "", texto: "" },
+          { titulo: "", texto: "" },
+          { titulo: "", texto: "" },
+        ],
+      };
+    case "fluxo":
+      return {
+        id: novoId,
+        tipo,
+        itens: [
+          { titulo: "", texto: "" },
+          { titulo: "", texto: "" },
+          { titulo: "", texto: "" },
+        ],
+      };
+    case "matriz":
+      return {
+        id: novoId,
+        tipo,
+        estilo: "swot",
+        celulas: [
+          { titulo: "Forças", texto: "" },
+          { titulo: "Fraquezas", texto: "" },
+          { titulo: "Oportunidades", texto: "" },
+          { titulo: "Ameaças", texto: "" },
+        ],
+      };
     case "separador":
       return { id: novoId, tipo };
   }

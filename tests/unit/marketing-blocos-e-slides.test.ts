@@ -173,3 +173,31 @@ describe("blocos de imagem", () => {
     expect(lidos).toHaveLength(3);
   });
 });
+
+describe("blocos visuais", () => {
+  it("aceita pirâmide, fluxo e matriz, e descarta forma inválida", () => {
+    const lidos = lerBlocos([
+      { id: "a", tipo: "piramide", forma: "funil", itens: [{ titulo: "Topo", texto: "x" }] },
+      { id: "b", tipo: "fluxo", itens: [{ titulo: "Passo 1", texto: "" }] },
+      {
+        id: "c",
+        tipo: "matriz",
+        estilo: "swot",
+        celulas: [
+          { titulo: "Forças", texto: "" },
+          { titulo: "Fraquezas", texto: "" },
+          { titulo: "Oportunidades", texto: "" },
+          { titulo: "Ameaças", texto: "" },
+        ],
+      },
+      { id: "d", tipo: "piramide", forma: "cubo", itens: [] },
+      {
+        id: "e",
+        tipo: "matriz",
+        estilo: "swot",
+        celulas: Array.from({ length: 5 }, () => ({ titulo: "x", texto: "" })),
+      },
+    ]);
+    expect(lidos.map((b) => b.id)).toEqual(["a", "b", "c"]);
+  });
+});

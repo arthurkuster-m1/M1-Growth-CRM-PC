@@ -1,6 +1,12 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
+import {
+  BORDA_NEON,
+  FluxoDeEtapas,
+  MatrizDois,
+  Niveis,
+} from "@/components/marketing/VisuaisDosBlocos";
 import { BASE_DAS_IMAGENS_DO_PAINEL } from "@/lib/marketing/imagens";
 import { Check } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -188,11 +194,14 @@ export function BlocosRender({
                 key={b.id}
                 className={cn(
                   "grid gap-4",
-                  itens.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2",
+                  // 4 cartões formam um 2x2; de 3, 5, 6 ou mais, três por linha.
+                  itens.length === 4 || itens.length <= 2
+                    ? "sm:grid-cols-2"
+                    : "sm:grid-cols-2 lg:grid-cols-3",
                 )}
               >
                 {itens.map((i, n) => (
-                  <div key={n} className="rounded-2xl border bg-card p-5 shadow-sm">
+                  <div key={n} className={cn("rounded-2xl bg-card p-5", BORDA_NEON)}>
                     {i.titulo ? (
                       <h4
                         className={cn("font-semibold", slide ? "text-xl sm:text-2xl" : "text-base")}
@@ -220,7 +229,7 @@ export function BlocosRender({
             return (
               <div key={b.id} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {itens.map((i, n) => (
-                  <div key={n} className="rounded-2xl border bg-card p-5 shadow-sm">
+                  <div key={n} className={cn("rounded-2xl bg-card p-5", BORDA_NEON)}>
                     <p
                       className={cn(
                         "font-bold tracking-tight text-primary",
@@ -294,21 +303,27 @@ export function BlocosRender({
               </div>
             );
 
-          case "paleta":
+          case "paleta": {
+            const n = Math.min(Math.max(b.cores.length, 1), 6);
             return (
-              <div key={b.id} className="flex flex-wrap gap-4">
-                {b.cores.map((c, n) => (
-                  <div key={n} className="w-28">
+              <div
+                key={b.id}
+                style={{ "--colunas": n } as CSSProperties}
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:[grid-template-columns:repeat(var(--colunas),minmax(0,1fr))]"
+              >
+                {b.cores.map((c, k) => (
+                  <div key={k} className="min-w-0">
                     <div
                       style={{ backgroundColor: c.hex }}
-                      className={cn("rounded-2xl border shadow-sm", slide ? "h-28" : "h-20")}
+                      className={cn("rounded-2xl border shadow-sm", slide ? "h-32" : "h-24")}
                     />
-                    <p className="mt-2 truncate text-sm font-medium">{c.nome}</p>
+                    <p className="mt-2 text-sm font-medium">{c.nome}</p>
                     <p className="text-xs text-muted-foreground uppercase">{c.hex}</p>
                   </div>
                 ))}
               </div>
             );
+          }
 
           case "links": {
             const itens = b.itens.filter((i) => i.url.trim() !== "");
@@ -396,6 +411,15 @@ export function BlocosRender({
                 </div>
               </div>
             );
+
+          case "piramide":
+            return <Niveis key={b.id} bloco={b} slide={slide} />;
+
+          case "fluxo":
+            return <FluxoDeEtapas key={b.id} bloco={b} slide={slide} />;
+
+          case "matriz":
+            return <MatrizDois key={b.id} bloco={b} slide={slide} />;
 
           case "separador":
             return <hr key={b.id} className="border-border" />;

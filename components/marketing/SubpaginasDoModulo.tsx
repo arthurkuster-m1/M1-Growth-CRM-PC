@@ -8,6 +8,7 @@ import { EtiquetaDeEstado } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { textosDoTipoDeSubpagina } from "@/components/marketing/textos";
 import { useT } from "@/hooks/i18n/useT";
+import { useVerComoCliente } from "@/hooks/marketing/useVerComoCliente";
 import { useSubpaginasDeMarketing } from "@/hooks/marketing/useSubpaginasDeMarketing";
 import { chaveDeSubpagina, tiposDeSubpagina } from "@/lib/marketing/modulos";
 import { CaretDown, CaretUp, Plus } from "@/lib/ui/icons";
@@ -20,8 +21,15 @@ import { CaretDown, CaretUp, Plus } from "@/lib/ui/icons";
 export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: string }) {
   const t = useT();
   const router = useRouter();
-  const { subpaginas, podeEditar, carregando, criarSubpagina, moverSubpagina } =
-    useSubpaginasDeMarketing(modulo);
+  const {
+    subpaginas,
+    podeEditar: podeEditarDeVerdade,
+    carregando,
+    criarSubpagina,
+    moverSubpagina,
+  } = useSubpaginasDeMarketing(modulo);
+  const verComoCliente = useVerComoCliente();
+  const podeEditar = podeEditarDeVerdade && !verComoCliente.ativo;
   const [menu, setMenu] = useState(false);
   const [criando, setCriando] = useState(false);
   const tipos = tiposDeSubpagina(modulo);
@@ -46,7 +54,9 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
     if (chave) router.push(`${base}/${chave}`);
   }
 
-  if (!podeEditar && subpaginas.length === 0 && !carregando) return null;
+  // O cliente (ou a agência em "ver como cliente") só vê as subpáginas publicadas.
+  const visiveis = podeEditar ? subpaginas : subpaginas.filter((s) => s.publicada);
+  if (!podeEditar && visiveis.length === 0 && !carregando) return null;
 
   return (
     <section aria-label={t("Subpáginas")} className="flex flex-col gap-3">
@@ -94,13 +104,13 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
 
       {carregando ? (
         <div className="h-24 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
-      ) : subpaginas.length === 0 ? (
+      ) : visiveis.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
           {t("Nenhuma subpágina ainda. Crie a primeira em “Nova subpágina”.")}
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {subpaginas.map((s, indice) => {
+          {visiveis.map((s, indice) => {
             const definicao = tipos.find((x) => x.tipo === s.tipo);
             const textos = textosDoTipoDeSubpagina(t, s.tipo);
             return (
@@ -137,7 +147,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
                       type="button"
                       aria-label={t("Mover para depois")}
                       title={t("Mover para depois")}
-                      disabled={indice === subpaginas.length - 1}
+                      disabled={indice === visiveis.length - 1}
                       onClick={() => moverSubpagina(s.key, 1)}
                       className="grid h-8 w-8 place-items-center rounded-r-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
                     >

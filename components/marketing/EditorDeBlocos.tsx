@@ -5,6 +5,8 @@ import { useRef, useState, type ReactNode } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import {
   ALINHAMENTOS,
+  ESTILOS_DA_MATRIZ,
+  FORMAS_DOS_NIVEIS,
   LADOS_DA_IMAGEM,
   LADOS_DO_ANTES_DEPOIS,
   LARGURAS_DA_IMAGEM,
@@ -54,6 +56,12 @@ function useNomesDosTipos() {
         return t("Imagem");
       case "imagem-texto":
         return t("Imagem com texto");
+      case "piramide":
+        return t("Pirâmide ou funil");
+      case "fluxo":
+        return t("Fluxo (passo a passo)");
+      case "matriz":
+        return t("Matriz 2x2 (SWOT)");
       case "separador":
         return t("Quebra de slide");
     }
@@ -619,6 +627,143 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
             </div>
           )}
         />
+      );
+
+    case "piramide":
+      return (
+        <div className="grid gap-3">
+          <Rotulo texto={t("Forma")}>
+            <select
+              value={bloco.forma}
+              onChange={(e) => aoMudar({ ...bloco, forma: e.target.value as typeof bloco.forma })}
+              className={cn(CAMPO, "sm:w-56")}
+            >
+              {FORMAS_DOS_NIVEIS.map((f) => (
+                <option key={f} value={f}>
+                  {f === "piramide" ? t("Pirâmide (topo estreito)") : t("Funil (topo largo)")}
+                </option>
+              ))}
+            </select>
+          </Rotulo>
+          <p className="text-xs text-muted-foreground">
+            {t("Do topo para a base, na ordem em que aparecem.")}
+          </p>
+          <ListaEditavel
+            itens={bloco.itens}
+            aoMudar={(itens) => aoMudar({ ...bloco, itens })}
+            novo={{ titulo: "", texto: "" }}
+            maximo={8}
+            rotuloDeAdicionar={t("Adicionar nível")}
+            renderizar={(item, mudar) => (
+              <div className="grid flex-1 gap-2">
+                <input
+                  value={item.titulo}
+                  maxLength={200}
+                  placeholder={t("Nome do nível")}
+                  aria-label={t("Nome do nível")}
+                  onChange={(e) => mudar({ ...item, titulo: e.target.value })}
+                  className={CAMPO}
+                />
+                <textarea
+                  value={item.texto}
+                  rows={2}
+                  maxLength={600}
+                  placeholder={t("Descrição")}
+                  aria-label={t("Descrição")}
+                  onChange={(e) => mudar({ ...item, texto: e.target.value })}
+                  className={cn(CAMPO, "resize-y")}
+                />
+              </div>
+            )}
+          />
+        </div>
+      );
+
+    case "fluxo":
+      return (
+        <ListaEditavel
+          itens={bloco.itens}
+          aoMudar={(itens) => aoMudar({ ...bloco, itens })}
+          novo={{ titulo: "", texto: "" }}
+          maximo={24}
+          rotuloDeAdicionar={t("Adicionar etapa")}
+          renderizar={(item, mudar) => (
+            <div className="grid flex-1 gap-2 sm:grid-cols-2">
+              <input
+                value={item.titulo}
+                maxLength={200}
+                placeholder={t("Nome da etapa")}
+                aria-label={t("Nome da etapa")}
+                onChange={(e) => mudar({ ...item, titulo: e.target.value })}
+                className={CAMPO}
+              />
+              <input
+                value={item.texto}
+                maxLength={200}
+                placeholder={t("Detalhe (opcional)")}
+                aria-label={t("Detalhe")}
+                onChange={(e) => mudar({ ...item, texto: e.target.value })}
+                className={CAMPO}
+              />
+            </div>
+          )}
+        />
+      );
+
+    case "matriz":
+      return (
+        <div className="grid gap-3">
+          <Rotulo texto={t("Estilo")}>
+            <select
+              value={bloco.estilo}
+              onChange={(e) => aoMudar({ ...bloco, estilo: e.target.value as typeof bloco.estilo })}
+              className={cn(CAMPO, "sm:w-56")}
+            >
+              {ESTILOS_DA_MATRIZ.map((x) => (
+                <option key={x} value={x}>
+                  {x === "swot" ? t("SWOT (com cores)") : t("Neutro")}
+                </option>
+              ))}
+            </select>
+          </Rotulo>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {bloco.celulas.map((c, i) => (
+              <div key={i} className="grid gap-2 rounded-xl bg-secondary/40 p-3">
+                <input
+                  value={c.titulo}
+                  maxLength={200}
+                  placeholder={t("Título")}
+                  aria-label={`${t("Título")} ${i + 1}`}
+                  onChange={(e) =>
+                    aoMudar({
+                      ...bloco,
+                      celulas: bloco.celulas.map((x, k) =>
+                        k === i ? { ...x, titulo: e.target.value } : x,
+                      ),
+                    })
+                  }
+                  className={CAMPO}
+                />
+                <textarea
+                  value={c.texto}
+                  rows={3}
+                  maxLength={1500}
+                  placeholder={t("Texto")}
+                  aria-label={`${t("Texto")} ${i + 1}`}
+                  onChange={(e) =>
+                    aoMudar({
+                      ...bloco,
+                      celulas: bloco.celulas.map((x, k) =>
+                        k === i ? { ...x, texto: e.target.value } : x,
+                      ),
+                    })
+                  }
+                  className={cn(CAMPO, "resize-y")}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       );
 
     case "citacao":

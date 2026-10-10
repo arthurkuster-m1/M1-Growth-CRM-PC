@@ -4,6 +4,7 @@ import { modeloDoModulo } from "@/lib/marketing/modelos";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { useVerComoCliente } from "@/hooks/marketing/useVerComoCliente";
 import { CabecalhoDaSubpagina } from "@/components/marketing/CabecalhoDaSubpagina";
 import { lerChaveDePagina } from "@/lib/marketing/modulos";
 import { HistoricoDaPagina } from "@/components/marketing/HistoricoDaPagina";
@@ -18,7 +19,7 @@ import { usePaginaDeMarketing } from "@/hooks/marketing/usePaginaDeMarketing";
 import { type Bloco } from "@/lib/marketing/blocos";
 import type { TomDaCapa } from "@/lib/marketing/modulos";
 import { randomId } from "@/lib/random-id";
-import { ClockCounterClockwise, Presentation, ShareNetwork } from "@/lib/ui/icons";
+import { ClockCounterClockwise, Eye, Presentation, ShareNetwork } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -59,6 +60,7 @@ export function PaginaDoModulo({
   const [ocupado, setOcupado] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
   const [historico, setHistorico] = useState(false);
+  const verComoCliente = useVerComoCliente();
   const retratos = useHistoricoDeMarketing(chave, historico);
 
   if (carregando) {
@@ -72,7 +74,9 @@ export function PaginaDoModulo({
     );
   }
 
-  const podeEditar = pagina.pode_editar;
+  // Quem é da agência pode olhar a página como o cliente a vê (só uma visão; o acesso é o mesmo).
+  const podeEditarDeVerdade = pagina.pode_editar;
+  const podeEditar = podeEditarDeVerdade && !verComoCliente.ativo;
   const publicado = pagina.published_blocks;
   const temAlteracoes = podeEditar && JSON.stringify(blocos) !== JSON.stringify(publicado ?? []);
   // Quem não edita só enxerga o publicado; quem edita enxerga o rascunho (que é o que está escrevendo).
@@ -119,6 +123,24 @@ export function PaginaDoModulo({
           aoRenomear={renomear}
         />
       ) : null}
+      {podeEditarDeVerdade && verComoCliente.ativo ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm"
+        >
+          <span className="font-medium">{t("Você está vendo como o cliente vê.")}</span>
+          <span className="text-muted-foreground">
+            {t("Só o que foi publicado aparece, sem botões de edição.")}
+          </span>
+          <button
+            type="button"
+            onClick={() => verComoCliente.definir(false)}
+            className="ml-auto h-9 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-[var(--color-accent-hover)]"
+          >
+            {t("Voltar a editar")}
+          </button>
+        </div>
+      ) : null}
       {podeEditar ? (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3 shadow-sm">
           <div
@@ -160,6 +182,15 @@ export function PaginaDoModulo({
           >
             <ShareNetwork size={16} aria-hidden />
             {t("Compartilhar")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => verComoCliente.definir(true)}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary"
+          >
+            <Eye size={16} aria-hidden />
+            {t("Ver como cliente")}
           </button>
 
           <button

@@ -60,16 +60,18 @@ export function persona(n: NovoId): Bloco[] {
       { titulo: "Desejos internos", texto: "O que ele quer sentir, e não fala publicamente." },
     ]),
     t1(n(), "Os 5 níveis de consciência"),
-    cards(n(), [
-      { titulo: "1. Inconsciente", texto: "O que acredita sobre o problema e a solução." },
-      {
-        titulo: "2. Consciente do problema",
-        texto: "O que acredita sobre o problema e a solução.",
-      },
-      { titulo: "3. Consciente da solução", texto: "O que acredita sobre o problema e a solução." },
-      { titulo: "4. Consciente do produto", texto: "O que acredita sobre o problema e a solução." },
-      { titulo: "5. Totalmente consciente", texto: "O que acredita sobre o problema e a solução." },
-    ]),
+    {
+      id: n(),
+      tipo: "piramide",
+      forma: "piramide",
+      itens: [
+        { titulo: "5. Totalmente consciente", texto: "O que acredita e o que precisa ouvir." },
+        { titulo: "4. Consciente do produto", texto: "O que acredita e o que precisa ouvir." },
+        { titulo: "3. Consciente da solução", texto: "O que acredita e o que precisa ouvir." },
+        { titulo: "2. Consciente do problema", texto: "O que acredita e o que precisa ouvir." },
+        { titulo: "1. Inconsciente", texto: "O que acredita e o que precisa ouvir." },
+      ],
+    },
     t1(n(), "Histórico, frustrações e rotina"),
     cards(n(), [
       { titulo: "O que já tentou", texto: "Cada solução tentada e o problema que enfrentou." },
@@ -84,11 +86,15 @@ export function persona(n: NovoId): Bloco[] {
       { titulo: "Merecimento", texto: "“Funciona para os outros, mas não para mim”." },
     ]),
     t1(n(), "O trabalho a ser feito"),
-    cards(n(), [
-      { titulo: "Transformação funcional", texto: "O que o produto faz na prática." },
-      { titulo: "Transformação emocional", texto: "Como ele se sente depois." },
-      { titulo: "Transformação social", texto: "Como os outros passam a enxergá-lo." },
-    ]),
+    {
+      id: n(),
+      tipo: "fluxo",
+      itens: [
+        { titulo: "Transformação funcional", texto: "O que o produto faz na prática." },
+        { titulo: "Transformação emocional", texto: "Como ele se sente depois." },
+        { titulo: "Transformação social", texto: "Como os outros passam a enxergá-lo." },
+      ],
+    },
     t1(n(), "Ganchos de comunicação"),
     lista(n(), "numerada", ["Título 1", "Título 2", "Título 3"]),
   ];
@@ -125,7 +131,16 @@ export function arvoreDeSituacoes(n: NovoId): Bloco[] {
       n(),
       "Todas as etapas que o cliente ideal percorre hoje, com as soluções convencionais, em detalhe.",
     ),
-    lista(n(), "numerada", ["Etapa 1", "Etapa 2", "Etapa 3", "Etapa 4"]),
+    {
+      id: n(),
+      tipo: "fluxo",
+      itens: [
+        { titulo: "Etapa 1", texto: "" },
+        { titulo: "Etapa 2", texto: "" },
+        { titulo: "Etapa 3", texto: "" },
+        { titulo: "Etapa 4", texto: "" },
+      ],
+    },
     t1(n(), "A linha de ouro"),
     destaque(
       n(),
