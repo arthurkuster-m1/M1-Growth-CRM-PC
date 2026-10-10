@@ -311,3 +311,23 @@ describe("oferta vira linha do catálogo", () => {
     expect(l.preco_cents).toBe(150050);
   });
 });
+
+describe("slides com blocos grandes", () => {
+  it("oferta e tabela ficam sozinhas no slide, e o seguinte abre outro", async () => {
+    const { blocoEmBranco } = await import("@/lib/marketing/blocos");
+    const t: Bloco = { id: "t", tipo: "titulo", nivel: 1, texto: "Oferta" };
+    const slides = slidesDaPagina([
+      t,
+      blocoEmBranco("oferta", "o"),
+      { id: "x", tipo: "texto", texto: "depois" },
+      blocoEmBranco("tabela", "tb"),
+    ]);
+    const conteudo = slides.filter((s) => s.tipo === "conteudo");
+    expect(conteudo.map((s) => s.blocos.map((b) => b.tipo))).toEqual([
+      ["oferta"],
+      ["texto"],
+      ["tabela"],
+    ]);
+    expect(conteudo[0]?.titulo).toBe("Oferta");
+  });
+});

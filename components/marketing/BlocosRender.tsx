@@ -435,7 +435,7 @@ export function BlocosRender({
             return <CalculadoraDaMeta key={b.id} bloco={b} slide={slide} />;
 
           case "oferta":
-            return <OfertaDaPagina key={b.id} oferta={b} slide={slide} />;
+            return <OfertaDaPagina key={b.id} oferta={b} slide={slide} base={base} />;
 
           case "separador":
             return <hr key={b.id} className="border-border" />;

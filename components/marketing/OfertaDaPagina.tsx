@@ -56,7 +56,16 @@ function Secao({
  * empilhado, a garantia e as objeções. Sai dos campos do bloco, então fica sempre igual ao texto
  * que a IA recebe.
  */
-export function OfertaDaPagina({ oferta: o, slide }: { oferta: Oferta; slide: boolean }) {
+export function OfertaDaPagina({
+  oferta: o,
+  slide,
+  base,
+}: {
+  oferta: Oferta;
+  slide: boolean;
+  /** De onde as imagens vêm (painel logado ou link público). */
+  base: string;
+}) {
   const completa = o.nivel === "completa";
   const corpo = slide ? "text-lg sm:text-2xl leading-relaxed" : "text-base leading-relaxed";
   const total = valorTotalDaOferta(o);
@@ -82,6 +91,21 @@ export function OfertaDaPagina({ oferta: o, slide }: { oferta: Oferta; slide: bo
         </div>
         {o.resumo ? <p className={cn("max-w-3xl whitespace-pre-line", corpo)}>{o.resumo}</p> : null}
       </header>
+
+      {(o.imagens ?? []).length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(o.imagens ?? []).map((arquivo, k) => (
+            // eslint-disable-next-line @next/next/no-img-element -- imagem da agência, servida pela rota própria
+            <img
+              key={k}
+              src={`${base}${arquivo}`}
+              alt=""
+              loading="lazy"
+              className="h-auto w-full rounded-2xl border object-cover shadow-sm"
+            />
+          ))}
+        </div>
+      ) : null}
 
       {completa && o.promessa ? (
         <blockquote

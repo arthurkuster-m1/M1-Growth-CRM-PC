@@ -42,11 +42,17 @@ export function Apresentacao({
   const [indice, setIndice] = useState(0);
   const inicioDoToque = useRef<number | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
+  const principal = useRef<HTMLElement>(null);
 
   const ir = useCallback(
     (alvo: number) => setIndice(Math.min(slides.length - 1, Math.max(0, alvo))),
     [slides.length],
   );
+
+  // Cada slide abre no topo: o conteúdo alto rola, e o anterior não deixa a rolagem para trás.
+  useEffect(() => {
+    if (principal.current) principal.current.scrollTop = 0;
+  }, [indice]);
 
   useEffect(() => {
     raiz.current?.focus();
@@ -105,9 +111,9 @@ export function Apresentacao({
         </button>
       </header>
 
-      <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-5 pb-6 sm:px-14">
+      <main ref={principal} className="flex min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-14">
         {slide.tipo === "capa" ? (
-          <Capa tom={tom} icone={icone} className="w-full max-w-5xl rounded-[2rem]">
+          <Capa tom={tom} icone={icone} className="m-auto w-full max-w-5xl rounded-[2rem]">
             <div className="relative z-10 flex min-h-[55dvh] flex-col justify-center gap-4 p-8 sm:p-16">
               <span className="text-sm font-semibold tracking-wider uppercase opacity-80 sm:text-base">
                 {superior}
@@ -117,7 +123,7 @@ export function Apresentacao({
             </div>
           </Capa>
         ) : (
-          <div className="w-full max-w-5xl">
+          <div className="m-auto w-full max-w-5xl py-2">
             <BlocosRender
               escala="slide"
               rotulos={rotulos}

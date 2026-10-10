@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { SeletorDeImagem } from "@/components/marketing/SeletorDeImagem";
 import { useT } from "@/hooks/i18n/useT";
 import { ETAPAS_DA_OFERTA, TIPOS_DE_PRECO, type Bloco } from "@/lib/marketing/blocos";
 import { ofertaParaTexto, type Oferta } from "@/lib/marketing/oferta";
@@ -168,10 +169,13 @@ function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
 export function EditorDeOferta({
   bloco,
   titulo,
+  chave,
   aoMudar,
 }: {
   bloco: Oferta;
   titulo: string;
+  /** A chave da página: liga a pré-visualização do cartão-resumo. */
+  chave?: string;
   aoMudar: (b: Bloco) => void;
 }) {
   const t = useT();
@@ -488,6 +492,52 @@ export function EditorDeOferta({
             { chave: "resposta", rotulo: t("Resposta"), longo: true },
           ]}
         />
+      </Grupo>
+
+      <Grupo titulo={t("Imagens que a IA envia junto")}>
+        <p className="text-xs text-muted-foreground">
+          {t(
+            "Com imagem, a IA envia a imagem com o preço. Sem imagem, envia só o texto e o preço. Produto físico costuma pedir foto; serviço, em geral, não.",
+          )}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(bloco.imagens ?? []).map((arquivo, i) => (
+            <SeletorDeImagem
+              key={i}
+              arquivo={arquivo}
+              aoMudar={(novo) =>
+                set(
+                  "imagens",
+                  (bloco.imagens ?? []).flatMap((x, k) => (k === i ? (novo ? [novo] : []) : [x])),
+                )
+              }
+            />
+          ))}
+          {(bloco.imagens ?? []).length < 4 ? (
+            <SeletorDeImagem
+              arquivo=""
+              aoMudar={(novo) => novo && set("imagens", [...(bloco.imagens ?? []), novo])}
+            />
+          ) : null}
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={bloco.cartaoResumo === true}
+            onChange={(e) => set("cartaoResumo", e.target.checked)}
+          />
+          {t("Enviar também um cartão-resumo da oferta (gerado automaticamente)")}
+        </label>
+        {bloco.cartaoResumo === true && chave ? (
+          <a
+            href={`/api/v1/marketing/ofertas/${chave}/cartao`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-fit text-sm font-medium text-primary hover:underline"
+          >
+            {t("Ver o cartão (salve a página antes)")}
+          </a>
+        ) : null}
       </Grupo>
 
       <Grupo titulo={t("Para a IA: o que nunca prometer")}>

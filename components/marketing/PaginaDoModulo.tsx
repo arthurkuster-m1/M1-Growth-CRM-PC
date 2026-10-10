@@ -287,6 +287,7 @@ export function PaginaDoModulo({
             aoMudar={editar}
             novoId={randomId}
             tituloDaPagina={tituloAtual}
+            chaveDaPagina={chave}
           />
         </>
       ) : vazio ? (

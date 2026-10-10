@@ -18367,6 +18367,15 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  "Imagens que a IA envia junto": { es: "Imágenes que la IA envía junto" },
+  "Com imagem, a IA envia a imagem com o preço. Sem imagem, envia só o texto e o preço. Produto físico costuma pedir foto; serviço, em geral, não.":
+    {
+      es: "Con imagen, la IA envía la imagen con el precio. Sin imagen, envía solo el texto y el precio. El producto físico suele pedir foto; el servicio, en general, no.",
+    },
+  "Enviar também um cartão-resumo da oferta (gerado automaticamente)": {
+    es: "Enviar también una tarjeta-resumen de la oferta (generada automáticamente)",
+  },
+  "Ver o cartão (salve a página antes)": { es: "Ver la tarjeta (guarda la página antes)" },
   "{n} ofertas publicadas": { es: "{n} ofertas publicadas" },
   "Nenhuma oferta publicada ainda": { es: "Aún no hay ofertas publicadas" },
   Bônus: { es: "Bonos" },

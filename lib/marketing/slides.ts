@@ -7,7 +7,9 @@ import type { Bloco } from "./blocos";
  *  - o slide 0 é a CAPA (o título e a descrição da página);
  *  - cada `titulo` de nível 1 abre um slide novo; o que vem depois vai nele;
  *  - blocos antes do primeiro título formam um slide sem título;
- *  - slide com blocos demais é partido (continuação) — slide não rola, tem de caber na tela;
+ *  - slide com blocos demais é partido (continuação);
+ *  - blocos GRANDES (oferta, tabela, calculadora) ganham um slide só para eles — o que passar da
+ *    altura da tela rola, sempre a partir do topo;
  *  - o `separador` só marca a quebra (não aparece);
  *  - página sem nenhum bloco vira só a capa.
  */
@@ -21,6 +23,9 @@ export interface Slide {
 
 /** Quantos blocos cabem num slide antes de continuar no seguinte. */
 export const BLOCOS_POR_SLIDE = 4;
+
+/** Blocos que, sozinhos, já enchem uma tela. */
+const BLOCOS_GRANDES: ReadonlySet<Bloco["tipo"]> = new Set(["oferta", "tabela", "calculadora"]);
 
 export function slidesDaPagina(blocos: readonly Bloco[]): Slide[] {
   const slides: Slide[] = [{ chave: "capa", tipo: "capa", titulo: null, blocos: [] }];
@@ -41,6 +46,13 @@ export function slidesDaPagina(blocos: readonly Bloco[]): Slide[] {
       continue;
     }
     if (bloco.tipo === "separador") {
+      aberto.slide = null;
+      continue;
+    }
+    if (BLOCOS_GRANDES.has(bloco.tipo)) {
+      // Sozinho num slide (reaproveita o do título, se acabou de abrir); o seguinte abre outro.
+      const vazio = aberto.slide !== null && aberto.slide.blocos.length === 0;
+      (vazio && aberto.slide ? aberto.slide : abrir(null)).blocos.push(bloco);
       aberto.slide = null;
       continue;
     }

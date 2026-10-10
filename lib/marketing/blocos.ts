@@ -225,6 +225,13 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     inclui: z.array(curto).max(14),
     naoInclui: z.array(curto).max(8),
     prazo: curto,
+    /** Imagens do produto (até 4): a IA as envia junto com a resposta. Sem imagem, vai só texto. */
+    imagens: z
+      .array(z.string().regex(NOME_DE_IMAGEM, { message: "Imagem inválida." }))
+      .max(4)
+      .optional(),
+    /** Gera e envia também um cartão-resumo da oferta (promessa, o que inclui, preço, garantia). */
+    cartaoResumo: z.boolean().optional(),
     preco: z.object({
       tipo: z.enum(TIPOS_DE_PRECO),
       valor: z.string().trim().max(24),
