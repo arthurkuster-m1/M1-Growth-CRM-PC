@@ -18367,6 +18367,7 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  Navegação: { es: "Navegación" },
   "O cadastro de tudo o que a empresa oferece: produtos, preços e fotos.": {
     es: "El registro de todo lo que ofrece la empresa: productos, precios y fotos.",
   },

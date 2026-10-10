@@ -17,13 +17,16 @@ export interface PassoDaTrilha {
 export function NavegacaoPublica({
   voltar,
   trilha,
+  rotulo,
 }: {
   voltar?: { href: string; rotulo: string };
   trilha: PassoDaTrilha[];
+  /** O nome da navegação para leitores de tela (já traduzido). */
+  rotulo: string;
 }) {
   if (!voltar && trilha.length <= 1) return null;
   return (
-    <nav aria-label="Navegação" className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <nav aria-label={rotulo} className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {voltar ? (
         <Link
           href={voltar.href}

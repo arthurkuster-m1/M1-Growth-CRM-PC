@@ -96,7 +96,7 @@ export default async function PaginaPublicaPage({
             inicio={inicio}
           />
           <main className="mx-auto flex max-w-[1200px] flex-col gap-6 p-4 sm:p-6">
-            <NavegacaoPublica voltar={voltar} trilha={trilha} />
+            <NavegacaoPublica voltar={voltar} trilha={trilha} rotulo={t("Navegação")} />
             <Capa tom={modulo.tom} icone={icone} className="rounded-3xl">
               <div className="relative z-10 flex flex-col gap-3 p-6 sm:p-9">
                 <span className="text-xs font-semibold tracking-wider uppercase opacity-80">
