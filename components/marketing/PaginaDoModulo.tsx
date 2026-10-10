@@ -4,6 +4,8 @@ import { modeloDoModulo } from "@/lib/marketing/modelos";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { HistoricoDaPagina } from "@/components/marketing/HistoricoDaPagina";
+import { useHistoricoDeMarketing } from "@/hooks/marketing/useHistoricoDeMarketing";
 import { Apresentacao } from "@/components/marketing/Apresentacao";
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { BlocosRender, type RotulosDosBlocos } from "@/components/marketing/BlocosRender";
@@ -14,7 +16,7 @@ import { usePaginaDeMarketing } from "@/hooks/marketing/usePaginaDeMarketing";
 import { type Bloco } from "@/lib/marketing/blocos";
 import type { TomDaCapa } from "@/lib/marketing/modulos";
 import { randomId } from "@/lib/random-id";
-import { Presentation, ShareNetwork } from "@/lib/ui/icons";
+import { ClockCounterClockwise, Presentation, ShareNetwork } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,6 +53,8 @@ export function PaginaDoModulo({
   const [apresentando, setApresentando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
+  const [historico, setHistorico] = useState(false);
+  const retratos = useHistoricoDeMarketing(chave, historico);
 
   if (carregando) {
     return <div className="h-48 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
@@ -139,6 +143,15 @@ export function PaginaDoModulo({
             {t("Compartilhar")}
           </button>
 
+          <button
+            type="button"
+            onClick={() => setHistorico(true)}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary"
+          >
+            <ClockCounterClockwise size={16} aria-hidden />
+            {t("Histórico")}
+          </button>
+
           <span
             className={cn(
               "ml-auto text-xs",
@@ -182,7 +195,15 @@ export function PaginaDoModulo({
         </div>
       ) : (
         !vazio && (
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setHistorico(true)}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium shadow-sm transition-colors hover:bg-secondary"
+            >
+              <ClockCounterClockwise size={16} aria-hidden />
+              {t("Histórico")}
+            </button>
             <button
               type="button"
               onClick={() => setApresentando(true)}
@@ -229,6 +250,24 @@ export function PaginaDoModulo({
           temPublicado={publicado !== null}
         />
       ) : null}
+
+      <HistoricoDaPagina
+        aberto={historico}
+        aoFechar={() => setHistorico(false)}
+        versoes={retratos.versoes}
+        carregando={retratos.carregando}
+        atual={publicado}
+        rotulos={rotulos}
+        agencia={
+          podeEditar
+            ? {
+                aoSalvar: retratos.salvarRetrato,
+                aoApagar: retratos.apagarRetrato,
+                podeSalvar: publicado !== null,
+              }
+            : undefined
+        }
+      />
 
       {apresentando ? (
         <Apresentacao

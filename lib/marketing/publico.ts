@@ -1,3 +1,9 @@
+import {
+  COLUNAS_DO_RETRATO,
+  RETRATOS_NA_TELA,
+  versoesDasLinhas,
+  type VersaoDaPagina,
+} from "@/lib/marketing/historico";
 import { ehOperante } from "@/lib/organizacao/operante";
 import { createHash } from "node:crypto";
 
@@ -143,4 +149,21 @@ export async function empresaDoLink(link: LinkResolvido): Promise<EmpresaDoLink>
     cssDaMarca:
       marca.origens.cor === "organizacao" ? cssDaMarca(marca.cor, ESCOPO_DA_ORGANIZACAO).css : null,
   };
+}
+
+/** Os retratos (histórico) de UMA página publicada, os mais recentes primeiro. */
+export async function retratosDaPagina(
+  link: LinkResolvido,
+  moduleKey: string,
+): Promise<VersaoDaPagina[]> {
+  const { data } = await createAdminClient()
+    .from("marketing_page_snapshots")
+    .select(COLUNAS_DO_RETRATO)
+    .eq("organization_id", link.organizationId)
+    .eq("module_key", moduleKey)
+    .order("taken_at", { ascending: false })
+    .limit(RETRATOS_NA_TELA);
+  return versoesDasLinhas(
+    (data ?? []) as Array<{ id: string; taken_at: string; note: string; blocks: unknown }>,
+  );
 }

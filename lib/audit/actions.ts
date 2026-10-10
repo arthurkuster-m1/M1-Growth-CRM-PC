@@ -720,6 +720,8 @@ export const AUDIT_ACTIONS = [
   // links sem login); gravar rascunho não audita, para o log não encher a cada tecla.
   "marketing_page.published",
   "marketing_page.unpublished",
+  "marketing_page.snapshot_created",
+  "marketing_page.snapshot_deleted",
   "marketing_share_link.created",
   "marketing_share_link.revoked",
   "crm_task.bulk_updated",

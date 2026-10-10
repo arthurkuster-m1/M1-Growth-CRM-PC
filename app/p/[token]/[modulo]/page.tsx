@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { EstiloDaMarcaDaOrganizacao } from "@/app/app/_components/EstiloDaMarcaDaOrganizacao";
+import { HistoricoPublico } from "@/components/marketing/HistoricoPublico";
 import { ApresentarPublico } from "@/components/marketing/ApresentarPublico";
 import { BlocosRender } from "@/components/marketing/BlocosRender";
 import { CabecalhoPublico } from "@/components/marketing/CabecalhoPublico";
@@ -17,6 +18,7 @@ import {
   empresaDoLink,
   paginasPublicadas,
   resolverLink,
+  retratosDaPagina,
 } from "@/lib/marketing/publico";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +42,7 @@ export default async function PaginaPublicaPage({
   const [empresa, paginas] = await Promise.all([empresaDoLink(link), paginasPublicadas(link)]);
   const pagina = paginas.find((p) => p.module_key === chave);
   if (!pagina || pagina.blocos.length === 0) notFound();
+  const retratos = await retratosDaPagina(link, chave);
 
   const t = (texto: string) => traduzir(texto, empresa.idioma);
   const textos = textosDoModulo(t, chave);
@@ -77,7 +80,8 @@ export default async function PaginaPublicaPage({
                 <p className="max-w-2xl text-sm opacity-90 sm:text-base">{textos.descricao}</p>
               </div>
             </Capa>
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              <HistoricoPublico versoes={retratos} atual={pagina.blocos} rotulos={rotulos} />
               <ApresentarPublico
                 titulo={textos.titulo}
                 descricao={textos.descricao}
