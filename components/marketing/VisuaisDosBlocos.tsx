@@ -10,49 +10,91 @@ type Piramide = Extract<Bloco, { tipo: "piramide" }>;
 type Fluxo = Extract<Bloco, { tipo: "fluxo" }>;
 type Matriz = Extract<Bloco, { tipo: "matriz" }>;
 
-/** A borda "neon" discreta dos cartões: contorno na cor da marca e um brilho suave. */
-export const BORDA_NEON =
-  "border border-primary/40 shadow-[0_0_22px_-9px_var(--primary)] transition-shadow hover:shadow-[0_0_28px_-6px_var(--primary)]";
+/** A borda dos cartões: um contorno sólido na cor da marca, sem brilho nem sombra. */
+export const BORDA_DA_MARCA = "border-[1.5px] border-primary";
 
+/**
+ * Pirâmide (ou funil) de verdade: cada nível é um trapézio e, empilhados, formam o triângulo.
+ * O contorno é sólido na cor da marca e o preenchimento fica mais forte quanto mais importante
+ * o nível (o topo, na pirâmide). O texto de cada nível fica ao lado, alinhado à sua faixa.
+ */
 export function Niveis({ bloco, slide }: { bloco: Piramide; slide: boolean }) {
   const itens = bloco.itens.filter((i) => i.titulo.trim() !== "" || i.texto.trim() !== "");
   const n = itens.length;
   if (n === 0) return null;
+  const piramide = bloco.forma === "piramide";
+
+  // Largura (em % da coluna) do topo e da base de cada faixa.
+  const faixa = (i: number) => {
+    const a = (i / n) * 100;
+    const b = ((i + 1) / n) * 100;
+    return piramide ? { topo: a, base: b } : { topo: 100 - a, base: 100 - b };
+  };
+  // `recuo` encolhe o polígono dos lados (o miolo do contorno); no vértice nunca se cruza.
+  const poligono = (topo: number, base: number, recuo = 0) => {
+    const esq = (largura: number) => Math.min(50 - largura / 2 + recuo, 50);
+    const dir = (largura: number) => Math.max(50 + largura / 2 - recuo, 50);
+    return `polygon(${esq(topo)}% 0, ${dir(topo)}% 0, ${dir(base)}% 100%, ${esq(base)}% 100%)`;
+  };
+
   return (
-    <ol className="flex flex-col gap-2.5">
+    <ol
+      className={cn(
+        "grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)] gap-x-4 sm:gap-x-8",
+        slide ? "auto-rows-[5.5rem] sm:auto-rows-[6.5rem]" : "auto-rows-[4.75rem]",
+      )}
+    >
       {itens.map((item, i) => {
-        const t = n === 1 ? 0 : i / (n - 1);
-        // Pirâmide: estreita no topo e larga na base. Funil: o contrário.
-        const largura = bloco.forma === "piramide" ? 40 + t * 60 : 100 - t * 55;
-        const forca = 100 - t * 30;
+        const { topo, base } = faixa(i);
+        // Mais importante = mais preenchido (topo da pirâmide / boca do funil).
+        const forca = n === 1 ? 100 : 100 - (i / (n - 1)) * 72;
+        const claro = forca < 55;
         return (
-          <li
-            key={i}
-            className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6"
-          >
-            <div className="flex justify-center">
+          <li key={i} className="contents">
+            <div className="relative py-[2px]">
+              <div
+                aria-hidden
+                style={{ clipPath: poligono(topo, base) }}
+                className="absolute inset-x-0 inset-y-[2px] bg-primary"
+              />
               <div
                 style={{
-                  width: `${largura}%`,
+                  clipPath: poligono(topo, base, 1.2),
                   backgroundColor: `color-mix(in srgb, var(--primary) ${forca}%, var(--card))`,
                 }}
+                className="absolute inset-x-0 inset-y-[4px] grid place-items-center"
+              >
+                <span
+                  className={cn(
+                    "font-mono text-sm font-bold tracking-widest",
+                    slide && "text-xl",
+                    claro ? "text-foreground" : "text-primary-foreground",
+                  )}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col justify-center border-l-[1.5px] border-primary pl-4">
+              <h4
                 className={cn(
-                  "rounded-xl px-4 py-3 text-center font-semibold text-primary-foreground shadow-[0_0_22px_-10px_var(--primary)]",
+                  "leading-snug font-semibold",
                   slide ? "text-lg sm:text-2xl" : "text-sm sm:text-base",
                 )}
               >
-                {item.titulo || `${i + 1}`}
-              </div>
+                {item.titulo}
+              </h4>
+              {item.texto ? (
+                <p
+                  className={cn(
+                    "mt-0.5 text-muted-foreground",
+                    slide ? "text-base sm:text-lg" : "text-xs sm:text-sm",
+                  )}
+                >
+                  {item.texto}
+                </p>
+              ) : null}
             </div>
-            {item.texto ? (
-              <p
-                className={cn("text-muted-foreground", slide ? "text-base sm:text-xl" : "text-sm")}
-              >
-                {item.texto}
-              </p>
-            ) : (
-              <span />
-            )}
           </li>
         );
       })}
@@ -110,7 +152,7 @@ export function MatrizDois({ bloco, slide }: { bloco: Matriz; slide: boolean }) 
           key={i}
           className={cn(
             "flex min-h-32 flex-col gap-2 rounded-2xl border p-5",
-            swot ? TOM_DA_CELULA[i] : BORDA_NEON,
+            swot ? TOM_DA_CELULA[i] : BORDA_DA_MARCA,
           )}
         >
           <header className="flex items-center gap-3">

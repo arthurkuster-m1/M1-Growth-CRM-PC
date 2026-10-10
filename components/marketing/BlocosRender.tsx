@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
 import {
-  BORDA_NEON,
+  BORDA_DA_MARCA,
   FluxoDeEtapas,
   MatrizDois,
   Niveis,
@@ -201,7 +201,7 @@ export function BlocosRender({
                 )}
               >
                 {itens.map((i, n) => (
-                  <div key={n} className={cn("rounded-2xl bg-card p-5", BORDA_NEON)}>
+                  <div key={n} className={cn("rounded-2xl bg-card p-5", BORDA_DA_MARCA)}>
                     {i.titulo ? (
                       <h4
                         className={cn("font-semibold", slide ? "text-xl sm:text-2xl" : "text-base")}
@@ -229,7 +229,7 @@ export function BlocosRender({
             return (
               <div key={b.id} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {itens.map((i, n) => (
-                  <div key={n} className={cn("rounded-2xl bg-card p-5", BORDA_NEON)}>
+                  <div key={n} className={cn("rounded-2xl bg-card p-5", BORDA_DA_MARCA)}>
                     <p
                       className={cn(
                         "font-bold tracking-tight text-primary",
