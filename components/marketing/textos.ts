@@ -97,3 +97,39 @@ export function textosDoModulo(
       return null;
   }
 }
+
+/** O nome de cada TIPO de subpágina (e a descrição curta que aparece no cartão). */
+export function textosDoTipoDeSubpagina(
+  t: Traduz,
+  tipo: string,
+): { titulo: string; descricao: string } | null {
+  switch (tipo) {
+    case "pesquisa-de-mercado":
+      return {
+        titulo: t("Pesquisa de público e mercado"),
+        descricao: t("O setor, o processo comercial e os principais desafios."),
+      };
+    case "persona":
+      return {
+        titulo: t("Persona"),
+        descricao: t("O dossiê de um cliente ideal: dores, desejos, objeções e consciência."),
+      };
+    case "arvore-de-situacoes":
+      return {
+        titulo: t("Árvore de situações incômodas"),
+        descricao: t("A jornada, a linha de ouro e as situações do dia a dia que causam a dor."),
+      };
+    case "arquitetura-de-premissas":
+      return {
+        titulo: t("Arquitetura de premissas"),
+        descricao: t("A premissa persuasiva e a desconstrução das crenças do cliente."),
+      };
+    case "porques":
+      return {
+        titulo: t("Porquês (brainstorming)"),
+        descricao: t("Os motivos que levam alguém a comprar, e as palavras que filtram o público."),
+      };
+    default:
+      return null;
+  }
+}

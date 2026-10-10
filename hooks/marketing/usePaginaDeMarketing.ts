@@ -121,8 +121,34 @@ export function usePaginaDeMarketing(chave: string) {
     }
   }
 
+  /** Troca o título da página (subpáginas): grava o que estiver pendente junto, sem perder edição. */
+  async function renomear(title: string): Promise<boolean> {
+    if (temporizador.current) {
+      clearTimeout(temporizador.current);
+      temporizador.current = undefined;
+    }
+    pendente.current = pendente.current ?? blocos;
+    pendente.current = pendente.current ?? [];
+    const alvo = pendente.current;
+    pendente.current = null;
+    try {
+      await apiClient.put(`${rota}/draft`, { title, blocks: alvo });
+      queryClient.setQueryData<PaginaDeMarketing>(chaveDaConsulta, (p) =>
+        p ? { ...p, title } : p,
+      );
+      setEstado("salvo");
+      return true;
+    } catch (erro) {
+      pendente.current = alvo;
+      setEstado("erro");
+      showApiError(erro);
+      return false;
+    }
+  }
+
   return {
     pagina,
+    renomear,
     carregando: consulta.isLoading,
     falhou: consulta.isError,
     blocos,

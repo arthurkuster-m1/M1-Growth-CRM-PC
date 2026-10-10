@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { SubpaginasDoModulo } from "@/components/marketing/SubpaginasDoModulo";
 import { PaginaDoModulo } from "@/components/marketing/PaginaDoModulo";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
-import { requireAuth } from "@/lib/auth/server";
+import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { modulosPublicados } from "@/lib/marketing/publicadas";
 import { moduloPorChave } from "@/lib/marketing/modulos";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,8 @@ export default async function ModuloDaEstrategiaPage({
   const modulo = moduloPorChave((await params).modulo);
   const textos = modulo ? textosDoModulo(t, modulo.chave) : null;
   if (!modulo || !textos) notFound();
+  const org = await resolveActiveOrg(user);
+  const publicado = org ? (await modulosPublicados(org.orgId)).has(modulo.chave) : false;
 
   return (
     <PaginaDeMarketing
@@ -31,7 +35,7 @@ export default async function ModuloDaEstrategiaPage({
       superior={nomeDaFase(t, modulo.fase)}
       titulo={textos.titulo}
       descricao={textos.descricao}
-      estado={t("Em breve")}
+      estado={publicado ? undefined : t("Em breve")}
       voltar={{ href: "/app/marketing/estrategia", rotulo: t("Estratégia") }}
     >
       <PaginaDoModulo
@@ -50,6 +54,10 @@ export default async function ModuloDaEstrategiaPage({
             t("A agência cria e atualiza; você acompanha tudo por aqui."),
           ],
         }}
+      />
+      <SubpaginasDoModulo
+        modulo={modulo.chave}
+        base={`/app/marketing/estrategia/${modulo.chave}`}
       />
     </PaginaDeMarketing>
   );

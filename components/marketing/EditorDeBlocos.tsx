@@ -564,7 +564,7 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
           maximo={16}
           rotuloDeAdicionar={t("Adicionar cor")}
           renderizar={(item, mudar) => (
-            <div className="flex flex-1 items-center gap-2">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
               <input
                 type="color"
                 value={item.hex}
@@ -572,13 +572,14 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
                 onChange={(e) => mudar({ ...item, hex: e.target.value })}
                 className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border bg-background p-1"
               />
+              <CampoDeHex hex={item.hex} aoMudar={(hex) => mudar({ ...item, hex })} />
               <input
                 value={item.nome}
                 maxLength={40}
                 placeholder={t("Nome da cor")}
                 aria-label={t("Nome da cor")}
                 onChange={(e) => mudar({ ...item, nome: e.target.value })}
-                className={CAMPO}
+                className={cn(CAMPO, "min-w-32 flex-1")}
               />
             </div>
           )}
@@ -741,6 +742,39 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
         </p>
       );
   }
+}
+
+/**
+ * O código da cor em hexadecimal (#RRGGBB): digitar ou colar o código escolhe a cor, e o seletor
+ * ao lado continua valendo. Enquanto o código está incompleto não muda a cor; ao sair do campo,
+ * volta para o último código válido.
+ */
+function CampoDeHex({ hex, aoMudar }: { hex: string; aoMudar: (hex: string) => void }) {
+  const t = useT();
+  const [digitado, setDigitado] = useState<string | null>(null);
+  const valor = digitado ?? hex.toUpperCase();
+  const invalido = digitado !== null && !/^#?[0-9a-fA-F]{6}$/.test(digitado.trim());
+  return (
+    <input
+      value={valor}
+      maxLength={7}
+      spellCheck={false}
+      autoCapitalize="characters"
+      placeholder="#366D6F"
+      aria-label={t("Código da cor (hexadecimal)")}
+      aria-invalid={invalido}
+      onChange={(e) => {
+        const texto = e.target.value.trim();
+        setDigitado(texto);
+        if (/^#?[0-9a-fA-F]{6}$/.test(texto)) {
+          aoMudar(`#${texto.replace("#", "")}`.toUpperCase());
+          setDigitado(null);
+        }
+      }}
+      onBlur={() => setDigitado(null)}
+      className={cn(CAMPO, "w-28 font-mono uppercase", invalido && "border-error")}
+    />
+  );
 }
 
 /** Uma lista de itens com "adicionar" e "remover" (cartões, números, cores, links). */

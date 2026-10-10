@@ -17,7 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 import { lerBlocos, type Bloco } from "./blocos";
 import { linkVigente, tokenSchema } from "./links";
-import { moduloPorChave } from "./modulos";
+import { lerChaveDePagina } from "./modulos";
 
 /**
  * A LEITURA PÚBLICA do que a agência publicou — o que o link sem login mostra.
@@ -46,6 +46,7 @@ export interface EmpresaDoLink {
 
 export interface PaginaPublicada {
   module_key: string;
+  title: string;
   blocos: Bloco[];
   published_at: string | null;
 }
@@ -108,21 +109,29 @@ export async function paginasPublicadas(link: LinkResolvido): Promise<PaginaPubl
   const admin = createAdminClient();
   let consulta = admin
     .from("marketing_pages")
-    .select("module_key, published_blocks, published_at")
+    .select("module_key, title, published_blocks, published_at")
     .eq("organization_id", link.organizationId)
     .not("published_blocks", "is", null);
-  if (link.moduloDoEscopo) consulta = consulta.eq("module_key", link.moduloDoEscopo);
+  // Link de um módulo vale também para as subpáginas dele (`<módulo>--…`). A chave do escopo já
+  // foi validada na criação (só caracteres de módulo), então entra no filtro sem risco.
+  if (link.moduloDoEscopo) {
+    consulta = consulta.or(
+      `module_key.eq.${link.moduloDoEscopo},module_key.like.${link.moduloDoEscopo}--%`,
+    );
+  }
   const { data } = await consulta.limit(100);
   return (
     (data ?? []) as Array<{
       module_key: string;
+      title: string;
       published_blocks: unknown;
       published_at: string | null;
     }>
   )
-    .filter((p) => moduloPorChave(p.module_key) !== undefined)
+    .filter((p) => lerChaveDePagina(p.module_key) !== null)
     .map((p) => ({
       module_key: p.module_key,
+      title: p.title,
       blocos: lerBlocos(p.published_blocks),
       published_at: p.published_at,
     }));

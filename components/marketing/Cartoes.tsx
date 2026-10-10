@@ -36,7 +36,8 @@ export function CartaoDeArea({
   icone: ReactNode;
   titulo: string;
   descricao: string;
-  estado: string;
+  /** Ausente = sem etiqueta (ex.: página já publicada). */
+  estado?: string | null;
   /** "Abrir" já traduzido. */
   abrir: string;
 }) {
@@ -53,7 +54,7 @@ export function CartaoDeArea({
       <div className="flex flex-1 flex-col gap-2 p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold tracking-tight">{titulo}</h3>
-          <EtiquetaDeEstado texto={estado} />
+          {estado ? <EtiquetaDeEstado texto={estado} /> : null}
         </div>
         <p className="text-sm text-muted-foreground">{descricao}</p>
         <span className="mt-auto inline-flex items-center gap-1 pt-3 text-sm font-medium text-primary">
@@ -84,7 +85,8 @@ export function CartaoDeModulo({
   icone: ReactNode;
   titulo: string;
   fase: string;
-  estado: string;
+  /** Ausente = sem etiqueta (ex.: página já publicada). */
+  estado?: string | null;
 }) {
   const base = BASE_DA_COR[tom];
   return (
@@ -110,7 +112,7 @@ export function CartaoDeModulo({
           >
             {fase}
           </span>
-          <EtiquetaDeEstado texto={estado} />
+          {estado ? <EtiquetaDeEstado texto={estado} /> : null}
         </div>
       </div>
     </Link>

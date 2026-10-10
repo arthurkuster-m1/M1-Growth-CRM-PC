@@ -1,4 +1,12 @@
 import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
+import {
+  arquiteturaDePremissas,
+  arvoreDeSituacoes,
+  persona,
+  pesquisaDeMercado,
+  porques,
+} from "@/lib/marketing/modelos-persona";
+import { lerChaveDePagina } from "@/lib/marketing/modulos";
 
 /**
  * Os MODELOS de página: o ponto de partida que a agência recebe ao clicar em "Começar com um
@@ -235,6 +243,18 @@ function generico(n: NovoId): Bloco[] {
 
 /** O modelo do módulo; os que ainda não têm modelo próprio recebem um esqueleto simples. */
 export function modeloDoModulo(chave: string, novoId: NovoId): Bloco[] {
+  switch (lerChaveDePagina(chave)?.tipo) {
+    case "persona":
+      return persona(novoId);
+    case "pesquisa-de-mercado":
+      return pesquisaDeMercado(novoId);
+    case "arvore-de-situacoes":
+      return arvoreDeSituacoes(novoId);
+    case "arquitetura-de-premissas":
+      return arquiteturaDePremissas(novoId);
+    case "porques":
+      return porques(novoId);
+  }
   switch (chave) {
     case "mapeamento-do-funil":
       return mapeamentoDoFunil(novoId);

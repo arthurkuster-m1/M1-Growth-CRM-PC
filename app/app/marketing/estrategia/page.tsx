@@ -4,8 +4,9 @@ import { CartaoDeModulo } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { Atalho, OQueVem, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
-import { requireAuth } from "@/lib/auth/server";
+import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { modulosPublicados } from "@/lib/marketing/publicadas";
 import { modulosDaFase } from "@/lib/marketing/modulos";
 import { Compass } from "@/lib/ui/icons";
 
@@ -16,6 +17,8 @@ export const metadata: Metadata = { title: "Estratégia" };
 export default async function EstrategiaPage() {
   const user = await requireAuth();
   const t = (texto: string) => traduzir(texto, user.idioma);
+  const org = await resolveActiveOrg(user);
+  const publicados = org ? await modulosPublicados(org.orgId) : new Set<string>();
   const emBreve = t("Em breve");
 
   return (
@@ -27,7 +30,7 @@ export default async function EstrategiaPage() {
       descricao={t(
         "O diagnóstico do negócio e a construção do produto e da oferta, etapa por etapa.",
       )}
-      estado={emBreve}
+      estado={publicados.size > 0 ? undefined : emBreve}
       voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
       <section aria-label={t("Atalhos da estratégia")} className="grid gap-3 sm:grid-cols-3">
@@ -63,7 +66,7 @@ export default async function EstrategiaPage() {
                   icone={iconeDoModulo(modulo.icone)}
                   titulo={textos.titulo}
                   fase={nomeDaFase(t, fase)}
-                  estado={emBreve}
+                  estado={publicados.has(modulo.chave) ? null : emBreve}
                 />
               );
             })}

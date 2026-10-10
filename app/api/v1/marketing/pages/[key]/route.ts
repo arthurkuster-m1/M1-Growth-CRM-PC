@@ -9,13 +9,16 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
+import { audit } from "@/lib/audit";
+import { requireSupportWrite } from "@/lib/impersonate/support";
+import { lerChaveDePagina } from "@/lib/marketing/modulos";
 import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { lerBlocos } from "@/lib/marketing/blocos";
 import {
   COLUNAS_DA_PAGINA,
-  chaveDeModuloSchema,
+  chaveDePaginaSchema,
   type PaginaDeMarketing,
 } from "@/lib/marketing/paginas";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +39,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  const chave = chaveDeModuloSchema.safeParse((await ctx.params).key);
+  const chave = chaveDePaginaSchema.safeParse((await ctx.params).key);
   if (!chave.success) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   const supabase = await createClient();
@@ -79,4 +82,53 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
     pode_editar: podeEditar,
   };
   return ok({ page: resposta }, { requestId });
+}
+
+/**
+ * DELETE /api/v1/marketing/pages/[key] — apaga uma SUBPÁGINA (com o rascunho e o histórico).
+ * A página de um módulo não se apaga: ela só pode ser despublicada.
+ */
+export async function DELETE(_req: NextRequest, ctx: Contexto): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
+
+  const requestId = randomUUID();
+  const authz = await requireRole("manager", {
+    requestId,
+    resource: "marketing_pages",
+    allowPlatformAdmin: true,
+  });
+  if (!authz.ok) return authz.response;
+  const t = (texto: string) => traduzir(texto, authz.user.idioma);
+
+  const chave = (await ctx.params).key;
+  const lida = lerChaveDePagina(chave);
+  if (!lida) return fail("not_found", t("Página não encontrada."), 404, { requestId });
+  if (lida.tipo === null) {
+    return fail("validation_failed", t("A página de um módulo não pode ser apagada."), 422, {
+      requestId,
+    });
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("marketing_pages")
+    .delete()
+    .eq("organization_id", authz.org.orgId)
+    .eq("module_key", chave)
+    .select("id")
+    .maybeSingle();
+  if (error) return fail("internal_error", t("Erro ao apagar a página."), 500, { requestId });
+  if (!data) return fail("not_found", t("Página não encontrada."), 404, { requestId });
+
+  await audit({
+    organizationId: authz.org.orgId,
+    actorUserId: authz.user.id,
+    action: "marketing_page.subpage_deleted",
+    resourceType: "marketing_pages",
+    resourceId: (data as { id: string }).id,
+    requestId,
+    metadata: { module_key: chave },
+  });
+  return ok({ deleted: true }, { requestId });
 }

@@ -21,7 +21,7 @@ import {
   retratoSchema,
   versoesDasLinhas,
 } from "@/lib/marketing/historico";
-import { chaveDeModuloSchema } from "@/lib/marketing/paginas";
+import { chaveDePaginaSchema } from "@/lib/marketing/paginas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  const chave = chaveDeModuloSchema.safeParse((await ctx.params).key);
+  const chave = chaveDePaginaSchema.safeParse((await ctx.params).key);
   if (!chave.success) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   const supabase = await createClient();
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, ctx: Contexto): Promise<Response> {
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  const chave = chaveDeModuloSchema.safeParse((await ctx.params).key);
+  const chave = chaveDePaginaSchema.safeParse((await ctx.params).key);
   if (!chave.success) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   const corpo = retratoSchema.safeParse(await req.json().catch(() => ({})));

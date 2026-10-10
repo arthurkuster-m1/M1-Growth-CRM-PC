@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -8,11 +9,11 @@ import { BlocosRender } from "@/components/marketing/BlocosRender";
 import { CabecalhoPublico } from "@/components/marketing/CabecalhoPublico";
 import { Capa } from "@/components/marketing/Capa";
 import { iconeDoModulo } from "@/components/marketing/icones";
-import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
+import { nomeDaFase, textosDoModulo, textosDoTipoDeSubpagina } from "@/components/marketing/textos";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { baseDasImagensDoLink } from "@/lib/marketing/imagens";
-import { moduloPorChave } from "@/lib/marketing/modulos";
+import { lerChaveDePagina, moduloPorChave } from "@/lib/marketing/modulos";
 import {
   acessoPermitido,
   empresaDoLink,
@@ -34,10 +35,11 @@ export default async function PaginaPublicaPage({
   if (!(await acessoPermitido(ip))) notFound();
 
   const link = await resolverLink(token);
-  const modulo = moduloPorChave(chave);
-  if (!link || !modulo) notFound();
-  // Link de uma página só abre aquela página.
-  if (link.moduloDoEscopo && link.moduloDoEscopo !== chave) notFound();
+  const lida = lerChaveDePagina(chave);
+  const modulo = lida ? moduloPorChave(lida.modulo) : undefined;
+  if (!link || !lida || !modulo) notFound();
+  // Link de um módulo abre o módulo e as subpáginas dele, e nada além.
+  if (link.moduloDoEscopo && link.moduloDoEscopo !== lida.modulo) notFound();
 
   const [empresa, paginas] = await Promise.all([empresaDoLink(link), paginasPublicadas(link)]);
   const pagina = paginas.find((p) => p.module_key === chave);
@@ -45,8 +47,17 @@ export default async function PaginaPublicaPage({
   const retratos = await retratosDaPagina(link, chave);
 
   const t = (texto: string) => traduzir(texto, empresa.idioma);
-  const textos = textosDoModulo(t, chave);
-  if (!textos) notFound();
+  const textosDoPai = textosDoModulo(t, lida.modulo);
+  const textosDoTipo = lida.tipo ? textosDoTipoDeSubpagina(t, lida.tipo) : null;
+  if (!textosDoPai || (lida.tipo && !textosDoTipo)) notFound();
+  const textos =
+    lida.tipo && textosDoTipo
+      ? { titulo: pagina.title || textosDoTipo.titulo, descricao: textosDoTipo.descricao }
+      : textosDoPai;
+  // As subpáginas publicadas deste módulo (só na página do módulo).
+  const filhas = lida.tipo
+    ? []
+    : paginas.filter((p) => p.module_key.startsWith(`${chave}--`) && p.blocos.length > 0);
   const rotulos = {
     antes: t("Antes"),
     depois: t("Depois"),
@@ -65,16 +76,18 @@ export default async function PaginaPublicaPage({
             logoUrl={empresa.logoUrl}
             somenteLeitura={t("Somente leitura")}
             voltar={
-              link.moduloDoEscopo
-                ? undefined
-                : { href: `/p/${token}`, rotulo: t("Todas as páginas") }
+              lida.tipo
+                ? { href: `/p/${token}/${lida.modulo}`, rotulo: textosDoPai.titulo }
+                : link.moduloDoEscopo
+                  ? undefined
+                  : { href: `/p/${token}`, rotulo: t("Todas as páginas") }
             }
           />
           <main className="mx-auto flex max-w-[1200px] flex-col gap-6 p-4 sm:p-6">
             <Capa tom={modulo.tom} icone={icone} className="rounded-3xl">
               <div className="relative z-10 flex flex-col gap-3 p-6 sm:p-9">
                 <span className="text-xs font-semibold tracking-wider uppercase opacity-80">
-                  {nomeDaFase(t, modulo.fase)}
+                  {lida.tipo ? textosDoPai.titulo : nomeDaFase(t, modulo.fase)}
                 </span>
                 <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">{textos.titulo}</h1>
                 <p className="max-w-2xl text-sm opacity-90 sm:text-base">{textos.descricao}</p>
@@ -95,6 +108,28 @@ export default async function PaginaPublicaPage({
             <article className="rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
               <BlocosRender blocos={pagina.blocos} rotulos={rotulos} />
             </article>
+            {filhas.length > 0 ? (
+              <section aria-label={t("Subpáginas")} className="flex flex-col gap-3">
+                <h2 className="text-lg font-semibold tracking-tight">{t("Aprofundamento")}</h2>
+                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filhas.map((f) => {
+                    const tipo = lerChaveDePagina(f.module_key)?.tipo;
+                    const base = tipo ? textosDoTipoDeSubpagina(t, tipo) : null;
+                    return (
+                      <li key={f.module_key}>
+                        <Link
+                          href={`/p/${token}/${f.module_key}`}
+                          className="flex h-full flex-col gap-1 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        >
+                          <h3 className="font-semibold">{f.title || base?.titulo}</h3>
+                          <p className="text-xs text-muted-foreground">{base?.descricao}</p>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
           </main>
         </div>
       </div>

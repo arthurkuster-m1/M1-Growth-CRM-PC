@@ -1,12 +1,36 @@
 import { z } from "zod";
 
 import { blocosSchema, type Bloco } from "./blocos";
-import { moduloPorChave } from "./modulos";
+import { lerChaveDePagina, moduloPorChave, tiposDeSubpagina } from "./modulos";
 
 /** A chave de módulo vem da URL: só vale se é um dos módulos da estratégia. */
 export const chaveDeModuloSchema = z.string().refine((k) => moduloPorChave(k) !== undefined, {
   message: "Módulo desconhecido.",
 });
+
+/** A chave de uma PÁGINA vem da URL: um módulo ou uma subpágina de um tipo permitido. */
+export const chaveDePaginaSchema = z.string().refine((k) => lerChaveDePagina(k) !== null, {
+  message: "Página desconhecida.",
+});
+
+/** Criar uma subpágina dentro de um módulo. */
+export const novaSubpaginaSchema = z
+  .object({
+    modulo: z.string(),
+    tipo: z.string(),
+    title: z.string().trim().max(200).default(""),
+  })
+  .refine((v) => tiposDeSubpagina(v.modulo).some((t) => t.tipo === v.tipo), {
+    message: "Tipo de subpágina inválido.",
+  });
+
+/** Uma subpágina na lista do módulo. */
+export interface ResumoDeSubpagina {
+  key: string;
+  tipo: string;
+  title: string;
+  publicada: boolean;
+}
 
 /** O que a agência manda ao gravar o rascunho. */
 export const edicaoDeRascunhoSchema = z.object({

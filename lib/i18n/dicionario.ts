@@ -18367,6 +18367,42 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  "Código da cor (hexadecimal)": { es: "Código del color (hexadecimal)" },
+  "Pesquisa de público e mercado": { es: "Investigación de público y mercado" },
+  "O setor, o processo comercial e os principais desafios.": {
+    es: "El sector, el proceso comercial y los principales desafíos.",
+  },
+  Persona: { es: "Persona" },
+  "O dossiê de um cliente ideal: dores, desejos, objeções e consciência.": {
+    es: "El dossier de un cliente ideal: dolores, deseos, objeciones y conciencia.",
+  },
+  "Árvore de situações incômodas": { es: "Árbol de situaciones incómodas" },
+  "A jornada, a linha de ouro e as situações do dia a dia que causam a dor.": {
+    es: "El recorrido, la línea de oro y las situaciones del día a día que causan el dolor.",
+  },
+  "Arquitetura de premissas": { es: "Arquitectura de premisas" },
+  "A premissa persuasiva e a desconstrução das crenças do cliente.": {
+    es: "La premisa persuasiva y la deconstrucción de las creencias del cliente.",
+  },
+  "Porquês (brainstorming)": { es: "Porqués (lluvia de ideas)" },
+  "Os motivos que levam alguém a comprar, e as palavras que filtram o público.": {
+    es: "Los motivos que llevan a alguien a comprar y las palabras que filtran al público.",
+  },
+  Subpáginas: { es: "Subpáginas" },
+  Aprofundamento: { es: "Profundización" },
+  "Nova subpágina": { es: "Nueva subpágina" },
+  "Nenhuma subpágina ainda. Crie a primeira em “Nova subpágina”.": {
+    es: "Aún no hay subpáginas. Crea la primera en “Nueva subpágina”.",
+  },
+  "Título da página": { es: "Título de la página" },
+  "Apagar esta subpágina e o histórico dela?": { es: "¿Borrar esta subpágina y su historial?" },
+  "Apagar subpágina": { es: "Borrar subpágina" },
+  "Erro ao carregar as subpáginas.": { es: "Error al cargar las subpáginas." },
+  "Erro ao criar a página.": { es: "Error al crear la página." },
+  "A página de um módulo não pode ser apagada.": {
+    es: "La página de un módulo no se puede borrar.",
+  },
+  "Erro ao apagar a página.": { es: "Error al borrar la página." },
   "Histórico da página": { es: "Historial de la página" },
   "Como esta página estava em cada data registrada.": {
     es: "Cómo estaba esta página en cada fecha registrada.",

@@ -722,6 +722,8 @@ export const AUDIT_ACTIONS = [
   "marketing_page.unpublished",
   "marketing_page.snapshot_created",
   "marketing_page.snapshot_deleted",
+  "marketing_page.subpage_created",
+  "marketing_page.subpage_deleted",
   "marketing_share_link.created",
   "marketing_share_link.revoked",
   "crm_task.bulk_updated",

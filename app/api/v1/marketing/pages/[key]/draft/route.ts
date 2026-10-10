@@ -11,7 +11,7 @@ import { type NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { chaveDeModuloSchema, edicaoDeRascunhoSchema } from "@/lib/marketing/paginas";
+import { chaveDePaginaSchema, edicaoDeRascunhoSchema } from "@/lib/marketing/paginas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  const chave = chaveDeModuloSchema.safeParse((await ctx.params).key);
+  const chave = chaveDePaginaSchema.safeParse((await ctx.params).key);
   if (!chave.success) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   const parsed = edicaoDeRascunhoSchema.safeParse(await req.json().catch(() => null));

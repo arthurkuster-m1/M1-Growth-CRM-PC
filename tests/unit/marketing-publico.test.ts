@@ -29,7 +29,7 @@ function consultaFalsa(tabela: string) {
       chamada.filtros.push([nome, args]);
       return q;
     };
-  for (const m of ["select", "eq", "not", "is", "limit", "update"]) q[m] = encadeia(m);
+  for (const m of ["select", "eq", "not", "is", "or", "limit", "update"]) q[m] = encadeia(m);
   q.maybeSingle = async () => ({ data: resultado() ?? null });
   q.then = (ok: (v: unknown) => unknown) => ok({ data: resultado() ?? [] });
   return q;
@@ -115,8 +115,11 @@ describe("paginasPublicadas", () => {
     linhasPorTabela.marketing_pages = [];
     await paginasPublicadas({ ...link, moduloDoEscopo: "mapeamento-do-funil" });
     const c = chamadas.find((x) => x.tabela === "marketing_pages")!;
+    // O módulo e as subpáginas dele (`<módulo>--…`), e nada além.
     expect(c.filtros.map(([n, a]) => `${n}:${JSON.stringify(a)}`)).toContain(
-      `eq:${JSON.stringify(["module_key", "mapeamento-do-funil"])}`,
+      `or:${JSON.stringify([
+        "module_key.eq.mapeamento-do-funil,module_key.like.mapeamento-do-funil--%",
+      ])}`,
     );
   });
 

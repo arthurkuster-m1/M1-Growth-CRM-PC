@@ -7,6 +7,7 @@ import { iconeDoModulo } from "@/components/marketing/icones";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { modulosPublicados } from "@/lib/marketing/publicadas";
 import { FASES_DA_ESTRATEGIA, modulosDaFase } from "@/lib/marketing/modulos";
 import { CalendarBlank, ChartLineUp, Compass, Megaphone, Package, Rocket } from "@/lib/ui/icons";
 
@@ -26,6 +27,7 @@ export default async function MarketingPage() {
   if (!org) redirect("/app");
   const t = (texto: string) => traduzir(texto, user.idioma);
   const emBreve = t("Em breve");
+  const publicados = await modulosPublicados(org.orgId);
   const abrir = t("Abrir");
 
   return (
@@ -54,7 +56,7 @@ export default async function MarketingPage() {
           descricao={t(
             "Do diagnóstico à oferta: o mapa de tudo o que foi construído para a sua marca.",
           )}
-          estado={emBreve}
+          estado={publicados.size > 0 ? null : emBreve}
           abrir={abrir}
         />
         <CartaoDeArea
@@ -119,7 +121,7 @@ export default async function MarketingPage() {
                     icone={iconeDoModulo(modulo.icone)}
                     titulo={textos.titulo}
                     fase={nomeDaFase(t, fase)}
-                    estado={emBreve}
+                    estado={publicados.has(modulo.chave) ? null : emBreve}
                   />
                 );
               })}

@@ -4,6 +4,8 @@ import { modeloDoModulo } from "@/lib/marketing/modelos";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { CabecalhoDaSubpagina } from "@/components/marketing/CabecalhoDaSubpagina";
+import { lerChaveDePagina } from "@/lib/marketing/modulos";
 import { HistoricoDaPagina } from "@/components/marketing/HistoricoDaPagina";
 import { useHistoricoDeMarketing } from "@/hooks/marketing/useHistoricoDeMarketing";
 import { Apresentacao } from "@/components/marketing/Apresentacao";
@@ -35,6 +37,7 @@ export function PaginaDoModulo({
   icone,
   rotulos,
   textosDeEspera,
+  subpagina,
 }: {
   chave: string;
   titulo: string;
@@ -45,9 +48,11 @@ export function PaginaDoModulo({
   rotulos: RotulosDosBlocos;
   /** O "o que vem aqui" mostrado enquanto nada foi publicado. */
   textosDeEspera: { titulo: string; itens: string[] };
+  /** Presente quando esta é uma SUBPÁGINA: mostra o topo próprio (voltar, título editável, apagar). */
+  subpagina?: { tipo: string; voltar: { href: string; rotulo: string } };
 }) {
   const t = useT();
-  const { pagina, carregando, falhou, blocos, estado, editar, publicar, tirarDoAr } =
+  const { pagina, carregando, falhou, blocos, estado, editar, publicar, tirarDoAr, renomear } =
     usePaginaDeMarketing(chave);
   const [modo, setModo] = useState<"editar" | "ver">("editar");
   const [apresentando, setApresentando] = useState(false);
@@ -98,8 +103,22 @@ export function PaginaDoModulo({
           ? t("Não foi possível salvar")
           : t("Rascunho salvo");
 
+  const tituloAtual = subpagina ? pagina.title || titulo : titulo;
+  // O link de uma subpágina é o do módulo dela (vale também para as demais subpáginas).
+  const chaveDoLink = lerChaveDePagina(chave)?.modulo ?? chave;
+
   return (
     <div className="flex flex-col gap-6">
+      {subpagina ? (
+        <CabecalhoDaSubpagina
+          chave={chave}
+          titulo={tituloAtual}
+          tipo={subpagina.tipo}
+          voltar={subpagina.voltar}
+          podeEditar={podeEditar}
+          aoRenomear={renomear}
+        />
+      ) : null}
       {podeEditar ? (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3 shadow-sm">
           <div
@@ -246,7 +265,7 @@ export function PaginaDoModulo({
         <CompartilharPagina
           aberto={compartilhando}
           aoFechar={() => setCompartilhando(false)}
-          chave={chave}
+          chave={chaveDoLink}
           temPublicado={publicado !== null}
         />
       ) : null}
@@ -271,7 +290,7 @@ export function PaginaDoModulo({
 
       {apresentando ? (
         <Apresentacao
-          titulo={titulo}
+          titulo={tituloAtual}
           descricao={descricao}
           superior={superior}
           tom={tom}
