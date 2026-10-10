@@ -49,6 +49,7 @@ export default async function PainelPublicoPage({
             nome={empresa.nome}
             logoUrl={empresa.logoUrl}
             somenteLeitura={t("Somente leitura")}
+            inicio={`/p/${token}`}
           />
           <main className="mx-auto flex max-w-[1200px] flex-col gap-8 p-4 sm:p-6">
             <div>

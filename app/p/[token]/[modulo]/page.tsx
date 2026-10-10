@@ -7,12 +7,14 @@ import { HistoricoPublico } from "@/components/marketing/HistoricoPublico";
 import { ApresentarPublico } from "@/components/marketing/ApresentarPublico";
 import { BlocosRender } from "@/components/marketing/BlocosRender";
 import { CabecalhoPublico } from "@/components/marketing/CabecalhoPublico";
+import { NavegacaoPublica, type PassoDaTrilha } from "@/components/marketing/NavegacaoPublica";
 import { Capa } from "@/components/marketing/Capa";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { nomeDaFase, textosDoModulo, textosDoTipoDeSubpagina } from "@/components/marketing/textos";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { baseDasImagensDoLink } from "@/lib/marketing/imagens";
+import { ArrowRight } from "@/lib/ui/icons";
 import { lerChaveDePagina, moduloPorChave } from "@/lib/marketing/modulos";
 import {
   acessoPermitido,
@@ -66,6 +68,22 @@ export default async function PaginaPublicaPage({
   };
   const icone = iconeDoModulo(modulo.icone, 64);
 
+  // Para onde a marca e o "Voltar" levam, e a trilha de onde a pessoa está. Link de um módulo só
+  // alcança o módulo e as subpáginas dele; o painel (Marketing) só existe no link do painel.
+  const moduloHref = `/p/${token}/${lida.modulo}`;
+  const painelHref = link.moduloDoEscopo ? null : `/p/${token}`;
+  const inicio = painelHref ?? moduloHref;
+  const voltar = lida.tipo
+    ? { href: moduloHref, rotulo: textosDoPai.titulo }
+    : painelHref
+      ? { href: painelHref, rotulo: t("Todas as páginas") }
+      : undefined;
+  const trilha: PassoDaTrilha[] = [
+    ...(painelHref ? [{ rotulo: t("Marketing"), href: painelHref }] : []),
+    lida.tipo ? { rotulo: textosDoPai.titulo, href: moduloHref } : { rotulo: textosDoPai.titulo },
+    ...(lida.tipo ? [{ rotulo: textos.titulo }] : []),
+  ];
+
   return (
     <IdiomaProvider locale={empresa.idioma}>
       <div data-marca-org="" className="contents">
@@ -75,15 +93,10 @@ export default async function PaginaPublicaPage({
             nome={empresa.nome}
             logoUrl={empresa.logoUrl}
             somenteLeitura={t("Somente leitura")}
-            voltar={
-              lida.tipo
-                ? { href: `/p/${token}/${lida.modulo}`, rotulo: textosDoPai.titulo }
-                : link.moduloDoEscopo
-                  ? undefined
-                  : { href: `/p/${token}`, rotulo: t("Todas as páginas") }
-            }
+            inicio={inicio}
           />
           <main className="mx-auto flex max-w-[1200px] flex-col gap-6 p-4 sm:p-6">
+            <NavegacaoPublica voltar={voltar} trilha={trilha} />
             <Capa tom={modulo.tom} icone={icone} className="rounded-3xl">
               <div className="relative z-10 flex flex-col gap-3 p-6 sm:p-9">
                 <span className="text-xs font-semibold tracking-wider uppercase opacity-80">
@@ -119,10 +132,19 @@ export default async function PaginaPublicaPage({
                       <li key={f.module_key}>
                         <Link
                           href={`/p/${token}/${f.module_key}`}
-                          className="flex h-full flex-col gap-1 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                          className="group flex h-full flex-col gap-1 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-md"
                         >
                           <h3 className="font-semibold">{f.title || base?.titulo}</h3>
                           <p className="text-xs text-muted-foreground">{base?.descricao}</p>
+                          <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary">
+                            {t("Abrir")}
+                            <ArrowRight
+                              size={14}
+                              weight="bold"
+                              className="transition-transform group-hover:translate-x-1"
+                              aria-hidden
+                            />
+                          </span>
                         </Link>
                       </li>
                     );

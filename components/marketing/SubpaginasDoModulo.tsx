@@ -11,7 +11,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { useVerComoCliente } from "@/hooks/marketing/useVerComoCliente";
 import { useSubpaginasDeMarketing } from "@/hooks/marketing/useSubpaginasDeMarketing";
 import { chaveDeSubpagina, tiposDeSubpagina } from "@/lib/marketing/modulos";
-import { CaretDown, CaretUp, Plus } from "@/lib/ui/icons";
+import { ArrowRight, CaretDown, CaretUp, Plus } from "@/lib/ui/icons";
 
 /**
  * As SUBPÁGINAS de um módulo (as personas, a pesquisa, a árvore, a arquitetura de premissas…).
@@ -117,7 +117,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
               <li key={s.key} className="relative">
                 <Link
                   href={`${base}/${s.key}`}
-                  className="flex h-full flex-col gap-2 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
+                  className="group flex h-full flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-primary">
@@ -130,9 +130,18 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
                   </div>
                   <h3 className="font-semibold">{s.title || textos?.titulo}</h3>
                   <p className="text-xs text-muted-foreground">{textos?.descricao}</p>
+                  <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary">
+                    {t("Abrir")}
+                    <ArrowRight
+                      size={14}
+                      weight="bold"
+                      className="transition-transform group-hover:translate-x-1"
+                      aria-hidden
+                    />
+                  </span>
                 </Link>
                 {podeEditar ? (
-                  <div className="absolute right-2 bottom-2 flex rounded-lg border bg-card/95 shadow-sm">
+                  <div className="absolute right-2 bottom-2 flex rounded-lg border bg-card shadow-sm">
                     <button
                       type="button"
                       aria-label={t("Mover para antes")}
