@@ -53,16 +53,6 @@ export function textosDoModulo(
         titulo: t("Planejamento empresarial"),
         descricao: t("Metas, números e o caminho do negócio."),
       };
-    case "produtos-e-ofertas":
-      return {
-        titulo: t("Produtos e ofertas"),
-        descricao: t("O que é vendido, por quanto e com qual promessa."),
-      };
-    case "lead-magnets":
-      return {
-        titulo: t("Lead magnets"),
-        descricao: t("Iscas digitais que atraem e qualificam contatos."),
-      };
     case "estrategia-de-marketing":
       return {
         titulo: t("Estratégia de marketing"),

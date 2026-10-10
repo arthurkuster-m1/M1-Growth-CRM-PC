@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { CartaoDeModulo } from "@/components/marketing/Cartoes";
+import { CartaoDeModulo, classeDaGaleria } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { PublicacaoEmMassa } from "@/components/marketing/PublicacaoEmMassa";
 import { Atalho, OQueVem, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
@@ -44,8 +44,8 @@ export default async function EstrategiaPage() {
         />
         <Atalho
           href="/app/marketing/estrategia/posicionamento-zmot"
-          titulo={t("Estudo de mercado")}
-          descricao={t("Posicionamento")}
+          titulo={t("Mapa de Posicionamento")}
+          descricao={t("Acompanhamento")}
         />
         <Atalho
           href="/app/marketing/estrategia/analise-de-concorrencia"
@@ -57,7 +57,7 @@ export default async function EstrategiaPage() {
       {(["diagnostico", "produto-e-oferta"] as const).map((fase) => (
         <section key={fase} className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-muted-foreground">{nomeDaFase(t, fase)}</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className={classeDaGaleria(modulosDaFase(fase).length)}>
             {modulosDaFase(fase).map((modulo) => {
               const textos = textosDoModulo(t, modulo.chave);
               if (!textos) return null;

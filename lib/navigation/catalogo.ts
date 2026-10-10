@@ -88,14 +88,15 @@ export interface NavMetadata {
  * mesma conversa para a sexta tela.
  */
 export const NAV_GROUPS: NavGroup[] = [
-  { id: "atendimento", label: "Atendimento" },
-  // O trabalho de marketing da agência para o cliente (estratégia, oferta, cronograma, demanda e
-  // dashboards). É vitrine: a agência cria, o cliente acompanha. O hub é o "painelzão".
+  // O trabalho de marketing da agência para o cliente (estratégia, cronograma, demanda e
+  // dashboards). É vitrine: a agência cria, o cliente acompanha. O hub é o "painelzão". Fica logo
+  // abaixo de Início e Tarefas (que o Sidebar desenha acima dos grupos) e antes de Atendimento.
   {
     id: "marketing",
     label: "Marketing",
     hub: { href: "/app/marketing", label: "Ver tudo em Marketing" },
   },
+  { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
   { id: "canais", label: "Canais" },
@@ -189,15 +190,6 @@ export const NAV_CATALOG = [
     label: "Estratégia",
     description: "O diagnóstico do negócio e a construção do produto e da oferta, etapa por etapa.",
     icon: "Lightbulb",
-    group: "marketing",
-    section: "Estratégia e oferta",
-    sidebar: true,
-  },
-  {
-    href: "/app/marketing/produtos-e-ofertas",
-    label: "Produtos e ofertas",
-    description: "O que você vende e como isso é apresentado ao mercado.",
-    icon: "Tag",
     group: "marketing",
     section: "Estratégia e oferta",
     sidebar: true,

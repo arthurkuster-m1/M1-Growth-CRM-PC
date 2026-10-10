@@ -118,3 +118,15 @@ export function CartaoDeModulo({
     </Link>
   );
 }
+
+/**
+ * As colunas da galeria de módulos de uma fase, pela quantidade de cartões: a linha sempre
+ * fecha cheia (3 cartões em 3 colunas, 4 em 4, 6 em 2 fileiras de 3), sem ponta vazia.
+ */
+export function classeDaGaleria(quantidade: number): string {
+  const base = "grid gap-3";
+  if (quantidade <= 3) return `${base} grid-cols-1 sm:grid-cols-3`;
+  if (quantidade === 4) return `${base} grid-cols-2 lg:grid-cols-4`;
+  if (quantidade === 5) return `${base} grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`;
+  return `${base} grid-cols-2 sm:grid-cols-3`;
+}

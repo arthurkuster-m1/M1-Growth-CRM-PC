@@ -18367,6 +18367,8 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  "Mapa de Posicionamento": { es: "Mapa de Posicionamiento" },
+  Acompanhamento: { es: "Seguimiento" },
   "Calculadora da meta": { es: "Calculadora de la meta" },
   Coluna: { es: "Columna" },
   "Remover coluna": { es: "Quitar columna" },

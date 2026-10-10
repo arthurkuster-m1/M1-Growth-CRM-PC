@@ -194,10 +194,10 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
    * vínculo. É o número que o issue publica (15 itens: atendimento 4, CRM 3,
    * IA 3, canais 2, análise 3), medido aqui pelo módulo que alimenta o menu.
    */
-  it("hoje: 19 itens no menu lateral (14 + as 5 telas de Marketing, 09/10/2026; os grupos nascem fechados, então a dobra a 1280x900 não pesa)", () => {
-    expect(itensNoMenuLateral(INTERFACE_COMPLETA)).toBe(19);
+  it("hoje: 18 itens no menu lateral (14 + as 4 telas de Marketing, 10/10/2026; os grupos nascem fechados, então a dobra a 1280x900 não pesa)", () => {
+    expect(itensNoMenuLateral(INTERFACE_COMPLETA)).toBe(18);
     // `undefined` é o caminho de quem não tem escolha nenhuma gravada
-    expect(itensNoMenuLateral(undefined)).toBe(19);
+    expect(itensNoMenuLateral(undefined)).toBe(18);
   });
 
   /**
@@ -205,8 +205,8 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
    * A escolha da empresa é interseção, então o menu só ENCOLHE — a mudança não
    * tem como empurrar o instrumento de tela para o vermelho.
    */
-  it("configuração COMPLETA (ninguém escolheu): 19 itens — igual a hoje", () => {
-    expect(itensNoMenuLateral(combinarInterfaces(completa, completa))).toBe(19);
+  it("configuração COMPLETA (ninguém escolheu): 18 itens — igual a hoje", () => {
+    expect(itensNoMenuLateral(combinarInterfaces(completa, completa))).toBe(18);
   });
 
   it("configuração SIMPLIFICADA (empresa escolhe o preset): 6 itens, folga 9", () => {

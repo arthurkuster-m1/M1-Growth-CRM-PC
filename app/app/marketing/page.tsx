@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Capa } from "@/components/marketing/Capa";
-import { CartaoDeArea, CartaoDeModulo } from "@/components/marketing/Cartoes";
+import { CartaoDeArea, CartaoDeModulo, classeDaGaleria } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { modulosPublicados } from "@/lib/marketing/publicadas";
 import { FASES_DA_ESTRATEGIA, modulosDaFase } from "@/lib/marketing/modulos";
-import { CalendarBlank, ChartLineUp, Compass, Megaphone, Package, Rocket } from "@/lib/ui/icons";
+import { CalendarBlank, ChartLineUp, Compass, Megaphone, Rocket } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Marketing" };
@@ -46,7 +46,7 @@ export default async function MarketingPage() {
 
       <section
         aria-label={t("Áreas de Marketing")}
-        className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"
       >
         <CartaoDeArea
           href="/app/marketing/estrategia"
@@ -57,15 +57,6 @@ export default async function MarketingPage() {
             "Do diagnóstico à oferta: o mapa de tudo o que foi construído para a sua marca.",
           )}
           estado={publicados.size > 0 ? null : emBreve}
-          abrir={abrir}
-        />
-        <CartaoDeArea
-          href="/app/marketing/produtos-e-ofertas"
-          tom="purple"
-          icone={<Package weight="duotone" aria-hidden />}
-          titulo={t("Produtos e ofertas")}
-          descricao={t("O que você vende e como isso é apresentado ao mercado.")}
-          estado={emBreve}
           abrir={abrir}
         />
         <CartaoDeArea
@@ -109,7 +100,7 @@ export default async function MarketingPage() {
         {FASES_DA_ESTRATEGIA.map((fase) => (
           <div key={fase} className="flex flex-col gap-3">
             <h3 className="text-sm font-semibold text-muted-foreground">{nomeDaFase(t, fase)}</h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            <div className={classeDaGaleria(modulosDaFase(fase).length)}>
               {modulosDaFase(fase).map((modulo) => {
                 const textos = textosDoModulo(t, modulo.chave);
                 if (!textos) return null;

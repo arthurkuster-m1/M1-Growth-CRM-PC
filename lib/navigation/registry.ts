@@ -129,7 +129,10 @@ export function sidebarGroups(
   return NAV_GROUPS.map((group) => ({
     group,
     items: NAV_DESTINATIONS.filter(
-      (d) => d.group === group.id && (d.sidebar || (!group.hub && !!settings?.destinos)) && visible.has(d.href),
+      (d) =>
+        d.group === group.id &&
+        (d.sidebar || (!group.hub && !!settings?.destinos)) &&
+        visible.has(d.href),
     ),
   })).filter(
     (g) =>

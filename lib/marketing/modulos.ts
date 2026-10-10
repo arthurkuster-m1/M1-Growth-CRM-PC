@@ -68,8 +68,6 @@ export const MODULOS_DA_ESTRATEGIA: readonly ModuloDaEstrategia[] = [
     tom: "purple",
     icone: "Briefcase",
   },
-  { chave: "produtos-e-ofertas", fase: "produto-e-oferta", tom: "purple", icone: "Package" },
-  { chave: "lead-magnets", fase: "produto-e-oferta", tom: "purple", icone: "Magnet" },
   // 03 | Geração de Demanda
   { chave: "estrategia-de-marketing", fase: "geracao-de-demanda", tom: "blue", icone: "Lightbulb" },
   { chave: "trafego-pago", fase: "geracao-de-demanda", tom: "blue", icone: "Target" },

@@ -92,7 +92,15 @@ const nextConfig: NextConfig = {
   // A tela antiga de Tarefas (/app/tasks, dentro do CRM) foi apagada: a de verdade é /app/tarefas.
   // Só o endereço exato — /app/tasks/planos continua existindo.
   async redirects() {
-    return [{ source: "/app/tasks", destination: "/app/tarefas", permanent: true }];
+    return [
+      { source: "/app/tasks", destination: "/app/tarefas", permanent: true },
+      // Produtos e ofertas saiu de Marketing: a tela de verdade é a de Produtos.
+      {
+        source: "/app/marketing/produtos-e-ofertas",
+        destination: "/app/products",
+        permanent: true,
+      },
+    ];
   },
   async headers() {
     return [
