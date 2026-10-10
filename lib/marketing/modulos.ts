@@ -111,6 +111,11 @@ export const SUBPAGINAS_DOS_MODULOS: Readonly<Record<string, readonly TipoDeSubp
     { tipo: "arquitetura-de-premissas", repetivel: false, icone: "Lightbulb" },
     { tipo: "porques", repetivel: false, icone: "Compass" },
   ],
+  "analise-de-concorrencia": [
+    { tipo: "pesquisa-de-mercado", repetivel: false, icone: "Binoculars" },
+    { tipo: "perguntas-chave", repetivel: false, icone: "Lightbulb" },
+    { tipo: "concorrente", repetivel: true, icone: "Target" },
+  ],
 };
 
 export const tiposDeSubpagina = (modulo: string): readonly TipoDeSubpagina[] =>

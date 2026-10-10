@@ -62,6 +62,8 @@ function useNomesDosTipos() {
         return t("Fluxo (passo a passo)");
       case "matriz":
         return t("Matriz 2x2 (SWOT)");
+      case "ficha":
+        return t("Ficha com links");
       case "separador":
         return t("Quebra de slide");
     }
@@ -708,6 +710,60 @@ function FormularioDoBloco({ bloco, aoMudar }: { bloco: Bloco; aoMudar: (b: Bloc
             </div>
           )}
         />
+      );
+
+    case "ficha":
+      return (
+        <div className="grid gap-3">
+          <Rotulo texto={t("Introdução")}>
+            <textarea
+              value={bloco.intro}
+              rows={3}
+              maxLength={1500}
+              onChange={(e) => aoMudar({ ...bloco, intro: e.target.value })}
+              className={cn(CAMPO, "resize-y")}
+            />
+          </Rotulo>
+          <ListaEditavel
+            itens={bloco.links}
+            aoMudar={(links) => aoMudar({ ...bloco, links })}
+            novo={{ rotulo: "", url: "", destaque: false }}
+            maximo={12}
+            rotuloDeAdicionar={t("Adicionar link")}
+            renderizar={(item, mudar) => (
+              <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
+                <input
+                  value={item.rotulo}
+                  maxLength={60}
+                  placeholder={t("Nome (ex.: Site, Instagram)")}
+                  aria-label={t("Nome do link")}
+                  onChange={(e) => mudar({ ...item, rotulo: e.target.value })}
+                  className={CAMPO}
+                />
+                <input
+                  value={item.url}
+                  maxLength={500}
+                  inputMode="url"
+                  placeholder="https://"
+                  aria-label={t("Endereço do link")}
+                  onChange={(e) => mudar({ ...item, url: e.target.value })}
+                  className={cn(
+                    CAMPO,
+                    item.url && !/^https?:\/\/\S+$/i.test(item.url) && "border-error",
+                  )}
+                />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={item.destaque}
+                    onChange={(e) => mudar({ ...item, destaque: e.target.checked })}
+                  />
+                  {t("Botão em destaque")}
+                </label>
+              </div>
+            )}
+          />
+        </div>
       );
 
     case "matriz":

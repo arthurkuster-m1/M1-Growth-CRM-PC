@@ -27,6 +27,7 @@ export const TIPOS_DE_BLOCO = [
   "piramide",
   "fluxo",
   "matriz",
+  "ficha",
   "separador",
 ] as const;
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
@@ -160,6 +161,16 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     /** Na ordem: alto-esquerda, alto-direita, baixo-esquerda, baixo-direita. */
     celulas: z.array(z.object({ titulo: curto, texto: longo.max(1500) })).max(4),
   }),
+  z.object({
+    id,
+    tipo: z.literal("ficha"),
+    /** Uma pequena introdução (quem é, o que faz). */
+    intro: longo.max(1500),
+    /** Links da ficha; os "em destaque" viram botões grandes (ex.: abrir o site, abrir a LP). */
+    links: z
+      .array(z.object({ rotulo: curto.max(60), url: enderecoWeb, destaque: z.boolean() }))
+      .max(12),
+  }),
   z.object({ id, tipo: z.literal("separador") }),
 ]);
 
@@ -248,6 +259,8 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
           { titulo: "", texto: "" },
         ],
       };
+    case "ficha":
+      return { id: novoId, tipo, intro: "", links: [] };
     case "matriz":
       return {
         id: novoId,

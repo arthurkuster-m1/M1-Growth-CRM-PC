@@ -54,3 +54,20 @@ describe("subpáginas do estudo de persona", () => {
     }
   });
 });
+
+describe("subpáginas da análise de concorrência", () => {
+  it("cada tipo tem modelo válido e o concorrente começa pela ficha", async () => {
+    const { tiposDeSubpagina, chaveDeSubpagina } = await import("@/lib/marketing/modulos");
+    for (const x of tiposDeSubpagina("analise-de-concorrencia")) {
+      const chave = chaveDeSubpagina(
+        "analise-de-concorrencia",
+        x.tipo,
+        x.repetivel ? "vetdig" : undefined,
+      );
+      let n = 0;
+      const blocos = modeloDoModulo(chave, () => `c${n++}`);
+      expect(blocosSchema.safeParse(blocos).success, x.tipo).toBe(true);
+      if (x.tipo === "concorrente") expect(blocos[0]?.tipo).toBe("ficha");
+    }
+  });
+});

@@ -1,4 +1,5 @@
 import type { Bloco } from "@/lib/marketing/blocos";
+import { ArrowSquareOut } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
 type Piramide = Extract<Bloco, { tipo: "piramide" }>;
 type Fluxo = Extract<Bloco, { tipo: "fluxo" }>;
 type Matriz = Extract<Bloco, { tipo: "matriz" }>;
+type Ficha = Extract<Bloco, { tipo: "ficha" }>;
 
 /** A borda dos cartões: um contorno sólido na cor da marca, sem brilho nem sombra. */
 export const BORDA_DA_MARCA = "border-[1.5px] border-primary";
@@ -180,6 +182,66 @@ export function MatrizDois({ bloco, slide }: { bloco: Matriz; slide: boolean }) 
           ) : null}
         </section>
       ))}
+    </div>
+  );
+}
+
+/**
+ * A FICHA da página: uma introdução curta e os links do assunto (site, landing page, redes).
+ * Os links marcados como destaque viram botões grandes; os demais, etiquetas.
+ */
+export function FichaDaPagina({ bloco, slide }: { bloco: Ficha; slide: boolean }) {
+  const links = bloco.links.filter((l) => l.url.trim() !== "");
+  if (bloco.intro.trim() === "" && links.length === 0) return null;
+  const destaques = links.filter((l) => l.destaque);
+  const demais = links.filter((l) => !l.destaque);
+  const nome = (l: { rotulo: string; url: string }) =>
+    l.rotulo || l.url.replace(/^https?:\/\//, "");
+  return (
+    <div className={cn("flex flex-col gap-4 rounded-2xl bg-card p-5 sm:p-6", BORDA_DA_MARCA)}>
+      {bloco.intro ? (
+        <p
+          className={cn(
+            "max-w-3xl whitespace-pre-line",
+            slide ? "text-lg leading-relaxed sm:text-2xl" : "text-base leading-relaxed",
+          )}
+        >
+          {bloco.intro}
+        </p>
+      ) : null}
+      {destaques.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {destaques.map((l, i) => (
+            <a
+              key={i}
+              href={l.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 max-w-full items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-[var(--color-accent-hover)]"
+            >
+              <span className="truncate">{nome(l)}</span>
+              <ArrowSquareOut size={16} aria-hidden />
+            </a>
+          ))}
+        </div>
+      ) : null}
+      {demais.length > 0 ? (
+        <ul className="flex flex-wrap gap-2">
+          {demais.map((l, i) => (
+            <li key={i} className="max-w-full">
+              <a
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 max-w-full items-center gap-1.5 rounded-xl border border-primary px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+              >
+                <span className="truncate">{nome(l)}</span>
+                <ArrowSquareOut size={14} aria-hidden />
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

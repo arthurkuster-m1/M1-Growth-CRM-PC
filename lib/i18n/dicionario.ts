@@ -18367,6 +18367,18 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  "Perguntas-chave": { es: "Preguntas clave" },
+  "As perguntas que guiam a análise: quem são, o que fazem e onde somos melhores.": {
+    es: "Las preguntas que guían el análisis: quiénes son, qué hacen y dónde somos mejores.",
+  },
+  Concorrente: { es: "Competidor" },
+  "A análise de um concorrente: promessa, anúncios, página, dados e oportunidades.": {
+    es: "El análisis de un competidor: promesa, anuncios, página, datos y oportunidades.",
+  },
+  "Ficha com links": { es: "Ficha con enlaces" },
+  Introdução: { es: "Introducción" },
+  "Nome (ex.: Site, Instagram)": { es: "Nombre (ej.: Sitio, Instagram)" },
+  "Botão em destaque": { es: "Botón destacado" },
   "Você está vendo como o cliente vê.": { es: "Estás viendo como lo ve el cliente." },
   "Só o que foi publicado aparece, sem botões de edição.": {
     es: "Solo aparece lo publicado, sin botones de edición.",

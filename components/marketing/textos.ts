@@ -129,6 +129,20 @@ export function textosDoTipoDeSubpagina(
         titulo: t("Porquês (brainstorming)"),
         descricao: t("Os motivos que levam alguém a comprar, e as palavras que filtram o público."),
       };
+    case "perguntas-chave":
+      return {
+        titulo: t("Perguntas-chave"),
+        descricao: t(
+          "As perguntas que guiam a análise: quem são, o que fazem e onde somos melhores.",
+        ),
+      };
+    case "concorrente":
+      return {
+        titulo: t("Concorrente"),
+        descricao: t(
+          "A análise de um concorrente: promessa, anúncios, página, dados e oportunidades.",
+        ),
+      };
     default:
       return null;
   }

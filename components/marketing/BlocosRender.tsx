@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
 import {
   BORDA_DA_MARCA,
+  FichaDaPagina,
   FluxoDeEtapas,
   MatrizDois,
   Niveis,
@@ -420,6 +421,9 @@ export function BlocosRender({
 
           case "matriz":
             return <MatrizDois key={b.id} bloco={b} slide={slide} />;
+
+          case "ficha":
+            return <FichaDaPagina key={b.id} bloco={b} slide={slide} />;
 
           case "separador":
             return <hr key={b.id} className="border-border" />;

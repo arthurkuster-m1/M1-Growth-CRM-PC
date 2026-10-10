@@ -1,4 +1,5 @@
 import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
+import { concorrente, perguntasChave } from "@/lib/marketing/modelos-concorrencia";
 import {
   arquiteturaDePremissas,
   arvoreDeSituacoes,
@@ -267,6 +268,10 @@ export function modeloDoModulo(chave: string, novoId: NovoId): Bloco[] {
       return arquiteturaDePremissas(novoId);
     case "porques":
       return porques(novoId);
+    case "concorrente":
+      return concorrente(novoId);
+    case "perguntas-chave":
+      return perguntasChave(novoId);
   }
   switch (chave) {
     case "mapeamento-do-funil":
