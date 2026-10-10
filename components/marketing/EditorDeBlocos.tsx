@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
+import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
 import { EditorDeOferta } from "@/components/marketing/EditorDeOferta";
 import { SeletorDeImagem } from "@/components/marketing/SeletorDeImagem";
 import { useT } from "@/hooks/i18n/useT";
@@ -793,14 +794,22 @@ function FormularioDoBloco({
               ] as const
             ).map(([campo, rotulo, exemplo]) => (
               <Rotulo key={campo} texto={rotulo}>
-                <input
-                  value={bloco[campo]}
-                  maxLength={24}
-                  inputMode="decimal"
-                  placeholder={exemplo}
-                  onChange={(e) => aoMudar({ ...bloco, [campo]: e.target.value })}
-                  className={CAMPO}
-                />
+                {campo === "meta" || campo === "ticket" || campo === "cpl" ? (
+                  <CampoDeMoeda
+                    valor={bloco[campo]}
+                    aoMudar={(v) => aoMudar({ ...bloco, [campo]: v })}
+                    className={CAMPO}
+                  />
+                ) : (
+                  <input
+                    value={bloco[campo]}
+                    maxLength={24}
+                    inputMode="decimal"
+                    placeholder={exemplo}
+                    onChange={(e) => aoMudar({ ...bloco, [campo]: e.target.value })}
+                    className={CAMPO}
+                  />
+                )}
               </Rotulo>
             ))}
           </div>

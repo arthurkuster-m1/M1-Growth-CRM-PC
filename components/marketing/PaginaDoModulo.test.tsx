@@ -91,6 +91,28 @@ describe("página do módulo — o cliente (só lê)", () => {
 describe("página do módulo — a agência (edita)", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("página publicada abre em Ver página; rascunho abre em Editar", async () => {
+    simular(
+      pagina({
+        pode_editar: true,
+        published_blocks: PUBLICADO,
+        draft: { blocks: PUBLICADO, updated_at: "x" },
+      }),
+    );
+    const { unmount } = montar();
+    expect(await screen.findByRole("button", { name: "Editar", pressed: false })).toBeTruthy();
+    unmount();
+    simular(
+      pagina({
+        pode_editar: true,
+        published_blocks: null,
+        draft: { blocks: PUBLICADO, updated_at: "x" },
+      }),
+    );
+    montar();
+    expect(await screen.findByRole("button", { name: "Editar", pressed: true })).toBeTruthy();
+  });
+
   it("edita o rascunho: o texto muda e é salvo SOZINHO depois de uma pausa", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     simular(
@@ -101,6 +123,8 @@ describe("página do módulo — a agência (edita)", () => {
       }),
     );
     montar();
+    // Página publicada abre em "Ver página": a agência clica em Editar para mexer.
+    await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
     const campo = await screen.findByDisplayValue("Ana, 34 anos, dona de clínica.");
     await userEvent.clear(campo);
     await userEvent.type(campo, "Nova ideia");

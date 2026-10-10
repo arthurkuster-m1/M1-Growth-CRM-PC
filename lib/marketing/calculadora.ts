@@ -62,3 +62,14 @@ export function calcular(e: EntradasDaCalculadora): ResultadoDaCalculadora {
 
 export const moeda = (n: number): string =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+/**
+ * Máscara de reais: pega só os dígitos e os lê como centavos ("1500" → "R$ 15,00"; "150000" →
+ * "R$ 1.500,00"). Vazio fica vazio. Valor que já veio formatado passa pelo mesmo caminho.
+ */
+export function formatarMoeda(digitado: string): string {
+  const digitos = digitado.replace(/\D/g, "").replace(/^0+/, "");
+  if (digitos === "") return "";
+  const centavos = Number(digitos.slice(0, 13));
+  return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}

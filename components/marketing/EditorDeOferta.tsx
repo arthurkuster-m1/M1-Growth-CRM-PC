@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
 import { SeletorDeImagem } from "@/components/marketing/SeletorDeImagem";
 import { useT } from "@/hooks/i18n/useT";
 import { ETAPAS_DA_OFERTA, TIPOS_DE_PRECO, type Bloco } from "@/lib/marketing/blocos";
@@ -111,11 +112,21 @@ function ListaDePares<T extends Record<string, string>>({
                   }
                   className={cn(CAMPO, "resize-y sm:col-span-2")}
                 />
+              ) : c.estreito ? (
+                <CampoDeMoeda
+                  key={c.chave}
+                  valor={String(item[c.chave] ?? "")}
+                  ariaLabel={c.rotulo}
+                  aoMudar={(v) =>
+                    aoMudar(itens.map((x, k) => (k === i ? { ...x, [c.chave]: v } : x)))
+                  }
+                  className={cn(CAMPO, "sm:w-40")}
+                />
               ) : (
                 <input
                   key={c.chave}
                   value={item[c.chave]}
-                  maxLength={c.estreito ? 24 : 200}
+                  maxLength={200}
                   placeholder={c.rotulo}
                   aria-label={c.rotulo}
                   onChange={(e) =>
@@ -123,7 +134,7 @@ function ListaDePares<T extends Record<string, string>>({
                       itens.map((x, k) => (k === i ? { ...x, [c.chave]: e.target.value } : x)),
                     )
                   }
-                  className={cn(CAMPO, c.estreito && "sm:w-36")}
+                  className={CAMPO}
                 />
               ),
             )}
@@ -389,11 +400,9 @@ export function EditorDeOferta({
           </Rotulo>
           {bloco.preco.tipo === "setup-mensal" ? (
             <Rotulo texto={t("Setup (R$)")}>
-              <input
-                value={bloco.preco.setup}
-                maxLength={24}
-                placeholder="R$ 3.500"
-                onChange={(e) => set("preco", { ...bloco.preco, setup: e.target.value })}
+              <CampoDeMoeda
+                valor={bloco.preco.setup}
+                aoMudar={(v) => set("preco", { ...bloco.preco, setup: v })}
                 className={CAMPO}
               />
             </Rotulo>
@@ -402,11 +411,9 @@ export function EditorDeOferta({
             <Rotulo
               texto={bloco.preco.tipo === "unico" ? t("Valor (R$)") : t("Valor por mês (R$)")}
             >
-              <input
-                value={bloco.preco.valor}
-                maxLength={24}
-                placeholder="R$ 1.500"
-                onChange={(e) => set("preco", { ...bloco.preco, valor: e.target.value })}
+              <CampoDeMoeda
+                valor={bloco.preco.valor}
+                aoMudar={(v) => set("preco", { ...bloco.preco, valor: v })}
                 className={CAMPO}
               />
             </Rotulo>

@@ -55,7 +55,8 @@ export function PaginaDoModulo({
   const t = useT();
   const { pagina, carregando, falhou, blocos, estado, editar, publicar, tirarDoAr, renomear } =
     usePaginaDeMarketing(chave);
-  const [modo, setModo] = useState<"editar" | "ver">("editar");
+  // `null` = ainda não escolhido: página publicada abre em "Ver página"; rascunho, em "Editar".
+  const [modoEscolhido, setModoEscolhido] = useState<"editar" | "ver" | null>(null);
   const [apresentando, setApresentando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
@@ -78,6 +79,7 @@ export function PaginaDoModulo({
   const podeEditarDeVerdade = pagina.pode_editar;
   const podeEditar = podeEditarDeVerdade && !verComoCliente.ativo;
   const publicado = pagina.published_blocks;
+  const modo: "editar" | "ver" = modoEscolhido ?? (publicado !== null ? "ver" : "editar");
   const temAlteracoes = podeEditar && JSON.stringify(blocos) !== JSON.stringify(publicado ?? []);
   // Quem não edita só enxerga o publicado; quem edita enxerga o rascunho (que é o que está escrevendo).
   const visiveis: Bloco[] = podeEditar ? blocos : (publicado ?? []);
@@ -153,7 +155,7 @@ export function PaginaDoModulo({
                 key={m}
                 type="button"
                 aria-pressed={modo === m}
-                onClick={() => setModo(m)}
+                onClick={() => setModoEscolhido(m)}
                 className={cn(
                   "h-8 rounded-[10px] px-3 text-sm font-medium transition-colors",
                   modo === m

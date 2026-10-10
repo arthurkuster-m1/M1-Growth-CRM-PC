@@ -331,3 +331,14 @@ describe("slides com blocos grandes", () => {
     expect(conteudo[0]?.titulo).toBe("Oferta");
   });
 });
+
+describe("máscara de moeda", () => {
+  it("os dígitos entram pela direita, como centavos", async () => {
+    const { formatarMoeda, lerNumero } = await import("@/lib/marketing/calculadora");
+    expect(formatarMoeda("")).toBe("");
+    expect(formatarMoeda("1")).toMatch(/0,01$/);
+    expect(formatarMoeda("1500")).toMatch(/15,00$/);
+    expect(lerNumero(formatarMoeda("150000"))).toBe(1500);
+    expect(formatarMoeda("R$ 15,00x")).toMatch(/15,00$/);
+  });
+});
