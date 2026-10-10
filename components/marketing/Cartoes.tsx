@@ -130,3 +130,53 @@ export function classeDaGaleria(quantidade: number): string {
   if (quantidade === 5) return `${base} grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`;
   return `${base} grid-cols-2 sm:grid-cols-3`;
 }
+
+/**
+ * Um cartão LARGO, da largura da linha inteira: usado para o cadastro de produtos e ofertas,
+ * que fecha a fase "Produto e Oferta" embaixo dos cartões de módulo.
+ */
+export function CartaoLargo({
+  href,
+  tom,
+  icone,
+  titulo,
+  descricao,
+  destaque,
+  abrir,
+}: {
+  href: string;
+  tom: TomDaCapa;
+  icone: ReactNode;
+  titulo: string;
+  descricao: string;
+  /** Uma linha de apoio (ex.: "12 produtos cadastrados"). */
+  destaque?: string;
+  abrir: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group grid overflow-hidden rounded-3xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden sm:grid-cols-[minmax(0,15rem)_1fr]"
+    >
+      <Capa tom={tom} icone={icone} className="h-28 sm:h-auto sm:min-h-32">
+        <span className="absolute top-4 left-4 grid h-11 w-11 place-items-center rounded-2xl bg-white/20 text-white backdrop-blur-sm [&>svg]:h-6 [&>svg]:w-6">
+          {icone}
+        </span>
+      </Capa>
+      <div className="flex flex-col justify-center gap-1.5 p-5 sm:p-6">
+        <h3 className="text-xl font-semibold tracking-tight">{titulo}</h3>
+        <p className="text-sm text-muted-foreground">{descricao}</p>
+        {destaque ? <p className="text-sm font-medium text-primary">{destaque}</p> : null}
+        <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary">
+          {abrir}
+          <ArrowRight
+            size={14}
+            weight="bold"
+            className="transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </span>
+      </div>
+    </Link>
+  );
+}

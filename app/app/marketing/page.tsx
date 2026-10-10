@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Capa } from "@/components/marketing/Capa";
-import { CartaoDeArea, CartaoDeModulo, classeDaGaleria } from "@/components/marketing/Cartoes";
+import {
+  CartaoDeArea,
+  CartaoDeModulo,
+  CartaoLargo,
+  classeDaGaleria,
+} from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { produtosCadastrados } from "@/lib/marketing/produtos-cadastrados";
 import { modulosPublicados } from "@/lib/marketing/publicadas";
 import { FASES_DA_ESTRATEGIA, modulosDaFase } from "@/lib/marketing/modulos";
-import { CalendarBlank, ChartLineUp, Compass, Megaphone, Rocket } from "@/lib/ui/icons";
+import { CalendarBlank, ChartLineUp, Compass, Megaphone, Package, Rocket } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Marketing" };
@@ -28,6 +34,7 @@ export default async function MarketingPage() {
   const t = (texto: string) => traduzir(texto, user.idioma);
   const emBreve = t("Em breve");
   const publicados = await modulosPublicados(org.orgId);
+  const totalDeProdutos = await produtosCadastrados(org.orgId);
   const abrir = t("Abrir");
 
   return (
@@ -117,6 +124,23 @@ export default async function MarketingPage() {
                 );
               })}
             </div>
+            {fase === "produto-e-oferta" ? (
+              <CartaoLargo
+                href="/app/products"
+                tom="purple"
+                icone={<Package weight="duotone" aria-hidden />}
+                titulo={t("Produtos e ofertas")}
+                descricao={t(
+                  "O cadastro de tudo o que a empresa oferece: produtos, preços e fotos.",
+                )}
+                destaque={
+                  totalDeProdutos > 0
+                    ? t("{n} produtos cadastrados").replace("{n}", String(totalDeProdutos))
+                    : t("Nenhum produto cadastrado ainda")
+                }
+                abrir={t("Abrir o cadastro")}
+              />
+            ) : null}
           </div>
         ))}
       </section>
