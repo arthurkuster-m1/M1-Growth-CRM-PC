@@ -18367,6 +18367,9 @@ export const DICIONARIO: Traducoes = {
   "Paleta de cores": { es: "Paleta de colores" },
   Citação: { es: "Cita" },
   "Quebra de slide": { es: "Salto de diapositiva" },
+  "Mover para antes": { es: "Mover antes" },
+  "Mover para depois": { es: "Mover después" },
+  "Erro ao salvar a ordem.": { es: "Error al guardar el orden." },
   "Código da cor (hexadecimal)": { es: "Código del color (hexadecimal)" },
   "Pesquisa de público e mercado": { es: "Investigación de público y mercado" },
   "O setor, o processo comercial e os principais desafios.": {

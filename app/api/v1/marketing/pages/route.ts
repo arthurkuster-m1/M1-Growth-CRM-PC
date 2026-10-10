@@ -48,6 +48,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .select("module_key, title, published_blocks")
     .eq("organization_id", authz.org.orgId)
     .like("module_key", `${modulo}--%`)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(100);
   if (error)
@@ -98,9 +99,20 @@ export async function POST(req: NextRequest): Promise<Response> {
     .maybeSingle();
   if (existente) return ok({ key: chave, criada: false }, { requestId });
 
+  // A subpágina nova entra no fim da fila, depois da ordem que a agência já escolheu.
+  const { data: ultima } = await supabase
+    .from("marketing_pages")
+    .select("sort_order")
+    .eq("organization_id", authz.org.orgId)
+    .like("module_key", `${modulo}--%`)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const posicao = ((ultima as { sort_order: number } | null)?.sort_order ?? -1) + 1;
+
   const { data: pagina, error } = await supabase
     .from("marketing_pages")
-    .insert({ organization_id: authz.org.orgId, module_key: chave, title })
+    .insert({ organization_id: authz.org.orgId, module_key: chave, title, sort_order: posicao })
     .select("id")
     .single();
   if (error || !pagina) {

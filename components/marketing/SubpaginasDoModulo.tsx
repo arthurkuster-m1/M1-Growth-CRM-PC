@@ -10,7 +10,7 @@ import { textosDoTipoDeSubpagina } from "@/components/marketing/textos";
 import { useT } from "@/hooks/i18n/useT";
 import { useSubpaginasDeMarketing } from "@/hooks/marketing/useSubpaginasDeMarketing";
 import { chaveDeSubpagina, tiposDeSubpagina } from "@/lib/marketing/modulos";
-import { Plus } from "@/lib/ui/icons";
+import { CaretDown, CaretUp, Plus } from "@/lib/ui/icons";
 
 /**
  * As SUBPÁGINAS de um módulo (as personas, a pesquisa, a árvore, a arquitetura de premissas…).
@@ -20,7 +20,8 @@ import { Plus } from "@/lib/ui/icons";
 export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: string }) {
   const t = useT();
   const router = useRouter();
-  const { subpaginas, podeEditar, carregando, criarSubpagina } = useSubpaginasDeMarketing(modulo);
+  const { subpaginas, podeEditar, carregando, criarSubpagina, moverSubpagina } =
+    useSubpaginasDeMarketing(modulo);
   const [menu, setMenu] = useState(false);
   const [criando, setCriando] = useState(false);
   const tipos = tiposDeSubpagina(modulo);
@@ -99,11 +100,11 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {subpaginas.map((s) => {
+          {subpaginas.map((s, indice) => {
             const definicao = tipos.find((x) => x.tipo === s.tipo);
             const textos = textosDoTipoDeSubpagina(t, s.tipo);
             return (
-              <li key={s.key}>
+              <li key={s.key} className="relative">
                 <Link
                   href={`${base}/${s.key}`}
                   className="flex h-full flex-col gap-2 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
@@ -120,6 +121,30 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
                   <h3 className="font-semibold">{s.title || textos?.titulo}</h3>
                   <p className="text-xs text-muted-foreground">{textos?.descricao}</p>
                 </Link>
+                {podeEditar ? (
+                  <div className="absolute right-2 bottom-2 flex rounded-lg border bg-card/95 shadow-sm">
+                    <button
+                      type="button"
+                      aria-label={t("Mover para antes")}
+                      title={t("Mover para antes")}
+                      disabled={indice === 0}
+                      onClick={() => moverSubpagina(s.key, -1)}
+                      className="grid h-8 w-8 place-items-center rounded-l-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                    >
+                      <CaretUp size={14} className="-rotate-90" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("Mover para depois")}
+                      title={t("Mover para depois")}
+                      disabled={indice === subpaginas.length - 1}
+                      onClick={() => moverSubpagina(s.key, 1)}
+                      className="grid h-8 w-8 place-items-center rounded-r-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                    >
+                      <CaretDown size={14} className="-rotate-90" aria-hidden />
+                    </button>
+                  </div>
+                ) : null}
               </li>
             );
           })}

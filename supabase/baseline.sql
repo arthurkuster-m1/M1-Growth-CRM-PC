@@ -48806,3 +48806,12 @@ comment on table public.marketing_page_snapshots is
   'Retratos datados do conteúdo PUBLICADO de uma página de marketing (histórico que o cliente também lê). Salvos manualmente pela agência (manager+); imutáveis — só criar e apagar.';
 
 notify pgrst, 'reload schema';
+
+-- ---- Ordem das subpáginas de Marketing (migration 0590) ----
+alter table public.marketing_pages
+  add column if not exists sort_order integer not null default 0;
+
+comment on column public.marketing_pages.sort_order is
+  'Posição da subpágina dentro do módulo, escolhida pela agência (menor primeiro; empate pela criação). Escrito por PUT /api/v1/marketing/pages/ordem.';
+
+notify pgrst, 'reload schema';

@@ -29,7 +29,8 @@ function consultaFalsa(tabela: string) {
       chamada.filtros.push([nome, args]);
       return q;
     };
-  for (const m of ["select", "eq", "not", "is", "or", "limit", "update"]) q[m] = encadeia(m);
+  for (const m of ["select", "eq", "not", "is", "or", "order", "limit", "update"])
+    q[m] = encadeia(m);
   q.maybeSingle = async () => ({ data: resultado() ?? null });
   q.then = (ok: (v: unknown) => unknown) => ok({ data: resultado() ?? [] });
   return q;

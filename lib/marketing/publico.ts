@@ -119,7 +119,10 @@ export async function paginasPublicadas(link: LinkResolvido): Promise<PaginaPubl
       `module_key.eq.${link.moduloDoEscopo},module_key.like.${link.moduloDoEscopo}--%`,
     );
   }
-  const { data } = await consulta.limit(100);
+  const { data } = await consulta
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(100);
   return (
     (data ?? []) as Array<{
       module_key: string;
