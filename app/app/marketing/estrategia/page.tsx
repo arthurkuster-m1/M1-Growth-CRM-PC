@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CartaoDeModulo } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
+import { PublicacaoEmMassa } from "@/components/marketing/PublicacaoEmMassa";
 import { Atalho, OQueVem, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -33,6 +34,8 @@ export default async function EstrategiaPage() {
       estado={publicados.size > 0 ? undefined : emBreve}
       voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
+      <PublicacaoEmMassa />
+
       <section aria-label={t("Atalhos da estratégia")} className="grid gap-3 sm:grid-cols-3">
         <Atalho
           href="/app/marketing/estrategia/estudo-de-persona"

@@ -51,3 +51,25 @@ export interface PaginaDeMarketing {
 }
 
 export const COLUNAS_DA_PAGINA = "id, module_key, title, published_blocks, published_at";
+
+/** O estado de uma página para a publicação em massa. */
+export type EstadoDePublicacao = "publicada" | "alteracoes" | "rascunho" | "vazia";
+
+/** Uma página (de módulo ou subpágina) na lista da publicação em massa. */
+export interface PaginaParaPublicar {
+  key: string;
+  modulo: string;
+  /** `null` = é a página do próprio módulo. */
+  tipo: string | null;
+  title: string;
+  estado: EstadoDePublicacao;
+}
+
+export const publicacaoEmMassaSchema = z.object({
+  keys: z
+    .array(z.string())
+    .min(1)
+    .max(150)
+    .refine((ks) => ks.every((k) => lerChaveDePagina(k) !== null), { message: "Página inválida." }),
+  acao: z.enum(["publicar", "despublicar"]),
+});
