@@ -27,6 +27,7 @@ export type EdicaoDeCampanha = Partial<
     | "ultimo_planejamento"
     | "meta_synced_at"
     | "meta_sync_error"
+    | "estado"
   >
 >;
 

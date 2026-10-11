@@ -21,6 +21,8 @@ export function rotuloDoCanal(t: Traduz, c: CanalDaCampanha): string {
       return t("Indicações");
     case "parcerias":
       return t("Parcerias");
+    case "aproveitamento_de_base":
+      return t("Aproveitamento de base");
   }
 }
 
@@ -30,6 +32,7 @@ export const COR_DO_CANAL: Record<CanalDaCampanha, CorDaOpcao> = {
   social_media: "pink",
   indicacao: "green",
   parcerias: "purple",
+  aproveitamento_de_base: "yellow",
 };
 
 export function rotuloDoStatus(t: Traduz, s: StatusDaCampanha): string {
@@ -130,6 +133,12 @@ export function rotuloDaMetrica(t: Traduz, chave: string): string {
       return t("Entregas");
     case "cliques":
       return t("Cliques");
+    case "clientes_contatados":
+      return t("Clientes contatados");
+    case "respostas":
+      return t("Respostas");
+    case "propostas":
+      return t("Propostas");
     default:
       return chave;
   }
@@ -165,4 +174,17 @@ export function rotuloDoFormato(t: Traduz, f: FormatoDoCriativo): string {
     case "outro":
       return t("Outro");
   }
+}
+
+/** "11/10 | Investido: R$ 138,52 | 62 Leads | CPL R$ 2,23" — o estado atual em uma linha. */
+export function textoDoEstado(
+  t: Traduz,
+  e: { ate: string; investido: number; leads: number } | null | undefined,
+): string {
+  if (!e) return "—";
+  const [, mes, dia] = e.ate.split("-");
+  const reais = (n: number) =>
+    n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/\u00a0/g, " ");
+  const cpl = e.leads > 0 && e.investido > 0 ? reais(e.investido / e.leads) : "—";
+  return `${dia}/${mes} | ${t("Investido")}: ${reais(e.investido)} | ${e.leads} ${t("Leads")} | ${t("CPL")} ${cpl}`;
 }

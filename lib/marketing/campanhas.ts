@@ -15,6 +15,7 @@ export const CANAIS_DA_CAMPANHA = [
   "social_media",
   "indicacao",
   "parcerias",
+  "aproveitamento_de_base",
 ] as const;
 export type CanalDaCampanha = (typeof CANAIS_DA_CAMPANHA)[number];
 
@@ -65,6 +66,16 @@ export interface CampanhaDeDemanda {
   /** Da última nota de cada tipo (só a agência as recebe). */
   ultima_analise?: { data: string; texto: string } | null;
   ultimo_planejamento?: { data: string; texto: string } | null;
+  /** O resumo do período (investido e leads do CRM); só a listagem o traz. */
+  estado?: EstadoDaCampanha | null;
+}
+
+/** "Estado atual": o que a campanha fez no período (o mês, se contínua; o total, se tem datas). */
+export interface EstadoDaCampanha {
+  de: string;
+  ate: string;
+  investido: number;
+  leads: number;
 }
 
 export const COLUNAS_DA_CAMPANHA =

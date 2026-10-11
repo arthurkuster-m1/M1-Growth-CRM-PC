@@ -11,6 +11,7 @@ import {
   COR_DO_STATUS,
   rotuloDoCanal,
   rotuloDoStatus,
+  textoDoEstado,
 } from "@/components/marketing/campanhas/rotulos";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
@@ -280,6 +281,20 @@ export function CampanhasDeDemanda() {
         ),
     },
     {
+      id: "estado-atual",
+      titulo: t("Estado atual"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 330,
+      celula: (c) => (
+        <span
+          className="block truncate px-2 text-sm tabular-nums"
+          title={textoDoEstado(t, c.estado)}
+        >
+          {textoDoEstado(t, c.estado)}
+        </span>
+      ),
+    },
+    {
       id: "meta-cpl",
       titulo: t("Meta de CPL"),
       icone: <TextAa size={14} aria-hidden />,
@@ -517,6 +532,10 @@ export function CampanhasDeDemanda() {
               <dd className="text-foreground">{dinheiro(c.budget)}</dd>
               <dt>{t("Meta de leads")}</dt>
               <dd className="text-foreground">{c.goal_leads ?? "—"}</dd>
+              <dt className="col-span-2 mt-1">{t("Estado atual")}</dt>
+              <dd className="col-span-2 text-foreground tabular-nums">
+                {textoDoEstado(t, c.estado)}
+              </dd>
               {c.pipeline_id ? (
                 <>
                   <dt>{t("Funil do lead")}</dt>
@@ -616,16 +635,19 @@ export function CampanhasDeDemanda() {
             }
             aoConfigurar={() => setConfigurando(true)}
           />
-          <BarraDeConsulta
-            campos={camposDaBarra}
-            consulta={{
-              filtros: preferencias.filtros,
-              ordenacao: preferencias.ordenacao,
-              agrupar: preferencias.agrupar,
-              agruparPor: preferencias.agruparPor,
-            }}
-            aoMudar={mudarConsulta}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <BarraDeConsulta
+              compacta
+              campos={camposDaBarra}
+              consulta={{
+                filtros: preferencias.filtros,
+                ordenacao: preferencias.ordenacao,
+                agrupar: preferencias.agrupar,
+                agruparPor: preferencias.agruparPor,
+              }}
+              aoMudar={mudarConsulta}
+            />
+          </div>
 
           {vista === "tabela" ? (
             <TabelaDoMotor

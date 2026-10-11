@@ -31,6 +31,8 @@ interface Props {
   campos: readonly CampoDaBarra[];
   consulta: ConsultaDaTabela;
   aoMudar: (consulta: ConsultaDaTabela) => void;
+  /** Botões menores, para caber os três numa linha só (ex.: Campanhas). */
+  compacta?: boolean;
 }
 
 const SELECT =
@@ -40,17 +42,20 @@ function Gatilho({
   icone,
   rotulo,
   quantidade,
+  compacta,
 }: {
   icone: ReactNode;
   rotulo: string;
   quantidade: number;
+  compacta?: boolean;
 }) {
   return (
     <PopoverTrigger asChild>
       <button
         type="button"
         className={cn(
-          "inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border bg-card px-3 text-sm whitespace-nowrap transition-colors hover:text-foreground",
+          "inline-flex shrink-0 items-center rounded-xl border bg-card whitespace-nowrap transition-colors hover:text-foreground",
+          compacta ? "h-8 gap-1.5 px-2.5 text-xs" : "h-9 gap-2 px-3 text-sm",
           quantidade > 0 ? "border-primary/40 text-primary" : "text-muted-foreground",
         )}
       >
@@ -93,7 +98,7 @@ function BotaoAdicionar({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => 
 }
 
 /** "Filtrar", "Ordenar" e "Agrupar": os três painéis que decidem o que a tabela mostra e em que ordem. */
-export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
+export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) {
   const t = useT();
   const filtros = consulta.filtros ?? [];
   const ordenacao = consulta.ordenacao ?? [];
@@ -215,6 +220,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
     <div className="contents">
       <Popover>
         <Gatilho
+          compacta={compacta}
           icone={<Funnel size={16} aria-hidden />}
           rotulo={t("Filtrar")}
           quantidade={filtros.length}
@@ -297,6 +303,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
 
       <Popover>
         <Gatilho
+          compacta={compacta}
           icone={<ArrowsDownUp size={16} aria-hidden />}
           rotulo={t("Ordenar")}
           quantidade={ordenacao.length}
@@ -372,6 +379,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
 
       <Popover>
         <Gatilho
+          compacta={compacta}
           icone={<Rows size={16} aria-hidden />}
           rotulo={t("Agrupar")}
           quantidade={consulta.agrupar ? 1 : 0}
@@ -427,7 +435,10 @@ export function BarraDeConsulta({ campos, consulta, aoMudar }: Props) {
         <button
           type="button"
           onClick={() => aoMudar({})}
-          className="h-9 shrink-0 rounded-xl px-2 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
+          className={cn(
+            "shrink-0 rounded-xl px-2 whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+            compacta ? "h-8 text-xs" : "h-9 text-sm",
+          )}
         >
           {t("Limpar tudo")}
         </button>

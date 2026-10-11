@@ -18502,6 +18502,13 @@ export const DICIONARIO: Traducoes = {
   "Nome da campanha da plataforma": { es: "Nombre de la campaña de la plataforma" },
   Atrelar: { es: "Vincular" },
   "Diário de bordo": { es: "Diario de bordo" },
+  "Clientes contatados": { es: "Clientes contactados" },
+  Respostas: { es: "Respuestas" },
+  "Aproveitamento de base": { es: "Aprovechamiento de base" },
+  "Estado atual": { es: "Estado actual" },
+  "As campanhas do cliente, com o funil e os resultados de cada uma.": {
+    es: "Las campañas del cliente, con el embudo y los resultados de cada una.",
+  },
   "Nome do criativo": { es: "Nombre del creativo" },
   Formato: { es: "Formato" },
   "Título do anúncio": { es: "Título del anuncio" },

@@ -77,6 +77,36 @@ export async function GET(): Promise<Response> {
     }
   }
 
+  // O "estado atual" de cada campanha (investido e leads do CRM no período dela).
+  if (campanhas.length > 0) {
+    const { data: org } = await a.supabase
+      .from("organizations")
+      .select("timezone")
+      .eq("id", a.orgId)
+      .maybeSingle();
+    const { data: estados } = await a.supabase.rpc("fn_demand_campaigns_estado", {
+      p_org: a.orgId,
+      p_tz: (org?.timezone as string | null) || "America/Sao_Paulo",
+    });
+    const porId = new Map(
+      (
+        (estados ?? []) as Array<{
+          campaign_id: string;
+          de: string;
+          ate: string;
+          spend: number | string;
+          leads: number;
+        }>
+      ).map((e) => [e.campaign_id, e]),
+    );
+    for (const c of campanhas as CampanhaDeDemanda[]) {
+      const e = porId.get(c.id);
+      c.estado = e
+        ? { de: e.de, ate: e.ate, investido: Number(e.spend) || 0, leads: Number(e.leads) || 0 }
+        : null;
+    }
+  }
+
   return ok(
     {
       campanhas,

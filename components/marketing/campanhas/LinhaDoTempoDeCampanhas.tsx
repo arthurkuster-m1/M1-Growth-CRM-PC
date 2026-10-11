@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { textoDoEstado } from "@/components/marketing/campanhas/rotulos";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
@@ -91,7 +92,7 @@ export function LinhaDoTempoDeCampanhas({
         <div className="min-w-[860px]">
           <div
             className="grid border-b text-xs text-muted-foreground"
-            style={{ gridTemplateColumns: `200px repeat(${DIAS}, minmax(0, 1fr))` }}
+            style={{ gridTemplateColumns: `300px repeat(${DIAS}, minmax(0, 1fr))` }}
           >
             <div className="px-3 py-2">{t("Campanha")}</div>
             {semanas.map((s, i) => (
@@ -113,19 +114,27 @@ export function LinhaDoTempoDeCampanhas({
               <div
                 key={c.id}
                 className="relative grid items-center border-b last:border-b-0"
-                style={{ gridTemplateColumns: `200px repeat(${DIAS}, minmax(0, 1fr))` }}
+                style={{ gridTemplateColumns: `300px repeat(${DIAS}, minmax(0, 1fr))` }}
               >
-                <Link
-                  href={`${base}/${c.id}`}
-                  className="truncate px-3 py-2.5 text-sm font-medium hover:text-primary hover:underline"
-                >
-                  {c.name}
-                </Link>
+                <div className="min-w-0 px-3 py-2">
+                  <Link
+                    href={`${base}/${c.id}`}
+                    className="block truncate text-sm font-medium hover:text-primary hover:underline"
+                  >
+                    {c.name}
+                  </Link>
+                  <p
+                    className="truncate text-[11px] text-muted-foreground tabular-nums"
+                    title={textoDoEstado(t, c.estado)}
+                  >
+                    {textoDoEstado(t, c.estado)}
+                  </p>
+                </div>
                 {hoje >= inicio && hoje <= fim ? (
                   <span
                     aria-hidden
                     className="pointer-events-none absolute inset-y-0 w-px bg-primary/50"
-                    style={{ left: `calc(200px + (100% - 200px) * ${(coluna(hoje) - 1) / DIAS})` }}
+                    style={{ left: `calc(300px + (100% - 300px) * ${(coluna(hoje) - 1) / DIAS})` }}
                   />
                 ) : null}
                 <Link

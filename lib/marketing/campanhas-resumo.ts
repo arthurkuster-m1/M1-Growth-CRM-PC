@@ -391,6 +391,13 @@ export const METRICAS_DO_CANAL: Record<
     { chave: "valor_total", tipo: "moeda" },
     { chave: "recompensa_paga", tipo: "moeda" },
   ],
+  aproveitamento_de_base: [
+    { chave: "clientes_contatados", tipo: "contagem" },
+    { chave: "respostas", tipo: "contagem" },
+    { chave: "propostas", tipo: "contagem" },
+    { chave: "vendas", tipo: "contagem" },
+    { chave: "valor_total", tipo: "moeda" },
+  ],
   parcerias: [
     { chave: "parceiros_ativos", tipo: "contagem" },
     { chave: "entregas", tipo: "contagem" },
