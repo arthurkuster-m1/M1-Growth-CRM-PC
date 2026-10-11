@@ -24,7 +24,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const domingo = /^\d{4}-\d{2}-\d{2}$/.test(pedido) ? domingoDe(pedido) : domingoDeHoje();
 
   // Janela larga (as atrasadas vêm de antes); o recorte fino é feito em `tarefasDaSemana`.
-  const de = new Date(`${somarDias(domingo, -120)}T00:00:00Z`).toISOString();
+  const de = new Date(`${somarDias(domingo, -1)}T00:00:00Z`).toISOString();
   const ate = new Date(`${somarDias(domingo, 8)}T00:00:00Z`).toISOString();
   const { data, error } = await a.supabase
     .from("crm_tasks")

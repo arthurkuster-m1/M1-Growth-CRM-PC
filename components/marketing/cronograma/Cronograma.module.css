@@ -41,6 +41,10 @@
   color: var(--c-marca);
   font-weight: 700;
 }
+.tituloData {
+  display: block;
+  white-space: nowrap;
+}
 .subtitulo {
   text-align: center;
   color: var(--c-medio);

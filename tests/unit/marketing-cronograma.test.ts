@@ -144,22 +144,23 @@ describe("tarefas da semana", () => {
     expect(situacaoDaTarefa(tarefa({ status: "cancelled" }), agora)).toBe("cancelada");
   });
 
-  it("mostra as do prazo da semana e as atrasadas abertas; o cancelado some", () => {
+  it("mostra só as que vencem dentro da semana; o cancelado some", () => {
     const todas = [
       tarefa({ id: "na-semana", due_date: "2026-10-15T15:00:00Z" }),
       tarefa({ id: "feita-na-semana", status: "done", due_date: "2026-10-13T15:00:00Z" }),
-      tarefa({ id: "atrasada", due_date: "2026-10-02T15:00:00Z" }),
-      tarefa({ id: "feita-antiga", status: "done", due_date: "2026-10-02T15:00:00Z" }),
+      tarefa({ id: "atrasada-de-antes", due_date: "2026-10-02T15:00:00Z" }),
       tarefa({ id: "cancelada", status: "cancelled", due_date: "2026-10-15T15:00:00Z" }),
       tarefa({ id: "proxima", due_date: "2026-10-22T15:00:00Z" }),
       tarefa({ id: "sem-prazo", due_date: null }),
     ];
-    const ids = tarefasDaSemana(todas, "2026-10-11", agora).map((t) => t.id);
-    expect(ids.sort()).toEqual(["atrasada", "feita-na-semana", "na-semana"]);
+    const ids = tarefasDaSemana(todas, "2026-10-11").map((t) => t.id);
+    expect(ids.sort()).toEqual(["feita-na-semana", "na-semana"]);
   });
 
-  it("a atrasada não invade semanas passadas", () => {
+  it("a tarefa atrasada fica na semana do prazo e não viaja para as seguintes", () => {
     const todas = [tarefa({ id: "atrasada", due_date: "2026-10-02T15:00:00Z" })];
-    expect(tarefasDaSemana(todas, "2026-10-04", agora)).toEqual([]);
+    expect(tarefasDaSemana(todas, "2026-09-27").map((t) => t.id)).toEqual(["atrasada"]);
+    expect(tarefasDaSemana(todas, "2026-10-11")).toEqual([]);
+    expect(tarefasDaSemana(todas, "2026-10-18")).toEqual([]);
   });
 });

@@ -263,22 +263,19 @@ export function situacaoDaTarefa(
 }
 
 /**
- * As tarefas da semana que começa em `domingo`: as que vencem nela, as atrasadas ainda abertas
- * (que continuam pesando) e as concluídas dentro dela. O cancelado some.
+ * As tarefas DA semana que começa em `domingo`: só as que vencem dentro dela (domingo a sábado),
+ * concluídas ou não. A atrasada aparece na semana do prazo dela, marcada como atrasada — não
+ * viaja para as semanas seguintes. O cancelado some.
  */
 export function tarefasDaSemana(
   todas: readonly TarefaDoCronograma[],
   domingo: string,
-  agora: Date = new Date(),
 ): TarefaDoCronograma[] {
   const sabado = somarDias(domingo, 6);
   return todas.filter((t) => {
     if (t.status === "cancelled" || !t.due_date) return false;
     const dia = chaveDoDia(new Date(t.due_date), FUSO_DO_CRONOGRAMA);
-    if (dia >= domingo && dia <= sabado) return true;
-    // Atrasada e aberta: pesa na semana corrente e nas seguintes, até ser resolvida. Nas semanas
-    // já passadas não entra: o que ficou para trás está no histórico, e não na vista da semana.
-    return t.status !== "done" && dia < domingo && domingo >= domingoDeHoje(agora);
+    return dia >= domingo && dia <= sabado;
   });
 }
 

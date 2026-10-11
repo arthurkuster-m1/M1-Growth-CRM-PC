@@ -489,7 +489,7 @@ export function PainelDoCronograma({
       data-theme={tema === "escuro" ? "dark" : tema === "claro" ? "light" : undefined}
     >
       <h2 className={css.titulo}>
-        {rotulos.semana} <b>{periodoDaSemana(inicioDaSemana)}</b>
+        {rotulos.semana} <b className={css.tituloData}>{periodoDaSemana(inicioDaSemana)}</b>
       </h2>
       {config.subtitulo_semana ? <p className={css.subtitulo}>{config.subtitulo_semana}</p> : null}
       <section className={css.painel}>

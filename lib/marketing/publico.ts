@@ -211,7 +211,7 @@ export async function cronogramaPublico(
 ): Promise<CronogramaPublico> {
   const admin = createAdminClient();
   const org = link.organizationId;
-  const de = new Date(`${somarDias(domingo, -120)}T00:00:00Z`).toISOString();
+  const de = new Date(`${somarDias(domingo, -1)}T00:00:00Z`).toISOString();
   const ate = new Date(`${somarDias(domingo, 8)}T00:00:00Z`).toISOString();
   const [cfg, itens, metas, tarefas] = await Promise.all([
     admin

@@ -122,32 +122,25 @@ export function EdicaoDaSemana({
                   <option value="agencia">{t("Agência")}</option>
                   <option value="cliente">{t("Cliente")}</option>
                 </select>
+                <select
+                  value={x.status === "cancelled" ? "pending" : x.status}
+                  aria-label={t("Situação")}
+                  onChange={(e) => void acoes.editar(x.id, { status: e.target.value })}
+                  className="h-9 rounded-lg border bg-background px-2 text-sm"
+                >
+                  <option value="pending">{t("A fazer")}</option>
+                  <option value="in_progress">{t("Em andamento")}</option>
+                  <option value="done">{t("Concluída")}</option>
+                </select>
                 {x.status !== "done" ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void acoes.editar(x.id, { status: "done" })}
-                      className="h-9 rounded-lg border px-3 text-sm hover:bg-secondary"
-                    >
-                      {t("Concluir")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAdiando(x)}
-                      className="h-9 rounded-lg border px-3 text-sm hover:bg-secondary"
-                    >
-                      {t("Adiar")}
-                    </button>
-                  </>
-                ) : (
                   <button
                     type="button"
-                    onClick={() => void acoes.editar(x.id, { status: "pending" })}
+                    onClick={() => setAdiando(x)}
                     className="h-9 rounded-lg border px-3 text-sm hover:bg-secondary"
                   >
-                    {t("Reabrir")}
+                    {t("Adiar")}
                   </button>
-                )}
+                ) : null}
                 <button
                   type="button"
                   aria-label={t("Tirar da semana")}
