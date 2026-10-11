@@ -256,6 +256,8 @@ export async function POST(req: NextRequest): Promise<Response> {
           source: linha.source,
           via_planilha: true,
         },
+        // A mesma pessoa na planilha e no funil: junta as informações no negócio que já existe.
+        { quandoJaExiste: "reaproveitar" },
       );
       resumo.criados += 1;
     } catch (err) {

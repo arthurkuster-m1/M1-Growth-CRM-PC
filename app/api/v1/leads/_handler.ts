@@ -476,6 +476,102 @@ export async function getLeadHandler(
 // create
 // ---------------------------------------------------------------------------
 
+/** O negócio ABERTO do contato neste funil, se houver (a regra do lead único). */
+async function negocioAbertoDoContatoNoFunil(
+  supabase: SB,
+  ctx: HandlerCtx,
+  contactId: string,
+  pipelineId: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase
+    .from("crm_leads")
+    .select(LEAD_COLS)
+    .eq("organization_id", ctx.organization_id)
+    .eq("contact_id", contactId)
+    .eq("pipeline_id", pipelineId)
+    .eq("status", "open")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new ApiError(500, "internal_error", undefined, ctx.requestId, error.message);
+  return (data as Record<string, unknown> | null) ?? null;
+}
+
+/**
+ * O contato já está neste funil: recusa (409) ou reaproveita o negócio que existe, juntando o
+ * que chegou de novo (campos por cima, tags unidas) e deixando o registro na linha do tempo.
+ */
+async function tratarNegocioExistente(
+  supabase: SB,
+  ctx: HandlerCtx,
+  existente: Record<string, unknown>,
+  input: { custom_fields?: Record<string, unknown>; tags?: string[]; source?: string | null },
+  politica: "recusar" | "reaproveitar",
+): Promise<Record<string, unknown>> {
+  const leadId = String(existente.id);
+  if (politica === "recusar") {
+    throw new ApiError(
+      409,
+      "lead_already_in_funnel",
+      { lead_id: leadId },
+      ctx.requestId,
+      traduzir("Este contato já tem um negócio aberto neste funil.", ctx.idioma ?? "pt-BR"),
+    );
+  }
+
+  const camposAntes = (existente.custom_fields as Record<string, unknown> | null) ?? {};
+  const camposNovos = input.custom_fields ?? {};
+  const tagsAntes = (existente.tags as string[] | null) ?? [];
+  const tagsDepois = [...new Set([...tagsAntes, ...(input.tags ?? [])])];
+  const mudouCampos = Object.keys(camposNovos).filter(
+    (k) => JSON.stringify(camposAntes[k]) !== JSON.stringify(camposNovos[k]),
+  );
+  const mudouTags = tagsDepois.length !== tagsAntes.length;
+
+  let resultado = existente;
+  if (mudouCampos.length > 0 || mudouTags) {
+    const { data, error } = await supabase
+      .from("crm_leads")
+      .update({
+        custom_fields: { ...camposAntes, ...camposNovos },
+        tags: tagsDepois,
+        last_activity_at: new Date().toISOString(),
+      })
+      .eq("id", leadId)
+      .eq("organization_id", ctx.organization_id)
+      .select(LEAD_COLS)
+      .single();
+    if (error) throw new ApiError(500, "internal_error", undefined, ctx.requestId, error.message);
+    resultado = data as Record<string, unknown>;
+  }
+
+  const atividade = await emitLeadActivity(supabase, {
+    organizationId: ctx.organization_id,
+    leadId,
+    contactId: (existente.contact_id as string | null) ?? null,
+    type: "lead_edited",
+    sourceModule: "crm",
+    sourceId: leadId,
+    actor: ctx.actor,
+    reason: "A mesma pessoa se cadastrou de novo neste funil: as informações novas foram juntadas ao negócio",
+    payload: {
+      fields: mudouCampos,
+      motivo: "novo_cadastro_no_mesmo_funil",
+      source: input.source ?? null,
+    },
+  });
+  if (!atividade.ok) {
+    await registraFalhaDeAtividade(supabase, {
+      organizationId: ctx.organization_id,
+      leadId,
+      tipo: "lead_edited",
+      origem: "leads/_handler.createLeadHandler",
+      erro: atividade.error,
+      requestId: ctx.requestId,
+    });
+  }
+  return resultado;
+}
+
 export async function createLeadHandler(
   supabase: SB,
   ctx: HandlerCtx,
@@ -519,6 +615,14 @@ export async function createLeadHandler(
      * E não vem do corpo da requisição, como os demais internos.
      */
     exigirCamposDaEtapa?: boolean;
+    /**
+     * O que fazer quando o contato JÁ tem um negócio aberto neste funil (regra do lead único:
+     * 1 contato = 1 negócio aberto por funil). `recusar` responde 409 com o id do que existe;
+     * `reaproveitar` atualiza o existente (campos e tags novos entram por cima) e o devolve.
+     * Padrão: pessoa na tela recusa (ela escolheu o contato e precisa saber); formulário,
+     * automação e importação reaproveitam (o mesmo contato cadastrando de novo não é erro).
+     */
+    quandoJaExiste?: "recusar" | "reaproveitar";
   } = {},
 ): Promise<Record<string, unknown>> {
   // Validate stage belongs to pipeline within active org.
@@ -596,6 +700,22 @@ export async function createLeadHandler(
 
   if (input.contact_id) await contatoDaOrgOrThrow(supabase, ctx, input.contact_id);
 
+  // Lead único: o contato já tem negócio aberto NESTE funil? (a mesma pessoa em outros funis
+  // é permitido; duas vezes no mesmo, não.)
+  const quandoJaExiste =
+    opcoes.quandoJaExiste ?? (ctx.actor.type === "user" ? "recusar" : "reaproveitar");
+  if (input.contact_id) {
+    const existente = await negocioAbertoDoContatoNoFunil(
+      supabase,
+      ctx,
+      input.contact_id,
+      input.pipeline_id,
+    );
+    if (existente) {
+      return tratarNegocioExistente(supabase, ctx, existente, input, quandoJaExiste);
+    }
+  }
+
   // next position_in_stage = MAX + 1000.
   const { data: maxRow, error: maxErr } = await supabase
     .from("crm_leads")
@@ -669,6 +789,21 @@ export async function createLeadHandler(
 
   const recusaNoInsert = recusaDaGuardaDoBanco(ctx, insErr);
   if (recusaNoInsert) throw recusaNoInsert;
+  // Corrida: outro pedido criou o negócio entre a conferência e o insert. O índice único
+  // (`uniq_crm_leads_open_contact_pipeline`) derruba o segundo; trata como "já existe".
+  if (
+    insErr?.code === "23505" &&
+    input.contact_id &&
+    String(insErr.message).includes("uniq_crm_leads_open_contact_pipeline")
+  ) {
+    const vencedor = await negocioAbertoDoContatoNoFunil(
+      supabase,
+      ctx,
+      input.contact_id,
+      input.pipeline_id,
+    );
+    if (vencedor) return tratarNegocioExistente(supabase, ctx, vencedor, input, quandoJaExiste);
+  }
   if (insErr || !lead) {
     throw new ApiError(
       500,

@@ -13,6 +13,7 @@ import { ContatoDoNegocio } from "./ContatoDoNegocio";
 import { ConversaNoDossie } from "./ConversaNoDossie";
 import { LeadFieldsForm } from "./LeadFieldsForm";
 import { ScoreSlot } from "./ScoreSlot";
+import { QualificacaoDoLead } from "@/components/leads/QualificacaoDoLead";
 import { LeadTimeline } from "./LeadTimeline";
 import { PropostasDoNegocio } from "./PropostasDoNegocio";
 import { OwnerBadge } from "./OwnerBadge";
@@ -153,6 +154,8 @@ export function LeadDossier({
             leadId={lead.id}
           />
         </section>
+
+        <QualificacaoDoLead contactId={lead.contact_id} />
 
         {/* ② timeline */}
         <section className="flex-1 py-3">
