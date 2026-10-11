@@ -44,10 +44,6 @@ export default async function SubpaginaDaEstrategiaPage({
             rotulo: textosDoPai.titulo,
           },
         }}
-        textosDeEspera={{
-          titulo: t("O que vem aqui"),
-          itens: [textosDoTipo.descricao],
-        }}
       />
     </div>
   );

@@ -54,7 +54,6 @@ function montar() {
         tom="purple"
         icone={<span />}
         rotulos={{ antes: "Antes", depois: "Depois", abrirLink: "Abrir link" }}
-        textosDeEspera={{ titulo: "O que vem aqui", itens: ["Uma página bonita."] }}
       />
     </QueryClientProvider>,
   );
@@ -79,10 +78,10 @@ describe("página do módulo — o cliente (só lê)", () => {
     expect(screen.getByRole("button", { name: "Apresentar" })).toBeTruthy();
   });
 
-  it("sem nada publicado: vê o 'em breve', e não pode editar", async () => {
+  it("sem nada publicado: vê o aviso de que não foi publicada, e não pode editar", async () => {
     simular(pagina({}));
     montar();
-    expect(await screen.findByText("Uma página bonita.")).toBeTruthy();
+    expect(await screen.findByText("Esta página ainda não foi publicada.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Publicar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Apresentar" })).toBeNull();
   });

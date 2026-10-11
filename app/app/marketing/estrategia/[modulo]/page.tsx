@@ -46,14 +46,6 @@ export default async function ModuloDaEstrategiaPage({
         tom={modulo.tom}
         icone={iconeDoModulo(modulo.icone, 64)}
         rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
-        textosDeEspera={{
-          titulo: t("O que vem aqui"),
-          itens: [
-            t("Uma página de apresentação, bonita, com os resultados desta etapa."),
-            t("Você vê em tela cheia, slide a slide, ou rolando a página como num site."),
-            t("A agência cria e atualiza; você acompanha tudo por aqui."),
-          ],
-        }}
       />
       <SubpaginasDoModulo
         modulo={modulo.chave}

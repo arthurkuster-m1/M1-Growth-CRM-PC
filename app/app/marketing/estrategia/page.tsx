@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CartaoDeModulo, CartaoLargo, classeDaGaleria } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { PublicacaoEmMassa } from "@/components/marketing/PublicacaoEmMassa";
-import { Atalho, OQueVem, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { Atalho, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -96,16 +96,6 @@ export default async function EstrategiaPage() {
         </section>
       ))}
 
-      <OQueVem
-        titulo={t("O que vem aqui")}
-        itens={[
-          t(
-            "Cada etapa vira uma página de apresentação, bonita, com os resultados do seu negócio.",
-          ),
-          t("Você vê em tela cheia, slide a slide, ou rolando a página como num site."),
-          t("A agência cria e atualiza; você acompanha tudo por aqui."),
-        ]}
-      />
     </PaginaDeMarketing>
   );
 }

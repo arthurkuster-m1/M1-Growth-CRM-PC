@@ -15,7 +15,22 @@ import { env } from "@/lib/env";
 import { IDIOMA_PADRAO, type Idioma } from "@/lib/i18n/idiomas";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+import { somarDias } from "@/lib/inicio/datas";
+
 import { lerBlocos, type Bloco } from "./blocos";
+import {
+  COLUNAS_DA_CONFIG,
+  COLUNAS_DA_META,
+  COLUNAS_DA_TAREFA_NO_CRONOGRAMA,
+  COLUNAS_DO_ITEM,
+  CONFIG_PADRAO,
+  tarefaDoCronograma,
+  tarefasDaSemana,
+  type ConfigDoCronograma,
+  type ItemDoCronograma,
+  type MetaDoCronograma,
+  type TarefaDoCronograma,
+} from "./cronograma";
 import { linkVigente, tokenSchema } from "./links";
 import { lerChaveDePagina } from "./modulos";
 
@@ -178,4 +193,63 @@ export async function retratosDaPagina(
   return versoesDasLinhas(
     (data ?? []) as Array<{ id: string; taken_at: string; note: string; blocks: unknown }>,
   );
+}
+
+/** O que o link mostra do cronograma: config, metas, ações e as tarefas da semana escolhida. */
+export interface CronogramaPublico {
+  config: ConfigDoCronograma;
+  itens: ItemDoCronograma[];
+  metas: MetaDoCronograma[];
+  tarefas: TarefaDoCronograma[];
+}
+
+export async function cronogramaPublico(
+  link: LinkResolvido,
+  segunda: string,
+): Promise<CronogramaPublico> {
+  const admin = createAdminClient();
+  const org = link.organizationId;
+  const de = new Date(`${somarDias(segunda, -120)}T00:00:00Z`).toISOString();
+  const ate = new Date(`${somarDias(segunda, 8)}T00:00:00Z`).toISOString();
+  const [cfg, itens, metas, tarefas] = await Promise.all([
+    admin
+      .from("marketing_cronograma_config")
+      .select(COLUNAS_DA_CONFIG)
+      .eq("organization_id", org)
+      .maybeSingle(),
+    admin
+      .from("marketing_cronograma_itens")
+      .select(COLUNAS_DO_ITEM)
+      .eq("organization_id", org)
+      .order("ordem", { ascending: true })
+      .limit(300),
+    admin
+      .from("marketing_cronograma_metas")
+      .select(COLUNAS_DA_META)
+      .eq("organization_id", org)
+      .order("ordem", { ascending: true })
+      .limit(12),
+    admin
+      .from("crm_tasks")
+      .select(COLUNAS_DA_TAREFA_NO_CRONOGRAMA)
+      .eq("organization_id", org)
+      .not("cronograma_lado", "is", null)
+      .gte("due_date", de)
+      .lte("due_date", ate)
+      .order("due_date", { ascending: true })
+      .limit(500),
+  ]);
+  const todas = ((tarefas.data ?? []) as Array<Parameters<typeof tarefaDoCronograma>[0]>).map(
+    tarefaDoCronograma,
+  );
+  return {
+    config: (cfg.data as ConfigDoCronograma | null) ?? CONFIG_PADRAO,
+    itens: (
+      (itens.data ?? []) as Array<Omit<ItemDoCronograma, "ordem"> & { ordem: number | string }>
+    ).map((i) => ({ ...i, ordem: Number(i.ordem) })),
+    metas: (
+      (metas.data ?? []) as Array<Omit<MetaDoCronograma, "ordem"> & { ordem: number | string }>
+    ).map((m) => ({ ...m, ordem: Number(m.ordem) })),
+    tarefas: tarefasDaSemana(todas, segunda),
+  };
 }

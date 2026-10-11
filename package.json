@@ -85,6 +85,7 @@
     "date-fns": "^4.4.0",
     "fflate": "^0.8.3",
     "gpt-tokenizer": "^4.0.0",
+    "html2canvas": "1.4.1",
     "import-in-the-middle": "^3.5.1",
     "ipaddr.js": "^2.5.0",
     "jsonc-parser": "^3.3.1",

@@ -13,7 +13,6 @@ import { Apresentacao } from "@/components/marketing/Apresentacao";
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { BlocosRender, type RotulosDosBlocos } from "@/components/marketing/BlocosRender";
 import { EditorDeBlocos } from "@/components/marketing/EditorDeBlocos";
-import { OQueVem } from "@/components/marketing/PaginaDeMarketing";
 import { useT } from "@/hooks/i18n/useT";
 import { usePaginaDeMarketing } from "@/hooks/marketing/usePaginaDeMarketing";
 import { type Bloco } from "@/lib/marketing/blocos";
@@ -37,7 +36,6 @@ export function PaginaDoModulo({
   tom,
   icone,
   rotulos,
-  textosDeEspera,
   subpagina,
 }: {
   chave: string;
@@ -47,8 +45,6 @@ export function PaginaDoModulo({
   tom: TomDaCapa;
   icone: ReactNode;
   rotulos: RotulosDosBlocos;
-  /** O "o que vem aqui" mostrado enquanto nada foi publicado. */
-  textosDeEspera: { titulo: string; itens: string[] };
   /** Presente quando esta é uma SUBPÁGINA: mostra o topo próprio (voltar, título editável, apagar). */
   subpagina?: { tipo: string; voltar: { href: string; rotulo: string } };
 }) {
@@ -293,7 +289,9 @@ export function PaginaDoModulo({
           />
         </>
       ) : vazio ? (
-        <OQueVem titulo={textosDeEspera.titulo} itens={textosDeEspera.itens} />
+        <p className="rounded-3xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          {t("Esta página ainda não foi publicada.")}
+        </p>
       ) : (
         <article className="rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
           <BlocosRender blocos={visiveis} rotulos={rotulos} />

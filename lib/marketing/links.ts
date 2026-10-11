@@ -4,6 +4,9 @@ import { z } from "zod";
 
 import { chaveDeModuloSchema } from "./paginas";
 
+/** A "página" do cronograma, que também tem link sem login (não é um módulo da estratégia). */
+export const CHAVE_DO_CRONOGRAMA = "cronograma";
+
 /**
  * O LINK SEM LOGIN que a agência entrega ao cliente (migration 0587).
  *
@@ -22,7 +25,10 @@ export const tokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32,64}$/);
 
 export const criacaoDeLinkSchema = z.object({
   /** `null`/ausente = o painel inteiro (todas as páginas publicadas). */
-  module_key: chaveDeModuloSchema.nullable().optional(),
+  module_key: z
+    .union([chaveDeModuloSchema, z.literal(CHAVE_DO_CRONOGRAMA)])
+    .nullable()
+    .optional(),
   /** `null`/ausente = não vence. */
   expires_in_days: z.number().int().min(1).max(365).nullable().optional(),
 });

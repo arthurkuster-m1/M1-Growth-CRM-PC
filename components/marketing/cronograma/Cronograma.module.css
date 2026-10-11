@@ -1,0 +1,355 @@
+/* O visual escuro do cronograma (a pegada do HTML original), com a cor da marca da empresa. */
+.tema {
+  --c-bg: #0a0b0f;
+  --c-panel: #12141c;
+  --c-linha: rgba(255, 255, 255, 0.08);
+  --c-linha-forte: rgba(255, 255, 255, 0.15);
+  --c-texto: #f1efe9;
+  --c-medio: #a3a5ad;
+  --c-baixo: #6d7079;
+  --c-a1: var(--primary, #366d6f);
+  --c-a2: color-mix(in srgb, var(--primary, #366d6f) 55%, #ffffff);
+  --c-feito: #3ddc84;
+  --c-andamento: #4d9dff;
+  --c-fazer: #ff5a5f;
+  background: var(--c-bg);
+  color: var(--c-texto);
+  border-radius: 24px;
+  padding: 28px 22px;
+  font-family: inherit;
+}
+
+.titulo {
+  text-align: center;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.titulo b {
+  background: linear-gradient(90deg, var(--c-a2), var(--c-a1));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.subtitulo {
+  text-align: center;
+  color: var(--c-medio);
+  font-size: 15px;
+  margin: 0 0 28px;
+}
+
+.painel {
+  background: linear-gradient(180deg, var(--c-panel), #0d0e14);
+  border: 1px solid var(--c-linha);
+  border-radius: 20px;
+  padding: 24px 22px;
+  margin-bottom: 18px;
+}
+.rolagem {
+  overflow-x: auto;
+}
+.secao {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-medio);
+  margin: 0 0 14px;
+}
+
+/* Metas do topo */
+.metas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.meta {
+  border: 1px solid var(--c-linha-forte);
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.metaTitulo {
+  font-size: 13px;
+  color: var(--c-medio);
+  margin: 0 0 6px;
+}
+.metaAlvo {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, var(--c-a2), var(--c-a1));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.metaAtual {
+  font-size: 12.5px;
+  color: var(--c-medio);
+  margin-top: 4px;
+}
+.metaDescricao {
+  font-size: 12px;
+  color: var(--c-baixo);
+  margin-top: 6px;
+}
+.progresso {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--c-linha);
+  margin-top: 10px;
+  overflow: hidden;
+}
+.progressoBarra {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--c-a1), var(--c-a2));
+}
+
+/* Fases (as setas) */
+.fases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fase {
+  flex: 1 1 150px;
+  min-height: 74px;
+  padding: 10px 26px 10px 30px;
+  background: rgba(255, 255, 255, 0.06);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.fase:first-child {
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+  padding-left: 18px;
+}
+.faseAtiva {
+  background: linear-gradient(135deg, var(--c-a1), var(--c-a2));
+  color: #0a0b0f;
+}
+.faseFeita {
+  background: color-mix(in srgb, var(--c-feito) 22%, transparent);
+}
+.faseNumero {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  opacity: 0.75;
+}
+.faseNome {
+  font-size: 14px;
+  font-weight: 700;
+}
+.faseSemanas {
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+/* Grade (gantt) */
+.grade {
+  min-width: 640px;
+  --semanas: 8;
+  --rotulo: 250px;
+}
+.cabeca,
+.linha {
+  display: grid;
+  grid-template-columns: var(--rotulo) repeat(var(--semanas), 1fr);
+  align-items: center;
+}
+.cabeca {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--c-linha);
+  margin-bottom: 4px;
+}
+.semana {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-a2);
+  line-height: 1.25;
+}
+.semanaData {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--c-baixo);
+}
+.semanaHoje {
+  background: color-mix(in srgb, var(--c-a1) 18%, transparent);
+  border-radius: 8px;
+  padding: 2px 0;
+}
+.grupo {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-a2);
+  padding: 16px 0 6px;
+}
+.linha {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--c-linha);
+}
+.linha:last-child {
+  border-bottom: none;
+}
+.acao {
+  font-size: 14px;
+  padding-right: 14px;
+}
+.acaoNotas {
+  font-size: 11.5px;
+  color: var(--c-baixo);
+  margin-top: 2px;
+}
+.trilho {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: repeat(var(--semanas), 1fr);
+  height: 22px;
+  position: relative;
+}
+.barra {
+  grid-row: 1;
+  align-self: center;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, #33353f, #1e1f27);
+}
+.barraAndamento {
+  background: linear-gradient(135deg, var(--c-a2), var(--c-a1));
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--c-a1) 70%, transparent);
+}
+.barraFeita {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c-feito) 70%, #000), var(--c-feito));
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Legenda e resumo */
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--c-medio);
+  margin-top: 14px;
+}
+.legendaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.amostra {
+  width: 14px;
+  height: 10px;
+  border-radius: 4px;
+}
+
+/* Tarefas da semana */
+.periodo {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-medio);
+  border: 1px solid var(--c-linha);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+.grupoTarefas {
+  margin-bottom: 22px;
+}
+.grupoTitulo {
+  display: inline-flex;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-medio);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--c-linha);
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.tarefa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--c-linha);
+  font-size: 14.5px;
+}
+.tarefa:last-child {
+  border-bottom: none;
+}
+.ponto {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-top: 6px;
+}
+.pontoFeita {
+  background: var(--c-feito);
+  box-shadow: 0 0 9px rgba(61, 220, 132, 0.7);
+}
+.pontoAndamento {
+  background: var(--c-andamento);
+  box-shadow: 0 0 9px rgba(77, 157, 255, 0.7);
+}
+.pontoFazer {
+  background: var(--c-fazer);
+  box-shadow: 0 0 9px rgba(255, 90, 95, 0.7);
+}
+.tarefaTexto {
+  flex: 1;
+}
+.tarefaEtiqueta,
+.tarefaPrazo {
+  flex-shrink: 0;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--c-medio);
+}
+.tarefaAdiada {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  color: #ffb648;
+}
+.vazio {
+  text-align: center;
+  color: var(--c-medio);
+  font-size: 14px;
+  padding: 36px 0;
+}
+.rodape {
+  text-align: center;
+  color: var(--c-baixo);
+  font-size: 12px;
+  margin-top: 8px;
+}
+@media (max-width: 640px) {
+  .tema {
+    padding: 20px 12px;
+    border-radius: 18px;
+  }
+  .painel {
+    padding: 18px 14px;
+  }
+}
