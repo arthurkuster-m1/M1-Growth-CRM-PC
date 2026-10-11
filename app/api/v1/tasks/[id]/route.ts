@@ -19,6 +19,7 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
@@ -32,7 +33,7 @@ import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/t
 export const dynamic = "force-dynamic";
 
 const COLUNAS =
-  "id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields";
+  "id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado";
 
 const edicaoSchema = z
   .object({
@@ -47,6 +48,8 @@ const edicaoSchema = z
     assigned_to: z.string().uuid().nullable().optional(),
     status_option_id: z.string().uuid().nullable().optional(),
     position: z.number().finite().optional(),
+    // Quem faz a tarefa no cronograma do cliente; `null` tira do cronograma. Só gerente+.
+    cronograma_lado: z.enum(["agencia", "cliente"]).nullable().optional(),
     // Só as propriedades que mudam (id → valor, `null` limpa). A rota valida cada valor
     // contra o tipo da propriedade e mescla com o que a tarefa já tem (migration 0584).
     custom_fields: alteracoesDeCamposSchema.optional(),
@@ -76,6 +79,11 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
       requestId,
       details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
     });
+  }
+
+  // Pôr a tarefa no cronograma do cliente (ou tirá-la) é decisão de gestão.
+  if (parsed.data.cronograma_lado !== undefined && !roleAtLeast(authz.org.role, "manager")) {
+    return fail("forbidden", t("Só a gestão define o cronograma da tarefa."), 403, { requestId });
   }
 
   const supabase = await createClient();

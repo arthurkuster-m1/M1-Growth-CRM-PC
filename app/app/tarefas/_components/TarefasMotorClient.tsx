@@ -363,6 +363,50 @@ export function TarefasMotorClient({
         />
       ),
     },
+    // A coluna do cronograma do cliente: só para a gestão. Escolher "Agência" ou "Cliente" põe a
+    // tarefa na semana do prazo, no cronograma; limpar a tira de lá.
+    ...(podeConfigurar
+      ? [
+          {
+            id: "cronograma",
+            titulo: t("Cronograma"),
+            icone: <CalendarBlank size={14} aria-hidden />,
+            largura: 160,
+            celula: (tarefa: Tarefa) => {
+              const lados = [
+                { id: "agencia", rotulo: t("Agência"), cor: "blue" as CorDaOpcao },
+                { id: "cliente", rotulo: t("Cliente"), cor: "orange" as CorDaOpcao },
+              ];
+              const atual = lados.find((l) => l.id === tarefa.cronograma_lado);
+              return (
+                <SeletorDeOpcao
+                  opcoes={lados}
+                  valorId={atual?.id}
+                  podeEditar={podeEditar}
+                  rotulo={t("Cronograma da tarefa")}
+                  aoEscolher={(id) => {
+                    const cronograma_lado = id as "agencia" | "cliente";
+                    void editarTarefa(tarefa.id, { cronograma_lado }, { cronograma_lado });
+                  }}
+                  aoLimpar={() =>
+                    void editarTarefa(
+                      tarefa.id,
+                      { cronograma_lado: null },
+                      { cronograma_lado: null },
+                    )
+                  }
+                >
+                  {atual ? (
+                    <Etiqueta cor={atual.cor}>{atual.rotulo}</Etiqueta>
+                  ) : (
+                    <span className="px-2 text-sm text-muted-foreground">{t("Vazio")}</span>
+                  )}
+                </SeletorDeOpcao>
+              );
+            },
+          } satisfies ColunaDoMotor<Tarefa>,
+        ]
+      : []),
     {
       id: "descricao",
       titulo: t("Descrição"),
@@ -500,7 +544,15 @@ export function TarefasMotorClient({
   // ── filtros, ordenação e agrupamento ────────────────────────────────────────────────
   // Os campos consultáveis moram em `lib/tarefas/campos-da-tarefa.ts`: a MESMA lista serve à
   // barra de filtros, ao motor de consulta e à regra "a tarefa nova nasce com os filtros".
-  const metasDeCampo = metasDaTarefa({ t, opcoes, prioridades, membros, propriedades, fuso });
+  const metasDeCampo = metasDaTarefa({
+    t,
+    opcoes,
+    prioridades,
+    membros,
+    propriedades,
+    fuso,
+    cronograma: podeConfigurar,
+  });
   const camposConsultaveis: CampoConsultavel<Tarefa>[] = metasDeCampo.map((m) => ({
     id: m.id,
     tipo: m.tipo,

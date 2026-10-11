@@ -32,6 +32,8 @@ export interface EntradaDosCampos {
   membros: readonly { id: string; nome: string }[];
   propriedades: readonly PropriedadeDaTarefa[];
   fuso: string;
+  /** A coluna "Cronograma" só existe para quem gerencia o cronograma (gerente+). */
+  cronograma?: boolean;
 }
 
 const TIPO_DA_PROPRIEDADE: Record<PropriedadeDaTarefa["type"], TipoDeCampo> = {
@@ -55,6 +57,7 @@ export function metasDaTarefa({
   membros,
   propriedades,
   fuso,
+  cronograma = false,
 }: EntradaDosCampos): MetaDeCampo[] {
   return [
     { id: "titulo", titulo: t("Título"), tipo: "texto", valorDe: (x) => x.title },
@@ -93,6 +96,20 @@ export function metasDaTarefa({
       tipo: "data",
       valorDe: (x) => diaDe(x.created_at, fuso),
     },
+    ...(cronograma
+      ? [
+          {
+            id: "cronograma",
+            titulo: t("Cronograma"),
+            tipo: "opcao",
+            valorDe: (x: Tarefa) => x.cronograma_lado ?? undefined,
+            opcoes: [
+              { id: "agencia", rotulo: t("Agência"), cor: "blue" },
+              { id: "cliente", rotulo: t("Cliente"), cor: "orange" },
+            ],
+          } satisfies MetaDeCampo,
+        ]
+      : []),
     ...propriedades.map((p): MetaDeCampo => ({
       id: `prop:${p.id}`,
       titulo: p.name,

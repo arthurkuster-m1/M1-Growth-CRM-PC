@@ -18430,6 +18430,8 @@ export const DICIONARIO: Traducoes = {
   "Tarefas desta semana": { es: "Tareas de esta semana" },
   "Tirar da semana": { es: "Quitar de la semana" },
   "Visão do cronograma": { es: "Vista del cronograma" },
+  "Cronograma da tarefa": { es: "Cronograma de la tarea" },
+  "Só a gestão define o cronograma da tarefa.": { es: "Solo la gestión define el cronograma de la tarea." },
   "Cada fase reúne várias ações-chave. A semana mostrada é a do cronograma (S1, S2…).": { es: "Cada fase reúne varias acciones clave. La semana mostrada es la del cronograma (S1, S2…)." },
   "Adicionar fase": { es: "Agregar fase" },
   "Aparência da imagem": { es: "Apariencia de la imagen" },

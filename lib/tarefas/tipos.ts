@@ -56,6 +56,8 @@ export interface Tarefa {
   position?: number;
   /** Valor de cada propriedade personalizada, por id de `crm_task_properties` (migration 0584). */
   custom_fields?: Record<string, unknown>;
+  /** Quem faz a tarefa no cronograma do cliente; nulo/ausente = fora do cronograma (migration 0591). */
+  cronograma_lado?: "agencia" | "cliente" | null;
 }
 
 export interface NovaTarefa {
@@ -72,6 +74,8 @@ export interface NovaTarefa {
   position?: number;
   /** Só as propriedades que mudam: id → valor (ou `null` para limpar). */
   custom_fields?: Record<string, unknown>;
+  /** Só a edição usa (gerente+): põe a tarefa no cronograma do cliente ou a tira. */
+  cronograma_lado?: "agencia" | "cliente" | null;
 }
 
 export type EdicaoDaTarefa = Partial<NovaTarefa>;
