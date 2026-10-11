@@ -52,10 +52,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { marcaDaOrigem, origemDeCampanhaDaConversa } from "@/lib/campanhas/origem-do-lead";
 
 import { logger } from "@/lib/logger";
+import { sinaisDoPayload } from "@/lib/marketing/origem-da-campanha";
+import {
+  carimbarOrigemNoLead,
+  resolverOrigemDaCampanha,
+} from "@/lib/marketing/origem-da-campanha-servidor";
 import { ORIGEM_DO_WHATSAPP } from "@/lib/channels/origem-do-negocio";
 
 import { lerClientePelaAgenda } from "@/lib/contacts/cliente-pela-agenda";
-import { ehIdentificadorTecnico, rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
+import {
+  ehIdentificadorTecnico,
+  rotuloDoContato,
+  SEM_NOME,
+} from "@/lib/contacts/rotulo-do-contato";
 
 import { emitLeadActivity } from "./activity-emitter";
 
@@ -273,7 +282,9 @@ export async function garantirLeadDaConversa(
     // `first_service_at` viaja no select que JÁ existe: decidir o funil não custa
     // uma consulta a mais no caminho quente da ingestão. É por isso que o fato
     // mora numa coluna de `contacts`, e não é derivado da agenda a cada inbound.
-    .select("is_blocked,is_personal,display_name,name,phone_number,source,source_metadata,first_service_at")
+    .select(
+      "is_blocked,is_personal,display_name,name,phone_number,source,source_metadata,first_service_at",
+    )
     .eq("organization_id", organizationId)
     .eq("id", contactId)
     .maybeSingle();
@@ -315,14 +326,29 @@ export async function garantirLeadDaConversa(
   // resultado dela. Campanha sem funil declarado, ou conversa que não nasceu de
   // campanha, seguem a regra da 0262 sem diferença nenhuma.
   const origemDaCampanha = await origemDeCampanhaDaConversa(db, organizationId, conversationId);
-  const destino = origemDaCampanha?.pipelineId
-    ? await destinoDaCampanha(
-        db,
-        organizationId,
-        origemDaCampanha.pipelineId,
-        origemDaCampanha.stageId,
-      )
-    : await funilDeEntrada(db, organizationId, ehCliente);
+  // A campanha de DEMANDA de onde o anúncio veio (sem rede: criativos importados, campanhas
+  // atreladas e o cache da hierarquia). Só quando a conversa não nasceu de um disparo.
+  const meta = (contato?.source_metadata ?? {}) as Record<string, unknown>;
+  const demanda = origemDaCampanha
+    ? null
+    : await resolverOrigemDaCampanha(db, organizationId, {
+        ...sinaisDoPayload(meta),
+        adId: typeof meta.ad_id === "string" ? meta.ad_id : null,
+      });
+  const funilDaDemanda = demanda?.pipelineId
+    ? await destinoDaCampanha(db, organizationId, demanda.pipelineId, null)
+    : null;
+  const destino =
+    funilDaDemanda && !("erro" in funilDaDemanda)
+      ? funilDaDemanda
+      : origemDaCampanha?.pipelineId
+        ? await destinoDaCampanha(
+            db,
+            organizationId,
+            origemDaCampanha.pipelineId,
+            origemDaCampanha.stageId,
+          )
+        : await funilDeEntrada(db, organizationId, ehCliente);
   if ("erro" in destino) return { criado: false, motivo: destino.erro };
 
   // 4 · o card.
@@ -408,6 +434,7 @@ export async function garantirLeadDaConversa(
     return { criado: false, motivo: "ja_existe" };
   }
   const lead = { id: novoId as string };
+  if (demanda) await carimbarOrigemNoLead(db, organizationId, lead.id, demanda);
 
   // 5 · o registro, pelo EMISSOR CANÔNICO — não por insert cru.
   //

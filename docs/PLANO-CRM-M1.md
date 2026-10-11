@@ -185,3 +185,21 @@ prospecção por scraping.
   Arthur: virar campanha ou arquivar.
 - Novo tipo de campanha "Aproveitamento de base" (clientes ativos: recompra/recorrência),
   que se encaixa com o "ao ganhar entra no funil" da sessão 2.
+
+### Sessão 6 (origem e rastreio) — feita em 11/10/2026 (migrations 0607 e 0608)
+- **Lead carrega a origem:** `crm_leads.demand_campaign_id`, `demand_landing_page_id` e
+  `demand_creative_id`. Lead nascido no funil de uma campanha herda a campanha (trigger).
+- **Resolvedor único** (`lib/marketing/origem-da-campanha.ts`, puro e testado): campanha dita pela
+  fonte → anúncio (`ad_id` → criativo) → id da campanha do Meta (`utm_campaign`/`utm_id`/
+  `campaign_id`) → nomes (campanha e anúncio) → endereço da página (LP). Sem chamar a Meta na
+  ingestão (usa criativos importados, campanhas atreladas e o cache da hierarquia).
+- **Portas:** (1) formulário de LP (webhook `/webhooks/in/[token]`): fonte pode ser ligada a uma
+  campanha; UTMs e página casam LP/criativo; (2) anúncio que abre o WhatsApp (nascimento do lead
+  da conversa); (3) Lead Ads da Meta: pelo formulário ligado, com `ad_id`/`campaign_id` no
+  payload (integração nativa direta pede `leads_retrieval` e fica para depois); (4) prospecção
+  ativa/manual/planilha: cair no funil da campanha basta.
+- **Telas:** aba "Funil de conversão" da campanha ganhou "Como os leads chegam" (ligar
+  formulários, modelo de UTM da Meta, instruções); página Clientes ganhou a coluna e o filtro
+  "Campanha".
+- **Contagem:** leads da campanha = quem tem a campanha gravada OU está no funil dela.
+- **Sincronização do Meta** importa anúncios novos como criativos a cada 6 h.

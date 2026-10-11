@@ -5,7 +5,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
 import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
-import { atualizarMetricasDosCriativos } from "@/lib/marketing/criativos-servidor";
+import {
+  atualizarMetricasDosCriativos,
+  importarCriativosDoMeta,
+} from "@/lib/marketing/criativos-servidor";
 import { lerInsightsPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia";
 
 /**
@@ -103,6 +106,23 @@ export async function sincronizarCampanhaComMeta(
       return falha("erro_ao_gravar");
     }
   }
+  // Anúncio novo no Meta vira criativo da campanha (a cada 6 horas: poupa a cota). É o que
+  // permite casar o lead que chega pelo anúncio com o criativo dele.
+  if (agora.getUTCHours() % 6 === 0) {
+    await importarCriativosDoMeta(
+      admin,
+      {
+        id: c.id,
+        organization_id: c.organization_id,
+        start_date: c.start_date,
+        end_date: c.end_date,
+      },
+      credencial.credencial.accessToken,
+      ids,
+      null,
+    ).catch(() => undefined);
+  }
+
   // As métricas por criativo andam junto (só gasta chamada se houver criativo do Meta cadastrado).
   await atualizarMetricasDosCriativos(
     admin,

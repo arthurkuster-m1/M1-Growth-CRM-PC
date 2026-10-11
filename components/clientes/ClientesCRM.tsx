@@ -48,6 +48,7 @@ interface Etapa {
 interface Dados {
   funis: Funil[];
   etapas: Etapa[];
+  campanhas?: Array<{ id: string; name: string }>;
   clientes: ClienteDaLista[];
   pode_editar: boolean;
   pode_gerir: boolean;
@@ -124,6 +125,10 @@ export function ClientesCRM() {
   }
 
   const etapasPorId = useMemo(() => new Map((dados?.etapas ?? []).map((e) => [e.id, e])), [dados]);
+  const campanhasPorId = useMemo(
+    () => new Map((dados?.campanhas ?? []).map((c) => [c.id, c.name])),
+    [dados],
+  );
   const funisPorId = useMemo(() => new Map((dados?.funis ?? []).map((f) => [f.id, f])), [dados]);
 
   const linhas: Linha[] = useMemo(() => {
@@ -288,6 +293,26 @@ export function ClientesCRM() {
       },
     },
     {
+      id: "campanha",
+      titulo: t("Campanha"),
+      icone: <Rows size={14} aria-hidden />,
+      largura: 220,
+      celula: (l) => {
+        const nomes = [
+          ...new Set(
+            (l.participacao ? [l.participacao] : l.participacoes)
+              .map((p) => (p.campanha_id ? campanhasPorId.get(p.campanha_id) : null))
+              .filter((n): n is string => Boolean(n)),
+          ),
+        ];
+        return (
+          <span className="block truncate px-2 text-sm" title={nomes.join(", ")}>
+            {nomes.length > 0 ? nomes.join(", ") : "—"}
+          </span>
+        );
+      },
+    },
+    {
       id: "status",
       titulo: t("Situação"),
       icone: <Rows size={14} aria-hidden />,
@@ -448,6 +473,20 @@ export function ClientesCRM() {
       valorDe: (l) => [...new Set(l.participacoes.map((p) => p.funil_id))],
       opcoes: (dados?.funis ?? []).map((f) => ({ id: f.id, rotulo: f.name })),
       rotuloDoValor: (v) => funisPorId.get(v)?.name ?? v,
+    },
+    {
+      id: "campanha",
+      titulo: t("Campanha"),
+      tipo: "multi",
+      valorDe: (l) => [
+        ...new Set(
+          (l.participacao ? [l.participacao] : l.participacoes)
+            .map((p) => p.campanha_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ],
+      opcoes: (dados?.campanhas ?? []).map((c) => ({ id: c.id, rotulo: c.name })),
+      rotuloDoValor: (v) => campanhasPorId.get(v) ?? v,
     },
     {
       id: "etapa",

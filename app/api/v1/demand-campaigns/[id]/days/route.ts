@@ -51,7 +51,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     .maybeSingle();
   let leadsPorDia: Array<{ day: string; leads: number }> = [];
   const janela = campanha ? janelaDosLeads(campanha as never) : null;
-  if (campanha?.pipeline_id && janela) {
+  if (janela && campanha) {
     const { data: org } = await a.supabase
       .from("organizations")
       .select("timezone")
@@ -61,10 +61,11 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       "fn_demand_campaign_leads_by_day",
       {
         p_org: a.orgId,
-        p_pipeline: campanha.pipeline_id,
+        p_pipeline: campanha.pipeline_id ?? null,
         p_from: janela.de,
         p_to: janela.ate,
         p_tz: (org?.timezone as string | null) || "America/Sao_Paulo",
+        p_campaign: id,
       },
     );
     if (!erroDeLeads) leadsPorDia = (conta ?? []) as typeof leadsPorDia;

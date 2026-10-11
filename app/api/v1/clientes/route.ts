@@ -37,6 +37,8 @@ export interface ParticipacaoDoCliente {
   ultima_atividade: string | null;
   previsao_de_fechamento: string | null;
   origem: string | null;
+  /** A campanha de demanda de onde o negócio veio (anúncio, LP, formulário ou o funil dela). */
+  campanha_id: string | null;
 }
 
 export interface ClienteDaLista {
@@ -67,7 +69,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const orgId = authz.org.orgId;
   const supabase = await createClient();
 
-  const [{ data: funis }, { data: etapas }] = await Promise.all([
+  const [{ data: funis }, { data: etapas }, { data: campanhas }] = await Promise.all([
     supabase
       .from("crm_pipelines")
       .select("id, name, slug, position, is_default, settings")
@@ -80,13 +82,14 @@ export async function GET(req: NextRequest): Promise<Response> {
       .eq("organization_id", orgId)
       .eq("is_archived", false)
       .order("position", { ascending: true }),
+    supabase.from("demand_campaigns").select("id, name").eq("organization_id", orgId).limit(500),
   ]);
 
   // Participações (negócios com contato). Com um funil escolhido, primeiro quem está nele.
   let consultaDeNegocios = supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source",
+      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id",
     )
     .eq("organization_id", orgId)
     .not("contact_id", "is", null)
@@ -114,6 +117,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     last_activity_at: string | null;
     expected_close_date: string | null;
     source: string | null;
+    demand_campaign_id: string | null;
   }>;
 
   // Quem aparece: no funil escolhido, os contatos dele; em "todos", todos os contatos.
@@ -155,6 +159,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       ultima_atividade: n.last_activity_at,
       previsao_de_fechamento: n.expected_close_date,
       origem: n.source,
+      campanha_id: n.demand_campaign_id,
     });
     porContato.set(n.contact_id, lista);
   }
@@ -201,6 +206,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         is_default: (f as { is_default: boolean }).is_default,
       })),
       etapas: etapas ?? [],
+      campanhas: (campanhas ?? []) as Array<{ id: string; name: string }>,
       clientes,
       pode_editar: roleAtLeast(authz.org.role, "agent"),
       pode_gerir: roleAtLeast(authz.org.role, "manager"),

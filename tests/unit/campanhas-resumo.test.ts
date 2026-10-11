@@ -482,3 +482,74 @@ describe("dia a dia: todos os dias do período", () => {
     expect(somarMeses("2026-01", -1)).toBe("2025-12");
   });
 });
+
+import { casarOrigemDaCampanha, sinaisDoPayload } from "@/lib/marketing/origem-da-campanha";
+
+describe("de qual campanha o lead veio", () => {
+  const campanhas = [
+    {
+      id: "c1",
+      name: "Seletiva XPTO",
+      pipeline_id: "p1",
+      platform_campaigns: [{ id: "120001", name: "[SELETIVA] Leads" }],
+    },
+    { id: "c2", name: "Base", pipeline_id: "p2", platform_campaigns: [] },
+  ];
+  const criativos = [
+    {
+      id: "k1",
+      campaign_id: "c1",
+      ad_id: "9001",
+      name: "Vídeo 1",
+      ad_name: "AD 01",
+      link_url: "https://lp.com/oferta",
+    },
+  ];
+  const lps = [{ id: "l1", campaign_id: "c1", url: "https://www.lp.com/oferta/" }];
+
+  it("pelo anúncio: o criativo manda na campanha", () => {
+    expect(casarOrigemDaCampanha(campanhas, criativos, lps, { adId: "9001" })).toMatchObject({
+      campanhaId: "c1",
+      criativoId: "k1",
+      landingPageId: "l1",
+      como: "anuncio",
+    });
+  });
+  it("pela UTM com o id da campanha da Meta", () => {
+    expect(
+      casarOrigemDaCampanha(campanhas, criativos, lps, {
+        utmCampaign: "120001",
+        utmContent: "9001",
+      }),
+    ).toMatchObject({ campanhaId: "c1", como: "campanha_da_plataforma" });
+  });
+  it("pelo nome da campanha e do anúncio", () => {
+    expect(
+      casarOrigemDaCampanha(campanhas, criativos, lps, {
+        utmCampaign: "[seletiva] leads",
+        utmContent: "ad 01",
+      }),
+    ).toMatchObject({ campanhaId: "c1", criativoId: "k1", como: "nome" });
+  });
+  it("pela página; e a fonte ligada a uma campanha vence tudo", () => {
+    expect(
+      casarOrigemDaCampanha(campanhas, criativos, lps, { paginaUrl: "https://lp.com/oferta?x=1" }),
+    ).toMatchObject({ campanhaId: "c1", landingPageId: "l1", como: "pagina" });
+    expect(
+      casarOrigemDaCampanha(campanhas, criativos, lps, { campanhaDeDemandaId: "c2", adId: "9001" }),
+    ).toMatchObject({ campanhaId: "c2", como: "fonte" });
+  });
+  it("sem rastro nenhum: não inventa", () => {
+    expect(
+      casarOrigemDaCampanha(campanhas, criativos, lps, { utmCampaign: "outra" }),
+    ).toMatchObject({
+      campanhaId: null,
+      como: "nenhum",
+    });
+  });
+  it("lê os sinais de um payload de formulário", () => {
+    expect(
+      sinaisDoPayload({ UTM_Campaign: "120001", ad_id: 9001, page_url: "https://lp.com/oferta" }),
+    ).toMatchObject({ utmCampaign: "120001", adId: "9001", paginaUrl: "https://lp.com/oferta" });
+  });
+});

@@ -13,6 +13,7 @@ import {
   rotuloDoStatus,
 } from "@/components/marketing/campanhas/rotulos";
 import { LandingPagesDaCampanha } from "@/components/marketing/campanhas/LandingPagesDaCampanha";
+import { EntradaDeLeads } from "@/components/marketing/campanhas/EntradaDeLeads";
 import { FunilDeConversao } from "@/components/marketing/campanhas/FunilDeConversao";
 import { AbordagensDaCampanha } from "@/components/marketing/campanhas/AbordagensDaCampanha";
 import { CriativosDaCampanha } from "@/components/marketing/campanhas/CriativosDaCampanha";
@@ -268,7 +269,16 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         </div>
       ) : null}
 
-      {aba === "funil" ? <FunilDeConversao c={c} podeEditar={podeEditar} /> : null}
+      {aba === "funil" ? (
+        <>
+          <EntradaDeLeads
+            campanhaId={c.id}
+            podeEditar={podeEditar}
+            temFunil={Boolean(c.pipeline_id)}
+          />
+          <FunilDeConversao c={c} podeEditar={podeEditar} />
+        </>
+      ) : null}
 
       {aba === "abordagem" ? (
         <AbordagensDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
