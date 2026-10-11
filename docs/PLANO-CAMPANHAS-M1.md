@@ -160,3 +160,12 @@ Para canais sem API, o dado é **digitado por dia ou semana** na própria campan
   edição em massa, edição direto na linha. Página de cada campanha com cadastro, investimento
   (líquido calculado), metas, campanhas da plataforma e diário de bordo.
 - **Próximo:** C2 (a planilha dentro do app: dia a dia, pace, funil completo, alertas).
+
+### Ajuste pedido (11/10/2026) — funis dentro da campanha, em formato visual
+- Hoje os funis são criados em Geração de demanda (`GestaoDeFunis`). O Arthur quer que a criação
+  e a edição do funil passem a ficar **em um bloco dentro da própria campanha**.
+- Visual: **degraus em seta lado a lado** (referência: Isca → Entrada → Principal → Expansão →
+  Recorrência), cada degrau com número, nome e descrição curta; fundo suave, seta apontando para
+  a direita, responsivo (empilha no celular).
+- Entra **depois de fechar o que já está programado (C2 em diante)**, junto da lista de ajustes
+  que o Arthur vai passar. Não iniciar antes.
