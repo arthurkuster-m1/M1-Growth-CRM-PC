@@ -41,6 +41,8 @@ export interface LinkDeMarketing {
   revoked_at: string | null;
   created_at: string;
   last_used_at: string | null;
+  /** O título da página do link (para a agência saber qual é qual); vem da listagem. */
+  page_title?: string | null;
 }
 
 export const COLUNAS_DO_LINK =

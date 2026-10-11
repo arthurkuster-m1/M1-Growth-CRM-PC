@@ -51,7 +51,8 @@ describe("Compartilhar com o cliente", () => {
     montar();
     const campo = (await screen.findByLabelText("Endereço do link")) as HTMLInputElement;
     expect(campo.value).toContain(`/p/${TOKEN}`);
-    expect(screen.getAllByText("Só esta página").length).toBeGreaterThan(1);
+    // A lista diz QUAL página é o link (e não só "Só esta página").
+    expect(screen.getByText("Mapeamento do funil atual")).toBeTruthy();
   });
 
   it("gera um link de uma página, com validade, e ele aparece na lista", async () => {

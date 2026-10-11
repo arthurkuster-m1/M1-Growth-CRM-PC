@@ -45,7 +45,29 @@ export async function GET(): Promise<Response> {
     .limit(100);
   if (error) return fail("internal_error", t("Erro ao listar os links."), 500, { requestId });
 
-  return ok({ links: (data ?? []) as unknown as LinkDeMarketing[] }, { requestId });
+  const links = (data ?? []) as unknown as LinkDeMarketing[];
+  // O título de cada página, para a lista dizer QUAL página é cada link.
+  const chaves = [...new Set(links.map((l) => l.module_key).filter((k): k is string => !!k))];
+  const titulos = new Map<string, string>();
+  if (chaves.length > 0) {
+    const { data: paginas } = await supabase
+      .from("marketing_pages")
+      .select("module_key, title")
+      .eq("organization_id", authz.org.orgId)
+      .in("module_key", chaves);
+    for (const p of (paginas ?? []) as Array<{ module_key: string; title: string | null }>) {
+      if (p.title?.trim()) titulos.set(p.module_key, p.title.trim());
+    }
+  }
+  return ok(
+    {
+      links: links.map((l) => ({
+        ...l,
+        page_title: l.module_key ? (titulos.get(l.module_key) ?? null) : null,
+      })),
+    },
+    { requestId },
+  );
 }
 
 export async function POST(req: NextRequest): Promise<Response> {

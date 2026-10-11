@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
 import { useLinksDeMarketing } from "@/hooks/marketing/useLinksDeMarketing";
-import { enderecoDoLink, linkVigente } from "@/lib/marketing/links";
+import { textosDoModulo, textosDoTipoDeSubpagina } from "@/components/marketing/textos";
+import {
+  CHAVE_DO_CRONOGRAMA,
+  enderecoDoLink,
+  linkVigente,
+  type LinkDeMarketing,
+} from "@/lib/marketing/links";
+import { lerChaveDePagina } from "@/lib/marketing/modulos";
 import { Copy, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -54,12 +61,19 @@ export function CompartilharPagina({
     }
   }
 
-  const rotuloDoEscopo = (moduloDoLink: string | null) =>
-    moduloDoLink === null
-      ? t("Painel inteiro")
-      : moduloDoLink === chave
-        ? t("Só esta página")
-        : t("Outra página");
+  /** O nome da página do link: assim, com muitos links, dá para saber qual é qual. */
+  const rotuloDoEscopo = (link: LinkDeMarketing) => {
+    const chaveDoLink = link.module_key;
+    if (chaveDoLink === null) return t("Painel inteiro");
+    if (chaveDoLink === CHAVE_DO_CRONOGRAMA) return t("Cronograma");
+    const lida = lerChaveDePagina(chaveDoLink);
+    const modulo = lida ? textosDoModulo(t, lida.modulo)?.titulo : undefined;
+    if (lida?.tipo) {
+      const nome = link.page_title || textosDoTipoDeSubpagina(t, lida.tipo)?.titulo || chaveDoLink;
+      return modulo ? `${modulo} · ${nome}` : nome;
+    }
+    return link.page_title || modulo || chaveDoLink;
+  };
 
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
@@ -146,9 +160,7 @@ export function CompartilharPagina({
                 .map((l) => (
                   <li key={l.id} className="rounded-xl border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        {rotuloDoEscopo(l.module_key)}
-                      </span>
+                      <span className="font-medium text-foreground">{rotuloDoEscopo(l)}</span>
                       <span>
                         {l.expires_at
                           ? `${t("Vence em")} ${new Date(l.expires_at).toLocaleDateString()}`
