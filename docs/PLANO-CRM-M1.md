@@ -86,6 +86,8 @@ a fonte real do faturamento nos dashboards.
 
 ## 6. As sessões (ordem recomendada)
 
+**Andamento:** sessão 1 ✅ (11/10/2026) — lead único no ar.
+
 Cada sessão termina com algo que você consegue **testar no domínio**.
 
 | # | Sessão | O que entrega | Você testa |
@@ -128,3 +130,19 @@ prospecção por scraping.
   desses módulos antes de ir ao ar.
 - Unir duplicados é irreversível → na sessão 1, backup e relatório antes de unir.
 - Rastreio do WhatsApp nativo depende da API oficial do Meta; vamos validar com um anúncio real.
+
+## 9. Registro das sessões
+
+### Sessão 1 — Lead único (feita em 11/10/2026)
+- **Já existia:** o Inbox já cria o lead sozinho (`garantirLeadDaConversa`) e o contato já é único
+  por telefone. Os 3 leads de hoje (2 de WhatsApp real, 1 do próprio Arthur) vieram assim.
+- **Novo (migration 0593):** índice único `uniq_crm_leads_open_contact_pipeline` (1 negócio aberto
+  por contato em cada funil); `contacts.is_mql`/`mql_at`/`mql_by`; `contacts.first_approached_at`
+  (trigger na 1ª mensagem de saída); trigger que carimba `Funil: <nome>` no contato.
+- **Regra no código:** `createLeadHandler` recusa (409, na tela) ou reaproveita (formulário,
+  automação, importação) quando o contato já está no funil; reaproveitar junta campos e tags e
+  registra na linha do tempo.
+- **Tela:** seção "Qualificação" no dossiê do lead (entrou em, primeira abordagem, MQL, funis).
+- **Decisão 3 ajustada:** em vez de "reabrir" a participação, vale a regra: 1 aberta por funil; a
+  encerrada fica no histórico e a retomada cria a nova ligada à anterior (já existia).
+- **Leads de teste:** não apaguei — são conversas reais de WhatsApp (uma é o número do Arthur).
