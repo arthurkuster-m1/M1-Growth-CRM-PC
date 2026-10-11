@@ -12,7 +12,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { SeletorDeIdioma } from "@/components/shell/SeletorDeIdioma";
 import { useT } from "@/hooks/i18n/useT";
 import Link from "next/link";
 import { SignOut, ShieldCheck } from "@/lib/ui/icons";
@@ -32,7 +31,6 @@ export function UserMenu() {
 
   return (
     <div className="flex items-center gap-2">
-      <SeletorDeIdioma />
       <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -7,14 +7,16 @@
  * inteiro, com Postgres real e o handler de produção, é
  * `tests/invariants/jev-followup-no-turno.test.ts`.
  */
-import { readFileSync } from "node:fs";
 
 import type pg from "pg";
 import { describe, expect, it, vi } from "vitest";
 
-import { consultarJevNoFollowup, perguntaDoFollowup, type EntradaDoFollowup } from "@/lib/ai/decisao/followup";
+import {
+  consultarJevNoFollowup,
+  perguntaDoFollowup,
+  type EntradaDoFollowup,
+} from "@/lib/ai/decisao/followup";
 import { SAIDAS_NO_MAXIMO, TAREFA_DO_FOLLOWUP } from "@/lib/ai/decisao/tarefas";
-import { DICIONARIO } from "@/lib/i18n/dicionario";
 
 const ADMIN = "22222222-2222-4222-8222-222222222222";
 const ACEITE = { em: "2026-09-23T12:00:00.000Z", por: ADMIN };
@@ -54,7 +56,12 @@ function respostaCom(escolha: string, tipo = "choice"): Response {
       answers: {
         followup:
           tipo === "choice"
-            ? { type: "choice", choice: escolha, probabilities: { [escolha]: 0.91 }, confidence: 0.8 }
+            ? {
+                type: "choice",
+                choice: escolha,
+                probabilities: { [escolha]: 0.91 },
+                confidence: 0.8,
+              }
             : { type: "noul", noul: 0.9 },
       },
       usage: { input_tokens: 210, output_tokens: 2 },
@@ -86,7 +93,10 @@ const deps = (fetchImpl: ReturnType<typeof vi.fn>) => ({
 const corpoDoPedido = (fetchImpl: ReturnType<typeof vi.fn>) =>
   JSON.parse(String(fetchImpl.mock.calls[0]![1].body)) as {
     state: string;
-    questions: Record<string, { type: string; instructions: string; criteria: Record<string, unknown> }>;
+    questions: Record<
+      string,
+      { type: string; instructions: string; criteria: Record<string, unknown> }
+    >;
   };
 
 describe("perguntaDoFollowup — uma escolha entre as saídas do passo, de igual para igual com a IA de sempre", () => {
@@ -110,7 +120,10 @@ describe("perguntaDoFollowup — uma escolha entre as saídas do passo, de igual
     ["uma saída em branco", ["quer", ""]],
     ["uma saída só de espaços", ["quer", "   "]],
     ["duas saídas iguais", ["quer", "quer"]],
-    [`mais de ${SAIDAS_NO_MAXIMO} saídas`, Array.from({ length: SAIDAS_NO_MAXIMO + 1 }, (_, i) => `s${i}`)],
+    [
+      `mais de ${SAIDAS_NO_MAXIMO} saídas`,
+      Array.from({ length: SAIDAS_NO_MAXIMO + 1 }, (_, i) => `s${i}`),
+    ],
   ])("fora do contrato do fornecedor (%s), a pergunta não sai", (_caso, classes) => {
     expect(perguntaDoFollowup(classes)).toBeNull();
   });
@@ -133,9 +146,13 @@ describe("consultarJevNoFollowup", () => {
   });
 
   it("a tarefa pausada: nada sai", async () => {
-    const { pool } = poolCom({ jev: { ...LIGADO.jev, tarefas: { followup: { estado: "desligada" } } } });
+    const { pool } = poolCom({
+      jev: { ...LIGADO.jev, tarefas: { followup: { estado: "desligada" } } },
+    });
     const fetchImpl = vi.fn();
-    expect(await consultarJevNoFollowup(pool, entrada(novaOrg()), deps(fetchImpl)).escolha).toBeNull();
+    expect(
+      await consultarJevNoFollowup(pool, entrada(novaOrg()), deps(fetchImpl)).escolha,
+    ).toBeNull();
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -162,15 +179,25 @@ describe("consultarJevNoFollowup", () => {
   });
 
   it("um `decidindo` gravado por outra versão vale observando: a saída do Jev nunca decide aqui", async () => {
-    const { pool } = poolCom({ jev: { ...LIGADO.jev, tarefas: { followup: { estado: "decidindo" } } } });
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg()), deps(vi.fn().mockResolvedValue(respostaCom("quer"))));
+    const { pool } = poolCom({
+      jev: { ...LIGADO.jev, tarefas: { followup: { estado: "decidindo" } } },
+    });
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg()),
+      deps(vi.fn().mockResolvedValue(respostaCom("quer"))),
+    );
     expect((await jev.escolha)?.estado).toBe("observando");
   });
 
   it("resposta em mídia (nada digitado): nada sai, nem o estado é lido", async () => {
     const { pool } = poolCom(LIGADO);
     const fetchImpl = vi.fn();
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg(), { mensagem: "  " }), deps(fetchImpl));
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg(), { mensagem: "  " }),
+      deps(fetchImpl),
+    );
     expect(await jev.escolha).toBeNull();
     expect(pool.query).not.toHaveBeenCalled();
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -179,7 +206,11 @@ describe("consultarJevNoFollowup", () => {
   it("saídas fora do contrato: nada sai, nem o estado é lido — e nada se grava", async () => {
     const { pool } = poolCom(LIGADO);
     const fetchImpl = vi.fn();
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg(), { classes: ["quer", "quer"] }), deps(fetchImpl));
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg(), { classes: ["quer", "quer"] }),
+      deps(fetchImpl),
+    );
     expect(await jev.escolha).toBeNull();
     jev.observar("quer");
     await new Promise((r) => setTimeout(r, 0));
@@ -190,7 +221,11 @@ describe("consultarJevNoFollowup", () => {
   it("sem o id da mensagem, não pergunta: a resposta não teria onde ficar", async () => {
     const { pool } = poolCom(LIGADO);
     const fetchImpl = vi.fn();
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg(), { idDaMensagem: async () => null }), deps(fetchImpl));
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg(), { idDaMensagem: async () => null }),
+      deps(fetchImpl),
+    );
     expect(await jev.escolha).toBeNull();
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -200,7 +235,11 @@ describe("consultarJevNoFollowup", () => {
     ["uma resposta que não é escolha", respostaCom("quer", "noul")],
   ])("%s é falha, e nada se grava", async (_caso, resposta) => {
     const { pool, consultas } = poolCom(LIGADO);
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg()), deps(vi.fn().mockResolvedValue(resposta)));
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg()),
+      deps(vi.fn().mockResolvedValue(resposta)),
+    );
     expect(await jev.escolha).toBeNull();
     jev.observar("quer");
     await new Promise((r) => setTimeout(r, 0));
@@ -217,14 +256,20 @@ describe("consultarJevNoFollowup", () => {
     expect(await jev.escolha).toBeNull();
     const [erro] = consultas.filter((c) => /insert/i.test(c.sql));
     expect(erro!.sql).toContain("'jev_observacao'");
-    expect(erro!.params).toEqual(expect.arrayContaining(["followup_classify", "jev_credencial_invalida", 401]));
+    expect(erro!.params).toEqual(
+      expect.arrayContaining(["followup_classify", "jev_credencial_invalida", 401]),
+    );
   });
 });
 
 describe("observar — o par e o custo, no mesmo comando, sem o texto do cliente", () => {
   async function gravado(classeDaIa: string | null) {
     const { pool, consultas } = poolCom(LIGADO);
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg()), deps(vi.fn().mockResolvedValue(respostaCom("não quer"))));
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg()),
+      deps(vi.fn().mockResolvedValue(respostaCom("não quer"))),
+    );
     jev.observar(classeDaIa);
     await vi.waitFor(() => expect(consultas.filter((c) => /insert/i.test(c.sql))).toHaveLength(1));
     return consultas.find((c) => /insert/i.test(c.sql))!;
@@ -236,7 +281,16 @@ describe("observar — o par e o custo, no mesmo comando, sem o texto do cliente
     expect(sql).toContain("'followup_classify', 'typesafe'");
     expect(sql).toContain("'jev_observacao'");
     expect(params).toEqual(
-      expect.arrayContaining([TAREFA_DO_FOLLOWUP.id, "observando", "conversa-1", "mensagem-1", "job-1", "não quer", "quer", 0.91]),
+      expect.arrayContaining([
+        TAREFA_DO_FOLLOWUP.id,
+        "observando",
+        "conversa-1",
+        "mensagem-1",
+        "job-1",
+        "não quer",
+        "quer",
+        0.91,
+      ]),
     );
     // O texto do cliente não vai para o banco — nem inteiro, nem o pedaço.
     expect(JSON.stringify(params)).not.toContain("quero sim");
@@ -244,7 +298,9 @@ describe("observar — o par e o custo, no mesmo comando, sem o texto do cliente
 
   it("o retry não conta em dobro: o índice único por mensagem, que só preenche o lado da IA quando faltava", async () => {
     const { sql } = await gravado("quer");
-    expect(sql).toMatch(/on conflict \(organization_id, tarefa, message_id\) where message_id is not null/);
+    expect(sql).toMatch(
+      /on conflict \(organization_id, tarefa, message_id\) where message_id is not null/,
+    );
     expect(sql).toMatch(
       /do update set rotulo_atual = excluded\.rotulo_atual\s+where o\.rotulo_atual is null and o\.job_id is not distinct from excluded\.job_id/,
     );
@@ -258,23 +314,22 @@ describe("observar — o par e o custo, no mesmo comando, sem o texto do cliente
 
   it("a gravação que falha não lança: é telemetria", async () => {
     const { pool } = poolCom(LIGADO, { falhaNaEscrita: true });
-    const jev = consultarJevNoFollowup(pool, entrada(novaOrg()), deps(vi.fn().mockResolvedValue(respostaCom("quer"))));
+    const jev = consultarJevNoFollowup(
+      pool,
+      entrada(novaOrg()),
+      deps(vi.fn().mockResolvedValue(respostaCom("quer"))),
+    );
     await jev.escolha;
     expect(() => jev.observar("quer")).not.toThrow();
-    await vi.waitFor(() => expect(vi.mocked(pool.query).mock.calls.some(([sql]) => /insert/i.test(String(sql)))).toBe(true));
+    await vi.waitFor(() =>
+      expect(vi.mocked(pool.query).mock.calls.some(([sql]) => /insert/i.test(String(sql)))).toBe(
+        true,
+      ),
+    );
   });
 });
 
 describe("os textos da tarefa, para quem não é engenheiro", () => {
-  const zh = JSON.parse(readFileSync("lib/i18n/traducoes/zh-CN.json", "utf8")) as Record<string, string>;
-
-  it("o nome, o que faz e por que só observa têm espanhol e chinês, em frase inteira", () => {
-    for (const pt of [TAREFA_DO_FOLLOWUP.rotulo, TAREFA_DO_FOLLOWUP.oQueFaz, TAREFA_DO_FOLLOWUP.soObserva]) {
-      expect(DICIONARIO[pt]?.es, pt.slice(0, 40)).toBeTruthy();
-      expect(zh[pt], pt.slice(0, 40)).toBeTruthy();
-    }
-  });
-
   it("não promete saídas fixas nem que o Jev decide", () => {
     for (const texto of [TAREFA_DO_FOLLOWUP.oQueFaz, TAREFA_DO_FOLLOWUP.concordancia.antes]) {
       expect(texto).not.toMatch(/aceitou|recusou|falar depois/);

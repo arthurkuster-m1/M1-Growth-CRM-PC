@@ -133,14 +133,6 @@ describe("os fusos OFERECIDOS — a lista, não o padrão", () => {
     }
   });
 
-  // O painel anti-banimento passa o rótulo por `t(f.rotulo)` — chave dinâmica,
-  // que a varredura de `t("...")` literal não enxerga. Luanda entrou sem
-  // tradução e ninguém viu; este caso reprova o próximo rótulo sem entrada.
-  it("todo rótulo oferecido tem entrada no dicionário", () => {
-    const semEntrada = FUSOS_OFERECIDOS.filter((f) => !DICIONARIO[f.rotulo]?.es).map((f) => f.rotulo);
-    expect(semEntrada).toEqual([]);
-  });
-
   it("e o padrão de quem não escolheu segue sendo São Paulo", () => {
     expect(FUSO_PADRAO).toBe("America/Sao_Paulo");
   });

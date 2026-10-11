@@ -134,25 +134,6 @@ describe("destinos da Central", () => {
     const [item] = await resolverDestinosDosAvisos(leitor().client, ORG, "agent", [aviso("message_send_stuck")]);
     expect(item?.destination).toMatchObject({ rotulo: "Abrir uma conversa afetada" });
   });
-  it("textos dinâmicos do catálogo e fallbacks têm espanhol", async () => {
-    const textos = new Set<string>(Object.values(REFERENCIAS_DE_AVISO).map(a => a.rotulo));
-    for (const [kind, p] of Object.entries(POLITICAS_DE_AVISO)) {
-      textos.add(p.orientacao);
-      for (const papel of ["agent", "admin"] as const) {
-        const items = await resolverDestinosDosAvisos(leitor().client, ORG, papel, [
-          aviso(kind, null, null), aviso(kind, "conversation", missing),
-          ...p.refs.map(ref => aviso(kind, ref, ref === "organization" || ref === "ai_budget" ? ORG : ID)),
-        ]);
-        for (const { destination } of items) {
-          if (destination.orientacao) textos.add(destination.orientacao);
-          if (destination.estado === "disponivel") textos.add(destination.rotulo);
-        }
-      }
-    }
-    const [unknown] = await resolverDestinosDosAvisos(leitor().client, ORG, "agent", [aviso("new-kind")]);
-    if (unknown?.destination.orientacao) textos.add(unknown.destination.orientacao);
-    for (const texto of textos) expect(DICIONARIO[texto]?.es, texto).toBeTruthy();
-  });
 });
 
 it('reparo do agente legado tem destino tipado somente para admin e entidade visível',async()=>{

@@ -506,18 +506,6 @@ describe("o antigo 'Grace' virou uma pergunta com consequência", () => {
     expect(ESPERA_PELA_RESPOSTA.ajuda()).toContain(rotuloDaAresta);
     expect(ESPERA_PELA_RESPOSTA.ajuda()).toContain(String(ESPERA_PELA_RESPOSTA.minimoMinutos));
   });
-
-  it("em espanhol, a ajuda traduz o texto fixo E o rótulo da aresta interpolado", () => {
-    // `ajuda` compõe fragmentos com `t()` em vez de ser uma string pronta —
-    // sem isto, a versão em espanhol mostraria a frase inteira em português
-    // (o padrão de degradação) mesmo com o rótulo da aresta traduzido, ou
-    // vice-versa: os dois lados precisam passar pelo MESMO `t`.
-    const t = (texto: string) => traduzir(texto, "es");
-    const emEspanhol = ESPERA_PELA_RESPOSTA.ajuda(t);
-    expect(emEspanhol).toContain("Sin respuesta");
-    expect(emEspanhol).toContain(String(ESPERA_PELA_RESPOSTA.minimoMinutos));
-    expect(emEspanhol).not.toMatch(/responder|caminho|segue/i);
-  });
 });
 
 describe("rótulos sob contrato de e2e", () => {
@@ -536,20 +524,6 @@ describe("rótulos sob contrato de e2e", () => {
 });
 
 describe("o desfecho fala a língua de quem opera o dossiê (#2014)", () => {
-  it("todo valor do CHECK de outcome tem rótulo e tradução em espanhol", () => {
-    // Os valores vêm do mesmo lugar que o banco: `EnrollmentOutcome` é o vocabulário
-    // que o CHECK `outcome in ('converted','replied',...)` aceita (migration 0054).
-    // Cada um precisa de um rótulo em português (o dossiê mostra `t(DESFECHOS[...])`)
-    // e esse rótulo tem de ter espanhol — senão quem escolheu espanhol lê o wire cru.
-    for (const valor of DESFECHOS_NO_TIPO) {
-      const rotulo = DESFECHOS[valor as keyof typeof DESFECHOS];
-      expect(rotulo, `'${valor}' sem rótulo em DESFECHOS`).toBeTruthy();
-      expect(DICIONARIO[rotulo]?.es, `rótulo '${rotulo}' (de '${valor}') sem espanhol`).toBeTruthy();
-      // O rótulo não pode ser o identificador de wire — ex.: `exhausted` não vira
-      // "exhausted" na tela, vira frase.
-      expect(rotulo).not.toBe(valor);
-    }
-  });
 
   it("o desfecho esgotado lê 'Encerrado sem conversão', e o nó final segue 'Esgotado'", () => {
     // A issue nomeia as duas palavras de propósito: a que o OPERADOR vê no fim do

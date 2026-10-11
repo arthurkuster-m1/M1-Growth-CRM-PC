@@ -30,10 +30,6 @@ describe("o próximo passo padrão da demanda nova", () => {
     expect(corpo).toContain(`'${PROXIMO_PASSO_DA_MENSAGEM_NOVA}'`);
   });
 
-  it("tem tradução para o espanhol", () => {
-    expect(traduzir(PROXIMO_PASSO_DA_MENSAGEM_NOVA, "es")).toBe("Responder al nuevo mensaje del cliente");
-  });
-
   it("o painel da conversa o reconhece e o traduz", () => {
     expect(PAINEL).toContain("d.proximo_passo === PROXIMO_PASSO_DA_MENSAGEM_NOVA");
     expect(PAINEL).toContain(`t("${PROXIMO_PASSO_DA_MENSAGEM_NOVA}")`);

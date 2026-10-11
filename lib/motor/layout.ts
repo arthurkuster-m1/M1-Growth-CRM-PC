@@ -36,6 +36,8 @@ export const preferenciasDaTabelaSchema = z
     nome: z.string().trim().min(1).max(60).optional(),
     /** Como a pessoa vê os dados: tabela, quadro, calendário ou linha do tempo. */
     visualizacao: z.enum(["tabela", "kanban", "calendario", "timeline", "galeria"]).optional(),
+    /** Posição da aba "Todas" entre as abas salvas (menor = mais à esquerda). */
+    posicao: z.number().finite().optional(),
     /** Linha do tempo: quantos dias aparecem na tela e se as colunas são dias ou semanas. */
     linhaDoTempo: z
       .object({

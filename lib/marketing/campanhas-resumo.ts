@@ -486,3 +486,87 @@ export function diasComLeadsDoCrm(
   }
   return [...porDia.values()].sort((a, b) => a.day.localeCompare(b.day));
 }
+
+// ---------------------------------------------------------------------------------------------
+// As linhas do "Dia a dia": um dia por linha, de ponta a ponta
+// ---------------------------------------------------------------------------------------------
+
+export interface JanelaDoDiaADia {
+  /** Os dias da janela, em ordem, cada um com os números do dia (zerados quando não há registro). */
+  linhas: DiaDaCampanha[];
+  de: string;
+  ate: string;
+  /** Janela mensal (campanha contínua ou sem início/fim): a tela mostra o navegador de mês. */
+  mensal: boolean;
+  /** O mês mostrado (`AAAA-MM`), quando mensal. */
+  mes: string | null;
+}
+
+const MAXIMO_DE_LINHAS_DO_DIA_A_DIA = 400;
+
+const diaTemDados = (d: DiaDaCampanha) =>
+  d.spend > 0 ||
+  d.impressions > 0 ||
+  d.reach > 0 ||
+  d.link_clicks > 0 ||
+  d.lp_views > 0 ||
+  d.leads > 0 ||
+  Object.values(d.extras).some((v) => v > 0);
+
+/**
+ * A tabela do dia a dia com TODOS os dias da campanha. Com início e fim (e sem ser contínua) são
+ * os dias do início ao fim; contínua (ou sem datas) mostra o mês escolhido, e a pessoa navega
+ * pelos meses para ver o histórico. `soComDados` esconde os dias sem nada (campanha que roda de
+ * vez em quando).
+ */
+export function janelaDoDiaADia(
+  c: Pick<CampanhaDeDemanda, "start_date" | "end_date" | "continuous">,
+  dias: readonly DiaDaCampanha[],
+  hoje: string,
+  mesEscolhido: string | null,
+  soComDados: boolean,
+): JanelaDoDiaADia {
+  const porDia = new Map(dias.map((d) => [d.day, d]));
+  const comPeriodo = !c.continuous && c.start_date && c.end_date && c.end_date >= c.start_date;
+  const mes = comPeriodo ? null : (mesEscolhido ?? hoje.slice(0, 7));
+
+  let de: string;
+  let ate: string;
+  if (comPeriodo) {
+    de = c.start_date!;
+    ate = c.end_date!;
+  } else {
+    const [a, m] = mes!.split("-").map(Number) as [number, number];
+    de = `${mes}-01`;
+    const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate();
+    ate = `${mes}-${String(ultimo).padStart(2, "0")}`;
+  }
+
+  const vazio = (day: string): DiaDaCampanha => ({
+    day,
+    impressions: 0,
+    reach: 0,
+    link_clicks: 0,
+    lp_views: 0,
+    leads: 0,
+    spend: 0,
+    extras: {},
+    source: "manual",
+  });
+  const linhas: DiaDaCampanha[] = [];
+  const total = Math.min(emDias(ate) - emDias(de) + 1, MAXIMO_DE_LINHAS_DO_DIA_A_DIA);
+  for (let i = 0; i < total; i++) {
+    const day = new Date((emDias(de) + i) * MS_DO_DIA).toISOString().slice(0, 10);
+    const existente = porDia.get(day);
+    if (soComDados && !(existente && diaTemDados(existente))) continue;
+    linhas.push(existente ?? vazio(day));
+  }
+  return { linhas, de, ate, mensal: !comPeriodo, mes };
+}
+
+/** `AAAA-MM` do mês anterior/seguinte. */
+export function somarMeses(mes: string, n: number): string {
+  const [a, m] = mes.split("-").map(Number) as [number, number];
+  const d = new Date(Date.UTC(a, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}

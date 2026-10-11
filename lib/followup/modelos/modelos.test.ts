@@ -103,18 +103,6 @@ describe("catálogo de modelos de follow-up", () => {
     });
   });
 
-  it("o que a galeria mostra tem espanhol — a chave é dinâmica e nenhum varredor a alcança", () => {
-    // `t(modelo.resumo)` é chave DINÂMICA: o varredor de AST de
-    // `i18n-espanhol-cobre-a-tela` só enxerga literal, então um modelo novo
-    // entraria na tela em português para quem escolheu espanhol, sem nada
-    // reprovar. O nome do modelo fica de fora de propósito — ele vira o `name`
-    // do ponteiro no banco, e nome de registro não se traduz.
-    const semEspanhol = MODELOS_DE_FOLLOWUP.flatMap((m) =>
-      [m.jornada, m.resumo, m.oQueDispara].filter((texto) => !DICIONARIO[texto]?.es),
-    );
-    expect(semEspanhol).toEqual([]);
-  });
-
   it("a cirurgia acompanha por semanas e a falta por dias — o prazo É o modelo", () => {
     const cirurgia = modeloPorId("clinica-cirurgia-decisao")!;
     const falta = modeloPorId("clinica-falta-remarcar")!;

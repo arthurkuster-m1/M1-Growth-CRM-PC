@@ -89,18 +89,4 @@ describe("a confirmação de ligar a limpeza cita o anexo de nota interna", () =
       .join(" ");
     expect(paragrafo).toContain("nota interna");
   });
-
-  it("em espanhol as três frases citam a nota interna", () => {
-    expect(traduzir(FRASE_CONFIRM, "es")).toContain("notas internas");
-    expect(traduzir(FRASE_DESLIGADO, "es")).toContain("notas internas");
-    expect(traduzir(FRASE_LIGADO, "es")).toContain("notas internas");
-  });
-
-  it("o catálogo en tem as três chaves novas", () => {
-    const caminho = join(__dirname, "..", "..", "lib", "i18n", "traducoes", "en.json");
-    const en = JSON.parse(readFileSync(caminho, "utf8")) as Record<string, string>;
-    for (const chave of [FRASE_CONFIRM, FRASE_DESLIGADO, FRASE_LIGADO]) {
-      expect(en[chave], `falta a tradução en de ${chave.slice(0, 40)}`).toBeTruthy();
-    }
-  });
 });

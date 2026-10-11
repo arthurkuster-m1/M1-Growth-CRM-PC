@@ -3,13 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
-import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { lerNumero } from "@/lib/marketing/calculadora";
 import { lerDias, modeloDoDiaAdia } from "@/lib/marketing/campanhas-csv";
-import { METRICAS_DO_CANAL, hojeIso, type DiaDaCampanha } from "@/lib/marketing/campanhas-resumo";
-import type { CanalDaCampanha } from "@/lib/marketing/campanhas";
-import { Plus, Trash } from "@/lib/ui/icons";
+import {
+  METRICAS_DO_CANAL,
+  hojeIso,
+  janelaDoDiaADia,
+  somarMeses,
+  type DiaDaCampanha,
+} from "@/lib/marketing/campanhas-resumo";
+import type { CampanhaDeDemanda, CanalDaCampanha } from "@/lib/marketing/campanhas";
+import { Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 type DiaParaGravar = Omit<DiaDaCampanha, "id" | "source">;
@@ -73,17 +78,6 @@ const paraGravar = (d: DiaDaCampanha): DiaParaGravar => ({
   extras: d.extras,
 });
 
-const diaVazio = (day: string): DiaParaGravar => ({
-  day,
-  impressions: 0,
-  reach: 0,
-  link_clicks: 0,
-  lp_views: 0,
-  leads: 0,
-  spend: 0,
-  extras: {},
-});
-
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
 
 /** Uma célula numérica que grava ao sair, só se mudou. */
@@ -130,6 +124,7 @@ function CelulaNumerica({
  */
 export function DiaADiaDaCampanha({
   canal,
+  campanha,
   dias,
   podeEditar,
   funilDefinido,
@@ -137,6 +132,7 @@ export function DiaADiaDaCampanha({
   apagar,
 }: {
   canal: CanalDaCampanha;
+  campanha: Pick<CampanhaDeDemanda, "start_date" | "end_date" | "continuous">;
   funilDefinido: boolean;
   dias: DiaDaCampanha[];
   podeEditar: boolean;
@@ -145,20 +141,19 @@ export function DiaADiaDaCampanha({
 }) {
   const t = useT();
   const colunas = colunasDoCanal(t, canal);
-  const [novo, setNovo] = useState("");
   const [mensagem, setMensagem] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
-  const ordenados = [...dias].sort((a, b) => b.day.localeCompare(a.day));
-
-  async function adicionar() {
-    const day = novo || hojeIso();
-    if (dias.some((d) => d.day === day)) {
-      setMensagem(t("Esse dia já está na tabela."));
-      return;
-    }
-    setMensagem(null);
-    if (await gravar([diaVazio(day)])) setNovo("");
-  }
+  const [mes, setMes] = useState<string | null>(null);
+  const [soComDados, setSoComDados] = useState(false);
+  const hoje = hojeIso();
+  const janela = janelaDoDiaADia(campanha, dias, hoje, mes, soComDados);
+  const ordenados = janela.linhas;
+  const guardados = new Set(dias.filter((d) => d.id).map((d) => d.day));
+  const nomeDoMes = janela.mes
+    ? new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+        new Date(`${janela.mes}-01T12:00:00Z`),
+      )
+    : "";
 
   async function aoEscolherArquivo(f: File | undefined) {
     if (!f) return;
@@ -232,26 +227,50 @@ export function DiaADiaDaCampanha({
         </div>
       </div>
 
-      {podeEditar ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="w-48">
-            <SeletorDeData
-              valor={novo}
-              rotulo={t("Dia")}
-              placeholder={t("Hoje")}
-              aoMudar={setNovo}
-            />
+      <div className="flex flex-wrap items-center gap-2">
+        {janela.mensal ? (
+          <div className="inline-flex items-center gap-1 rounded-xl bg-secondary p-0.5">
+            <button
+              type="button"
+              aria-label={t("Mês anterior")}
+              onClick={() => setMes(somarMeses(janela.mes!, -1))}
+              className="grid h-9 w-9 place-items-center rounded-[10px] hover:bg-card"
+            >
+              ‹
+            </button>
+            <span className="min-w-36 text-center text-sm font-medium capitalize">{nomeDoMes}</span>
+            <button
+              type="button"
+              aria-label={t("Próximo mês")}
+              onClick={() => setMes(somarMeses(janela.mes!, 1))}
+              className="grid h-9 w-9 place-items-center rounded-[10px] hover:bg-card"
+            >
+              ›
+            </button>
+            {janela.mes !== hoje.slice(0, 7) ? (
+              <button
+                type="button"
+                onClick={() => setMes(null)}
+                className="h-9 rounded-[10px] px-3 text-sm font-medium text-primary hover:bg-card"
+              >
+                {t("Mês atual")}
+              </button>
+            ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => void adicionar()}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
-          >
-            <Plus size={14} weight="bold" aria-hidden />
-            {t("Adicionar dia")}
-          </button>
-        </div>
-      ) : null}
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {dataBr(janela.de)} → {dataBr(janela.ate)}
+          </p>
+        )}
+        <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={soComDados}
+            onChange={(e) => setSoComDados(e.target.checked)}
+          />
+          {t("Só os dias com dados")}
+        </label>
+      </div>
       <p className="text-xs text-muted-foreground">
         {funilDefinido
           ? t(
@@ -267,7 +286,7 @@ export function DiaADiaDaCampanha({
 
       {ordenados.length === 0 ? (
         <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-          {t("Nenhum dia registrado ainda. Adicione um dia ou importe a planilha.")}
+          {t("Nenhum dia com dados neste período.")}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
@@ -287,7 +306,11 @@ export function DiaADiaDaCampanha({
             </thead>
             <tbody>
               {ordenados.map((d) => (
-                <tr key={d.day} className="border-t">
+                <tr
+                  key={d.day}
+                  className={cn("border-t", d.day === hoje && "bg-primary/5")}
+                  aria-current={d.day === hoje ? "date" : undefined}
+                >
                   <td
                     className={cn(
                       "sticky left-0 z-10 bg-card px-3 py-1 text-left whitespace-nowrap tabular-nums",
@@ -312,14 +335,16 @@ export function DiaADiaDaCampanha({
                   ))}
                   {podeEditar ? (
                     <td className="px-1">
-                      <button
-                        type="button"
-                        aria-label={t("Apagar dia")}
-                        onClick={() => void apagar(d.day)}
-                        className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
-                      >
-                        <Trash size={14} aria-hidden />
-                      </button>
+                      {guardados.has(d.day) ? (
+                        <button
+                          type="button"
+                          aria-label={t("Apagar dia")}
+                          onClick={() => void apagar(d.day)}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                        >
+                          <Trash size={14} aria-hidden />
+                        </button>
+                      ) : null}
                     </td>
                   ) : null}
                 </tr>

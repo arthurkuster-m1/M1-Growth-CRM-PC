@@ -426,62 +426,6 @@ describe("Avisar a equipe", () => {
     }
   });
 
-  /**
-   * Não há bloqueio à mão no produto: o único escritor do bloqueio é o STOP do
-   * próprio cliente (`lib/channels/pos-entrada.ts`; a tela do contato diz o
-   * mesmo). Nenhum texto do pedido de parar de receber — o aviso, a orientação
-   * da Central, a linha e o diálogo do cartão — pode prometer que uma pessoa
-   * bloqueia. O aviso diz o que a equipe PODE fazer: pedir ao cliente a palavra
-   * que a regra bloqueia — e a palavra citada, em cada idioma, é uma que ela de
-   * fato bloqueia.
-   */
-  it("o pedido de parar de receber não promete bloqueio por uma pessoa, e cita uma palavra que a regra de fato bloqueia", () => {
-    const zh = JSON.parse(readFileSync("lib/i18n/traducoes/zh-CN.json", "utf8")) as Record<string, string>;
-    const t = TAREFA_DO_PEDIDO_PARA_PARAR;
-    // Do aviso pelo áudio (#2246) só entra o corpo de parar de receber: o de
-    // falar com uma pessoa diz "pessoa" por construção, e não é defeito.
-    const comAPalavra = [AVISOS_DOS_PEDIDOS.opt_out.corpo, AVISOS_DA_REGRA.opt_out.corpo, t.aoDecidir, t.aoConfirmarDecidir, t.oQueFaz];
-    const semPessoa = [...comAPalavra, POLITICAS_DE_AVISO.jev_parar_de_receber.orientacao];
-    for (const pt of semPessoa) {
-      for (const texto of [pt, DICIONARIO[pt]?.es, zh[pt]]) {
-        expect(texto, `a tradução de "${pt.slice(0, 40)}…" existe (controle)`).toBeTruthy();
-        expect(texto).not.toMatch(/pessoa|persona|人工/i);
-      }
-    }
-    for (const pt of comAPalavra) {
-      for (const texto of [pt, DICIONARIO[pt]?.es ?? "", zh[pt] ?? ""]) {
-        const palavra = /\b[A-Z]{4,}\b/.exec(texto)?.[0] ?? "";
-        expect(ehPedidoDeOptOut(palavra), `"${palavra}" em: ${texto.slice(0, 60)}…`).toBe(true);
-      }
-    }
-  });
-
-  /**
-   * O aviso é gravado no idioma da organização (`traduzir`), e `traduzir` cai
-   * no português quando falta a chave — sem erro nenhum. Os quatro textos do
-   * aviso pelo áudio (#2246) existem nos três idiomas.
-   */
-  it("o aviso que a regra abre pelo áudio tem tradução em es, en e zh", () => {
-    const en = JSON.parse(readFileSync("lib/i18n/traducoes/en.json", "utf8")) as Record<string, string>;
-    const zh = JSON.parse(readFileSync("lib/i18n/traducoes/zh-CN.json", "utf8")) as Record<string, string>;
-    for (const aviso of Object.values(AVISOS_DA_REGRA)) {
-      for (const pt of [aviso.titulo, aviso.corpo]) {
-        expect(DICIONARIO[pt]?.es, `es de "${pt.slice(0, 40)}…"`).toBeTruthy();
-        expect(en[pt], `en de "${pt.slice(0, 40)}…"`).toBeTruthy();
-        expect(zh[pt], `zh de "${pt.slice(0, 40)}…"`).toBeTruthy();
-      }
-    }
-  });
-
-  it("no idioma da organização: a Central mostra o aviso como ele foi gravado", async () => {
-    const { admin, inseridas } = adminFalso();
-    await observarEAvisar(admin, entrada({ idioma: "es", config: AVISANDO({ opt_out: "decidindo" }) }), { humano: 0.02, opt_out: 0.95 });
-    const [aviso] = inseridas.agent_inbox_items!;
-    expect(aviso).toMatchObject({ kind: "jev_parar_de_receber" });
-    expect(aviso!.title).toBe(DICIONARIO[AVISOS_DOS_PEDIDOS.opt_out.titulo]?.es);
-    expect(aviso!.body).toBe(DICIONARIO[AVISOS_DOS_PEDIDOS.opt_out.corpo]?.es);
-  });
-
   it.each([
     ["observando, ele percebe e só conta", AVISANDO({}), 0.97],
     ["abaixo do corte (0,79), nenhum aviso", AVISANDO({ humano: "decidindo" }), 0.79],

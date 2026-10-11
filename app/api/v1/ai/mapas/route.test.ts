@@ -152,25 +152,6 @@ describe("DELETE — remover", () => {
 });
 
 describe("POST /testar — o botão Testar", () => {
-  it("⭐ testa a chave colada ANTES de gravar, e diz o endereço do ponto de teste", async () => {
-    deps.admin.mockReturnValue(bancoFalso());
-    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: "OK",
-          results: [{ address_components: [{ long_name: "São Paulo", types: ["locality"] }, { long_name: "São Paulo", types: ["administrative_area_level_1"] }] }],
-        }),
-        { status: 200 },
-      ),
-    );
-    const res = await TESTAR(testar({ api_key: CHAVE }) as never);
-    const corpo = await res.json();
-    expect(corpo.data).toEqual({ ok: true, endereco: "São Paulo" });
-    const url = new URL(String(f.mock.calls[0]![0]));
-    expect(url.searchParams.get("key")).toBe(CHAVE);
-    expect(url.searchParams.get("language")).toBe("es");
-    expect(JSON.stringify(corpo)).not.toContain(CHAVE);
-  });
 
   it("sem chave colada, usa a gravada; sem nenhuma, pede uma", async () => {
     deps.admin.mockReturnValue(bancoFalso());

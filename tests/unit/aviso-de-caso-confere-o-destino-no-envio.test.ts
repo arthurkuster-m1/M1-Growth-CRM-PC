@@ -100,17 +100,6 @@ describe("o código da recusa no envio, no vocabulário fechado", () => {
     expect(ERROS_DA_ENTREGA_DE_AVISO).toContain(CODIGO);
   });
 
-  it("tem frase de gente E par em espanhol — senão a tela mostra código cru", () => {
-    // `satisfies Record<…>` já garante a frase no typecheck; esta asserção é o
-    // que sobrevive a alguém trocar o `satisfies` por uma anotação solta.
-    const frase = FRASE_DO_ERRO_DO_AVISO[CODIGO as keyof typeof FRASE_DO_ERRO_DO_AVISO];
-    expect(typeof frase, "código sem frase: a tela mostraria o identificador cru").toBe("string");
-    // A chave do dicionário é o próprio texto em português (padrão do repo).
-    const entrada = DICIONARIO[frase];
-    expect(entrada, `sem entrada no dicionário para: ${JSON.stringify(frase)}`).toBeTruthy();
-    expect(entrada!.es, "a frase do aviso não tem espanhol").toBeTruthy();
-  });
-
   it("os DOIS artefatos de schema aceitam o código — e dizem a MESMA coisa", () => {
     const daCadeia = literaisDoCheck(naCadeia.at(-1)!.texto);
     const doBaseline = literaisDoCheck(BASELINE);

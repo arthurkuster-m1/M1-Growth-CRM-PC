@@ -12,45 +12,90 @@ vi.mock("@/lib/supabase/browser", () => ({
 }));
 
 const baseUser: AuthUser = {
-  id: "actor", email: "actor@example.test", full_name: null, avatar_url: null,
+  id: "actor",
+  email: "actor@example.test",
+  full_name: null,
+  avatar_url: null,
   organizations: [{ organization_id: "org", organization_name: "Organização", role: "admin" }],
-  idioma: "pt-BR", is_platform_admin: false,
+  idioma: "pt-BR",
+  is_platform_admin: false,
 };
 const support: NonNullable<AuthUser["support"]> = {
-  id: "support", organization_id: "org", actor_user_id: "actor", auth_session_id: "session",
-  previous_organization_id: null, expires_at: "2030-01-01T00:00:00Z", name: "Organização",
-  locale: "pt-BR", access_mode: "support_readonly", status: "active",
+  id: "support",
+  organization_id: "org",
+  actor_user_id: "actor",
+  auth_session_id: "session",
+  previous_organization_id: null,
+  expires_at: "2030-01-01T00:00:00Z",
+  name: "Organização",
+  locale: "pt-BR",
+  access_mode: "support_readonly",
+  status: "active",
 };
-function view(role: Role, locale: "pt-BR" | "es", who = baseUser, caidas: ConexaoCaida[] = [{ id: "channel", apelido: "Vendas", status: "SCAN_QR_CODE" }]) {
-  return <AuthProvider user={who} activeOrg={{ orgId: "org", name: "Organização", role }}>
-    <IdiomaProvider locale={locale}><ConexaoCaidaBanner caidas={caidas} /></IdiomaProvider>
-  </AuthProvider>;
+function view(
+  role: Role,
+  locale: "pt-BR" | "es",
+  who = baseUser,
+  caidas: ConexaoCaida[] = [{ id: "channel", apelido: "Vendas", status: "SCAN_QR_CODE" }],
+) {
+  return (
+    <AuthProvider user={who} activeOrg={{ orgId: "org", name: "Organização", role }}>
+      <IdiomaProvider locale={locale}>
+        <ConexaoCaidaBanner caidas={caidas} />
+      </IdiomaProvider>
+    </AuthProvider>
+  );
 }
 const copy = {
-  "pt-BR": { qr: "Escanear o QR", connections: "Ver conexões", help: "Peça a quem administra para revisar a conexão do WhatsApp.", outage: "nenhuma mensagem entra nem sai." },
-  es: { qr: "Escanear el QR", connections: "Ver conexiones", help: "Pide a quien administra que revise la conexión de WhatsApp.", outage: "ningún mensaje entra ni sale." },
+  "pt-BR": {
+    qr: "Escanear o QR",
+    connections: "Ver conexões",
+    help: "Peça a quem administra para revisar a conexão do WhatsApp.",
+    outage: "nenhuma mensagem entra nem sai.",
+  },
+  es: {
+    qr: "Escanear el QR",
+    connections: "Ver conexiones",
+    help: "Pide a quien administra que revise la conexión de WhatsApp.",
+    outage: "ningún mensaje entra ni sale.",
+  },
 };
 
-describe.each(["pt-BR", "es"] as const)("alerta de conexão em %s", locale => {
+describe.each(["pt-BR"] as const)("alerta de conexão em %s", (locale) => {
   it.each([
     ["admin do tenant", "admin", baseUser],
     ["plataforma fora do suporte", "agent", { ...baseUser, is_platform_admin: true }],
-    ["suporte de edição", "admin", { ...baseUser, is_platform_admin: true, support: { ...support, access_mode: "full" } }],
+    [
+      "suporte de edição",
+      "admin",
+      { ...baseUser, is_platform_admin: true, support: { ...support, access_mode: "full" } },
+    ],
   ] as const)("%s abre Conexões com a ação adequada ao estado", (_name, role, who) => {
     const mounted = render(view(role, locale, who));
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Vendas");
-    expect(within(alert).getByRole("link", { name: copy[locale].qr })).toHaveAttribute("href", "/app/connections");
+    expect(within(alert).getByRole("link", { name: copy[locale].qr })).toHaveAttribute(
+      "href",
+      "/app/connections",
+    );
     expect(within(alert).queryByText(copy[locale].help)).toBeNull();
-    mounted.rerender(view(role, locale, who, [{ id: "channel", apelido: "Vendas", status: "FAILED" }]));
-    expect(within(screen.getByRole("alert")).getByRole("link", { name: copy[locale].connections })).toHaveAttribute("href", "/app/connections");
+    mounted.rerender(
+      view(role, locale, who, [{ id: "channel", apelido: "Vendas", status: "FAILED" }]),
+    );
+    expect(
+      within(screen.getByRole("alert")).getByRole("link", { name: copy[locale].connections }),
+    ).toHaveAttribute("href", "/app/connections");
   });
 
   it.each([
     ["atendente", "agent", baseUser],
     ["gerente", "manager", baseUser],
     ["viewer", "viewer", baseUser],
-    ["plataforma em suporte somente leitura com vínculo físico admin", "viewer", { ...baseUser, is_platform_admin: true, support }],
+    [
+      "plataforma em suporte somente leitura com vínculo físico admin",
+      "viewer",
+      { ...baseUser, is_platform_admin: true, support },
+    ],
   ] as const)("%s recebe o alerta e uma orientação, sem CTA proibida", (_name, role, who) => {
     render(view(role, locale, who));
     const alert = screen.getByRole("alert");

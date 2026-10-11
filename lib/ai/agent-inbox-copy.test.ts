@@ -79,9 +79,10 @@ describe("copyDaPromessaSemDono — o aviso só afirma o que foi apurado", () =>
       const { title, body } = copyDaPromessaSemDono(1, porque);
       const texto = `${title} ${body}`.toLowerCase();
       for (const proibido of ["cumpriu", "cumprida", "cumprido", "cumprimento"]) {
-        expect(texto, `o motivo ${porque} voltou a afirmar cumprimento ("${proibido}")`).not.toContain(
-          proibido,
-        );
+        expect(
+          texto,
+          `o motivo ${porque} voltou a afirmar cumprimento ("${proibido}")`,
+        ).not.toContain(proibido);
       }
     }
   });
@@ -121,19 +122,10 @@ describe("copyDaPromessaSemDono — o aviso só afirma o que foi apurado", () =>
       const { title, body } = copyDaPromessaSemDono(2, porque);
       const texto = `${title} ${body}`;
       for (const jargao of ["operador_", "operator", "mcp", "tool", "payload", "job"]) {
-        expect(texto.toLowerCase(), `jargão "${jargao}" no texto de ${porque}`).not.toContain(jargao);
+        expect(texto.toLowerCase(), `jargão "${jargao}" no texto de ${porque}`).not.toContain(
+          jargao,
+        );
       }
     }
-  });
-});
-
-describe("copyDaPromessaSemDono — no idioma de quem lê", () => {
-  it("organização em espanhol recebe o aviso em espanhol, título e corpo", () => {
-    const { title, body } = copyDaPromessaSemDono(1, "operador_nao_agiu", "es");
-    expect(title).toBe("El asistente prometió algo al cliente y nadie quedó a cargo");
-    expect(body).not.toContain("Nesta conversa");
-    expect(copyDaPromessaSemDono(3, "operador_nao_agiu", "es").title).toBe(
-      "3 promesas al cliente sin nadie a cargo",
-    );
   });
 });

@@ -78,15 +78,6 @@ describe("mensagemDeBloqueioPorVinculo", () => {
     );
   });
 
-  it("plural com o número, e em espanhol sai em espanhol", () => {
-    expect(mensagemDeBloqueioPorVinculo({ por_tabela: { calendar_appointments: 3 } }, pt)).toBe(
-      "Este contato tem 3 compromissos na Agenda. Cancele ou apague os compromissos antes de excluir.",
-    );
-    expect(mensagemDeBloqueioPorVinculo({ por_tabela: { calendar_appointments: 3 } }, es)).toBe(
-      "Este contacto tiene 3 citas en la Agenda. Cancela o elimina las citas antes de eliminar el contacto.",
-    );
-  });
-
   it("sem contagem da Agenda devolve null (a tela cai no texto genérico)", () => {
     expect(mensagemDeBloqueioPorVinculo(undefined, pt)).toBeNull();
     expect(mensagemDeBloqueioPorVinculo({ vinculos: ["1 x"] }, pt)).toBeNull();

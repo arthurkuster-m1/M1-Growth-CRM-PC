@@ -33,12 +33,6 @@ function canonicosDoTrigger(sql: string): string[] {
 }
 
 describe("motivo de perda de quem pediu para não receber mensagens", () => {
-  it("é canônico no código, com rótulo próprio e tradução", () => {
-    expect([...CANONICAL_LOST_REASONS]).toContain(MOTIVO);
-    expect(rotuloDoMotivoDePerda(MOTIVO)).toBe("Pediu para não receber mensagens");
-    expect(traduzir("Pediu para não receber mensagens", "es")).toBe("Pidió no recibir mensajes");
-    expect(categoriaPadraoDoMotivo(MOTIVO)).toBe("Cliente");
-  });
 
   it("o trigger do baseline aceita TODO motivo canônico do código", () => {
     expect(canonicosDoTrigger(baseline).sort()).toEqual([...CANONICAL_LOST_REASONS].sort());

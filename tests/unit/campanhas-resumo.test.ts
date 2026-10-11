@@ -438,3 +438,47 @@ describe("páginas opcionais da campanha", () => {
     expect(abasDaCampanha("trafego_pago", [])).toEqual(["cadastro", "visao", "dia", "funil"]);
   });
 });
+
+import { janelaDoDiaADia, somarMeses } from "@/lib/marketing/campanhas-resumo";
+
+describe("dia a dia: todos os dias do período", () => {
+  const base = { start_date: "2026-10-01", end_date: "2026-10-05", continuous: false };
+  it("campanha com início e fim lista cada dia, mesmo sem registro", () => {
+    const j = janelaDoDiaADia(
+      base,
+      [dia({ day: "2026-10-03", spend: 9 })],
+      "2026-10-02",
+      null,
+      false,
+    );
+    expect(j.linhas.map((l) => l.day)).toEqual([
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+      "2026-10-05",
+    ]);
+    expect(j.linhas[2]!.spend).toBe(9);
+    expect(j.mensal).toBe(false);
+  });
+  it("só dias com dados esconde os vazios (campanha intermitente)", () => {
+    const j = janelaDoDiaADia(
+      base,
+      [dia({ day: "2026-10-03", spend: 9 })],
+      "2026-10-02",
+      null,
+      true,
+    );
+    expect(j.linhas.map((l) => l.day)).toEqual(["2026-10-03"]);
+  });
+  it("contínua mostra o mês e navega pelos anteriores", () => {
+    const c = { start_date: "2026-01-01", end_date: null, continuous: true };
+    const j = janelaDoDiaADia(c, [], "2026-10-11", null, false);
+    expect(j.mensal).toBe(true);
+    expect(j.linhas).toHaveLength(31);
+    expect(j.linhas[0]!.day).toBe("2026-10-01");
+    const anterior = janelaDoDiaADia(c, [], "2026-10-11", somarMeses(j.mes!, -1), false);
+    expect(anterior.linhas).toHaveLength(30);
+    expect(somarMeses("2026-01", -1)).toBe("2025-12");
+  });
+});

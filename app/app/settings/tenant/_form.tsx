@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { updateTenant } from "@/app/actions/settings/updateTenant";
 import { useT } from "@/hooks/i18n/useT";
-import { IDIOMAS_VISIVEIS } from "@/lib/i18n/registro";
 import { MOEDAS_SERVIDAS, simboloDaMoeda, type MoedaServida } from "@/lib/money";
 import { paisesOferecidos, perfilDoPais } from "@/lib/legal/perfil-do-pais";
 import { tenantSchema, type Locale, type TenantInput } from "@/lib/schemas/settings";
@@ -101,24 +100,6 @@ export function TenantForm({ initial }: Props) {
                 {TIMEZONES.map((tz) => (
                   <SelectItem key={tz} value={tz}>
                     {tz}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="locale">{t("Idioma")}</Label>
-            <Select
-              value={form.locale}
-              onValueChange={(v) => set("locale", v as Locale)}
-            >
-              <SelectTrigger id="locale">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {IDIOMAS_VISIVEIS.map(({ codigo, nomeNativo }) => (
-                  <SelectItem key={codigo} value={codigo}>
-                    {nomeNativo}
                   </SelectItem>
                 ))}
               </SelectContent>

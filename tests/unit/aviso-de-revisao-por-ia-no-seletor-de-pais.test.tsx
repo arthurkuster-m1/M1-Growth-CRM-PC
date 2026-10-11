@@ -58,9 +58,4 @@ describe("aviso de revisão por IA no seletor de país", () => {
     tela(null);
     expect(screen.queryByTestId("aviso-revisao-por-ia")).toBeNull();
   });
-
-  it("em espanhol o aviso sai traduzido", () => {
-    tela("PT", "es");
-    expect(screen.getByTestId("aviso-revisao-por-ia").textContent).toContain("revisión hecha por IA");
-  });
 });

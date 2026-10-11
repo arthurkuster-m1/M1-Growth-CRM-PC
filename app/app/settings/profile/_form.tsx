@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/select";
 import { updateProfile } from "@/app/actions/settings/updateProfile";
 import { useT } from "@/hooks/i18n/useT";
-import { IDIOMAS_VISIVEIS } from "@/lib/i18n/registro";
 import {
   profileSchema,
   SEM_PREFERENCIA_DE_IDIOMA,
@@ -87,28 +86,6 @@ export function ProfileForm({
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="locale">{t("Idioma")}</Label>
-            <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-              <SelectTrigger id="locale">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SEM_PREFERENCIA_DE_IDIOMA}>
-                  {t("Seguir o idioma da empresa")}
-                </SelectItem>
-                {/* A lista vem do registro, e só com o que o nível deixa
-                    aparecer. Oferecer um idioma que não muda a tela é prometer
-                    o que ela não cumpre — `en-US` saiu por isso, e um idioma
-                    em construção fica fora pela mesma razão. */}
-                {IDIOMAS_VISIVEIS.map(({ codigo, nomeNativo }) => (
-                  <SelectItem key={codigo} value={codigo}>
-                    {nomeNativo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="space-y-2">
             <Label htmlFor="timezone">{t("Fuso horário")}</Label>
             <Select value={timezone} onValueChange={setTimezone}>

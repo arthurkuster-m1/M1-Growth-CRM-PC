@@ -158,10 +158,4 @@ describe("o motivo do Publicar bloqueado fica na tela", () => {
     expect(descrito, "o aria-describedby aponta para um id que não existe").not.toBeNull();
     expect(descrito!.textContent).toBe(motivoDoTitulo(botao));
   });
-
-  it("em espanhol, o mesmo motivo sai traduzido na tela", () => {
-    const botao = renderizarEditorComPublicacaoBloqueada("es");
-    expect(motivoDoTitulo(botao)).toBe("No hay borrador para publicar.");
-    expect(screen.getByText("No hay borrador para publicar.")).toBeVisible();
-  });
 });

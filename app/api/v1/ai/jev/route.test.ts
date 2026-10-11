@@ -610,23 +610,6 @@ describe("PATCH /api/v1/ai/jev", () => {
     expect(audit).not.toHaveBeenCalled();
   });
 
-  it("admin em espanhol recebe as duas recusas em espanhol", async () => {
-    const emEspanhol = {
-      ok: true,
-      user: { id: USUARIO, idioma: "es" },
-      org: { orgId: ORG, role: "admin" },
-    } as unknown as Awaited<ReturnType<typeof requireRole>>;
-
-    vi.mocked(requireRole).mockResolvedValueOnce(emEspanhol);
-    const semChave = await mudar({ ligado: true, aceite_lgpd: true });
-    expect(semChave.corpo.error.message).toMatch(/^Para activar Jev/);
-
-    estado.credenciais = [credencial()];
-    vi.mocked(requireRole).mockResolvedValueOnce(emEspanhol);
-    const semAceite = await mudar({ ligado: true });
-    expect(semAceite.corpo.error.message).toMatch(/^Activar Jev envía/);
-  });
-
   it("liga com chave e aceite: grava quem aceitou, pelo cliente admin, sem apagar o resto, e audita", async () => {
     estado.credenciais = [credencial()];
     const { status, corpo } = await mudar({ ligado: true, aceite_lgpd: true });
@@ -1151,18 +1134,6 @@ describe("o Jev por tarefa na rota", () => {
     expect((await mudar({ tarefa: "followup", estado: "observando" })).status).toBe(200);
     // E as outras seguem aceitando decidir (controle).
     expect((await mudar({ tarefa: "roteador", estado: "decidindo" })).status).toBe(200);
-  });
-
-  it("PATCH: a recusa de decidir no follow-up sai no idioma de quem pede", async () => {
-    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: ACEITE_ANTIGO } };
-    vi.mocked(requireRole).mockResolvedValueOnce({
-      ok: true,
-      user: { id: USUARIO, idioma: "es" },
-      org: { orgId: ORG, role: "admin" },
-    } as unknown as Awaited<ReturnType<typeof requireRole>>);
-    const recusado = await mudar({ tarefa: "followup", estado: "decidindo" });
-    expect(recusado.status).toBe(422);
-    expect(recusado.corpo.error.message).toMatch(/^En esta versión, Jev solo observa esta tarea/);
   });
 
   it("PATCH de uma tarefa: grava só ela, espelha o clima no `modo` e audita com a tarefa", async () => {

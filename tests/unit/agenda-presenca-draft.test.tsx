@@ -60,12 +60,6 @@ it.each([
     recorded: "Presença registrada pela equipe: 30 de ago. de 2026, 01:45",
   },
   {
-    locale: "es",
-    time_zone: "America/Sao_Paulo",
-    interval: "29 ago 2026, 23:30 – 30 ago 2026, 0:30",
-    recorded: "Asistencia registrada por el equipo: 30 ago 2026, 1:45",
-  },
-  {
     locale: "pt-BR",
     time_zone: "Asia/Tokyo",
     interval: "30 de ago. de 2026 11:30 – 12:30",

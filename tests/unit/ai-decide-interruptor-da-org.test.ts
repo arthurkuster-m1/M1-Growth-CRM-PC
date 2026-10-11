@@ -134,20 +134,6 @@ describe("interruptor da empresa DESLIGADO: o modelo não é consultado", () => 
       detail: { reason: MOTIVO },
     });
   });
-
-  it.each([MOTIVO, MOTIVO_ILEGIVEL])("o motivo %s tem FRASE na aba Atividade e essa frase tem espanhol", (motivo) => {
-    const mapa = lerMapaDeMotivos(
-      join(__dirname, "..", ".."),
-      "app/app/webhooks/_components/ActivityTab.tsx",
-    );
-    const frase = mapa.get(motivo);
-    expect(frase, `o motivo ${motivo} não tem frase no mapa MOTIVO_DA_PARADA`).toBeTruthy();
-    expect(frase!.trim().length, "frase curta demais: a tela mostraria nada").toBeGreaterThan(10);
-    expect(
-      DICIONARIO[frase!]?.es,
-      "a frase da aba Atividade não tem coluna es no dicionário",
-    ).toBeTruthy();
-  });
 });
 
 describe("interruptor da empresa LIGADO (controle positivo)", () => {
@@ -157,7 +143,10 @@ describe("interruptor da empresa LIGADO (controle positivo)", () => {
       structuredClone(CONFIG),
     );
 
-    expect(decidir, "com o interruptor ligado o modelo tem de ser consultado").toHaveBeenCalledTimes(1);
+    expect(
+      decidir,
+      "com o interruptor ligado o modelo tem de ser consultado",
+    ).toHaveBeenCalledTimes(1);
     // O mock devolveu resposta inválida de propósito: nada além da chamada é
     // medido aqui, e a ação-alvo não roda sem escolha.
     expect(resultado.status).toBe("failed");
@@ -218,7 +207,11 @@ describe("pré-checagem do motor (postponeUntil) com o interruptor", () => {
     ...CONFIG,
     opcoes: [
       CONFIG.opcoes[0],
-      { id: "janela", rotulo: "Ação com janela", acao: { type: "teste_janela_do_interruptor", config: {} } },
+      {
+        id: "janela",
+        rotulo: "Ação com janela",
+        acao: { type: "teste_janela_do_interruptor", config: {} },
+      },
     ],
   };
 
@@ -231,11 +224,17 @@ describe("pré-checagem do motor (postponeUntil) com o interruptor", () => {
     );
 
     expect(ate).toBeNull();
-    expect(postpone, "com o freio desligado a janela da ação-alvo nem é consultada").not.toHaveBeenCalled();
+    expect(
+      postpone,
+      "com o freio desligado a janela da ação-alvo nem é consultada",
+    ).not.toHaveBeenCalled();
   });
 
   it("ILEGÍVEL: as janelas seguem valendo — nunca manda fora da janela", async () => {
-    const ate = await executor().postponeUntil!(ctx(adminComErro), structuredClone(CONFIG_COM_JANELA));
+    const ate = await executor().postponeUntil!(
+      ctx(adminComErro),
+      structuredClone(CONFIG_COM_JANELA),
+    );
 
     expect(ate).toBe(ADIA_ATE);
     expect(postpone).toHaveBeenCalledTimes(1);

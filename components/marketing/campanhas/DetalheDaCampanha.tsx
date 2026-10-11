@@ -195,6 +195,23 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           grava({ optional_tabs: [...atuais, nova] });
           irParaAba(nova);
         }}
+        aoRemover={(velha) => {
+          if (
+            !window.confirm(
+              t(
+                "Tirar esta página da campanha? Os dados ficam guardados e voltam se você adicionar a página de novo.",
+              ),
+            )
+          ) {
+            return;
+          }
+          grava({
+            optional_tabs: opcionaisDaCampanha(c.channel, c.optional_tabs).filter(
+              (x) => x !== velha,
+            ),
+          });
+          if (aba === velha) irParaAba("cadastro");
+        }}
       />
 
       {aba === "visao" ? <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} /> : null}
@@ -203,6 +220,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         <>
           <DiaADiaDaCampanha
             canal={c.channel}
+            campanha={c}
             dias={dias.dias}
             podeEditar={podeEditar}
             funilDefinido={dias.funilDefinido}

@@ -126,21 +126,6 @@ describe("o controle Confidence threshold sumiu do código que o produto executa
 });
 
 describe("o que tinha de continuar, continua", () => {
-  it("a frase da aba RAG existe e tem espanhol no dicionário", () => {
-    // Trocar a copy sem traduzir derruba a tela do espanhol para português
-    // (`i18n-espanhol-cobre-a-tela` reprovaria, mas aqui o teste deixa o
-    // acoplamento explícito: a régua desta issue é a mesma frase).
-    const editor = ler(EDITOR);
-    const frases = [...editor.matchAll(/t\(\s*"([^"]{10,})"/g)].map((m) => m[1] as string);
-    const fraseDaAbaRag = frases.find((f) => f.startsWith("Top K = "));
-    expect(fraseDaAbaRag, "a aba RAG perdeu a frase que explica os campos").toBeDefined();
-    expect(fraseDaAbaRag).not.toContain(PROMESSA_MORTA);
-    expect(fraseDaAbaRag).not.toContain("Confidence");
-    expect(
-      DICIONARIO[fraseDaAbaRag as keyof typeof DICIONARIO]?.es,
-      "frase nova sem espanhol — a tela cai para o português de quem escolheu espanhol",
-    ).toBeTruthy();
-  });
 
   it("o worker legado mantém o skip que impede o envio órfão", () => {
     // Remover o controle não pode virar religar o worker: o skip em

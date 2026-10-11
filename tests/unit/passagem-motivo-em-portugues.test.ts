@@ -151,21 +151,6 @@ describe("o motivo da passagem tem frase em português", () => {
     }
   });
 
-  it("toda frase tem par em espanhol — a chave É o texto em português", () => {
-    // `tests/unit/i18n-espanhol-cobre-a-tela.test.ts` só cobra chave que JÁ é
-    // usada por uma tela. O cartão nasce na onda seguinte; sem este caso, as
-    // frases entrariam sem espanhol e o gate de lá só acusaria depois, no PR da
-    // tela — longe de quem escreveu a frase.
-    const semEspanhol = [
-      ...Object.values(FRASE_DO_MOTIVO),
-      ...Object.values(FRASE_DO_MOTIVO_DO_AVISO),
-    ].filter((frase) => DICIONARIO[frase]?.es === undefined);
-    expect(
-      semEspanhol,
-      "estas frases da passagem não têm entrada `es` em lib/i18n/dicionario.ts",
-    ).toEqual([]);
-  });
-
   it("CONTROLE DE PLATAFORMA: o par arquivo→código é o mesmo no Windows e no Linux", () => {
     // O mesmo controle do outro arquivo da issue, pelo motivo do mesmo defeito:
     // `relative` devolve o caminho no dialeto do SO, e o par é comparado com

@@ -264,9 +264,16 @@ function FunilDoCanal({
   const t = useT();
   if (c.channel === "trafego_pago") return null;
   const metricas = METRICAS_DO_CANAL[c.channel];
+  // Cada etapa com a taxa em relação à anterior (calculada à parte: sem variável mudando no render).
+  const totais = metricas
+    .filter((m) => m.tipo === "contagem")
+    .map((m) => ({ m, total: somaDoExtra(dias, m.chave) }));
+  const etapas = totais.map((e, i) => {
+    const anterior = i > 0 ? totais[i - 1]!.total : null;
+    return { ...e, taxa: anterior !== null && anterior > 0 ? (e.total / anterior) * 100 : null };
+  });
   const vendas = somaDoExtra(dias, "vendas");
   const valor = somaDoExtra(dias, "valor_total");
-  let anterior: number | null = null;
   return (
     <>
       <Cartao titulo={t("Resultado do canal")}>
@@ -284,24 +291,19 @@ function FunilDoCanal({
         />
       </Cartao>
       <Cartao titulo={t("Funil do canal")}>
-        {metricas
-          .filter((m) => m.tipo === "contagem")
-          .map((m) => {
-            const total = somaDoExtra(dias, m.chave);
-            const taxa = anterior !== null && anterior > 0 ? (total / anterior) * 100 : null;
-            anterior = total;
-            return (
-              <Numero
-                key={m.chave}
-                rotulo={
-                  taxa === null
-                    ? rotuloDaMetrica(t, m.chave)
-                    : `${rotuloDaMetrica(t, m.chave)} (${pct(taxa)})`
-                }
-                valor={inteiro(total)}
-              />
-            );
-          })}
+        {etapas.map(({ m, total, taxa }) => {
+          return (
+            <Numero
+              key={m.chave}
+              rotulo={
+                taxa === null
+                  ? rotuloDaMetrica(t, m.chave)
+                  : `${rotuloDaMetrica(t, m.chave)} (${pct(taxa)})`
+              }
+              valor={inteiro(total)}
+            />
+          );
+        })}
       </Cartao>
     </>
   );

@@ -310,21 +310,6 @@ describe("cartão da passagem — várias passagens na mesma conversa", () => {
 });
 
 describe("cartão da passagem — o espanhol dos textos que a tela recebe por VARIÁVEL", () => {
-  it("os dois títulos têm par `es` — o gate de i18n só enxerga literal", () => {
-    // `tests/unit/i18n-espanhol-cobre-a-tela.test.ts` varre `t("literal")`. O
-    // título do cartão chega como `t(cartao.titulo)`, então aquele gate passa
-    // por cima e a tela cairia no português para quem escolheu espanhol — em
-    // silêncio, que é o modo de falha de i18n que este repositório já pagou.
-    const titulos = new Set(
-      MOTIVOS_DA_PASSAGEM.flatMap((motivo) =>
-        montarCartoesDaPassagem([passagem({ motivo_codigo: motivo })], NINGUEM_ATENDE).map(
-          (c) => c.titulo,
-        ),
-      ),
-    );
-    expect(titulos.size, "os títulos deixaram de variar — a varredura ficou vácua").toBe(2);
-    expect([...titulos].filter((texto) => DICIONARIO[texto]?.es === undefined)).toEqual([]);
-  });
 });
 
 describe("cartão da passagem — contato anonimizado", () => {

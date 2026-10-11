@@ -14,7 +14,11 @@ import {
   type NoDoDossie,
 } from "./eventos-legiveis";
 import type { FlowNode } from "./graph-schema";
-import { EVENTO_ACAO_ADIADA, EVENTO_CLASSIFICACAO_ESPERANDO, EVENTO_TURNO_DESCARTADO } from "./node-handlers";
+import {
+  EVENTO_ACAO_ADIADA,
+  EVENTO_CLASSIFICACAO_ESPERANDO,
+  EVENTO_TURNO_DESCARTADO,
+} from "./node-handlers";
 
 const espera: FlowNode = {
   id: "wait-1",
@@ -117,7 +121,8 @@ describe("descreveEvento", () => {
   it("traduz o passo do motor e diz onde ele aconteceu", () => {
     const r = descreveEvento(
       evento({ event_type: "node_advanced", payload: { next_node_id: "action-1" } }),
-      nos, "pt-BR",
+      nos,
+      "pt-BR",
     );
     expect(r.titulo).toBe("Seguiu em frente");
     expect(r.detalhe).toBe("foi para Primeira cutucada");
@@ -128,15 +133,20 @@ describe("descreveEvento", () => {
   it("a falha carrega a mensagem E o passo — nunca uma sem a outra", () => {
     const r = descreveEvento(
       evento({ event_type: "node_failed", payload: { error: "flow_version_not_found" } }),
-      nos, "pt-BR",
+      nos,
+      "pt-BR",
     );
     expect(r.detalhe).toBe("flow_version_not_found");
     expect(r.onde).toBe("Deixa esfriar");
   });
 
   it("intervenção humana é marcada como humana — é o que separa decisão de automatismo", () => {
-    expect(descreveEvento(evento({ event_type: "paused_manual" }), nos, "pt-BR").autor).toBe("pessoa");
-    expect(descreveEvento(evento({ event_type: "reactivity_replied" }), nos, "pt-BR").autor).toBe("cliente");
+    expect(descreveEvento(evento({ event_type: "paused_manual" }), nos, "pt-BR").autor).toBe(
+      "pessoa",
+    );
+    expect(descreveEvento(evento({ event_type: "reactivity_replied" }), nos, "pt-BR").autor).toBe(
+      "cliente",
+    );
   });
 
   it("adiar por janela fechada é lido como ESPERA, não como defeito — e com a data", () => {
@@ -160,7 +170,11 @@ describe("descreveEvento", () => {
 
   it("o turno descartado pela suspensão diz o motivo e que o envio volta (migration 0501)", () => {
     const r = descreveEvento(
-      evento({ node_id: "action-1", event_type: EVENTO_TURNO_DESCARTADO, payload: { motivo: "org_nao_operante" } }),
+      evento({
+        node_id: "action-1",
+        event_type: EVENTO_TURNO_DESCARTADO,
+        payload: { motivo: "org_nao_operante" },
+      }),
       nos,
       "pt-BR",
     );
@@ -170,7 +184,11 @@ describe("descreveEvento", () => {
 
   it("o turno descartado pela PAUSA da inscrição aponta a pausa, não a conta (#2262)", () => {
     const r = descreveEvento(
-      evento({ node_id: "action-1", event_type: EVENTO_TURNO_DESCARTADO, payload: { motivo: "inscricao_pausada" } }),
+      evento({
+        node_id: "action-1",
+        event_type: EVENTO_TURNO_DESCARTADO,
+        payload: { motivo: "inscricao_pausada" },
+      }),
       nos,
       "pt-BR",
     );
@@ -178,20 +196,13 @@ describe("descreveEvento", () => {
     expect(r.detalhe).toBe("sai num envio novo quando a inscrição for retomada");
   });
 
-  it("as duas frases do turno descartado têm espanhol e inglês — o dossiê as passa por t() dinâmico, que o guarda de i18n não vê", () => {
-    const en = JSON.parse(readFileSync("lib/i18n/traducoes/en.json", "utf8")) as Record<string, string>;
-    for (const motivo of ["org_nao_operante", "inscricao_pausada"]) {
-      const r = descreveEvento(evento({ node_id: "action-1", event_type: EVENTO_TURNO_DESCARTADO, payload: { motivo } }), nos, "pt-BR");
-      for (const frase of [r.titulo, r.detalhe ?? ""]) {
-        expect(DICIONARIO[frase]?.es, `sem espanhol: ${frase}`).toBeTruthy();
-        expect(en[frase], `sem inglês: ${frase}`).toBeTruthy();
-      }
-    }
-  });
-
   it("o classificar que espera a resposta diz que ESPERA, e até quando — não parece travado", () => {
     const r = descreveEvento(
-      evento({ node_id: "action-1", event_type: EVENTO_CLASSIFICACAO_ESPERANDO, payload: { until: "2026-08-11T12:00:00.000Z" } }),
+      evento({
+        node_id: "action-1",
+        event_type: EVENTO_CLASSIFICACAO_ESPERANDO,
+        payload: { until: "2026-08-11T12:00:00.000Z" },
+      }),
       nos,
       "pt-BR",
     );
@@ -202,7 +213,10 @@ describe("descreveEvento", () => {
 
   it("a carência vencida sem resposta diz POR QUE seguiu, não só que seguiu", () => {
     const r = descreveEvento(
-      evento({ event_type: "node_advanced", payload: { next_node_id: "action-1", class: "no_reply" } }),
+      evento({
+        event_type: "node_advanced",
+        payload: { next_node_id: "action-1", class: "no_reply" },
+      }),
       nos,
       "pt-BR",
     );
@@ -220,9 +234,15 @@ describe("descreveEvento", () => {
 
 describe("rotuloDaAresta", () => {
   it("diz QUANDO o caminho é seguido, em português", () => {
-    expect(rotuloDaAresta({ id: "e", source: "a", target: "b", priority: 0, condition: { type: "always" } })).toBe(
-      "caminho normal",
-    );
+    expect(
+      rotuloDaAresta({
+        id: "e",
+        source: "a",
+        target: "b",
+        priority: 0,
+        condition: { type: "always" },
+      }),
+    ).toBe("caminho normal");
     expect(
       rotuloDaAresta({
         id: "e",
@@ -263,7 +283,13 @@ describe("rotuloDoStatus", () => {
 });
 
 describe("rotuloDaAresta — a saída de escape depende de quem a tem", () => {
-  const aresta = { id: "e", source: "a", target: "b", priority: 0, condition: { type: "always" as const } };
+  const aresta = {
+    id: "e",
+    source: "a",
+    target: "b",
+    priority: 0,
+    condition: { type: "always" as const },
+  };
 
   it("num nó de saída única é o caminho normal; num nó ramificado, o que sobra", () => {
     expect(rotuloDaAresta(aresta, espera)).toBe("caminho normal");
@@ -345,7 +371,9 @@ describe("rotuloDaAresta — o ramo nomeado do grafo v2", () => {
       condition: { type: "branch" as const, branch_id: id },
     });
 
-    expect(rotuloDaAresta(paraRamo("r-quente"), condicao)).toBe("quando vale a regra “Lead quente”");
+    expect(rotuloDaAresta(paraRamo("r-quente"), condicao)).toBe(
+      "quando vale a regra “Lead quente”",
+    );
     // Regra sem nome vira a condição POR EXTENSO — `regra-2` na tela é o que o
     // vocabulário existe para impedir.
     expect(rotuloDaAresta(paraRamo("r-passos"), condicao)).not.toContain("r-passos");
@@ -365,10 +393,18 @@ describe("rotuloDaAresta — o ramo nomeado do grafo v2", () => {
         checks: [{ id: "regra-1", field: "lead_stage", op: "eq", value: ID_DA_ETAPA }],
       },
     };
-    const paraRegra = { id: "e", source: "c1", target: "x", priority: 0, condition: { type: "branch" as const, branch_id: "regra-1" } };
+    const paraRegra = {
+      id: "e",
+      source: "c1",
+      target: "x",
+      priority: 0,
+      condition: { type: "branch" as const, branch_id: "regra-1" },
+    };
     const nomes = { etapa: (id: string) => (id === ID_DA_ETAPA ? "Pago · Vendas" : null) };
 
-    expect(rotuloDaAresta(paraRegra, condicao, nomes)).toBe("quando o lead está na etapa “Pago · Vendas”");
+    expect(rotuloDaAresta(paraRegra, condicao, nomes)).toBe(
+      "quando o lead está na etapa “Pago · Vendas”",
+    );
   });
 
   it("os ramos reservados do contrato viram frase sem depender do nó", () => {
@@ -384,21 +420,27 @@ describe("os eventos que o plano de tempo trouxe", () => {
     // descreve o passo errado é pior que uma genérica: não parece errada.
     const planejar = descreveEvento(
       evento({ node_id: null, event_type: "turn_enqueued", payload: { purpose: "plan_timing" } }),
-      nos, "pt-BR",
+      nos,
+      "pt-BR",
     );
     expect(planejar.titulo).toBe("Pediu ao agente para planejar os tempos de espera");
 
     const mensagem = descreveEvento(
       evento({ event_type: "turn_enqueued", payload: { purpose: "send_message" } }),
-      nos, "pt-BR",
+      nos,
+      "pt-BR",
     );
     expect(mensagem.titulo).toBe("Pediu ao agente para escrever a mensagem");
   });
 
   it("o plano decidido vira frase, não `código: timing_plan_decidido`", () => {
     const r = descreveEvento(
-      evento({ event_type: "timing_plan_decidido", payload: { esperas: { "wait-1": {}, "wait-2": {} } } }),
-      nos, "pt-BR",
+      evento({
+        event_type: "timing_plan_decidido",
+        payload: { esperas: { "wait-1": {}, "wait-2": {} } },
+      }),
+      nos,
+      "pt-BR",
     );
     expect(r.titulo).toBe("O agente decidiu quanto esperar em cada passo");
     expect(r.detalhe).toBe("2 esperas planejadas");
@@ -417,7 +459,11 @@ describe("os eventos que o plano de tempo trouxe", () => {
   });
 
   it("retorno do cliente é proveniência, não código cru", () => {
-    const r = descreveEvento(evento({ event_type: "enrolled_by_inbound_after_silence" }), nos, "pt-BR");
+    const r = descreveEvento(
+      evento({ event_type: "enrolled_by_inbound_after_silence" }),
+      nos,
+      "pt-BR",
+    );
     expect(r.titulo).toBe("Começou porque o cliente voltou a escrever");
     expect(r.autor).toBe("motor");
   });

@@ -73,7 +73,7 @@ export default async function Page() {
   }
 
   const dataLegivel = (iso: string) =>
-    new Date(iso).toLocaleDateString(idioma === "es" ? "es" : "pt-BR", {
+    new Date(iso).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "short",
       year: "numeric",

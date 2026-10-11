@@ -56,6 +56,12 @@ interface Props {
   aoMostrarTodas: (mostrar: boolean) => void;
   aoDuplicar?: () => void;
   aoApagar?: () => void;
+  /**
+   * Muda a posição da aba entre as outras (a primeira é a que a página abre). Sem isso, os
+   * botões de posição não aparecem.
+   */
+  aoMoverAba?: (direcao: -1 | 1) => void;
+  podeMoverAba?: { esquerda: boolean; direita: boolean };
   /** Os tipos que a tela sabe desenhar (padrão: todos). */
   tipos?: readonly TipoDeVisualizacao[];
 }
@@ -140,6 +146,8 @@ function Corpo({
   aoMostrarTodas,
   aoDuplicar,
   aoApagar,
+  aoMoverAba,
+  podeMoverAba,
   tipos = TIPOS,
   aoFechar,
 }: Props) {
@@ -184,6 +192,32 @@ function Corpo({
           className="h-11 w-full rounded-xl border bg-background px-3 text-base outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
       </div>
+
+      {aoMoverAba && podeEditar ? (
+        <div>
+          <p className="mb-1 text-xs text-muted-foreground">
+            {t("Posição da aba (a primeira é a que a página abre)")}
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              disabled={!podeMoverAba?.esquerda}
+              onClick={() => aoMoverAba(-1)}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm hover:bg-secondary disabled:opacity-40"
+            >
+              ← {t("Mover para a esquerda")}
+            </button>
+            <button
+              type="button"
+              disabled={!podeMoverAba?.direita}
+              onClick={() => aoMoverAba(1)}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm hover:bg-secondary disabled:opacity-40"
+            >
+              {t("Mover para a direita")} →
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {!ehPadrao && podeEditar ? (
         <div>

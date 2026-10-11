@@ -268,8 +268,8 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   const atual = lista.find((e) => e.id === escolhida) ?? null;
 
   return (
-    <div className="grid gap-4">
-      <section className="grid gap-4 rounded-2xl border bg-card p-4 shadow-sm">
+    <div className="grid min-w-0 gap-4 [&>*]:min-w-0">
+      <section className="grid min-w-0 gap-4 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">{t("Funil de conversão")}</h2>
           <div className="flex flex-wrap gap-2">
@@ -451,7 +451,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       }}
                     />
                   </label>
-                  <div className="flex items-end gap-2">
+                  <div className="flex flex-wrap items-end gap-2">
                     <button
                       type="button"
                       disabled={!podeEditar || lista[0]?.id === atual.id}

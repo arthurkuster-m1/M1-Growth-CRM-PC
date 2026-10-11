@@ -119,3 +119,9 @@ trabalhando em cima, conforme a prioridade do Arthur.
    pastas e volumes antigos, linhas de cron apontando para pasta inexistente).
 2. Instalador (`instalar-vps.sh`) e roteiro de migração para a VPS nova; testar em VPS limpa;
    migrar com o atual no ar. Antes: cópia segura do `.env.local` (chaves que cifram dados do banco).
+
+### Idioma (11/10/2026): o produto fala só português
+- Removidos: seletor de idioma (topo, perfil e configurações da empresa), dicionário de espanhol
+  (`lib/i18n/dicionario.ts` virou um arquivo mínimo; `t()` devolve o próprio texto), catálogos
+  `en`/`zh-CN`, guardas de tradução e testes que conferiam espanhol. Registro de idiomas: só pt-BR.
+- Código novo pode escrever texto direto, com ou sem `t()`.

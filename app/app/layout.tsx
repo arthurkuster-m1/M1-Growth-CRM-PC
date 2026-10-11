@@ -300,7 +300,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         veria a tela de cadastro de MFA — a PRIMEIRA tela dele — com a cor da
         instalação, e depois o resto do produto com a dele.
       */}
-          <style>{"html{touch-action:pan-x pan-y}"}</style>
+          <style>{"html{touch-action:pan-x pan-y}html,body{overflow-x:clip}"}</style>
           <div data-marca-org="" className="contents">
             <EstiloDaMarcaDaOrganizacao css={cssDaOrganizacao} />
             <EstiloDoTemaDaExtensao css={cssDoTemaDaExtensao} />

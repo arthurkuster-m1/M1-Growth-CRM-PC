@@ -93,7 +93,15 @@ export function useVisoesSalvas(tela: string, podeEditar: boolean) {
   });
 
   const editar = useMutation({
-    mutationFn: ({ id, ...mudancas }: { id: string; name?: string; type?: TipoDeVisualizacao }) =>
+    mutationFn: ({
+      id,
+      ...mudancas
+    }: {
+      id: string;
+      name?: string;
+      type?: TipoDeVisualizacao;
+      position?: number;
+    }) =>
       apiClient
         .patch<{ data: { view: VisaoSalva } }>(`${BASE}/${id}`, mudancas)
         .then((r) => r.data.view),
@@ -137,8 +145,10 @@ export function useVisoesSalvas(tela: string, podeEditar: boolean) {
       type: TipoDeVisualizacao;
       config?: PreferenciasDaTabela;
     }) => criar.mutateAsync(entrada).catch(() => undefined),
-    editarVisao: (id: string, mudancas: { name?: string; type?: TipoDeVisualizacao }) =>
-      editar.mutateAsync({ id, ...mudancas }).catch(() => undefined),
+    editarVisao: (
+      id: string,
+      mudancas: { name?: string; type?: TipoDeVisualizacao; position?: number },
+    ) => editar.mutateAsync({ id, ...mudancas }).catch(() => undefined),
     apagarVisao: (id: string) => apagar.mutateAsync(id).catch(() => undefined),
   };
 }

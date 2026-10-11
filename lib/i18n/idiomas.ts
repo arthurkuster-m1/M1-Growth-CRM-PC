@@ -65,9 +65,7 @@ export const IDIOMA_PADRAO: Idioma = "pt-BR";
  * e um valor desconhecido chegando ao dicionário devolveria a CHAVE na tela.
  */
 export function normalizarIdioma(bruto: string | null | undefined): Idioma {
-  return (IDIOMAS as readonly string[]).includes(bruto ?? "")
-    ? (bruto as Idioma)
-    : IDIOMA_PADRAO;
+  return (IDIOMAS as readonly string[]).includes(bruto ?? "") ? (bruto as Idioma) : IDIOMA_PADRAO;
 }
 
 /**

@@ -295,3 +295,15 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
   Semanas", guardado na aba (`config.linhaDoTempo`).
 - **Sem zoom na área logada:** `viewport` com `maximumScale: 1` e `userScalable: false` em
   `app/app/layout.tsx` + `touch-action: pan-x pan-y` (iOS). Login e páginas públicas seguem com zoom.
+
+### Ajustes do Arthur (11/10/2026, 4ª rodada)
+- **Ordem das abas salvas** (campanhas): "Mover para a esquerda/direita" no "Configurar
+  visualização"; a primeira aba é a que a página abre (`?v=todas` abre a "Todas"). A ordem é da
+  empresa (`position`); a posição da "Todas" fica nas preferências da pessoa.
+- **Cards seguem as propriedades da visualização** (as ligadas, na ordem), com título fixo.
+- **Dia a dia com todos os dias:** com início e fim, todas as datas do período (hoje em
+  destaque); contínua, o mês com navegação para os anteriores; "Só os dias com dados" para
+  campanhas que rodam de vez em quando.
+- **"+" das páginas da campanha:** popup ao lado do botão (adicionar e tirar páginas).
+- **Rolagem lateral** da área logada travada (`overflow-x: clip`); causa: botões do funil que não
+  quebravam linha.

@@ -525,12 +525,6 @@ describe("CartaoDoJev — leitura e idioma", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(recarregar).toHaveBeenCalled();
   });
-
-  it("fala espanhol com quem escolheu espanhol", () => {
-    montar(dados({ config: { ligado: true, modo: "decide" } }), { idioma: "es" });
-    expect(screen.getByRole("heading", { name: "Jev: decisiones rápidas" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Desactivar" })).toBeInTheDocument();
-  });
 });
 
 describe("jevNoPonto — a linha do cartão do ponto", () => {
@@ -687,13 +681,6 @@ describe("CartaoDoJev — por tarefa", () => {
     );
     expect(cartao()).toHaveAttribute("data-estado", "observando");
     expect(screen.getByTestId("jev-tarefa-manipulacao")).toHaveAttribute("data-estado", "observando");
-  });
-
-  it("o selo de cada tarefa sai em espanhol", () => {
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...CLIMA, estado: "observando" }] }), {
-      idioma: "es",
-    });
-    expect(screen.getByTestId("jev-tarefa-clima")).toHaveTextContent("Solo observa");
   });
 
   it("jevNoPonto segue o estado da tarefa daquele ponto", () => {
@@ -1142,46 +1129,6 @@ describe("CartaoDoJev — por tarefa", () => {
       montar(dados({ por_tarefa: [{ ...CLIMA, estado: "observando", ao_ligar: "observando" }] }));
       expect(screen.getByTestId("jev-ao-ligar").textContent?.replace(/\s+/g, " ").trim()).toBe(ANTES_OBSERVA);
     });
-
-    it("fala espanhol com quem escolheu espanhol, no singular e no plural", () => {
-      montar(
-        dados({
-          config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, percebidos: { dias: 30, mensagens: 1, conversas: [conversa(1)] } }],
-        }),
-        { idioma: "es" },
-      );
-      expect(screen.getByTestId("jev-percebidos-humano")).toHaveTextContent(
-        "En los últimos 30 días, Jev detectó 1 mensaje que pide hablar con una persona en el que la regla de hoy no reconoció el pedido.",
-      );
-      expect(screen.getByTestId("jev-tarefa-humano")).toHaveTextContent("Detectar pedidos de hablar con una persona");
-      cleanup();
-      // A frase é traduzida INTEIRA, no plural também — nenhum pedaço em português.
-      montar(
-        dados({
-          config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, percebidos: { dias: 30, mensagens: 7, conversas: [conversa(1)] } }],
-        }),
-        { idioma: "es" },
-      );
-      expect(screen.getByTestId("jev-percebidos-humano")).toHaveTextContent(
-        "En los últimos 30 días, Jev detectó 7 mensajes que piden hablar con una persona en los que la regla de hoy no reconoció el pedido.",
-      );
-      // O número segue em destaque, onde a tradução o pôs.
-      expect(within(screen.getByTestId("jev-percebidos-humano")).getByText("7")).toHaveClass("font-medium");
-      cleanup();
-      // E o zero, com a frase própria dele, também inteira.
-      montar(
-        dados({
-          config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, percebidos: { dias: 30, mensagens: 0, conversas: [] } }],
-        }),
-        { idioma: "es" },
-      );
-      expect(screen.getByTestId("jev-percebidos-humano")).toHaveTextContent(
-        "En los últimos 30 días, Jev todavía no detectó ningún mensaje que pida hablar con una persona en el que la regla de hoy no haya reconocido el pedido.",
-      );
-    });
   });
 
   it("o roteador diz que concordar é levar ao mesmo agente", () => {
@@ -1578,19 +1525,6 @@ describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
     expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(
       "Onde ele só observa, a sua IA de sempre continua decidindo, e você compara os dois antes de deixar o Jev decidir.",
     );
-  });
-
-  it("em espanhol, o porquê de só observar e o 'Não roda' saem em frase inteira", () => {
-    montar(
-      dados({
-        config: { ligado: true, modo: "observacao" },
-        por_tarefa: [{ ...CLIMA, estado: "observando" }, FOLLOWUP, { ...FOLLOWUP, id: "followup_2", ponto: null, sem_fluxo: true }],
-      }),
-      { idioma: "es" },
-    );
-    expect(screen.getByTestId("jev-so-observa-followup")).toHaveTextContent(/^En esta versión, Jev solo observa esta tarea/);
-    expect(screen.getByTestId("jev-sem-fluxo-followup_2")).toHaveTextContent(/^No se ejecuta ahora: ningún seguimiento publicado/);
-    expect(screen.getByTestId("jev-concordancia-followup")).toHaveTextContent(/pusieron la respuesta del cliente en la misma salida del flujo en 3 de 4 mensajes\./);
   });
 });
 

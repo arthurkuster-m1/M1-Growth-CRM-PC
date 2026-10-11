@@ -233,19 +233,6 @@ describe("recusa da transferência abre o aviso na Central (#2297, caminho 1)", 
     expect(inseridos).toHaveLength(0);
   });
 
-  it("organização em espanhol → título e corpo em espanhol, e a dedup compara o título traduzido", async () => {
-    transferir.mockRejectedValueOnce(
-      new ApiError(422, "required_fields_missing", { faltando: [] }, "job-1", "Preencha os campos"),
-    );
-    const { cliente, inseridos } = adminComAvisos([negocio("lead-1", "pipe-entrada")], { locale: "es" });
-
-    await aplicaDestinoDaIntencao(deps(cliente));
-
-    expect(tituloDoAvisoDeDestinoRecusado("es")).not.toBe(TITULO_AVISO_DE_DESTINO_RECUSADO);
-    expect(inseridos[0]!.title).toBe(tituloDoAvisoDeDestinoRecusado("es"));
-    expect(String(inseridos[0]!.body)).toContain("campos obligatorios");
-  });
-
   it("falha que NÃO é a régua (ex.: `encerraDemanda`, depois do clone) volta ao chamador, sem aviso", async () => {
     // O clone já existe quando `encerraDemanda` lança: um aviso dizendo "não
     // move nada" seria falso. A falha sobe ao `catch` de `inbound-turn.ts`.

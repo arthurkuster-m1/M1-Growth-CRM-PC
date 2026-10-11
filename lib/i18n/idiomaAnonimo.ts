@@ -17,9 +17,7 @@ import { normalizarIdioma, parseAcceptLanguage, type Idioma } from "@/lib/i18n/i
  * Server-only de propósito (`next/headers`): `lib/i18n/idiomas.ts` continua
  * puro porque componente cliente (`SeletorDeIdioma.tsx`) o importa.
  */
-export async function idiomaDoVisitante(
-  localeBruto: string | null | undefined,
-): Promise<Idioma> {
+export async function idiomaDoVisitante(localeBruto: string | null | undefined): Promise<Idioma> {
   if (localeBruto) return normalizarIdioma(localeBruto);
   const hdrs = await headers();
   return normalizarIdioma(parseAcceptLanguage(hdrs.get("accept-language")));

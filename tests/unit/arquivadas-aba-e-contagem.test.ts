@@ -113,15 +113,4 @@ describe("o botão de arquivar", () => {
     expect(header).toContain('t("Arquivar esta conversa?")');
     expect(header).toMatch(/status !== "archived"/);
   });
-
-  it("as strings do botão existem no dicionário (pt-BR e es)", () => {
-    const dic = fonte("lib/i18n/dicionario.ts");
-    // `"Arquivar"` já existia no dicionário, e sem aspas: a chave é um
-    // identificador válido. Com aspas obrigatórias o teste reprovava o
-    // dicionário CERTO — o que se mede aqui é a chave existir, não como ela foi
-    // escrita.
-    expect(dic).toMatch(/(?:"Arquivar"|Arquivar):\s*\{\s*es:/);
-    expect(dic).toMatch(/Arquivadas:\s*\{\s*es:/);
-    expect(dic).toMatch(/"Arquivar esta conversa\?":\s*\{\s*es:/);
-  });
 });

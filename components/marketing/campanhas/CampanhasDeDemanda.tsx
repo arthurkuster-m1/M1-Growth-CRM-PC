@@ -77,7 +77,19 @@ export function CampanhasDeDemanda() {
     "campanhas",
     podeEditar,
   );
-  const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
+  // A ORDEM das abas é da empresa (a `position` de cada visualização salva); a aba "Todas"
+  // guarda a própria posição nas preferências. A primeira aba é a que a página abre.
+  const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
+  const ordemDasAbas = [
+    { id: ID_DA_PADRAO, posicao: posicaoDaPadrao },
+    ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
+  ].sort((a, b) => a.posicao - b.posicao);
+  const pedida = parametros.get("v");
+  const visaoAtiva =
+    pedida === ID_DA_PADRAO
+      ? undefined
+      : (visoes.find((v) => v.id === pedida) ??
+        (pedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   // O jeito de ver (Tabela, Cards ou Linha do tempo) é da aba salva, como no Notion; a aba
   // "Todas" é sempre a tabela.
@@ -92,8 +104,20 @@ export function CampanhasDeDemanda() {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
-  const escolherAba = (id: string) =>
-    router.replace(id === ID_DA_PADRAO ? caminho : `${caminho}?v=${id}`, { scroll: false });
+  const escolherAba = (id: string) => router.replace(`${caminho}?v=${id}`, { scroll: false });
+  const moverAba = (direcao: -1 | 1) => {
+    const ids = ordemDasAbas.map((a) => a.id);
+    const i = ids.indexOf(ativaId);
+    const j = i + direcao;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    ids.forEach((id, k) => {
+      const posicao = (k + 1) * 1000;
+      if (id === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(id, { position: posicao });
+    });
+  };
+  const indiceDaAba = ordemDasAbas.findIndex((a) => a.id === ativaId);
 
   const nomeDoFunil = (id: string | null) => funis.find((f) => f.id === id)?.name ?? "";
   const opcoesDeCanal = CANAIS_DA_CAMPANHA.map((c) => ({
@@ -497,10 +521,17 @@ export function CampanhasDeDemanda() {
     }));
   }
 
-  const abas = [
-    { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Todas"), tipo: "tabela" as const },
-    ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
-  ];
+  const abasPorId = new Map([
+    [
+      ID_DA_PADRAO,
+      { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Todas"), tipo: "tabela" as const },
+    ],
+    ...visoes.map((v) => [v.id, { id: v.id, nome: v.name, tipo: v.type }] as const),
+  ]);
+  const abas = ordemDasAbas.flatMap((a) => {
+    const aba = abasPorId.get(a.id);
+    return aba ? [aba] : [];
+  });
 
   if (carregando) {
     return <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />;
@@ -513,6 +544,47 @@ export function CampanhasDeDemanda() {
     );
   }
 
+  // As propriedades que o card mostra: as da visualização (ligadas, na ordem), menos o título,
+  // que o card já traz em destaque.
+  const cartao = mostradas.filter((col) => col.id !== "nome");
+  const dataCurta = (d: string | null) => (d ? d.split("-").reverse().join("/") : "—");
+  const valorDoCartao = (id: string, c: CampanhaDeDemanda) => {
+    switch (id) {
+      case "canal":
+        return <Etiqueta cor={COR_DO_CANAL[c.channel]}>{rotuloDoCanal(t, c.channel)}</Etiqueta>;
+      case "status":
+        return (
+          <Etiqueta ponto cor={COR_DO_STATUS[c.status]}>
+            {rotuloDoStatus(t, c.status)}
+          </Etiqueta>
+        );
+      case "funil":
+        return c.pipeline_id ? nomeDoFunil(c.pipeline_id) || "—" : "—";
+      case "inicio":
+        return dataCurta(c.start_date);
+      case "fim":
+        return c.continuous ? t("Contínua") : dataCurta(c.end_date);
+      case "continua":
+        return c.continuous ? t("Sim") : t("Não");
+      case "investimento":
+        return dinheiro(c.budget);
+      case "meta-leads":
+        return c.goal_leads ?? "—";
+      case "meta-cpl":
+        return dinheiro(c.goal_cpl);
+      case "meta-vendas":
+        return c.goal_sales ?? "—";
+      case "meta-faturamento":
+        return dinheiro(c.goal_revenue);
+      case "estado-atual":
+        return <span className="tabular-nums">{textoDoEstado(t, c.estado)}</span>;
+      case "plataforma":
+        return c.platform_campaigns.map((p) => p.name).join(", ") || "—";
+      default:
+        return "—";
+    }
+  };
+
   const cartoes = (lista: CampanhaDeDemanda[]) => (
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {lista.map((c) => (
@@ -521,34 +593,15 @@ export function CampanhasDeDemanda() {
             href={`${BASE}/${c.id}`}
             className="group flex h-full flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-md"
           >
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Etiqueta cor={COR_DO_CANAL[c.channel]}>{rotuloDoCanal(t, c.channel)}</Etiqueta>
-              <Etiqueta ponto cor={COR_DO_STATUS[c.status]}>
-                {rotuloDoStatus(t, c.status)}
-              </Etiqueta>
-            </div>
             <h3 className="font-semibold">{c.name}</h3>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <dt>{t("Período")}</dt>
-              <dd className="text-foreground">
-                {c.continuous
-                  ? t("Contínua")
-                  : [c.start_date, c.end_date].filter(Boolean).join(" → ") || "—"}
-              </dd>
-              <dt>{t("Investimento")}</dt>
-              <dd className="text-foreground">{dinheiro(c.budget)}</dd>
-              <dt>{t("Meta de leads")}</dt>
-              <dd className="text-foreground">{c.goal_leads ?? "—"}</dd>
-              <dt className="col-span-2 mt-1">{t("Estado atual")}</dt>
-              <dd className="col-span-2 text-foreground tabular-nums">
-                {textoDoEstado(t, c.estado)}
-              </dd>
-              {c.pipeline_id ? (
-                <>
-                  <dt>{t("Funil do lead")}</dt>
-                  <dd className="truncate text-foreground">{nomeDoFunil(c.pipeline_id)}</dd>
-                </>
-              ) : null}
+            {/* As propriedades do card são as da visualização: as que estão ligadas, na ordem. */}
+            <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+              {cartao.map((col) => (
+                <div key={col.id} className="contents">
+                  <dt className="truncate">{col.titulo}</dt>
+                  <dd className="min-w-0 text-foreground">{valorDoCartao(col.id, c)}</dd>
+                </div>
+              ))}
             </dl>
             <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary">
               {t("Abrir")}
@@ -792,6 +845,11 @@ export function CampanhasDeDemanda() {
             : padrao.atualizar((p) => ({ ...p, nome }))
         }
         aoTrocarTipo={(tipo) => visaoAtiva && void editarVisao(visaoAtiva.id, { type: tipo })}
+        aoMoverAba={moverAba}
+        podeMoverAba={{
+          esquerda: indiceDaAba > 0,
+          direita: indiceDaAba >= 0 && indiceDaAba < ordemDasAbas.length - 1,
+        }}
         propriedades={resolvidas.map((c) => ({
           id: c.id,
           titulo: c.titulo,

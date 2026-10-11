@@ -41,10 +41,6 @@ describe("textos do Jev para quem opera", () => {
     expect(TEXTOS.length).toBeGreaterThanOrEqual(13);
   });
 
-  it("todo texto tem espanhol", () => {
-    expect(TEXTOS.filter((t) => !DICIONARIO[t]?.es)).toEqual([]);
-  });
-
   it("nenhum texto fala a língua do engenheiro", () => {
     const jargao = /\b(400|401|402|403|422|429|5\d\d|HTTP|status|timeout|token|prompt|API|score|provider|JSON)\b/i;
     expect(TEXTOS.filter((t) => jargao.test(t))).toEqual([]);
@@ -101,11 +97,5 @@ describe("textos do Jev para quem opera", () => {
       expect(aviso).toEqual([AO_EXCLUIR_A_CHAVE_DO_JEV.nenhumaTarefa]);
       expect(aviso.join(" ")).not.toMatch(/O Jev usa esta chave/);
     });
-  });
-
-  it("o aviso sai no idioma da organização", () => {
-    const es = avisoDoJevNaCentral("contrato_invalido", true, (t) => traduzir(t, "es"));
-    expect(es.title).toBe(DICIONARIO[AVISO_DO_JEV.titulo]?.es);
-    expect(es.body).not.toContain("Enquanto isso");
   });
 });
