@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
@@ -15,7 +15,7 @@ import {
   type TipoDeCampo,
 } from "@/lib/motor/consulta";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { ArrowsDownUp, Funnel, Plus, Rows, X } from "@/lib/ui/icons";
+import { ArrowsDownUp, Funnel, Plus, Rows, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /** O que a barra precisa saber de cada campo para montar os menus. */
@@ -76,10 +76,24 @@ function BotaoRemover({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => vo
     <button
       type="button"
       aria-label={rotulo}
+      title={rotulo}
       onClick={aoClicar}
-      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-subtle transition-colors hover:bg-secondary hover:text-foreground"
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-subtle transition-colors hover:bg-secondary hover:text-error-fg"
     >
-      <X size={14} aria-hidden />
+      <Trash size={14} aria-hidden />
+    </button>
+  );
+}
+
+/** O botão que FECHA o painel: os filtros já valem na hora, e este deixa claro onde se termina. */
+function BotaoAplicar({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={aoClicar}
+      className="mt-3 h-10 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+    >
+      {rotulo}
     </button>
   );
 }
@@ -100,6 +114,9 @@ function BotaoAdicionar({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => 
 /** "Filtrar", "Ordenar" e "Agrupar": os três painéis que decidem o que a tabela mostra e em que ordem. */
 export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) {
   const t = useT();
+  const [abertoFiltro, setAbertoFiltro] = useState(false);
+  const [abertoOrdem, setAbertoOrdem] = useState(false);
+  const [abertoGrupo, setAbertoGrupo] = useState(false);
   const filtros = consulta.filtros ?? [];
   const ordenacao = consulta.ordenacao ?? [];
   const agrupaveis = campos.filter((c) => TIPOS_AGRUPAVEIS.includes(c.tipo));
@@ -218,7 +235,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
   return (
     // `contents`: os botões entram direto na fila de quem usa a barra, que decide rolar ou quebrar.
     <div className="contents">
-      <Popover>
+      <Popover open={abertoFiltro} onOpenChange={setAbertoFiltro}>
         <Gatilho
           compacta={compacta}
           icone={<Funnel size={16} aria-hidden />}
@@ -298,10 +315,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
             </ul>
           )}
           <BotaoAdicionar rotulo={t("Adicionar filtro")} aoClicar={novoFiltro} />
+          <BotaoAplicar rotulo={t("Aplicar")} aoClicar={() => setAbertoFiltro(false)} />
         </PopoverContent>
       </Popover>
 
-      <Popover>
+      <Popover open={abertoOrdem} onOpenChange={setAbertoOrdem}>
         <Gatilho
           compacta={compacta}
           icone={<ArrowsDownUp size={16} aria-hidden />}
@@ -374,10 +392,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
               });
             }}
           />
+          <BotaoAplicar rotulo={t("Aplicar")} aoClicar={() => setAbertoOrdem(false)} />
         </PopoverContent>
       </Popover>
 
-      <Popover>
+      <Popover open={abertoGrupo} onOpenChange={setAbertoGrupo}>
         <Gatilho
           compacta={compacta}
           icone={<Rows size={16} aria-hidden />}
@@ -428,6 +447,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
               </select>
             </>
           ) : null}
+          <BotaoAplicar rotulo={t("Aplicar")} aoClicar={() => setAbertoGrupo(false)} />
         </PopoverContent>
       </Popover>
 
