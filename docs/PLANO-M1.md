@@ -38,8 +38,8 @@ trabalhando em cima, conforme a prioridade do Arthur.
   que anda para sempre (setas ou arrastando), com arquivar concluídas; tarefas da semana
   (agência × cliente) vindas da base de Tarefas; histórico com o motivo dos adiamentos; fechar a
   semana; imagem baixável e link sem login nos temas claro e escuro (usa os tokens do app);
-  semana começa no domingo; seletor de data em português. Pendente: coluna "Cronograma" na tela
-  de Tarefas e card na galeria pública.
+  semana começa no domingo; seletor de data em português. Coluna "Cronograma" na tela de
+  Tarefas (gestão) e card na galeria pública: feitos.
 - **Redução do Log Ingestion do Supabase** (feito no código): login conferido localmente
   (`getClaims`, sem ir ao Supabase a cada requisição), memória de 20 s para permissões e contexto
   de suporte, polling do Inbox espaçado. Conferir o consumo depois de alguns dias.
@@ -48,13 +48,13 @@ trabalhando em cima, conforme a prioridade do Arthur.
 
 | Item | Situação |
 |---|---|
-| Páginas legais (política de privacidade e termos) | **Finalizar.** Rotas `/legal/privacy` e `/legal/terms` existem; falta o texto, o link no cadastro e a publicação do app do Google |
+| Páginas legais (política de privacidade e termos) | **Quase pronto.** Texto com o operador "Assessoria M1", seção do login com Google e links no login/cadastro estão no ar. Falta: e-mail público de contato (`LGPD_DPO_EMAIL`), CNPJ (`OPERADOR_CNPJ`, opcional) e o Arthur enviar o app para verificação no Google Cloud |
 | Publicar as ofertas da Assessoria M1 | **Feito** (publicadas e sincronizadas com o catálogo da IA) |
 | Nome da fase 02 ("Produto e Oferta") | **Decidido: "Mercado e Oferta"** |
 | Religar a confirmação de e-mail no cadastro | **Feito** |
 | Pendências antigas do menu: nome "Dono" → nome real, seletor de empresa, redirecionamento pós-onboarding | **Manter** (fazer junto da frente 12/14) |
-| Limpar oferta de teste `vfap33` (R$ 15,00), que a IA já enxerga | **Novo** — conferir e apagar |
-| Página `onboarding` antiga publicada no módulo removido | **Novo** — apagar na limpeza |
+| Oferta de teste `vfap33` (R$ 15,00) | **Manter por enquanto** — tudo cadastrado é teste; o Arthur revisa tudo quando o app for finalizado |
+| Página `onboarding` antiga publicada | **Feito** (apagada, com o rascunho e o link) |
 
 ## 3. O PLANO (15 frentes, sem ordem fixa)
 
