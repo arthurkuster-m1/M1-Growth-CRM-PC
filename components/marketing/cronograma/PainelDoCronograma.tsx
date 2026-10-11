@@ -90,7 +90,7 @@ export function PainelDoCronograma({
   rotulos,
   mostrarAdiamentos,
   agora,
-  tema = "claro",
+  tema,
   tag,
   janelaInicio = 1,
   aoMudarJanela,
@@ -108,6 +108,7 @@ export function PainelDoCronograma({
   /** A agência vê quantas vezes o prazo foi empurrado; o cliente não precisa dessa conta. */
   mostrarAdiamentos: boolean;
   agora?: Date;
+  /** Sem valor, segue o tema do app (e do sistema). */
   tema?: TemaDoCronograma;
   /** Etiqueta do idioma (para formatar R$ e números). */
   tag: string;
@@ -130,7 +131,8 @@ export function PainelDoCronograma({
   const arraste = useRef<{ x: number; inicio: number; largura: number } | null>(null);
   const clamp = (n: number) => Math.min(maximoDaJanela, Math.max(1, n));
   const aoApertar = (e: PointerEvent<HTMLDivElement>) => {
-    if (!aoMudarJanela || e.button !== 0) return;
+    // No toque o dedo rola a página; as setas mudam a janela.
+    if (!aoMudarJanela || e.button !== 0 || e.pointerType === "touch") return;
     const trilho = e.currentTarget.querySelector<HTMLElement>("[data-trilho]");
     const largura = (trilho?.getBoundingClientRect().width ?? 600) / semanas;
     arraste.current = { x: e.clientX, inicio: primeira, largura: Math.max(20, largura) };
@@ -223,7 +225,10 @@ export function PainelDoCronograma({
 
   if (vista === "geral") {
     return (
-      <div className={css.tema} data-theme={tema === "escuro" ? "dark" : "light"}>
+      <div
+        className={css.tema}
+        data-theme={tema === "escuro" ? "dark" : tema === "claro" ? "light" : undefined}
+      >
         <h2 className={css.titulo}>
           {rotulos.titulo} <b>{rotulos.destaqueDoTitulo}</b>
         </h2>
@@ -237,16 +242,16 @@ export function PainelDoCronograma({
             <div className={css.metas}>
               {metas.map((m) => {
                 const p = progressoDaMeta(m);
-                const principal = m.valor_atual ?? m.valor_alvo;
                 return (
                   <div key={m.id} className={css.meta}>
                     <p className={css.metaTitulo}>{m.titulo}</p>
                     <div className={css.metaValor}>
-                      {formatarValorDaMeta(principal, m.tipo, m.unidade, tag)}
+                      {formatarValorDaMeta(m.valor_alvo, m.tipo, m.unidade, tag)}
                     </div>
-                    {m.valor_atual !== null && m.valor_alvo !== null ? (
+                    {m.valor_atual !== null ? (
                       <div className={css.metaAlvo}>
-                        {rotulos.alvo}: {formatarValorDaMeta(m.valor_alvo, m.tipo, m.unidade, tag)}
+                        {rotulos.atual}:{" "}
+                        {formatarValorDaMeta(m.valor_atual, m.tipo, m.unidade, tag)}
                       </div>
                     ) : null}
                     {p !== null ? (
@@ -479,7 +484,10 @@ export function PainelDoCronograma({
     );
 
   return (
-    <div className={css.tema} data-theme={tema === "escuro" ? "dark" : "light"}>
+    <div
+      className={css.tema}
+      data-theme={tema === "escuro" ? "dark" : tema === "claro" ? "light" : undefined}
+    >
       <h2 className={css.titulo}>
         {rotulos.semana} <b>{periodoDaSemana(inicioDaSemana)}</b>
       </h2>

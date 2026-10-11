@@ -88,7 +88,7 @@ function fazerSupabase(respostas: Resposta[]) {
       const r = proxima();
       return Promise.resolve({ data: r.data ?? null, error: r.error ?? null });
     };
-    for (const metodo of ["select", "insert", "update", "delete", "order", "limit", "in", "gte", "lte"]) {
+    for (const metodo of ["select", "insert", "update", "delete", "order", "limit", "in", "gte", "lte", "or"]) {
       elo[metodo] = () => elo;
     }
     elo.eq = (coluna: string, valor: unknown) => {

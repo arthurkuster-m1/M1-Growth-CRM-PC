@@ -30,6 +30,7 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
@@ -103,6 +104,11 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (filtros.due_from) query = query.gte("due_date", filtros.due_from);
   if (filtros.due_to) query = query.lte("due_date", filtros.due_to);
   if (filtros.aberto === "true") query = query.in("status", ["pending", "in_progress"]);
+  // As tarefas do lado da AGÊNCIA no cronograma são do trabalho interno da agência: quem está do
+  // lado do cliente (visualizador/atendente) não as vê na base de Tarefas — só no cronograma.
+  if (!roleAtLeast(authz.org.role, "manager")) {
+    query = query.or("cronograma_lado.is.null,cronograma_lado.neq.agencia");
+  }
 
   const { data, error } = await query;
   if (error) {

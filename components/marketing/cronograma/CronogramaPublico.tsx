@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { AlternadorDeTema } from "@/components/marketing/cronograma/AlternadorDeTema";
 import {
   PainelDoCronograma,
   type RotulosDoCronograma,
 } from "@/components/marketing/cronograma/PainelDoCronograma";
-import { useBaixarImagem, useTemaDoCronograma } from "@/hooks/marketing/useCronograma";
+import { useBaixarImagem } from "@/hooks/marketing/useCronograma";
 import { inicioDaJanela } from "@/lib/marketing/cronograma";
 import type {
   ConfigDoCronograma,
@@ -49,9 +48,6 @@ export function CronogramaPublico({
     anterior: string;
     proxima: string;
     estaSemana: string;
-    aparencia: string;
-    claro: string;
-    escuro: string;
   };
   tag: string;
   hrefAnterior: string;
@@ -61,7 +57,6 @@ export function CronogramaPublico({
   const [aba, setAba] = useState<"geral" | "semana">("geral");
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
-  const [tema, setTema] = useTemaDoCronograma();
   const [janela, setJanela] = useState<number | null>(null);
   // `semanaAtual` aqui é a semana MOSTRADA; a de hoje é a do início da janela padrão.
   const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, config.total_semanas);
@@ -69,7 +64,7 @@ export function CronogramaPublico({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-xl bg-secondary p-0.5">
+        <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-secondary p-0.5">
           {(
             [
               ["geral", textos.geral],
@@ -82,7 +77,7 @@ export function CronogramaPublico({
               aria-pressed={aba === valor}
               onClick={() => setAba(valor)}
               className={cn(
-                "h-9 rounded-[10px] px-4 text-sm font-medium transition-colors",
+                "h-9 shrink-0 rounded-[10px] px-4 text-sm font-medium whitespace-nowrap transition-colors",
                 aba === valor
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -96,13 +91,13 @@ export function CronogramaPublico({
           <div className="inline-flex items-center gap-1 text-sm">
             <Link
               href={hrefAnterior}
-              className="h-9 rounded-lg border px-3 leading-9 hover:bg-secondary"
+              className="h-9 rounded-lg border px-3 leading-9 whitespace-nowrap hover:bg-secondary"
             >
               {textos.anterior}
             </Link>
             <Link
               href={hrefProxima}
-              className="h-9 rounded-lg border px-3 leading-9 hover:bg-secondary"
+              className="h-9 rounded-lg border px-3 leading-9 whitespace-nowrap hover:bg-secondary"
             >
               {textos.proxima}
             </Link>
@@ -116,13 +111,6 @@ export function CronogramaPublico({
             ) : null}
           </div>
         ) : null}
-        <AlternadorDeTema
-          tema={tema}
-          aoMudar={setTema}
-          rotulo={textos.aparencia}
-          claro={textos.claro}
-          escuro={textos.escuro}
-        />
         <button
           type="button"
           disabled={baixar.isPending}
@@ -133,7 +121,7 @@ export function CronogramaPublico({
               nome: aba === "geral" ? "cronograma.png" : "tarefas-da-semana.png",
             })
           }
-          className="h-9 rounded-xl border bg-card px-4 text-sm font-medium shadow-sm hover:bg-secondary disabled:opacity-50"
+          className="h-9 rounded-xl border bg-card px-4 text-sm font-medium whitespace-nowrap shadow-sm hover:bg-secondary disabled:opacity-50"
         >
           {baixar.isPending ? textos.gerando : textos.baixar}
         </button>
@@ -149,7 +137,6 @@ export function CronogramaPublico({
           semanaAtual={semanaDeHoje}
           rotulos={rotulos}
           mostrarAdiamentos={false}
-          tema={tema}
           tag={tag}
           janelaInicio={janelaInicio}
           aoMudarJanela={setJanela}

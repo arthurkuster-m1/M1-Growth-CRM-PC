@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { AlternadorDeTema } from "@/components/marketing/cronograma/AlternadorDeTema";
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { EdicaoDaSemana } from "@/components/marketing/cronograma/EdicaoDaSemana";
 import { EdicaoDoCronograma } from "@/components/marketing/cronograma/EdicaoDoCronograma";
@@ -10,11 +9,7 @@ import { HistoricoDaSemana } from "@/components/marketing/cronograma/HistoricoDa
 import { PainelDoCronograma } from "@/components/marketing/cronograma/PainelDoCronograma";
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
 import { useT } from "@/hooks/i18n/useT";
-import {
-  useBaixarImagem,
-  useCronograma,
-  useTemaDoCronograma,
-} from "@/hooks/marketing/useCronograma";
+import { useBaixarImagem, useCronograma } from "@/hooks/marketing/useCronograma";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useVerComoCliente } from "@/hooks/marketing/useVerComoCliente";
 import { somarDias } from "@/lib/inicio/datas";
@@ -42,7 +37,6 @@ export function CronogramaDoCliente() {
   const [compartilhando, setCompartilhando] = useState(false);
   const [inicio, setInicio] = useState(domingoDeHoje());
   const [janela, setJanela] = useState<number | null>(null);
-  const [tema, setTema] = useTemaDoCronograma();
   const tag = useTagDeIdioma();
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
@@ -81,7 +75,7 @@ export function CronogramaDoCliente() {
         <div
           role="group"
           aria-label={t("Visão do cronograma")}
-          className="inline-flex rounded-xl bg-secondary p-0.5"
+          className="inline-flex max-w-full overflow-x-auto rounded-xl bg-secondary p-0.5"
         >
           {abas.map(([valor, rotulo]) => (
             <button
@@ -90,7 +84,7 @@ export function CronogramaDoCliente() {
               aria-pressed={aba === valor}
               onClick={() => setAba(valor)}
               className={cn(
-                "h-8 rounded-[10px] px-3 text-sm font-medium transition-colors",
+                "h-8 shrink-0 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors",
                 aba === valor
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -111,7 +105,7 @@ export function CronogramaDoCliente() {
             >
               <CaretLeft size={14} aria-hidden />
             </button>
-            <span className="min-w-36 text-center text-sm font-medium">
+            <span className="min-w-28 text-center text-sm font-medium whitespace-nowrap">
               {periodoDaSemana(inicio)}
             </span>
             <button
@@ -126,7 +120,7 @@ export function CronogramaDoCliente() {
               <button
                 type="button"
                 onClick={() => setInicio(domingoDeHoje())}
-                className="ml-1 h-9 rounded-lg px-3 text-sm text-primary hover:bg-secondary"
+                className="ml-1 h-9 rounded-lg px-3 text-sm whitespace-nowrap text-primary hover:bg-secondary"
               >
                 {t("Esta semana")}
               </button>
@@ -135,15 +129,6 @@ export function CronogramaDoCliente() {
         ) : null}
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {aba !== "historico" ? (
-            <AlternadorDeTema
-              tema={tema}
-              aoMudar={setTema}
-              rotulo={t("Aparência da imagem")}
-              claro={t("Claro")}
-              escuro={t("Escuro")}
-            />
-          ) : null}
           {aba !== "historico" ? (
             <button
               type="button"
@@ -155,7 +140,7 @@ export function CronogramaDoCliente() {
                   nome: aba === "geral" ? "cronograma.png" : "tarefas-da-semana.png",
                 })
               }
-              className="h-9 rounded-xl border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+              className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
             >
               {baixar.isPending ? t("Gerando…") : t("Baixar imagem")}
             </button>
@@ -165,7 +150,7 @@ export function CronogramaDoCliente() {
               <button
                 type="button"
                 onClick={() => setCompartilhando(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
+                className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
               >
                 <ShareNetwork size={16} aria-hidden />
                 {t("Compartilhar")}
@@ -175,7 +160,7 @@ export function CronogramaDoCliente() {
                 aria-pressed={editando}
                 onClick={() => setEditando((e) => !e)}
                 className={cn(
-                  "h-9 rounded-xl px-4 text-sm font-medium",
+                  "h-9 rounded-xl px-4 text-sm font-medium whitespace-nowrap",
                   editando ? "bg-primary text-primary-foreground" : "border hover:bg-secondary",
                 )}
               >
@@ -213,7 +198,6 @@ export function CronogramaDoCliente() {
             semanaAtual={semanaDeHoje}
             rotulos={rotulos}
             mostrarAdiamentos={podeEditar}
-            tema={tema}
             tag={tag}
             janelaInicio={janelaInicio}
             aoMudarJanela={setJanela}

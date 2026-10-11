@@ -90,9 +90,6 @@ export default async function CronogramaPublicoPage({
                 anterior: t("Semana anterior"),
                 proxima: t("Próxima semana"),
                 estaSemana: t("Esta semana"),
-                aparencia: t("Aparência da imagem"),
-                claro: t("Claro"),
-                escuro: t("Escuro"),
               }}
               hrefAnterior={`${base}?semana=${somarDias(domingo, -7)}`}
               hrefProxima={`${base}?semana=${somarDias(domingo, 7)}`}

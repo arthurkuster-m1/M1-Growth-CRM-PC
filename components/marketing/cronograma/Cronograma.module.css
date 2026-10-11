@@ -222,7 +222,6 @@
   --semanas: 8;
   --rotulo: 250px;
   cursor: grab;
-  touch-action: pan-y;
   user-select: none;
 }
 .grade.arrastando {
@@ -433,7 +432,7 @@
 }
 .tarefaTexto {
   flex: 1;
-  min-width: 0;
+  min-width: 8rem;
   overflow-wrap: anywhere;
 }
 .etiqueta {
@@ -487,5 +486,47 @@
   }
   .tarefa {
     flex-wrap: wrap;
+  }
+  .tarefaTexto {
+    flex-basis: calc(100% - 24px);
+  }
+  .tarefaPrazo {
+    margin-left: auto;
+  }
+  /* Celular: o nome da ação vai em cima e a barra ocupa a largura toda, alinhada às semanas. */
+  .grade {
+    min-width: 0;
+    cursor: default;
+  }
+  .cabeca {
+    grid-template-columns: repeat(var(--semanas), 1fr);
+  }
+  .cabeca > div:first-child {
+    display: none;
+  }
+  .linha,
+  .linhaFase {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+  }
+  .trilho {
+    grid-column: 1 / -1 !important;
+  }
+  .faseTitulo,
+  .acao {
+    padding-right: 0;
+  }
+  .janelaDica {
+    display: none;
+  }
+  .semana {
+    font-size: 11px;
+  }
+  .metas {
+    grid-template-columns: 1fr;
+  }
+  .legenda > span:last-child {
+    margin-left: 0 !important;
+    width: 100%;
   }
 }

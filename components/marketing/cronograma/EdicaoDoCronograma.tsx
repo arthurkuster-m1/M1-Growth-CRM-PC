@@ -417,6 +417,12 @@ function LinhaDeAcao({
   );
 }
 
+/** Número de semana digitado: aceita o campo vazio enquanto a pessoa escreve. */
+function semanaDoTexto(texto: string, padrao: number): number {
+  const n = Math.floor(Number(texto));
+  return Number.isFinite(n) && n >= 1 ? Math.min(MAXIMO_DE_SEMANAS, n) : padrao;
+}
+
 function NovaAcao({
   fase,
   semanaSugerida,
@@ -428,8 +434,9 @@ function NovaAcao({
 }) {
   const t = useT();
   const [acao, setAcao] = useState("");
-  const [inicio, setInicio] = useState(semanaSugerida);
-  const [fim, setFim] = useState(semanaSugerida);
+  const [inicio, setInicio] = useState(String(semanaSugerida));
+  const [fim, setFim] = useState(String(semanaSugerida));
+  const soDigitos = (v: string) => v.replace(/\D/g, "").slice(0, 3);
   return (
     <div className="grid gap-2 rounded-xl border border-dashed p-3 sm:grid-cols-[2fr_0.6fr_0.6fr_auto]">
       <input
@@ -441,36 +448,32 @@ function NovaAcao({
         className={CAMPO}
       />
       <input
-        type="number"
-        min={1}
-        max={MAXIMO_DE_SEMANAS}
+        inputMode="numeric"
         value={inicio}
+        placeholder={t("Semana de início")}
         aria-label={t("Semana de início")}
-        onChange={(e) => {
-          const n = Math.max(1, Number(e.target.value) || 1);
-          setInicio(n);
-          setFim((f) => Math.max(n, f));
-        }}
+        onChange={(e) => setInicio(soDigitos(e.target.value))}
         className={CAMPO}
       />
       <input
-        type="number"
-        min={inicio}
-        max={MAXIMO_DE_SEMANAS}
+        inputMode="numeric"
         value={fim}
+        placeholder={t("Semana de fim")}
         aria-label={t("Semana de fim")}
-        onChange={(e) => setFim(Math.max(inicio, Number(e.target.value) || inicio))}
+        onChange={(e) => setFim(soDigitos(e.target.value))}
         className={CAMPO}
       />
       <button
         type="button"
         disabled={acao.trim() === ""}
         onClick={async () => {
+          const de = semanaDoTexto(inicio, semanaSugerida);
+          const ate = Math.max(de, semanaDoTexto(fim, de));
           await aoCriar({
             acao,
             fase,
-            semana_inicio: inicio,
-            semana_fim: fim,
+            semana_inicio: de,
+            semana_fim: ate,
             status: "planejado",
             destaque: false,
             notas: "",
@@ -478,7 +481,7 @@ function NovaAcao({
           });
           setAcao("");
         }}
-        className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50"
       >
         <Plus size={14} weight="bold" aria-hidden />
         {t("Adicionar")}
@@ -571,6 +574,7 @@ export function EdicaoDoCronograma({
 }) {
   const t = useT();
   const [cfg, setCfg] = useState(config);
+  const [janelaTxt, setJanelaTxt] = useState(String(config.total_semanas));
   const [fasesVazias, setFasesVazias] = useState<string[]>([]);
   const [novaFase, setNovaFase] = useState("");
   const [verArquivadas, setVerArquivadas] = useState(false);
@@ -655,7 +659,7 @@ export function EdicaoDoCronograma({
             type="button"
             disabled={novaFase.trim() === ""}
             onClick={adicionarFase}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50"
           >
             <Plus size={14} weight="bold" aria-hidden />
             {t("Adicionar fase")}
@@ -710,19 +714,9 @@ export function EdicaoDoCronograma({
         <div className="grid gap-3 sm:grid-cols-2">
           <Rotulo texto={t("Quantas semanas aparecem na tela")}>
             <input
-              type="number"
-              min={1}
-              max={MAXIMO_DA_JANELA}
-              value={cfg.total_semanas}
-              onChange={(e) =>
-                setCfg({
-                  ...cfg,
-                  total_semanas: Math.min(
-                    MAXIMO_DA_JANELA,
-                    Math.max(1, Number(e.target.value) || 1),
-                  ),
-                })
-              }
+              inputMode="numeric"
+              value={janelaTxt}
+              onChange={(e) => setJanelaTxt(e.target.value.replace(/\D/g, "").slice(0, 2))}
               className={CAMPO}
             />
           </Rotulo>
@@ -755,7 +749,14 @@ export function EdicaoDoCronograma({
         </p>
         <button
           type="button"
-          onClick={() => void aoSalvarConfig(cfg)}
+          onClick={() => {
+            const n = Math.min(
+              MAXIMO_DA_JANELA,
+              Math.max(1, Number(janelaTxt) || cfg.total_semanas),
+            );
+            setJanelaTxt(String(n));
+            void aoSalvarConfig({ ...cfg, total_semanas: n });
+          }}
           className="h-10 w-fit rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
           {t("Salvar configuração")}
