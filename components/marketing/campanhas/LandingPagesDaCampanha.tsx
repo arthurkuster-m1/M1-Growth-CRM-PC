@@ -7,6 +7,7 @@ import {
   rotuloDoStatusDoCriativo,
 } from "@/components/marketing/campanhas/rotulos";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
@@ -69,6 +70,30 @@ export function LandingPagesDaCampanha({
   const { lps, carregando, criar, editar, apagar } = useLandingPagesDaCampanha(campanhaId);
   const { criativos } = useCriativosDaCampanha(campanhaId);
   const [vendo, setVendo] = useState<string | null>(null);
+  const [verificando, setVerificando] = useState<string | null>(null);
+  const [laudos, setLaudos] = useState<Record<string, Laudo>>({});
+
+  async function pre(lp: LandingPage) {
+    if (vendo === lp.id) return setVendo(null);
+    setVerificando(lp.id);
+    try {
+      const r = await apiClient.post<{ data: Laudo }>(
+        `/api/v1/demand-campaigns/${campanhaId}/landing-pages/${lp.id}/check-embed`,
+        {},
+      );
+      setLaudos((l) => ({ ...l, [lp.id]: r.data }));
+      if (r.data.pode !== false) setVendo(lp.id);
+      else setVendo(null);
+    } catch {
+      setLaudos((l) => ({
+        ...l,
+        [lp.id]: { pode: null, motivo: "nao_foi_possivel_verificar", origem_do_painel: "" },
+      }));
+      setVendo(lp.id);
+    } finally {
+      setVerificando(null);
+    }
+  }
   const linhas = lps.map((lp) => ({ lp, m: metricasDaLp(lp, criativos) }));
   const comDados = linhas.filter((l) => l.m.impressions > 0 || l.m.spend > 0);
   const melhorConexao = Math.max(...comDados.map((l) => l.m.connectRate ?? -1));
@@ -164,10 +189,15 @@ export function LandingPagesDaCampanha({
                     <button
                       type="button"
                       aria-expanded={vendo === lp.id}
-                      onClick={() => setVendo(vendo === lp.id ? null : lp.id)}
-                      className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+                      disabled={verificando === lp.id}
+                      onClick={() => void pre(lp)}
+                      className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
                     >
-                      {vendo === lp.id ? t("Fechar pré-visualização") : t("Pré-visualizar")}
+                      {verificando === lp.id
+                        ? t("Verificando…")
+                        : vendo === lp.id
+                          ? t("Fechar pré-visualização")
+                          : t("Pré-visualizar")}
                     </button>
                     <a
                       href={lp.url}
@@ -192,6 +222,7 @@ export function LandingPagesDaCampanha({
                   </button>
                 ) : null}
               </div>
+              {laudos[lp.id]?.pode === false ? <GuiaDeEmbed laudo={laudos[lp.id]!} /> : null}
               {vendo === lp.id && lp.url ? (
                 <div className="grid gap-1">
                   <iframe
@@ -266,6 +297,63 @@ function Metrica({ rotulo, valor }: { rotulo: string; valor: string }) {
     <div className="min-w-0">
       <p className="truncate text-xs text-muted-foreground">{rotulo}</p>
       <p className="text-sm font-semibold tabular-nums">{valor}</p>
+    </div>
+  );
+}
+
+interface Laudo {
+  pode: boolean | null;
+  motivo: string;
+  detalhe?: string;
+  origem_do_painel: string;
+  status_http?: number | null;
+}
+
+/** Por que a página não aparece aqui dentro e como liberar — com a origem exata do painel. */
+function GuiaDeEmbed({ laudo }: { laudo: Laudo }) {
+  const t = useT();
+  const origem = laudo.origem_do_painel;
+  const csp = `Content-Security-Policy: frame-ancestors 'self' ${origem}`;
+  const nginx = `# nginx — dentro do bloco server { } do seu site\nadd_header Content-Security-Policy "frame-ancestors 'self' ${origem}" always;\n# e remova qualquer linha: add_header X-Frame-Options ...`;
+  const apache = `# Apache — .htaccess\nHeader unset X-Frame-Options\nHeader always set Content-Security-Policy "frame-ancestors 'self' ${origem}"`;
+  const next = `// Next.js — next.config.js\nasync headers() {\n  return [{ source: "/(.*)", headers: [\n    { key: "Content-Security-Policy", value: "frame-ancestors 'self' ${origem}" },\n  ] }];\n}`;
+  return (
+    <div className="grid gap-3 rounded-xl border border-warning/40 bg-warning-bg p-3 text-sm text-warning-fg">
+      <p className="font-semibold">{t("Esta página não permite aparecer dentro do painel.")}</p>
+      <p>
+        {laudo.motivo === "x_frame_options"
+          ? t(
+              "O servidor dela envia o cabeçalho X-Frame-Options, que proíbe ser exibida em outro site. Para liberar só o seu painel, troque esse cabeçalho pelo abaixo (e remova o X-Frame-Options):",
+            )
+          : t(
+              "O servidor dela envia um Content-Security-Policy com frame-ancestors que não inclui o seu painel. Acrescente o endereço do painel nessa lista:",
+            )}
+      </p>
+      <pre className="overflow-x-auto rounded-lg bg-card p-2 text-xs text-foreground">{csp}</pre>
+      <details>
+        <summary className="cursor-pointer font-medium">{t("Como fazer no meu servidor")}</summary>
+        <div className="mt-2 grid gap-2">
+          <pre className="overflow-x-auto rounded-lg bg-card p-2 text-xs text-foreground">
+            {nginx}
+          </pre>
+          <pre className="overflow-x-auto rounded-lg bg-card p-2 text-xs text-foreground">
+            {apache}
+          </pre>
+          <pre className="overflow-x-auto rounded-lg bg-card p-2 text-xs text-foreground">
+            {next}
+          </pre>
+          <p>
+            {t(
+              "Em plugins de WordPress ou na Cloudflare, procure por “X-Frame-Options” ou “cabeçalhos de segurança” e remova; depois adicione o Content-Security-Policy acima.",
+            )}
+          </p>
+        </div>
+      </details>
+      <p>
+        {t(
+          "Isso libera só o seu painel — outros sites continuam sem poder exibir a página. Depois de salvar, clique em Pré-visualizar de novo.",
+        )}
+      </p>
     </div>
   );
 }

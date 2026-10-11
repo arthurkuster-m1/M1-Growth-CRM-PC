@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
@@ -21,6 +22,28 @@ interface Etapa {
   is_lost: boolean;
   expected_duration_hours: number | null;
   win_probability?: number | null;
+  qualification?: "mql" | "disqualified" | null;
+}
+
+type Papel = "nenhum" | "won" | "lost" | "mql" | "disqualified";
+
+const papelDe = (e: Etapa): Papel =>
+  e.is_won ? "won" : e.is_lost ? "lost" : (e.qualification ?? "nenhum");
+
+/** Só o que muda viaja: a API recusa desmarcar ganho/perda que nunca estiveram marcados. */
+function patchDoPapel(e: Etapa, novo: Papel): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (e.is_won !== (novo === "won")) patch.is_won = novo === "won";
+  if (e.is_lost !== (novo === "lost")) patch.is_lost = novo === "lost";
+  const qual = novo === "mql" || novo === "disqualified" ? novo : null;
+  if ((e.qualification ?? null) !== qual) patch.qualification = qual;
+  return patch;
+}
+
+interface Modelo {
+  id: string;
+  name: string;
+  stages: unknown[];
 }
 
 const CAMPO =
@@ -71,6 +94,25 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   const [escolhida, setEscolhida] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
   const [semAcesso, setSemAcesso] = useState(false);
+  const [modelos, setModelos] = useState<Modelo[]>([]);
+  const [modeloEscolhido, setModeloEscolhido] = useState("");
+  const [aviso, setAviso] = useState<string | null>(null);
+  const router = useRouter();
+
+  const carregarModelos = useCallback(async () => {
+    try {
+      const r = await apiClient.get<{ data: { modelos: Modelo[] } }>(
+        "/api/v1/demand-funnel-templates",
+      );
+      setModelos(r.data.modelos);
+    } catch {
+      setModelos([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (podeEditar) void carregarModelos();
+  }, [podeEditar, carregarModelos]);
 
   const carregar = useCallback(async () => {
     if (!c.pipeline_id) return;
@@ -87,19 +129,44 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
     void carregar();
   }, [carregar]);
 
-  async function criarFunil() {
+  async function criarFunil(modeloId: string | null) {
     setCriando(true);
     try {
-      const r = await apiClient.post<{
-        data: { pipelines: Array<{ id: string; name: string }> };
-      }>("/api/v1/pipelines", { name: c.name.slice(0, 80) });
-      const novo =
-        r.data.pipelines.find((p) => p.name === c.name.slice(0, 80)) ?? r.data.pipelines.at(-1);
-      if (novo) await editar([c.id], { pipeline_id: novo.id });
+      await apiClient.post(`/api/v1/demand-campaigns/${c.id}/funnel`, {
+        template_id: modeloId,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["demand-campaigns"] });
+      router.refresh();
     } catch (e) {
       showApiError(e);
     } finally {
       setCriando(false);
+    }
+  }
+
+  async function renomearFunil(nome: string) {
+    if (!c.pipeline_id) return;
+    try {
+      await apiClient.patch(`/api/v1/pipelines/${c.pipeline_id}`, { name: nome });
+      await queryClient.invalidateQueries({ queryKey: ["demand-campaigns"] });
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+
+  async function salvarComoModelo() {
+    if (!c.pipeline_id) return;
+    const nome = window.prompt(t("Nome do modelo de funil"), funil?.name ?? c.name);
+    if (!nome?.trim()) return;
+    try {
+      await apiClient.post("/api/v1/demand-funnel-templates", {
+        name: nome.trim(),
+        from_pipeline_id: c.pipeline_id,
+      });
+      await carregarModelos();
+      setAviso(t("Modelo salvo. Use-o ao criar o funil de outra campanha."));
+    } catch (e) {
+      showApiError(e);
     }
   }
 
@@ -127,7 +194,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
     }
   }
 
-  // Sem funil: o convite para criar o da campanha.
+  // Sem funil: o convite para criar o da campanha (do zero ou de um modelo).
   if (!c.pipeline_id) {
     return (
       <section className="grid gap-3 rounded-2xl border bg-card p-5 shadow-sm">
@@ -138,15 +205,60 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
           )}
         </p>
         {podeEditar ? (
-          <button
-            type="button"
-            disabled={criando}
-            onClick={() => void criarFunil()}
-            className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            <Plus size={14} weight="bold" aria-hidden />
-            {criando ? t("Criando…") : t("Criar o funil desta campanha")}
-          </button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid content-start gap-2 rounded-xl border p-3">
+              <p className="text-sm font-medium">{t("Começar do zero")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("Novo, Em andamento, Ganho e Perdido. Depois você ajusta etapa por etapa.")}
+              </p>
+              <button
+                type="button"
+                disabled={criando}
+                onClick={() => void criarFunil(null)}
+                className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              >
+                <Plus size={14} weight="bold" aria-hidden />
+                {criando ? t("Criando…") : t("Criar o funil desta campanha")}
+              </button>
+            </div>
+            <div className="grid content-start gap-2 rounded-xl border p-3">
+              <p className="text-sm font-medium">{t("Usar um modelo de funil")}</p>
+              {modelos.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "Nenhum modelo ainda. Monte um funil e use “Salvar como modelo” para repetir em outras campanhas.",
+                  )}
+                </p>
+              ) : (
+                <>
+                  <select
+                    className={CAMPO}
+                    value={modeloEscolhido}
+                    aria-label={t("Modelo de funil")}
+                    onChange={(e) => setModeloEscolhido(e.target.value)}
+                  >
+                    <option value="">{t("Escolha um modelo")}</option>
+                    {modelos.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.stages.length} {t("etapas")})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={criando || modeloEscolhido === ""}
+                    onClick={() => void criarFunil(modeloEscolhido)}
+                    className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                  >
+                    {criando ? t("Criando…") : t("Criar a partir do modelo")}
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    {t("O funil nasce com o nome da campanha. Você pode renomear depois.")}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
         ) : null}
       </section>
     );
@@ -154,23 +266,48 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
 
   const lista = etapas ?? [];
   const atual = lista.find((e) => e.id === escolhida) ?? null;
-  const papel = (e: Etapa) => (e.is_won ? "won" : e.is_lost ? "lost" : "nenhum");
 
   return (
     <div className="grid gap-4">
       <section className="grid gap-4 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">
-            {t("Funil de conversão")} · {funil?.name ?? c.name}
-          </h2>
-          <Link
-            href={`/app/clientes?funil=${c.pipeline_id}`}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
-          >
-            {t("Ver no CRM")}
-            <ArrowRight size={14} weight="bold" aria-hidden />
-          </Link>
+          <h2 className="text-sm font-semibold">{t("Funil de conversão")}</h2>
+          <div className="flex flex-wrap gap-2">
+            {podeEditar ? (
+              <button
+                type="button"
+                onClick={() => void salvarComoModelo()}
+                className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+              >
+                {t("Salvar como modelo")}
+              </button>
+            ) : null}
+            <Link
+              href={`/app/clientes?funil=${c.pipeline_id}`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+            >
+              {t("Ver no CRM")}
+              <ArrowRight size={14} weight="bold" aria-hidden />
+            </Link>
+          </div>
         </div>
+
+        {podeEditar ? (
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">{t("Nome do funil")}</span>
+            <NomeGravavel
+              valor={funil?.name ?? c.name}
+              desabilitado={!podeEditar}
+              rotulo={t("Nome do funil")}
+              aoGravar={(nome) => void renomearFunil(nome)}
+            />
+          </label>
+        ) : null}
+        {aviso ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            {aviso}
+          </p>
+        ) : null}
 
         {semAcesso ? (
           <p className="text-sm text-muted-foreground">
@@ -204,7 +341,11 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                           ? "bg-success-bg text-success-fg"
                           : e.is_lost
                             ? "bg-error-bg text-error-fg"
-                            : "bg-secondary text-foreground hover:bg-secondary/70",
+                            : e.qualification === "mql"
+                              ? "bg-info-bg text-info-fg"
+                              : e.qualification === "disqualified"
+                                ? "bg-warning-bg text-warning-fg"
+                                : "bg-secondary text-foreground hover:bg-secondary/70",
                     )}
                   >
                     <span className="font-mono text-[11px] font-semibold tabular-nums opacity-80">
@@ -216,7 +357,11 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                         ? t("Aqui o cliente fecha")
                         : e.is_lost
                           ? t("Aqui o cliente desiste")
-                          : t("Em andamento")}
+                          : e.qualification === "mql"
+                            ? t("Lead MQL")
+                            : e.qualification === "disqualified"
+                              ? t("Lead desqualificado")
+                              : t("Em andamento")}
                     </span>
                   </button>
                 </li>
@@ -260,19 +405,29 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                     <select
                       className={CAMPO}
                       disabled={!podeEditar}
-                      value={papel(atual)}
+                      value={papelDe(atual)}
                       onChange={(ev) => {
-                        const v = ev.target.value;
-                        void mexer(atual.id, {
-                          is_won: v === "won",
-                          is_lost: v === "lost",
-                        });
+                        const patch = patchDoPapel(atual, ev.target.value as Papel);
+                        if (Object.keys(patch).length > 0) void mexer(atual.id, patch);
                       }}
                     >
                       <option value="nenhum">{t("Nada especial")}</option>
+                      <option value="mql">{t("Lead MQL (qualificado)")}</option>
+                      <option value="disqualified">{t("Lead desqualificado")}</option>
                       <option value="won">{t("Aqui o cliente fecha")}</option>
                       <option value="lost">{t("Aqui o cliente desiste")}</option>
                     </select>
+                    {atual.qualification ? (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {atual.qualification === "mql"
+                          ? t(
+                              "Quando o lead entrar nesta etapa, o CRM o marca como MQL e avisa a Meta que ele é um lead qualificado (se veio de anúncio da Meta).",
+                            )
+                          : t(
+                              "Quando o lead entrar nesta etapa, o CRM avisa a Meta que ele é um lead ruim (se veio de anúncio da Meta), para a otimização aprender.",
+                            )}
+                      </span>
+                    ) : null}
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-xs text-muted-foreground">

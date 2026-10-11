@@ -266,3 +266,21 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
   existentes.
 - **Decisão minha a confirmar:** tráfego pago e social media têm LPs+criativos; as demais têm
   Abordagem.
+
+### Ajustes do Arthur (11/10/2026, 2ª rodada) — migration 0605
+- **Páginas opcionais por campanha:** o "+" ao lado das abas liga Landing pages, Criativos ou
+  Abordagem em qualquer campanha; cada página opcional tem "Tirar esta página da campanha" (os dados
+  ficam guardados). `demand_campaigns.optional_tabs` (nulo = padrão do tipo).
+- **Funis legados:** "Pedidos" e "Clientes Fechados" apagados, leads para o funil "Base Padrão -
+  Clientes" (padrão e funil de clientes da organização).
+- **Pré-visualização das LPs:** a tela confere os cabeçalhos da página (X-Frame-Options e
+  frame-ancestors do CSP) e, se bloquear, mostra o que adicionar no servidor com a origem exata do
+  painel (nginx, Apache, Next.js, WordPress/Cloudflare).
+- **Modelos de funil:** "Salvar como modelo" (a partir do funil da campanha) e "Usar um modelo"
+  ao criar o funil de outra campanha — nasce com o nome da campanha. `demand_funnel_templates`.
+- **Papéis de qualificação nas etapas:** "Lead MQL (qualificado)" e "Lead desqualificado" em "O que
+  acontece nesta etapa". Entrar na etapa liga uma regra da Meta automática (`QualifiedLead` ou
+  `DisqualifiedLead`, reaproveitando o motor de conversões por etapa) e, no MQL, marca o contato
+  como MQL (`crm_stages.qualification`, triggers). `DisqualifiedLead` é evento personalizado: para
+  a Meta otimizar com ele, criar a conversão personalizada correspondente no Gerenciador de
+  Eventos.

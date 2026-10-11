@@ -233,11 +233,13 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   // `created_at` é NOT NULL na tabela e `stage_changed_at` tem default + backfill
   // desde a 0071; `last_activity_at` NÃO entra na projeção — a rota nem o pede,
   // então não existe caminho por onde a última atividade vire tempo de etapa.
-  const emMedicao: LeadEmMedicao[] = ((negocios ?? []) as Array<{
-    stage_id: string | null;
-    stage_changed_at: string | null;
-    created_at: string;
-  }>)
+  const emMedicao: LeadEmMedicao[] = (
+    (negocios ?? []) as Array<{
+      stage_id: string | null;
+      stage_changed_at: string | null;
+      created_at: string;
+    }>
+  )
     .filter((n) => typeof n.stage_id === "string" && idsDasEtapas.has(n.stage_id))
     .map((n) => ({
       stage_id: n.stage_id,

@@ -9,7 +9,16 @@ vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 
-import { ORG_ID, OUTRA_ORG, PIPE, authOk, comAutoria, etapa, funil, makeDb } from "@/tests/helpers/stages-db-double";
+import {
+  ORG_ID,
+  OUTRA_ORG,
+  PIPE,
+  authOk,
+  comAutoria,
+  etapa,
+  funil,
+  makeDb,
+} from "@/tests/helpers/stages-db-double";
 
 const ctx = { params: Promise.resolve({ id: PIPE }) };
 
@@ -133,7 +142,13 @@ describe("POST /api/v1/pipelines/[id]/stages", () => {
     const db = makeDb({
       stages: [
         ...funil(),
-        etapa({ id: "e9", name: "Retorno antigo", slug: "retorno", position: 9000, is_archived: true }),
+        etapa({
+          id: "e9",
+          name: "Retorno antigo",
+          slug: "retorno",
+          position: 9000,
+          is_archived: true,
+        }),
       ],
     });
     const { POST } = await import("./route");
@@ -196,7 +211,7 @@ describe("POST /api/v1/pipelines/[id]/stages", () => {
 
 // Este teste isola o handler; autoridade de suporte é exercitada na suíte própria.
 vi.mock("@/lib/impersonate/support", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/lib/impersonate/support")>(),
+  ...(await importOriginal<typeof import("@/lib/impersonate/support")>()),
   requireSupportWrite: vi.fn(async () => null),
   authenticatedSessionId: vi.fn(async () => "f2200000-0000-4000-8000-000000000099"),
 }));

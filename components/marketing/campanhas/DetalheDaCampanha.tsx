@@ -38,7 +38,12 @@ import {
   type CampanhaDeDemanda,
   type TipoDeNota,
 } from "@/lib/marketing/campanhas";
-import { abaValida, type AbaDaCampanha } from "@/lib/marketing/campanhas-abas";
+import {
+  abaValida,
+  ehAbaOpcional,
+  opcionaisDaCampanha,
+  type AbaDaCampanha,
+} from "@/lib/marketing/campanhas-abas";
 import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha";
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
@@ -155,7 +160,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   const dias = useDiasDaCampanha(id);
   const pathname = usePathname();
   const parametros = useSearchParams();
-  const aba = abaValida(parametros.get("aba"), c?.channel ?? "trafego_pago");
+  const aba = abaValida(parametros.get("aba"), c?.channel ?? "trafego_pago", c?.optional_tabs);
   const irParaAba = (nova: AbaDaCampanha) => {
     const p = new URLSearchParams(parametros.toString());
     p.set("aba", nova);
@@ -179,7 +184,18 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <AbasDaCampanha canal={c.channel} aba={aba} aoEscolher={irParaAba} />
+      <AbasDaCampanha
+        canal={c.channel}
+        escolhidas={c.optional_tabs}
+        aba={aba}
+        aoEscolher={irParaAba}
+        podeEditar={podeEditar}
+        aoAdicionar={(nova) => {
+          const atuais = opcionaisDaCampanha(c.channel, c.optional_tabs);
+          grava({ optional_tabs: [...atuais, nova] });
+          irParaAba(nova);
+        }}
+      />
 
       {aba === "visao" ? <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} /> : null}
 
@@ -203,6 +219,35 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
       {aba === "landing" ? (
         <LandingPagesDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+      ) : null}
+
+      {podeEditar && ehAbaOpcional(aba) ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                !window.confirm(
+                  t(
+                    "Tirar esta página da campanha? Os dados ficam guardados e voltam se você adicionar a página de novo.",
+                  ),
+                )
+              ) {
+                return;
+              }
+              grava({
+                optional_tabs: opcionaisDaCampanha(c.channel, c.optional_tabs).filter(
+                  (x) => x !== aba,
+                ),
+              });
+              irParaAba("cadastro");
+            }}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-error-fg"
+          >
+            <Trash size={14} aria-hidden />
+            {t("Tirar esta página da campanha")}
+          </button>
+        </div>
       ) : null}
 
       {aba === "funil" ? <FunilDeConversao c={c} podeEditar={podeEditar} /> : null}

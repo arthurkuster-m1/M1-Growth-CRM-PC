@@ -18502,6 +18502,71 @@ export const DICIONARIO: Traducoes = {
   "Nome da campanha da plataforma": { es: "Nombre de la campaña de la plataforma" },
   Atrelar: { es: "Vincular" },
   "Diário de bordo": { es: "Diario de bordo" },
+  "Lead MQL": { es: "Lead MQL" },
+  "Lead desqualificado": { es: "Lead descalificado" },
+  "Lead MQL (qualificado)": { es: "Lead MQL (calificado)" },
+  "Quando o lead entrar nesta etapa, o CRM o marca como MQL e avisa a Meta que ele é um lead qualificado (se veio de anúncio da Meta).":
+    {
+      es: "Cuando el lead entre en esta etapa, el CRM lo marca como MQL y avisa a Meta que es un lead calificado (si vino de un anuncio de Meta).",
+    },
+  "Quando o lead entrar nesta etapa, o CRM avisa a Meta que ele é um lead ruim (se veio de anúncio da Meta), para a otimização aprender.":
+    {
+      es: "Cuando el lead entre en esta etapa, el CRM avisa a Meta que es un lead malo (si vino de un anuncio de Meta), para que la optimización aprenda.",
+    },
+  "Começar do zero": { es: "Empezar desde cero" },
+  "Novo, Em andamento, Ganho e Perdido. Depois você ajusta etapa por etapa.": {
+    es: "Nuevo, En curso, Ganado y Perdido. Después ajustas etapa por etapa.",
+  },
+  "Usar um modelo de funil": { es: "Usar un modelo de embudo" },
+  "Nenhum modelo ainda. Monte um funil e use “Salvar como modelo” para repetir em outras campanhas.":
+    {
+      es: "Ningún modelo todavía. Arma un embudo y usa “Guardar como modelo” para repetirlo en otras campañas.",
+    },
+  "Modelo de funil": { es: "Modelo de embudo" },
+  "Criar a partir do modelo": { es: "Crear a partir del modelo" },
+  "O funil nasce com o nome da campanha. Você pode renomear depois.": {
+    es: "El embudo nace con el nombre de la campaña. Puedes renombrarlo después.",
+  },
+  "Nome do modelo de funil": { es: "Nombre del modelo de embudo" },
+  "Modelo salvo. Use-o ao criar o funil de outra campanha.": {
+    es: "Modelo guardado. Úsalo al crear el embudo de otra campaña.",
+  },
+  "Salvar como modelo": { es: "Guardar como modelo" },
+  "Adicionar página": { es: "Agregar página" },
+  "Tirar esta página da campanha? Os dados ficam guardados e voltam se você adicionar a página de novo.":
+    {
+      es: "¿Quitar esta página de la campaña? Los datos quedan guardados y vuelven si agregas la página de nuevo.",
+    },
+  "Tirar esta página da campanha": { es: "Quitar esta página de la campaña" },
+  "Esta página não permite aparecer dentro do painel.": {
+    es: "Esta página no permite mostrarse dentro del panel.",
+  },
+  "O servidor dela envia o cabeçalho X-Frame-Options, que proíbe ser exibida em outro site. Para liberar só o seu painel, troque esse cabeçalho pelo abaixo (e remova o X-Frame-Options):":
+    {
+      es: "Su servidor envía el encabezado X-Frame-Options, que prohíbe mostrarla en otro sitio. Para liberar solo tu panel, cambia ese encabezado por el de abajo (y quita X-Frame-Options):",
+    },
+  "O servidor dela envia um Content-Security-Policy com frame-ancestors que não inclui o seu painel. Acrescente o endereço do painel nessa lista:":
+    {
+      es: "Su servidor envía un Content-Security-Policy con frame-ancestors que no incluye tu panel. Agrega la dirección del panel a esa lista:",
+    },
+  "Como fazer no meu servidor": { es: "Cómo hacerlo en mi servidor" },
+  "Em plugins de WordPress ou na Cloudflare, procure por “X-Frame-Options” ou “cabeçalhos de segurança” e remova; depois adicione o Content-Security-Policy acima.":
+    {
+      es: "En plugins de WordPress o en Cloudflare, busca “X-Frame-Options” o “encabezados de seguridad” y quítalo; luego agrega el Content-Security-Policy de arriba.",
+    },
+  "Isso libera só o seu painel — outros sites continuam sem poder exibir a página. Depois de salvar, clique em Pré-visualizar de novo.":
+    {
+      es: "Esto libera solo tu panel: otros sitios siguen sin poder mostrar la página. Después de guardar, haz clic en Previsualizar de nuevo.",
+    },
+  "Cadastre o link da landing page primeiro.": {
+    es: "Registra primero el enlace de la landing page.",
+  },
+  "Erro ao carregar os modelos de funil.": { es: "Error al cargar los modelos de embudo." },
+  "Já existe um modelo com esse nome.": { es: "Ya existe un modelo con ese nombre." },
+  "Esta campanha já tem um funil.": { es: "Esta campaña ya tiene un embudo." },
+  "Erro ao criar o funil.": { es: "Error al crear el embudo." },
+  "Erro ao criar as etapas do funil.": { es: "Error al crear las etapas del embudo." },
+  "Erro ao ligar o funil à campanha.": { es: "Error al vincular el embudo a la campaña." },
   "Nova landing page": { es: "Nueva landing page" },
   "Cadastre o link de cada LP que está rodando. As métricas vêm dos criativos cuja página de destino é o mesmo link.":
     {

@@ -1,9 +1,9 @@
 import type { CanalDaCampanha } from "@/lib/marketing/campanhas";
 
 /**
- * AS SUBPÁGINAS da campanha. Quais aparecem depende do tipo: campanha com anúncio e página de
- * destino (tráfego pago, social media) tem Landing Pages e Criativos; as de contato direto
- * (prospecção, indicações, parcerias, aproveitamento de base) têm "Abordagem" no lugar.
+ * AS SUBPÁGINAS da campanha. As fixas (cadastro, visão geral, dia a dia, funil de conversão)
+ * existem sempre; as OPCIONAIS (landing pages, criativos, abordagem) dependem da estratégia: o
+ * padrão vem do tipo da campanha e a agência liga ou desliga cada uma com o "+".
  */
 export const ABAS_DA_CAMPANHA = [
   "cadastro",
@@ -16,14 +16,40 @@ export const ABAS_DA_CAMPANHA = [
 ] as const;
 export type AbaDaCampanha = (typeof ABAS_DA_CAMPANHA)[number];
 
-export function abasDoCanal(canal: CanalDaCampanha): AbaDaCampanha[] {
-  const comAnuncio = canal === "trafego_pago" || canal === "social_media";
-  return comAnuncio
-    ? ["cadastro", "visao", "dia", "landing", "criativos", "funil"]
-    : ["cadastro", "visao", "dia", "abordagem", "funil"];
+export const ABAS_OPCIONAIS = ["landing", "criativos", "abordagem"] as const;
+export type AbaOpcional = (typeof ABAS_OPCIONAIS)[number];
+
+export function ehAbaOpcional(a: string): a is AbaOpcional {
+  return (ABAS_OPCIONAIS as readonly string[]).includes(a);
 }
 
-export function abaValida(valor: string | null, canal: CanalDaCampanha): AbaDaCampanha {
-  const abas = abasDoCanal(canal);
-  return abas.find((a) => a === valor) ?? "cadastro";
+/** O padrão de cada tipo: anúncio tem LPs e criativos; contato direto tem abordagem. */
+export function opcionaisPadraoDoCanal(canal: CanalDaCampanha): AbaOpcional[] {
+  return canal === "trafego_pago" || canal === "social_media"
+    ? ["landing", "criativos"]
+    : ["abordagem"];
+}
+
+/** As opcionais que a campanha mostra: a escolha dela, ou o padrão do tipo. */
+export function opcionaisDaCampanha(
+  canal: CanalDaCampanha,
+  escolhidas: readonly string[] | null | undefined,
+): AbaOpcional[] {
+  if (!escolhidas) return opcionaisPadraoDoCanal(canal);
+  return ABAS_OPCIONAIS.filter((a) => escolhidas.includes(a));
+}
+
+export function abasDaCampanha(
+  canal: CanalDaCampanha,
+  escolhidas: readonly string[] | null | undefined,
+): AbaDaCampanha[] {
+  return ["cadastro", "visao", "dia", ...opcionaisDaCampanha(canal, escolhidas), "funil"];
+}
+
+export function abaValida(
+  valor: string | null,
+  canal: CanalDaCampanha,
+  escolhidas?: readonly string[] | null,
+): AbaDaCampanha {
+  return abasDaCampanha(canal, escolhidas).find((a) => a === valor) ?? "cadastro";
 }

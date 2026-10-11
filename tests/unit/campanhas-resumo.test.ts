@@ -334,7 +334,6 @@ describe("criativos (C4)", () => {
 });
 
 import { chaveDoLink, metricasDaLp } from "@/lib/marketing/landing-pages";
-import { abasDoCanal } from "@/lib/marketing/campanhas-abas";
 
 describe("landing pages e abas (C-ajustes)", () => {
   it("compara links ignorando www, parâmetros, âncora e barra final", () => {
@@ -371,7 +370,7 @@ describe("landing pages e abas (C-ajustes)", () => {
     });
   });
   it("abas por tipo: anúncio tem LPs e criativos; contato direto tem abordagem", () => {
-    expect(abasDoCanal("trafego_pago")).toEqual([
+    expect(abasDaCampanha("trafego_pago", null)).toEqual([
       "cadastro",
       "visao",
       "dia",
@@ -379,12 +378,63 @@ describe("landing pages e abas (C-ajustes)", () => {
       "criativos",
       "funil",
     ]);
-    expect(abasDoCanal("aproveitamento_de_base")).toEqual([
+    expect(abasDaCampanha("aproveitamento_de_base", null)).toEqual([
       "cadastro",
       "visao",
       "dia",
       "abordagem",
       "funil",
     ]);
+  });
+});
+
+import { analisarCabecalhosDeEmbed } from "@/lib/marketing/embed-da-lp";
+import { abasDaCampanha, opcionaisDaCampanha } from "@/lib/marketing/campanhas-abas";
+
+const cab = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null });
+const PAINEL = "https://www.infra-assessoria-m1.cloud";
+
+describe("pré-visualização da LP (embed)", () => {
+  it("sem restrição pode; X-Frame-Options SAMEORIGIN/DENY bloqueia", () => {
+    expect(analisarCabecalhosDeEmbed(cab({}), PAINEL)).toEqual({
+      pode: true,
+      motivo: "sem_restricao",
+    });
+    expect(
+      analisarCabecalhosDeEmbed(cab({ "x-frame-options": "SAMEORIGIN" }), PAINEL),
+    ).toMatchObject({
+      pode: false,
+      motivo: "x_frame_options",
+    });
+    expect(analisarCabecalhosDeEmbed(cab({ "x-frame-options": "deny" }), PAINEL).pode).toBe(false);
+  });
+  it("frame-ancestors: 'self' bloqueia; a origem do painel ou * libera", () => {
+    expect(
+      analisarCabecalhosDeEmbed(
+        cab({ "content-security-policy": "frame-ancestors 'self'" }),
+        PAINEL,
+      ),
+    ).toMatchObject({ pode: false, motivo: "frame_ancestors" });
+    expect(
+      analisarCabecalhosDeEmbed(
+        cab({ "content-security-policy": `default-src 'self'; frame-ancestors 'self' ${PAINEL}` }),
+        PAINEL,
+      ).pode,
+    ).toBe(true);
+    expect(
+      analisarCabecalhosDeEmbed(cab({ "content-security-policy": "frame-ancestors *" }), PAINEL)
+        .pode,
+    ).toBe(true);
+  });
+});
+
+describe("páginas opcionais da campanha", () => {
+  it("nulo = padrão do tipo; escolha da agência vale", () => {
+    expect(opcionaisDaCampanha("prospeccao", null)).toEqual(["abordagem"]);
+    expect(opcionaisDaCampanha("prospeccao", ["landing", "criativos"])).toEqual([
+      "landing",
+      "criativos",
+    ]);
+    expect(abasDaCampanha("trafego_pago", [])).toEqual(["cadastro", "visao", "dia", "funil"]);
   });
 });

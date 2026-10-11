@@ -52,7 +52,7 @@ export interface DepsDeEtapa {
 
 /** As colunas que a tela e as regras usam. `position` entra: a reordenação calcula em cima dela. */
 const COLUNAS =
-  "id, name, slug, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, last_change_actor_kind, last_change_at";
+  "id, name, slug, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, qualification, last_change_actor_kind, last_change_at";
 
 /** A etapa como sai para quem lê — inclui a autoria da última mudança de configuração. */
 export interface EtapaVisivel {
@@ -80,6 +80,11 @@ export interface EtapaVisivel {
    * `validarJanelaDeEsfriamento`, aqui e nas rotas).
    */
   expected_duration_hours: number | null;
+  /**
+   * Papel de qualificação (migration 0605): `mql` ou `disqualified`. Entrar na etapa envia
+   * `QualifiedLead` / `DisqualifiedLead` à Meta e, no `mql`, marca o contato como MQL.
+   */
+  qualification: "mql" | "disqualified" | null;
   /** `user` | `ai` | `system` — `null` nas etapas anteriores a esta coluna. */
   last_change_actor_kind: string | null;
   last_change_at: string | null;
@@ -87,6 +92,7 @@ export interface EtapaVisivel {
 
 type EtapaLida = EtapaEditavel & {
   avisar_na_central?: boolean | null;
+  qualification?: "mql" | "disqualified" | null;
   last_change_actor_kind: string | null;
   last_change_at: string | null;
 };
@@ -142,6 +148,7 @@ export function corpo(etapas: EtapaLida[]): { etapas: EtapaVisivel[] } {
         win_probability: e.win_probability ?? null,
         avisar_na_central: e.avisar_na_central === true,
         expected_duration_hours: e.expected_duration_hours ?? null,
+        qualification: e.qualification ?? null,
         last_change_actor_kind: e.last_change_actor_kind ?? null,
         last_change_at: e.last_change_at ?? null,
       })),
@@ -221,7 +228,10 @@ async function funilDepois(
 }
 
 /** `actorUserId` do audit — `null` quando quem agiu não é uma pessoa. */
-function autorDoAudit(actor: Actor): { actorUserId: string | null; metadata: Record<string, unknown> } {
+function autorDoAudit(actor: Actor): {
+  actorUserId: string | null;
+  metadata: Record<string, unknown>;
+} {
   if (actor.type === "user") return { actorUserId: actor.id, metadata: { actor_type: "user" } };
   return { actorUserId: null, metadata: { actor_type: actor.type, actor_id: actor.id } };
 }
@@ -273,7 +283,10 @@ export async function criarEtapa(
     name,
     // Slug nasce com a etapa e nunca muda (renomear não o toca). Arquivadas
     // entram na conta: `uniq_crm_stages_pipeline_slug` não é parcial.
-    slug: slugDeNome(name, etapas.map((e) => e.slug)),
+    slug: slugDeNome(
+      name,
+      etapas.map((e) => e.slug),
+    ),
     position: posicaoEntre(etapas[etapas.length - 1]?.position ?? null, null),
     ...autoria,
     // Só quando veio pedido — a chave ausente não é a mesma que `null` num
@@ -337,6 +350,8 @@ export interface PedidoDeEdicao {
    * banco, porque a coluna é `numeric` sem CHECK.
    */
   expected_duration_hours?: number | null;
+  /** `null` limpa o papel de qualificação (migration 0605). */
+  qualification?: "mql" | "disqualified" | null;
 }
 
 export async function atualizarEtapa(
@@ -417,11 +432,14 @@ export async function atualizarEtapa(
     win_probability?: number | null;
     avisar_na_central?: boolean;
     expected_duration_hours?: number | null;
+    qualification?: "mql" | "disqualified" | null;
   } = {};
+  if (pedido.qualification !== undefined) patchDoAlvo.qualification = pedido.qualification;
   if (pedido.name !== undefined) patchDoAlvo.name = pedido.name.trim();
   // `undefined` não viaja; `null` limpa a calibração de propósito.
   if (pedido.win_probability !== undefined) patchDoAlvo.win_probability = pedido.win_probability;
-  if (pedido.avisar_na_central !== undefined) patchDoAlvo.avisar_na_central = pedido.avisar_na_central;
+  if (pedido.avisar_na_central !== undefined)
+    patchDoAlvo.avisar_na_central = pedido.avisar_na_central;
   // Mesmo contrato: `undefined` = "não mexe", `null` = "volta ao padrão de 24 h".
   if (pedido.expected_duration_hours !== undefined) {
     patchDoAlvo.expected_duration_hours = pedido.expected_duration_hours;

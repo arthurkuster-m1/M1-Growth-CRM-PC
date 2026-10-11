@@ -65,6 +65,8 @@ const bodySchema = z
      * aqui é mandar a frase em português antes de tocar no banco.
      */
     expected_duration_hours: z.number().int().min(1).max(8760).nullable().optional(),
+    /** Papel de qualificação da etapa (migration 0605); `null` limpa. */
+    qualification: z.enum(["mql", "disqualified"]).nullable().optional(),
   })
   .strict()
   .refine((b) => Object.keys(b).length > 0, { message: "Nada para alterar." });

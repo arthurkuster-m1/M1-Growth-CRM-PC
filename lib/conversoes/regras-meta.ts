@@ -21,6 +21,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const EVENTOS_DA_META = [
   { valor: "LeadSubmitted", rotulo: "Lead enviado" },
   { valor: "QualifiedLead", rotulo: "Lead qualificado" },
+  { valor: "DisqualifiedLead", rotulo: "Lead desqualificado" },
   { valor: "InitiateCheckout", rotulo: "Início de compra (orçamento)" },
   { valor: "AddToCart", rotulo: "Adicionou ao carrinho" },
   { valor: "ViewContent", rotulo: "Viu o conteúdo" },

@@ -20,7 +20,16 @@ import { requireRole } from "@/lib/auth/require-role";
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 
-import { ORG_ID, OUTRA_ORG, PIPE, authOk, etapa, funil, makeDb, negocio } from "@/tests/helpers/stages-db-double";
+import {
+  ORG_ID,
+  OUTRA_ORG,
+  PIPE,
+  authOk,
+  etapa,
+  funil,
+  makeDb,
+  negocio,
+} from "@/tests/helpers/stages-db-double";
 
 const ctx = { params: Promise.resolve({ id: PIPE }) };
 
@@ -110,7 +119,13 @@ describe("GET /api/v1/pipelines/[id]/stages/win-rates", () => {
         inicio: string;
         fim: string;
         dias: number;
-        taxas: Array<{ etapa_id: string; total: number; ganhos: number; percentual: number | null; sugestao: number | null }>;
+        taxas: Array<{
+          etapa_id: string;
+          total: number;
+          ganhos: number;
+          percentual: number | null;
+          sugestao: number | null;
+        }>;
       };
     };
     // O período viaja junto: medida sem amostra não é medida.
@@ -118,7 +133,13 @@ describe("GET /api/v1/pipelines/[id]/stages/win-rates", () => {
     expect(Date.parse(body.data.inicio)).toBeLessThan(Date.parse(body.data.fim));
 
     const proposta = body.data.taxas.find((t) => t.etapa_id === "e2");
-    expect(proposta).toEqual({ etapa_id: "e2", total: 20, ganhos: 8, percentual: 40, sugestao: 40 });
+    expect(proposta).toEqual({
+      etapa_id: "e2",
+      total: 20,
+      ganhos: 8,
+      percentual: 40,
+      sugestao: 40,
+    });
     // Toda etapa do funil aparece, inclusive a que ninguém atravessou.
     expect(body.data.taxas).toHaveLength(4);
   });
@@ -219,7 +240,9 @@ describe("GET /api/v1/pipelines/[id]/stages/win-rates", () => {
     for (let i = 0; i < 20; i++) {
       db.tabelas.crm_lead_activities.push(...trajetoria(`l${i}`, "e2", "e3"));
     }
-    db.tabelas.crm_lead_activities.push(...trajetoria("intruso", "e2", "e3").map((a) => ({ ...a, organization_id: OUTRA_ORG })));
+    db.tabelas.crm_lead_activities.push(
+      ...trajetoria("intruso", "e2", "e3").map((a) => ({ ...a, organization_id: OUTRA_ORG })),
+    );
     const { GET } = await import("./route");
     const res = await GET(reqGet(), ctx);
     const body = (await res.json()) as {
@@ -283,15 +306,29 @@ describe("GET /api/v1/pipelines/[id]/stages/win-rates", () => {
     authOk();
     const db = makeDb({ stages: funil(), maxRows: 1000 });
     for (let i = 0; i < 1000; i++) {
-      db.tabelas.crm_leads.push({ ...negocio(`g${i}`, "e3"), stage_changed_at: instante(100), created_at: instante(200) });
+      db.tabelas.crm_leads.push({
+        ...negocio(`g${i}`, "e3"),
+        stage_changed_at: instante(100),
+        created_at: instante(200),
+      });
     }
     for (let i = 0; i < 5; i++) {
-      db.tabelas.crm_leads.push({ ...negocio(`a${i}`, "e2"), stage_changed_at: instante(2), created_at: instante(3) });
+      db.tabelas.crm_leads.push({
+        ...negocio(`a${i}`, "e2"),
+        stage_changed_at: instante(2),
+        created_at: instante(3),
+      });
     }
     const { GET } = await import("./route");
     const res = await GET(reqGet(), ctx);
     const body = (await res.json()) as {
-      data: { tempo_na_etapa: { amostra: number; truncado: boolean; etapas: Array<{ etapa_id: string; quantidade: number }> } };
+      data: {
+        tempo_na_etapa: {
+          amostra: number;
+          truncado: boolean;
+          etapas: Array<{ etapa_id: string; quantidade: number }>;
+        };
+      };
     };
     const bloco = body.data.tempo_na_etapa;
     expect(bloco.etapas.find((l) => l.etapa_id === "e2")?.quantidade).toBe(5);
@@ -312,7 +349,9 @@ describe("GET /api/v1/pipelines/[id]/stages/win-rates", () => {
     const { GET } = await import("./route");
     const res = await GET(reqGet(), ctx);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { tempo_na_etapa: { amostra: number; etapas: unknown[] } } };
+    const body = (await res.json()) as {
+      data: { tempo_na_etapa: { amostra: number; etapas: unknown[] } };
+    };
     expect(body.data.tempo_na_etapa.etapas).toEqual([]);
     expect(body.data.tempo_na_etapa.amostra).toBe(0);
     expect(from.mock.calls.map(([tabela]) => tabela)).not.toContain("crm_leads");

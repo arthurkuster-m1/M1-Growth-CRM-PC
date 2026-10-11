@@ -74,7 +74,9 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     // configuração: quem precisa "escolha a etapa" também precisa saber quanto
     // tempo cada uma leva — e sem ela aqui, o POST de criação seria a única
     // superfície que escreve um dado que nenhuma leitura devolve.
-    .select("id, name, position, is_won, is_lost, expected_duration_hours, win_probability")
+    .select(
+      "id, name, position, is_won, is_lost, expected_duration_hours, win_probability, qualification",
+    )
     .eq("organization_id", authz.org.orgId)
     .eq("pipeline_id", id)
     .eq("is_archived", false)
@@ -104,10 +106,15 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
-    return fail("unprocessable_entity", t("Dê um nome à etapa — é o que aparece no topo da coluna."), 422, {
-      requestId,
-      details: parsed.error.flatten(),
-    });
+    return fail(
+      "unprocessable_entity",
+      t("Dê um nome à etapa — é o que aparece no topo da coluna."),
+      422,
+      {
+        requestId,
+        details: parsed.error.flatten(),
+      },
+    );
   }
 
   const supabase = await createClient();

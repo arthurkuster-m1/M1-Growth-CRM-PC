@@ -61,6 +61,8 @@ export interface CampanhaDeDemanda {
   meta_account_id: string;
   meta_synced_at: string | null;
   meta_sync_error: string;
+  /** Páginas opcionais mostradas (landing, criativos, abordagem); nulo = o padrão do tipo. */
+  optional_tabs: string[] | null;
   position: number;
   created_at: string;
   /** Da última nota de cada tipo (só a agência as recebe). */
@@ -79,7 +81,7 @@ export interface EstadoDaCampanha {
 }
 
 export const COLUNAS_DA_CAMPANHA =
-  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, position, created_at";
+  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dinheiro = z.number().finite().min(0).max(1e10);
