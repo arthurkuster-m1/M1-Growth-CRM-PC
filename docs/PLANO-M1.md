@@ -71,7 +71,7 @@ trabalhando em cima, conforme a prioridade do Arthur.
 6. **Equipe.** Pessoas, papéis e interface por empresa.
 7. **Prospecção.** Scraping de leads + campanhas de disparo automático (API oficial e não oficial)
    com análise de dados automática por ação e por mensagem. Base existente: `/app/prospecting`.
-8. **CRM — o mais trabalhoso.** Visualizações + funis + base de leads + base de vendas + conexão com
+8. **CRM — o mais trabalhoso.** *(plano fechado em `docs/PLANO-CRM-M1.md`)* Visualizações + funis + base de leads + base de vendas + conexão com
    dashboards + trackeamento impecável + disparos de CAPI + movimentação automática de leads
    (estilo Tintim). Cuidado: leads alimentam Inbox, automações, follow-up, IA e webhooks.
 9. **Conexões e webhooks.** Formulários e landing pages do Arthur entrando como leads.
