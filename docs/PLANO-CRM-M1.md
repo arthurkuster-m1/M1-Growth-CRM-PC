@@ -86,7 +86,7 @@ a fonte real do faturamento nos dashboards.
 
 ## 6. As sessões (ordem recomendada)
 
-**Andamento:** sessão 1 ✅ (11/10/2026) — lead único no ar.
+**Andamento:** sessão 1 ✅ (11/10/2026) — lead único no ar · sessão 2 ✅ (11/10/2026) — funis na Geração de demanda e página Clientes.
 
 Cada sessão termina com algo que você consegue **testar no domínio**.
 
@@ -146,3 +146,16 @@ prospecção por scraping.
 - **Decisão 3 ajustada:** em vez de "reabrir" a participação, vale a regra: 1 aberta por funil; a
   encerrada fica no histórico e a retomada cria a nova ligada à anterior (já existia).
 - **Leads de teste:** não apaguei — são conversas reais de WhatsApp (uma é o número do Arthur).
+
+### Sessão 2 — Funis próprios e a página Clientes (feita em 11/10/2026)
+- **Funis nascem em Marketing › Geração de demanda** (`GestaoDeFunis`): a agência cria o funil,
+  edita as etapas (mesmo editor das configurações), escolhe "ao ganhar, entra em…" e arquiva.
+- **Ao ganhar → novo funil (migration 0594):** `crm_pipelines.settings.ao_ganhar_funil_id` + trigger
+  `fn_lead_ganhou_entra_no_funil` (vale para tela, agente e lote). Rota `PUT /pipelines/[id]/ao-ganhar`.
+- **Página Clientes** (`/app/clientes`, `components/clientes/ClientesCRM.tsx`): seletor de funil
+  ("Todos" = lista completa), alternância Tabela | Kanban, faixa de números, busca, filtros/ordem/
+  agrupamento e colunas do motor das Tarefas. API `GET /api/v1/clientes?funil=`. Kanban reaproveita
+  o quadro do funil. Edição na tabela: etapa (não-ganho/perdido) e MQL.
+- **Menu:** "Clientes" entra no sidebar do CRM; Funis e Contatos passam ao hub.
+- **Fica para as próximas:** novo lead / importar / exportar / edição em massa (sessão 8), campos
+  dinâmicos e ficha (sessão 4), abas de visualizações salvas na tabela, calendário de reuniões.
