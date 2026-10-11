@@ -18430,6 +18430,8 @@ export const DICIONARIO: Traducoes = {
   "Tarefas desta semana": { es: "Tareas de esta semana" },
   "Tirar da semana": { es: "Quitar de la semana" },
   "Visão do cronograma": { es: "Vista del cronograma" },
+  "Primeira compra": { es: "Primera compra" },
+  "Sem compra registrada": { es: "Sin compra registrada" },
   "Cadastro, investimento, metas e o diário de bordo desta ação de vendas.": { es: "Registro, inversión, metas y el diario de esta acción de ventas." },
   "Os leads de todos os funis": { es: "Los leads de todos los embudos" },
   "Funil do lead": { es: "Embudo del lead" },

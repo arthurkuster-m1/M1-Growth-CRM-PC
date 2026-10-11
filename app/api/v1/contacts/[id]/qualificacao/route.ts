@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   const supabase = await createClient();
   const { data: contato, error } = await supabase
     .from("contacts")
-    .select("id, created_at, is_mql, mql_at, first_approached_at")
+    .select("id, created_at, is_mql, mql_at, first_approached_at, first_purchase_on")
     .eq("id", id.data)
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
@@ -58,12 +58,14 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
     is_mql: boolean;
     mql_at: string | null;
     first_approached_at: string | null;
+    first_purchase_on: string | null;
   };
 
   return ok(
     {
       entrou_em: c.created_at,
       primeira_abordagem: c.first_approached_at,
+      primeira_compra: c.first_purchase_on,
       is_mql: c.is_mql,
       mql_at: c.mql_at,
       funis: (
@@ -86,7 +88,17 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   );
 }
 
-const corpoSchema = z.object({ is_mql: z.boolean() });
+const corpoSchema = z
+  .object({
+    is_mql: z.boolean().optional(),
+    /** `YYYY-MM-DD`, ou `null` para limpar. */
+    primeira_compra: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+  })
+  .refine((v) => v.is_mql !== undefined || v.primeira_compra !== undefined);
 
 export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
   const supportDenied = await requireSupportWrite();
@@ -108,9 +120,16 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
   const { data, error } = await supabase
     .from("contacts")
     .update({
-      is_mql: corpo.data.is_mql,
-      mql_at: corpo.data.is_mql ? agora : null,
-      mql_by: corpo.data.is_mql ? authz.user.id : null,
+      ...(corpo.data.is_mql !== undefined
+        ? {
+            is_mql: corpo.data.is_mql,
+            mql_at: corpo.data.is_mql ? agora : null,
+            mql_by: corpo.data.is_mql ? authz.user.id : null,
+          }
+        : {}),
+      ...(corpo.data.primeira_compra !== undefined
+        ? { first_purchase_on: corpo.data.primeira_compra }
+        : {}),
     })
     .eq("id", id.data)
     .eq("organization_id", authz.org.orgId)
@@ -126,7 +145,10 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
     resourceType: "contact",
     resourceId: contactId,
     requestId,
-    metadata: { is_mql: corpo.data.is_mql },
+    metadata: {
+      is_mql: corpo.data.is_mql ?? null,
+      primeira_compra: corpo.data.primeira_compra ?? null,
+    },
   });
   return ok(data, { requestId });
 }

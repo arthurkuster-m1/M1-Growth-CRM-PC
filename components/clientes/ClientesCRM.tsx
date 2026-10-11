@@ -409,6 +409,19 @@ export function ClientesCRM() {
       ),
     },
     {
+      id: "primeira-compra",
+      titulo: t("Primeira compra"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {l.primeira_compra
+            ? new Date(`${l.primeira_compra}T12:00:00`).toLocaleDateString(tag)
+            : "—"}
+        </span>
+      ),
+    },
+    {
       id: "atividade",
       titulo: t("Última atividade"),
       icone: <TextAa size={14} aria-hidden />,
@@ -471,6 +484,12 @@ export function ClientesCRM() {
       titulo: t("Entrou em"),
       tipo: "data",
       valorDe: (l) => l.entrou_em.slice(0, 10),
+    },
+    {
+      id: "primeira-compra",
+      titulo: t("Primeira compra"),
+      tipo: "data",
+      valorDe: (l) => l.primeira_compra,
     },
     {
       id: "abordagem",

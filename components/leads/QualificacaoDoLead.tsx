@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 interface Qualificacao {
   entrou_em: string;
   primeira_abordagem: string | null;
+  primeira_compra: string | null;
   is_mql: boolean;
   mql_at: string | null;
   funis: Array<{
@@ -44,6 +46,12 @@ export function QualificacaoDoLead({ contactId }: { contactId: string | null }) 
       (await apiClient.get<{ data: Qualificacao }>(`/api/v1/contacts/${contactId}/qualificacao`))
         .data,
     staleTime: 15_000,
+  });
+  const salvarCompra = useMutation({
+    mutationFn: (primeira_compra: string | null) =>
+      apiClient.put(`/api/v1/contacts/${contactId}/qualificacao`, { primeira_compra }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chave }),
+    onError: showApiError,
   });
   const alternar = useMutation({
     mutationFn: (is_mql: boolean) =>
@@ -86,6 +94,16 @@ export function QualificacaoDoLead({ contactId }: { contactId: string | null }) 
               <dd className="font-medium">{dia(d.primeira_abordagem)}</dd>
             </div>
           </dl>
+
+          <div className="grid gap-1">
+            <span className="text-xs text-text-muted">{t("Primeira compra")}</span>
+            <SeletorDeData
+              valor={d.primeira_compra ?? ""}
+              rotulo={t("Primeira compra")}
+              placeholder={t("Sem compra registrada")}
+              aoMudar={(v) => (pode ? salvarCompra.mutate(v === "" ? null : v) : undefined)}
+            />
+          </div>
 
           <label
             className={cn(

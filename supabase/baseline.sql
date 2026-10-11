@@ -49559,3 +49559,12 @@ comment on table public.demand_campaign_notes is
   'Diário de bordo da campanha: análise, feedback do cliente, planejamento e otimização, com data. O cliente lê só as otimizações.';
 
 notify pgrst, 'reload schema';
+
+-- ---- Primeira compra no lead (migration 0596) ----
+alter table public.contacts
+  add column if not exists first_purchase_on date;
+
+comment on column public.contacts.first_purchase_on is
+  'Data da primeira compra do lead. Campo padrão do CRM; a sessão de Vendas passa a derivá-la da menor data de venda paga.';
+
+notify pgrst, 'reload schema';

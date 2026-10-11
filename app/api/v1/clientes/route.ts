@@ -50,6 +50,7 @@ export interface ClienteDaLista {
   mql_at: string | null;
   entrou_em: string;
   primeira_abordagem: string | null;
+  primeira_compra: string | null;
   ultima_atividade: string | null;
   campos: Record<string, unknown>;
   participacoes: ParticipacaoDoCliente[];
@@ -119,7 +120,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeContatos = supabase
     .from("contacts")
     .select(
-      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, last_activity_at, custom_fields",
+      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields",
     )
     .eq("organization_id", orgId)
     .eq("kind", "person")
@@ -171,6 +172,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       mql_at: string | null;
       created_at: string;
       first_approached_at: string | null;
+      first_purchase_on: string | null;
       last_activity_at: string | null;
       custom_fields: Record<string, unknown> | null;
     }>
@@ -185,6 +187,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     mql_at: c.mql_at,
     entrou_em: c.created_at,
     primeira_abordagem: c.first_approached_at,
+    primeira_compra: c.first_purchase_on,
     ultima_atividade: c.last_activity_at,
     campos: c.custom_fields ?? {},
     participacoes: porContato.get(c.id) ?? [],
