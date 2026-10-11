@@ -176,3 +176,12 @@ prospecção por scraping.
    foram apagados.
 4. Vocabulário do funil: o texto "tabela ou Kanban" na página Clientes reprova 2 testes
    (`vocabulario-do-funil`); trocar "Kanban" por "Quadro" na próxima sessão do CRM.
+
+### Mudança de regra (11/10/2026): funil pertence à campanha
+- A criação de funis saiu de "Geração de demanda › Funis do cliente" (componente `GestaoDeFunis`,
+  removido) e passou para **dentro de cada campanha** (aba "Funil de conversão"). Cada campanha
+  tem um funil único; não existe funil sem campanha daqui para frente.
+- Funis antigos sem campanha continuam no banco e na página Clientes (legado) — a decidir com o
+  Arthur: virar campanha ou arquivar.
+- Novo tipo de campanha "Aproveitamento de base" (clientes ativos: recompra/recorrência),
+  que se encaixa com o "ao ganhar entra no funil" da sessão 2.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   COR_DO_STATUS_DO_CRIATIVO,
@@ -19,6 +19,8 @@ import {
   taxasDoCriativo,
   type Criativo,
 } from "@/lib/marketing/criativos";
+import { BASE_DAS_IMAGENS_DO_PAINEL, TAMANHO_MAXIMO_DA_IMAGEM } from "@/lib/marketing/imagens";
+import { MAXIMO_DE_IMAGENS, MAXIMO_DE_VARIACOES } from "@/lib/marketing/criativos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -78,15 +80,186 @@ function Metrica({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
+/** Até 5 variações de um texto (como no anúncio dinâmico do Meta); grava a lista inteira ao sair. */
+function Variacoes({
+  titulo,
+  valores,
+  rotuloDoItem,
+  longo,
+  max,
+  desabilitado,
+  aoGravar,
+}: {
+  titulo: string;
+  valores: string[];
+  rotuloDoItem: string;
+  longo?: boolean;
+  max: number;
+  desabilitado: boolean;
+  aoGravar: (lista: string[]) => void;
+}) {
+  const [lista, setLista] = useState<string[]>(() =>
+    Array.from({ length: MAXIMO_DE_VARIACOES }, (_, i) => valores[i] ?? ""),
+  );
+  const chave = valores.join("\u0000");
+  useEffect(() => {
+    setLista(Array.from({ length: MAXIMO_DE_VARIACOES }, (_, i) => valores[i] ?? ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `chave` resume `valores`
+  }, [chave]);
+  const preenchidos = lista.filter((x) => x.trim() !== "").length;
+  const gravar = () => {
+    const limpa = lista.map((x) => x.trim());
+    while (limpa.length > 0 && limpa[limpa.length - 1] === "") limpa.pop();
+    if (limpa.join("\u0000") !== chave) aoGravar(limpa);
+  };
+  return (
+    <details className="rounded-xl border p-3" open={preenchidos > 0 && preenchidos <= 1}>
+      <summary className="cursor-pointer text-sm font-medium">
+        {titulo}{" "}
+        <span className="text-xs font-normal text-muted-foreground">
+          ({preenchidos}/{MAXIMO_DE_VARIACOES})
+        </span>
+      </summary>
+      <div className="mt-2 grid gap-2">
+        {lista.map((v, i) => {
+          const rotulo = `${rotuloDoItem} ${i + 1}`;
+          const comum = {
+            value: v,
+            maxLength: max,
+            disabled: desabilitado,
+            placeholder: rotulo,
+            "aria-label": rotulo,
+            onChange: (e: { target: { value: string } }) =>
+              setLista((l) => l.map((x, k) => (k === i ? e.target.value : x))),
+            onBlur: gravar,
+          };
+          return longo ? (
+            <textarea key={i} rows={3} className={AREA} {...comum} />
+          ) : (
+            <input key={i} className={CAMPO} {...comum} />
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
+/** As imagens do criativo: várias de uma vez, com prévia e remoção. */
+function ImagensDoCriativo({
+  imagens,
+  desabilitado,
+  aoMudar,
+}: {
+  imagens: string[];
+  desabilitado: boolean;
+  aoMudar: (lista: string[]) => void;
+}) {
+  const t = useT();
+  const entrada = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function enviar(arquivos: File[]) {
+    setErro(null);
+    setEnviando(true);
+    const novos: string[] = [];
+    try {
+      for (const f of arquivos.slice(0, MAXIMO_DE_IMAGENS - imagens.length)) {
+        if (f.size > TAMANHO_MAXIMO_DA_IMAGEM) {
+          setErro(t("A imagem precisa ter até 5 MB."));
+          continue;
+        }
+        const form = new FormData();
+        form.set("file", f);
+        const r = await fetch("/api/v1/marketing/imagens", { method: "POST", body: form });
+        const corpo = (await r.json().catch(() => null)) as {
+          data?: { arquivo?: string };
+          error?: { message?: string };
+        } | null;
+        if (r.ok && corpo?.data?.arquivo) novos.push(corpo.data.arquivo);
+        else setErro(corpo?.error?.message ?? t("Erro ao enviar a imagem."));
+      }
+      if (novos.length > 0) aoMudar([...imagens, ...novos]);
+    } finally {
+      setEnviando(false);
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  return (
+    <div className="grid gap-2">
+      {imagens.length > 0 ? (
+        <ul className="flex flex-wrap gap-2">
+          {imagens.map((arq, i) => (
+            <li key={arq} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element -- imagem da agência, servida pela rota do painel */}
+              <img
+                src={`${BASE_DAS_IMAGENS_DO_PAINEL}${arq}`}
+                alt={`${t("Imagem")} ${i + 1}`}
+                className="h-20 w-20 rounded-xl border object-cover"
+              />
+              {!desabilitado ? (
+                <button
+                  type="button"
+                  aria-label={t("Tirar imagem")}
+                  onClick={() => aoMudar(imagens.filter((_, k) => k !== i))}
+                  className="absolute -top-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full border bg-card text-muted-foreground shadow-sm hover:text-error-fg"
+                >
+                  <Trash size={12} aria-hidden />
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {!desabilitado ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={entrada}
+            type="file"
+            multiple
+            accept="image/png,image/jpeg"
+            className="sr-only"
+            aria-label={t("Escolher imagens")}
+            onChange={(e) => {
+              const f = Array.from(e.target.files ?? []);
+              if (f.length > 0) void enviar(f);
+            }}
+          />
+          <button
+            type="button"
+            disabled={enviando || imagens.length >= MAXIMO_DE_IMAGENS}
+            onClick={() => entrada.current?.click()}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          >
+            <Plus size={14} weight="bold" aria-hidden />
+            {enviando ? t("Enviando…") : t("Subir imagens")}
+          </button>
+          <span className="text-xs text-muted-foreground">
+            {imagens.length}/{MAXIMO_DE_IMAGENS} · {t("PNG ou JPG, até 5 MB cada")}
+          </span>
+        </div>
+      ) : null}
+      {erro ? (
+        <p role="alert" className="text-xs text-error-fg">
+          {erro}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function CartaoDoCriativo({
   c,
   podeEditar,
   editar,
+  duplicar,
   apagar,
 }: {
   c: Criativo;
   podeEditar: boolean;
   editar: (patch: EdicaoDeCriativo) => void;
+  duplicar: () => void;
   apagar: () => void;
 }) {
   const t = useT();
@@ -157,22 +330,35 @@ function CartaoDoCriativo({
         </select>
       </div>
 
-      <Texto
-        valor={c.headline}
-        aoGravar={(headline) => editar({ headline })}
+      <ImagensDoCriativo
+        imagens={c.images}
         desabilitado={bloqueado}
-        rotulo={t("Título do anúncio")}
-        placeholder={t("Título do anúncio")}
-        max={300}
+        aoMudar={(images) => editar({ images })}
       />
-      <Texto
-        valor={c.caption}
-        aoGravar={(caption) => editar({ caption })}
-        desabilitado={bloqueado}
-        rotulo={t("Legenda")}
-        placeholder={t("Legenda do anúncio")}
+      <Variacoes
+        titulo={t("Textos principais (legendas)")}
+        valores={c.bodies}
+        rotuloDoItem={t("Texto principal")}
         longo
         max={4000}
+        desabilitado={bloqueado}
+        aoGravar={(bodies) => editar({ bodies })}
+      />
+      <Variacoes
+        titulo={t("Títulos")}
+        valores={c.headlines}
+        rotuloDoItem={t("Título")}
+        max={300}
+        desabilitado={bloqueado}
+        aoGravar={(headlines) => editar({ headlines })}
+      />
+      <Variacoes
+        titulo={t("Descrições")}
+        valores={c.descriptions}
+        rotuloDoItem={t("Descrição")}
+        max={1000}
+        desabilitado={bloqueado}
+        aoGravar={(descriptions) => editar({ descriptions })}
       />
       <div className="grid gap-2 sm:grid-cols-2">
         <Texto
@@ -203,7 +389,14 @@ function CartaoDoCriativo({
       </div>
 
       {podeEditar ? (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-1">
+          <button
+            type="button"
+            onClick={duplicar}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            {t("Duplicar")}
+          </button>
           <button
             type="button"
             aria-label={t("Apagar criativo")}
@@ -217,6 +410,66 @@ function CartaoDoCriativo({
         </div>
       ) : null}
     </article>
+  );
+}
+
+/** A análise lado a lado: cada criativo com as taxas de entrega; o melhor CTR e o menor CPC saem em destaque. */
+function ComparativoDeCriativos({ criativos }: { criativos: Criativo[] }) {
+  const t = useT();
+  const linhas = criativos
+    .filter((c) => c.impressions > 0 || c.spend > 0)
+    .map((c) => ({ c, x: taxasDoCriativo(c) }));
+  if (linhas.length < 2) return null;
+  const melhorCtr = Math.max(...linhas.map((l) => l.x.ctr ?? -1));
+  const menorCpc = Math.min(...linhas.map((l) => l.x.cpc ?? Infinity));
+  return (
+    <div className="grid gap-2">
+      <h3 className="text-sm font-semibold">{t("Comparativo dos criativos")}</h3>
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="w-full min-w-max text-sm">
+          <thead className="bg-secondary/60 text-xs text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">{t("Criativo")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Investido")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Impressões")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Cliques no link")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("CTR")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("CPC")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Visitas à LP")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Connection rate")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map(({ c, x }) => (
+              <tr key={c.id} className="border-t">
+                <td className="max-w-64 truncate px-3 py-2">{c.name}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{moedaDoNumero(c.spend)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{inteiro(c.impressions)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{inteiro(c.link_clicks)}</td>
+                <td
+                  className={cn(
+                    "px-3 py-2 text-right tabular-nums",
+                    x.ctr !== null && x.ctr === melhorCtr && "font-semibold text-success-fg",
+                  )}
+                >
+                  {pct(x.ctr)}
+                </td>
+                <td
+                  className={cn(
+                    "px-3 py-2 text-right tabular-nums",
+                    x.cpc !== null && x.cpc === menorCpc && "font-semibold text-success-fg",
+                  )}
+                >
+                  {reais(x.cpc)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{inteiro(c.lp_views)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{pct(x.connectRate)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -252,7 +505,7 @@ export function CriativosDaCampanha({
   podeEditar: boolean;
 }) {
   const t = useT();
-  const { criativos, carregando, criar, editar, apagar, importarDoMeta } =
+  const { criativos, carregando, criar, editar, duplicar, apagar, importarDoMeta } =
     useCriativosDaCampanha(campanhaId);
   const [filtro, setFiltro] = useState<Criativo["status"] | null>(null);
   const [importando, setImportando] = useState(false);
@@ -335,6 +588,8 @@ export function CriativosDaCampanha({
         </div>
       ) : null}
 
+      {criativos.length > 1 ? <ComparativoDeCriativos criativos={criativos} /> : null}
+
       {carregando ? (
         <div className="h-24 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
       ) : visiveis.length === 0 ? (
@@ -349,6 +604,7 @@ export function CriativosDaCampanha({
               c={c}
               podeEditar={podeEditar}
               editar={(patch) => void editar(c.id, patch)}
+              duplicar={() => void duplicar(c.id)}
               apagar={() => void apagar(c.id)}
             />
           ))}

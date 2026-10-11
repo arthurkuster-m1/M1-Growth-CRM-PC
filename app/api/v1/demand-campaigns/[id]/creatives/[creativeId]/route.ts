@@ -31,7 +31,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const { data, error } = await a.supabase
     .from("demand_campaign_creatives")
-    .update(corpo.data)
+    .update({
+      ...corpo.data,
+      // Os campos antigos seguem como a primeira variação.
+      ...(corpo.data.headlines ? { headline: corpo.data.headlines[0] ?? "" } : {}),
+      ...(corpo.data.bodies ? { caption: corpo.data.bodies[0] ?? "" } : {}),
+    })
     .eq("id", creativeId)
     .eq("campaign_id", id)
     .eq("organization_id", a.orgId)

@@ -49852,3 +49852,153 @@ revoke all on function public.fn_demand_campaigns_estado(uuid, text) from public
 grant execute on function public.fn_demand_campaigns_estado(uuid, text) to authenticated;
 
 notify pgrst, 'reload schema';
+
+-- ---- migration 0602 ----
+create table if not exists public.demand_campaign_approaches (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  campaign_id uuid not null references public.demand_campaigns(id) on delete cascade,
+  name text not null,
+  status text not null default 'ativo',
+  medium text not null default 'whatsapp',
+  audience text not null default '',
+  hook text not null default '',
+  script text not null default '',
+  follow_up text not null default '',
+  notes text not null default '',
+  position numeric not null default extract(epoch from clock_timestamp()),
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint demand_campaign_approaches_name_check check (length(btrim(name)) between 1 and 160),
+  constraint demand_campaign_approaches_status_check check (status in ('ativo', 'pausado', 'encerrado')),
+  constraint demand_campaign_approaches_medium_check
+    check (medium in ('whatsapp', 'ligacao', 'email', 'linkedin', 'instagram', 'presencial', 'outro')),
+  constraint demand_campaign_approaches_texts_check
+    check (length(audience) <= 500 and length(hook) <= 500 and length(script) <= 6000
+           and length(follow_up) <= 6000 and length(notes) <= 2000)
+);
+
+create index if not exists demand_campaign_approaches_campaign_idx
+  on public.demand_campaign_approaches (organization_id, campaign_id, position);
+
+alter table public.demand_campaign_approaches enable row level security;
+
+drop policy if exists demand_campaign_approaches_select on public.demand_campaign_approaches;
+create policy demand_campaign_approaches_select on public.demand_campaign_approaches
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or public.fn_is_platform_admin()
+  );
+drop policy if exists demand_campaign_approaches_write on public.demand_campaign_approaches;
+create policy demand_campaign_approaches_write on public.demand_campaign_approaches
+  using (
+    public.fn_is_platform_admin_full()
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  )
+  with check (
+    public.fn_is_platform_admin_full()
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+revoke all on public.demand_campaign_approaches from anon;
+grant select, insert, update, delete on public.demand_campaign_approaches to authenticated;
+
+drop trigger if exists trg_demand_campaign_approaches_updated_at on public.demand_campaign_approaches;
+create trigger trg_demand_campaign_approaches_updated_at
+  before update on public.demand_campaign_approaches
+  for each row execute function public.fn_set_updated_at();
+
+comment on table public.demand_campaign_approaches is
+  'Abordagens de uma campanha de contato direto (prospecção, indicação, parceria, base): meio, gancho, mensagem e follow-up. Lidas pela empresa toda; escritas a partir de manager.';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0603 ----
+alter table public.demand_campaign_creatives
+  add column if not exists images jsonb not null default '[]'::jsonb,
+  add column if not exists headlines jsonb not null default '[]'::jsonb,
+  add column if not exists bodies jsonb not null default '[]'::jsonb,
+  add column if not exists descriptions jsonb not null default '[]'::jsonb;
+
+alter table public.demand_campaign_creatives
+  drop constraint if exists demand_campaign_creatives_variants_check;
+alter table public.demand_campaign_creatives
+  add constraint demand_campaign_creatives_variants_check
+  check (jsonb_typeof(images) = 'array' and jsonb_array_length(images) <= 10
+         and jsonb_typeof(headlines) = 'array' and jsonb_array_length(headlines) <= 5
+         and jsonb_typeof(bodies) = 'array' and jsonb_array_length(bodies) <= 5
+         and jsonb_typeof(descriptions) = 'array' and jsonb_array_length(descriptions) <= 5
+         and pg_column_size(images) + pg_column_size(headlines) + pg_column_size(bodies)
+             + pg_column_size(descriptions) <= 40000);
+
+-- O que já existia vira a primeira variação.
+update public.demand_campaign_creatives
+   set headlines = jsonb_build_array(headline)
+ where headlines = '[]'::jsonb and headline <> '';
+update public.demand_campaign_creatives
+   set bodies = jsonb_build_array(caption)
+ where bodies = '[]'::jsonb and caption <> '';
+
+comment on column public.demand_campaign_creatives.images is
+  'Nomes de arquivo (bucket marketing-images) das imagens do criativo, até 10.';
+comment on column public.demand_campaign_creatives.headlines is 'Até 5 títulos (variações do anúncio dinâmico).';
+comment on column public.demand_campaign_creatives.bodies is 'Até 5 textos principais (legendas).';
+comment on column public.demand_campaign_creatives.descriptions is 'Até 5 descrições.';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0604 ----
+create table if not exists public.demand_campaign_landing_pages (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  campaign_id uuid not null references public.demand_campaigns(id) on delete cascade,
+  name text not null,
+  url text not null default '',
+  status text not null default 'ativo',
+  notes text not null default '',
+  position numeric not null default extract(epoch from clock_timestamp()),
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint demand_campaign_lps_name_check check (length(btrim(name)) between 1 and 160),
+  constraint demand_campaign_lps_status_check check (status in ('ativo', 'pausado', 'encerrado')),
+  constraint demand_campaign_lps_texts_check check (length(url) <= 1000 and length(notes) <= 2000)
+);
+
+create index if not exists demand_campaign_lps_campaign_idx
+  on public.demand_campaign_landing_pages (organization_id, campaign_id, position);
+
+alter table public.demand_campaign_landing_pages enable row level security;
+
+drop policy if exists demand_campaign_lps_select on public.demand_campaign_landing_pages;
+create policy demand_campaign_lps_select on public.demand_campaign_landing_pages
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or public.fn_is_platform_admin()
+  );
+drop policy if exists demand_campaign_lps_write on public.demand_campaign_landing_pages;
+create policy demand_campaign_lps_write on public.demand_campaign_landing_pages
+  using (
+    public.fn_is_platform_admin_full()
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  )
+  with check (
+    public.fn_is_platform_admin_full()
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+revoke all on public.demand_campaign_landing_pages from anon;
+grant select, insert, update, delete on public.demand_campaign_landing_pages to authenticated;
+
+drop trigger if exists trg_demand_campaign_lps_updated_at on public.demand_campaign_landing_pages;
+create trigger trg_demand_campaign_lps_updated_at
+  before update on public.demand_campaign_landing_pages
+  for each row execute function public.fn_set_updated_at();
+
+comment on table public.demand_campaign_landing_pages is
+  'Landing pages de uma campanha de demanda: nome, link, status e observações. As métricas de cada LP vêm dos criativos cujo link de destino é o dela. Lidas pela empresa toda; escritas a partir de manager.';
+
+notify pgrst, 'reload schema';

@@ -123,7 +123,51 @@ export function ResumoDaCampanha({
         </section>
       ) : null}
 
-      <Cartao titulo={t("Período e investimento")}>
+      {trafego ? (
+        <Cartao titulo={t("Metas de leads")}>
+          <Numero
+            rotulo={t("Meta de leads")}
+            valor={r.metas.metaDeLeads === null ? null : inteiro(r.metas.metaDeLeads)}
+          />
+          <Numero rotulo={t("Leads captados")} valor={inteiro(r.metas.captados)} destaque />
+          <Numero
+            rotulo={t("Faltam")}
+            valor={r.metas.faltam === null ? null : inteiro(r.metas.faltam)}
+          />
+          <Numero rotulo={t("Meta de CPL")} valor={dinheiro(r.metas.metaDeCpl)} />
+          <Numero
+            rotulo={t("CPL atual")}
+            valor={dinheiro(r.funil.cpl)}
+            tom={
+              r.funil.cpl !== null && r.metas.metaDeCpl !== null
+                ? r.funil.cpl <= r.metas.metaDeCpl
+                  ? "bom"
+                  : "ruim"
+                : undefined
+            }
+          />
+          <Numero rotulo={t("CPL necessário")} valor={dinheiro(r.metas.cplNecessario)} />
+          <Numero
+            rotulo={t("Leads por dia (meta)")}
+            valor={r.metas.porDia === null ? null : decimal(r.metas.porDia)}
+          />
+          <Numero
+            rotulo={t("Meta para hoje")}
+            valor={r.metas.metaParaHoje === null ? null : inteiro(r.metas.metaParaHoje)}
+          />
+          <Numero
+            rotulo={adiant !== null && adiant < 0 ? t("Atrasado em") : t("Adiantado em")}
+            valor={adiant === null ? null : inteiro(Math.abs(adiant))}
+            tom={adiant === null ? undefined : adiant >= 0 ? "bom" : "ruim"}
+          />
+          <Numero
+            rotulo={t("Nova meta diária")}
+            valor={r.metas.novaMetaDiaria === null ? null : decimal(r.metas.novaMetaDiaria)}
+          />
+        </Cartao>
+      ) : null}
+
+      <Cartao titulo={t("Métricas principais")}>
         <Numero rotulo={t("Dias totais")} valor={r.periodo ? inteiro(r.periodo.totais) : null} />
         <Numero
           rotulo={t("Dias passados")}
@@ -159,48 +203,6 @@ export function ResumoDaCampanha({
 
       {trafego ? (
         <>
-          <Cartao titulo={t("Metas de leads")}>
-            <Numero
-              rotulo={t("Meta de leads")}
-              valor={r.metas.metaDeLeads === null ? null : inteiro(r.metas.metaDeLeads)}
-            />
-            <Numero rotulo={t("Leads captados")} valor={inteiro(r.metas.captados)} destaque />
-            <Numero
-              rotulo={t("Faltam")}
-              valor={r.metas.faltam === null ? null : inteiro(r.metas.faltam)}
-            />
-            <Numero rotulo={t("Meta de CPL")} valor={dinheiro(r.metas.metaDeCpl)} />
-            <Numero
-              rotulo={t("CPL atual")}
-              valor={dinheiro(r.funil.cpl)}
-              tom={
-                r.funil.cpl !== null && r.metas.metaDeCpl !== null
-                  ? r.funil.cpl <= r.metas.metaDeCpl
-                    ? "bom"
-                    : "ruim"
-                  : undefined
-              }
-            />
-            <Numero rotulo={t("CPL necessário")} valor={dinheiro(r.metas.cplNecessario)} />
-            <Numero
-              rotulo={t("Leads por dia (meta)")}
-              valor={r.metas.porDia === null ? null : decimal(r.metas.porDia)}
-            />
-            <Numero
-              rotulo={t("Meta para hoje")}
-              valor={r.metas.metaParaHoje === null ? null : inteiro(r.metas.metaParaHoje)}
-            />
-            <Numero
-              rotulo={adiant !== null && adiant < 0 ? t("Atrasado em") : t("Adiantado em")}
-              valor={adiant === null ? null : inteiro(Math.abs(adiant))}
-              tom={adiant === null ? undefined : adiant >= 0 ? "bom" : "ruim"}
-            />
-            <Numero
-              rotulo={t("Nova meta diária")}
-              valor={r.metas.novaMetaDiaria === null ? null : decimal(r.metas.novaMetaDiaria)}
-            />
-          </Cartao>
-
           <Cartao titulo={t("Pace de gastos")}>
             <Numero rotulo={t("Meta de orçamento diário")} valor={dinheiro(r.pace.metaDiaria)} />
             <Numero rotulo={t("Média atual por dia")} valor={dinheiro(r.pace.mediaAtual)} />

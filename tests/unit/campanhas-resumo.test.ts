@@ -332,3 +332,59 @@ describe("criativos (C4)", () => {
     ).toBeNull();
   });
 });
+
+import { chaveDoLink, metricasDaLp } from "@/lib/marketing/landing-pages";
+import { abasDoCanal } from "@/lib/marketing/campanhas-abas";
+
+describe("landing pages e abas (C-ajustes)", () => {
+  it("compara links ignorando www, parâmetros, âncora e barra final", () => {
+    expect(chaveDoLink("https://www.Site.com.br/oferta/?utm_source=x#topo")).toBe(
+      "site.com.br/oferta",
+    );
+    expect(chaveDoLink("http://site.com.br/oferta")).toBe("site.com.br/oferta");
+  });
+  it("soma os criativos que apontam para a LP", () => {
+    const m = metricasDaLp({ url: "https://site.com.br/oferta" }, [
+      {
+        link_url: "https://www.site.com.br/oferta/?a=1",
+        spend: 10,
+        impressions: 1000,
+        link_clicks: 20,
+        lp_views: 10,
+      },
+      {
+        link_url: "https://site.com.br/outra",
+        spend: 99,
+        impressions: 1,
+        link_clicks: 1,
+        lp_views: 1,
+      },
+      { link_url: "", spend: 5, impressions: 1, link_clicks: 1, lp_views: 1 },
+    ]);
+    expect(m).toMatchObject({
+      criativos: 1,
+      spend: 10,
+      link_clicks: 20,
+      ctr: 2,
+      cpc: 0.5,
+      connectRate: 50,
+    });
+  });
+  it("abas por tipo: anúncio tem LPs e criativos; contato direto tem abordagem", () => {
+    expect(abasDoCanal("trafego_pago")).toEqual([
+      "cadastro",
+      "visao",
+      "dia",
+      "landing",
+      "criativos",
+      "funil",
+    ]);
+    expect(abasDoCanal("aproveitamento_de_base")).toEqual([
+      "cadastro",
+      "visao",
+      "dia",
+      "abordagem",
+      "funil",
+    ]);
+  });
+});

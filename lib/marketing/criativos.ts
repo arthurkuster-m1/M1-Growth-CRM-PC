@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { NOME_DE_IMAGEM } from "@/lib/marketing/blocos";
+
 /**
  * OS CRIATIVOS DA CAMPANHA (migration 0600): cada anúncio/peça da campanha com legenda, mídia, LP
  * de destino e as métricas de ENTREGA que o Meta informa. Leads, CPL e vendas por criativo vêm
@@ -26,6 +28,12 @@ export interface Criativo {
   thumbnail_url: string;
   link_url: string;
   notes: string;
+  /** Arquivos do bucket de imagens do Marketing (até 10). */
+  images: string[];
+  /** Até 5 variações de cada, como no anúncio dinâmico do Meta. */
+  headlines: string[];
+  bodies: string[];
+  descriptions: string[];
   ad_id: string | null;
   ad_name: string;
   spend: number;
@@ -38,7 +46,7 @@ export interface Criativo {
 }
 
 export const COLUNAS_DO_CRIATIVO =
-  "id, campaign_id, name, status, format, headline, caption, media_url, thumbnail_url, link_url, notes, ad_id, ad_name, spend, impressions, link_clicks, lp_views, metrics_synced_at, position, created_at";
+  "id, campaign_id, name, status, format, headline, caption, media_url, thumbnail_url, link_url, notes, images, headlines, bodies, descriptions, ad_id, ad_name, spend, impressions, link_clicks, lp_views, metrics_synced_at, position, created_at";
 
 const link = z
   .string()
@@ -55,7 +63,14 @@ const camposSchema = z.object({
   media_url: link,
   link_url: link,
   notes: z.string().trim().max(2000),
+  images: z.array(z.string().regex(NOME_DE_IMAGEM)).max(10),
+  headlines: z.array(z.string().trim().max(300)).max(5),
+  bodies: z.array(z.string().trim().max(4000)).max(5),
+  descriptions: z.array(z.string().trim().max(1000)).max(5),
 });
+
+export const MAXIMO_DE_VARIACOES = 5;
+export const MAXIMO_DE_IMAGENS = 10;
 
 /** Criar: só o nome é obrigatório. */
 export const novoCriativoSchema = camposSchema.partial().required({ name: true });
@@ -74,8 +89,15 @@ export function criativoDaLinha(l: Record<string, unknown>): Criativo {
     link_clicks: n(l.link_clicks),
     lp_views: n(l.lp_views),
     position: n(l.position),
+    images: texts(l.images),
+    headlines: texts(l.headlines),
+    bodies: texts(l.bodies),
+    descriptions: texts(l.descriptions),
   };
 }
+
+const texts = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 const razao = (a: number, b: number): number | null => (b > 0 ? a / b : null);
 

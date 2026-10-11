@@ -188,3 +188,24 @@ export function textoDoEstado(
   const cpl = e.leads > 0 && e.investido > 0 ? reais(e.investido / e.leads) : "—";
   return `${dia}/${mes} | ${t("Investido")}: ${reais(e.investido)} | ${e.leads} ${t("Leads")} | ${t("CPL")} ${cpl}`;
 }
+
+import type { MeioDaAbordagem } from "@/lib/marketing/abordagens";
+
+export function rotuloDoMeio(t: Traduz, m: MeioDaAbordagem): string {
+  switch (m) {
+    case "whatsapp":
+      return t("WhatsApp");
+    case "ligacao":
+      return t("Ligação");
+    case "email":
+      return t("E-mail");
+    case "linkedin":
+      return t("LinkedIn");
+    case "instagram":
+      return t("Instagram");
+    case "presencial":
+      return t("Presencial");
+    case "outro":
+      return t("Outro");
+  }
+}

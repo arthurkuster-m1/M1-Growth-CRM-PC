@@ -62,7 +62,14 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   if (!campanha) return campanhaNaoEncontrada(a.t, a.requestId);
   const { data, error } = await a.supabase
     .from("demand_campaign_creatives")
-    .insert({ ...corpo.data, organization_id: a.orgId, campaign_id: id, created_by: a.userId })
+    .insert({
+      ...corpo.data,
+      ...(corpo.data.headlines ? { headline: corpo.data.headlines[0] ?? "" } : {}),
+      ...(corpo.data.bodies ? { caption: corpo.data.bodies[0] ?? "" } : {}),
+      organization_id: a.orgId,
+      campaign_id: id,
+      created_by: a.userId,
+    })
     .select(COLUNAS_DO_CRIATIVO)
     .single();
   if (error || !data) {

@@ -6,6 +6,8 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
 import type { CampanhaDeDemanda, NotaDaCampanha, TipoDeNota } from "@/lib/marketing/campanhas";
 import type { DiaDaCampanha } from "@/lib/marketing/campanhas-resumo";
+import type { Abordagem } from "@/lib/marketing/abordagens";
+import type { LandingPage } from "@/lib/marketing/landing-pages";
 import type { Criativo } from "@/lib/marketing/criativos";
 
 const BASE = "/api/v1/demand-campaigns";
@@ -13,7 +15,7 @@ const CHAVE = ["demand-campaigns"] as const;
 
 export interface DadosDasCampanhas {
   campanhas: CampanhaDeDemanda[];
-  funis: Array<{ id: string; name: string }>;
+  funis: Array<{ id: string; name: string; ao_ganhar_funil_id: string | null }>;
   pode_editar: boolean;
 }
 
@@ -278,6 +280,14 @@ export function useCriativosDaCampanha(campanhaId: string) {
         void recarregar();
       }
     },
+    duplicar: async (id: string) => {
+      try {
+        await apiClient.post(`${BASE}/${campanhaId}/creatives/${id}/duplicate`, {});
+        await recarregar();
+      } catch (e) {
+        showApiError(e);
+      }
+    },
     apagar: async (id: string) => {
       try {
         await apiClient.delete(`${BASE}/${campanhaId}/creatives/${id}`);
@@ -308,6 +318,126 @@ export function useCriativosDaCampanha(campanhaId: string) {
 export type EdicaoDeCriativo = Partial<
   Pick<
     Criativo,
-    "name" | "status" | "format" | "headline" | "caption" | "media_url" | "link_url" | "notes"
+    | "name"
+    | "status"
+    | "format"
+    | "headline"
+    | "caption"
+    | "media_url"
+    | "link_url"
+    | "notes"
+    | "images"
+    | "headlines"
+    | "bodies"
+    | "descriptions"
   >
 >;
+
+export type EdicaoDeAbordagem = Partial<
+  Pick<
+    Abordagem,
+    "name" | "status" | "medium" | "audience" | "hook" | "script" | "follow_up" | "notes"
+  >
+>;
+
+/** As abordagens (campanhas de contato direto) de uma campanha. */
+export function useAbordagensDaCampanha(campanhaId: string) {
+  const queryClient = useQueryClient();
+  const chave = ["demand-campaign-approaches", campanhaId] as const;
+  const consulta = useQuery({
+    queryKey: chave,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: { abordagens: Abordagem[] } }>(
+          `${BASE}/${campanhaId}/approaches`,
+        )
+      ).data.abordagens,
+    staleTime: 10_000,
+  });
+  const recarregar = () => queryClient.invalidateQueries({ queryKey: chave });
+  return {
+    abordagens: consulta.data ?? [],
+    carregando: consulta.isLoading,
+    criar: async (entrada: EdicaoDeAbordagem & { name: string }) => {
+      try {
+        await apiClient.post(`${BASE}/${campanhaId}/approaches`, entrada);
+        await recarregar();
+      } catch (e) {
+        showApiError(e);
+      }
+    },
+    editar: async (id: string, patch: EdicaoDeAbordagem) => {
+      queryClient.setQueryData<Abordagem[]>(chave, (l) =>
+        (l ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)),
+      );
+      try {
+        await apiClient.patch(`${BASE}/${campanhaId}/approaches/${id}`, patch);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
+      }
+    },
+    apagar: async (id: string) => {
+      try {
+        await apiClient.delete(`${BASE}/${campanhaId}/approaches/${id}`);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
+      }
+    },
+  };
+}
+
+export type EdicaoDeLp = Partial<Pick<LandingPage, "name" | "url" | "status" | "notes">>;
+
+/** As landing pages de uma campanha. */
+export function useLandingPagesDaCampanha(campanhaId: string) {
+  const queryClient = useQueryClient();
+  const chave = ["demand-campaign-lps", campanhaId] as const;
+  const consulta = useQuery({
+    queryKey: chave,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: { landing_pages: LandingPage[] } }>(
+          `${BASE}/${campanhaId}/landing-pages`,
+        )
+      ).data.landing_pages,
+    staleTime: 10_000,
+  });
+  const recarregar = () => queryClient.invalidateQueries({ queryKey: chave });
+  return {
+    lps: consulta.data ?? [],
+    carregando: consulta.isLoading,
+    criar: async (entrada: EdicaoDeLp & { name: string }) => {
+      try {
+        await apiClient.post(`${BASE}/${campanhaId}/landing-pages`, entrada);
+        await recarregar();
+      } catch (e) {
+        showApiError(e);
+      }
+    },
+    editar: async (id: string, patch: EdicaoDeLp) => {
+      queryClient.setQueryData<LandingPage[]>(chave, (l) =>
+        (l ?? []).map((x) => (x.id === id ? { ...x, ...patch } : x)),
+      );
+      try {
+        await apiClient.patch(`${BASE}/${campanhaId}/landing-pages/${id}`, patch);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
+      }
+    },
+    apagar: async (id: string) => {
+      try {
+        await apiClient.delete(`${BASE}/${campanhaId}/landing-pages/${id}`);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
+      }
+    },
+  };
+}

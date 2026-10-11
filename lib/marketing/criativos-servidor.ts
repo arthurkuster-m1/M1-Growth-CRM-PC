@@ -115,6 +115,8 @@ export async function importarCriativosDoMeta(
         format: a.formato,
         headline: a.titulo.slice(0, 300),
         caption: a.legenda.slice(0, 4000),
+        headlines: a.titulo ? [a.titulo.slice(0, 300)] : [],
+        bodies: a.legenda ? [a.legenda.slice(0, 4000)] : [],
         media_url: "",
         thumbnail_url: (a.miniatura || a.imagem).slice(0, 2000),
         ad_id: a.id.slice(0, 40),

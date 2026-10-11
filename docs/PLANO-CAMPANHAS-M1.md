@@ -235,3 +235,34 @@ Para canais sem API, o dado é **digitado por dia ou semana** na própria campan
   título, mídia, LP, status, formato), filtro por status, métricas de entrega e taxas
   (CTR, CPC). Leads e CPL por criativo ficam para a C5 (origem do lead no CRM).
 - **Próximo:** C5 (leads/vendas por campanha, LP e criativo — depende das sessões 6 e 7 do CRM).
+
+### Reestruturação pedida pelo Arthur (11/10/2026) — feita em 4 entregas no mesmo dia
+**Regras novas**
+- **Funil é da campanha:** cada campanha tem um funil único, criado dentro dela (aba "Funil de
+  conversão"). A tela de funis separada não existe mais; a página de Geração de demanda abre
+  direto nas campanhas. Índice único `demand_campaigns_pipeline_uk` (migration 0601). Funis
+  antigos sem campanha ("Pedidos", "Clientes Fechados") continuam existindo como legado — decidir
+  com o Arthur se viram campanhas ou são arquivados.
+- **Novo tipo "Aproveitamento de base":** a campanha dos clientes ativos (recompra, recorrência).
+  Métricas do dia a dia: clientes contatados, respostas, propostas, vendas, valor total.
+- **Estado atual** (em Tabela, Cards e Linha do tempo): `dd/mm | Investido: R$ … | N Leads | CPL R$ …`.
+  Contínua = o mês corrente; com início e fim = do início até hoje/fim. Investido do dia a dia,
+  leads do CRM (`fn_demand_campaigns_estado`).
+- **Barra Filtrar/Ordenar/Agrupar compacta** (prop `compacta` do `BarraDeConsulta`), numa linha só.
+
+**Subpáginas da campanha** (abas numeradas, `?aba=`): 01 Cadastro (cadastro + investimento +
+metas + campanhas da plataforma) · 02 Visão geral (o que fazer agora, metas de leads, métricas
+principais, pace, funil completo) · 03 Dia a dia (planilha + diário de bordo) · 04 Landing pages ·
+05 Criativos · 06 Funil de conversão. **Campanhas de contato direto** (prospecção, indicações,
+parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
+- **Criativos:** várias imagens por criativo (até 10, bucket de imagens do Marketing), duplicar
+  com textos prontos, 5 títulos + 5 textos principais + 5 descrições (migration 0603), comparativo
+  lado a lado.
+- **Landing pages** (migration 0604): cadastro dos links, pré-visualização (iframe + abrir em nova
+  aba) e comparativo — as métricas vêm dos criativos cujo link de destino é o da LP.
+- **Abordagem** (migration 0602): meio, para quem, gancho, mensagem/roteiro, follow-up.
+- **Funil de conversão:** desenho do fluxo em etapas (setas), configurar etapa por etapa (nome,
+  papel, chance de fechamento, mover), "ao ganhar entra em…" e as configurações avançadas
+  existentes.
+- **Decisão minha a confirmar:** tráfego pago e social media têm LPs+criativos; as demais têm
+  Abordagem.

@@ -32,7 +32,7 @@ export async function GET(): Promise<Response> {
       .limit(LIMITE),
     a.supabase
       .from("crm_pipelines")
-      .select("id, name")
+      .select("id, name, settings")
       .eq("organization_id", a.orgId)
       .eq("is_archived", false)
       .order("position", { ascending: true }),
@@ -110,7 +110,18 @@ export async function GET(): Promise<Response> {
   return ok(
     {
       campanhas,
-      funis: (funis ?? []) as Array<{ id: string; name: string }>,
+      funis: (
+        (funis ?? []) as Array<{
+          id: string;
+          name: string;
+          settings: Record<string, unknown> | null;
+        }>
+      ).map((f) => ({
+        id: f.id,
+        name: f.name,
+        ao_ganhar_funil_id:
+          typeof f.settings?.ao_ganhar_funil_id === "string" ? f.settings.ao_ganhar_funil_id : null,
+      })),
       equipe: ((membros ?? []) as Array<{ user_id: string }>).map((m) => m.user_id),
       pode_editar: a.podeEditar,
     },

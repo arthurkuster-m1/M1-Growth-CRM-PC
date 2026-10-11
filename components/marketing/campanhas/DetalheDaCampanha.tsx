@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
@@ -12,6 +12,9 @@ import {
   rotuloDoPeriodo,
   rotuloDoStatus,
 } from "@/components/marketing/campanhas/rotulos";
+import { LandingPagesDaCampanha } from "@/components/marketing/campanhas/LandingPagesDaCampanha";
+import { FunilDeConversao } from "@/components/marketing/campanhas/FunilDeConversao";
+import { AbordagensDaCampanha } from "@/components/marketing/campanhas/AbordagensDaCampanha";
 import { CriativosDaCampanha } from "@/components/marketing/campanhas/CriativosDaCampanha";
 import { DiaADiaDaCampanha } from "@/components/marketing/campanhas/DiaADiaDaCampanha";
 import { ResumoDaCampanha } from "@/components/marketing/campanhas/ResumoDaCampanha";
@@ -35,6 +38,8 @@ import {
   type CampanhaDeDemanda,
   type TipoDeNota,
 } from "@/lib/marketing/campanhas";
+import { abaValida, type AbaDaCampanha } from "@/lib/marketing/campanhas-abas";
+import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha";
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus, Trash } from "@/lib/ui/icons";
@@ -148,6 +153,14 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   const { campanhas, funis, podeEditar, carregando, editar, apagar } = useCampanhasDeDemanda();
   const c = campanhas.find((x) => x.id === id);
   const dias = useDiasDaCampanha(id);
+  const pathname = usePathname();
+  const parametros = useSearchParams();
+  const aba = abaValida(parametros.get("aba"), c?.channel ?? "trafego_pago");
+  const irParaAba = (nova: AbaDaCampanha) => {
+    const p = new URLSearchParams(parametros.toString());
+    p.set("aba", nova);
+    router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+  };
 
   if (carregando) return <div className="h-64 animate-pulse rounded-2xl bg-secondary" />;
   if (!c) {
@@ -166,260 +179,268 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} />
+      <AbasDaCampanha canal={c.channel} aba={aba} aoEscolher={irParaAba} />
 
-      <DiaADiaDaCampanha
-        canal={c.channel}
-        dias={dias.dias}
-        podeEditar={podeEditar}
-        funilDefinido={dias.funilDefinido}
-        gravar={dias.gravar}
-        apagar={dias.apagar}
-      />
+      {aba === "visao" ? <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} /> : null}
 
-      <Bloco titulo={t("Cadastro")}>
-        <Rotulo texto={t("Nome da campanha")}>
-          <TextoGravavel
-            valor={c.name}
-            aoGravar={(name) => name.trim() && grava({ name })}
-            desabilitado={bloqueado}
-            rotulo={t("Nome da campanha")}
-            max={160}
+      {aba === "dia" ? (
+        <>
+          <DiaADiaDaCampanha
+            canal={c.channel}
+            dias={dias.dias}
+            podeEditar={podeEditar}
+            funilDefinido={dias.funilDefinido}
+            gravar={dias.gravar}
+            apagar={dias.apagar}
           />
-        </Rotulo>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Rotulo texto={t("Canal")}>
-            <select
-              className={CAMPO}
-              disabled={bloqueado}
-              value={c.channel}
-              onChange={(e) => grava({ channel: e.target.value as CampanhaDeDemanda["channel"] })}
-            >
-              {CANAIS_DA_CAMPANHA.map((x) => (
-                <option key={x} value={x}>
-                  {rotuloDoCanal(t, x)}
-                </option>
-              ))}
-            </select>
-          </Rotulo>
-          <Rotulo texto={t("Status")}>
-            <select
-              className={CAMPO}
-              disabled={bloqueado}
-              value={c.status}
-              onChange={(e) => grava({ status: e.target.value as CampanhaDeDemanda["status"] })}
-            >
-              {STATUS_DA_CAMPANHA.map((x) => (
-                <option key={x} value={x}>
-                  {rotuloDoStatus(t, x)}
-                </option>
-              ))}
-            </select>
-          </Rotulo>
-          <Rotulo texto={t("Funil do lead")}>
-            <select
-              className={CAMPO}
-              disabled={bloqueado}
-              value={c.pipeline_id ?? ""}
-              onChange={(e) => grava({ pipeline_id: e.target.value || null })}
-            >
-              <option value="">{t("Sem funil")}</option>
-              {funis.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </Rotulo>
-        </div>
-        <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          <Rotulo texto={t("Início")}>
-            <SeletorDeData
-              valor={c.start_date ?? ""}
-              rotulo={t("Início")}
-              aoMudar={(d) => !bloqueado && grava({ start_date: d || null })}
-            />
-          </Rotulo>
-          <Rotulo texto={t("Fim")}>
-            {c.continuous ? (
-              <p className="flex h-10 items-center text-sm text-muted-foreground">
-                {t("Contínua (sem data final)")}
-              </p>
-            ) : (
-              <SeletorDeData
-                valor={c.end_date ?? ""}
-                rotulo={t("Fim")}
-                aoMudar={(d) => !bloqueado && grava({ end_date: d || null })}
+          <DiarioDeBordo campanhaId={c.id} podeEditar={podeEditar} />
+        </>
+      ) : null}
+
+      {aba === "criativos" ? (
+        <CriativosDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+      ) : null}
+
+      {aba === "landing" ? (
+        <LandingPagesDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+      ) : null}
+
+      {aba === "funil" ? <FunilDeConversao c={c} podeEditar={podeEditar} /> : null}
+
+      {aba === "abordagem" ? (
+        <AbordagensDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+      ) : null}
+
+      {aba === "cadastro" ? (
+        <>
+          <Bloco titulo={t("Cadastro")}>
+            <Rotulo texto={t("Nome da campanha")}>
+              <TextoGravavel
+                valor={c.name}
+                aoGravar={(name) => name.trim() && grava({ name })}
+                desabilitado={bloqueado}
+                rotulo={t("Nome da campanha")}
+                max={160}
               />
-            )}
-          </Rotulo>
-          <label className="flex h-10 items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              disabled={bloqueado}
-              checked={c.continuous}
-              onChange={(e) => grava({ continuous: e.target.checked })}
-            />
-            {t("Contínua")}
-          </label>
-        </div>
-        <Rotulo texto={t("Descrição")}>
-          <TextoGravavel
-            valor={c.description}
-            aoGravar={(description) => grava({ description })}
-            desabilitado={bloqueado}
-            rotulo={t("Descrição")}
-            longo
-            max={4000}
-          />
-        </Rotulo>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Rotulo texto={t("Ideia")}>
-            <TextoGravavel
-              valor={c.idea}
-              aoGravar={(idea) => grava({ idea })}
-              desabilitado={bloqueado}
-              rotulo={t("Ideia")}
-              longo
-              max={4000}
-            />
-          </Rotulo>
-          <Rotulo texto={t("Objetivo")}>
-            <TextoGravavel
-              valor={c.objective}
-              aoGravar={(objective) => grava({ objective })}
-              desabilitado={bloqueado}
-              rotulo={t("Objetivo")}
-              longo
-              max={2000}
-            />
-          </Rotulo>
-        </div>
-        <Rotulo texto={t("Link da planilha (opcional)")}>
-          <TextoGravavel
-            valor={c.sheet_url}
-            aoGravar={(sheet_url) => grava({ sheet_url })}
-            desabilitado={bloqueado}
-            rotulo={t("Link da planilha (opcional)")}
-            max={500}
-          />
-        </Rotulo>
-      </Bloco>
+            </Rotulo>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Rotulo texto={t("Canal")}>
+                <select
+                  className={CAMPO}
+                  disabled={bloqueado}
+                  value={c.channel}
+                  onChange={(e) =>
+                    grava({ channel: e.target.value as CampanhaDeDemanda["channel"] })
+                  }
+                >
+                  {CANAIS_DA_CAMPANHA.map((x) => (
+                    <option key={x} value={x}>
+                      {rotuloDoCanal(t, x)}
+                    </option>
+                  ))}
+                </select>
+              </Rotulo>
+              <Rotulo texto={t("Status")}>
+                <select
+                  className={CAMPO}
+                  disabled={bloqueado}
+                  value={c.status}
+                  onChange={(e) => grava({ status: e.target.value as CampanhaDeDemanda["status"] })}
+                >
+                  {STATUS_DA_CAMPANHA.map((x) => (
+                    <option key={x} value={x}>
+                      {rotuloDoStatus(t, x)}
+                    </option>
+                  ))}
+                </select>
+              </Rotulo>
+            </div>
+            <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+              <Rotulo texto={t("Início")}>
+                <SeletorDeData
+                  valor={c.start_date ?? ""}
+                  rotulo={t("Início")}
+                  aoMudar={(d) => !bloqueado && grava({ start_date: d || null })}
+                />
+              </Rotulo>
+              <Rotulo texto={t("Fim")}>
+                {c.continuous ? (
+                  <p className="flex h-10 items-center text-sm text-muted-foreground">
+                    {t("Contínua (sem data final)")}
+                  </p>
+                ) : (
+                  <SeletorDeData
+                    valor={c.end_date ?? ""}
+                    rotulo={t("Fim")}
+                    aoMudar={(d) => !bloqueado && grava({ end_date: d || null })}
+                  />
+                )}
+              </Rotulo>
+              <label className="flex h-10 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  disabled={bloqueado}
+                  checked={c.continuous}
+                  onChange={(e) => grava({ continuous: e.target.checked })}
+                />
+                {t("Contínua")}
+              </label>
+            </div>
+            <Rotulo texto={t("Descrição")}>
+              <TextoGravavel
+                valor={c.description}
+                aoGravar={(description) => grava({ description })}
+                desabilitado={bloqueado}
+                rotulo={t("Descrição")}
+                longo
+                max={4000}
+              />
+            </Rotulo>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Rotulo texto={t("Ideia")}>
+                <TextoGravavel
+                  valor={c.idea}
+                  aoGravar={(idea) => grava({ idea })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Ideia")}
+                  longo
+                  max={4000}
+                />
+              </Rotulo>
+              <Rotulo texto={t("Objetivo")}>
+                <TextoGravavel
+                  valor={c.objective}
+                  aoGravar={(objective) => grava({ objective })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Objetivo")}
+                  longo
+                  max={2000}
+                />
+              </Rotulo>
+            </div>
+            <Rotulo texto={t("Link da planilha (opcional)")}>
+              <TextoGravavel
+                valor={c.sheet_url}
+                aoGravar={(sheet_url) => grava({ sheet_url })}
+                desabilitado={bloqueado}
+                rotulo={t("Link da planilha (opcional)")}
+                max={500}
+              />
+            </Rotulo>
+          </Bloco>
 
-      <Bloco titulo={t("Investimento")}>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Rotulo texto={t("Investimento bruto")}>
-            <NumeroGravavel
-              valor={c.budget}
-              aoGravar={(budget) => grava({ budget })}
-              desabilitado={bloqueado}
-              rotulo={t("Investimento bruto")}
-              prefixo="R$"
-            />
-          </Rotulo>
-          <Rotulo texto={t("Vale por")}>
-            <select
-              className={CAMPO}
-              disabled={bloqueado}
-              value={c.budget_period}
-              onChange={(e) =>
-                grava({ budget_period: e.target.value as CampanhaDeDemanda["budget_period"] })
-              }
-            >
-              {PERIODOS_DO_ORCAMENTO.map((p) => (
-                <option key={p} value={p}>
-                  {rotuloDoPeriodo(t, p)}
-                </option>
-              ))}
-            </select>
-          </Rotulo>
-          <Rotulo texto={t("Imposto sobre o investimento (%)")}>
-            <NumeroGravavel
-              valor={c.tax_pct}
-              aoGravar={(n) => grava({ tax_pct: Math.min(100, n ?? 0) })}
-              desabilitado={bloqueado}
-              rotulo={t("Imposto sobre o investimento (%)")}
-              prefixo="%"
-            />
-          </Rotulo>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {t("Investimento líquido")}:{" "}
-          <strong className="text-foreground">
-            {liquido === null ? "—" : moedaDoNumero(liquido)}
-          </strong>{" "}
-          {c.tax_pct > 0 ? `(${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%)` : ""}
-        </p>
-      </Bloco>
+          <Bloco titulo={t("Investimento")}>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Rotulo texto={t("Investimento bruto")}>
+                <NumeroGravavel
+                  valor={c.budget}
+                  aoGravar={(budget) => grava({ budget })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Investimento bruto")}
+                  prefixo="R$"
+                />
+              </Rotulo>
+              <Rotulo texto={t("Vale por")}>
+                <select
+                  className={CAMPO}
+                  disabled={bloqueado}
+                  value={c.budget_period}
+                  onChange={(e) =>
+                    grava({ budget_period: e.target.value as CampanhaDeDemanda["budget_period"] })
+                  }
+                >
+                  {PERIODOS_DO_ORCAMENTO.map((p) => (
+                    <option key={p} value={p}>
+                      {rotuloDoPeriodo(t, p)}
+                    </option>
+                  ))}
+                </select>
+              </Rotulo>
+              <Rotulo texto={t("Imposto sobre o investimento (%)")}>
+                <NumeroGravavel
+                  valor={c.tax_pct}
+                  aoGravar={(n) => grava({ tax_pct: Math.min(100, n ?? 0) })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Imposto sobre o investimento (%)")}
+                  prefixo="%"
+                />
+              </Rotulo>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t("Investimento líquido")}:{" "}
+              <strong className="text-foreground">
+                {liquido === null ? "—" : moedaDoNumero(liquido)}
+              </strong>{" "}
+              {c.tax_pct > 0 ? `(${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%)` : ""}
+            </p>
+          </Bloco>
 
-      <Bloco titulo={t("Metas")}>
-        <div className="grid gap-3 sm:grid-cols-4">
-          <Rotulo texto={t("Meta de leads")}>
-            <NumeroGravavel
-              valor={c.goal_leads}
-              inteiro
-              aoGravar={(goal_leads) => grava({ goal_leads })}
-              desabilitado={bloqueado}
-              rotulo={t("Meta de leads")}
-            />
-          </Rotulo>
-          <Rotulo texto={t("Meta de CPL")}>
-            <NumeroGravavel
-              valor={c.goal_cpl}
-              aoGravar={(goal_cpl) => grava({ goal_cpl })}
-              desabilitado={bloqueado}
-              rotulo={t("Meta de CPL")}
-              prefixo="R$"
-            />
-          </Rotulo>
-          <Rotulo texto={t("Meta de vendas")}>
-            <NumeroGravavel
-              valor={c.goal_sales}
-              inteiro
-              aoGravar={(goal_sales) => grava({ goal_sales })}
-              desabilitado={bloqueado}
-              rotulo={t("Meta de vendas")}
-            />
-          </Rotulo>
-          <Rotulo texto={t("Meta de faturamento")}>
-            <NumeroGravavel
-              valor={c.goal_revenue}
-              aoGravar={(goal_revenue) => grava({ goal_revenue })}
-              desabilitado={bloqueado}
-              rotulo={t("Meta de faturamento")}
-              prefixo="R$"
-            />
-          </Rotulo>
-        </div>
-      </Bloco>
+          <Bloco titulo={t("Metas")}>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Rotulo texto={t("Meta de leads")}>
+                <NumeroGravavel
+                  valor={c.goal_leads}
+                  inteiro
+                  aoGravar={(goal_leads) => grava({ goal_leads })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Meta de leads")}
+                />
+              </Rotulo>
+              <Rotulo texto={t("Meta de CPL")}>
+                <NumeroGravavel
+                  valor={c.goal_cpl}
+                  aoGravar={(goal_cpl) => grava({ goal_cpl })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Meta de CPL")}
+                  prefixo="R$"
+                />
+              </Rotulo>
+              <Rotulo texto={t("Meta de vendas")}>
+                <NumeroGravavel
+                  valor={c.goal_sales}
+                  inteiro
+                  aoGravar={(goal_sales) => grava({ goal_sales })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Meta de vendas")}
+                />
+              </Rotulo>
+              <Rotulo texto={t("Meta de faturamento")}>
+                <NumeroGravavel
+                  valor={c.goal_revenue}
+                  aoGravar={(goal_revenue) => grava({ goal_revenue })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Meta de faturamento")}
+                  prefixo="R$"
+                />
+              </Rotulo>
+            </div>
+          </Bloco>
 
-      <CampanhasDaPlataforma c={c} podeEditar={podeEditar} aoGravar={grava} />
+          <CampanhasDaPlataforma c={c} podeEditar={podeEditar} aoGravar={grava} />
 
-      <CriativosDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
-
-      <DiarioDeBordo campanhaId={c.id} podeEditar={podeEditar} />
-
-      {podeEditar ? (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={async () => {
-              if (
-                !window.confirm(
-                  t("Apagar esta campanha e o diário dela? Isso não pode ser desfeito."),
-                )
-              ) {
-                return;
-              }
-              await apagar([c.id]);
-              router.push("/app/marketing/geracao-de-demanda");
-            }}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-medium text-error-fg hover:bg-error-bg"
-          >
-            <Trash size={16} aria-hidden />
-            {t("Apagar campanha")}
-          </button>
-        </div>
+          {podeEditar ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      t("Apagar esta campanha e o diário dela? Isso não pode ser desfeito."),
+                    )
+                  ) {
+                    return;
+                  }
+                  await apagar([c.id]);
+                  router.push("/app/marketing/geracao-de-demanda");
+                }}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-medium text-error-fg hover:bg-error-bg"
+              >
+                <Trash size={16} aria-hidden />
+                {t("Apagar campanha")}
+              </button>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
