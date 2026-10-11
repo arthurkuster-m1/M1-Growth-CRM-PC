@@ -40,6 +40,13 @@ trabalhando em cima, conforme a prioridade do Arthur.
   semana; imagem baixável e link sem login nos temas claro e escuro (usa os tokens do app);
   semana começa no domingo; seletor de data em português. Coluna "Cronograma" na tela de
   Tarefas (gestão) e card na galeria pública: feitos.
+- **Produtos e serviços em escala:** busca; tabela com o motor das Tarefas (filtros, ordem,
+  agrupamento, colunas, abas salvas); filtros também nos cartões; seleção e edição em massa;
+  edição direto na linha (vale ao vivo, inclusive para a IA); importação por planilha CSV com
+  modelo para baixar e prévia; botão "Novo produto".
+- **Páginas legais e Google:** página inicial pública, `/politica-de-privacidade` e
+  `/termos-de-uso` abertos sem login, com operador, CNPJ e contato. Falta o Arthur verificar o
+  domínio no Search Console (registro TXT no Cloudflare) e reenviar o app.
 - **Redução do Log Ingestion do Supabase** (feito no código): login conferido localmente
   (`getClaims`, sem ir ao Supabase a cada requisição), memória de 20 s para permissões e contexto
   de suporte, polling do Inbox espaçado. Conferir o consumo depois de alguns dias.
@@ -48,7 +55,7 @@ trabalhando em cima, conforme a prioridade do Arthur.
 
 | Item | Situação |
 |---|---|
-| Páginas legais (política de privacidade e termos) | **Quase pronto.** Texto com o operador "Assessoria M1", seção do login com Google e links no login/cadastro estão no ar. Falta: e-mail público de contato (`LGPD_DPO_EMAIL`), CNPJ (`OPERADOR_CNPJ`, opcional) e o Arthur enviar o app para verificação no Google Cloud |
+| Páginas legais (política de privacidade e termos) | **Pronto no código.** Falta o Arthur: verificar o domínio no Google Search Console (TXT no Cloudflare), esperar até 24 h e reenviar o app para verificação |
 | Publicar as ofertas da Assessoria M1 | **Feito** (publicadas e sincronizadas com o catálogo da IA) |
 | Nome da fase 02 ("Produto e Oferta") | **Decidido: "Mercado e Oferta"** |
 | Religar a confirmação de e-mail no cadastro | **Feito** |
@@ -61,8 +68,8 @@ trabalhando em cima, conforme a prioridade do Arthur.
 1. **Dashboards atualizados — tudo em um lugar só.** Reunir tráfego (Meta/Google), vendas,
    faturamento e a meta × realizado do Planejamento. Hoje existem `/app/metrics`, `/app/ads/meta`,
    `/app/faturamento` e o placeholder de Marketing.
-2. **Cronograma.** O Arthur já tem o HTML pronto: adaptar ao motor de tarefas (dono = agência ou
-   cliente; visão semanal).
+2. **Cronograma.** **FEITO** (ver histórico). Possíveis melhorias: ligar as barras das ações às
+   tarefas, resumo semanal para o WhatsApp, motivo visível ao cliente por escolha.
 3. **IA ajudante.** Rascunho de página a partir do Kick Off e dos prompts do método
    (precisa de chave de IA). Botão "Gerar rascunho" nas páginas.
 4. **Geração de demanda.** Registro de campanhas, criativos e textos com status; o Arthur tem uma

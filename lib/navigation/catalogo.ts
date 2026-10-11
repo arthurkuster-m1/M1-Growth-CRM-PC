@@ -273,13 +273,23 @@ export const NAV_CATALOG = [
     // Ficou "Funis" porque é o que esta tela É: a lista dos funis, de onde se
     // abre o quadro de cada um. "Pipeline" é palavra de quem construiu o
     // sistema; "funil de vendas" é palavra de quem vende.
+    href: "/app/clientes",
+    label: "Clientes",
+    description: "O CRM: todos os leads, por funil, em tabela ou Kanban.",
+    icon: "Users",
+    group: "crm",
+    section: "O dia a dia da venda",
+    sidebar: true,
+  },
+  {
     href: "/app/kanban",
     label: "Funis",
     description: "Seus funis de venda — clique em um para abrir o quadro de clientes.",
     icon: "Kanban",
     group: "crm",
     section: "O dia a dia da venda",
-    sidebar: true,
+    // O CRM do dia a dia agora é "Clientes" (tabela e Kanban por funil); a lista de funis
+    // fica no hub, como as demais telas de preparação.
   },
   {
     // A campanha vive no CRM e não em Conexões: quem a usa está pensando em
@@ -302,7 +312,7 @@ export const NAV_CATALOG = [
     icon: "Users",
     group: "crm",
     section: "O dia a dia da venda",
-    sidebar: true,
+    // Hub: o menu diário usa "Clientes" (o CRM final).
   },
   {
     href: "/app/companies",
