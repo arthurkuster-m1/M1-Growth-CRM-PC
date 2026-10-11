@@ -329,9 +329,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           <strong className="text-foreground">
             {liquido === null ? "—" : moedaDoNumero(liquido)}
           </strong>{" "}
-          {c.tax_pct > 0
-            ? `(${t("sem")} ${String(c.tax_pct).replace(".", ",")}% ${t("de imposto")})`
-            : ""}
+          {c.tax_pct > 0 ? `(${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%)` : ""}
         </p>
       </Bloco>
 
@@ -492,8 +490,8 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
   const [tipo, setTipo] = useState<TipoDeNota>("analise");
   const [texto, setTexto] = useState("");
   const [data, setData] = useState("");
-  const [filtro, setFiltro] = useState<TipoDeNota | "todas">("todas");
-  const visiveis = filtro === "todas" ? notas : notas.filter((n) => n.kind === filtro);
+  const [filtro, setFiltro] = useState<TipoDeNota | null>(null);
+  const visiveis = filtro === null ? notas : notas.filter((n) => n.kind === filtro);
 
   return (
     <Bloco titulo={t("Diário de bordo")}>
@@ -549,7 +547,18 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
       ) : null}
 
       <div className="flex flex-wrap gap-1.5">
-        {(["todas", ...TIPOS_DE_NOTA] as const).map((k) => (
+        <button
+          type="button"
+          aria-pressed={filtro === null}
+          onClick={() => setFiltro(null)}
+          className={cn(
+            "h-8 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+            filtro === null ? "border-primary bg-primary/10" : "hover:bg-secondary",
+          )}
+        >
+          {t("Todas")}
+        </button>
+        {TIPOS_DE_NOTA.map((k) => (
           <button
             key={k}
             type="button"
@@ -560,7 +569,7 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
               filtro === k ? "border-primary bg-primary/10" : "hover:bg-secondary",
             )}
           >
-            {k === "todas" ? t("Todas") : rotuloDaNota(t, k)}
+            {rotuloDaNota(t, k)}
           </button>
         ))}
       </div>

@@ -36,7 +36,6 @@ import { FUSO_DO_CRONOGRAMA } from "@/lib/marketing/cronograma";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import {
   aplicarConsulta,
-  consultaAtiva,
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
