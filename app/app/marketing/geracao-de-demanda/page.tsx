@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { CampanhasDeDemanda } from "@/components/marketing/campanhas/CampanhasDeDemanda";
 import { GestaoDeFunis, type FunilDaGestao } from "@/components/marketing/funis/GestaoDeFunis";
 import { Atalho, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -76,6 +77,8 @@ export default async function GeracaoDeDemandaPage() {
       voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
       <GestaoDeFunis funis={lista} podeGerir={podeGerir} />
+
+      <CampanhasDeDemanda />
 
       <section
         aria-label={t("Telas relacionadas")}

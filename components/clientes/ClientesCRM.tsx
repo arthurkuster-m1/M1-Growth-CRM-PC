@@ -139,6 +139,16 @@ export function ClientesCRM() {
     });
   }, [dados, funilAtual]);
 
+  /** Uma participação por funil, na mesma ordem nas colunas Funis e Etapa (uma linha por funil). */
+  const porFunil = (l: Linha): ParticipacaoDoCliente[] => {
+    const escolhida = new Map<string, ParticipacaoDoCliente>();
+    for (const p of l.participacoes) {
+      const atual = escolhida.get(p.funil_id);
+      if (!atual || (atual.status !== "open" && p.status === "open")) escolhida.set(p.funil_id, p);
+    }
+    return [...escolhida.values()].sort((x, y) => x.criado_em.localeCompare(y.criado_em));
+  };
+
   const corDaEtapa = (e: Etapa | undefined): CorDaOpcao =>
     !e ? "gray" : e.is_won ? "green" : e.is_lost ? "red" : PALETA[e.position % PALETA.length]!;
   const rotuloDoStatus = (s: string) =>
@@ -213,15 +223,15 @@ export function ClientesCRM() {
       icone: <Rows size={14} aria-hidden />,
       largura: 240,
       celula: (l) => {
-        const ids = [...new Set(l.participacoes.map((p) => p.funil_id))];
+        const lista = porFunil(l);
         return (
-          <div className="flex min-w-0 flex-wrap gap-1 px-2">
-            {ids.length === 0 ? (
+          <div className="flex min-w-0 flex-col items-start gap-1 px-2 py-0.5">
+            {lista.length === 0 ? (
               <span className="text-sm text-muted-foreground">—</span>
             ) : (
-              ids.map((id) => (
-                <Etiqueta key={id} cor="gray">
-                  {funisPorId.get(id)?.name ?? "—"}
+              lista.map((p) => (
+                <Etiqueta key={p.funil_id} cor="gray">
+                  {funisPorId.get(p.funil_id)?.name ?? "—"}
                 </Etiqueta>
               ))
             )}
@@ -256,17 +266,22 @@ export function ClientesCRM() {
             </SeletorDeOpcao>
           );
         }
-        const abertas = l.participacoes.filter((p) => p.status === "open");
+        const lista = porFunil(l);
         return (
-          <div className="flex min-w-0 flex-wrap gap-1 px-2">
-            {abertas.length === 0 ? (
+          <div className="flex min-w-0 flex-col items-start gap-1 px-2 py-0.5">
+            {lista.length === 0 ? (
               <span className="text-sm text-muted-foreground">—</span>
             ) : (
-              abertas.map((p) => (
-                <Etiqueta key={p.lead_id} cor={corDaEtapa(etapasPorId.get(p.etapa_id))}>
-                  {`${funisPorId.get(p.funil_id)?.name ?? "—"} · ${etapasPorId.get(p.etapa_id)?.name ?? "—"}`}
-                </Etiqueta>
-              ))
+              lista.map((p) => {
+                const etapa = etapasPorId.get(p.etapa_id);
+                const fechado =
+                  p.status === "won" ? t("Ganho") : p.status === "lost" ? t("Perdido") : null;
+                return (
+                  <Etiqueta key={p.funil_id} cor={corDaEtapa(etapa)}>
+                    {`${funisPorId.get(p.funil_id)?.name ?? "—"} - ${etapa?.name ?? "—"}${fechado ? ` (${fechado})` : ""}`}
+                  </Etiqueta>
+                );
+              })
             )}
           </div>
         );
