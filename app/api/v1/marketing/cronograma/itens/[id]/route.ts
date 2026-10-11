@@ -3,7 +3,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
-import { COLUNAS_DO_ITEM, edicaoDeItemSchema } from "@/lib/marketing/cronograma";
+import { COLUNAS_DO_ITEM, edicaoDeItemSchema, itemDaLinha } from "@/lib/marketing/cronograma";
 import { autorizarCronograma, naoEncontrado } from "@/lib/marketing/cronograma-servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 
@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     return fail("internal_error", a.t("Erro ao salvar o item."), 500, { requestId: a.requestId });
   if (!data) return naoEncontrado(a.t, a.requestId);
   return ok(
-    { item: { ...data, ordem: Number((data as { ordem: unknown }).ordem) } },
+    { item: itemDaLinha(data as Record<string, unknown>) },
     { requestId: a.requestId },
   );
 }

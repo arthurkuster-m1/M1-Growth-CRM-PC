@@ -8,8 +8,8 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { somarDias } from "@/lib/inicio/datas";
 import {
   COLUNAS_DA_TAREFA_NO_CRONOGRAMA,
-  segundaDe,
-  segundaDeHoje,
+  domingoDe,
+  domingoDeHoje,
   tarefaDoCronograma,
   tarefasDaSemana,
 } from "@/lib/marketing/cronograma";
@@ -21,11 +21,11 @@ export async function GET(req: NextRequest): Promise<Response> {
   const a = await autorizarCronograma("viewer", false);
   if (!a.ok) return a.response;
   const pedido = req.nextUrl.searchParams.get("inicio") ?? "";
-  const segunda = /^\d{4}-\d{2}-\d{2}$/.test(pedido) ? segundaDe(pedido) : segundaDeHoje();
+  const domingo = /^\d{4}-\d{2}-\d{2}$/.test(pedido) ? domingoDe(pedido) : domingoDeHoje();
 
   // Janela larga (as atrasadas vêm de antes); o recorte fino é feito em `tarefasDaSemana`.
-  const de = new Date(`${somarDias(segunda, -120)}T00:00:00Z`).toISOString();
-  const ate = new Date(`${somarDias(segunda, 8)}T00:00:00Z`).toISOString();
+  const de = new Date(`${somarDias(domingo, -120)}T00:00:00Z`).toISOString();
+  const ate = new Date(`${somarDias(domingo, 8)}T00:00:00Z`).toISOString();
   const { data, error } = await a.supabase
     .from("crm_tasks")
     .select(COLUNAS_DA_TAREFA_NO_CRONOGRAMA)
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     tarefaDoCronograma,
   );
   return ok(
-    { inicio: segunda, tarefas: tarefasDaSemana(todas, segunda) },
+    { inicio: domingo, tarefas: tarefasDaSemana(todas, domingo) },
     { requestId: a.requestId },
   );
 }

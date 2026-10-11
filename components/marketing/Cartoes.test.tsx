@@ -97,7 +97,7 @@ describe("módulos da estratégia", () => {
 
   it("o nome de cada fase segue o Notion do Arthur ('01 | Diagnóstico'…)", () => {
     expect(nomeDaFase(t, "diagnostico")).toBe("01 | Diagnóstico");
-    expect(nomeDaFase(t, "produto-e-oferta")).toBe("02 | Produto e Oferta");
+    expect(nomeDaFase(t, "produto-e-oferta")).toBe("02 | Mercado e Oferta");
     expect(nomeDaFase(t, "geracao-de-demanda")).toBe("03 | Geração de Demanda");
   });
 });

@@ -12,8 +12,8 @@ import {
   CONFIG_PADRAO,
   configSchema,
   type ConfigDoCronograma,
-  type ItemDoCronograma,
-  type MetaDoCronograma,
+  itemDaLinha,
+  metaDaLinha,
 } from "@/lib/marketing/cronograma";
 import { autorizarCronograma } from "@/lib/marketing/cronograma-servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -34,7 +34,7 @@ export async function GET(): Promise<Response> {
       .select(COLUNAS_DO_ITEM)
       .eq("organization_id", a.orgId)
       .order("ordem", { ascending: true })
-      .limit(300),
+      .limit(520),
     a.supabase
       .from("marketing_cronograma_metas")
       .select(COLUNAS_DA_META)
@@ -49,12 +49,8 @@ export async function GET(): Promise<Response> {
   return ok(
     {
       config: ((cfg as ConfigDoCronograma | null) ?? CONFIG_PADRAO) as ConfigDoCronograma,
-      itens: (
-        (itens ?? []) as Array<Omit<ItemDoCronograma, "ordem"> & { ordem: number | string }>
-      ).map((i) => ({ ...i, ordem: Number(i.ordem) })),
-      metas: (
-        (metas ?? []) as Array<Omit<MetaDoCronograma, "ordem"> & { ordem: number | string }>
-      ).map((m) => ({ ...m, ordem: Number(m.ordem) })),
+      itens: ((itens ?? []) as Array<Record<string, unknown>>).map(itemDaLinha),
+      metas: ((metas ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
       pode_editar: a.podeEditar,
     },
     { requestId: a.requestId },

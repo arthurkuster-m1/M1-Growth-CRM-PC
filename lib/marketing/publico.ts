@@ -27,6 +27,8 @@ import {
   tarefaDoCronograma,
   tarefasDaSemana,
   type ConfigDoCronograma,
+  itemDaLinha,
+  metaDaLinha,
   type ItemDoCronograma,
   type MetaDoCronograma,
   type TarefaDoCronograma,
@@ -205,12 +207,12 @@ export interface CronogramaPublico {
 
 export async function cronogramaPublico(
   link: LinkResolvido,
-  segunda: string,
+  domingo: string,
 ): Promise<CronogramaPublico> {
   const admin = createAdminClient();
   const org = link.organizationId;
-  const de = new Date(`${somarDias(segunda, -120)}T00:00:00Z`).toISOString();
-  const ate = new Date(`${somarDias(segunda, 8)}T00:00:00Z`).toISOString();
+  const de = new Date(`${somarDias(domingo, -120)}T00:00:00Z`).toISOString();
+  const ate = new Date(`${somarDias(domingo, 8)}T00:00:00Z`).toISOString();
   const [cfg, itens, metas, tarefas] = await Promise.all([
     admin
       .from("marketing_cronograma_config")
@@ -221,8 +223,9 @@ export async function cronogramaPublico(
       .from("marketing_cronograma_itens")
       .select(COLUNAS_DO_ITEM)
       .eq("organization_id", org)
+      .eq("arquivado", false)
       .order("ordem", { ascending: true })
-      .limit(300),
+      .limit(520),
     admin
       .from("marketing_cronograma_metas")
       .select(COLUNAS_DA_META)
@@ -244,12 +247,8 @@ export async function cronogramaPublico(
   );
   return {
     config: (cfg.data as ConfigDoCronograma | null) ?? CONFIG_PADRAO,
-    itens: (
-      (itens.data ?? []) as Array<Omit<ItemDoCronograma, "ordem"> & { ordem: number | string }>
-    ).map((i) => ({ ...i, ordem: Number(i.ordem) })),
-    metas: (
-      (metas.data ?? []) as Array<Omit<MetaDoCronograma, "ordem"> & { ordem: number | string }>
-    ).map((m) => ({ ...m, ordem: Number(m.ordem) })),
-    tarefas: tarefasDaSemana(todas, segunda),
+    itens: ((itens.data ?? []) as Array<Record<string, unknown>>).map(itemDaLinha),
+    metas: ((metas.data ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
+    tarefas: tarefasDaSemana(todas, domingo),
   };
 }

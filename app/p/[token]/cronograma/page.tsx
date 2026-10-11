@@ -7,10 +7,11 @@ import { CronogramaPublico } from "@/components/marketing/cronograma/CronogramaP
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
 import { NavegacaoPublica } from "@/components/marketing/NavegacaoPublica";
 import { somarDias } from "@/lib/inicio/datas";
+import { tagDeIdioma } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { CHAVE_DO_CRONOGRAMA } from "@/lib/marketing/links";
-import { numeroDaSemana, segundaDe, segundaDeHoje } from "@/lib/marketing/cronograma";
+import { domingoDe, domingoDeHoje, numeroDaSemana } from "@/lib/marketing/cronograma";
 import {
   acessoPermitido,
   cronogramaPublico,
@@ -38,15 +39,15 @@ export default async function CronogramaPublicoPage({
   // Só o link do painel inteiro ou o do próprio cronograma abrem esta página.
   if (link.moduloDoEscopo && link.moduloDoEscopo !== CHAVE_DO_CRONOGRAMA) notFound();
 
-  const segunda =
-    semana && /^\d{4}-\d{2}-\d{2}$/.test(semana) ? segundaDe(semana) : segundaDeHoje();
+  const domingo =
+    semana && /^\d{4}-\d{2}-\d{2}$/.test(semana) ? domingoDe(semana) : domingoDeHoje();
   const [empresa, dados] = await Promise.all([
     empresaDoLink(link),
-    cronogramaPublico(link, segunda),
+    cronogramaPublico(link, domingo),
   ]);
   const t = (texto: string) => traduzir(texto, empresa.idioma);
   const base = `/p/${token}/cronograma`;
-  const hoje = segundaDeHoje();
+  const hoje = domingoDeHoje();
 
   return (
     <IdiomaProvider locale={empresa.idioma}>
@@ -77,8 +78,9 @@ export default async function CronogramaPublicoPage({
               itens={dados.itens}
               metas={dados.metas}
               tarefas={dados.tarefas}
-              inicioDaSemana={segunda}
-              semanaAtual={numeroDaSemana(dados.config, segunda)}
+              inicioDaSemana={domingo}
+              semanaDeHoje={numeroDaSemana(dados.config, domingoDeHoje())}
+              tag={tagDeIdioma(empresa.idioma)}
               rotulos={rotulosDoCronograma(t)}
               textos={{
                 geral: t("Cronograma geral"),
@@ -88,10 +90,13 @@ export default async function CronogramaPublicoPage({
                 anterior: t("Semana anterior"),
                 proxima: t("Próxima semana"),
                 estaSemana: t("Esta semana"),
+                aparencia: t("Aparência da imagem"),
+                claro: t("Claro"),
+                escuro: t("Escuro"),
               }}
-              hrefAnterior={`${base}?semana=${somarDias(segunda, -7)}`}
-              hrefProxima={`${base}?semana=${somarDias(segunda, 7)}`}
-              hrefHoje={segunda !== hoje ? `${base}?semana=${hoje}` : null}
+              hrefAnterior={`${base}?semana=${somarDias(domingo, -7)}`}
+              hrefProxima={`${base}?semana=${somarDias(domingo, 7)}`}
+              hrefHoje={domingo !== hoje ? `${base}?semana=${hoje}` : null}
             />
           </main>
         </div>

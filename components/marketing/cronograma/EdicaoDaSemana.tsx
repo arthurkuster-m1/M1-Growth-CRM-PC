@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { useT } from "@/hooks/i18n/useT";
 import {
   FUSO_DO_CRONOGRAMA,
@@ -182,12 +183,11 @@ export function EdicaoDaSemana({
             onChange={(e) => setTitulo(e.target.value)}
             className={CAMPO}
           />
-          <input
-            type="date"
-            value={dia}
-            aria-label={t("Prazo")}
-            onChange={(e) => setDia(e.target.value)}
-            className={CAMPO}
+          <SeletorDeData
+            valor={dia}
+            rotulo={t("Prazo")}
+            placeholder={t("Prazo")}
+            aoMudar={setDia}
           />
           <select
             value={lado}
@@ -288,12 +288,7 @@ function DialogoDeAdiar({
         <div className="grid gap-3">
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">{t("Novo prazo")}</span>
-            <input
-              type="date"
-              value={dia}
-              onChange={(e) => setDia(e.target.value)}
-              className={CAMPO}
-            />
+            <SeletorDeData valor={dia} rotulo={t("Novo prazo")} aoMudar={setDia} limpavel={false} />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">
@@ -399,12 +394,11 @@ function DialogoDeFechamento({
                   ))}
                 </div>
                 {v.acao === "adiar" ? (
-                  <input
-                    type="date"
-                    value={v.dia}
-                    aria-label={t("Novo prazo")}
-                    onChange={(e) => set({ dia: e.target.value })}
-                    className={CAMPO}
+                  <SeletorDeData
+                    valor={v.dia}
+                    rotulo={t("Novo prazo")}
+                    aoMudar={(d) => set({ dia: d })}
+                    limpavel={false}
                   />
                 ) : null}
                 {v.acao === "adiar" || v.acao === "cancelar" ? (

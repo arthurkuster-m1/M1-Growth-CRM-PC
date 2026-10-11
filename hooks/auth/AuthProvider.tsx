@@ -63,7 +63,7 @@ export function AuthProvider({
       const result = await response.json();
       if (result.data.signature !== expected) window.location.reload();
     };
-    const timer = setInterval(() => { void check(); }, 15000);
+    const timer = setInterval(() => { void check(); }, 30000);
     return () => clearInterval(timer);
   }, [user.support]);
 

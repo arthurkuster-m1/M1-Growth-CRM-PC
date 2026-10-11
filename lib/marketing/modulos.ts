@@ -6,7 +6,7 @@
  * módulo (título, descrição) mora na tela, em `t()`, para passar pela tradução.
  *
  * A estrutura segue o painel "Profile do Cliente" do Notion do Arthur:
- *   01 Diagnóstico · 02 Produto e Oferta · 03 Geração de Demanda.
+ *   01 Diagnóstico · 02 Mercado e Oferta · 03 Geração de Demanda.
  */
 export const FASES_DA_ESTRATEGIA = [
   "diagnostico",
@@ -56,7 +56,7 @@ export const MODULOS_DA_ESTRATEGIA: readonly ModuloDaEstrategia[] = [
   { chave: "mapeamento-do-funil", fase: "diagnostico", tom: "orange", icone: "Funnel" },
   { chave: "posicionamento-zmot", fase: "diagnostico", tom: "orange", icone: "Compass" },
   { chave: "identidade-da-marca", fase: "diagnostico", tom: "orange", icone: "Palette" },
-  // 02 | Produto e Oferta
+  // 02 | Mercado e Oferta
   { chave: "estudo-de-persona", fase: "produto-e-oferta", tom: "purple", icone: "UsersThree" },
   {
     chave: "analise-de-concorrencia",

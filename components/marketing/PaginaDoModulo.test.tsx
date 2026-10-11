@@ -50,7 +50,7 @@ function montar() {
         chave="estudo-de-persona"
         titulo="Estudo de persona"
         descricao="Quem é o cliente ideal"
-        superior="02 | Produto e Oferta"
+        superior="02 | Mercado e Oferta"
         tom="purple"
         icone={<span />}
         rotulos={{ antes: "Antes", depois: "Depois", abrirLink: "Abrir link" }}

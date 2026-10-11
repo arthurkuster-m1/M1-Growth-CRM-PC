@@ -29,7 +29,7 @@ const DOT_LABEL: Record<ConnectionHealth, string> = {
  */
 export function ConnectionHealthDot({ className }: { className?: string }) {
   const t = useT();
-  const { data, isError } = useChannelSessions({ refetchInterval: 30_000 });
+  const { data, isError } = useChannelSessions({ refetchInterval: 60_000 });
   // Listagem que falhou não vira "Nenhuma conexão": a bolinha é o único sinal
   // ambiente de canal caído, e dizer "nenhuma" a quem tem número ligado é o
   // mesmo engano da Central de Conexões — o operador conclui que perdeu tudo.

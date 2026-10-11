@@ -24,7 +24,7 @@ export function useRetention(conversationId: string | null) {
   return useQuery({
     queryKey: ["conversation-retention", conversationId],
     enabled: !!conversationId,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     queryFn: () =>
       apiClient
         .get<{ data: RetentionData }>(`/api/v1/conversations/${conversationId}/retention`)

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 
+import { AlternadorDeTema } from "@/components/marketing/cronograma/AlternadorDeTema";
 import {
   PainelDoCronograma,
   type RotulosDoCronograma,
 } from "@/components/marketing/cronograma/PainelDoCronograma";
-import { useBaixarImagem } from "@/hooks/marketing/useCronograma";
+import { useBaixarImagem, useTemaDoCronograma } from "@/hooks/marketing/useCronograma";
+import { inicioDaJanela } from "@/lib/marketing/cronograma";
 import type {
   ConfigDoCronograma,
   ItemDoCronograma,
@@ -23,19 +25,21 @@ export function CronogramaPublico({
   metas,
   tarefas,
   inicioDaSemana,
-  semanaAtual,
+  semanaDeHoje,
   rotulos,
   textos,
   hrefAnterior,
   hrefProxima,
   hrefHoje,
+  tag,
 }: {
   config: ConfigDoCronograma;
   itens: ItemDoCronograma[];
   metas: MetaDoCronograma[];
   tarefas: TarefaDoCronograma[];
   inicioDaSemana: string;
-  semanaAtual: number | null;
+  /** Que semana do cronograma é a de hoje. */
+  semanaDeHoje: number | null;
   rotulos: RotulosDoCronograma;
   textos: {
     geral: string;
@@ -45,7 +49,11 @@ export function CronogramaPublico({
     anterior: string;
     proxima: string;
     estaSemana: string;
+    aparencia: string;
+    claro: string;
+    escuro: string;
   };
+  tag: string;
   hrefAnterior: string;
   hrefProxima: string;
   hrefHoje: string | null;
@@ -53,6 +61,10 @@ export function CronogramaPublico({
   const [aba, setAba] = useState<"geral" | "semana">("geral");
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
+  const [tema, setTema] = useTemaDoCronograma();
+  const [janela, setJanela] = useState<number | null>(null);
+  // `semanaAtual` aqui é a semana MOSTRADA; a de hoje é a do início da janela padrão.
+  const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, config.total_semanas);
 
   return (
     <div className="flex flex-col gap-4">
@@ -104,6 +116,13 @@ export function CronogramaPublico({
             ) : null}
           </div>
         ) : null}
+        <AlternadorDeTema
+          tema={tema}
+          aoMudar={setTema}
+          rotulo={textos.aparencia}
+          claro={textos.claro}
+          escuro={textos.escuro}
+        />
         <button
           type="button"
           disabled={baixar.isPending}
@@ -114,7 +133,7 @@ export function CronogramaPublico({
               nome: aba === "geral" ? "cronograma.png" : "tarefas-da-semana.png",
             })
           }
-          className="ml-auto h-9 rounded-xl border bg-card px-4 text-sm font-medium shadow-sm hover:bg-secondary disabled:opacity-50"
+          className="h-9 rounded-xl border bg-card px-4 text-sm font-medium shadow-sm hover:bg-secondary disabled:opacity-50"
         >
           {baixar.isPending ? textos.gerando : textos.baixar}
         </button>
@@ -127,9 +146,13 @@ export function CronogramaPublico({
           metas={metas}
           tarefas={tarefas}
           inicioDaSemana={inicioDaSemana}
-          semanaAtual={semanaAtual}
+          semanaAtual={semanaDeHoje}
           rotulos={rotulos}
           mostrarAdiamentos={false}
+          tema={tema}
+          tag={tag}
+          janelaInicio={janelaInicio}
+          aoMudarJanela={setJanela}
         />
       </div>
     </div>

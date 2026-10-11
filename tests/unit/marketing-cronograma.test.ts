@@ -6,8 +6,13 @@ import {
   numeroDaSemana,
   periodoDaSemana,
   progressoDaMeta,
-  segundaDe,
-  segundaDaSemana,
+  domingoDe,
+  domingoDaSemana,
+  inicioDaJanela,
+  formatarValorDaMeta,
+  numeroDoTexto,
+  edicaoDeMetaSchema,
+  metaSchema,
   situacaoDaTarefa,
   tarefasDaSemana,
   type ItemDoCronograma,
@@ -23,6 +28,7 @@ const item = (p: Partial<ItemDoCronograma>): ItemDoCronograma => ({
   destaque: false,
   notas: "",
   fase: "",
+  arquivado: false,
   ordem: 1,
   ...p,
 });
@@ -39,20 +45,31 @@ const tarefa = (p: Partial<TarefaDoCronograma>): TarefaDoCronograma => ({
 });
 
 describe("semanas do cronograma", () => {
-  it("a semana começa na segunda-feira", () => {
-    expect(segundaDe("2026-10-14")).toBe("2026-10-12"); // quarta → segunda
-    expect(segundaDe("2026-10-18")).toBe("2026-10-12"); // domingo → segunda anterior
-    expect(periodoDaSemana("2026-10-12")).toBe("12/10 – 18/10");
+  it("a semana começa no domingo", () => {
+    expect(domingoDe("2026-10-14")).toBe("2026-10-11"); // quarta → domingo anterior
+    expect(domingoDe("2026-10-11")).toBe("2026-10-11"); // domingo fica
+    expect(domingoDe("2026-10-17")).toBe("2026-10-11"); // sábado → domingo anterior
+    expect(periodoDaSemana("2026-10-11")).toBe("11/10 – 17/10");
   });
 
-  it("numera a semana contra a data de início e recusa fora do intervalo", () => {
-    const cfg = { data_inicio: "2026-10-05", total_semanas: 8 };
-    expect(numeroDaSemana(cfg, "2026-10-05")).toBe(1);
-    expect(numeroDaSemana(cfg, "2026-10-19")).toBe(3);
-    expect(numeroDaSemana(cfg, "2026-09-28")).toBeNull();
-    expect(numeroDaSemana(cfg, "2026-12-07")).toBeNull();
-    expect(numeroDaSemana({ data_inicio: null, total_semanas: 8 }, "2026-10-05")).toBeNull();
-    expect(segundaDaSemana("2026-10-05", 3)).toBe("2026-10-19");
+  it("numera a semana contra a data de início e recusa antes dela", () => {
+    const cfg = { data_inicio: "2026-10-04" }; // um domingo
+    expect(numeroDaSemana(cfg, "2026-10-04")).toBe(1);
+    expect(numeroDaSemana(cfg, "2026-10-18")).toBe(3);
+    expect(numeroDaSemana(cfg, "2026-09-27")).toBeNull();
+    // o cronograma não termina: meses depois ainda tem número
+    expect(numeroDaSemana(cfg, "2027-03-07")).toBe(23);
+    expect(numeroDaSemana({ data_inicio: null }, "2026-10-04")).toBeNull();
+    expect(domingoDaSemana("2026-10-04", 3)).toBe("2026-10-18");
+    // uma data de início que não é domingo é lida como o domingo da sua semana
+    expect(numeroDaSemana({ data_inicio: "2026-10-05" }, "2026-10-04")).toBe(1);
+  });
+
+  it("a janela da tela começa uma semana antes de hoje e nunca passa do limite", () => {
+    expect(inicioDaJanela(null, 8)).toBe(1);
+    expect(inicioDaJanela(1, 8)).toBe(1);
+    expect(inicioDaJanela(10, 8)).toBe(9);
+    expect(inicioDaJanela(520, 8)).toBe(513);
   });
 
   it("valida a ação: fim não vem antes do início", () => {
@@ -69,11 +86,34 @@ describe("semanas do cronograma", () => {
 });
 
 describe("metas e fases", () => {
-  it("lê o progresso de textos livres", () => {
-    expect(progressoDaMeta("R$ 8.000/mês", "R$ 2.000")).toBe(25);
-    expect(progressoDaMeta("6 clientes", "3")).toBe(50);
-    expect(progressoDaMeta("R$ 8.000", "R$ 9.000")).toBe(100);
-    expect(progressoDaMeta("crescer", "pouco")).toBeNull();
+  it("calcula o progresso pelos números e formata pelo tipo", () => {
+    expect(progressoDaMeta({ valor_alvo: 8000, valor_atual: 2000 })).toBe(25);
+    expect(progressoDaMeta({ valor_alvo: 6, valor_atual: 3 })).toBe(50);
+    expect(progressoDaMeta({ valor_alvo: 8000, valor_atual: 9000 })).toBe(100);
+    expect(progressoDaMeta({ valor_alvo: 8000, valor_atual: null })).toBe(0);
+    expect(progressoDaMeta({ valor_alvo: null, valor_atual: 3 })).toBeNull();
+    expect(progressoDaMeta({ valor_alvo: 0, valor_atual: 3 })).toBeNull();
+
+    const brl = formatarValorDaMeta(15000, "moeda", "", "pt-BR").replace(/\s/g, " ");
+    expect(brl).toBe("R$ 15.000,00");
+    expect(formatarValorDaMeta(1200, "numero", "leads", "pt-BR")).toBe("1.200 leads");
+    expect(formatarValorDaMeta(35.5, "percentual", "", "pt-BR")).toBe("35,5%");
+    expect(formatarValorDaMeta(null, "moeda", "", "pt-BR")).toBe("—");
+  });
+
+  it("lê o que a pessoa digitou", () => {
+    expect(numeroDoTexto("R$ 15.000,50")).toBe(15000.5);
+    expect(numeroDoTexto("1.200 leads")).toBe(1200);
+    expect(numeroDoTexto("35,5%")).toBe(35.5);
+    expect(numeroDoTexto("crescer")).toBeNull();
+  });
+
+  it("editar um campo da meta não reaplica os padrões dos outros", () => {
+    expect(edicaoDeMetaSchema.parse({ valor_alvo: 5 })).toEqual({ valor_alvo: 5 });
+    expect(metaSchema.parse({ titulo: "Leads" })).toMatchObject({
+      tipo: "numero",
+      valor_alvo: null,
+    });
   });
 
   it("deriva as fases na ordem e a situação", () => {
@@ -114,12 +154,12 @@ describe("tarefas da semana", () => {
       tarefa({ id: "proxima", due_date: "2026-10-22T15:00:00Z" }),
       tarefa({ id: "sem-prazo", due_date: null }),
     ];
-    const ids = tarefasDaSemana(todas, "2026-10-12", agora).map((t) => t.id);
+    const ids = tarefasDaSemana(todas, "2026-10-11", agora).map((t) => t.id);
     expect(ids.sort()).toEqual(["atrasada", "feita-na-semana", "na-semana"]);
   });
 
   it("a atrasada não invade semanas passadas", () => {
     const todas = [tarefa({ id: "atrasada", due_date: "2026-10-02T15:00:00Z" })];
-    expect(tarefasDaSemana(todas, "2026-10-05", agora)).toEqual([]);
+    expect(tarefasDaSemana(todas, "2026-10-04", agora)).toEqual([]);
   });
 });

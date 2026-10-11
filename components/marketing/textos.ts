@@ -12,7 +12,7 @@ export function nomeDaFase(t: Traduz, fase: FaseDaEstrategia): string {
     case "diagnostico":
       return t("01 | Diagnóstico");
     case "produto-e-oferta":
-      return t("02 | Produto e Oferta");
+      return t("02 | Mercado e Oferta");
     case "geracao-de-demanda":
       return t("03 | Geração de Demanda");
   }

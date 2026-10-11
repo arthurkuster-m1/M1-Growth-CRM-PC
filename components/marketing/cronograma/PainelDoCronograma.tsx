@@ -1,12 +1,17 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 
 import css from "@/components/marketing/cronograma/Cronograma.module.css";
+import { chaveDoDia } from "@/lib/inicio/datas";
 import {
+  FUSO_DO_CRONOGRAMA,
+  MAXIMO_DE_SEMANAS,
   diaMes,
-  fasesDoCronograma,
+  domingoDaSemana,
+  formatarValorDaMeta,
   periodoDaSemana,
   progressoDaMeta,
-  segundaDaSemana,
   situacaoDaTarefa,
   type ConfigDoCronograma,
   type ItemDoCronograma,
@@ -20,9 +25,11 @@ import {
  * login. Texto fixo vem por `rotulos`, já traduzido por quem chama; o conteúdo (ações, metas,
  * tarefas) é da agência e entra como está.
  *
- * Ordem da página: onde queremos chegar (metas) → o caminho (fases e ações, em ordem lógica,
- * com o que já foi feito, o que está andando e o que vem) → a semana (tarefas da agência e do
- * cliente).
+ * Ordem da página: onde queremos chegar (metas, com barra de progresso) → o caminho (fases em
+ * seta e, dentro de cada fase, as ações-chave em ordem, na janela de semanas que anda para os
+ * dois lados) → a semana (tarefas da agência e do cliente).
+ *
+ * O tema (claro/escuro) é do painel, não da página: a imagem baixada sai como está na tela.
  */
 export interface RotulosDoCronograma {
   titulo: string;
@@ -45,17 +52,31 @@ export interface RotulosDoCronograma {
   nenhumaAcao: string;
   nenhumaTarefa: string;
   adiada: string;
-  resumo: (feitas: number, andando: number, aFazer: number) => string;
   alvo: string;
   atual: string;
+  anterior: string;
+  proxima: string;
+  semanas: string;
+  arraste: string;
+  /** "concluídas", "em andamento", "a fazer" — o painel monta a frase com os números. */
+  resumo: readonly [string, string, string];
 }
 
-const CLASSE_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
+export type TemaDoCronograma = "claro" | "escuro";
+
+const PONTO_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
   feita: css.pontoFeita!,
   andamento: css.pontoAndamento!,
-  a_fazer: css.pontoFazer!,
-  atrasada: css.pontoFazer!,
-  cancelada: css.pontoFazer!,
+  a_fazer: css.pontoAtencao!,
+  atrasada: css.pontoAtraso!,
+  cancelada: "",
+};
+const ETIQUETA_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
+  feita: css.etiquetaFeita!,
+  andamento: css.etiquetaAndamento!,
+  a_fazer: css.etiquetaAtencao!,
+  atrasada: css.etiquetaAtraso!,
+  cancelada: "",
 };
 
 export function PainelDoCronograma({
@@ -69,32 +90,71 @@ export function PainelDoCronograma({
   rotulos,
   mostrarAdiamentos,
   agora,
+  tema = "claro",
+  tag,
+  janelaInicio = 1,
+  aoMudarJanela,
 }: {
   vista: "geral" | "semana";
   config: ConfigDoCronograma;
   itens: readonly ItemDoCronograma[];
   metas: readonly MetaDoCronograma[];
   tarefas: readonly TarefaDoCronograma[];
-  /** A segunda-feira da semana mostrada na vista "semana". */
+  /** O domingo da semana mostrada na vista "semana". */
   inicioDaSemana: string;
-  /** Que semana do cronograma é a de hoje (1…n), se cair dentro dele. */
+  /** Que semana do cronograma é a de hoje (1…), se houver data de início. */
   semanaAtual: number | null;
   rotulos: RotulosDoCronograma;
   /** A agência vê quantas vezes o prazo foi empurrado; o cliente não precisa dessa conta. */
   mostrarAdiamentos: boolean;
   agora?: Date;
+  tema?: TemaDoCronograma;
+  /** Etiqueta do idioma (para formatar R$ e números). */
+  tag: string;
+  /** A primeira semana visível no cronograma geral (a janela anda para os dois lados). */
+  janelaInicio?: number;
+  aoMudarJanela?: (inicio: number) => void;
 }) {
   const semanas = config.total_semanas;
-  const fases = fasesDoCronograma(itens, semanaAtual);
-  const feitas = itens.filter((i) => i.status === "concluido").length;
-  const andando = itens.filter((i) => i.status === "andamento").length;
-  const aFazer = itens.length - feitas - andando;
+  const visiveis = itens.filter((i) => !i.arquivado);
+  const feitas = visiveis.filter((i) => i.status === "concluido").length;
+  const andando = visiveis.filter((i) => i.status === "andamento").length;
+  const aFazer = visiveis.length - feitas - andando;
 
+  const maximoDaJanela = Math.max(1, MAXIMO_DE_SEMANAS - semanas + 1);
+  const primeira = Math.min(maximoDaJanela, Math.max(1, janelaInicio));
+  const ultima = primeira + semanas - 1;
   const estiloDaGrade = { "--semanas": semanas } as CSSProperties;
 
-  // Itens agrupados por fase, na ordem em que a primeira aparece; sem fase vão ao fim.
+  const [arrastando, setArrastando] = useState(false);
+  const arraste = useRef<{ x: number; inicio: number; largura: number } | null>(null);
+  const clamp = (n: number) => Math.min(maximoDaJanela, Math.max(1, n));
+  const aoApertar = (e: PointerEvent<HTMLDivElement>) => {
+    if (!aoMudarJanela || e.button !== 0) return;
+    const trilho = e.currentTarget.querySelector<HTMLElement>("[data-trilho]");
+    const largura = (trilho?.getBoundingClientRect().width ?? 600) / semanas;
+    arraste.current = { x: e.clientX, inicio: primeira, largura: Math.max(20, largura) };
+  };
+  const aoMover = (e: PointerEvent<HTMLDivElement>) => {
+    const a = arraste.current;
+    if (!a || !aoMudarJanela) return;
+    const dx = e.clientX - a.x;
+    if (!arrastando && Math.abs(dx) < 6) return;
+    if (!arrastando) {
+      setArrastando(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    const alvo = clamp(a.inicio - Math.round(dx / a.largura));
+    if (alvo !== primeira) aoMudarJanela(alvo);
+  };
+  const aoSoltar = () => {
+    arraste.current = null;
+    setArrastando(false);
+  };
+
+  // Ações agrupadas por fase, na ordem em que a primeira aparece; sem fase vão ao fim.
   const grupos: Array<{ nome: string; itens: ItemDoCronograma[] }> = [];
-  for (const i of itens) {
+  for (const i of visiveis) {
     const nome = i.fase.trim();
     const g = grupos.find((x) => x.nome === nome);
     if (g) g.itens.push(i);
@@ -102,9 +162,68 @@ export function PainelDoCronograma({
   }
   grupos.sort((a, b) => Number(a.nome === "") - Number(b.nome === ""));
 
+  const fases = grupos
+    .filter((g) => g.nome)
+    .map((g) => {
+      const inicio = Math.min(...g.itens.map((i) => i.semana_inicio));
+      const fim = Math.max(...g.itens.map((i) => i.semana_fim));
+      const todas = g.itens.every((i) => i.status === "concluido");
+      const algumaAndando = g.itens.some((i) => i.status === "andamento");
+      const naJanela = semanaAtual !== null && semanaAtual >= inicio && semanaAtual <= fim;
+      const situacao = todas ? "feita" : algumaAndando || naJanela ? "ativa" : "futura";
+      return {
+        nome: g.nome,
+        inicio,
+        fim,
+        situacao,
+        feitas: g.itens.filter((i) => i.status === "concluido").length,
+        total: g.itens.length,
+      };
+    });
+
+  const classeDaBarra = (status: ItemDoCronograma["status"], destaque = false) =>
+    status === "concluido"
+      ? css.barraFeita
+      : status === "andamento" || destaque
+        ? css.barraAndamento
+        : "";
+
+  /** Uma barra dentro da janela; fora dela vira uma indicação de para onde olhar. */
+  const barra = (ini: number, fim: number, classe: string, fina = false) => {
+    if (fim < primeira) {
+      return (
+        <span className={css.foraDaJanela} style={{ gridColumn: "1 / span 3" }}>
+          ‹ {rotulos.semanaCurta}
+          {ini}
+          {fim !== ini ? `–${fim}` : ""}
+        </span>
+      );
+    }
+    if (ini > ultima) {
+      return (
+        <span
+          className={css.foraDaJanela}
+          style={{ gridColumn: `${Math.max(1, semanas - 2)} / span 3`, textAlign: "right" }}
+        >
+          {rotulos.semanaCurta}
+          {ini}
+          {fim !== ini ? `–${fim}` : ""} ›
+        </span>
+      );
+    }
+    const de = Math.max(ini, primeira) - primeira + 1;
+    const ate = Math.min(fim, ultima) - primeira + 1;
+    return (
+      <div
+        className={`${css.barra} ${fina ? css.barraFase : ""} ${classe}`}
+        style={{ gridColumn: `${de} / span ${ate - de + 1}` }}
+      />
+    );
+  };
+
   if (vista === "geral") {
     return (
-      <div className={css.tema}>
+      <div className={css.tema} data-theme={tema === "escuro" ? "dark" : "light"}>
         <h2 className={css.titulo}>
           {rotulos.titulo} <b>{rotulos.destaqueDoTitulo}</b>
         </h2>
@@ -117,19 +236,35 @@ export function PainelDoCronograma({
           ) : (
             <div className={css.metas}>
               {metas.map((m) => {
-                const p = progressoDaMeta(m.alvo, m.atual);
+                const p = progressoDaMeta(m);
+                const principal = m.valor_atual ?? m.valor_alvo;
                 return (
                   <div key={m.id} className={css.meta}>
                     <p className={css.metaTitulo}>{m.titulo}</p>
-                    <div className={css.metaAlvo}>{m.alvo || "—"}</div>
-                    {m.atual ? (
-                      <div className={css.metaAtual}>
-                        {rotulos.atual}: {m.atual}
+                    <div className={css.metaValor}>
+                      {formatarValorDaMeta(principal, m.tipo, m.unidade, tag)}
+                    </div>
+                    {m.valor_atual !== null && m.valor_alvo !== null ? (
+                      <div className={css.metaAlvo}>
+                        {rotulos.alvo}: {formatarValorDaMeta(m.valor_alvo, m.tipo, m.unidade, tag)}
                       </div>
                     ) : null}
                     {p !== null ? (
-                      <div className={css.progresso} aria-label={`${p}%`}>
-                        <div className={css.progressoBarra} style={{ width: `${p}%` }} />
+                      <div className={css.progresso}>
+                        <div
+                          className={css.progressoTrilho}
+                          role="progressbar"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={p}
+                          aria-label={m.titulo}
+                        >
+                          <div
+                            className={`${css.progressoBarra} ${p >= 100 ? css.progressoBarraCheia : ""}`}
+                            style={{ width: `${p}%` }}
+                          />
+                        </div>
+                        <span className={css.progressoPct}>{p}%</span>
                       </div>
                     ) : null}
                     {m.descricao ? <div className={css.metaDescricao}>{m.descricao}</div> : null}
@@ -167,75 +302,136 @@ export function PainelDoCronograma({
 
         <section className={`${css.painel} ${css.rolagem}`} aria-label={rotulos.caminho}>
           <h3 className={css.secao}>{rotulos.caminho}</h3>
-          {itens.length === 0 ? (
+          {visiveis.length === 0 ? (
             <p className={css.vazio}>{rotulos.nenhumaAcao}</p>
           ) : (
-            <div className={css.grade} style={estiloDaGrade}>
-              <div className={css.cabeca}>
-                <div />
-                {Array.from({ length: semanas }, (_, k) => {
-                  const n = k + 1;
-                  return (
-                    <div
-                      key={n}
-                      className={`${css.semana} ${semanaAtual === n ? css.semanaHoje : ""}`}
-                    >
-                      {rotulos.semanaCurta}
-                      {n}
-                      {config.data_inicio ? (
-                        <span className={css.semanaData}>
-                          {diaMes(segundaDaSemana(config.data_inicio, n))}
-                        </span>
-                      ) : null}
-                    </div>
-                  );
-                })}
+            <>
+              <div className={css.janela} data-sem-imagem="">
+                <button
+                  type="button"
+                  className={css.janelaBotao}
+                  disabled={!aoMudarJanela || primeira <= 1}
+                  aria-label={rotulos.anterior}
+                  onClick={() => aoMudarJanela?.(clamp(primeira - Math.max(1, semanas - 1)))}
+                >
+                  ‹
+                </button>
+                <span className={css.janelaFaixa}>
+                  {rotulos.semanas} {primeira}–{ultima}
+                </span>
+                <button
+                  type="button"
+                  className={css.janelaBotao}
+                  disabled={!aoMudarJanela || primeira >= maximoDaJanela}
+                  aria-label={rotulos.proxima}
+                  onClick={() => aoMudarJanela?.(clamp(primeira + Math.max(1, semanas - 1)))}
+                >
+                  ›
+                </button>
+                {semanaAtual !== null && (semanaAtual < primeira || semanaAtual > ultima) ? (
+                  <button
+                    type="button"
+                    className={css.janelaBotao}
+                    disabled={!aoMudarJanela}
+                    onClick={() => aoMudarJanela?.(clamp(semanaAtual - 1))}
+                  >
+                    {rotulos.hoje}
+                  </button>
+                ) : null}
+                {aoMudarJanela ? <span className={css.janelaDica}>{rotulos.arraste}</span> : null}
               </div>
-              {grupos.map((g) => (
-                <div key={g.nome || "sem-fase"} style={{ display: "contents" }}>
-                  {g.nome ? <div className={css.grupo}>{g.nome}</div> : null}
-                  {g.itens.map((i) => {
-                    const ini = Math.max(1, Math.min(i.semana_inicio, semanas));
-                    const fim = Math.max(ini, Math.min(i.semana_fim, semanas));
-                    const estado =
-                      i.status === "concluido"
-                        ? css.barraFeita
-                        : i.status === "andamento" || i.destaque
-                          ? css.barraAndamento
-                          : "";
+              <div
+                className={`${css.grade} ${arrastando ? css.arrastando : ""}`}
+                style={estiloDaGrade}
+                onPointerDown={aoApertar}
+                onPointerMove={aoMover}
+                onPointerUp={aoSoltar}
+                onPointerCancel={aoSoltar}
+              >
+                <div className={css.cabeca}>
+                  <div />
+                  {Array.from({ length: semanas }, (_, k) => {
+                    const n = primeira + k;
                     return (
-                      <div key={i.id} className={css.linha}>
-                        <div className={css.acao}>
-                          {i.acao}
-                          {i.notas ? <div className={css.acaoNotas}>{i.notas}</div> : null}
-                        </div>
-                        <div className={css.trilho}>
-                          <div
-                            className={`${css.barra} ${estado}`}
-                            style={{ gridColumn: `${ini} / span ${fim - ini + 1}` }}
-                          />
-                        </div>
+                      <div
+                        key={n}
+                        className={`${css.semana} ${semanaAtual === n ? css.semanaHoje : ""}`}
+                      >
+                        {rotulos.semanaCurta}
+                        {n}
+                        {config.data_inicio ? (
+                          <span className={css.semanaData}>
+                            {diaMes(domingoDaSemana(config.data_inicio, n))}
+                          </span>
+                        ) : null}
                       </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
+                {grupos.map((g) => {
+                  const inicio = Math.min(...g.itens.map((i) => i.semana_inicio));
+                  const fim = Math.max(...g.itens.map((i) => i.semana_fim));
+                  const todas = g.itens.every((i) => i.status === "concluido");
+                  const algumaAndando = g.itens.some((i) => i.status === "andamento");
+                  const feitasDaFase = g.itens.filter((i) => i.status === "concluido").length;
+                  return (
+                    <div key={g.nome || "sem-fase"} style={{ display: "contents" }}>
+                      {g.nome ? (
+                        <div className={css.linhaFase}>
+                          <div className={css.faseTitulo}>
+                            {g.nome}
+                            <span className={css.faseContagem}>
+                              {feitasDaFase}/{g.itens.length}
+                            </span>
+                          </div>
+                          <div className={css.trilho} style={{ gridColumn: "2 / -1" }}>
+                            {barra(
+                              inicio,
+                              fim,
+                              todas ? css.barraFeita! : algumaAndando ? css.barraAndamento! : "",
+                              true,
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      {g.itens.map((i) => (
+                        <div key={i.id} className={css.linha}>
+                          <div className={css.acao}>
+                            {i.acao}
+                            {i.notas ? <div className={css.acaoNotas}>{i.notas}</div> : null}
+                          </div>
+                          <div className={css.trilho} data-trilho="">
+                            {barra(
+                              i.semana_inicio,
+                              i.semana_fim,
+                              classeDaBarra(i.status, i.destaque) ?? "",
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className={css.legenda}>
+                <span className={css.legendaItem}>
+                  <span className={`${css.amostra} ${css.barra} ${css.barraFeita}`} />{" "}
+                  {rotulos.concluido}
+                </span>
+                <span className={css.legendaItem}>
+                  <span className={`${css.amostra} ${css.barra} ${css.barraAndamento}`} />{" "}
+                  {rotulos.andamento}
+                </span>
+                <span className={css.legendaItem}>
+                  <span className={`${css.amostra} ${css.barra}`} /> {rotulos.planejado}
+                </span>
+                <span style={{ marginLeft: "auto" }}>
+                  {feitas} {rotulos.resumo[0]} · {andando} {rotulos.resumo[1]} · {aFazer}{" "}
+                  {rotulos.resumo[2]}
+                </span>
+              </div>
+            </>
           )}
-          <div className={css.legenda}>
-            <span className={css.legendaItem}>
-              <span className={`${css.amostra} ${css.barraFeita}`} /> {rotulos.concluido}
-            </span>
-            <span className={css.legendaItem}>
-              <span className={`${css.amostra} ${css.barraAndamento}`} /> {rotulos.andamento}
-            </span>
-            <span className={css.legendaItem}>
-              <span className={`${css.amostra} ${css.barra}`} /> {rotulos.planejado}
-            </span>
-            {itens.length > 0 ? (
-              <span style={{ marginLeft: "auto" }}>{rotulos.resumo(feitas, andando, aFazer)}</span>
-            ) : null}
-          </div>
         </section>
       </div>
     );
@@ -244,44 +440,46 @@ export function PainelDoCronograma({
   // Vista da semana: as tarefas, da agência e do cliente.
   const agencia = tarefas.filter((t) => t.lado === "agencia");
   const cliente = tarefas.filter((t) => t.lado === "cliente");
-  const etiqueta = (t: TarefaDoCronograma) => {
-    const s = situacaoDaTarefa(t, agora);
-    return s === "feita"
+  const etiqueta = (s: SituacaoDaTarefa) =>
+    s === "feita"
       ? rotulos.feita
       : s === "andamento"
         ? rotulos.andamento
         : s === "atrasada"
           ? rotulos.atrasada
           : rotulos.aFazer;
-  };
-  const prazo = (t: TarefaDoCronograma) => {
-    if (!t.due_date) return "";
-    return diaMes(new Date(t.due_date).toISOString().slice(0, 10));
-  };
+  const prazo = (t: TarefaDoCronograma) =>
+    t.due_date ? diaMes(chaveDoDia(new Date(t.due_date), FUSO_DO_CRONOGRAMA)) : "";
   const bloco = (titulo: string, lista: TarefaDoCronograma[]) =>
     lista.length === 0 ? null : (
       <div className={css.grupoTarefas}>
-        <div className={css.grupoTitulo}>{titulo}</div>
-        {lista.map((t) => (
-          <div key={t.id} className={css.tarefa}>
-            <span className={`${css.ponto} ${CLASSE_DA_SITUACAO[situacaoDaTarefa(t, agora)]}`} />
-            <span className={css.tarefaTexto}>
-              {t.title}
-              {mostrarAdiamentos && t.adiamentos > 0 ? (
-                <span className={css.tarefaAdiada}>
-                  {rotulos.adiada} {t.adiamentos}x
-                </span>
-              ) : null}
-            </span>
-            <span className={css.tarefaEtiqueta}>{etiqueta(t)}</span>
-            {prazo(t) ? <span className={css.tarefaPrazo}>{prazo(t)}</span> : null}
-          </div>
-        ))}
+        <div className={css.grupoTitulo}>
+          {titulo}
+          <span className={css.grupoContagem}>{lista.length}</span>
+        </div>
+        <div className={css.lista}>
+          {lista.map((t) => {
+            const s = situacaoDaTarefa(t, agora);
+            return (
+              <div key={t.id} className={`${css.tarefa} ${s === "feita" ? css.tarefaFeita : ""}`}>
+                <span className={`${css.ponto} ${PONTO_DA_SITUACAO[s]}`} />
+                <span className={css.tarefaTexto}>{t.title}</span>
+                {mostrarAdiamentos && t.adiamentos > 0 ? (
+                  <span className={`${css.etiqueta} ${css.etiquetaAtencao}`}>
+                    {rotulos.adiada} {t.adiamentos}x
+                  </span>
+                ) : null}
+                <span className={`${css.etiqueta} ${ETIQUETA_DA_SITUACAO[s]}`}>{etiqueta(s)}</span>
+                {prazo(t) ? <span className={css.tarefaPrazo}>{prazo(t)}</span> : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
 
   return (
-    <div className={css.tema}>
+    <div className={css.tema} data-theme={tema === "escuro" ? "dark" : "light"}>
       <h2 className={css.titulo}>
         {rotulos.semana} <b>{periodoDaSemana(inicioDaSemana)}</b>
       </h2>

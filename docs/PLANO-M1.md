@@ -33,6 +33,16 @@ trabalhando em cima, conforme a prioridade do Arthur.
   catálogo que a IA consulta; imagens/cartão-resumo enviados junto; escada de valor manual +
   automática. Tela antiga de catálogo removida.
 - Prompts do método salvos em `docs/metodo-m1-referencia/`.
+- **Cronograma do cliente** (frente 2, no ar): metas com tipo (R$, quantidade com unidade, %) e
+  barra de progresso; fases em seta com várias ações-chave dentro; gráfico em janela de semanas
+  que anda para sempre (setas ou arrastando), com arquivar concluídas; tarefas da semana
+  (agência × cliente) vindas da base de Tarefas; histórico com o motivo dos adiamentos; fechar a
+  semana; imagem baixável e link sem login nos temas claro e escuro (usa os tokens do app);
+  semana começa no domingo; seletor de data em português. Pendente: coluna "Cronograma" na tela
+  de Tarefas e card na galeria pública.
+- **Redução do Log Ingestion do Supabase** (feito no código): login conferido localmente
+  (`getClaims`, sem ir ao Supabase a cada requisição), memória de 20 s para permissões e contexto
+  de suporte, polling do Inbox espaçado. Conferir o consumo depois de alguns dias.
 
 ## 2. PEQUENOS AJUSTES PENDENTES
 
@@ -40,7 +50,7 @@ trabalhando em cima, conforme a prioridade do Arthur.
 |---|---|
 | Páginas legais (política de privacidade e termos) | **Finalizar.** Rotas `/legal/privacy` e `/legal/terms` existem; falta o texto, o link no cadastro e a publicação do app do Google |
 | Publicar as ofertas da Assessoria M1 | **Feito** (publicadas e sincronizadas com o catálogo da IA) |
-| Nome da fase 02 ("Produto e Oferta") | **Decidir:** proposta do Arthur "Mapeamento de Oferta"; alternativa sugerida "Mercado e Oferta" |
+| Nome da fase 02 ("Produto e Oferta") | **Decidido: "Mercado e Oferta"** |
 | Religar a confirmação de e-mail no cadastro | **Feito** |
 | Pendências antigas do menu: nome "Dono" → nome real, seletor de empresa, redirecionamento pós-onboarding | **Manter** (fazer junto da frente 12/14) |
 | Limpar oferta de teste `vfap33` (R$ 15,00), que a IA já enxerga | **Novo** — conferir e apagar |

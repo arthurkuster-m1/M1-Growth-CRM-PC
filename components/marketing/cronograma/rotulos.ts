@@ -27,7 +27,10 @@ export function rotulosDoCronograma(t: Traduz): RotulosDoCronograma {
     adiada: t("adiada"),
     alvo: t("Alvo"),
     atual: t("Hoje"),
-    resumo: (feitas, andando, aFazer) =>
-      `${feitas} ${t("concluídas")} · ${andando} ${t("em andamento")} · ${aFazer} ${t("a fazer")}`,
+    anterior: t("Semanas anteriores"),
+    proxima: t("Próximas semanas"),
+    semanas: t("Semanas"),
+    arraste: t("Arraste para o lado para ver outras semanas"),
+    resumo: [t("concluídas"), t("em andamento"), t("a fazer")],
   };
 }

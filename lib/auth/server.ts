@@ -9,6 +9,8 @@ import { combinarInterfaces } from "@/lib/navigation/interface";
  * and then filter by `user_id` (a trusted source).
  */
 import { readSupportContext } from "@/lib/impersonate/support";
+import { lembrarPorUsuario } from "@/lib/auth/cache-curto";
+import { usuarioDaSessao } from "@/lib/auth/usuario-da-sessao";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logger } from "@/lib/logger";
@@ -136,10 +138,7 @@ export function ehSessaoAusente(error: { name?: string } | null | undefined): bo
 
 export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { user, error } = await usuarioDaSessao(supabase.auth);
   // ⚠️ O `error` era DESCARTADO — nem chegava a ser desestruturado —, e aqui
   // `user: null` é tão ambíguo quanto o `data: null` que a query logo abaixo
   // trata com todo o cuidado: significa "não está logado" (estado normal) E
@@ -185,7 +184,11 @@ export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
   // ATIVA para quem não tem o cookie `active_org` — `resolveActiveOrg` pega
   // `organizations[0]`. Sem ordenação, "a primeira" é o que o Postgres devolver.
   const [{ data: paRow, error: paErro }, { data: rawMemberships, error: membErro }] =
-    await Promise.all([
+    await lembrarPorUsuario(
+      user.id,
+      "permissoes",
+      () =>
+    Promise.all([
       supabase
         .from("platform_admins")
         .select("user_id, scope, revoked_at")
@@ -208,7 +211,9 @@ export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
         .is("revoked_at", null)
         .order("accepted_at", { ascending: true, nullsFirst: true })
         .order("organization_id", { ascending: true }),
-    ]);
+    ]),
+      ([a, b]) => !a.error && !b.error,
+    );
 
   /**
    * FALHA ALTO, não baixo.
@@ -265,7 +270,9 @@ export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
     };
   });
 
-  const support = await readSupportContext(supabase);
+  const support = await lembrarPorUsuario(user.id, "suporte", () =>
+    readSupportContext(supabase),
+  );
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? null;
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
   const locale = (user.user_metadata?.locale as string | undefined) ?? null;

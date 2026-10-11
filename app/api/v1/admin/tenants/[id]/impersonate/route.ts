@@ -1,3 +1,4 @@
+import { esquecerDoUsuario } from "@/lib/auth/cache-curto";
 import { type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     p_actor: ctx.user.id, p_session: sessionId, p_org: tenantId,
     p_previous: previous?.orgId ?? null, p_mode: input.data.access_mode, p_ttl: IMPERSONATE_TTL_SECONDS,
   });
+  esquecerDoUsuario(ctx.user.id);
   if (error || !id) return fail("state_conflict", "Não foi possível iniciar. Confira o acesso e o estado da organização.", 409, { requestId });
   const { data: session } = await admin.from("platform_support_sessions").select("expires_at, access_mode")
     .eq("id", id).eq("actor_user_id", ctx.user.id).eq("organization_id", tenantId).single();

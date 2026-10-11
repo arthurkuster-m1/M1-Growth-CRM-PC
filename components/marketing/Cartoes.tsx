@@ -133,7 +133,7 @@ export function classeDaGaleria(quantidade: number): string {
 
 /**
  * Um cartão LARGO, da largura da linha inteira: usado para o cadastro de produtos e ofertas,
- * que fecha a fase "Produto e Oferta" embaixo dos cartões de módulo.
+ * que fecha a fase "Mercado e Oferta" embaixo dos cartões de módulo.
  */
 export function CartaoLargo({
   href,

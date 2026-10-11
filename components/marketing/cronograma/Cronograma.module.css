@@ -1,17 +1,28 @@
-/* O visual escuro do cronograma (a pegada do HTML original), com a cor da marca da empresa. */
+/*
+ * O painel do cronograma com a cara do app: usa os MESMOS tokens (fundo, cartão, borda, cor da
+ * marca), então muda junto com o tema. O tema claro/escuro do painel é escolhido por
+ * `data-theme` neste elemento — o app define todos os tokens dentro dele, e a imagem baixada
+ * sai igual ao que está na tela.
+ */
 .tema {
-  --c-bg: #0a0b0f;
-  --c-panel: #12141c;
-  --c-linha: rgba(255, 255, 255, 0.08);
-  --c-linha-forte: rgba(255, 255, 255, 0.15);
-  --c-texto: #f1efe9;
-  --c-medio: #a3a5ad;
-  --c-baixo: #6d7079;
-  --c-a1: var(--primary, #366d6f);
-  --c-a2: color-mix(in srgb, var(--primary, #366d6f) 55%, #ffffff);
-  --c-feito: #3ddc84;
-  --c-andamento: #4d9dff;
-  --c-fazer: #ff5a5f;
+  --c-bg: var(--background);
+  --c-panel: var(--card);
+  --c-linha: var(--border);
+  --c-texto: var(--foreground);
+  --c-medio: var(--muted-foreground);
+  --c-baixo: var(--color-text-subtle);
+  --c-marca: var(--primary);
+  --c-marca-suave: var(--color-accent-soft);
+  --c-marca-texto: var(--primary-foreground);
+  --c-feito: var(--color-success);
+  --c-feito-bg: var(--color-success-bg);
+  --c-feito-fg: var(--color-success-fg);
+  --c-atencao: var(--color-warning);
+  --c-atencao-bg: var(--color-warning-bg);
+  --c-atencao-fg: var(--color-warning-fg);
+  --c-atraso: var(--color-error);
+  --c-atraso-bg: var(--color-error-bg);
+  --c-superficie: var(--secondary);
   background: var(--c-bg);
   color: var(--c-texto);
   border-radius: 24px;
@@ -21,30 +32,29 @@
 
 .titulo {
   text-align: center;
-  font-size: clamp(26px, 4vw, 40px);
-  font-weight: 800;
+  font-size: clamp(24px, 3.6vw, 34px);
+  font-weight: 700;
   letter-spacing: -0.02em;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 .titulo b {
-  background: linear-gradient(90deg, var(--c-a2), var(--c-a1));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--c-marca);
+  font-weight: 700;
 }
 .subtitulo {
   text-align: center;
   color: var(--c-medio);
-  font-size: 15px;
-  margin: 0 0 28px;
+  font-size: 14.5px;
+  margin: 0 0 24px;
 }
 
 .painel {
-  background: linear-gradient(180deg, var(--c-panel), #0d0e14);
+  background: var(--c-panel);
   border: 1px solid var(--c-linha);
   border-radius: 20px;
-  padding: 24px 22px;
-  margin-bottom: 18px;
+  padding: 22px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
 }
 .rolagem {
   overflow-x: auto;
@@ -61,30 +71,29 @@
 /* Metas do topo */
 .metas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
 .meta {
-  border: 1px solid var(--c-linha-forte);
+  border: 1px solid var(--c-linha);
   border-radius: 16px;
   padding: 16px 16px 14px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--c-bg);
 }
 .metaTitulo {
   font-size: 13px;
+  font-weight: 600;
   color: var(--c-medio);
   margin: 0 0 6px;
 }
-.metaAlvo {
+.metaValor {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(90deg, var(--c-a2), var(--c-a1));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  line-height: 1.15;
+  color: var(--c-texto);
 }
-.metaAtual {
+.metaAlvo {
   font-size: 12.5px;
   color: var(--c-medio);
   margin-top: 4px;
@@ -95,16 +104,32 @@
   margin-top: 6px;
 }
 .progresso {
-  height: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.progressoTrilho {
+  flex: 1;
+  height: 8px;
   border-radius: 999px;
-  background: var(--c-linha);
-  margin-top: 10px;
+  background: var(--c-superficie);
   overflow: hidden;
 }
 .progressoBarra {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--c-a1), var(--c-a2));
+  background: var(--c-marca);
+}
+.progressoBarraCheia {
+  background: var(--c-feito);
+}
+.progressoPct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-medio);
+  min-width: 34px;
+  text-align: right;
 }
 
 /* Fases (as setas) */
@@ -120,7 +145,7 @@
   flex: 1 1 150px;
   min-height: 74px;
   padding: 10px 26px 10px 30px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--c-superficie);
   clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
   display: flex;
   flex-direction: column;
@@ -132,11 +157,12 @@
   padding-left: 18px;
 }
 .faseAtiva {
-  background: linear-gradient(135deg, var(--c-a1), var(--c-a2));
-  color: #0a0b0f;
+  background: var(--c-marca);
+  color: var(--c-marca-texto);
 }
 .faseFeita {
-  background: color-mix(in srgb, var(--c-feito) 22%, transparent);
+  background: var(--c-feito-bg);
+  color: var(--c-feito-fg);
 }
 .faseNumero {
   font-family: ui-monospace, monospace;
@@ -153,20 +179,64 @@
   opacity: 0.75;
 }
 
+/* Janela de semanas */
+.janela {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--c-medio);
+}
+.janelaBotao {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--c-linha);
+  background: var(--c-panel);
+  color: var(--c-texto);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.janelaBotao:hover {
+  background: var(--c-superficie);
+}
+.janelaBotao:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.janelaFaixa {
+  font-weight: 600;
+  padding: 0 6px;
+}
+.janelaDica {
+  margin-left: auto;
+  color: var(--c-baixo);
+}
+
 /* Grade (gantt) */
 .grade {
   min-width: 640px;
   --semanas: 8;
   --rotulo: 250px;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+.grade.arrastando {
+  cursor: grabbing;
 }
 .cabeca,
-.linha {
+.linha,
+.linhaFase {
   display: grid;
   grid-template-columns: var(--rotulo) repeat(var(--semanas), 1fr);
   align-items: center;
 }
 .cabeca {
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--c-linha);
   margin-bottom: 4px;
 }
@@ -174,7 +244,7 @@
   text-align: center;
   font-size: 12px;
   font-weight: 700;
-  color: var(--c-a2);
+  color: var(--c-medio);
   line-height: 1.25;
 }
 .semanaData {
@@ -184,21 +254,36 @@
   color: var(--c-baixo);
 }
 .semanaHoje {
-  background: color-mix(in srgb, var(--c-a1) 18%, transparent);
+  background: var(--c-marca-suave);
+  color: var(--c-marca);
   border-radius: 8px;
   padding: 2px 0;
 }
-.grupo {
-  grid-column: 1 / -1;
-  font-size: 11.5px;
+.linhaFase {
+  padding: 16px 0 6px;
+}
+.faseTitulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--c-a2);
-  padding: 16px 0 6px;
+  color: var(--c-marca);
+  padding-right: 14px;
+}
+.faseContagem {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--c-medio);
+  background: var(--c-superficie);
+  border-radius: 999px;
+  padding: 1px 8px;
 }
 .linha {
-  padding: 12px 0;
+  padding: 9px 0;
   border-bottom: 1px solid var(--c-linha);
 }
 .linha:last-child {
@@ -206,7 +291,19 @@
 }
 .acao {
   font-size: 14px;
-  padding-right: 14px;
+  padding: 0 14px 0 14px;
+  position: relative;
+}
+.acao::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--c-linha);
 }
 .acaoNotas {
   font-size: 11.5px;
@@ -225,17 +322,29 @@
   align-self: center;
   height: 22px;
   border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, #33353f, #1e1f27);
+  border: 1px solid var(--c-linha);
+  background: var(--c-superficie);
+}
+.barraFase {
+  height: 8px;
+  border-radius: 999px;
+  opacity: 0.9;
 }
 .barraAndamento {
-  background: linear-gradient(135deg, var(--c-a2), var(--c-a1));
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--c-a1) 70%, transparent);
+  background: var(--c-marca);
+  border-color: var(--c-marca);
 }
 .barraFeita {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--c-feito) 70%, #000), var(--c-feito));
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--c-feito);
+  border-color: var(--c-feito);
+}
+.foraDaJanela {
+  grid-row: 1;
+  align-self: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-baixo);
+  white-space: nowrap;
 }
 
 /* Legenda e resumo */
@@ -259,90 +368,114 @@
 }
 
 /* Tarefas da semana */
-.periodo {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--c-medio);
-  border: 1px solid var(--c-linha);
-  background: rgba(255, 255, 255, 0.04);
-  padding: 6px 14px;
-  border-radius: 999px;
-  margin-bottom: 18px;
-}
 .grupoTarefas {
   margin-bottom: 22px;
 }
+.grupoTarefas:last-child {
+  margin-bottom: 0;
+}
 .grupoTitulo {
   display: inline-flex;
-  font-size: 11.5px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--c-medio);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--c-linha);
-  padding: 5px 12px;
-  border-radius: 999px;
   margin-bottom: 10px;
+}
+.grupoContagem {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  background: var(--c-superficie);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.lista {
+  display: grid;
+  gap: 8px;
 }
 .tarefa {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 11px 4px;
-  border-bottom: 1px solid var(--c-linha);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-linha);
+  border-radius: 14px;
+  background: var(--c-bg);
   font-size: 14.5px;
 }
-.tarefa:last-child {
-  border-bottom: none;
+.tarefaFeita .tarefaTexto {
+  color: var(--c-medio);
+  text-decoration: line-through;
+  text-decoration-color: var(--c-baixo);
 }
 .ponto {
   flex-shrink: 0;
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  margin-top: 6px;
+  background: var(--c-baixo);
 }
 .pontoFeita {
   background: var(--c-feito);
-  box-shadow: 0 0 9px rgba(61, 220, 132, 0.7);
 }
 .pontoAndamento {
-  background: var(--c-andamento);
-  box-shadow: 0 0 9px rgba(77, 157, 255, 0.7);
+  background: var(--c-marca);
 }
-.pontoFazer {
-  background: var(--c-fazer);
-  box-shadow: 0 0 9px rgba(255, 90, 95, 0.7);
+.pontoAtencao {
+  background: var(--c-atencao);
+}
+.pontoAtraso {
+  background: var(--c-atraso);
 }
 .tarefaTexto {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.tarefaEtiqueta,
+.etiqueta {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--c-superficie);
+  color: var(--c-medio);
+}
+.etiquetaFeita {
+  background: var(--c-feito-bg);
+  color: var(--c-feito-fg);
+}
+.etiquetaAndamento {
+  background: var(--c-marca-suave);
+  color: var(--c-marca);
+}
+.etiquetaAtencao {
+  background: var(--c-atencao-bg);
+  color: var(--c-atencao-fg);
+}
+.etiquetaAtraso {
+  background: var(--c-atraso-bg);
+  color: var(--c-atraso);
+}
 .tarefaPrazo {
   flex-shrink: 0;
   font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   color: var(--c-medio);
-}
-.tarefaAdiada {
-  display: inline-block;
-  margin-left: 8px;
-  font-size: 11px;
-  color: #ffb648;
+  min-width: 38px;
+  text-align: right;
 }
 .vazio {
   text-align: center;
   color: var(--c-medio);
   font-size: 14px;
-  padding: 36px 0;
-}
-.rodape {
-  text-align: center;
-  color: var(--c-baixo);
-  font-size: 12px;
-  margin-top: 8px;
+  padding: 32px 0;
 }
 @media (max-width: 640px) {
   .tema {
@@ -351,5 +484,8 @@
   }
   .painel {
     padding: 18px 14px;
+  }
+  .tarefa {
+    flex-wrap: wrap;
   }
 }

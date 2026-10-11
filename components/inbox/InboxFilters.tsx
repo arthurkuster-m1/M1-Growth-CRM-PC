@@ -154,7 +154,7 @@ export function InboxFilters({ value, onChange }: Props) {
       setSearchInput(value.search);
     }
   }, [value.search]);
-  const { data: channels } = useChannelSessions({ refetchInterval: 30_000 });
+  const { data: channels } = useChannelSessions({ refetchInterval: 60_000 });
   const { activeOrg } = useAuth();
   /**
    * As opções são a UNIÃO das duas caixas — as mesmas que o filtro consulta

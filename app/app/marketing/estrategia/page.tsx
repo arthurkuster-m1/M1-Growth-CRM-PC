@@ -15,7 +15,7 @@ import { Compass, Package } from "@/lib/ui/icons";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Estratégia" };
 
-/** Estratégia: as duas primeiras fases do método (Diagnóstico e Produto e Oferta). */
+/** Estratégia: as duas primeiras fases do método (Diagnóstico e Mercado e Oferta). */
 export default async function EstrategiaPage() {
   const user = await requireAuth();
   const t = (texto: string) => traduzir(texto, user.idioma);

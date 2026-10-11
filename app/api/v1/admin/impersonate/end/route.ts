@@ -1,3 +1,4 @@
+import { esquecerDoUsuario } from "@/lib/auth/cache-curto";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -18,6 +19,7 @@ export async function POST() {
   const sessionId = claims?.claims.session_id;
   if (!z.string().uuid().safeParse(sessionId).success) return fail("unauthenticated", "Sessão inválida.", 401, { requestId });
   const { data: session, error } = await createAdminClient().rpc("fn_end_support", { p_actor: user.id, p_session: sessionId });
+  esquecerDoUsuario(user.id);
   if (error) return fail("upstream_unavailable", "Não foi possível encerrar o acompanhamento. Tente novamente.", 503, { requestId });
   const store = await cookies();
   store.delete(IMPERSONATE_COOKIE_NAME);

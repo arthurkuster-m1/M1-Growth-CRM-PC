@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 
+import { AlternadorDeTema } from "@/components/marketing/cronograma/AlternadorDeTema";
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { EdicaoDaSemana } from "@/components/marketing/cronograma/EdicaoDaSemana";
 import { EdicaoDoCronograma } from "@/components/marketing/cronograma/EdicaoDoCronograma";
@@ -9,14 +10,20 @@ import { HistoricoDaSemana } from "@/components/marketing/cronograma/HistoricoDa
 import { PainelDoCronograma } from "@/components/marketing/cronograma/PainelDoCronograma";
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
 import { useT } from "@/hooks/i18n/useT";
-import { useBaixarImagem, useCronograma } from "@/hooks/marketing/useCronograma";
+import {
+  useBaixarImagem,
+  useCronograma,
+  useTemaDoCronograma,
+} from "@/hooks/marketing/useCronograma";
+import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useVerComoCliente } from "@/hooks/marketing/useVerComoCliente";
 import { somarDias } from "@/lib/inicio/datas";
 import {
   CONFIG_PADRAO,
+  domingoDeHoje,
+  inicioDaJanela,
   numeroDaSemana,
   periodoDaSemana,
-  segundaDeHoje,
 } from "@/lib/marketing/cronograma";
 import { CalendarBlank, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -33,7 +40,10 @@ export function CronogramaDoCliente() {
   const [aba, setAba] = useState<Aba>("geral");
   const [editando, setEditando] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
-  const [inicio, setInicio] = useState(segundaDeHoje());
+  const [inicio, setInicio] = useState(domingoDeHoje());
+  const [janela, setJanela] = useState<number | null>(null);
+  const [tema, setTema] = useTemaDoCronograma();
+  const tag = useTagDeIdioma();
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
 
@@ -53,7 +63,10 @@ export function CronogramaDoCliente() {
 
   const { config, itens, metas } = c.dados;
   const podeEditar = c.dados.pode_editar && !verComoCliente.ativo;
-  const semanaAtual = numeroDaSemana(config ?? CONFIG_PADRAO, inicio);
+  const cfg = config ?? CONFIG_PADRAO;
+  // "Hoje" no cronograma geral; a semana escolhida só conta na vista das tarefas.
+  const semanaDeHoje = numeroDaSemana(cfg, domingoDeHoje());
+  const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, cfg.total_semanas);
   const vista: "geral" | "semana" = aba === "semana" ? "semana" : "geral";
 
   const abas: Array<[Aba, string]> = [
@@ -109,10 +122,10 @@ export function CronogramaDoCliente() {
             >
               <CaretRight size={14} aria-hidden />
             </button>
-            {inicio !== segundaDeHoje() ? (
+            {inicio !== domingoDeHoje() ? (
               <button
                 type="button"
-                onClick={() => setInicio(segundaDeHoje())}
+                onClick={() => setInicio(domingoDeHoje())}
                 className="ml-1 h-9 rounded-lg px-3 text-sm text-primary hover:bg-secondary"
               >
                 {t("Esta semana")}
@@ -122,6 +135,15 @@ export function CronogramaDoCliente() {
         ) : null}
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {aba !== "historico" ? (
+            <AlternadorDeTema
+              tema={tema}
+              aoMudar={setTema}
+              rotulo={t("Aparência da imagem")}
+              claro={t("Claro")}
+              escuro={t("Escuro")}
+            />
+          ) : null}
           {aba !== "historico" ? (
             <button
               type="button"
@@ -183,21 +205,25 @@ export function CronogramaDoCliente() {
         <div ref={captura}>
           <PainelDoCronograma
             vista={vista}
-            config={config ?? CONFIG_PADRAO}
+            config={cfg}
             itens={itens}
             metas={metas}
             tarefas={c.tarefas}
             inicioDaSemana={inicio}
-            semanaAtual={semanaAtual}
+            semanaAtual={semanaDeHoje}
             rotulos={rotulos}
             mostrarAdiamentos={podeEditar}
+            tema={tema}
+            tag={tag}
+            janelaInicio={janelaInicio}
+            aoMudarJanela={setJanela}
           />
         </div>
       )}
 
       {podeEditar && editando && aba === "geral" ? (
         <EdicaoDoCronograma
-          config={config ?? CONFIG_PADRAO}
+          config={cfg}
           itens={itens}
           metas={metas}
           aoSalvarConfig={c.salvarConfig}

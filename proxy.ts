@@ -1,3 +1,4 @@
+import { usuarioDaSessao } from "@/lib/auth/usuario-da-sessao";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { NextResponse, type NextRequest } from "next/server";
@@ -93,9 +94,8 @@ export async function proxy(request: NextRequest) {
   );
 
   // Validate JWT server-side (NEVER use getSession on backend per CLAUDE.md).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Conferido localmente pela assinatura do token (sem ir ao Supabase a cada requisição).
+  const { user } = await usuarioDaSessao(supabase.auth);
 
   if (!user) {
     // API routes must respond with JSON envelope (contract: {error:{code,message}})

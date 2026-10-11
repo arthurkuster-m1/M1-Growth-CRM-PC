@@ -1,11 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
+import type { TemaDoCronograma } from "@/components/marketing/cronograma/PainelDoCronograma";
 import type {
   ConfigDoCronograma,
+  DadosDaMeta,
   ItemDoCronograma,
   MetaDoCronograma,
   TarefaDoCronograma,
@@ -105,12 +108,10 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
       executar(() => apiClient.patch(`${BASE}/itens/${id}`, i), recarregarGeral),
     apagarItem: (id: string) =>
       executar(() => apiClient.delete(`${BASE}/itens/${id}`), recarregarGeral),
-    criarMeta: (m: Pick<MetaDoCronograma, "titulo" | "alvo" | "atual" | "descricao">) =>
+    criarMeta: (m: DadosDaMeta) =>
       executar(() => apiClient.post(`${BASE}/metas`, m), recarregarGeral),
-    editarMeta: (
-      id: string,
-      m: Partial<Pick<MetaDoCronograma, "titulo" | "alvo" | "atual" | "descricao">>,
-    ) => executar(() => apiClient.patch(`${BASE}/metas/${id}`, m), recarregarGeral),
+    editarMeta: (id: string, m: Partial<DadosDaMeta>) =>
+      executar(() => apiClient.patch(`${BASE}/metas/${id}`, m), recarregarGeral),
     apagarMeta: (id: string) =>
       executar(() => apiClient.delete(`${BASE}/metas/${id}`), recarregarGeral),
     adicionarTarefa: (t: {
@@ -149,17 +150,58 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
   };
 }
 
-/** Baixar o painel como imagem (o "print" para mandar ao cliente). */
+const CHAVE_DO_TEMA = "m1-cronograma-tema";
+
+/**
+ * O tema (claro/escuro) do painel do cronograma e da imagem baixada. Começa no tema do app
+ * (ou do sistema, no link público); a escolha da pessoa fica lembrada neste navegador.
+ */
+export function useTemaDoCronograma(): [TemaDoCronograma, (t: TemaDoCronograma) => void] {
+  const [tema, setTema] = useState<TemaDoCronograma>("claro");
+  useEffect(() => {
+    let guardado: string | null = null;
+    try {
+      guardado = window.localStorage.getItem(CHAVE_DO_TEMA);
+    } catch {
+      /* sem armazenamento: segue o tema do app */
+    }
+    if (guardado === "claro" || guardado === "escuro") {
+      setTema(guardado);
+      return;
+    }
+    const doApp = document.documentElement.getAttribute("data-theme");
+    const escuro =
+      doApp === "dark" ||
+      (doApp !== "light" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+    setTema(escuro ? "escuro" : "claro");
+  }, []);
+  return [
+    tema,
+    (t) => {
+      setTema(t);
+      try {
+        window.localStorage.setItem(CHAVE_DO_TEMA, t);
+      } catch {
+        /* a escolha vale só nesta tela */
+      }
+    },
+  ];
+}
+
+/** Baixar o painel como imagem (o "print" para mandar ao cliente), no tema que está na tela. */
 export function useBaixarImagem() {
   return useMutation({
     mutationFn: async ({ elemento, nome }: { elemento: HTMLElement; nome: string }) => {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(elemento, {
-        backgroundColor: "#0a0b0f",
-        scale: 2,
-        useCORS: true,
+      const { toBlob } = await import("html-to-image");
+      const painel = elemento.firstElementChild as HTMLElement | null;
+      const fundo = painel ? getComputedStyle(painel).backgroundColor : undefined;
+      const blob = await toBlob(elemento, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: fundo,
+        // Os controles de navegação não vão para a imagem.
+        filter: (no) => !(no instanceof HTMLElement && no.hasAttribute("data-sem-imagem")),
       });
-      const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/png"));
       if (!blob) throw new Error("sem imagem");
       const arquivo = new File([blob], nome, { type: "image/png" });
       if (navigator.canShare?.({ files: [arquivo] })) {
