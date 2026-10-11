@@ -49640,3 +49640,24 @@ comment on column public.demand_campaign_days.extras is
   'Métricas dos canais sem API como {chave: número} (ex.: abordagens, reunioes_feitas, vendas, valor_total). As chaves de cada canal vivem em lib/marketing/campanhas-resumo.ts.';
 
 notify pgrst, 'reload schema';
+
+-- ---- Meta Ads automático nas campanhas de demanda (migration 0598) ----
+alter table public.demand_campaigns
+  add column if not exists meta_account_id text not null default '',
+  add column if not exists meta_synced_at timestamptz,
+  add column if not exists meta_sync_error text not null default '';
+
+alter table public.demand_campaigns
+  drop constraint if exists demand_campaigns_meta_check;
+alter table public.demand_campaigns
+  add constraint demand_campaigns_meta_check
+  check (length(meta_account_id) <= 40 and length(meta_sync_error) <= 60);
+
+comment on column public.demand_campaigns.meta_account_id is
+  'Conta de anúncio do Meta (act_<id>) de onde vêm as campanhas atreladas. Vazio = a conta padrão da conexão.';
+comment on column public.demand_campaigns.meta_synced_at is
+  'Quando o dia a dia desta campanha foi sincronizado com o Meta pela última vez (sucesso).';
+comment on column public.demand_campaigns.meta_sync_error is
+  'Código curto da última falha de sincronização com o Meta (token_invalido, limite_de_chamadas…); vazio = sem falha.';
+
+notify pgrst, 'reload schema';

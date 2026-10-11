@@ -56,6 +56,10 @@ export interface CampanhaDeDemanda {
   platform: string;
   sheet_url: string;
   platform_campaigns: CampanhaDaPlataforma[];
+  /** Conta de anúncio do Meta (act_<id>); vazio = a padrão da conexão. */
+  meta_account_id: string;
+  meta_synced_at: string | null;
+  meta_sync_error: string;
   position: number;
   created_at: string;
   /** Da última nota de cada tipo (só a agência as recebe). */
@@ -64,7 +68,7 @@ export interface CampanhaDeDemanda {
 }
 
 export const COLUNAS_DA_CAMPANHA =
-  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, platform, sheet_url, platform_campaigns, position, created_at";
+  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, position, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dinheiro = z.number().finite().min(0).max(1e10);
@@ -101,6 +105,10 @@ const camposSchema = z.object({
     .max(500)
     .refine((u) => u === "" || /^https?:\/\/[^\s]+$/i.test(u), { message: "Use um link http(s)." }),
   platform_campaigns: z.array(campanhaDaPlataformaSchema).max(50),
+  meta_account_id: z
+    .string()
+    .trim()
+    .regex(/^(act_\d{1,30})?$/),
 });
 
 const periodoValido = (v: { start_date?: string | null; end_date?: string | null }) =>

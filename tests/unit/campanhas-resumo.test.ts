@@ -219,3 +219,59 @@ describe("planilha do dia a dia (CSV)", () => {
     expect(lerDias(modeloDoDiaAdia("trafego_pago"), "trafego_pago").dias).toHaveLength(1);
   });
 });
+
+import { somarPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia";
+import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
+
+describe("Meta por dia (C3)", () => {
+  it("soma as campanhas do mesmo dia e lê leads de results ou das ações", () => {
+    const dias = somarPorDia([
+      {
+        date_start: "2026-10-02",
+        spend: "10.5",
+        impressions: "1000",
+        reach: "800",
+        inline_link_clicks: "30",
+        actions: [{ action_type: "landing_page_view", value: "25" }],
+        results: [{ indicator: "actions:lead", values: [{ value: "4" }] }],
+      },
+      {
+        date_start: "2026-10-02",
+        spend: "4.25",
+        impressions: "500",
+        actions: [
+          { action_type: "landing_page_view", value: "10" },
+          { action_type: "lead", value: "2" },
+        ],
+      },
+      { date_start: "2026-10-01", spend: "1" },
+      { spend: "99" },
+    ]);
+    expect(dias.map((d) => d.day)).toEqual(["2026-10-01", "2026-10-02"]);
+    expect(dias[1]).toEqual({
+      day: "2026-10-02",
+      impressions: 1500,
+      reach: 800,
+      link_clicks: 30,
+      lp_views: 35,
+      leads: 6,
+      spend: 14.75,
+    });
+  });
+  it("janela: do início até hoje; futura = nada; contínua = 30 dias", () => {
+    const agora = new Date("2026-10-10T12:00:00Z");
+    expect(janelaDaSync({ start_date: "2026-10-01", end_date: "2026-10-31" }, agora)).toEqual({
+      de: "2026-10-01",
+      ate: "2026-10-10",
+    });
+    expect(janelaDaSync({ start_date: "2026-09-01", end_date: "2026-09-30" }, agora)).toEqual({
+      de: "2026-09-01",
+      ate: "2026-09-30",
+    });
+    expect(janelaDaSync({ start_date: "2026-11-01", end_date: null }, agora)).toBeNull();
+    expect(janelaDaSync({ start_date: null, end_date: null }, agora)).toEqual({
+      de: "2026-09-10",
+      ate: "2026-10-10",
+    });
+  });
+});

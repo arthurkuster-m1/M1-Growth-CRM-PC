@@ -192,3 +192,23 @@ Para canais sem API, o dado é **digitado por dia ou semana** na própria campan
   pace, funil completo) e a tabela do Dia a dia; depois vêm Cadastro, Investimento, Metas,
   campanhas da plataforma e Diário de bordo.
 - **Próximo:** C3 (Meta Ads automático por dia).
+
+### C3 — Meta Ads automático (feita em 11/10/2026)
+- **Banco (migration 0598):** `demand_campaigns` ganha `meta_account_id`, `meta_synced_at` e
+  `meta_sync_error` (último sucesso e o código da última falha).
+- **Escolher campanhas do Meta:** na página da campanha, bloco "Campanhas da plataforma" →
+  **Escolher do Meta**: conta de anúncio, busca e filtro "Só as sem associação" (cada campanha diz
+  se já está em outra campanha do Software). O nome digitado antes vira a campanha real (com id).
+  Campanha atrelada só pelo nome não sincroniza (etiqueta "Só o nome").
+- **Sincronização:** `lib/marketing/campanhas-meta-servidor.ts` +
+  `lib/plataformas-de-anuncio/meta/insights-por-dia.ts` (insights com `time_increment=1`, filtro por
+  id de campanha). Soma as campanhas atreladas por dia e grava em `demand_campaign_days`
+  (`source='meta'`) trocando só impressões, alcance, cliques, visitas à LP, leads e investido —
+  o que foi digitado em `extras` é preservado. Leads = "resultado" do Meta (ou, sem ele, as ações
+  de cadastro). Período: do início da campanha (ou 30 dias, se sem início) até hoje.
+- **Automático:** `GET /api/v1/cron/campanhas-meta` (de hora em hora; timer
+  `m1-campanhas-meta.timer` na VPS; linha no scheduler self-host). Pega campanhas planejadas,
+  ativas e pausadas com campanhas do Meta atreladas, a mais antiga primeiro (limite 40/rodada).
+  Falha de uma não derruba as outras e fica em `meta_sync_error`. Botão **Sincronizar agora** na
+  tela.
+- **Próximo:** C4 (criativos e legendas) ou os ajustes que o Arthur vai passar.

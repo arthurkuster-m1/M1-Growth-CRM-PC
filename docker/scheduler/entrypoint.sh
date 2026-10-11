@@ -92,6 +92,9 @@ CRONS="
 # depois da hora marcada. Rodada vazia (quase todas) não grava nada: só consulta os
 # modelos que repetem e já venceram.
 */5 * * * *|60|api/v1/cron/tarefas-repetidas
+# O META NAS CAMPANHAS DE DEMANDA. De hora em hora: a cota do Meta é o recurso escasso e o
+# dia corrente só fecha à noite — mais frequente que isso gasta chamada sem número novo.
+17 * * * *|120|api/v1/cron/campanhas-meta
 */15 * * * *|60|api/v1/cron/risk-watcher
 # O CASO PARADO. De hora em hora, e não a cada 5 minutos: o prazo é de 24h, e
 # uma varredura mais frequente só gastaria consulta para descobrir o mesmo nada.

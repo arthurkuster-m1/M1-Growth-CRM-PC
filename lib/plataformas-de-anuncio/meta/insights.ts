@@ -238,7 +238,7 @@ export function classificarErroGraph(
  * porque a plataforma o monta assim; por isso ele é reescrito antes de ser
  * seguido, e nunca registrado em log.
  */
-async function buscarPaginado<T>(
+export async function buscarPaginado<T>(
   urlInicial: string,
   token: string,
   contexto: string,

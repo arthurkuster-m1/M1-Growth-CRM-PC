@@ -19,7 +19,13 @@ export interface DadosDasCampanhas {
 export type EdicaoDeCampanha = Partial<
   Omit<
     CampanhaDeDemanda,
-    "id" | "position" | "created_at" | "ultima_analise" | "ultimo_planejamento"
+    | "id"
+    | "position"
+    | "created_at"
+    | "ultima_analise"
+    | "ultimo_planejamento"
+    | "meta_synced_at"
+    | "meta_sync_error"
   >
 >;
 
@@ -166,5 +172,59 @@ export function useDiasDaCampanha(campanhaId: string) {
         void recarregar();
       }
     },
+  };
+}
+
+export interface OpcoesDoMeta {
+  contas: Array<{ id: string; name: string }>;
+  conta_padrao: string | null;
+  account_id: string | null;
+  campanhas: Array<{
+    id: string;
+    name: string;
+    status: string | null;
+    associada_a: { id: string; name: string } | null;
+  }>;
+}
+
+/** As contas e campanhas do Meta que dá para atrelar (só busca quando `ativo`). */
+export function useOpcoesDoMeta(conta: string, ativo: boolean) {
+  const consulta = useQuery({
+    queryKey: ["demand-campaign-meta-options", conta],
+    enabled: ativo,
+    staleTime: 60_000,
+    retry: false,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: OpcoesDoMeta }>(
+          `${BASE}/meta-options${conta ? `?account_id=${encodeURIComponent(conta)}` : ""}`,
+        )
+      ).data,
+  });
+  return {
+    opcoes: consulta.data ?? null,
+    carregando: consulta.isFetching,
+    erro: consulta.isError ? ((consulta.error as { message?: string } | null)?.message ?? "") : "",
+    recarregar: () => void consulta.refetch(),
+  };
+}
+
+/** Puxa agora o dia a dia do Meta desta campanha. */
+export function useSincronizarComMeta(campanhaId: string) {
+  const queryClient = useQueryClient();
+  return async (): Promise<{ ok: true; dias: number } | { ok: false; motivo: string }> => {
+    try {
+      const r = await apiClient.post<{ data: { dias: number } }>(
+        `${BASE}/${campanhaId}/sync-meta`,
+        {},
+      );
+      return { ok: true, dias: r.data.dias };
+    } catch (e) {
+      const motivo = (e as { message?: string } | null)?.message ?? "transitorio";
+      return { ok: false, motivo };
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ["demand-campaign-days", campanhaId] });
+      await queryClient.invalidateQueries({ queryKey: CHAVE });
+    }
   };
 }

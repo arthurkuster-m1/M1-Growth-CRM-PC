@@ -20,6 +20,8 @@ import {
   useCampanhasDeDemanda,
   useDiasDaCampanha,
   useNotasDaCampanha,
+  useOpcoesDoMeta,
+  useSincronizarComMeta,
   type EdicaoDeCampanha,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { lerNumero } from "@/lib/marketing/calculadora";
@@ -419,6 +421,28 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   );
 }
 
+/** O que cada código de falha da sincronização significa para quem opera. */
+function textoDaFalhaDeSync(t: (s: string) => string, motivo: string): string {
+  switch (motivo) {
+    case "sem_campanhas":
+      return t("Escolha da lista do Meta ao menos uma campanha para sincronizar.");
+    case "sem_conta":
+      return t("Escolha a conta de anúncio do Meta.");
+    case "sem_conexao":
+      return t("O Meta não está conectado. Conecte em Configurações › Meta Ads.");
+    case "token_invalido":
+      return t("O Meta recusou o token de acesso. Gere um novo em Configurações › Meta Ads.");
+    case "permissao_insuficiente":
+      return t(
+        "O token não tem permissão de leitura de anúncios (ads_read) ou não alcança esta conta.",
+      );
+    case "limite_de_chamadas":
+      return t("O Meta limitou as chamadas. Tente de novo em alguns minutos.");
+    default:
+      return t("Não foi possível sincronizar com o Meta agora.");
+  }
+}
+
 /** As campanhas da plataforma (Meta, Google…) atreladas a esta ação de vendas. */
 function CampanhasDaPlataforma({
   c,
@@ -431,17 +455,44 @@ function CampanhasDaPlataforma({
 }) {
   const t = useT();
   const [nome, setNome] = useState("");
+  const [escolhendo, setEscolhendo] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [soSemAssociacao, setSoSemAssociacao] = useState(true);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const meta = useOpcoesDoMeta(c.meta_account_id, escolhendo);
+  const sincronizar = useSincronizarComMeta(c.id);
+
   const adicionar = () => {
     const n = nome.trim();
     if (!n || c.platform_campaigns.some((p) => p.name.toLowerCase() === n.toLowerCase())) return;
     aoGravar({ platform_campaigns: [...c.platform_campaigns, { id: null, name: n }] });
     setNome("");
   };
+  const atrelar = (id: string, name: string) => {
+    if (c.platform_campaigns.some((p) => p.id === id)) return;
+    // O nome digitado antes vira a campanha real (com id) em vez de ficar duplicado.
+    const resto = c.platform_campaigns.filter(
+      (p) => !(p.id === null && p.name.toLowerCase() === name.toLowerCase()),
+    );
+    aoGravar({ platform_campaigns: [...resto, { id, name }] });
+  };
+  const atreladas = c.platform_campaigns.filter((p) => p.id).length;
+  const visiveis = (meta.opcoes?.campanhas ?? []).filter(
+    (m) =>
+      !c.platform_campaigns.some((p) => p.id === m.id) &&
+      (!soSemAssociacao || m.associada_a === null) &&
+      (busca.trim() === "" || m.name.toLowerCase().includes(busca.trim().toLowerCase())),
+  );
+  const quando = c.meta_synced_at
+    ? new Date(c.meta_synced_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+    : null;
+
   return (
     <Bloco titulo={t("Campanhas da plataforma")}>
       <p className="text-xs text-muted-foreground">
         {t(
-          "Uma campanha do Software pode ter várias campanhas do Meta ou do Google atreladas ao mesmo objetivo. Digite o nome; quando a conexão com o Meta estiver ligada, você escolhe da lista.",
+          "Uma campanha do Software pode ter várias campanhas do Meta ou do Google atreladas ao mesmo objetivo. Escolha da lista do Meta para o dia a dia entrar sozinho, ou digite o nome.",
         )}
       </p>
       {c.platform_campaigns.length === 0 ? (
@@ -450,28 +501,34 @@ function CampanhasDaPlataforma({
         <ul className="grid gap-2">
           {c.platform_campaigns.map((p, i) => (
             <li
-              key={`${p.name}-${i}`}
+              key={`${p.id ?? p.name}-${i}`}
               className="flex items-center justify-between gap-2 rounded-xl bg-secondary/50 px-3 py-2 text-sm"
             >
               <span className="min-w-0 truncate">{p.name}</span>
-              {podeEditar ? (
-                <button
-                  type="button"
-                  aria-label={t("Tirar campanha")}
-                  onClick={() =>
-                    aoGravar({
-                      platform_campaigns: c.platform_campaigns.filter((_, k) => k !== i),
-                    })
-                  }
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
-                >
-                  <Trash size={14} aria-hidden />
-                </button>
-              ) : null}
+              <span className="flex shrink-0 items-center gap-2">
+                <Etiqueta cor={p.id ? "green" : "gray"}>
+                  {p.id ? t("Meta · automático") : t("Só o nome")}
+                </Etiqueta>
+                {podeEditar ? (
+                  <button
+                    type="button"
+                    aria-label={t("Tirar campanha")}
+                    onClick={() =>
+                      aoGravar({
+                        platform_campaigns: c.platform_campaigns.filter((_, k) => k !== i),
+                      })
+                    }
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                  >
+                    <Trash size={14} aria-hidden />
+                  </button>
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>
       )}
+
       {podeEditar ? (
         <div className="flex flex-wrap gap-2">
           <input
@@ -487,11 +544,119 @@ function CampanhasDaPlataforma({
             type="button"
             disabled={nome.trim() === ""}
             onClick={adicionar}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
           >
             <Plus size={14} weight="bold" aria-hidden />
-            {t("Atrelar")}
+            {t("Atrelar pelo nome")}
           </button>
+          <button
+            type="button"
+            aria-expanded={escolhendo}
+            onClick={() => setEscolhendo((v) => !v)}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
+          >
+            {escolhendo ? t("Fechar lista do Meta") : t("Escolher do Meta")}
+          </button>
+        </div>
+      ) : null}
+
+      {podeEditar && escolhendo ? (
+        <div className="grid gap-2 rounded-xl border border-dashed p-3">
+          {meta.carregando && !meta.opcoes ? (
+            <div className="h-16 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
+          ) : meta.erro ? (
+            <p role="alert" className="text-sm text-error-fg">
+              {meta.erro}
+            </p>
+          ) : meta.opcoes ? (
+            <>
+              <Rotulo texto={t("Conta de anúncio")}>
+                <select
+                  className={CAMPO}
+                  value={c.meta_account_id || meta.opcoes.account_id || ""}
+                  onChange={(e) => aoGravar({ meta_account_id: e.target.value })}
+                >
+                  {(meta.opcoes.contas ?? []).map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.id})
+                    </option>
+                  ))}
+                </select>
+              </Rotulo>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  value={busca}
+                  placeholder={t("Buscar campanha do Meta")}
+                  aria-label={t("Buscar campanha do Meta")}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className={cn(CAMPO, "min-w-0 flex-1 basis-48")}
+                />
+                <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={soSemAssociacao}
+                    onChange={(e) => setSoSemAssociacao(e.target.checked)}
+                  />
+                  {t("Só as sem associação")}
+                </label>
+              </div>
+              {visiveis.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("Nenhuma campanha do Meta para mostrar com esse filtro.")}
+                </p>
+              ) : (
+                <ul className="grid max-h-72 gap-1.5 overflow-y-auto">
+                  {visiveis.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onClick={() => atrelar(m.id, m.name)}
+                        className="flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm hover:bg-secondary"
+                      >
+                        <span className="min-w-0 truncate">{m.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {m.associada_a
+                            ? `${t("Já está em")} ${m.associada_a.name}`
+                            : (m.status ?? "")}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      {atreladas > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-secondary/40 px-3 py-2">
+          <p className="min-w-0 flex-1 text-sm text-muted-foreground">
+            {c.meta_sync_error
+              ? textoDaFalhaDeSync(t, c.meta_sync_error)
+              : quando
+                ? `${t("Dia a dia atualizado do Meta em")} ${quando}. ${t("Atualiza sozinho a cada hora.")}`
+                : t("Ainda não sincronizou com o Meta. Atualiza sozinho a cada hora.")}
+            {aviso ? ` ${aviso}` : ""}
+          </p>
+          {podeEditar ? (
+            <button
+              type="button"
+              disabled={sincronizando}
+              onClick={async () => {
+                setSincronizando(true);
+                setAviso(null);
+                const r = await sincronizar();
+                setSincronizando(false);
+                setAviso(
+                  r.ok ? `${r.dias} ${t("dias atualizados.")}` : textoDaFalhaDeSync(t, r.motivo),
+                );
+              }}
+              className="inline-flex h-9 items-center rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
+            >
+              {sincronizando ? t("Sincronizando…") : t("Sincronizar agora")}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </Bloco>

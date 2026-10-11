@@ -18502,6 +18502,48 @@ export const DICIONARIO: Traducoes = {
   "Nome da campanha da plataforma": { es: "Nombre de la campaña de la plataforma" },
   Atrelar: { es: "Vincular" },
   "Diário de bordo": { es: "Diario de bordo" },
+  "Escolha da lista do Meta ao menos uma campanha para sincronizar.": {
+    es: "Elige de la lista de Meta al menos una campaña para sincronizar.",
+  },
+  "Escolha a conta de anúncio do Meta.": { es: "Elige la cuenta publicitaria de Meta." },
+  "O Meta não está conectado. Conecte em Configurações › Meta Ads.": {
+    es: "Meta no está conectado. Conecta en Configuración › Meta Ads.",
+  },
+  "O Meta recusou o token de acesso. Gere um novo em Configurações › Meta Ads.": {
+    es: "Meta rechazó el token de acceso. Genera uno nuevo en Configuración › Meta Ads.",
+  },
+  "O token não tem permissão de leitura de anúncios (ads_read) ou não alcança esta conta.": {
+    es: "El token no tiene permiso de lectura de anuncios (ads_read) o no alcanza esta cuenta.",
+  },
+  "O Meta limitou as chamadas. Tente de novo em alguns minutos.": {
+    es: "Meta limitó las llamadas. Inténtalo de nuevo en unos minutos.",
+  },
+  "Não foi possível sincronizar com o Meta agora.": {
+    es: "No fue posible sincronizar con Meta ahora.",
+  },
+  "Uma campanha do Software pode ter várias campanhas do Meta ou do Google atreladas ao mesmo objetivo. Escolha da lista do Meta para o dia a dia entrar sozinho, ou digite o nome.":
+    {
+      es: "Una campaña del Software puede tener varias campañas de Meta o Google vinculadas al mismo objetivo. Elige de la lista de Meta para que el día a día entre solo, o escribe el nombre.",
+    },
+  "Meta · automático": { es: "Meta · automático" },
+  "Só o nome": { es: "Solo el nombre" },
+  "Atrelar pelo nome": { es: "Vincular por nombre" },
+  "Fechar lista do Meta": { es: "Cerrar lista de Meta" },
+  "Escolher do Meta": { es: "Elegir de Meta" },
+  "Conta de anúncio": { es: "Cuenta publicitaria" },
+  "Buscar campanha do Meta": { es: "Buscar campaña de Meta" },
+  "Só as sem associação": { es: "Solo las sin asociación" },
+  "Nenhuma campanha do Meta para mostrar com esse filtro.": {
+    es: "Ninguna campaña de Meta para mostrar con ese filtro.",
+  },
+  "Já está em": { es: "Ya está en" },
+  "Dia a dia atualizado do Meta em": { es: "Día a día actualizado desde Meta el" },
+  "Atualiza sozinho a cada hora.": { es: "Se actualiza solo cada hora." },
+  "Ainda não sincronizou com o Meta. Atualiza sozinho a cada hora.": {
+    es: "Aún no sincronizó con Meta. Se actualiza solo cada hora.",
+  },
+  "dias atualizados.": { es: "días actualizados." },
+  "Sincronizar agora": { es: "Sincronizar ahora" },
   "Defina início e fim da campanha para ver o pace de gastos e de leads.": {
     es: "Define inicio y fin de la campaña para ver el ritmo de gasto y de leads.",
   },

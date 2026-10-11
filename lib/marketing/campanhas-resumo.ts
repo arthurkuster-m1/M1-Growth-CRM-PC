@@ -412,3 +412,22 @@ export function colunasDoDiaAdia(canal: CanalDaCampanha): string[] {
   }
   return ["dia", "leads", "investido", ...METRICAS_DO_CANAL[canal].map((m) => m.chave)];
 }
+
+// ---------------------------------------------------------------------------------------------
+// Sincronização com o Meta (C3)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * O período a puxar do Meta: do início da campanha (ou 30 dias atrás, se não tem início) até
+ * hoje — ou até o fim, se já passou. `null` = a campanha ainda não começou.
+ */
+export function janelaDaSync(
+  c: Pick<CampanhaDeDemanda, "start_date" | "end_date">,
+  agora: Date = new Date(),
+): { de: string; ate: string } | null {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const hoje = iso(agora);
+  const de = c.start_date ?? iso(new Date(agora.getTime() - 30 * MS_DO_DIA));
+  const ate = c.end_date && c.end_date < hoje ? c.end_date : hoje;
+  return de > ate ? null : { de, ate };
+}

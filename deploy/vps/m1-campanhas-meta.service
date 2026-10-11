@@ -1,0 +1,7 @@
+[Unit]
+Description=Puxa o dia a dia do Meta das campanhas de demanda (M1)
+After=m1-app.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/m1-campanhas-meta.sh

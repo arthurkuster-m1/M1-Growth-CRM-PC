@@ -1,0 +1,10 @@
+[Unit]
+Description=Meta Ads nas campanhas de demanda do M1 (de hora em hora)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+AccuracySec=20s
+
+[Install]
+WantedBy=timers.target
