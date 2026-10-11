@@ -22,6 +22,8 @@ interface Props {
   aoCriar: (nome: string, tipo: TipoDeVisualizacao) => void;
   /** Abrir o painel "Configurar visualização" da aba ativa. */
   aoConfigurar: () => void;
+  /** Os tipos que a tela sabe desenhar (padrão: todos). */
+  tipos?: readonly TipoDeVisualizacao[];
 }
 
 /** O ícone de cada tipo de visualização. */
@@ -68,6 +70,7 @@ export function AbasDeVisualizacao({
   aoEscolher,
   aoCriar,
   aoConfigurar,
+  tipos = TIPOS,
 }: Props) {
   const t = useT();
   const rotuloDoTipo = useRotuloDoTipo();
@@ -184,7 +187,7 @@ export function AbasDeVisualizacao({
               role="radiogroup"
               aria-label={t("Tipo de visualização")}
             >
-              {TIPOS.map((x) => (
+              {tipos.map((x) => (
                 <button
                   key={x}
                   type="button"

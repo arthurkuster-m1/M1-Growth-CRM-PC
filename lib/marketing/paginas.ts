@@ -31,7 +31,17 @@ export interface ResumoDeSubpagina {
   title: string;
   publicada: boolean;
   /** Só nas ofertas: o que a escada de valor precisa (etapa, carro-chefe e preço). */
-  oferta?: { etapa: EtapaDaOferta; carroChefe: boolean; preco: string };
+  oferta?: {
+    etapa: EtapaDaOferta;
+    carroChefe: boolean;
+    preco: string;
+    /** Para a tabela de produtos: filtros, ordem por preço e busca. */
+    nivel: "simples" | "completa";
+    tipoDePreco: "unico" | "mensal" | "setup-mensal" | "sob-consulta" | "gratuito";
+    /** O preço em reais (0 = sem preço definido). */
+    valor: number;
+    resumo: string;
+  };
 }
 
 /** O que a agência manda ao gravar o rascunho. */

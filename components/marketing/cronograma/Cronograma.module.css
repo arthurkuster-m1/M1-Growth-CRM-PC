@@ -265,6 +265,9 @@
 .linhaFase {
   padding: 16px 0 6px;
 }
+.linhaFase > .faseTitulo {
+  grid-column: 1 / -1;
+}
 .faseTitulo {
   display: flex;
   align-items: center;

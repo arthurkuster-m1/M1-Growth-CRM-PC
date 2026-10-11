@@ -374,10 +374,6 @@ export function PainelDoCronograma({
                   })}
                 </div>
                 {grupos.map((g) => {
-                  const inicio = Math.min(...g.itens.map((i) => i.semana_inicio));
-                  const fim = Math.max(...g.itens.map((i) => i.semana_fim));
-                  const todas = g.itens.every((i) => i.status === "concluido");
-                  const algumaAndando = g.itens.some((i) => i.status === "andamento");
                   const feitasDaFase = g.itens.filter((i) => i.status === "concluido").length;
                   return (
                     <div key={g.nome || "sem-fase"} style={{ display: "contents" }}>
@@ -388,14 +384,6 @@ export function PainelDoCronograma({
                             <span className={css.faseContagem}>
                               {feitasDaFase}/{g.itens.length}
                             </span>
-                          </div>
-                          <div className={css.trilho} style={{ gridColumn: "2 / -1" }}>
-                            {barra(
-                              inicio,
-                              fim,
-                              todas ? css.barraFeita! : algumaAndando ? css.barraAndamento! : "",
-                              true,
-                            )}
                           </div>
                         </div>
                       ) : null}

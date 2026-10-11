@@ -14,7 +14,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { lerBlocos } from "@/lib/marketing/blocos";
-import { ofertaDosBlocos, precoEmTexto } from "@/lib/marketing/oferta";
+import { ofertaDosBlocos, precoEmCentavos, precoEmTexto } from "@/lib/marketing/oferta";
 import { modeloDoModulo } from "@/lib/marketing/modelos";
 import { chaveDeSubpagina, lerChaveDePagina, tiposDeSubpagina } from "@/lib/marketing/modulos";
 import { novaSubpaginaSchema, type ResumoDeSubpagina } from "@/lib/marketing/paginas";
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .like("module_key", `${modulo}--%`)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
-    .limit(100);
+    .limit(500);
   if (error)
     return fail("internal_error", t("Erro ao carregar as subpáginas."), 500, { requestId });
 
@@ -88,7 +88,17 @@ export async function GET(req: NextRequest): Promise<Response> {
     if (modulo === "produtos-e-ofertas") {
       const fonte = podeEditar ? (rascunhos.get(l.id) ?? l.published_blocks) : l.published_blocks;
       const o = ofertaDosBlocos(lerBlocos(fonte));
-      if (o) oferta = { etapa: o.etapa, carroChefe: o.carroChefe, preco: precoEmTexto(o) };
+      if (o) {
+        oferta = {
+          etapa: o.etapa,
+          carroChefe: o.carroChefe,
+          preco: precoEmTexto(o),
+          nivel: o.nivel,
+          tipoDePreco: o.preco.tipo,
+          valor: precoEmCentavos(o) / 100,
+          resumo: o.resumo.slice(0, 200),
+        };
+      }
     }
     subpaginas.push({ key: l.module_key, tipo: chave.tipo, title: l.title, publicada, oferta });
   }

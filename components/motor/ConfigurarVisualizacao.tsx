@@ -56,6 +56,8 @@ interface Props {
   aoMostrarTodas: (mostrar: boolean) => void;
   aoDuplicar?: () => void;
   aoApagar?: () => void;
+  /** Os tipos que a tela sabe desenhar (padrão: todos). */
+  tipos?: readonly TipoDeVisualizacao[];
 }
 
 const TIPOS: TipoDeVisualizacao[] = ["tabela", "kanban", "calendario", "timeline"];
@@ -136,6 +138,7 @@ function Corpo({
   aoMostrarTodas,
   aoDuplicar,
   aoApagar,
+  tipos = TIPOS,
   aoFechar,
 }: Props) {
   const t = useT();
@@ -184,7 +187,7 @@ function Corpo({
         <div>
           <p className="mb-1 text-xs text-muted-foreground">{t("Tipo de visualização")}</p>
           <div className="grid grid-cols-2 gap-1.5" role="radiogroup">
-            {TIPOS.map((x) => (
+            {tipos.map((x) => (
               <button
                 key={x}
                 type="button"

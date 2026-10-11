@@ -723,6 +723,7 @@ export const AUDIT_ACTIONS = [
   "marketing_page.snapshot_created",
   "marketing_page.snapshot_deleted",
   "marketing_page.subpage_created",
+  "marketing_page.offers_imported",
   "marketing_page.subpage_deleted",
   "marketing_page.bulk_published",
   "marketing_cronograma.task_added",
