@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
 import type { CampanhaDeDemanda, NotaDaCampanha, TipoDeNota } from "@/lib/marketing/campanhas";
+import type { DiaDaCampanha } from "@/lib/marketing/campanhas-resumo";
 
 const BASE = "/api/v1/demand-campaigns";
 const CHAVE = ["demand-campaigns"] as const;
@@ -116,6 +117,53 @@ export function useNotasDaCampanha(campanhaId: string) {
         await depois();
       } catch (e) {
         showApiError(e);
+      }
+    },
+  };
+}
+
+/** O dia a dia de uma campanha (a "aba diária" da planilha). */
+export function useDiasDaCampanha(campanhaId: string) {
+  const queryClient = useQueryClient();
+  const chave = ["demand-campaign-days", campanhaId] as const;
+  const consulta = useQuery({
+    queryKey: chave,
+    queryFn: async () =>
+      (await apiClient.get<{ data: { dias: DiaDaCampanha[] } }>(`${BASE}/${campanhaId}/days`)).data
+        .dias,
+    staleTime: 10_000,
+  });
+  const recarregar = () => queryClient.invalidateQueries({ queryKey: chave });
+  return {
+    dias: consulta.data ?? [],
+    carregando: consulta.isLoading,
+    gravar: async (
+      dias: Array<Omit<DiaDaCampanha, "id" | "source">>,
+      source: "manual" | "csv" = "manual",
+    ) => {
+      // Muda a tela na hora; o servidor confirma em seguida.
+      queryClient.setQueryData<DiaDaCampanha[]>(chave, (atual) => {
+        const mapa = new Map((atual ?? []).map((d) => [d.day, d]));
+        for (const d of dias) mapa.set(d.day, { ...d, source });
+        return [...mapa.values()].sort((x, y) => x.day.localeCompare(y.day));
+      });
+      try {
+        await apiClient.put(`${BASE}/${campanhaId}/days`, { dias, source });
+        return true;
+      } catch (e) {
+        showApiError(e);
+        return false;
+      } finally {
+        void recarregar();
+      }
+    },
+    apagar: async (day: string) => {
+      try {
+        await apiClient.delete(`${BASE}/${campanhaId}/days?day=${day}`);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
       }
     },
   };

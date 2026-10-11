@@ -159,7 +159,7 @@ Para canais sem API, o dado é **digitado por dia ou semana** na própria campan
   filtros, ordem, agrupamento, colunas que se mostram/escondem/reordenam, abas salvas, seleção e
   edição em massa, edição direto na linha. Página de cada campanha com cadastro, investimento
   (líquido calculado), metas, campanhas da plataforma e diário de bordo.
-- **Próximo:** C2 (a planilha dentro do app: dia a dia, pace, funil completo, alertas).
+- **Próximo:** C2 (a planilha dentro do app: dia a dia, pace, funil completo, alertas). → feita, abaixo.
 
 ### Ajuste pedido (11/10/2026) — funis dentro da campanha, em formato visual
 - Hoje os funis são criados em Geração de demanda (`GestaoDeFunis`). O Arthur quer que a criação
@@ -169,3 +169,26 @@ Para canais sem API, o dado é **digitado por dia ou semana** na própria campan
   a direita, responsivo (empilha no celular).
 - Entra **depois de fechar o que já está programado (C2 em diante)**, junto da lista de ajustes
   que o Arthur vai passar. Não iniciar antes.
+
+### C2 — Resumo e pace: a planilha dentro do app (feita em 11/10/2026)
+- **Banco (migration 0597):** `demand_campaign_days` — uma linha por campanha e dia: impressões,
+  alcance, cliques no link, visitas à LP, leads, investido e `extras` (métricas dos canais sem
+  API); `source` = manual | csv | meta (a C3 grava `meta`). RLS: empresa lê, manager+ escreve.
+- **Contas:** `lib/marketing/campanhas-resumo.ts` (puro, testado com os números do print da
+  planilha): dias totais/passados/restantes, líquido, valor restante, meta e CPL necessário,
+  leads por dia, meta para hoje, adiantado/atrasado, nova meta diária, meta/média/novo
+  orçamento diário, CPM, CPC, CTR, custo por visita, connection rate, CPL, conversão da LP.
+  Investimento "por dia/semana/mês" vira total pelo período (mês = 30 dias).
+- **"O que fazer agora" (alertas automáticos, só tráfego pago):** CTR < 1% → testar criativos;
+  connection rate < 70% → verificar conexão da LP; conversão da LP < 10% → verificar a LP;
+  CPL > meta + 10% → CPL acima da meta; orçamento necessário > média + 10% → aumentar para R$ X;
+  leads atrasados; orçamento estourado. **Limites são nossos (a planilha não os trazia) e
+  ficam em `LIMITES`** — o Arthur confirma ou ajusta.
+- **Dia a dia:** tabela editável na própria linha (grava ao sair), adicionar dia, apagar,
+  **importar planilha CSV** (datas dd/mm/aaaa ou aaaa-mm-dd, "R$ 1.234,56", nomes de coluna
+  sem acento) e baixar o modelo do canal. Canais sem API usam as métricas do §8 (prospecção:
+  abordagens, contatos, decisor, reuniões, vendas, valor).
+- **Tela:** a página da campanha agora abre com o Resumo (alertas, período/investimento, metas,
+  pace, funil completo) e a tabela do Dia a dia; depois vêm Cadastro, Investimento, Metas,
+  campanhas da plataforma e Diário de bordo.
+- **Próximo:** C3 (Meta Ads automático por dia).

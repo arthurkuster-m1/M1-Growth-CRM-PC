@@ -84,3 +84,53 @@ export const COR_DA_NOTA: Record<TipoDeNota, CorDaOpcao> = {
   planejamento: "purple",
   otimizacao: "green",
 };
+
+/** O nome das métricas digitadas por dia nos canais sem API. */
+export function rotuloDaMetrica(t: Traduz, chave: string): string {
+  switch (chave) {
+    case "abordagens":
+      return t("Abordagens");
+    case "contatos":
+      return t("Contatos");
+    case "decisor":
+      return t("Decisor");
+    case "reunioes_agendadas":
+      return t("Reuniões agendadas");
+    case "reunioes_feitas":
+      return t("Reuniões feitas");
+    case "vendas":
+      return t("Vendas");
+    case "valor_total":
+      return t("Valor total");
+    case "publicacoes":
+      return t("Publicações");
+    case "alcance":
+      return t("Alcance");
+    case "engajamento":
+      return t("Engajamento");
+    case "visitas_ao_perfil":
+      return t("Visitas ao perfil");
+    case "cliques_no_link":
+      return t("Cliques no link");
+    case "novos_seguidores":
+      return t("Novos seguidores");
+    case "indicadores_ativos":
+      return t("Indicadores ativos");
+    case "indicacoes":
+      return t("Indicações recebidas");
+    case "qualificadas":
+      return t("Qualificadas");
+    case "reunioes":
+      return t("Reuniões");
+    case "recompensa_paga":
+      return t("Recompensa paga");
+    case "parceiros_ativos":
+      return t("Parceiros ativos");
+    case "entregas":
+      return t("Entregas");
+    case "cliques":
+      return t("Cliques");
+    default:
+      return chave;
+  }
+}

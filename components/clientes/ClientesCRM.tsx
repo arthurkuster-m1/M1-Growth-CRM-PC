@@ -79,7 +79,7 @@ export function ClientesCRM() {
   const role = org?.role ?? "viewer";
 
   const funilEscolhido = parametros.get("funil") ?? TODOS;
-  const vistaPedida = parametros.get("vista") === "kanban" ? "kanban" : "tabela";
+  const vistaPedida = parametros.get("vista") === "quadro" ? "quadro" : "tabela";
   const [busca, setBusca] = useState("");
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
@@ -94,7 +94,7 @@ export function ClientesCRM() {
   const dados = consulta.data;
   const funilAtual = dados?.funis.find((f) => f.id === funilEscolhido) ?? null;
   const funilValido = funilEscolhido === TODOS || funilAtual !== null;
-  const vista = funilAtual && vistaPedida === "kanban" ? "kanban" : "tabela";
+  const vista = funilAtual && vistaPedida === "quadro" ? "quadro" : "tabela";
 
   const membrosDaEquipe = useAssignableMembers(true);
   const membros = (membrosDaEquipe.data ?? []).map((m) => ({
@@ -108,7 +108,7 @@ export function ClientesCRM() {
   const preferencias: PreferenciasDaTabela = prefs.preferencias;
   const atualizar = prefs.atualizar;
 
-  function ir(novo: { funil?: string; vista?: "tabela" | "kanban" }) {
+  function ir(novo: { funil?: string; vista?: "tabela" | "quadro" }) {
     const p = new URLSearchParams(parametros.toString());
     if (novo.funil !== undefined) {
       if (novo.funil === TODOS) p.delete("funil");
@@ -632,17 +632,17 @@ export function ClientesCRM() {
           {(
             [
               ["tabela", t("Tabela"), <Rows key="t" size={14} aria-hidden />],
-              ["kanban", t("Kanban"), <Kanban key="k" size={14} aria-hidden />],
+              ["quadro", t("Quadro"), <Kanban key="k" size={14} aria-hidden />],
             ] as const
           ).map(([valor, rotulo, icone]) => {
-            const desligado = valor === "kanban" && funilAtual === null;
+            const desligado = valor === "quadro" && funilAtual === null;
             return (
               <button
                 key={valor}
                 type="button"
                 aria-pressed={vista === valor}
                 disabled={desligado}
-                title={desligado ? t("Escolha um funil para ver o Kanban.") : undefined}
+                title={desligado ? t("Escolha um funil para ver o quadro.") : undefined}
                 onClick={() => ir({ vista: valor })}
                 className={cn(
                   "inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-40",
@@ -663,7 +663,7 @@ export function ClientesCRM() {
         <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
           {t("Este funil não existe mais.")}
         </p>
-      ) : vista === "kanban" && funilAtual ? (
+      ) : vista === "quadro" && funilAtual ? (
         <PipelinePageClient pipelineId={funilAtual.id} initialName={funilAtual.name} role={role} />
       ) : (
         <>

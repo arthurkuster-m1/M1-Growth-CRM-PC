@@ -12,10 +12,13 @@ import {
   rotuloDoPeriodo,
   rotuloDoStatus,
 } from "@/components/marketing/campanhas/rotulos";
+import { DiaADiaDaCampanha } from "@/components/marketing/campanhas/DiaADiaDaCampanha";
+import { ResumoDaCampanha } from "@/components/marketing/campanhas/ResumoDaCampanha";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCampanhasDeDemanda,
+  useDiasDaCampanha,
   useNotasDaCampanha,
   type EdicaoDeCampanha,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
@@ -29,6 +32,7 @@ import {
   type CampanhaDeDemanda,
   type TipoDeNota,
 } from "@/lib/marketing/campanhas";
+import { hojeIso } from "@/lib/marketing/campanhas-resumo";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -140,6 +144,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   const router = useRouter();
   const { campanhas, funis, podeEditar, carregando, editar, apagar } = useCampanhasDeDemanda();
   const c = campanhas.find((x) => x.id === id);
+  const dias = useDiasDaCampanha(id);
 
   if (carregando) return <div className="h-64 animate-pulse rounded-2xl bg-secondary" />;
   if (!c) {
@@ -158,6 +163,16 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} />
+
+      <DiaADiaDaCampanha
+        canal={c.channel}
+        dias={dias.dias}
+        podeEditar={podeEditar}
+        gravar={dias.gravar}
+        apagar={dias.apagar}
+      />
+
       <Bloco titulo={t("Cadastro")}>
         <Rotulo texto={t("Nome da campanha")}>
           <TextoGravavel

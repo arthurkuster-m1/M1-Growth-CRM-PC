@@ -275,7 +275,7 @@ export const NAV_CATALOG = [
     // sistema; "funil de vendas" é palavra de quem vende.
     href: "/app/clientes",
     label: "Clientes",
-    description: "O CRM: todos os leads, por funil, em tabela ou Kanban.",
+    description: "O CRM: todos os leads, por funil, em tabela ou quadro.",
     icon: "Users",
     group: "crm",
     section: "O dia a dia da venda",

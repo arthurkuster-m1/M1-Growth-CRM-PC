@@ -87,7 +87,7 @@ export default async function GeracaoDeDemandaPage() {
         <Atalho
           href="/app/clientes"
           titulo={t("Clientes (CRM)")}
-          descricao={t("Os leads de todos os funis, em tabela ou Kanban")}
+          descricao={t("Os leads de todos os funis, em tabela ou quadro")}
         />
         <Atalho
           href="/app/ads/meta"

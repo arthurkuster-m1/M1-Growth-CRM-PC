@@ -3,6 +3,7 @@
 import { CampoDeNome, CampoDeNovaOpcao } from "@/components/motor/CamposDoEditor";
 import { SeletorDeCor } from "@/components/motor/SeletorDeCor";
 import { useT } from "@/hooks/i18n/useT";
+import { randomId } from "@/lib/random-id";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import type { OpcaoDePropriedade } from "@/lib/tarefas/propriedades";
 import { CaretLeft, Trash } from "@/lib/ui/icons";
@@ -84,7 +85,7 @@ export function EditorDeOpcoesDePropriedade({
             aoMudar([
               ...opcoes,
               {
-                id: crypto.randomUUID(),
+                id: randomId(),
                 name,
                 color: CORES_EM_RODIZIO[opcoes.length % CORES_EM_RODIZIO.length]!,
               },
