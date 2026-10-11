@@ -131,7 +131,9 @@ describe("Sidebar agrupado", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
-    expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
+    // O CRM do dia a dia é "Clientes"; a lista de funis fica no hub do grupo.
+    expect(screen.getByRole("link", { name: "Clientes" })).toHaveAttribute("href", "/app/clientes");
+    expect(screen.queryByRole("link", { name: "Funis" })).toBeNull();
   });
 
   it("desenterra Audit Log — e Nuvemshop ficou de fora, por escolha", () => {
@@ -205,8 +207,7 @@ describe("Sidebar agrupado", () => {
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
     expect(screen.getByRole("link", { name: /Inbox/ })).toHaveAttribute("aria-current", "page");
-    // "Kanban" saiu da interface; o item da mesma URL agora se chama "Funis".
-    expect(screen.getByRole("link", { name: "Funis" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Clientes" })).not.toHaveAttribute("aria-current");
   });
 
   it("só o grupo da rota atual começa aberto (menu curto, como no desenho do M1)", () => {

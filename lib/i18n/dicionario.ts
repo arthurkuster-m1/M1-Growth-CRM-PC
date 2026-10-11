@@ -18430,6 +18430,7 @@ export const DICIONARIO: Traducoes = {
   "Tarefas desta semana": { es: "Tareas de esta semana" },
   "Tirar da semana": { es: "Quitar de la semana" },
   "Visão do cronograma": { es: "Vista del cronograma" },
+  MQL: { es: "MQL" },
   "O CRM: todos os leads, por funil, em tabela ou Kanban.": { es: "El CRM: todos los leads, por embudo, en tabla o Kanban." },
   "Todos os seus leads, em cada funil, num só lugar.": { es: "Todos tus leads, en cada embudo, en un solo lugar." },
   "Total de leads": { es: "Total de leads" },

@@ -81,6 +81,8 @@ export function ClientesCRM() {
   const funilEscolhido = parametros.get("funil") ?? TODOS;
   const vistaPedida = parametros.get("vista") === "kanban" ? "kanban" : "tabela";
   const [busca, setBusca] = useState("");
+  // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
+  const [agora] = useState(() => Date.now());
   const [configurando, setConfigurando] = useState(false);
 
   const consulta = useQuery({
@@ -168,7 +170,7 @@ export function ClientesCRM() {
     try {
       await apiClient.post(`/api/v1/leads/${p.lead_id}/move`, {
         stage_id: etapaId,
-        position_in_stage: Date.now(),
+        position_in_stage: new Date().getTime(),
         expected_updated_at: p.atualizado_em,
       });
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
@@ -489,7 +491,7 @@ export function ClientesCRM() {
       )
     : linhas;
   const resultado = aplicarConsulta(buscadas, campos, preferencias, {
-    hoje: new Date().toISOString().slice(0, 10),
+    hoje: new Date(agora).toISOString().slice(0, 10),
   });
   const grupos = resultado.grupos?.map((g) => {
     const campo = campos.find((c) => c.id === preferencias.agrupar);
@@ -524,7 +526,7 @@ export function ClientesCRM() {
   );
   const decididas = ganhas.length + perdidas.length;
   const taxa = decididas > 0 ? Math.round((ganhas.length / decididas) * 100) : 0;
-  const seteDias = Date.now() - 7 * 86_400_000;
+  const seteDias = agora - 7 * 86_400_000;
   const semContato = abertas.filter((p) => {
     const u = p.ultima_atividade ?? p.criado_em;
     return new Date(u).getTime() < seteDias;

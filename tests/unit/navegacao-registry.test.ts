@@ -126,8 +126,8 @@ describe("sidebarGroups", () => {
     // `lib/navigation/catalogo.ts`.
     const crm = sidebarGroups(true, null).find((g) => g.group.id === "crm");
     expect(crm?.items.map((i) => i.href)).toEqual([
-      "/app/kanban",
-      "/app/contacts",
+      // "Clientes" é o CRM final (tabela e Kanban por funil); Funis e Contatos moram no hub.
+      "/app/clientes",
       // "/app/calls" (telefonia por SIP) NÃO entra aqui, e a ausência é a
       // decisão: o módulo é OPCIONAL e nasce desligado (doc 27), então a porta
       // no sidebar custaria um item a TODA instalação — e o vigésimo item é o
@@ -179,6 +179,7 @@ describe("hubSections", () => {
     ]);
     expect(secoes.flatMap((s) => s.items.map((i) => i.href))).toEqual([
       "/app/prospecting",
+      "/app/clientes",
       "/app/kanban",
       "/app/campaigns",
       "/app/contacts",

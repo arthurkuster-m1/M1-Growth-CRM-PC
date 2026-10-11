@@ -42,6 +42,7 @@ export async function PUT(
   if (!pipelineId.success || !corpo.success) {
     return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
   }
+  const funilId = pipelineId.data;
   const destino = corpo.data.funil_destino_id;
   if (destino === pipelineId.data) {
     return fail("validation_failed", t("O funil de destino precisa ser outro."), 422, {
@@ -89,7 +90,7 @@ export async function PUT(
     actorUserId: authz.user.id,
     action: "pipeline.updated",
     resourceType: "crm_pipeline",
-    resourceId: pipelineId.data,
+    resourceId: funilId,
     requestId,
     metadata: { ao_ganhar_funil_id: destino },
   });
