@@ -178,7 +178,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
               >
                 <Plus size={14} weight="bold" aria-hidden />
-                {t("Nova subpágina")}
+                {ehProdutos ? t("Novo produto") : t("Nova subpágina")}
               </button>
               {menu ? (
                 <div
@@ -263,7 +263,9 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
         <div className="h-24 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
       ) : visiveis.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
-          {t("Nenhuma subpágina ainda. Crie a primeira em “Nova subpágina”.")}
+          {ehProdutos
+            ? t("Nenhum produto ainda. Crie o primeiro em “Novo produto”.")
+            : t("Nenhuma subpágina ainda. Crie a primeira em “Nova subpágina”.")}
         </p>
       ) : ehProdutos ? (
         <TabelaDeProdutos

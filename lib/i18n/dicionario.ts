@@ -18430,6 +18430,7 @@ export const DICIONARIO: Traducoes = {
   "Tarefas desta semana": { es: "Tareas de esta semana" },
   "Tirar da semana": { es: "Quitar de la semana" },
   "Visão do cronograma": { es: "Vista del cronograma" },
+  "Nenhum produto ainda. Crie o primeiro em “Novo produto”.": { es: "Ningún producto todavía. Crea el primero en “Nuevo producto”." },
   "Marketing, atendimento e vendas num só lugar": { es: "Marketing, atención y ventas en un solo lugar" },
   "O sistema da Assessoria M1 organiza a estratégia de marketing de cada cliente, o atendimento por mensagens, o funil de vendas, as tarefas e o cronograma do projeto — e mostra o que está acontecendo, em tempo real.": { es: "El sistema de Assessoria M1 organiza la estrategia de marketing de cada cliente, la atención por mensajes, el embudo de ventas, las tareas y el cronograma del proyecto, y muestra lo que está pasando, en tiempo real." },
   "O que o sistema faz": { es: "Qué hace el sistema" },
