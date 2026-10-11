@@ -82,7 +82,8 @@ trabalhando em cima, conforme a prioridade do Arthur.
    base e quer estruturar melhor. **Inclui a criação das campanhas e dos funis que serão usados
    no CRM** (cada campanha nasce ligada a um funil e a uma origem rastreável; é a ponte entre
    esta frente e a 8). Fazer em conjunto com o planejamento do CRM.
-   **Plano detalhado: `docs/PLANO-CAMPANHAS-M1.md`.**
+   **Plano detalhado: `docs/PLANO-CAMPANHAS-M1.md`** (sessão C1 feita: cadastro, tabela,
+   cards e linha do tempo das campanhas).
 5. **Inbox.** Ajustes visuais e conexões com outros bancos (detalhar "outros bancos").
 6. **Equipe.** Pessoas, papéis e interface por empresa.
 7. **Prospecção.** Scraping de leads + campanhas de disparo automático (API oficial e não oficial)

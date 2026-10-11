@@ -116,12 +116,47 @@ conversão, vendas, faturamento da origem).
 
 C1 → C2 → C4 podem ir **antes** de o CRM terminar origem e vendas.
 
-## 7. Decisões para o Arthur
-1. Líquido = bruto ÷ 1,125 é imposto fixo de 12,5%? Deve ser configurável por campanha/empresa?
-2. "Cards" = galeria de cartões ou quadro por status?
-3. Como ligar campanhas do Meta: escolher da lista da conta conectada, ou por padrão no nome?
-4. Prospecção, social media e indicações: quais métricas medir (envios, respostas, reuniões,
-   publicações, alcance, indicações)?
-5. O cliente vê as campanhas? Vê CPL e investimento, ou só leads e vendas?
-6. Importar as planilhas atuais (a aba diária) por CSV na migração?
-7. Uma agência com vários clientes: visão de todas as campanhas de todos os clientes (frente 14)?
+## 7. Decisões do Arthur (11/10/2026)
+1. **Imposto:** é o imposto da Meta sobre os anúncios; **variável por campanha** (no Google, por
+   exemplo, não há). Campo `tax_pct`; líquido = bruto ÷ (1 + imposto).
+2. **Cards:** galeria de cartões, como a dos Produtos.
+3. **Campanhas do Meta atreladas:** escolher na própria aba de Campanhas — digitando o nome (quando
+   ainda não aparecem) ou escolhendo, entre as campanhas do relatório do Meta, as que ainda não
+   estão associadas a nenhuma campanha do Software.
+4. **Outros canais:** métricas definidas com a ajuda do Claude (proposta no §8).
+5. **Cliente vê as campanhas**, numa visão mais simples: campanhas ativas, dados essenciais, CPL e
+   investimento, leads e vendas, LPs e criativos rodando e as otimizações feitas. Modelo da
+   visualização a definir depois.
+6. **Sem importar planilhas:** tudo nasce dentro do Software.
+7. **Multi-tenant (frente 14):** ver todas as campanhas ativas **agrupadas por cliente**, como na
+   tabela do Notion "M1 | Campanhas" (cliente, campanha, atual, análise, planejamento).
+
+## 8. Métricas por canal (proposta)
+
+Comum a todos: **investimento/custo → leads → reuniões → vendas → faturamento**.
+
+| Canal | O que medir (por dia ou por semana) | Taxas |
+|---|---|---|
+| **Tráfego pago** | impressões, alcance, cliques no link, visitas à LP, leads, investido | CPM, CTR, CPC, connection rate, conversão da LP, CPL |
+| **Prospecção fria** | abordagens, contatos (responderam), decisor, reuniões agendadas, reuniões feitas, vendas, valor total | contato/abordagem, decisor/contato, agendamento/decisor, comparecimento, fechamento, ticket médio, custo por reunião |
+| **Social media** | publicações, alcance, impressões, engajamento (curtidas, comentários, salvamentos, compartilhamentos), visitas ao perfil, cliques no link, novos seguidores, leads (DM/cadastro), vendas, valor | engajamento %, custo por lead (se houver investimento) |
+| **Indicações** | indicadores ativos, indicações recebidas, qualificadas, reuniões, vendas, valor, recompensa paga | indicação→venda, custo por venda |
+| **Parcerias/influenciadores** | parceiros ativos, entregas (posts/ações), alcance, cliques/cupom usado, leads, vendas, valor, custo (fixo/comissão) | CPL, CAC, retorno sobre o custo |
+
+Para canais sem API, o dado é **digitado por dia ou semana** na própria campanha (mesma tela de
+"Diário"), com as taxas calculadas sozinhas.
+
+## 9. Registro das sessões
+
+### C1 — Cadastro e tabela (feita em 11/10/2026)
+- **Banco (migration 0595):** `demand_campaigns` (canal, status, período ou contínua, funil do
+  CRM, responsável, investimento bruto com período e imposto, metas de leads/CPL/vendas/
+  faturamento, link da planilha, campanhas da plataforma atreladas) e `demand_campaign_notes`
+  (diário de bordo: análise, feedback do cliente, planejamento e otimização). RLS: a empresa lê;
+  manager+ escreve; o cliente lê só as "otimizações".
+- **API:** `/api/v1/demand-campaigns` (lista, cria), `/[id]` (edita, apaga), `/[id]/notes`.
+- **Tela:** Marketing › Geração de demanda › **Campanhas**: Tabela, Cards e Linha do tempo; busca,
+  filtros, ordem, agrupamento, colunas que se mostram/escondem/reordenam, abas salvas, seleção e
+  edição em massa, edição direto na linha. Página de cada campanha com cadastro, investimento
+  (líquido calculado), metas, campanhas da plataforma e diário de bordo.
+- **Próximo:** C2 (a planilha dentro do app: dia a dia, pace, funil completo, alertas).
