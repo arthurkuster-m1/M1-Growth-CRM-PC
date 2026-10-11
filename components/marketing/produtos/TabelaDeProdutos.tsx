@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+
+import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { AcaoEmMassa, BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
+import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
+import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
+import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
@@ -10,19 +17,39 @@ import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizaca
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
+import { apiClient } from "@/lib/api/client";
+import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
+import { lerNumero } from "@/lib/marketing/calculadora";
+import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import {
   aplicarConsulta,
+  consultaAtiva,
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { ResumoDeSubpagina } from "@/lib/marketing/paginas";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { Check, Package, TextAa } from "@/lib/ui/icons";
+import { Check, Package, TextAa, Trash } from "@/lib/ui/icons";
 
 const ID_DA_PADRAO = "padrao";
+const MODULO = "produtos-e-ofertas";
+const BASE_DA_API = "/api/v1/marketing/ofertas/campos";
+const TIPOS_DE_PRECO = ["unico", "mensal", "setup-mensal", "sob-consulta", "gratuito"] as const;
+type Mudancas = Partial<{
+  title: string;
+  etapa: (typeof ETAPAS)[number];
+  nivel: "simples" | "completa";
+  carroChefe: boolean;
+  tipoDePreco: (typeof TIPOS_DE_PRECO)[number];
+  preco: number | null;
+}>;
+interface DadosDoCache {
+  subpaginas: Produto[];
+  pode_editar: boolean;
+}
 const SO_TABELA = ["tabela"] as const;
 const ETAPAS = ["isca", "entrada", "principal", "expansao", "recorrencia"] as const;
 const COR_DA_ETAPA: Record<(typeof ETAPAS)[number], CorDaOpcao> = {
@@ -44,16 +71,94 @@ export function TabelaDeProdutos({
   produtos,
   base,
   podeEditar,
+  vista,
+  renderizarCartoes,
 }: {
   produtos: readonly Produto[];
   base: string;
   podeEditar: boolean;
+  vista: "cartoes" | "tabela";
+  /** Desenha a vitrine de cartões com as linhas já filtradas e ordenadas (e os grupos, se houver). */
+  renderizarCartoes: (
+    linhas: Produto[],
+    consultaAtiva: boolean,
+    grupos?: Array<{ chave: string; titulo: ReactNode; linhas: Produto[] }>,
+  ) => ReactNode;
 }) {
   const t = useT();
   const router = useRouter();
   const caminho = usePathname();
   const parametros = useSearchParams();
   const [configurando, setConfigurando] = useState(false);
+  const queryClient = useQueryClient();
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
+  const ultimoMarcado = useRef<string | null>(null);
+  const chaveDoCache = ["marketing-subpaginas", MODULO] as const;
+
+  /** Muda a tabela na hora (cache) e confirma no servidor; se o servidor recusar, desfaz. */
+  async function gravar(
+    keys: string[],
+    corpo: () => Promise<unknown>,
+    local: (p: Produto) => Produto,
+  ) {
+    const antes = queryClient.getQueryData<DadosDoCache>(chaveDoCache);
+    queryClient.setQueryData<DadosDoCache>(chaveDoCache, (d) =>
+      d ? { ...d, subpaginas: d.subpaginas.map((s) => (keys.includes(s.key) ? local(s) : s)) } : d,
+    );
+    try {
+      await corpo();
+    } catch (e) {
+      queryClient.setQueryData(chaveDoCache, antes);
+      showApiError(e);
+    } finally {
+      void queryClient.invalidateQueries({ queryKey: chaveDoCache });
+    }
+  }
+  const editar = (keys: string[], m: Mudancas) =>
+    gravar(
+      keys,
+      () => apiClient.patch(BASE_DA_API, { keys, mudancas: m }),
+      (p) => ({
+        ...p,
+        title: m.title ?? p.title,
+        oferta: p.oferta
+          ? {
+              ...p.oferta,
+              etapa: m.etapa ?? p.oferta.etapa,
+              nivel: m.nivel ?? p.oferta.nivel,
+              carroChefe: m.carroChefe ?? p.oferta.carroChefe,
+              tipoDePreco: m.tipoDePreco ?? p.oferta.tipoDePreco,
+              valor: m.preco !== undefined ? (m.preco ?? 0) : p.oferta.valor,
+              preco:
+                m.preco !== undefined
+                  ? m.preco === null
+                    ? "—"
+                    : moedaDoNumero(m.preco)
+                  : p.oferta.preco,
+            }
+          : p.oferta,
+      }),
+    );
+  const publicar = (keys: string[], publicada: boolean) =>
+    gravar(
+      keys,
+      () =>
+        apiClient.post("/api/v1/marketing/pages/publicacao", {
+          keys,
+          acao: publicada ? "publicar" : "despublicar",
+        }),
+      (p) => ({ ...p, publicada }),
+    );
+  const apagar = async (keys: string[]) => {
+    if (!window.confirm(t("Apagar os produtos selecionados? Isso não pode ser desfeito."))) return;
+    await gravar(
+      keys,
+      () => apiClient.delete(BASE_DA_API, { keys }),
+      (p) => p,
+    );
+    setSelecionadas(new Set());
+    void queryClient.invalidateQueries({ queryKey: chaveDoCache });
+  };
 
   const padrao = useVisualizacao("produtos");
   const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
@@ -120,12 +225,22 @@ export function TabelaDeProdutos({
       largura: 320,
       semOcultar: true,
       celula: (p) => (
-        <Link
-          href={`${base}/${p.key}`}
-          className="block truncate px-2 text-sm font-medium hover:text-primary hover:underline"
-        >
-          {p.title || t("Sem título")}
-        </Link>
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <CelulaDeTexto
+              valor={p.title}
+              rotulo={t("Nome do produto")}
+              podeEditar={podeEditar}
+              aoSalvar={(title) => void editar([p.key], { title })}
+            />
+          </div>
+          <Link
+            href={`${base}/${p.key}`}
+            className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
+          >
+            {t("Abrir")}
+          </Link>
+        </div>
       ),
     },
     {
@@ -135,7 +250,15 @@ export function TabelaDeProdutos({
       largura: 160,
       celula: (p) =>
         p.oferta ? (
-          <Etiqueta cor={COR_DA_ETAPA[p.oferta.etapa]}>{rotuloDaEtapa(p.oferta.etapa)}</Etiqueta>
+          <SeletorDeOpcao
+            opcoes={opcoesDeEtapa}
+            valorId={p.oferta.etapa}
+            podeEditar={podeEditar}
+            rotulo={t("Etapa da escada")}
+            aoEscolher={(id) => void editar([p.key], { etapa: id as (typeof ETAPAS)[number] })}
+          >
+            <Etiqueta cor={COR_DA_ETAPA[p.oferta.etapa]}>{rotuloDaEtapa(p.oferta.etapa)}</Etiqueta>
+          </SeletorDeOpcao>
         ) : null,
     },
     {
@@ -143,7 +266,23 @@ export function TabelaDeProdutos({
       titulo: t("Preço"),
       icone: <Package size={14} aria-hidden />,
       largura: 190,
-      celula: (p) => <span className="block truncate px-2 text-sm">{p.oferta?.preco ?? "—"}</span>,
+      celula: (p) =>
+        p.oferta ? (
+          <CelulaDeTexto
+            valor={p.oferta.valor > 0 ? moedaDoNumero(p.oferta.valor) : ""}
+            exibir={p.oferta.preco}
+            rotulo={t("Preço")}
+            vazioRotulo="—"
+            permitirVazio
+            inputMode="decimal"
+            podeEditar={podeEditar}
+            aoSalvar={(texto) => {
+              const n = texto.trim() === "" ? null : lerNumero(texto);
+              if (texto.trim() !== "" && n === null) return;
+              void editar([p.key], { preco: n });
+            }}
+          />
+        ) : null,
     },
     {
       id: "tipo-de-preco",
@@ -151,7 +290,19 @@ export function TabelaDeProdutos({
       icone: <Package size={14} aria-hidden />,
       largura: 160,
       celula: (p) =>
-        p.oferta ? <Etiqueta cor="gray">{rotuloDoPreco(p.oferta.tipoDePreco)}</Etiqueta> : null,
+        p.oferta ? (
+          <SeletorDeOpcao
+            opcoes={opcoesDePreco}
+            valorId={p.oferta.tipoDePreco}
+            podeEditar={podeEditar}
+            rotulo={t("Tipo de preço")}
+            aoEscolher={(id) =>
+              void editar([p.key], { tipoDePreco: id as (typeof TIPOS_DE_PRECO)[number] })
+            }
+          >
+            <Etiqueta cor="gray">{rotuloDoPreco(p.oferta.tipoDePreco)}</Etiqueta>
+          </SeletorDeOpcao>
+        ) : null,
     },
     {
       id: "carro-chefe",
@@ -159,11 +310,13 @@ export function TabelaDeProdutos({
       icone: <Check size={14} aria-hidden />,
       largura: 130,
       celula: (p) =>
-        p.oferta?.carroChefe ? (
-          <span className="inline-flex items-center gap-1 px-2 text-sm text-primary">
-            <Check size={14} weight="bold" aria-hidden />
-            {t("Sim")}
-          </span>
+        p.oferta ? (
+          <CelulaDeCaixa
+            marcada={p.oferta.carroChefe}
+            podeEditar={podeEditar}
+            rotulo={t("Carro-chefe")}
+            aoMudar={(carroChefe) => void editar([p.key], { carroChefe })}
+          />
         ) : null,
     },
     {
@@ -174,9 +327,17 @@ export function TabelaDeProdutos({
       padrao: false,
       celula: (p) =>
         p.oferta ? (
-          <Etiqueta cor={p.oferta.nivel === "completa" ? "blue" : "gray"}>
-            {p.oferta.nivel === "completa" ? t("Completa") : t("Simples")}
-          </Etiqueta>
+          <SeletorDeOpcao
+            opcoes={opcoesDeNivel}
+            valorId={p.oferta.nivel}
+            podeEditar={podeEditar}
+            rotulo={t("Nível")}
+            aoEscolher={(id) => void editar([p.key], { nivel: id as "simples" | "completa" })}
+          >
+            <Etiqueta cor={p.oferta.nivel === "completa" ? "blue" : "gray"}>
+              {p.oferta.nivel === "completa" ? t("Completa") : t("Simples")}
+            </Etiqueta>
+          </SeletorDeOpcao>
         ) : null,
     },
     {
@@ -197,9 +358,17 @@ export function TabelaDeProdutos({
       icone: <Package size={14} aria-hidden />,
       largura: 140,
       celula: (p) => (
-        <Etiqueta ponto cor={p.publicada ? "green" : "gray"}>
-          {p.publicada ? t("Publicada") : t("Rascunho")}
-        </Etiqueta>
+        <SeletorDeOpcao
+          opcoes={opcoesDeStatus}
+          valorId={p.publicada ? "publicada" : "rascunho"}
+          podeEditar={podeEditar}
+          rotulo={t("Status")}
+          aoEscolher={(id) => void publicar([p.key], id === "publicada")}
+        >
+          <Etiqueta ponto cor={p.publicada ? "green" : "gray"}>
+            {p.publicada ? t("Publicada") : t("Rascunho")}
+          </Etiqueta>
+        </SeletorDeOpcao>
       ),
     },
   ];
@@ -270,6 +439,22 @@ export function TabelaDeProdutos({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [produtos, preferencias],
   );
+  const idsDaTabela = [...new Set(resultado.linhas.map((p) => p.key))];
+  const vivas = podarSelecao(selecionadas, idsDaTabela);
+  const idsSelecionados = idsDaTabela.filter((id) => vivas.has(id));
+  const selecionar = (id: string, { faixa }: { faixa: boolean }) => {
+    setSelecionadas((atual) => {
+      const base = podarSelecao(atual, idsDaTabela);
+      if (faixa && ultimoMarcado.current) {
+        const proximo = new Set(base);
+        for (const m of faixaEntre(idsDaTabela, ultimoMarcado.current, id)) proximo.add(m);
+        return proximo;
+      }
+      return alternarId(base, id);
+    });
+    ultimoMarcado.current = id;
+  };
+
   const grupos = resultado.grupos?.map((g) => {
     const campo = campos.find((c) => c.id === preferencias.agrupar);
     const rotulo =
@@ -325,33 +510,153 @@ export function TabelaDeProdutos({
         }}
         aoMudar={mudarConsulta}
       />
-      <TabelaDoMotor
-        linhas={resultado.linhas}
-        idDe={(p) => p.key}
-        colunas={mostradas}
-        grupos={grupos}
-        aoMoverColuna={(movido, alvo) =>
-          atualizar((p) => ({
-            ...p,
-            ordem: moverColuna(
-              resolvidas.filter((c) => !c.fixa).map((c) => c.id),
-              movido,
-              alvo,
-            ),
-          }))
-        }
-        aoRedimensionarColuna={(id, largura) =>
-          atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
-        }
-        aoReordenar={() => undefined}
-        podeReordenar={false}
-        rotuloDaTabela={t("Produtos e serviços")}
-        vazio={
-          <p className="p-6 text-center text-sm text-muted-foreground">
-            {t("Nenhum produto combina com a busca e os filtros.")}
-          </p>
-        }
-      />
+      {vista === "tabela" ? (
+        <TabelaDoMotor
+          linhas={resultado.linhas}
+          idDe={(p) => p.key}
+          colunas={mostradas}
+          grupos={grupos}
+          aoMoverColuna={(movido, alvo) =>
+            atualizar((p) => ({
+              ...p,
+              ordem: moverColuna(
+                resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+                movido,
+                alvo,
+              ),
+            }))
+          }
+          aoRedimensionarColuna={(id, largura) =>
+            atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
+          }
+          aoReordenar={() => undefined}
+          podeReordenar={false}
+          selecionadas={vivas}
+          aoSelecionar={podeEditar ? selecionar : undefined}
+          aoSelecionarTodas={
+            podeEditar
+              ? (marcar) => {
+                  setSelecionadas(marcar ? new Set(idsDaTabela) : new Set());
+                  ultimoMarcado.current = null;
+                }
+              : undefined
+          }
+          rotuloDaTabela={t("Produtos e serviços")}
+          vazio={
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              {t("Nenhum produto combina com a busca e os filtros.")}
+            </p>
+          }
+        />
+      ) : produtos.length === 0 || resultado.linhas.length === 0 ? (
+        <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
+          {t("Nenhum produto combina com a busca e os filtros.")}
+        </p>
+      ) : grupos ? (
+        <div className="flex flex-col gap-6">
+          {grupos.map((g) => (
+            <section key={g.chave} className="flex flex-col gap-2">
+              <h3 className="text-sm">{g.titulo}</h3>
+              {renderizarCartoes(g.linhas, true)}
+            </section>
+          ))}
+        </div>
+      ) : (
+        renderizarCartoes(resultado.linhas, consultaAtiva(preferencias))
+      )}
+      {podeEditar ? (
+        <BarraDeSelecao
+          quantidade={idsSelecionados.length}
+          aoLimpar={() => setSelecionadas(new Set())}
+        >
+          <AcaoEmMassa rotulo={t("Etapa")} icone={<Package size={14} aria-hidden />}>
+            {(fechar) => (
+              <div>
+                {opcoesDeEtapa.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => {
+                      void editar(idsSelecionados, { etapa: o.id });
+                      fechar();
+                    }}
+                    className="flex w-full rounded-md px-2 py-1.5 hover:bg-secondary"
+                  >
+                    <Etiqueta cor={o.cor}>{o.rotulo}</Etiqueta>
+                  </button>
+                ))}
+              </div>
+            )}
+          </AcaoEmMassa>
+          <AcaoEmMassa rotulo={t("Tipo de preço")} icone={<Package size={14} aria-hidden />}>
+            {(fechar) => (
+              <div>
+                {opcoesDePreco.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => {
+                      void editar(idsSelecionados, {
+                        tipoDePreco: o.id as (typeof TIPOS_DE_PRECO)[number],
+                      });
+                      fechar();
+                    }}
+                    className="flex w-full rounded-md px-2 py-1.5 hover:bg-secondary"
+                  >
+                    <Etiqueta cor={o.cor}>{o.rotulo}</Etiqueta>
+                  </button>
+                ))}
+              </div>
+            )}
+          </AcaoEmMassa>
+          <AcaoEmMassa rotulo={t("Carro-chefe")} icone={<Check size={14} aria-hidden />}>
+            {(fechar) => (
+              <div>
+                {[
+                  { v: true, r: t("Marcar como carro-chefe") },
+                  { v: false, r: t("Desmarcar carro-chefe") },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => {
+                      void editar(idsSelecionados, { carroChefe: o.v });
+                      fechar();
+                    }}
+                    className="flex w-full rounded-md px-2 py-1.5 text-sm hover:bg-secondary"
+                  >
+                    {o.r}
+                  </button>
+                ))}
+              </div>
+            )}
+          </AcaoEmMassa>
+          <AcaoEmMassa rotulo={t("Preço")} icone={<Package size={14} aria-hidden />}>
+            {(fechar) => (
+              <PrecoEmMassa
+                aplicar={(n) => {
+                  void editar(idsSelecionados, { preco: n });
+                  fechar();
+                }}
+              />
+            )}
+          </AcaoEmMassa>
+          <AcaoEmMassa
+            rotulo={t("Publicar")}
+            aoClicar={() => void publicar(idsSelecionados, true)}
+          />
+          <AcaoEmMassa
+            rotulo={t("Tirar do ar")}
+            aoClicar={() => void publicar(idsSelecionados, false)}
+          />
+          <AcaoEmMassa
+            rotulo={t("Apagar")}
+            icone={<Trash size={14} aria-hidden />}
+            destrutivo
+            aoClicar={() => void apagar(idsSelecionados)}
+          />
+        </BarraDeSelecao>
+      ) : null}
       <ConfigurarVisualizacao
         aberto={configurando}
         aoFechar={() => setConfigurando(false)}
@@ -406,6 +711,33 @@ export function TabelaDeProdutos({
             : undefined
         }
       />
+    </div>
+  );
+}
+
+/** O painel "Preço" da barra de seleção: um valor (ou vazio, que limpa) para todos os selecionados. */
+function PrecoEmMassa({ aplicar }: { aplicar: (preco: number | null) => void }) {
+  const t = useT();
+  const [texto, setTexto] = useState("");
+  const n = texto.trim() === "" ? null : lerNumero(texto);
+  return (
+    <div className="space-y-2 p-1.5">
+      <input
+        value={texto}
+        inputMode="decimal"
+        placeholder="R$ 0,00"
+        aria-label={t("Preço")}
+        onChange={(e) => setTexto(e.target.value)}
+        className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+      />
+      <button
+        type="button"
+        disabled={texto.trim() !== "" && n === null}
+        onClick={() => aplicar(n)}
+        className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+      >
+        {texto.trim() === "" ? t("Limpar preço") : t("Aplicar")}
+      </button>
     </div>
   );
 }

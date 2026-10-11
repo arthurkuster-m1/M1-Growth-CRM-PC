@@ -91,6 +91,69 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
     : visiveis;
   const comBusca = visiveis.length >= 6 || busca !== "";
 
+  /** A grade de cartões de uma lista; as setas de ordem só valem na lista inteira, sem filtro. */
+  const cartoes = (lista: typeof filtradas, filtrada: boolean) => (
+    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {lista.map((s) => {
+        const definicao = tipos.find((x) => x.tipo === s.tipo);
+        const textos = textosDoTipoDeSubpagina(t, s.tipo);
+        return (
+          <li key={s.key} className="relative">
+            <Link
+              href={`${base}/${s.key}`}
+              className="group flex h-full flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-primary">
+                  {iconeDoModulo(definicao?.icone ?? "Lightbulb", 22)}
+                </span>
+                <EtiquetaDeEstado
+                  texto={s.publicada ? t("Publicada") : t("Rascunho")}
+                  ativo={s.publicada}
+                />
+              </div>
+              <h3 className="font-semibold">{s.title || textos?.titulo}</h3>
+              <p className="text-xs text-muted-foreground">{textos?.descricao}</p>
+              <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary">
+                {t("Abrir")}
+                <ArrowRight
+                  size={14}
+                  weight="bold"
+                  className="transition-transform group-hover:translate-x-1"
+                  aria-hidden
+                />
+              </span>
+            </Link>
+            {podeEditar && termo === "" && !filtrada ? (
+              <div className="absolute right-2 bottom-2 flex rounded-lg border bg-card shadow-sm">
+                <button
+                  type="button"
+                  aria-label={t("Mover para antes")}
+                  title={t("Mover para antes")}
+                  disabled={visiveis[0]?.key === s.key}
+                  onClick={() => moverSubpagina(s.key, -1)}
+                  className="grid h-8 w-8 place-items-center rounded-l-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                >
+                  <CaretUp size={14} className="-rotate-90" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("Mover para depois")}
+                  title={t("Mover para depois")}
+                  disabled={visiveis[visiveis.length - 1]?.key === s.key}
+                  onClick={() => moverSubpagina(s.key, 1)}
+                  className="grid h-8 w-8 place-items-center rounded-r-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                >
+                  <CaretDown size={14} className="-rotate-90" aria-hidden />
+                </button>
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <section aria-label={t("Subpáginas")} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
@@ -202,72 +265,20 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
         <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
           {t("Nenhuma subpágina ainda. Crie a primeira em “Nova subpágina”.")}
         </p>
-      ) : ehProdutos && vista === "tabela" ? (
-        <TabelaDeProdutos produtos={filtradas} base={base} podeEditar={podeEditar} />
+      ) : ehProdutos ? (
+        <TabelaDeProdutos
+          produtos={filtradas}
+          base={base}
+          podeEditar={podeEditar}
+          vista={vista}
+          renderizarCartoes={cartoes}
+        />
       ) : filtradas.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
           {t("Nada encontrado para essa busca.")}
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtradas.map((s, indice) => {
-            const definicao = tipos.find((x) => x.tipo === s.tipo);
-            const textos = textosDoTipoDeSubpagina(t, s.tipo);
-            return (
-              <li key={s.key} className="relative">
-                <Link
-                  href={`${base}/${s.key}`}
-                  className="group flex h-full flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-primary">
-                      {iconeDoModulo(definicao?.icone ?? "Lightbulb", 22)}
-                    </span>
-                    <EtiquetaDeEstado
-                      texto={s.publicada ? t("Publicada") : t("Rascunho")}
-                      ativo={s.publicada}
-                    />
-                  </div>
-                  <h3 className="font-semibold">{s.title || textos?.titulo}</h3>
-                  <p className="text-xs text-muted-foreground">{textos?.descricao}</p>
-                  <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary">
-                    {t("Abrir")}
-                    <ArrowRight
-                      size={14}
-                      weight="bold"
-                      className="transition-transform group-hover:translate-x-1"
-                      aria-hidden
-                    />
-                  </span>
-                </Link>
-                {podeEditar && termo === "" ? (
-                  <div className="absolute right-2 bottom-2 flex rounded-lg border bg-card shadow-sm">
-                    <button
-                      type="button"
-                      aria-label={t("Mover para antes")}
-                      title={t("Mover para antes")}
-                      disabled={indice === 0}
-                      onClick={() => moverSubpagina(s.key, -1)}
-                      className="grid h-8 w-8 place-items-center rounded-l-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
-                    >
-                      <CaretUp size={14} className="-rotate-90" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={t("Mover para depois")}
-                      title={t("Mover para depois")}
-                      disabled={indice === visiveis.length - 1}
-                      onClick={() => moverSubpagina(s.key, 1)}
-                      className="grid h-8 w-8 place-items-center rounded-r-lg text-muted-foreground hover:bg-secondary disabled:opacity-30"
-                    >
-                      <CaretDown size={14} className="-rotate-90" aria-hidden />
-                    </button>
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        cartoes(filtradas, false)
       )}
       {ehProdutos && podeEditar ? (
         <ImportarProdutos
