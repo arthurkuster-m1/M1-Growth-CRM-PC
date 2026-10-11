@@ -11,6 +11,7 @@ import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { FASES_DA_ESTRATEGIA, moduloLargoDaFase, modulosDaFase } from "@/lib/marketing/modulos";
 import {
   acessoPermitido,
+  cronogramaTemConteudo,
   empresaDoLink,
   paginasPublicadas,
   resolverLink,
@@ -36,7 +37,11 @@ export default async function PainelPublicoPage({
   // Link de UMA página: vai direto para ela.
   if (link.moduloDoEscopo) redirect(`/p/${token}/${link.moduloDoEscopo}`);
 
-  const [empresa, paginas] = await Promise.all([empresaDoLink(link), paginasPublicadas(link)]);
+  const [empresa, paginas, temCronograma] = await Promise.all([
+    empresaDoLink(link),
+    paginasPublicadas(link),
+    cronogramaTemConteudo(link),
+  ]);
   const t = (texto: string) => traduzir(texto, empresa.idioma);
   const publicados = new Set(paginas.filter((p) => p.blocos.length > 0).map((p) => p.module_key));
 
@@ -59,7 +64,7 @@ export default async function PainelPublicoPage({
               </p>
             </div>
 
-            {publicados.size === 0 ? (
+            {publicados.size === 0 && !temCronograma ? (
               <p className="rounded-3xl border bg-card p-8 text-center text-sm text-muted-foreground">
                 {t("Ainda não há nada publicado por aqui. Volte em breve.")}
               </p>
@@ -105,6 +110,24 @@ export default async function PainelPublicoPage({
                 );
               })
             )}
+
+            {temCronograma ? (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-sm font-semibold text-muted-foreground">
+                  {t("Acompanhamento")}
+                </h2>
+                <CartaoLargo
+                  href={`/p/${token}/cronograma`}
+                  tom="blue"
+                  icone={iconeDoModulo("Compass")}
+                  titulo={t("Cronograma")}
+                  descricao={t(
+                    "As metas, o caminho do projeto e as tarefas da semana, sempre atualizados.",
+                  )}
+                  abrir={t("Abrir")}
+                />
+              </section>
+            ) : null}
           </main>
         </div>
       </div>

@@ -3,6 +3,8 @@ import { marcaEhADoProduto } from "@/lib/branding";
 import { marcaDaSaida } from "@/lib/branding/saida";
 import { createClient } from "@/lib/supabase/server";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
+import { traduzir } from "@/lib/i18n/dicionario";
+import { normalizarIdioma } from "@/lib/i18n/idiomas";
 
 /**
  * A casca das telas de acesso — login, cadastro, recuperação, MFA, confirmar acesso.
@@ -53,6 +55,7 @@ export default async function PublicLayout({ children }: { children: React.React
     data: { user },
   } = await supabase.auth.getUser();
   const locale = (user?.user_metadata?.locale as string | undefined) ?? null;
+  const idioma = normalizarIdioma(locale);
 
   return (
     <IdiomaProvider locale={locale}>
@@ -115,6 +118,17 @@ export default async function PublicLayout({ children }: { children: React.React
             </div>
           ) : null}
           {children}
+          {/* O cadastro e o login apontam para os documentos: quem cria a conta (e a revisão do
+              Google) precisa achar os Termos e a Política sem entrar. */}
+          <p className="text-center text-xs text-muted-foreground">
+            <a className="underline underline-offset-2" href="/legal/terms">
+              {traduzir("Termos de Uso", idioma)}
+            </a>
+            {" · "}
+            <a className="underline underline-offset-2" href="/legal/privacy">
+              {traduzir("Política de Privacidade", idioma)}
+            </a>
+          </p>
         </div>
       </div>
     </IdiomaProvider>

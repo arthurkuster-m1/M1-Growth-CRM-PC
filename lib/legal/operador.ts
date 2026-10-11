@@ -72,9 +72,9 @@ export function urlDePoliticaSegura(valor: unknown): string | null {
  */
 const SEM_SESSAO = async (): Promise<Operador> => ({
   sistema: branding().name,
-  nome: null,
+  nome: env.OPERADOR_NOME.trim() || null,
   razaoSocial: null,
-  cnpj: null,
+  cnpj: env.OPERADOR_CNPJ.trim() || null,
   dpoEmail: (await valorDaInstalacao("LGPD_DPO_EMAIL")).valor?.trim() || null,
   politicaPropria: null,
   resolvido: false,
@@ -124,9 +124,7 @@ export async function resolverOperador(): Promise<Operador> {
     cnpj: org.cnpj?.trim() || null,
     // Mesmo fallback que o resto do produto já usa para o encarregado.
     dpoEmail:
-      org.dpo_email?.trim() ||
-      (await valorDaInstalacao("LGPD_DPO_EMAIL")).valor?.trim() ||
-      null,
+      org.dpo_email?.trim() || (await valorDaInstalacao("LGPD_DPO_EMAIL")).valor?.trim() || null,
     politicaPropria: urlDePoliticaSegura(org.privacy_policy_url),
     resolvido: true,
   };

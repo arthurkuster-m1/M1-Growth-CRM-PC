@@ -108,7 +108,21 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-semibold">{t("5. Por quanto tempo")}</h2>
+        <h2 className="text-base font-semibold">{t("5. Entrar com o Google")}</h2>
+        <p>
+          {t(
+            "Se você escolher entrar com o Google, recebemos do Google apenas o seu nome, o seu e-mail e a sua foto de perfil, para criar e identificar a sua conta. Não acessamos o seu Gmail, Drive, Agenda, contatos nem qualquer outro dado da sua conta Google.",
+          )}
+        </p>
+        <p>
+          {t(
+            "Esses dados são usados somente para o login e a identificação dentro do sistema, não são vendidos nem usados para publicidade. O uso das informações recebidas das APIs do Google segue a Política de Dados do Usuário dos Serviços de API do Google, inclusive os requisitos de uso limitado.",
+          )}
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-base font-semibold">{t("6. Por quanto tempo")}</h2>
         <p>
           {t(
             "Conversas e registros de negócio são mantidos enquanto houver relação com o cliente ou obrigação legal de guarda. Arquivos de mídia têm prazo próprio, configurado pelo operador. Registros de auditoria são mantidos por período mais longo, por serem prova de quem fez o quê.",
@@ -117,7 +131,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-semibold">{t("6. Seus direitos")}</h2>
+        <h2 className="text-base font-semibold">{t("7. Seus direitos")}</h2>
         <p>
           {t(
             "A LGPD garante a você confirmar se há tratamento, acessar seus dados, corrigir dados incompletos ou desatualizados, pedir anonimização ou eliminação, saber com quem foram compartilhados e revogar consentimento.",
@@ -132,7 +146,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-semibold">{t("7. Segurança")}</h2>
+        <h2 className="text-base font-semibold">{t("8. Segurança")}</h2>
         <p>
           {t(
             "O acesso é controlado por conta, senha e papel. A verificação em duas etapas é opcional para todos e só pode ser exigida de quem administra. Cada organização hospedada só enxerga os próprios dados, e as chaves de integração são guardadas cifradas.",
@@ -141,11 +155,13 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-semibold">{t("8. Encarregado e contato")}</h2>
+        <h2 className="text-base font-semibold">{t("9. Encarregado e contato")}</h2>
         <p>
           {op.dpoEmail ? (
             <>
-              {t("Para exercer seus direitos ou tirar dúvidas sobre privacidade, fale com o encarregado de dados:")}{" "}
+              {t(
+                "Para exercer seus direitos ou tirar dúvidas sobre privacidade, fale com o encarregado de dados:",
+              )}{" "}
               <a className="underline underline-offset-2" href={`mailto:${op.dpoEmail}`}>
                 {op.dpoEmail}
               </a>

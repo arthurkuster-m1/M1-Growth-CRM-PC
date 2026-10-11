@@ -205,6 +205,24 @@ export interface CronogramaPublico {
   tarefas: TarefaDoCronograma[];
 }
 
+/** O cronograma desta empresa tem algo para mostrar? (decide se o card aparece na galeria) */
+export async function cronogramaTemConteudo(link: LinkResolvido): Promise<boolean> {
+  const admin = createAdminClient();
+  const org = link.organizationId;
+  const [itens, metas] = await Promise.all([
+    admin
+      .from("marketing_cronograma_itens")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org)
+      .eq("arquivado", false),
+    admin
+      .from("marketing_cronograma_metas")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org),
+  ]);
+  return (itens.count ?? 0) + (metas.count ?? 0) > 0;
+}
+
 export async function cronogramaPublico(
   link: LinkResolvido,
   domingo: string,
