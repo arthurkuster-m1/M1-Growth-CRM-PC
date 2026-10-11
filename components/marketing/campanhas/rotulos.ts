@@ -134,3 +134,35 @@ export function rotuloDaMetrica(t: Traduz, chave: string): string {
       return chave;
   }
 }
+
+import type { FormatoDoCriativo, StatusDoCriativo } from "@/lib/marketing/criativos";
+
+export function rotuloDoStatusDoCriativo(t: Traduz, s: StatusDoCriativo): string {
+  switch (s) {
+    case "ativo":
+      return t("Ativo");
+    case "pausado":
+      return t("Pausado");
+    case "encerrado":
+      return t("Encerrado");
+  }
+}
+
+export const COR_DO_STATUS_DO_CRIATIVO: Record<StatusDoCriativo, CorDaOpcao> = {
+  ativo: "green",
+  pausado: "orange",
+  encerrado: "gray",
+};
+
+export function rotuloDoFormato(t: Traduz, f: FormatoDoCriativo): string {
+  switch (f) {
+    case "imagem":
+      return t("Imagem");
+    case "video":
+      return t("Vídeo");
+    case "carrossel":
+      return t("Carrossel");
+    case "outro":
+      return t("Outro");
+  }
+}

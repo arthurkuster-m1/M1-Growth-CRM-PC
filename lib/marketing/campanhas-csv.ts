@@ -27,7 +27,6 @@ const APELIDOS: Record<string, string> = {
   visitas_a_lp: "visitas_a_lp",
   visitas_na_lp: "visitas_a_lp",
   visualizacoes_da_pagina: "visitas_a_lp",
-  leads: "leads",
   investido: "investido",
   investimento: "investido",
   gasto: "investido",
@@ -108,10 +107,9 @@ export function lerDias(texto: string, canal: CanalDaCampanha): DiasLidos {
     const reach = inteiro("alcance");
     const link_clicks = inteiro("cliques");
     const lp_views = inteiro("visitas_a_lp");
-    const leads = inteiro("leads");
     const spend = numero("investido");
     const extras: Record<string, number> = {};
-    let falhou = [impressions, reach, link_clicks, lp_views, leads, spend].includes(null);
+    let falhou = [impressions, reach, link_clicks, lp_views, spend].includes(null);
     for (const k of proprias) {
       if (!mapa.includes(k)) continue;
       const n = numero(k);
@@ -125,7 +123,7 @@ export function lerDias(texto: string, canal: CanalDaCampanha): DiasLidos {
       reach: reach!,
       link_clicks: link_clicks!,
       lp_views: lp_views!,
-      leads: leads!,
+      leads: 0,
       spend: spend!,
       extras,
     });

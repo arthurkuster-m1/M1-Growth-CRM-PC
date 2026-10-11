@@ -184,9 +184,9 @@ describe("planilha do dia a dia (CSV)", () => {
   });
   it("lê o modelo de tráfego pago, com vírgula decimal e nomes alternativos", () => {
     const csv =
-      "Data;Impressões;Alcance;Cliques no link;Visitas;Leads;Valor Investido\r\n" +
-      "01/10/2026;1.200;900;40;30;5;R$ 25,50\r\n" +
-      "02/10/2026;;;;;;\r\n";
+      "Data;Impressões;Alcance;Cliques no link;Visitas;Valor Investido\r\n" +
+      "01/10/2026;1.200;900;40;30;R$ 25,50\r\n" +
+      "02/10/2026;;;;;\r\n";
     const r = lerDias(csv, "trafego_pago");
     expect(r.erro).toBeNull();
     expect(r.dias).toHaveLength(2);
@@ -195,13 +195,12 @@ describe("planilha do dia a dia (CSV)", () => {
       impressions: 1200,
       link_clicks: 40,
       lp_views: 30,
-      leads: 5,
       spend: 25.5,
     });
     expect(r.dias[1]!.spend).toBe(0);
   });
   it("aponta a linha com dia ou número inválido", () => {
-    const r = lerDias("dia;leads\r\nxx;1\r\n01/10/2026;abc\r\n", "trafego_pago");
+    const r = lerDias("dia;investido\r\nxx;1\r\n01/10/2026;abc\r\n", "trafego_pago");
     expect(r.problemas).toEqual([
       { linha: 2, erro: "dia_invalido" },
       { linha: 3, erro: "numero_invalido" },
@@ -215,7 +214,7 @@ describe("planilha do dia a dia (CSV)", () => {
     expect(r.dias[0]!.extras).toEqual({ abordagens: 50, reunioes_feitas: 3, valor_total: 4500 });
   });
   it("sem coluna de dia, erro; o modelo volta a ser lido", () => {
-    expect(lerDias("leads\r\n1\r\n", "trafego_pago").erro).toBe("sem_dia");
+    expect(lerDias("investido\r\n1\r\n", "trafego_pago").erro).toBe("sem_dia");
     expect(lerDias(modeloDoDiaAdia("trafego_pago"), "trafego_pago").dias).toHaveLength(1);
   });
 });
@@ -224,7 +223,7 @@ import { somarPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia"
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
 
 describe("Meta por dia (C3)", () => {
-  it("soma as campanhas do mesmo dia e lê leads de results ou das ações", () => {
+  it("soma as campanhas do mesmo dia; leads e resultados do Meta são ignorados", () => {
     const dias = somarPorDia([
       {
         date_start: "2026-10-02",
@@ -254,7 +253,6 @@ describe("Meta por dia (C3)", () => {
       reach: 800,
       link_clicks: 30,
       lp_views: 35,
-      leads: 6,
       spend: 14.75,
     });
   });
@@ -273,5 +271,64 @@ describe("Meta por dia (C3)", () => {
       de: "2026-09-10",
       ate: "2026-10-10",
     });
+  });
+});
+
+import { diasComLeadsDoCrm } from "@/lib/marketing/campanhas-resumo";
+
+describe("leads são do CRM", () => {
+  it("troca os leads gravados pelos do CRM e acrescenta dias só do CRM", () => {
+    const r = diasComLeadsDoCrm(
+      [dia({ day: "2026-10-01", leads: 99, spend: 10 }), dia({ day: "2026-10-02", leads: 7 })],
+      [
+        { day: "2026-10-01", leads: 3 },
+        { day: "2026-10-05", leads: 2 },
+      ],
+    );
+    expect(r.map((d) => [d.day, d.leads])).toEqual([
+      ["2026-10-01", 3],
+      ["2026-10-02", 0],
+      ["2026-10-05", 2],
+    ]);
+    expect(r[0]!.spend).toBe(10);
+  });
+});
+
+import { anuncioDoMeta, metricasDoAnuncio } from "@/lib/plataformas-de-anuncio/meta/anuncios";
+import { taxasDoCriativo } from "@/lib/marketing/criativos";
+
+describe("criativos (C4)", () => {
+  it("lê o anúncio do Meta com título, legenda, miniatura e formato", () => {
+    expect(
+      anuncioDoMeta({
+        id: "1",
+        name: "AD 01",
+        effective_status: "ACTIVE",
+        creative: { title: "T", body: "L", thumbnail_url: "http://x/y.jpg", video_id: "9" },
+      }),
+    ).toMatchObject({ id: "1", formato: "video", legenda: "L", titulo: "T" });
+    expect(anuncioDoMeta({ name: "sem id" })).toBeNull();
+  });
+  it("métricas só de entrega; sem leads", () => {
+    expect(
+      metricasDoAnuncio({
+        ad_id: "1",
+        spend: "12.345",
+        impressions: "1000",
+        inline_link_clicks: "20",
+        actions: [
+          { action_type: "landing_page_view", value: "15" },
+          { action_type: "lead", value: "9" },
+        ],
+      }),
+    ).toEqual({ adId: "1", spend: 12.35, impressions: 1000, link_clicks: 20, lp_views: 15 });
+  });
+  it("taxas: sem denominador é nulo", () => {
+    expect(
+      taxasDoCriativo({ spend: 10, impressions: 1000, link_clicks: 20, lp_views: 10 }),
+    ).toEqual({ ctr: 2, cpc: 0.5, cpm: 10, connectRate: 50, custoPorVisita: 1 });
+    expect(
+      taxasDoCriativo({ spend: 0, impressions: 0, link_clicks: 0, lp_views: 0 }).ctr,
+    ).toBeNull();
   });
 });

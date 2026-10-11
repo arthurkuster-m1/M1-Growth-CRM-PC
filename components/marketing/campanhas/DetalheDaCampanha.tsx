@@ -12,6 +12,7 @@ import {
   rotuloDoPeriodo,
   rotuloDoStatus,
 } from "@/components/marketing/campanhas/rotulos";
+import { CriativosDaCampanha } from "@/components/marketing/campanhas/CriativosDaCampanha";
 import { DiaADiaDaCampanha } from "@/components/marketing/campanhas/DiaADiaDaCampanha";
 import { ResumoDaCampanha } from "@/components/marketing/campanhas/ResumoDaCampanha";
 import { Etiqueta } from "@/components/motor/Etiqueta";
@@ -171,6 +172,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         canal={c.channel}
         dias={dias.dias}
         podeEditar={podeEditar}
+        funilDefinido={dias.funilDefinido}
         gravar={dias.gravar}
         apagar={dias.apagar}
       />
@@ -392,6 +394,8 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       </Bloco>
 
       <CampanhasDaPlataforma c={c} podeEditar={podeEditar} aoGravar={grava} />
+
+      <CriativosDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
 
       <DiarioDeBordo campanhaId={c.id} podeEditar={podeEditar} />
 

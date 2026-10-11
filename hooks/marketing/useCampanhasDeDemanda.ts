@@ -6,6 +6,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
 import type { CampanhaDeDemanda, NotaDaCampanha, TipoDeNota } from "@/lib/marketing/campanhas";
 import type { DiaDaCampanha } from "@/lib/marketing/campanhas-resumo";
+import type { Criativo } from "@/lib/marketing/criativos";
 
 const BASE = "/api/v1/demand-campaigns";
 const CHAVE = ["demand-campaigns"] as const;
@@ -135,24 +136,36 @@ export function useDiasDaCampanha(campanhaId: string) {
   const consulta = useQuery({
     queryKey: chave,
     queryFn: async () =>
-      (await apiClient.get<{ data: { dias: DiaDaCampanha[] } }>(`${BASE}/${campanhaId}/days`)).data
-        .dias,
+      (
+        await apiClient.get<{ data: { dias: DiaDaCampanha[]; funil_definido: boolean } }>(
+          `${BASE}/${campanhaId}/days`,
+        )
+      ).data,
     staleTime: 10_000,
   });
   const recarregar = () => queryClient.invalidateQueries({ queryKey: chave });
   return {
-    dias: consulta.data ?? [],
+    dias: consulta.data?.dias ?? [],
+    funilDefinido: consulta.data?.funil_definido ?? true,
     carregando: consulta.isLoading,
     gravar: async (
       dias: Array<Omit<DiaDaCampanha, "id" | "source">>,
       source: "manual" | "csv" = "manual",
     ) => {
       // Muda a tela na hora; o servidor confirma em seguida.
-      queryClient.setQueryData<DiaDaCampanha[]>(chave, (atual) => {
-        const mapa = new Map((atual ?? []).map((d) => [d.day, d]));
-        for (const d of dias) mapa.set(d.day, { ...d, source });
-        return [...mapa.values()].sort((x, y) => x.day.localeCompare(y.day));
-      });
+      queryClient.setQueryData<{ dias: DiaDaCampanha[]; funil_definido: boolean }>(
+        chave,
+        (atual) => {
+          const mapa = new Map((atual?.dias ?? []).map((d) => [d.day, d]));
+          // O `leads` da linha é do CRM: a edição não o troca.
+          for (const d of dias)
+            mapa.set(d.day, { ...d, leads: mapa.get(d.day)?.leads ?? 0, source });
+          return {
+            funil_definido: atual?.funil_definido ?? true,
+            dias: [...mapa.values()].sort((x, y) => x.day.localeCompare(y.day)),
+          };
+        },
+      );
       try {
         await apiClient.put(`${BASE}/${campanhaId}/days`, { dias, source });
         return true;
@@ -228,3 +241,72 @@ export function useSincronizarComMeta(campanhaId: string) {
     }
   };
 }
+
+/** Os criativos (anúncios e legendas) de uma campanha. */
+export function useCriativosDaCampanha(campanhaId: string) {
+  const queryClient = useQueryClient();
+  const chave = ["demand-campaign-creatives", campanhaId] as const;
+  const consulta = useQuery({
+    queryKey: chave,
+    queryFn: async () =>
+      (await apiClient.get<{ data: { criativos: Criativo[] } }>(`${BASE}/${campanhaId}/creatives`))
+        .data.criativos,
+    staleTime: 10_000,
+  });
+  const recarregar = () => queryClient.invalidateQueries({ queryKey: chave });
+  return {
+    criativos: consulta.data ?? [],
+    carregando: consulta.isLoading,
+    criar: async (entrada: EdicaoDeCriativo & { name: string }) => {
+      try {
+        await apiClient.post(`${BASE}/${campanhaId}/creatives`, entrada);
+        await recarregar();
+      } catch (e) {
+        showApiError(e);
+      }
+    },
+    editar: async (id: string, patch: EdicaoDeCriativo) => {
+      queryClient.setQueryData<Criativo[]>(chave, (l) =>
+        (l ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      );
+      try {
+        await apiClient.patch(`${BASE}/${campanhaId}/creatives/${id}`, patch);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
+      }
+    },
+    apagar: async (id: string) => {
+      try {
+        await apiClient.delete(`${BASE}/${campanhaId}/creatives/${id}`);
+      } catch (e) {
+        showApiError(e);
+      } finally {
+        void recarregar();
+      }
+    },
+    importarDoMeta: async (): Promise<
+      { ok: true; criados: number; existentes: number } | { ok: false; motivo: string }
+    > => {
+      try {
+        const r = await apiClient.post<{ data: { criados: number; existentes: number } }>(
+          `${BASE}/${campanhaId}/creatives/import-meta`,
+          {},
+        );
+        return { ok: true, ...r.data };
+      } catch (e) {
+        return { ok: false, motivo: (e as { message?: string } | null)?.message ?? "transitorio" };
+      } finally {
+        void recarregar();
+      }
+    },
+  };
+}
+
+export type EdicaoDeCriativo = Partial<
+  Pick<
+    Criativo,
+    "name" | "status" | "format" | "headline" | "caption" | "media_url" | "link_url" | "notes"
+  >
+>;

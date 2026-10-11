@@ -212,3 +212,26 @@ Para canais sem API, o dado é **digitado por dia ou semana** na própria campan
   Falha de uma não derruba as outras e fica em `meta_sync_error`. Botão **Sincronizar agora** na
   tela.
 - **Próximo:** C4 (criativos e legendas) ou os ajustes que o Arthur vai passar.
+
+### Regra dos dados (decisão do Arthur, 11/10/2026) — vale para tudo daqui para frente
+- **Leads e resultados vêm SEMPRE do CRM**, nunca do Meta (variação falsa). Um lead que entra no
+  funil da campanha, no CRM, conta nos dados da campanha, no dia em que entrou.
+- **Do Meta entram só:** impressões, alcance, valor gasto, cliques no link e visualizações da
+  página de destino.
+- Implementação (migration 0599): `fn_demand_campaign_leads_by_day` conta contatos distintos por
+  dia em `crm_leads` do funil da campanha, no fuso da organização; a leitura do dia a dia troca o
+  campo `leads` por essa contagem (ignora o que estiver gravado) e a coluna é só leitura. A
+  sincronização do Meta não pede nem grava leads. Duas campanhas que compartilham o mesmo funil
+  contam os mesmos leads — a origem por campanha/criativo (CRM sessão 6) separa isso na C5.
+
+### C4 — Criativos e legendas (feita em 11/10/2026)
+- **Banco (migration 0600):** `demand_campaign_creatives` — nome, status (ativo/pausado/encerrado),
+  formato, título, legenda, link da mídia, miniatura, LP de destino, observações, anúncio do Meta
+  (`ad_id`, sem duplicar) e métricas de entrega (gasto, impressões, cliques, visitas à LP).
+- **Importar do Meta:** traz os anúncios das campanhas atreladas (nome, título, legenda,
+  miniatura, formato) e atualiza as métricas; a sincronização de hora em hora também atualiza as
+  métricas dos criativos que já têm anúncio do Meta.
+- **Tela:** bloco "Criativos e legendas" na página da campanha: cartões editáveis (legenda,
+  título, mídia, LP, status, formato), filtro por status, métricas de entrega e taxas
+  (CTR, CPC). Leads e CPL por criativo ficam para a C5 (origem do lead no CRM).
+- **Próximo:** C5 (leads/vendas por campanha, LP e criativo — depende das sessões 6 e 7 do CRM).

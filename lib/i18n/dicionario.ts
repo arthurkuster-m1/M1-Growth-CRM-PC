@@ -18502,6 +18502,38 @@ export const DICIONARIO: Traducoes = {
   "Nome da campanha da plataforma": { es: "Nombre de la campaña de la plataforma" },
   Atrelar: { es: "Vincular" },
   "Diário de bordo": { es: "Diario de bordo" },
+  "Nome do criativo": { es: "Nombre del creativo" },
+  Formato: { es: "Formato" },
+  "Título do anúncio": { es: "Título del anuncio" },
+  "Legenda do anúncio": { es: "Leyenda del anuncio" },
+  "Link da imagem ou do vídeo": { es: "Enlace de la imagen o del video" },
+  "Página de destino (LP)": { es: "Página de destino (LP)" },
+  "Apagar criativo": { es: "Borrar creativo" },
+  "Apagar este criativo?": { es: "¿Borrar este creativo?" },
+  "Criativos e legendas": { es: "Creativos y leyendas" },
+  "criativos novos trazidos do Meta.": { es: "creativos nuevos traídos de Meta." },
+  "Importar do Meta": { es: "Importar de Meta" },
+  "Novo criativo": { es: "Nuevo creativo" },
+  "Do Meta entram só gasto, impressões, cliques e visitas à LP. Leads e CPL por criativo virão do CRM.":
+    {
+      es: "De Meta entran solo gasto, impresiones, clics y visitas a la LP. Los leads y el CPL por creativo vendrán del CRM.",
+    },
+  "Nenhum criativo ainda. Importe do Meta ou crie um novo.": {
+    es: "Ningún creativo todavía. Importa de Meta o crea uno nuevo.",
+  },
+  Encerrado: { es: "Finalizado" },
+  Carrossel: { es: "Carrusel" },
+  "Leads (CRM)": { es: "Leads (CRM)" },
+  "Os leads vêm do CRM: cada contato que entra no funil da campanha conta no dia em que entrou.": {
+    es: "Los leads vienen del CRM: cada contacto que entra en el embudo de la campaña cuenta el día en que entró.",
+  },
+  "Escolha o funil da campanha (em Cadastro) para contar os leads do CRM.": {
+    es: "Elige el embudo de la campaña (en Registro) para contar los leads del CRM.",
+  },
+  "Erro ao carregar os criativos.": { es: "Error al cargar los creativos." },
+  "Erro ao salvar o criativo.": { es: "Error al guardar el creativo." },
+  "Criativo não encontrado.": { es: "Creativo no encontrado." },
+  "Erro ao apagar o criativo.": { es: "Error al borrar el creativo." },
   "Escolha da lista do Meta ao menos uma campanha para sincronizar.": {
     es: "Elige de la lista de Meta al menos una campaña para sincronizar.",
   },

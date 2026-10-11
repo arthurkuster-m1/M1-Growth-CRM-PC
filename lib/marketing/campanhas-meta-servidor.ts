@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
 import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import { atualizarMetricasDosCriativos } from "@/lib/marketing/criativos-servidor";
 import { lerInsightsPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia";
 
 /**
@@ -82,7 +83,7 @@ export async function sincronizarCampanhaComMeta(
   if (!leitura.ok) return falha(leitura.falha);
 
   if (leitura.dias.length > 0) {
-    // Sem `extras` no envio: o upsert só troca as colunas enviadas e preserva o que foi digitado.
+    // Sem `extras` nem `leads` no envio: o upsert só troca as colunas enviadas e preserva o resto.
     const { error } = await admin.from("demand_campaign_days").upsert(
       leitura.dias.map((d) => ({
         organization_id: c.organization_id,
@@ -92,7 +93,6 @@ export async function sincronizarCampanhaComMeta(
         reach: d.reach,
         link_clicks: d.link_clicks,
         lp_views: d.lp_views,
-        leads: d.leads,
         spend: d.spend,
         source: "meta",
       })),
@@ -103,6 +103,15 @@ export async function sincronizarCampanhaComMeta(
       return falha("erro_ao_gravar");
     }
   }
+  // As métricas por criativo andam junto (só gasta chamada se houver criativo do Meta cadastrado).
+  await atualizarMetricasDosCriativos(
+    admin,
+    c,
+    credencial.credencial.accessToken,
+    conta,
+    ids,
+    agora,
+  );
   await marcar("");
   return { ok: true, dias: leitura.dias.length, ...janela };
 }

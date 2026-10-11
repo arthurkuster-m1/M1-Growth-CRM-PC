@@ -19,9 +19,13 @@ interface Coluna {
   chave: string;
   rotulo: string;
   dinheiro: boolean;
+  /** Vem do CRM: aparece, mas não se digita. */
+  somenteLeitura?: boolean;
   ler: (d: DiaDaCampanha) => number;
   escrever: (d: DiaParaGravar, n: number) => DiaParaGravar;
 }
+
+const doCrm = (c: Coluna): Coluna => ({ ...c, somenteLeitura: true });
 
 function colunasDoCanal(t: (s: string) => string, canal: CanalDaCampanha): Coluna[] {
   const fixa = (
@@ -41,12 +45,12 @@ function colunasDoCanal(t: (s: string) => string, canal: CanalDaCampanha): Colun
       fixa("reach", t("Alcance"), "reach"),
       fixa("link_clicks", t("Cliques no link"), "link_clicks"),
       fixa("lp_views", t("Visitas à LP"), "lp_views"),
-      fixa("leads", t("Leads"), "leads"),
+      doCrm(fixa("leads", t("Leads (CRM)"), "leads")),
       fixa("spend", t("Investido"), "spend"),
     ];
   }
   return [
-    fixa("leads", t("Leads"), "leads"),
+    doCrm(fixa("leads", t("Leads (CRM)"), "leads")),
     fixa("spend", t("Investido"), "spend"),
     ...METRICAS_DO_CANAL[canal].map((m): Coluna => ({
       chave: m.chave,
@@ -128,10 +132,12 @@ export function DiaADiaDaCampanha({
   canal,
   dias,
   podeEditar,
+  funilDefinido,
   gravar,
   apagar,
 }: {
   canal: CanalDaCampanha;
+  funilDefinido: boolean;
   dias: DiaDaCampanha[];
   podeEditar: boolean;
   gravar: (dias: DiaParaGravar[], source?: "manual" | "csv") => Promise<boolean>;
@@ -246,6 +252,13 @@ export function DiaADiaDaCampanha({
           </button>
         </div>
       ) : null}
+      <p className="text-xs text-muted-foreground">
+        {funilDefinido
+          ? t(
+              "Os leads vêm do CRM: cada contato que entra no funil da campanha conta no dia em que entrou.",
+            )
+          : t("Escolha o funil da campanha (em Cadastro) para contar os leads do CRM.")}
+      </p>
       {mensagem ? (
         <p role="status" className="text-sm text-muted-foreground">
           {mensagem}
@@ -284,13 +297,17 @@ export function DiaADiaDaCampanha({
                   </td>
                   {colunas.map((c) => (
                     <td key={c.chave} className="px-1 py-1">
-                      <CelulaNumerica
-                        valor={c.ler(d)}
-                        dinheiro={c.dinheiro}
-                        rotulo={`${c.rotulo} ${dataBr(d.day)}`}
-                        desabilitado={!podeEditar}
-                        aoGravar={(n) => void gravar([c.escrever(paraGravar(d), n)])}
-                      />
+                      {c.somenteLeitura ? (
+                        <p className="px-2 text-right text-sm tabular-nums">{c.ler(d)}</p>
+                      ) : (
+                        <CelulaNumerica
+                          valor={c.ler(d)}
+                          dinheiro={c.dinheiro}
+                          rotulo={`${c.rotulo} ${dataBr(d.day)}`}
+                          desabilitado={!podeEditar}
+                          aoGravar={(n) => void gravar([c.escrever(paraGravar(d), n)])}
+                        />
+                      )}
                     </td>
                   ))}
                   {podeEditar ? (

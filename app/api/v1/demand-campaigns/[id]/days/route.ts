@@ -9,7 +9,13 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
-import { COLUNAS_DO_DIA, diaDaLinha, gravarDiasSchema } from "@/lib/marketing/campanhas-resumo";
+import {
+  COLUNAS_DO_DIA,
+  diaDaLinha,
+  diasComLeadsDoCrm,
+  gravarDiasSchema,
+  janelaDosLeads,
+} from "@/lib/marketing/campanhas-resumo";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -33,8 +39,41 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       requestId: a.requestId,
     });
   }
+  const dias = (data ?? []).map((l) => diaDaLinha(l as Record<string, unknown>));
+
+  // Os LEADS são sempre os do CRM: contatos que entraram no funil da campanha, por dia. Nunca os
+  // do Meta nem os digitados — decisão do Arthur (variação falsa).
+  const { data: campanha } = await a.supabase
+    .from("demand_campaigns")
+    .select("pipeline_id, start_date, end_date")
+    .eq("id", id)
+    .eq("organization_id", a.orgId)
+    .maybeSingle();
+  let leadsPorDia: Array<{ day: string; leads: number }> = [];
+  const janela = campanha ? janelaDosLeads(campanha as never) : null;
+  if (campanha?.pipeline_id && janela) {
+    const { data: org } = await a.supabase
+      .from("organizations")
+      .select("timezone")
+      .eq("id", a.orgId)
+      .maybeSingle();
+    const { data: conta, error: erroDeLeads } = await a.supabase.rpc(
+      "fn_demand_campaign_leads_by_day",
+      {
+        p_org: a.orgId,
+        p_pipeline: campanha.pipeline_id,
+        p_from: janela.de,
+        p_to: janela.ate,
+        p_tz: (org?.timezone as string | null) || "America/Sao_Paulo",
+      },
+    );
+    if (!erroDeLeads) leadsPorDia = (conta ?? []) as typeof leadsPorDia;
+  }
   return ok(
-    { dias: (data ?? []).map((l) => diaDaLinha(l as Record<string, unknown>)) },
+    {
+      dias: diasComLeadsDoCrm(dias, leadsPorDia),
+      funil_definido: Boolean(campanha?.pipeline_id),
+    },
     { requestId: a.requestId },
   );
 }
@@ -68,7 +107,8 @@ export async function PUT(req: NextRequest, ctx: Ctx): Promise<Response> {
     reach: d.reach,
     link_clicks: d.link_clicks,
     lp_views: d.lp_views,
-    leads: d.leads,
+    // Os leads são os do CRM (a leitura os troca); aqui não se guarda nenhum.
+    leads: 0,
     spend: d.spend,
     extras: d.extras,
     source: corpo.data.source,

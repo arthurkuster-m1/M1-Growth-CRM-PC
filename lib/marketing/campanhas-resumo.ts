@@ -408,9 +408,9 @@ export function somaDoExtra(dias: readonly DiaDaCampanha[], chave: string): numb
 /** A planilha (CSV) do dia a dia: as colunas do modelo de cada canal. */
 export function colunasDoDiaAdia(canal: CanalDaCampanha): string[] {
   if (canal === "trafego_pago") {
-    return ["dia", "impressoes", "alcance", "cliques", "visitas_a_lp", "leads", "investido"];
+    return ["dia", "impressoes", "alcance", "cliques", "visitas_a_lp", "investido"];
   }
-  return ["dia", "leads", "investido", ...METRICAS_DO_CANAL[canal].map((m) => m.chave)];
+  return ["dia", "investido", ...METRICAS_DO_CANAL[canal].map((m) => m.chave)];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -430,4 +430,52 @@ export function janelaDaSync(
   const de = c.start_date ?? iso(new Date(agora.getTime() - 30 * MS_DO_DIA));
   const ate = c.end_date && c.end_date < hoje ? c.end_date : hoje;
   return de > ate ? null : { de, ate };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Leads do CRM (a única fonte de leads das campanhas)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * O período em que os leads do CRM contam: do início da campanha (ou 180 dias atrás, sem
+ * início) até hoje — ou até o fim, se já passou. `null` = a campanha ainda não começou.
+ */
+export function janelaDosLeads(
+  c: Pick<CampanhaDeDemanda, "start_date" | "end_date">,
+  agora: Date = new Date(),
+): { de: string; ate: string } | null {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const hoje = iso(agora);
+  const de = c.start_date ?? iso(new Date(agora.getTime() - 180 * MS_DO_DIA));
+  const ate = c.end_date && c.end_date < hoje ? c.end_date : hoje;
+  return de > ate ? null : { de, ate };
+}
+
+/**
+ * Troca os leads de cada dia pelos do CRM e acrescenta os dias em que só o CRM teve lead. O que
+ * estava gravado em `leads` (digitado ou, antes, vindo do Meta) é descartado de propósito.
+ */
+export function diasComLeadsDoCrm(
+  dias: readonly DiaDaCampanha[],
+  leadsDoCrm: ReadonlyArray<{ day: string; leads: number }>,
+): DiaDaCampanha[] {
+  const conta = new Map(leadsDoCrm.map((l) => [l.day, l.leads]));
+  const porDia = new Map<string, DiaDaCampanha>();
+  for (const d of dias) porDia.set(d.day, { ...d, leads: conta.get(d.day) ?? 0 });
+  for (const [day, leads] of conta) {
+    if (!porDia.has(day)) {
+      porDia.set(day, {
+        day,
+        impressions: 0,
+        reach: 0,
+        link_clicks: 0,
+        lp_views: 0,
+        leads,
+        spend: 0,
+        extras: {},
+        source: "crm",
+      });
+    }
+  }
+  return [...porDia.values()].sort((a, b) => a.day.localeCompare(b.day));
 }

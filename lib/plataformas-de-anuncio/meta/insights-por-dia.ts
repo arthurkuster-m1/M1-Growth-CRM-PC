@@ -1,11 +1,14 @@
 import { logger } from "@/lib/logger";
 import type { FalhaDeLeitura } from "../types";
 import { buscarPaginado, montarUrl, type LinhaDeInsightCrua } from "./insights";
-import { numeroOuNulo, valorDaAcao, valorIndicado } from "./tabela-de-campanhas";
+import { numeroOuNulo, valorDaAcao } from "./tabela-de-campanhas";
 
 /**
  * Os insights DIA A DIA de um conjunto de campanhas — o que alimenta a "aba diária" da campanha
  * de demanda (C3). Mesma API de insights da tela do Meta Ads, com `time_increment=1`.
+ *
+ * ⚠️ SÓ impressões, alcance, cliques, visitas à LP e gasto. Leads e resultados NUNCA vêm do Meta
+ * (decisão do Arthur: variação falsa) — os leads da campanha vêm do CRM.
  *
  * Leitura pura de números: o cruzamento por campanha do Software e a gravação ficam em
  * `lib/marketing/campanhas-meta-servidor.ts`.
@@ -17,7 +20,6 @@ export interface DiaDoMeta {
   reach: number;
   link_clicks: number;
   lp_views: number;
-  leads: number;
   spend: number;
 }
 
@@ -32,15 +34,7 @@ const CAMPOS = [
   "reach",
   "inline_link_clicks",
   "actions",
-  "results",
 ].join(",");
-
-/** Os `action_type` de cadastro, para quando a plataforma não manda `results`. */
-const TIPOS_DE_LEAD = [
-  "lead",
-  "onsite_conversion.lead_grouped",
-  "offsite_conversion.fb_pixel_lead",
-] as const;
 
 /**
  * Soma as linhas (uma por campanha e por dia) em UMA linha por dia. A ausência vira 0 aqui — é
@@ -60,7 +54,6 @@ export function somarPorDia(linhas: readonly LinhaPorDia[]): DiaDoMeta[] {
         reach: 0,
         link_clicks: 0,
         lp_views: 0,
-        leads: 0,
         spend: 0,
       } as DiaDoMeta);
     atual.spend += numeroOuNulo(l.spend) ?? 0;
@@ -68,7 +61,6 @@ export function somarPorDia(linhas: readonly LinhaPorDia[]): DiaDoMeta[] {
     atual.reach += numeroOuNulo(l.reach) ?? 0;
     atual.link_clicks += numeroOuNulo(l.inline_link_clicks) ?? 0;
     atual.lp_views += valorDaAcao(l.actions) ?? 0;
-    atual.leads += valorIndicado(l.results).valor ?? valorDaAcao(l.actions, TIPOS_DE_LEAD) ?? 0;
     porDia.set(day, atual);
   }
   return [...porDia.values()]
