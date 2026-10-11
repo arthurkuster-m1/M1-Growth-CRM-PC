@@ -55,12 +55,11 @@ trabalhando em cima, conforme a prioridade do Arthur.
 
 | Item | Situação |
 |---|---|
-| Páginas legais (política de privacidade e termos) | **Pronto no código.** Falta o Arthur: verificar o domínio no Google Search Console (TXT no Cloudflare), esperar até 24 h e reenviar o app para verificação |
+| Páginas legais e verificação do Google | **Feito** (domínio verificado no Search Console e app reenviado; falta só acompanhar a resposta do Google) |
 | Publicar as ofertas da Assessoria M1 | **Feito** (publicadas e sincronizadas com o catálogo da IA) |
 | Nome da fase 02 ("Produto e Oferta") | **Decidido: "Mercado e Oferta"** |
 | Religar a confirmação de e-mail no cadastro | **Feito** |
-| Pendências antigas do menu: nome "Dono" → nome real, seletor de empresa, redirecionamento pós-onboarding | **Manter** (fazer junto da frente 12/14) |
-| Oferta de teste `vfap33` (R$ 15,00) | **Manter por enquanto** — tudo cadastrado é teste; o Arthur revisa tudo quando o app for finalizado |
+| Pendências antigas do menu | Nome real no lugar de "Dono": **feito** (ao entrar com o Google). Faltam: seletor de empresa e redirecionamento pós-onboarding (junto das frentes 12/14) |
 | Página `onboarding` antiga publicada | **Feito** (apagada, com o rascunho e o link) |
 
 ## 3. O PLANO (15 frentes, sem ordem fixa)
@@ -68,12 +67,21 @@ trabalhando em cima, conforme a prioridade do Arthur.
 1. **Dashboards atualizados — tudo em um lugar só.** Reunir tráfego (Meta/Google), vendas,
    faturamento e a meta × realizado do Planejamento. Hoje existem `/app/metrics`, `/app/ads/meta`,
    `/app/faturamento` e o placeholder de Marketing.
-2. **Cronograma.** **FEITO** (ver histórico). Possíveis melhorias: ligar as barras das ações às
-   tarefas, resumo semanal para o WhatsApp, motivo visível ao cliente por escolha.
+2. **Cronograma.** **FEITO** (ver histórico). Melhorias planejadas:
+   - **Prazo nas metas:** definir o período de cada meta (diário, semanal, mensal, semestral,
+     anual…).
+   - **Metas que se atualizam sozinhas** dentro do prazo, a partir dos dados reais. Exemplos:
+     meta de 30 leads por dia → média de leads dos últimos 5 dias; meta de R$ 15 mil no mês →
+     soma das vendas realizadas no mês. A mesma lógica vale para os Dashboards (frente 1).
+     Depende do CRM (frente 8): leads e vendas precisam existir como dado.
+   - Ligar as barras das ações às tarefas, resumo semanal para o WhatsApp e motivo visível ao
+     cliente por escolha.
 3. **IA ajudante.** Rascunho de página a partir do Kick Off e dos prompts do método
    (precisa de chave de IA). Botão "Gerar rascunho" nas páginas.
 4. **Geração de demanda.** Registro de campanhas, criativos e textos com status; o Arthur tem uma
-   base e quer estruturar melhor.
+   base e quer estruturar melhor. **Inclui a criação das campanhas e dos funis que serão usados
+   no CRM** (cada campanha nasce ligada a um funil e a uma origem rastreável; é a ponte entre
+   esta frente e a 8). Fazer em conjunto com o planejamento do CRM.
 5. **Inbox.** Ajustes visuais e conexões com outros bancos (detalhar "outros bancos").
 6. **Equipe.** Pessoas, papéis e interface por empresa.
 7. **Prospecção.** Scraping de leads + campanhas de disparo automático (API oficial e não oficial)
@@ -90,6 +98,9 @@ trabalhando em cima, conforme a prioridade do Arthur.
 15. **Gestão financeira completa.** Contas, fluxo de caixa, DRE, recorrência (hoje há `/app/faturamento`).
 
 ### Ligações entre as frentes
+- 4 (geração de demanda) cria as campanhas e os funis que o CRM (8) usa; definir os dois juntos.
+- 2 (metas do cronograma) e 1 (dashboards) leem os mesmos números do CRM e do financeiro: uma
+  só fonte de verdade, com a regra do período (média de N dias, soma do mês…).
 - 8 (CRM) alimenta 1 (dashboards), 7 (prospecção) e 9 (conexões): vale desenhar o modelo de lead e
   de venda antes de mexer em cada um.
 - 3 (IA ajudante) melhora depois de 1 (números reais para citar).
