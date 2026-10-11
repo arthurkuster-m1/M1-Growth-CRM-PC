@@ -35,7 +35,14 @@ export const preferenciasDaTabelaSchema = z
     /** O nome da visualização de fábrica (as salvas têm o nome na própria linha). */
     nome: z.string().trim().min(1).max(60).optional(),
     /** Como a pessoa vê os dados: tabela, quadro, calendário ou linha do tempo. */
-    visualizacao: z.enum(["tabela", "kanban", "calendario", "timeline"]).optional(),
+    visualizacao: z.enum(["tabela", "kanban", "calendario", "timeline", "galeria"]).optional(),
+    /** Linha do tempo: quantos dias aparecem na tela e se as colunas são dias ou semanas. */
+    linhaDoTempo: z
+      .object({
+        dias: z.number().int().min(7).max(365),
+        escala: z.enum(["dia", "semana"]),
+      })
+      .optional(),
     /** Filtros, ordenação e agrupamento (ver `consulta.ts`). */
     ...consultaSchema.shape,
   })

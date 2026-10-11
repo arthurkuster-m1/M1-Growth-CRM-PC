@@ -13,7 +13,13 @@ import { preferenciasDaTabelaSchema, type PreferenciasDaTabela } from "./layout"
  * de `tests/invariants/vocabulario-banco-x-typescript.test.ts` lê `const X = [...] as const`
  * e compara com o CHECK da migration 0585.
  */
-export const TIPOS_DE_VISUALIZACAO = ["tabela", "kanban", "calendario", "timeline"] as const;
+export const TIPOS_DE_VISUALIZACAO = [
+  "tabela",
+  "kanban",
+  "calendario",
+  "timeline",
+  "galeria",
+] as const;
 export type TipoDeVisualizacao = (typeof TIPOS_DE_VISUALIZACAO)[number];
 
 export const MAXIMO_DE_VISUALIZACOES = 30;

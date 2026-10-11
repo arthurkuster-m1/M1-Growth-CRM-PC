@@ -284,3 +284,14 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
   como MQL (`crm_stages.qualification`, triggers). `DisqualifiedLead` é evento personalizado: para
   a Meta otimizar com ele, criar a conversão personalizada correspondente no Gerenciador de
   Eventos.
+
+### Ajustes do Arthur (11/10/2026, 3ª rodada) — migration 0606
+- **Organização nova** nasce com o funil "Base Padrão - Clientes" (padrão e de clientes; Novo, Em
+  andamento, Ganho, Perdido), no lugar de "Pedidos".
+- **Tabela / Cards / Linha do tempo viraram o tipo da visualização salva** (como "Todas" e as abas
+  das Tarefas): "Todas" é sempre tabela; cria-se uma aba e escolhe-se o tipo (`galeria` = Cards em
+  `crm_saved_views.type`). Tirou o seletor do topo da tela.
+- **Linha do tempo configurável:** "Dias na tela" (14 a 365) e "dividir colunas por Dias ou
+  Semanas", guardado na aba (`config.linhaDoTempo`).
+- **Sem zoom na área logada:** `viewport` com `maximumScale: 1` e `userScalable: false` em
+  `app/app/layout.tsx` + `touch-action: pan-x pan-y` (iOS). Login e páginas públicas seguem com zoom.

@@ -11,8 +11,9 @@ import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
 import { CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
-const SEMANAS = 13;
-const DIAS = SEMANAS * 7;
+export const DIAS_PADRAO_DA_LINHA = 91;
+export const OPCOES_DE_DIAS = [14, 30, 60, 91, 180, 365] as const;
+export type EscalaDaLinha = "dia" | "semana";
 const CLASSE_DO_STATUS: Record<CampanhaDeDemanda["status"], string> = {
   planejada: "bg-secondary border-border-strong text-foreground",
   ativa: "bg-primary text-primary-foreground border-primary",
@@ -28,11 +29,23 @@ export function LinhaDoTempoDeCampanhas({
   campanhas,
   base,
   fuso,
+  dias: DIAS = DIAS_PADRAO_DA_LINHA,
+  escala = "semana",
+  aoMudar,
 }: {
   campanhas: readonly CampanhaDeDemanda[];
   base: string;
   fuso: string;
+  /** Quantos dias cabem na tela. */
+  dias?: number;
+  /** As colunas do cabeçalho: um dia cada, ou uma semana cada. */
+  escala?: EscalaDaLinha;
+  /** Salva a escolha (na aba da visualização); sem isso, os controles não aparecem. */
+  aoMudar?: (config: { dias: number; escala: EscalaDaLinha }) => void;
 }) {
+  const SEMANAS = Math.ceil(DIAS / 7);
+  const passo = Math.max(7, Math.round(DIAS / 2));
+  const larguraMinima = escala === "dia" ? 300 + DIAS * 34 : Math.max(860, 300 + DIAS * 12);
   const t = useT();
   const tag = useTagDeIdioma();
   const hoje = chaveDoDia(new Date(), fuso);
@@ -67,7 +80,7 @@ export function LinhaDoTempoDeCampanhas({
         <button
           type="button"
           aria-label={t("Semanas anteriores")}
-          onClick={() => setInicio(somarDias(inicio, -28))}
+          onClick={() => setInicio(somarDias(inicio, -passo))}
           className="grid h-9 w-9 place-items-center rounded-lg border hover:bg-secondary"
         >
           <CaretLeft size={14} aria-hidden />
@@ -75,7 +88,7 @@ export function LinhaDoTempoDeCampanhas({
         <button
           type="button"
           aria-label={t("Próximas semanas")}
-          onClick={() => setInicio(somarDias(inicio, 28))}
+          onClick={() => setInicio(somarDias(inicio, passo))}
           className="grid h-9 w-9 place-items-center rounded-lg border hover:bg-secondary"
         >
           <CaretRight size={14} aria-hidden />
@@ -87,23 +100,96 @@ export function LinhaDoTempoDeCampanhas({
         >
           {t("Hoje")}
         </button>
+        {aoMudar ? (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              {t("Dias na tela")}
+              <select
+                value={DIAS}
+                onChange={(e) => aoMudar({ dias: Number(e.target.value), escala })}
+                className="h-9 rounded-lg border bg-background px-2 text-sm text-foreground"
+              >
+                {[...new Set<number>([...OPCOES_DE_DIAS, DIAS])]
+                  .sort((a, b) => a - b)
+                  .map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div
+              role="group"
+              aria-label={t("Dividir as colunas por")}
+              className="inline-flex rounded-lg bg-secondary p-0.5"
+            >
+              {(
+                [
+                  ["dia", t("Dias")],
+                  ["semana", t("Semanas")],
+                ] as const
+              ).map(([valor, rotulo]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  aria-pressed={escala === valor}
+                  onClick={() => aoMudar({ dias: DIAS, escala: valor })}
+                  className={cn(
+                    "h-8 rounded-md px-3 text-sm font-medium whitespace-nowrap",
+                    escala === valor
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
       <div className="overflow-x-auto rounded-2xl border bg-card">
-        <div className="min-w-[860px]">
+        <div style={{ minWidth: larguraMinima }}>
           <div
             className="grid border-b text-xs text-muted-foreground"
             style={{ gridTemplateColumns: `300px repeat(${DIAS}, minmax(0, 1fr))` }}
           >
             <div className="px-3 py-2">{t("Campanha")}</div>
-            {semanas.map((s, i) => (
-              <div
-                key={s}
-                className="border-l px-1 py-2"
-                style={{ gridColumn: `${2 + i * 7} / span 7` }}
-              >
-                {formato.format(new Date(`${s}T12:00:00Z`))}
-              </div>
-            ))}
+            {escala === "semana"
+              ? semanas.map((s, i) => (
+                  <div
+                    key={s}
+                    className="border-l px-1 py-2"
+                    style={{ gridColumn: `${2 + i * 7} / span ${Math.min(7, DIAS - i * 7)}` }}
+                  >
+                    {formato.format(new Date(`${s}T12:00:00Z`))}
+                  </div>
+                ))
+              : Array.from({ length: DIAS }, (_, i) => {
+                  const dia = somarDias(inicio, i);
+                  const d = new Date(`${dia}T12:00:00Z`);
+                  const primeiro = d.getUTCDate() === 1 || i === 0;
+                  return (
+                    <div
+                      key={dia}
+                      className={cn(
+                        "border-l px-0.5 py-1 text-center text-[11px] tabular-nums",
+                        dia === hoje && "font-semibold text-primary",
+                      )}
+                      title={formato.format(d)}
+                    >
+                      <span className="block h-3 text-[9px] leading-3 text-text-subtle uppercase">
+                        {primeiro
+                          ? new Intl.DateTimeFormat(tag, {
+                              month: "short",
+                              timeZone: "UTC",
+                            }).format(d)
+                          : ""}
+                      </span>
+                      {String(d.getUTCDate()).padStart(2, "0")}
+                    </div>
+                  );
+                })}
           </div>
           {comData.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">

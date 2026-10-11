@@ -47,7 +47,7 @@ import { ArrowRight, CalendarBlank, Check, Megaphone, Plus, TextAa, Trash } from
 import { cn } from "@/lib/utils";
 
 const ID_DA_PADRAO = "padrao";
-const SO_TABELA = ["tabela"] as const;
+const TIPOS_DAS_CAMPANHAS = ["tabela", "galeria", "timeline"] as const;
 const BASE = "/app/marketing/geracao-de-demanda/campanhas";
 type Vista = "tabela" | "cards" | "timeline";
 
@@ -66,7 +66,6 @@ export function CampanhasDeDemanda() {
   const parametros = useSearchParams();
   const { campanhas, funis, podeEditar, carregando, falhou, criar, editar, apagar } =
     useCampanhasDeDemanda();
-  const [vista, setVista] = useState<Vista>("tabela");
   const [busca, setBusca] = useState("");
   const [configurando, setConfigurando] = useState(false);
   const [nova, setNova] = useState(false);
@@ -80,6 +79,14 @@ export function CampanhasDeDemanda() {
   );
   const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
+  // O jeito de ver (Tabela, Cards ou Linha do tempo) é da aba salva, como no Notion; a aba
+  // "Todas" é sempre a tabela.
+  const vista: Vista =
+    visaoAtiva?.type === "galeria"
+      ? "cards"
+      : visaoAtiva?.type === "timeline"
+        ? "timeline"
+        : "tabela";
   const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
@@ -582,6 +589,19 @@ export function CampanhasDeDemanda() {
         </p>
       ) : (
         <>
+          <AbasDeVisualizacao
+            abas={abas}
+            ativaId={ativaId}
+            podeEditar={podeEditar}
+            tipos={TIPOS_DAS_CAMPANHAS}
+            aoEscolher={escolherAba}
+            aoCriar={(nome, tipo) =>
+              void criarVisao({ name: nome, type: tipo, config: preferencias }).then(
+                (v) => v && escolherAba(v.id),
+              )
+            }
+            aoConfigurar={() => setConfigurando(true)}
+          />
           <div className="flex flex-wrap items-center gap-2">
             <label className="relative min-w-0 flex-1 basis-60">
               <span className="sr-only">{t("Buscar")}</span>
@@ -592,50 +612,6 @@ export function CampanhasDeDemanda() {
                 className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
             </label>
-            <div
-              role="group"
-              aria-label={t("Como ver as campanhas")}
-              className="inline-flex rounded-xl bg-secondary p-0.5"
-            >
-              {(
-                [
-                  ["tabela", t("Tabela")],
-                  ["cards", t("Cards")],
-                  ["timeline", t("Linha do tempo")],
-                ] as const
-              ).map(([valor, rotulo]) => (
-                <button
-                  key={valor}
-                  type="button"
-                  aria-pressed={vista === valor}
-                  onClick={() => setVista(valor)}
-                  className={cn(
-                    "h-9 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors",
-                    vista === valor
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {rotulo}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <AbasDeVisualizacao
-            abas={abas}
-            ativaId={ativaId}
-            podeEditar={podeEditar}
-            tipos={SO_TABELA}
-            aoEscolher={escolherAba}
-            aoCriar={(nome) =>
-              void criarVisao({ name: nome, type: "tabela", config: preferencias }).then(
-                (v) => v && escolherAba(v.id),
-              )
-            }
-            aoConfigurar={() => setConfigurando(true)}
-          />
-          <div className="flex flex-wrap items-center gap-2">
             <BarraDeConsulta
               compacta
               campos={camposDaBarra}
@@ -696,6 +672,13 @@ export function CampanhasDeDemanda() {
               campanhas={resultado.linhas}
               base={BASE}
               fuso={FUSO_DO_CRONOGRAMA}
+              dias={preferencias.linhaDoTempo?.dias}
+              escala={preferencias.linhaDoTempo?.escala}
+              aoMudar={
+                podeEditar || !visaoAtiva
+                  ? (linhaDoTempo) => atualizar((p) => ({ ...p, linhaDoTempo }))
+                  : undefined
+              }
             />
           ) : grupos ? (
             <div className="flex flex-col gap-6">
@@ -799,8 +782,8 @@ export function CampanhasDeDemanda() {
         aberto={configurando}
         aoFechar={() => setConfigurando(false)}
         nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Todas")}
-        tipo="tabela"
-        tipos={SO_TABELA}
+        tipo={visaoAtiva?.type ?? "tabela"}
+        tipos={TIPOS_DAS_CAMPANHAS}
         podeEditar={podeEditar}
         ehPadrao={!visaoAtiva}
         aoRenomear={(nome) =>
@@ -808,7 +791,7 @@ export function CampanhasDeDemanda() {
             ? void editarVisao(visaoAtiva.id, { name: nome })
             : padrao.atualizar((p) => ({ ...p, nome }))
         }
-        aoTrocarTipo={() => undefined}
+        aoTrocarTipo={(tipo) => visaoAtiva && void editarVisao(visaoAtiva.id, { type: tipo })}
         propriedades={resolvidas.map((c) => ({
           id: c.id,
           titulo: c.titulo,

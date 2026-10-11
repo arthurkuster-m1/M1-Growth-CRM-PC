@@ -18502,6 +18502,8 @@ export const DICIONARIO: Traducoes = {
   "Nome da campanha da plataforma": { es: "Nombre de la campaña de la plataforma" },
   Atrelar: { es: "Vincular" },
   "Diário de bordo": { es: "Diario de bordo" },
+  "Dias na tela": { es: "Días en pantalla" },
+  "Dividir as colunas por": { es: "Dividir las columnas por" },
   "Lead MQL": { es: "Lead MQL" },
   "Lead desqualificado": { es: "Lead descalificado" },
   "Lead MQL (qualificado)": { es: "Lead MQL (calificado)" },

@@ -5,7 +5,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
-import { CalendarDots, CaretDown, ChartBar, Kanban, Plus, Rows } from "@/lib/ui/icons";
+import { CalendarDots, CaretDown, ChartBar, Kanban, Plus, Rows, SquaresFour } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface AbaDeVisualizacao {
@@ -35,6 +35,8 @@ export function iconeDoTipo(tipo: TipoDeVisualizacao): ReactNode {
       return <CalendarDots size={14} aria-hidden />;
     case "timeline":
       return <ChartBar size={14} aria-hidden />;
+    case "galeria":
+      return <SquaresFour size={14} aria-hidden />;
     default:
       return <Rows size={14} aria-hidden />;
   }
@@ -52,7 +54,9 @@ function useRotuloDoTipo() {
         ? t("Quadro")
         : tipo === "calendario"
           ? t("Calendário")
-          : t("Linha do tempo");
+          : tipo === "galeria"
+            ? t("Cards")
+            : t("Linha do tempo");
 }
 
 /**

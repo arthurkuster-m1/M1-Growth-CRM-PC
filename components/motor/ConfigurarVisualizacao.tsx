@@ -72,7 +72,9 @@ function useRotuloDoTipo() {
         ? t("Quadro")
         : tipo === "calendario"
           ? t("Calendário")
-          : t("Linha do tempo");
+          : tipo === "galeria"
+            ? t("Cards")
+            : t("Linha do tempo");
 }
 
 /**

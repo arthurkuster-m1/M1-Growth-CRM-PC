@@ -141,8 +141,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * `width`/`initialScale` o Next já emitia por padrão; declarar aqui é o que
  * impede que acrescentar qualquer outra chave a este objeto apague o default
  * silenciosamente (o Next só emite o default quando NENHUMA das duas existe).
- * Nada de `maximumScale` nem `userScalable: false`: impedir o zoom é barreira
- * de acessibilidade, e quem lê a tela de perto precisa dele.
+ * O zoom fica LIBERADO aqui (login, páginas públicas): impedir o zoom é barreira de
+ * acessibilidade. Só a área logada (`app/app/layout.tsx`) o desliga, por decisão do produto
+ * — o cliente da agência o disparava sem querer no meio do uso.
  */
 export const viewport: Viewport = {
   themeColor: coresDaBarraDoNavegador(REGUA_DO_PRODUTO),

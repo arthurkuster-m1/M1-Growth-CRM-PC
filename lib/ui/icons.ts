@@ -163,6 +163,7 @@ export {
   Minus,
   ArrowsDownUp,
   Rows,
+  SquaresFour,
   // aba Marketing (módulos da estratégia, 09/10/2026)
   Rocket,
   Compass,
