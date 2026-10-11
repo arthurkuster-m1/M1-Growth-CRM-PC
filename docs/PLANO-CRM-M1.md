@@ -86,7 +86,7 @@ a fonte real do faturamento nos dashboards.
 
 ## 6. As sessões (ordem recomendada)
 
-**Andamento:** sessão 1 ✅ (11/10/2026) — lead único no ar · sessão 2 ✅ (11/10/2026) — funis na Geração de demanda e página Clientes.
+**Andamento:** sessão 1 ✅ (11/10/2026) — lead único no ar · sessão 2 ✅ (11/10/2026) — funis na Geração de demanda e página Clientes · ajustes pós-sessão 2 ✅ (funil por linha, Primeira compra). **Próxima:** sessão 3 (abas salvas, calendário, ficha) ou 4 (campos dinâmicos) — o Arthur escolhe.
 
 Cada sessão termina com algo que você consegue **testar no domínio**.
 
@@ -159,3 +159,20 @@ prospecção por scraping.
 - **Menu:** "Clientes" entra no sidebar do CRM; Funis e Contatos passam ao hub.
 - **Fica para as próximas:** novo lead / importar / exportar / edição em massa (sessão 8), campos
   dinâmicos e ficha (sessão 4), abas de visualizações salvas na tabela, calendário de reuniões.
+
+### Ajustes depois da sessão 2 (11/10/2026)
+- **Funis e Etapa, um por linha** (página Clientes, aba "Todos"): cada funil do lead numa linha e as
+  duas colunas alinhadas ("Funil · Etapa"); funis já encerrados aparecem com o estado entre
+  parênteses, ex.: "Pedidos - Novo lead (Ganho)". O bug: a coluna só lia negócios abertos.
+- **Campo padrão "Primeira compra" (data):** na seção Qualificação do dossiê (editável, atendente
+  em diante) e coluna/filtro em Clientes. Hoje manual; na sessão 7 (Vendas) passa a ser derivado da
+  primeira venda paga.
+
+### Pontos em aberto do CRM (perguntados ao Arthur, sem resposta ainda)
+1. O funil herdado **"Pedidos"** (existe nas 3 empresas): renomear para um funil do Arthur
+   (ex.: "Tráfego pago") ou apagar?
+2. Para a sessão 3: o que ele sentiu falta na página Clientes depois de testar?
+3. Leads de teste: os 3 atuais são conversas reais de WhatsApp (uma é o número do Arthur) — não
+   foram apagados.
+4. Vocabulário do funil: o texto "tabela ou Kanban" na página Clientes reprova 2 testes
+   (`vocabulario-do-funil`); trocar "Kanban" por "Quadro" na próxima sessão do CRM.

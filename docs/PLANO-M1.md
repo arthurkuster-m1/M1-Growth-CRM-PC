@@ -47,6 +47,12 @@ trabalhando em cima, conforme a prioridade do Arthur.
 - **Páginas legais e Google:** página inicial pública, `/politica-de-privacidade` e
   `/termos-de-uso` abertos sem login, com operador, CNPJ e contato. Falta o Arthur verificar o
   domínio no Search Console (registro TXT no Cloudflare) e reenviar o app.
+- **CRM — sessões 1 e 2 (no ar):** lead único (1 contato = 1 lead, MQL, 1ª abordagem, tag do
+  funil), funis criados em Geração de demanda com "ao ganhar entra no funil" e a página Clientes
+  (Tabela/Kanban, aba "Todos", funil por linha, Primeira compra). Detalhes em
+  `docs/PLANO-CRM-M1.md`.
+- **Campanhas de demanda — C1 (no ar):** cadastro, Tabela/Cards/Linha do tempo, página da
+  campanha com diário de bordo. Detalhes em `docs/PLANO-CAMPANHAS-M1.md`.
 - **Redução do Log Ingestion do Supabase** (feito no código): login conferido localmente
   (`getClaims`, sem ir ao Supabase a cada requisição), memória de 20 s para permissões e contexto
   de suporte, polling do Inbox espaçado. Conferir o consumo depois de alguns dias.

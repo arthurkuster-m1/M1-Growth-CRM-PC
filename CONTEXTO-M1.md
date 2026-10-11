@@ -102,3 +102,43 @@ Plano completo em `docs/PLANO-MARKETING-M1.md` (menu toggle Marketing + painelz�
 - Depois: adotar o motor no **CRM (leads)** POR CIMA da estrutura existente, com muito cuidado (leads alimentam inbox, automações, follow-up, IA, webhooks).
 - Depois: módulos da lista (Estratégico/Planejamento/Onboarding, Produtos, dashboards, etc.).
 - Pendências menores: trocar redirecionamento pós-onboarding de /app/inbox para /app; nome do usuário "Dono" → nome real; seletor de empresa no menu; instalar Redis/WAHA de verdade quando formos usar WhatsApp e IA.
+
+---
+
+## ESTADO EM 11/10/2026 (fim do dia) — leia isto primeiro depois de um compact
+
+**Regra de trabalho do Arthur:** um único chat, uma coisa por vez (para não gerar conflito de código).
+O fork do CRM foi MESCLADO a este chat: tudo que ele fez está na `main` (commit mais recente
+`69d8cf1d`, no ar) e registrado em `docs/PLANO-CRM-M1.md`.
+
+**Mapa dos documentos (fonte da verdade):**
+- `docs/PLANO-M1.md` — plano-mãe: histórico, pequenos ajustes, as 15 frentes e como se ligam.
+- `docs/PLANO-CRM-M1.md` — CRM (frente 8): regras, modelo, 9 sessões, registro das sessões feitas.
+- `docs/PLANO-CAMPANHAS-M1.md` — campanhas de demanda (frente 4): fórmulas da planilha do Arthur,
+  modelo, sessões C1–C7, decisões, métricas por canal.
+- `docs/PLANO-MARKETING-M1.md` — histórico da aba Marketing.
+
+**Feito e no ar hoje:** Cronograma completo; produtos em escala (busca, tabela, importação CSV,
+edição em massa/na linha); páginas legais + página inicial pública (Google verificado); redução do
+Log Ingestion do Supabase; coluna "Cronograma" nas Tarefas; **CRM sessões 1 e 2** (lead único,
+MQL, 1ª abordagem, tag automática do funil, funis criados em Geração de demanda, "ao ganhar entra no
+funil", página Clientes com Tabela/Kanban e aba "Todos", funil por linha, Primeira compra);
+**Campanhas C1** (migration 0595: `demand_campaigns`, `demand_campaign_notes`; Tabela/Cards/Linha do
+tempo em Geração de demanda; página de cada campanha com investimento líquido, metas, campanhas da
+plataforma atreladas e diário de bordo).
+
+**Migrations de hoje:** 0592 (cronograma), 0593 (lead único), 0594 (ao ganhar), 0595 (campanhas).
+
+**Próximos passos possíveis (o Arthur escolhe UM):**
+1. Otimizar a tela inicial das Campanhas (ele disse que há "vários pontos para otimizar").
+2. Campanhas C2 — a planilha dentro do app (dia a dia, pace de gastos e de leads, funil completo,
+   alertas); depois C3 (Meta Ads automático), C4, C5 (depende de CRM sessões 6 e 7).
+3. CRM sessão 3 (abas salvas, calendário, ficha) ou 4 (campos dinâmicos), 5 (entrada das LPs),
+   6 (origem e rastreio), 7 (vendas), 8 (importar/exportar/massa), 9 (dashboards).
+4. Perguntas em aberto ao Arthur no fim do `PLANO-CRM-M1.md` (funil "Pedidos", etc.).
+5. Metas do cronograma com prazo e atualização automática (depende de CRM/Vendas).
+
+**Regras técnicas que continuam valendo:** deploy por `git push` (build no GitHub ~2 min, a VPS
+ativa em ~20 s); testes com o `.env.local` fora do lugar (`mv .env.local /tmp/...`) porque ele
+altera o limitador de taxa; `tsc` com `NODE_OPTIONS=--max-old-space-size=6144`; nunca reexportar
+`dynamic`/`metadata` entre páginas (quebra o build); commits só dos arquivos tocados.
