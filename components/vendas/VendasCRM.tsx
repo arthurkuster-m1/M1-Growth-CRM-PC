@@ -468,6 +468,8 @@ export function VendasCRM() {
         ))}
       </section>
 
+      <PorProduto mes={mes} />
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={busca}
@@ -661,5 +663,64 @@ function CobrancaParaConfirmar({
         </button>
       </div>
     </li>
+  );
+}
+
+/** Vendas e faturamento de cada produto do catálogo no mês. */
+function PorProduto({ mes }: { mes: string }) {
+  const t = useT();
+  const consulta = useQuery({
+    queryKey: ["vendas-por-produto", mes],
+    staleTime: 30_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: {
+            produtos: Array<{
+              product_id: string;
+              nome: string;
+              vendas: number;
+              interesse: number;
+              recebido: number;
+              a_receber: number;
+            }>;
+          };
+        }>(`/api/v1/vendas/por-produto?mes=${mes}`)
+      ).data.produtos,
+  });
+  const linhas = (consulta.data ?? []).sort((a, b) => b.recebido - a.recebido);
+  if (consulta.isLoading || linhas.length === 0) return null;
+  return (
+    <details className="rounded-2xl border bg-card" open>
+      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+        {t("Por produto")}
+      </summary>
+      <div className="overflow-x-auto border-t">
+        <table className="w-full min-w-max text-sm">
+          <thead className="bg-secondary/60 text-xs text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">{t("Produto")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Vendas fechadas")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Recebido")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("A receber")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Em interesse")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((p) => (
+              <tr key={p.product_id} className="border-t">
+                <td className="max-w-72 truncate px-3 py-2 font-medium">{p.nome}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{p.vendas}</td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                  {moedaDoNumero(p.recebido)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{moedaDoNumero(p.a_receber)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{moedaDoNumero(p.interesse)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }

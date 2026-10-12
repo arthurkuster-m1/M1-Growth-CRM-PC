@@ -23,6 +23,7 @@ import { DiaADiaDaCampanha } from "@/components/marketing/campanhas/DiaADiaDaCam
 import { ResumoDaCampanha } from "@/components/marketing/campanhas/ResumoDaCampanha";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
+import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import {
   useCampanhasDeDemanda,
   useDiasDaCampanha,
@@ -161,6 +162,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   const { campanhas, funis, podeEditar, carregando, editar, apagar } = useCampanhasDeDemanda();
   const c = campanhas.find((x) => x.id === id);
   const dias = useDiasDaCampanha(id);
+  const { produtos } = useCatalogoDeProdutos();
   const pathname = usePathname();
   const parametros = useSearchParams();
   const aba = abaValida(parametros.get("aba"), c?.channel ?? "trafego_pago", c?.optional_tabs);
@@ -471,13 +473,29 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Rotulo texto={t("Produto que a campanha vende")}>
-                <TextoGravavel
-                  valor={c.product_name}
-                  aoGravar={(product_name) => grava({ product_name })}
-                  desabilitado={bloqueado}
-                  rotulo={t("Produto que a campanha vende")}
-                  max={200}
-                />
+                <select
+                  className={CAMPO}
+                  disabled={bloqueado}
+                  value={c.product_id ?? ""}
+                  onChange={(e) => {
+                    const p = produtos.find((x) => x.id === e.target.value);
+                    grava({
+                      product_id: p ? p.id : null,
+                      product_name: p ? p.nome : "",
+                      // O preço de tabela vira o ticket previsto, se ainda não havia um.
+                      ...(p && p.valor > 0 && c.ticket_cents === null
+                        ? { ticket_cents: Math.round(p.valor * 100) }
+                        : {}),
+                    });
+                  }}
+                >
+                  <option value="">{t("Escolha um produto cadastrado")}</option>
+                  {produtos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
               </Rotulo>
               <Rotulo texto={t("Ticket previsto por lead")}>
                 <NumeroGravavel

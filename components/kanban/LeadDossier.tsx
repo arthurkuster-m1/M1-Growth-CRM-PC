@@ -14,6 +14,7 @@ import { ConversaNoDossie } from "./ConversaNoDossie";
 import { LeadFieldsForm } from "./LeadFieldsForm";
 import { ScoreSlot } from "./ScoreSlot";
 import { QualificacaoDoLead } from "@/components/leads/QualificacaoDoLead";
+import { VendasDoCliente } from "@/components/vendas/VendasDoCliente";
 import { LeadTimeline } from "./LeadTimeline";
 import { PropostasDoNegocio } from "./PropostasDoNegocio";
 import { OwnerBadge } from "./OwnerBadge";
@@ -71,7 +72,9 @@ export function LeadDossier({
   const user = useUser();
   const activeOrg = useActiveOrg();
   const podeCriarProposta =
-    user.is_platform_admin || (activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager) || false;
+    user.is_platform_admin ||
+    (activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager) ||
+    false;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -92,7 +95,7 @@ export function LeadDossier({
 
         {/* ① cabeçalho vivo */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border pb-3 text-xs">
-          <span className="font-medium tabular-nums text-text">
+          <span className="font-medium text-text tabular-nums">
             {formatValor(lead.value_cents, lead.currency)}
           </span>
           <span className="text-text-muted">{stageName}</span>
@@ -145,21 +148,19 @@ export function LeadDossier({
         {/* Os dados do CLIENTE: telefone e e-mail numa aba, links (Instagram,
             site, Google Meu Negócio…) na outra. Vêm do contato, não do lead. */}
         <section className="border-b border-border py-3">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+          <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
             {t("Contato")}
           </h3>
-          <ContatoDoNegocio
-            contactId={lead.contact_id}
-            pipelineId={pipelineId}
-            leadId={lead.id}
-          />
+          <ContatoDoNegocio contactId={lead.contact_id} pipelineId={pipelineId} leadId={lead.id} />
         </section>
 
         <QualificacaoDoLead contactId={lead.contact_id} />
 
+        {lead.contact_id ? <VendasDoCliente contactId={lead.contact_id} /> : null}
+
         {/* ② timeline */}
         <section className="flex-1 py-3">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+          <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
             {t("Linha do tempo")}
           </h3>
           <LeadTimeline
@@ -172,7 +173,7 @@ export function LeadDossier({
 
         {/* ③ campos, por último */}
         <div ref={campos} className="border-t border-border pt-3">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+          <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
             {t("Dados do negócio")}
           </h3>
           <LeadFieldsForm lead={lead} pipelineId={pipelineId} fieldDefs={fieldDefs} />
