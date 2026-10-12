@@ -286,12 +286,12 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
       {aba === "funil" ? (
         <>
+          <FunilDeConversao c={c} podeEditar={podeEditar} />
           <EntradaDeLeads
             campanhaId={c.id}
             podeEditar={podeEditar}
             temFunil={Boolean(c.pipeline_id)}
           />
-          <FunilDeConversao c={c} podeEditar={podeEditar} />
         </>
       ) : null}
 

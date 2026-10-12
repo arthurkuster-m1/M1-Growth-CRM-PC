@@ -28,7 +28,7 @@ import { moverColuna, resolverColunas } from "@/lib/motor/layout";
 import { somarMeses } from "@/lib/marketing/campanhas-resumo";
 import { precisaDeConfirmacao } from "@/lib/vendas-recorrentes";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { ArrowRight, Plus, TextAa, Trash } from "@/lib/ui/icons";
+import { ArrowRight, Plus, TextAa } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import {
   STATUS_DA_VENDA,
@@ -37,9 +37,6 @@ import {
   type StatusDaVenda,
   type Venda,
 } from "@/lib/vendas";
-
-const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
 const COR: Record<StatusDaVenda, CorDaOpcao> = {
   interesse: "purple",
@@ -128,7 +125,7 @@ export function VendasCRM() {
     onError: showApiError,
   });
 
-  const vendas = consulta.data ?? [];
+  const vendas = useMemo(() => consulta.data ?? [], [consulta.data]);
   const confirmar = useMutation({
     mutationFn: ({ id, ...corpo }: { id: string } & Record<string, unknown>) =>
       apiClient.patch(`/api/v1/vendas/parcelas/${id}`, corpo),
@@ -138,7 +135,7 @@ export function VendasCRM() {
     },
     onError: showApiError,
   });
-  const hojeIso = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+  const [hojeIso] = useState(() => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10));
   const cobrancas = vendas
     .filter((v) => v.status === "comprometida" || v.status === "concluida")
     .flatMap((v) =>

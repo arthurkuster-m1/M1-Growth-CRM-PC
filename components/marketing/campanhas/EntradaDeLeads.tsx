@@ -32,27 +32,56 @@ export const EXEMPLO_DE_ENVIO = `{
 export const MODELO_DE_UTM_DA_META =
   "utm_source=meta&utm_medium=paid&utm_campaign={{campaign.id}}&utm_content={{ad.id}}&utm_term={{adset.id}}&utm_id={{campaign.id}}";
 
-function Cartao({
+/** Uma "porta" de entrada: linha que abre para mostrar o que fazer. */
+function Porta({
+  numero,
   titulo,
+  resumo,
   estado,
+  tom = "neutro",
+  aberta,
   children,
 }: {
+  numero: string;
   titulo: string;
-  estado?: string;
+  resumo: string;
+  estado: string;
+  tom?: "neutro" | "ok";
+  aberta?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid content-start gap-2 rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{titulo}</h3>
-        {estado ? (
-          <span className="rounded-lg bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-            {estado}
-          </span>
-        ) : null}
+    <details open={aberta} className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 hover:bg-secondary/40 sm:px-4 [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary font-mono text-xs font-semibold text-muted-foreground"
+        >
+          {numero}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">{titulo}</span>
+          <span className="block truncate text-xs text-muted-foreground">{resumo}</span>
+        </span>
+        <span
+          className={cn(
+            "shrink-0 rounded-lg px-2 py-0.5 text-xs font-medium",
+            tom === "ok" ? "bg-success-bg text-success-fg" : "bg-secondary text-muted-foreground",
+          )}
+        >
+          {estado}
+        </span>
+        <span
+          aria-hidden
+          className="shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+        >
+          ›
+        </span>
+      </summary>
+      <div className="grid gap-3 border-t bg-secondary/20 px-3 py-4 sm:px-4 sm:pl-[3.75rem]">
+        {children}
       </div>
-      {children}
-    </section>
+    </details>
   );
 }
 
@@ -113,64 +142,30 @@ export function EntradaDeLeads({
   const ligadas = (fontes ?? []).filter((f) => f.desta_campanha);
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
-      <div>
+    <section className="grid gap-3 rounded-2xl border bg-card shadow-sm">
+      <div className="px-4 pt-4">
         <h2 className="text-sm font-semibold">{t("Como os leads chegam a esta campanha")}</h2>
         <p className="text-xs text-muted-foreground">
           {temFunil
             ? t(
                 "Todo lead que chegar por uma destas portas nasce na primeira etapa do funil da campanha e carrega de onde veio.",
               )
-            : t("Crie o funil da campanha abaixo: é nele que os leads vão nascer.")}
+            : t("Crie o funil da campanha acima: é nele que os leads vão nascer.")}
         </p>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Cartao
+      <div className="divide-y border-t">
+        <Porta
+          numero="1"
           titulo={t("Receber leads já tratados (n8n, Zapier ou sistema próprio)")}
-          estado={t("Qualquer campo")}
-        >
-          <p className="text-xs text-muted-foreground">
-            {t(
-              "Em vez de criar formulário aqui, use o endereço (URL) de uma fonte ligada a esta campanha. O sistema aceita qualquer JSON: nome, telefone e e-mail são reconhecidos, todo o resto (perguntas, respostas, agendamento, listas e objetos) vira informação do lead, e as UTMs dizem a origem.",
-            )}
-          </p>
-          {ligadas.length > 0 ? (
-            <ul className="grid gap-1.5">
-              {ligadas.map((f) => (
-                <li key={f.id} className="grid gap-1 rounded-xl bg-secondary/50 px-3 py-2">
-                  <span className="text-sm font-medium">{f.name}</span>
-                  <code className="block overflow-x-auto text-xs break-all">{f.url}</code>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {t("Ligue uma fonte aqui ao lado para ver o endereço dela.")}
-            </p>
-          )}
-          <details className="rounded-xl border p-2">
-            <summary className="cursor-pointer text-sm font-medium">
-              {t("Exemplo do que enviar (POST, JSON)")}
-            </summary>
-            <pre className="mt-2 overflow-x-auto rounded-lg bg-secondary p-2 text-xs">
-              {EXEMPLO_DE_ENVIO}
-            </pre>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t(
-                "O external_id evita lead duplicado se o n8n reenviar. Se a pessoa já existe (mesmo telefone), o lead é atualizado e não duplica.",
-              )}
-            </p>
-          </details>
-        </Cartao>
-
-        <Cartao
-          titulo={t("Formulário de landing page")}
+          resumo={t("Um endereço (URL) que aceita qualquer campo")}
           estado={ligadas.length > 0 ? `${ligadas.length} ${t("ligado(s)")}` : t("Não ligado")}
+          tom={ligadas.length > 0 ? "ok" : "neutro"}
+          aberta={ligadas.length > 0}
         >
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {t(
-              "Ligue o formulário da LP a esta campanha. Os leads dele entram aqui, e as UTMs da URL dizem de qual anúncio vieram.",
+              "O sistema aceita qualquer JSON: nome, telefone e e-mail são reconhecidos, todo o resto (perguntas, respostas, agendamento, listas e objetos) vira informação do lead, e as UTMs dizem a origem.",
             )}
           </p>
           {fontes === null ? (
@@ -183,40 +178,62 @@ export function EntradaDeLeads({
               </Link>
             </p>
           ) : (
-            <ul className="grid gap-1.5">
+            <ul className="grid gap-2">
               {fontes.map((f) => (
-                <li
-                  key={f.id}
-                  className="flex items-center justify-between gap-2 rounded-xl bg-secondary/50 px-3 py-2 text-sm"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate">{f.name}</span>
-                    {f.de_outra_campanha ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {t("Ligado a outra campanha")}
-                      </span>
+                <li key={f.id} className="grid gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{f.name}</span>
+                      {f.de_outra_campanha ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {t("Ligado a outra campanha")}
+                        </span>
+                      ) : null}
+                    </span>
+                    {podeEditar ? (
+                      <button
+                        type="button"
+                        onClick={() => void ligar(f, !f.desta_campanha)}
+                        className={cn(
+                          "h-8 shrink-0 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+                          f.desta_campanha ? "border-primary bg-primary/10" : "hover:bg-secondary",
+                        )}
+                      >
+                        {f.desta_campanha ? t("Ligado") : t("Ligar")}
+                      </button>
                     ) : null}
-                  </span>
-                  {podeEditar ? (
-                    <button
-                      type="button"
-                      onClick={() => void ligar(f, !f.desta_campanha)}
-                      className={cn(
-                        "h-8 shrink-0 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
-                        f.desta_campanha ? "border-primary bg-primary/10" : "hover:bg-secondary",
-                      )}
-                    >
-                      {f.desta_campanha ? t("Ligado") : t("Ligar")}
-                    </button>
+                  </div>
+                  {f.desta_campanha ? (
+                    <code className="block overflow-x-auto rounded-lg bg-secondary px-2 py-1.5 text-xs break-all">
+                      {f.url}
+                    </code>
                   ) : null}
                 </li>
               ))}
             </ul>
           )}
-        </Cartao>
+          <details className="rounded-xl border bg-card p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("Exemplo do que enviar (POST, JSON)")}
+            </summary>
+            <pre className="mt-2 overflow-x-auto rounded-lg bg-secondary p-2 text-xs">
+              {EXEMPLO_DE_ENVIO}
+            </pre>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t(
+                "O external_id evita lead duplicado se o n8n reenviar. Se a pessoa já existe (mesmo telefone), o lead é atualizado e não duplica.",
+              )}
+            </p>
+          </details>
+        </Porta>
 
-        <Cartao titulo={t("Parâmetros (UTM) dos anúncios")} estado={t("Copie e cole no anúncio")}>
-          <p className="text-xs text-muted-foreground">
+        <Porta
+          numero="2"
+          titulo={t("Parâmetros (UTM) dos anúncios")}
+          resumo={t("Para saber de qual anúncio e criativo cada lead veio")}
+          estado={t("Copie e cole no anúncio")}
+        >
+          <p className="text-sm text-muted-foreground">
             {t(
               "No anúncio do Meta, cole isto em “Parâmetros de URL”. A Meta troca cada {{…}} pelo código da campanha, do conjunto e do anúncio, e o CRM casa com esta campanha e com o criativo.",
             )}
@@ -227,7 +244,7 @@ export function EntradaDeLeads({
           <button
             type="button"
             onClick={() => void copiar()}
-            className="h-9 w-fit rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
+            className="h-9 w-fit rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
           >
             {copiado ? t("Copiado!") : t("Copiar parâmetros")}
           </button>
@@ -236,37 +253,54 @@ export function EntradaDeLeads({
               "Para o casamento ser exato, escolha as campanhas do Meta na aba Cadastro e importe os criativos do Meta.",
             )}
           </p>
-        </Cartao>
+        </Porta>
 
-        <Cartao titulo={t("Anúncio que abre o WhatsApp")} estado={t("Automático")}>
-          <p className="text-xs text-muted-foreground">
+        <Porta
+          numero="3"
+          titulo={t("Anúncio que abre o WhatsApp")}
+          resumo={t("O CRM reconhece o anúncio na primeira mensagem")}
+          estado={t("Automático")}
+          tom="ok"
+        >
+          <p className="text-sm text-muted-foreground">
             {t(
               "Quando alguém clica no anúncio e chama no WhatsApp, o CRM reconhece o anúncio e põe o lead no funil desta campanha. Funciona com as campanhas do Meta atreladas e com os criativos importados.",
             )}
           </p>
-        </Cartao>
+        </Porta>
 
-        <Cartao titulo={t("Formulário de lead do Meta")} estado={t("Pelo formulário ligado")}>
-          <p className="text-xs text-muted-foreground">
+        <Porta
+          numero="4"
+          titulo={t("Formulário de lead do Meta")}
+          resumo={t("Enviar pelo webhook da porta 1, com ad_id e campaign_id")}
+          estado={t("Pelo webhook")}
+        >
+          <p className="text-sm text-muted-foreground">
             {t(
-              "Envie os leads do formulário nativo do Meta para o formulário ligado acima (por Zapier, Make ou pela integração do Meta), incluindo os campos ad_id e campaign_id. O CRM usa esses campos para achar a campanha e o criativo.",
+              "Envie os leads do formulário nativo do Meta para o webhook ligado acima (por Zapier, Make ou pela integração do Meta), incluindo os campos ad_id e campaign_id. O CRM usa esses campos para achar a campanha e o criativo.",
             )}
           </p>
-        </Cartao>
+        </Porta>
 
-        <Cartao titulo={t("Prospecção ativa e cadastro manual")} estado={t("Automático")}>
-          <p className="text-xs text-muted-foreground">
+        <Porta
+          numero="5"
+          titulo={t("Prospecção ativa e cadastro manual")}
+          resumo={t("Lead cadastrado no funil da campanha já conta")}
+          estado={t("Automático")}
+          tom="ok"
+        >
+          <p className="text-sm text-muted-foreground">
             {t(
               "Lead cadastrado direto no funil desta campanha (um por um, ou por planilha) já conta como da campanha.",
             )}
           </p>
           <Link
             href="/app/clientes"
-            className="inline-flex h-9 w-fit items-center rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
+            className="inline-flex h-9 w-fit items-center rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
           >
             {t("Abrir Clientes (CRM)")}
           </Link>
-        </Cartao>
+        </Porta>
       </div>
     </section>
   );
