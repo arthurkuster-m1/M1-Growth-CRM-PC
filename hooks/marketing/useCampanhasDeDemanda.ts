@@ -441,3 +441,26 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
     },
   };
 }
+
+export interface OrigemDosLeads {
+  total: number;
+  porCriativo: Record<string, number>;
+  porLandingPage: Record<string, number>;
+  porConjunto: Array<{ id: string; nome: string | null; leads: number }>;
+  semCriativo: number;
+  semLandingPage: number;
+  semConjunto: number;
+  de: string | null;
+  ate: string | null;
+}
+
+/** De onde vieram os leads da campanha (CRM): por criativo, LP e conjunto de anúncios. */
+export function useOrigemDosLeads(campanhaId: string) {
+  const consulta = useQuery({
+    queryKey: ["demand-campaign-origem", campanhaId],
+    staleTime: 30_000,
+    queryFn: async () =>
+      (await apiClient.get<{ data: OrigemDosLeads }>(`${BASE}/${campanhaId}/origem`)).data,
+  });
+  return { origem: consulta.data ?? null, carregando: consulta.isLoading };
+}

@@ -307,3 +307,13 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
 - **"+" das páginas da campanha:** popup ao lado do botão (adicionar e tirar páginas).
 - **Rolagem lateral** da área logada travada (`overflow-x: clip`); causa: botões do funil que não
   quebravam linha.
+
+### C5 — Leads por criativo, LP e conjunto (feita em 12/10/2026)
+- `GET /api/v1/demand-campaigns/[id]/origem`: conta contatos distintos por criativo, landing page e
+  conjunto de anúncios (conjunto: `utm_term` do formulário ou cache da hierarquia do anúncio, no
+  WhatsApp), mais a fatia sem origem. Janela: do início da campanha (ou 30 dias) até hoje.
+- Visão geral: card "De onde vieram os leads" (com CPL real por criativo e aviso quando >40% veio
+  sem origem). Criativos: Leads (CRM) e CPL real nos cartões e no comparativo (menor CPL em
+  destaque). Landing pages: Leads (CRM), Conversão da LP (leads ÷ visitas) e CPL real.
+- Vale só para leads que entraram a partir da sessão 6 (origem gravada na entrada).
+- Vendas e faturamento por origem entram com a sessão 7 do CRM (Vendas).

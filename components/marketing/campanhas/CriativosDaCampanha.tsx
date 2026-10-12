@@ -11,6 +11,7 @@ import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
+  useOrigemDosLeads,
   type EdicaoDeCriativo,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import {
@@ -251,12 +252,15 @@ function ImagensDoCriativo({
 
 function CartaoDoCriativo({
   c,
+  leads,
   podeEditar,
   editar,
   duplicar,
   apagar,
 }: {
   c: Criativo;
+  /** Leads do CRM que vieram deste criativo. */
+  leads: number;
   podeEditar: boolean;
   editar: (patch: EdicaoDeCriativo) => void;
   duplicar: () => void;
@@ -386,6 +390,11 @@ function CartaoDoCriativo({
         <Metrica rotulo={t("CTR")} valor={pct(taxas.ctr)} />
         <Metrica rotulo={t("CPC")} valor={reais(taxas.cpc)} />
         <Metrica rotulo={t("Visitas à LP")} valor={inteiro(c.lp_views)} />
+        <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leads)} />
+        <Metrica
+          rotulo={t("CPL real")}
+          valor={leads > 0 && c.spend > 0 ? moedaDoNumero(c.spend / leads) : "—"}
+        />
       </div>
 
       {podeEditar ? (
@@ -414,7 +423,13 @@ function CartaoDoCriativo({
 }
 
 /** A análise lado a lado: cada criativo com as taxas de entrega; o melhor CTR e o menor CPC saem em destaque. */
-function ComparativoDeCriativos({ criativos }: { criativos: Criativo[] }) {
+function ComparativoDeCriativos({
+  criativos,
+  leads,
+}: {
+  criativos: Criativo[];
+  leads: Record<string, number>;
+}) {
   const t = useT();
   const linhas = criativos
     .filter((c) => c.impressions > 0 || c.spend > 0)
@@ -422,6 +437,11 @@ function ComparativoDeCriativos({ criativos }: { criativos: Criativo[] }) {
   if (linhas.length < 2) return null;
   const melhorCtr = Math.max(...linhas.map((l) => l.x.ctr ?? -1));
   const menorCpc = Math.min(...linhas.map((l) => l.x.cpc ?? Infinity));
+  const cplDe = (c: Criativo) => {
+    const n = leads[c.id] ?? 0;
+    return n > 0 && c.spend > 0 ? c.spend / n : null;
+  };
+  const menorCpl = Math.min(...linhas.map((l) => cplDe(l.c) ?? Infinity));
   return (
     <div className="grid gap-2">
       <h3 className="text-sm font-semibold">{t("Comparativo dos criativos")}</h3>
@@ -437,6 +457,8 @@ function ComparativoDeCriativos({ criativos }: { criativos: Criativo[] }) {
               <th className="px-3 py-2 text-right font-medium">{t("CPC")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("Visitas à LP")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("Connection rate")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("Leads (CRM)")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("CPL real")}</th>
             </tr>
           </thead>
           <tbody>
@@ -464,6 +486,15 @@ function ComparativoDeCriativos({ criativos }: { criativos: Criativo[] }) {
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{inteiro(c.lp_views)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{pct(x.connectRate)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{inteiro(leads[c.id] ?? 0)}</td>
+                <td
+                  className={cn(
+                    "px-3 py-2 text-right tabular-nums",
+                    cplDe(c) !== null && cplDe(c) === menorCpl && "font-semibold text-success-fg",
+                  )}
+                >
+                  {reais(cplDe(c))}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -507,6 +538,7 @@ export function CriativosDaCampanha({
   const t = useT();
   const { criativos, carregando, criar, editar, duplicar, apagar, importarDoMeta } =
     useCriativosDaCampanha(campanhaId);
+  const { origem } = useOrigemDosLeads(campanhaId);
   const [filtro, setFiltro] = useState<Criativo["status"] | null>(null);
   const [importando, setImportando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -549,7 +581,7 @@ export function CriativosDaCampanha({
       </div>
       <p className="text-xs text-muted-foreground">
         {t(
-          "Do Meta entram só gasto, impressões, cliques e visitas à LP. Leads e CPL por criativo virão do CRM.",
+          "Do Meta entram só gasto, impressões, cliques e visitas à LP. Os leads e o CPL real vêm do CRM, pela origem de cada lead.",
         )}
       </p>
       {aviso ? (
@@ -588,7 +620,9 @@ export function CriativosDaCampanha({
         </div>
       ) : null}
 
-      {criativos.length > 1 ? <ComparativoDeCriativos criativos={criativos} /> : null}
+      {criativos.length > 1 ? (
+        <ComparativoDeCriativos criativos={criativos} leads={origem?.porCriativo ?? {}} />
+      ) : null}
 
       {carregando ? (
         <div className="h-24 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
@@ -602,6 +636,7 @@ export function CriativosDaCampanha({
             <CartaoDoCriativo
               key={c.id}
               c={c}
+              leads={origem?.porCriativo[c.id] ?? 0}
               podeEditar={podeEditar}
               editar={(patch) => void editar(c.id, patch)}
               duplicar={() => void duplicar(c.id)}

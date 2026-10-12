@@ -13,6 +13,7 @@ import {
   rotuloDoStatus,
 } from "@/components/marketing/campanhas/rotulos";
 import { LandingPagesDaCampanha } from "@/components/marketing/campanhas/LandingPagesDaCampanha";
+import { OrigemDosLeads } from "@/components/marketing/campanhas/OrigemDosLeads";
 import { EntradaDeLeads } from "@/components/marketing/campanhas/EntradaDeLeads";
 import { FunilDeConversao } from "@/components/marketing/campanhas/FunilDeConversao";
 import { AbordagensDaCampanha } from "@/components/marketing/campanhas/AbordagensDaCampanha";
@@ -215,7 +216,12 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         }}
       />
 
-      {aba === "visao" ? <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} /> : null}
+      {aba === "visao" ? (
+        <>
+          <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} />
+          <OrigemDosLeads campanhaId={c.id} />
+        </>
+      ) : null}
 
       {aba === "dia" ? (
         <>

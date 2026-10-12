@@ -553,3 +553,36 @@ describe("de qual campanha o lead veio", () => {
     ).toMatchObject({ utmCampaign: "120001", adId: "9001", paginaUrl: "https://lp.com/oferta" });
   });
 });
+
+import { contarOrigemDosLeads } from "@/lib/marketing/origem-dos-leads";
+
+describe("origem dos leads (C5)", () => {
+  it("conta contatos distintos por criativo, LP e conjunto, e a fatia sem origem", () => {
+    const r = contarOrigemDosLeads([
+      {
+        contato: "a",
+        criativoId: "k1",
+        landingPageId: "l1",
+        conjuntoId: "s1",
+        conjuntoNome: "Frio",
+      },
+      {
+        contato: "a",
+        criativoId: "k1",
+        landingPageId: "l1",
+        conjuntoId: "s1",
+        conjuntoNome: "Frio",
+      },
+      { contato: "b", criativoId: "k2", landingPageId: "l1", conjuntoId: "s2", conjuntoNome: null },
+      { contato: "c", criativoId: null, landingPageId: null, conjuntoId: null, conjuntoNome: null },
+    ]);
+    expect(r.total).toBe(3);
+    expect(r.porCriativo).toEqual({ k1: 1, k2: 1 });
+    expect(r.porLandingPage).toEqual({ l1: 2 });
+    expect(r.porConjunto).toEqual([
+      { id: "s1", nome: "Frio", leads: 1 },
+      { id: "s2", nome: null, leads: 1 },
+    ]);
+    expect([r.semCriativo, r.semLandingPage, r.semConjunto]).toEqual([1, 1, 1]);
+  });
+});

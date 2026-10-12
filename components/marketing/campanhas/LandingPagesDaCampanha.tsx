@@ -12,6 +12,7 @@ import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
   useLandingPagesDaCampanha,
+  useOrigemDosLeads,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { STATUS_DA_LP, metricasDaLp, type LandingPage } from "@/lib/marketing/landing-pages";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
@@ -69,6 +70,8 @@ export function LandingPagesDaCampanha({
   const t = useT();
   const { lps, carregando, criar, editar, apagar } = useLandingPagesDaCampanha(campanhaId);
   const { criativos } = useCriativosDaCampanha(campanhaId);
+  const { origem } = useOrigemDosLeads(campanhaId);
+  const leadsDaLp = (id: string) => origem?.porLandingPage[id] ?? 0;
   const [vendo, setVendo] = useState<string | null>(null);
   const [verificando, setVerificando] = useState<string | null>(null);
   const [laudos, setLaudos] = useState<Record<string, Laudo>>({});
@@ -175,13 +178,26 @@ export function LandingPagesDaCampanha({
                 rotulo={t("Observações")}
                 max={2000}
               />
-              <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-6">
+              <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-5">
                 <Metrica rotulo={t("Investido")} valor={moedaDoNumero(m.spend)} />
                 <Metrica rotulo={t("Impressões")} valor={inteiro(m.impressions)} />
                 <Metrica rotulo={t("Cliques no link")} valor={inteiro(m.link_clicks)} />
                 <Metrica rotulo={t("Visitas à LP")} valor={inteiro(m.lp_views)} />
                 <Metrica rotulo={t("Connection rate")} valor={pct(m.connectRate)} />
                 <Metrica rotulo={t("CPC")} valor={reais(m.cpc)} />
+                <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leadsDaLp(lp.id))} />
+                <Metrica
+                  rotulo={t("Conversão da LP")}
+                  valor={pct(m.lp_views > 0 ? (leadsDaLp(lp.id) / m.lp_views) * 100 : null)}
+                />
+                <Metrica
+                  rotulo={t("CPL real")}
+                  valor={
+                    leadsDaLp(lp.id) > 0 && m.spend > 0
+                      ? moedaDoNumero(m.spend / leadsDaLp(lp.id))
+                      : "—"
+                  }
+                />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {lp.url ? (
@@ -258,6 +274,9 @@ export function LandingPagesDaCampanha({
                   <th className="px-3 py-2 text-right font-medium">{t("Visitas à LP")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("Connection rate")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("CPC")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("Leads (CRM)")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("Conversão da LP")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("CPL real")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,13 +297,24 @@ export function LandingPagesDaCampanha({
                       {pct(m.connectRate)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{reais(m.cpc)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {inteiro(leadsDaLp(lp.id))}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {pct(m.lp_views > 0 ? (leadsDaLp(lp.id) / m.lp_views) * 100 : null)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {leadsDaLp(lp.id) > 0 && m.spend > 0
+                        ? moedaDoNumero(m.spend / leadsDaLp(lp.id))
+                        : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="text-xs text-muted-foreground">
-            {t("Leads e conversão por LP virão do CRM, quando a origem do lead estiver ligada.")}
+            {t("Leads e conversão vêm do CRM, pela origem de cada lead (UTM, anúncio ou página).")}
           </p>
         </div>
       ) : null}
