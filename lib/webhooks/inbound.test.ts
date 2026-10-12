@@ -1,11 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { mapInboundPayload, normalizePhoneBR, verifyInboundSignature } from "@/lib/webhooks/inbound";
+import {
+  mapInboundPayload,
+  normalizePhoneBR,
+  verifyInboundSignature,
+} from "@/lib/webhooks/inbound";
 import { createHmac } from "node:crypto";
 
 describe("normalizePhoneBR", () => {
-  it("já em E.164 com o nono passa direto", () => expect(normalizePhoneBR("+5511998765432")).toBe("+5511998765432"));
-  it("DDD+numero BR ganha +55", () => expect(normalizePhoneBR("11 99876-5432")).toBe("+5511998765432"));
-  it("com 55 na frente sem +", () => expect(normalizePhoneBR("5511998765432")).toBe("+5511998765432"));
+  it("já em E.164 com o nono passa direto", () =>
+    expect(normalizePhoneBR("+5511998765432")).toBe("+5511998765432"));
+  it("DDD+numero BR ganha +55", () =>
+    expect(normalizePhoneBR("11 99876-5432")).toBe("+5511998765432"));
+  it("com 55 na frente sem +", () =>
+    expect(normalizePhoneBR("5511998765432")).toBe("+5511998765432"));
   it("celular antigo sem o nono ganha o 9", () => {
     expect(normalizePhoneBR("+553284793302")).toBe("+5532984793302");
     expect(normalizePhoneBR("3284793302")).toBe("+5532984793302");
@@ -24,7 +31,12 @@ describe("mapInboundPayload", () => {
     expect(m).toMatchObject({ name: "Ana", phone: "+5511998765432", email: "a@b.com" });
   });
   it("whatsapp como alias de phone; extras viram custom_fields; utm_* vira source_metadata", () => {
-    const m = mapInboundPayload({ name: "Bo", whatsapp: "+5511998765432", empresa: "ACME", utm_source: "instagram" });
+    const m = mapInboundPayload({
+      name: "Bo",
+      whatsapp: "+5511998765432",
+      empresa: "ACME",
+      utm_source: "instagram",
+    });
     expect(m.phone).toBe("+5511998765432");
     expect(m.custom_fields).toEqual({ empresa: "ACME" });
     expect(m.source_metadata).toEqual({ utm_source: "instagram" });
@@ -39,9 +51,9 @@ describe("mapInboundPayload", () => {
     expect(m.phone).toBeNull();
     expect(m.custom_fields).toEqual({ foo: "bar" });
   });
-  it("valores não-string são stringificados em custom_fields; objetos aninhados descartados", () => {
+  it("valores não-string são stringificados em custom_fields; objetos aninhados são achatados", () => {
     const m = mapInboundPayload({ nome: "Ana", idade: 30, nested: { a: 1 } });
-    expect(m.custom_fields).toEqual({ idade: "30" });
+    expect(m.custom_fields).toEqual({ idade: "30", nested_a: "1" });
   });
 });
 
@@ -60,7 +72,11 @@ describe("ruído da plataforma do formulário", () => {
   };
   it("não vira campo do lead", () => {
     const m = mapInboundPayload(jetFormBuilder);
-    expect(m).toMatchObject({ name: "Maria Teste", phone: "+5511988887777", email: "maria.teste@example.com" });
+    expect(m).toMatchObject({
+      name: "Maria Teste",
+      phone: "+5511988887777",
+      email: "maria.teste@example.com",
+    });
     expect(m.custom_fields).toEqual({ message: "teste" });
   });
   it("campo próprio que começa com _ NÃO é descartado", () => {
@@ -74,8 +90,39 @@ describe("verifyInboundSignature", () => {
   const secret = "s3cr3t";
   const sig = createHmac("sha256", secret).update(body).digest("hex");
   it("assinatura válida", () => expect(verifyInboundSignature(body, sig, secret)).toBe(true));
-  it("assinatura errada", () => expect(verifyInboundSignature(body, "deadbeef", secret)).toBe(false));
+  it("assinatura errada", () =>
+    expect(verifyInboundSignature(body, "deadbeef", secret)).toBe(false));
   it("header ausente", () => expect(verifyInboundSignature(body, null, secret)).toBe(false));
   it("header com tamanho diferente não lança (timingSafeEqual exige mesmo length)", () =>
     expect(verifyInboundSignature(body, "abc", secret)).toBe(false));
+});
+
+describe("payload do n8n: aninhado, listas e UTM em objeto", () => {
+  it("nada que é dado se perde; nome, telefone e e-mail aninhados são achados", async () => {
+    const { mapInboundPayload, achatarPayload } = await import("./inbound");
+    const m = mapInboundPayload({
+      lead: { nome: "Ana", telefone: "(11) 91234-5678", email: "ana@x.com" },
+      respostas: { orcamento: "R$ 5 mil", interesses: ["rinoplastia", "lipo"], extras: [{ a: 1 }] },
+      utm: { source: "meta", campaign: "120001" },
+      tracking: { utm_content: "9001" },
+      agendamento: { data: "2026-10-20", hora: "14:00" },
+      ignorado: null,
+    });
+    expect(m.name).toBe("Ana");
+    expect(m.phone).toBe("+5511912345678");
+    expect(m.email).toBe("ana@x.com");
+    expect(m.custom_fields).toMatchObject({
+      respostas_orcamento: "R$ 5 mil",
+      respostas_interesses: "rinoplastia, lipo",
+      agendamento_data: "2026-10-20",
+      agendamento_hora: "14:00",
+    });
+    expect(m.custom_fields.respostas_extras).toBe('[{"a":1}]');
+    expect(m.source_metadata).toMatchObject({
+      utm_source: "meta",
+      utm_campaign: "120001",
+      utm_content: "9001",
+    });
+    expect("ignorado" in achatarPayload({ ignorado: null })).toBe(false);
+  });
 });

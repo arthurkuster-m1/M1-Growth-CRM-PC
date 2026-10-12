@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { basePublicaDaInstalacao } from "@/lib/webhooks/url-publica";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 
 export const dynamic = "force-dynamic";
@@ -19,14 +20,14 @@ type Ctx = { params: Promise<{ id: string }> };
 const uuid = z.string().uuid();
 const corpoSchema = z.object({ source_id: z.string().uuid(), ligar: z.boolean() });
 
-export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
+export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   const a = await autorizarCampanhas("manager", false);
   if (!a.ok) return a.response;
   const { id } = await ctx.params;
   if (!uuid.safeParse(id).success) return campanhaNaoEncontrada(a.t, a.requestId);
   const { data, error } = await a.supabase
     .from("webhook_sources")
-    .select("id, name, is_active, demand_campaign_id, last_received_at")
+    .select("id, name, is_active, demand_campaign_id, last_received_at, path_token")
     .eq("organization_id", a.orgId)
     .order("name", { ascending: true })
     .limit(200);
@@ -35,9 +36,11 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       requestId: a.requestId,
     });
   }
+  const base = basePublicaDaInstalacao(req);
   return ok(
     {
       fontes: (data ?? []).map((f) => ({
+        url: `${base}/api/v1/webhooks/in/${f.path_token as string}`,
         id: f.id as string,
         name: f.name as string,
         ativa: f.is_active === true,

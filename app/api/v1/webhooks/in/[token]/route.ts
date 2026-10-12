@@ -21,7 +21,12 @@ import {
   type ResultadoClassificacaoInicial,
 } from "@/lib/leads/classificacao-inicial";
 import type { CreateLeadInput } from "@/lib/schemas";
-import { mapInboundPayload, verifyInboundSignature, type FieldMap } from "@/lib/webhooks/inbound";
+import {
+  achatarPayload,
+  mapInboundPayload,
+  verifyInboundSignature,
+  type FieldMap,
+} from "@/lib/webhooks/inbound";
 import { HEADER_ASSINATURA_DE_ENTRADA } from "@/lib/webhooks/assinatura";
 import { encontrarContatoPorTelefoneComNome } from "@/lib/channels/contato-por-telefone";
 import {
@@ -571,7 +576,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
   // De qual campanha o lead veio (formulário ligado a ela, UTM, anúncio ou página). Se casar,
   // ele nasce no funil da campanha; senão entra como sempre entrou.
   const origemDaCampanha = await resolverOrigemDaCampanha(admin, source.organization_id, {
-    ...sinaisDoPayload(payload as Record<string, unknown>),
+    ...sinaisDoPayload(achatarPayload(payload)),
     campanhaDeDemandaId:
       (source as unknown as { demand_campaign_id?: string | null }).demand_campaign_id ?? null,
   });

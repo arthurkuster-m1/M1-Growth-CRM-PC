@@ -15,9 +15,20 @@ interface Fonte {
   desta_campanha: boolean;
   de_outra_campanha: boolean;
   ultimo_recebimento: string | null;
+  url: string;
 }
 
 /** O modelo de parâmetros que a Meta preenche sozinha em cada anúncio. */
+/** Exemplo do que o n8n (ou qualquer sistema) pode mandar: os campos mudam de funil para funil. */
+export const EXEMPLO_DE_ENVIO = `{
+  "external_id": "id-unico-do-envio",
+  "lead": { "nome": "Ana Souza", "telefone": "11912345678", "email": "ana@exemplo.com" },
+  "respostas": { "orcamento": "R$ 5 mil", "interesse": ["rinoplastia", "lipo"] },
+  "agendamento": { "data": "2026-10-20", "hora": "14:00" },
+  "utm": { "campaign": "120001", "content": "9001", "term": "456" },
+  "page_url": "https://sualp.com.br/oferta"
+}`;
+
 export const MODELO_DE_UTM_DA_META =
   "utm_source=meta&utm_medium=paid&utm_campaign={{campaign.id}}&utm_content={{ad.id}}&utm_term={{adset.id}}&utm_id={{campaign.id}}";
 
@@ -116,6 +127,44 @@ export function EntradaDeLeads({
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Cartao
+          titulo={t("Receber leads já tratados (n8n, Zapier ou sistema próprio)")}
+          estado={t("Qualquer campo")}
+        >
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "Em vez de criar formulário aqui, use o endereço (URL) de uma fonte ligada a esta campanha. O sistema aceita qualquer JSON: nome, telefone e e-mail são reconhecidos, todo o resto (perguntas, respostas, agendamento, listas e objetos) vira informação do lead, e as UTMs dizem a origem.",
+            )}
+          </p>
+          {ligadas.length > 0 ? (
+            <ul className="grid gap-1.5">
+              {ligadas.map((f) => (
+                <li key={f.id} className="grid gap-1 rounded-xl bg-secondary/50 px-3 py-2">
+                  <span className="text-sm font-medium">{f.name}</span>
+                  <code className="block overflow-x-auto text-xs break-all">{f.url}</code>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {t("Ligue uma fonte aqui ao lado para ver o endereço dela.")}
+            </p>
+          )}
+          <details className="rounded-xl border p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("Exemplo do que enviar (POST, JSON)")}
+            </summary>
+            <pre className="mt-2 overflow-x-auto rounded-lg bg-secondary p-2 text-xs">
+              {EXEMPLO_DE_ENVIO}
+            </pre>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t(
+                "O external_id evita lead duplicado se o n8n reenviar. Se a pessoa já existe (mesmo telefone), o lead é atualizado e não duplica.",
+              )}
+            </p>
+          </details>
+        </Cartao>
+
+        <Cartao
           titulo={t("Formulário de landing page")}
           estado={ligadas.length > 0 ? `${ligadas.length} ${t("ligado(s)")}` : t("Não ligado")}
         >
@@ -128,9 +177,9 @@ export function EntradaDeLeads({
             <div className="h-10 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
           ) : fontes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {t("Nenhum formulário cadastrado ainda.")}{" "}
+              {t("Nenhuma fonte de leads cadastrada ainda.")}{" "}
               <Link className="text-primary underline" href="/app/webhooks">
-                {t("Criar um formulário")}
+                {t("Criar uma fonte de leads")}
               </Link>
             </p>
           ) : (

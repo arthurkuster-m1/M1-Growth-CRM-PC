@@ -66,13 +66,95 @@ export function normalizePhoneBR(raw: unknown): string | null {
   return e164 ? canonicalPhoneBR(e164) : null;
 }
 
-function firstMatch(payload: Record<string, unknown>, aliases: string[]): { key: string; value: string } | null {
-  const lowered = new Map(Object.keys(payload).map((k) => [k.toLowerCase(), k]));
+const MAXIMO_DE_CAMPOS = 150;
+const PROFUNDIDADE_MAXIMA = 4;
+
+/**
+ * Achata o payload em `chave → texto`. Quem integra (n8n, Zapier, formulário próprio) manda
+ * objetos aninhados — `{ lead: { nome }, respostas: { orcamento }, utm: { campaign } }` — e as
+ * perguntas mudam de um funil para outro, então NADA que seja dado se perde:
+ *   - objeto vira `pai_filho` (até 4 níveis);
+ *   - lista de textos/números vira "a, b, c"; lista de objetos vira um JSON curto;
+ *   - `null`, vazio e funções são ignorados.
+ * As chaves de topo continuam iguais às de antes (quem já integra não muda nada).
+ */
+export function achatarPayload(payload: Record<string, unknown>): Record<string, string> {
+  const saida: Record<string, string> = {};
+  const poe = (chave: string, valor: string) => {
+    if (valor.trim() === "" || Object.keys(saida).length >= MAXIMO_DE_CAMPOS) return;
+    saida[chave.slice(0, 80)] = valor.slice(0, 2000);
+  };
+  const visita = (valor: unknown, chave: string, nivel: number) => {
+    if (valor === null || valor === undefined) return;
+    if (typeof valor === "string") return poe(chave, valor);
+    if (typeof valor === "number" || typeof valor === "boolean") return poe(chave, String(valor));
+    if (Array.isArray(valor)) {
+      const simples = valor.every((v) => ["string", "number", "boolean"].includes(typeof v));
+      if (simples) return poe(chave, valor.map(String).join(", "));
+      return poe(chave, JSON.stringify(valor).slice(0, 1000));
+    }
+    if (typeof valor === "object" && nivel < PROFUNDIDADE_MAXIMA) {
+      for (const [k, v] of Object.entries(valor as Record<string, unknown>)) {
+        visita(v, chave ? `${chave}_${k}` : k, nivel + 1);
+      }
+    }
+  };
+  for (const [k, v] of Object.entries(payload)) visita(v, k, 1);
+  return saida;
+}
+
+/**
+ * Pais que costumam embrulhar os dados da PESSOA (`{ lead: { nome, telefone } }`). Só dentro
+ * deles um campo aninhado vale como nome, telefone ou e-mail — `form_name` (nome do formulário) e
+ * `empresa_name` não podem virar o nome do lead.
+ */
+const PAIS_DA_PESSOA = [
+  "lead",
+  "leads",
+  "contato",
+  "contact",
+  "cliente",
+  "customer",
+  "pessoa",
+  "person",
+  "user",
+  "usuario",
+  "dados",
+  "data",
+  "body",
+  "payload",
+  "fields",
+  "campos",
+];
+
+/** O valor de uma chave; ou, aninhada só em pais da pessoa, `lead_telefone` casa com `telefone`. */
+export function valorPorChave(
+  campos: Record<string, string>,
+  aliases: string[],
+): { key: string; value: string } | null {
+  const baixas = new Map(Object.keys(campos).map((k) => [k.toLowerCase(), k]));
   for (const alias of aliases) {
-    const key = lowered.get(alias.toLowerCase());
-    if (key !== undefined) {
-      const v = payload[key];
-      if (typeof v === "string" && v.trim()) return { key, value: v.trim() };
+    const key = baixas.get(alias.toLowerCase());
+    if (key !== undefined && campos[key]!.trim()) return { key, value: campos[key]!.trim() };
+  }
+  const semPais = (baixa: string): string => {
+    let resto = baixa;
+    for (let mudou = true; mudou;) {
+      mudou = false;
+      for (const pai of PAIS_DA_PESSOA) {
+        if (resto.startsWith(`${pai}_`)) {
+          resto = resto.slice(pai.length + 1);
+          mudou = true;
+        }
+      }
+    }
+    return resto;
+  };
+  for (const [baixa, key] of baixas) {
+    if (!campos[key]!.trim()) continue;
+    const resto = semPais(baixa);
+    if (resto !== baixa && aliases.some((a) => a.toLowerCase() === resto)) {
+      return { key, value: campos[key]!.trim() };
     }
   }
   return null;
@@ -88,19 +170,23 @@ export function mapInboundPayload(
     email: [...(fieldMap.email ?? []), ...DEFAULT_FIELD_MAP.email],
   };
 
-  const nameHit = firstMatch(payload, map.name);
-  const phoneHit = firstMatch(payload, map.phone);
-  const emailHit = firstMatch(payload, map.email);
+  const achatado = achatarPayload(payload);
+  const nameHit = valorPorChave(achatado, map.name);
+  const phoneHit = valorPorChave(achatado, map.phone);
+  const emailHit = valorPorChave(achatado, map.email);
   const consumed = new Set([nameHit?.key, phoneHit?.key, emailHit?.key].filter(Boolean));
 
   const custom_fields: Record<string, string> = {};
   const source_metadata: Record<string, string> = {};
-  for (const [key, value] of Object.entries(payload)) {
+  for (const [key, str] of Object.entries(achatado)) {
     if (consumed.has(key) || CHAVES_DE_PLATAFORMA.has(key)) continue;
-    const str =
-      typeof value === "string" ? value : typeof value === "number" || typeof value === "boolean" ? String(value) : null;
-    if (str === null) continue; // objetos/arrays aninhados: descartados no v1
-    if (key.toLowerCase().startsWith("utm_")) source_metadata[key.toLowerCase()] = str;
+    const baixa = key.toLowerCase();
+    // UTM de topo (`utm_campaign`) ou aninhada (`utm_campaign` dentro de `tracking`, ou
+    // `{ utm: { campaign } }`): sempre guardada como `utm_<nome>`.
+    const dentroDeUtm = baixa.match(/(?:^|_)utm_([a-z0-9]+)$/) ?? baixa.match(/^utm_([a-z0-9]+)$/);
+    const objetoUtm = baixa.match(/^utm_([a-z0-9]+)$/) ? null : baixa.match(/^utm_(.+)$/);
+    if (dentroDeUtm) source_metadata[`utm_${dentroDeUtm[1]}`] = str;
+    else if (objetoUtm) source_metadata[`utm_${objetoUtm[1]}`] = str;
     else custom_fields[key] = str;
   }
 
@@ -114,7 +200,11 @@ export function mapInboundPayload(
 }
 
 /** HMAC SHA-256 hex do raw body. Header: X-Deskcomm-Signature. */
-export function verifyInboundSignature(rawBody: string, header: string | null, secret: string): boolean {
+export function verifyInboundSignature(
+  rawBody: string,
+  header: string | null,
+  secret: string,
+): boolean {
   if (!header) return false;
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   const a = Buffer.from(expected, "utf8");

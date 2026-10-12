@@ -203,3 +203,12 @@ prospecção por scraping.
   "Campanha".
 - **Contagem:** leads da campanha = quem tem a campanha gravada OU está no funil dela.
 - **Sincronização do Meta** importa anúncios novos como criativos a cada 6 h.
+
+### Receber lead já tratado (n8n / sistema próprio) — 12/10/2026
+- A mesma URL de captação (`/api/v1/webhooks/in/<token>`, fonte criada em Webhooks) recebe JSON
+  de qualquer formato. Agora o payload é **achatado**: objetos viram `pai_filho` (até 4 níveis),
+  listas de texto viram "a, b", listas de objetos viram JSON curto; nome/telefone/e-mail são
+  achados também dentro de `lead`, `contato`, `cliente`, `dados`…; UTM em objeto (`utm: {campaign}`)
+  vira `utm_campaign`. Os campos desconhecidos viram informação do lead (custom_fields).
+- Fonte ligada a uma campanha (aba Funil de conversão › Como os leads chegam): o lead nasce no
+  funil da campanha com a origem. `external_id` evita duplicar em reenvio.
