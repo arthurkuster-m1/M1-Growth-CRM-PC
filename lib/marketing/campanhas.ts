@@ -54,6 +54,9 @@ export interface CampanhaDeDemanda {
   goal_cpl: number | null;
   goal_sales: number | null;
   goal_revenue: number | null;
+  /** O produto que a campanha vende e o ticket previsto: todo lead que entra gera a venda de INTERESSE. */
+  product_name: string;
+  ticket_cents: number | null;
   platform: string;
   sheet_url: string;
   platform_campaigns: CampanhaDaPlataforma[];
@@ -81,7 +84,7 @@ export interface EstadoDaCampanha {
 }
 
 export const COLUNAS_DA_CAMPANHA =
-  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
+  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, product_name, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dinheiro = z.number().finite().min(0).max(1e10);
@@ -111,6 +114,8 @@ const camposSchema = z.object({
   goal_cpl: dinheiro.nullable(),
   goal_sales: contagem.nullable(),
   goal_revenue: dinheiro.nullable(),
+  product_name: z.string().trim().max(200),
+  ticket_cents: z.number().int().min(0).max(100_000_000_000).nullable(),
   platform: z.string().trim().max(40),
   sheet_url: z
     .string()
@@ -171,6 +176,7 @@ export function campanhaDaLinha(l: Record<string, unknown>): CampanhaDeDemanda {
     goal_revenue: numero(l.goal_revenue),
     goal_leads: numero(l.goal_leads),
     goal_sales: numero(l.goal_sales),
+    ticket_cents: numero(l.ticket_cents),
     position: Number(l.position),
     platform_campaigns: lista
       .map((c) => campanhaDaPlataformaSchema.safeParse(c))

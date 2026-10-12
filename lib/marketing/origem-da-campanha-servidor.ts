@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { logger } from "@/lib/logger";
 import {
   casarOrigemDaCampanha,
@@ -125,5 +126,103 @@ export async function carimbarOrigemNoLead(
       lead_id: leadId,
       error: error.message.slice(0, 120),
     });
+  }
+}
+
+/**
+ * O FORMULÁRIO VENCE a conversa. Se o contato já tinha um lead que NASCEU da conversa (WhatsApp,
+ * anúncio, sem origem), o envio do formulário não cria outro: ele ATUALIZA esse lead — respostas,
+ * UTMs e a origem do formulário passam a valer — e, se o formulário aponta uma campanha com
+ * funil, o lead vai para a primeira etapa dele. Lead que já nasceu de formulário não entra aqui
+ * (outro cadastro é outro funil, e a venda segue o último).
+ *
+ * Devolve o id do lead atualizado, ou `null` quando não há o que adotar (o fluxo normal cria).
+ */
+export async function adotarLeadDaConversa(
+  db: SupabaseClient,
+  p: {
+    organizationId: string;
+    contactId: string;
+    origem:
+      | (Pick<OrigemCasada, "campanhaId" | "criativoId" | "landingPageId"> & {
+          pipelineId: string | null;
+        })
+      | null;
+    customFields: Record<string, unknown>;
+    sourceMetadata: Record<string, unknown>;
+    webhookSourceId: string;
+  },
+): Promise<string | null> {
+  try {
+    const { data } = await db
+      .from("crm_leads")
+      .select("id, pipeline_id, stage_id, source, custom_fields, source_metadata, status")
+      .eq("organization_id", p.organizationId)
+      .eq("contact_id", p.contactId)
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
+    const alvo = (data ?? []).find((l) => l.source !== "webhook");
+    if (!alvo) return null;
+
+    const patch: Record<string, unknown> = {
+      source: "webhook",
+      custom_fields: { ...((alvo.custom_fields as object) ?? {}), ...p.customFields },
+      source_metadata: {
+        ...((alvo.source_metadata as object) ?? {}),
+        ...p.sourceMetadata,
+        webhook_source_id: p.webhookSourceId,
+        origem_do_formulario: true,
+      },
+    };
+    if (p.origem?.campanhaId) {
+      patch.demand_campaign_id = p.origem.campanhaId;
+      patch.demand_creative_id = p.origem.criativoId;
+      patch.demand_landing_page_id = p.origem.landingPageId;
+    }
+    let moveu = false;
+    if (p.origem?.pipelineId && p.origem.pipelineId !== alvo.pipeline_id) {
+      const etapa = await primeiraEtapaDoFunil(db, p.organizationId, p.origem.pipelineId);
+      if (etapa) {
+        patch.pipeline_id = p.origem.pipelineId;
+        patch.stage_id = etapa;
+        moveu = true;
+      }
+    }
+    const { error } = await db
+      .from("crm_leads")
+      .update(patch)
+      .eq("id", alvo.id as string)
+      .eq("organization_id", p.organizationId);
+    if (error) {
+      // Corrida/conflito (ex.: já há negócio aberto neste funil): o fluxo normal decide.
+      logger.warn("[origem-da-campanha] não adotou o lead da conversa", {
+        organization_id: p.organizationId,
+        error: error.message.slice(0, 120),
+      });
+      return null;
+    }
+    await emitLeadActivity(db, {
+      organizationId: p.organizationId,
+      leadId: alvo.id as string,
+      contactId: p.contactId,
+      type: "note",
+      sourceModule: "webhook",
+      sourceId: p.webhookSourceId,
+      actor: { type: "webhook_source", id: p.webhookSourceId },
+      reason: moveu
+        ? "O formulário atualizou o lead: respostas e origem do formulário valem, e ele foi para o funil da campanha."
+        : "O formulário atualizou o lead: respostas e origem do formulário passaram a valer.",
+      payload: {
+        webhook_source_id: p.webhookSourceId,
+        demand_campaign_id: p.origem?.campanhaId ?? null,
+      },
+    });
+    return alvo.id as string;
+  } catch (e) {
+    logger.warn("[origem-da-campanha] erro ao adotar o lead da conversa", {
+      organization_id: p.organizationId,
+      error: e instanceof Error ? e.message.slice(0, 120) : "erro",
+    });
+    return null;
   }
 }

@@ -450,6 +450,14 @@ export interface OrigemDosLeads {
   semCriativo: number;
   semLandingPage: number;
   semConjunto: number;
+  /** Dinheiro em centavos: o que caiu (parcelas recebidas) e o que está comprometido. */
+  faturamento?: {
+    recebido: number;
+    aReceber: number;
+    vendas: number;
+    porCriativo: Record<string, number>;
+    porLandingPage: Record<string, number>;
+  };
   de: string | null;
   ate: string | null;
 }

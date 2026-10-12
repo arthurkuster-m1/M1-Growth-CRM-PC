@@ -92,6 +92,8 @@ CRONS="
 # depois da hora marcada. Rodada vazia (quase todas) não grava nada: só consulta os
 # modelos que repetem e já venceram.
 */5 * * * *|60|api/v1/cron/tarefas-repetidas
+# AS RECORRÊNCIAS: gera a parcela do próximo mês e abre o aviso de cobrança (uma vez por dia).
+30 10 * * *|120|api/v1/cron/vendas-recorrentes
 # O META NAS CAMPANHAS DE DEMANDA. De hora em hora: a cota do Meta é o recurso escasso e o
 # dia corrente só fecha à noite — mais frequente que isso gasta chamada sem número novo.
 17 * * * *|120|api/v1/cron/campanhas-meta

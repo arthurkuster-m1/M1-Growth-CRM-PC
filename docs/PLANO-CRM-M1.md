@@ -212,3 +212,31 @@ prospecção por scraping.
   vira `utm_campaign`. Os campos desconhecidos viram informação do lead (custom_fields).
 - Fonte ligada a uma campanha (aba Funil de conversão › Como os leads chegam): o lead nasce no
   funil da campanha com a origem. `external_id` evita duplicar em reenvio.
+
+### Sessão 7 — Vendas (feita em 12–13/10/2026; migrations 0609, 0610, 0611)
+- **Página Vendas** (`/app/vendas`, botão em Clientes): cada venda é do cliente (lead); não existe
+  venda sem cliente. Várias vendas por cliente (assessoria de 6 meses = 6 transações/parcelas).
+- **Venda = itens + parcelas.** `crm_sales` (venda), `crm_sale_items` (vários produtos numa
+  compra) e `crm_sale_payments` (parcelas: vencimento, valor, recebida/prevista). O dinheiro só
+  conta no mês em que cai. Status da venda: interesse → comprometida → concluída (todas as
+  parcelas recebidas) / cancelada; derivado das parcelas por trigger.
+- **Totais no cliente** (trigger): LTV atual (parcelas recebidas), LTV previsto (atual + a
+  receber), valor em interesse, nº de vendas, primeira e última compra (`first_purchase_on` agora
+  é derivada). Colunas LTV atual/previsto/Em interesse/Vendas na página Clientes.
+- **Origem da venda:** o ÚLTIMO cadastro do cliente até a data da venda (funil, campanha, LP e
+  criativo). Faturamento recebido/a receber, vendas e conversão lead→venda por campanha, criativo
+  e LP aparecem em "De onde vieram os leads".
+- **Lead entra na campanha com ticket → venda de INTERESSE automática** (campanha tem produto e
+  ticket previsto). **Lead ganho → venda efetivada** (comprometida, "a detalhar") e o pop-up
+  "Finalizar venda" (produtos, valor real, forma de pagamento, parcelas, recebidas) abre na
+  página Clientes; se fechar, fica sinalizada em Vendas.
+- **Recorrência:** venda marcada recorrente fica com `recurrence_active`; a rota
+  `/api/v1/cron/vendas-recorrentes` (diária, 7h30 SP) gera a parcela do mês seguinte SEMPRE como
+  prevista e abre avisos na Central (véspera/dia e dia seguinte): "esse lead pagou? houve
+  negociação?". Em Vendas, o painel "Cobranças para confirmar" tem Pagou (com valor real), Adiar e
+  Cancelar. Nada é dado como pago sozinho.
+- **Para depois:** integração com Hotmart/plataformas (puxar vendas por API); contas a receber
+  na gestão financeira (as parcelas previstas já são esse dado).
+- **Formulário vence a conversa:** lead nascido da conversa é ATUALIZADO (respostas, UTMs,
+  origem) pelo formulário e movido para o funil da campanha; formulário anterior de outra
+  campanha cria novo cadastro (a venda segue o último).

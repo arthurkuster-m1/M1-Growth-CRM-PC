@@ -586,3 +586,83 @@ describe("origem dos leads (C5)", () => {
     expect([r.semCriativo, r.semLandingPage, r.semConjunto]).toEqual([1, 1, 1]);
   });
 });
+
+import { fluxoDoMes, gerarParcelas, mesesAtivo, totaisDeVendas } from "@/lib/vendas";
+import { avisoDaCobranca, precisaDeConfirmacao, somarMesesNaData } from "@/lib/vendas-recorrentes";
+
+describe("vendas (sessão 7)", () => {
+  it("12x de R$ 3.600: parcelas iguais; a sobra de centavos vai para a primeira", () => {
+    const p = gerarParcelas(360_000, 12, "2026-10-31");
+    expect(p).toHaveLength(12);
+    expect(p.every((x) => x.amount_cents === 30_000)).toBe(true);
+    expect(p[0]!.due_on).toBe("2026-10-31");
+    expect(p[1]!.due_on).toBe("2026-11-30"); // 31 cai no último dia do mês
+    expect(p[4]!.due_on).toBe("2027-02-28");
+    expect(p.at(-1)!.due_on).toBe("2027-09-30");
+    const t = gerarParcelas(10_001, 3, "2026-01-10");
+    expect(t.map((x) => x.amount_cents)).toEqual([3335, 3333, 3333]);
+  });
+  it("só conta no mês o que cai naquele mês", () => {
+    const vendas = [
+      {
+        status: "comprometida" as const,
+        amount_cents: 60_000,
+        paid_on: "2026-10-05",
+        expected_on: "2026-11-05",
+        parcelas: [
+          {
+            number: 1,
+            due_on: "2026-10-05",
+            paid_on: "2026-10-05",
+            amount_cents: 30_000,
+            status: "recebida" as const,
+          },
+          {
+            number: 2,
+            due_on: "2026-11-05",
+            paid_on: null,
+            amount_cents: 30_000,
+            status: "prevista" as const,
+          },
+        ],
+      },
+      {
+        status: "interesse" as const,
+        amount_cents: 99_000,
+        paid_on: null,
+        expected_on: null,
+        parcelas: [],
+      },
+    ];
+    expect(fluxoDoMes(vendas, "2026-10")).toEqual({ recebido: 30_000, aReceber: 0 });
+    expect(fluxoDoMes(vendas, "2026-11")).toEqual({ recebido: 0, aReceber: 30_000 });
+  });
+  it("totais e meses ativo", () => {
+    const t = totaisDeVendas([
+      { status: "concluida", amount_cents: 100 },
+      { status: "concluida", amount_cents: 300 },
+      { status: "comprometida", amount_cents: 50 },
+      { status: "interesse", amount_cents: 700 },
+      { status: "cancelada", amount_cents: 999 },
+    ]);
+    expect(t).toMatchObject({ recebido: 400, comprometido: 50, interesse: 700, ticketMedio: 200 });
+    expect(mesesAtivo("2026-01-10", "2026-06-20")).toBe(6);
+  });
+  it("recorrência: próxima data mantém o dia; avisos: véspera/dia uma vez, atraso uma vez", () => {
+    expect(somarMesesNaData("2026-01-31", 1)).toBe("2026-02-28");
+    expect(somarMesesNaData("2026-12-15", 1)).toBe("2027-01-15");
+    const base = { reminded_before_on: null, reminded_after_on: null };
+    expect(avisoDaCobranca({ due_on: "2026-10-13", ...base }, "2026-10-12")).toBe("amanha");
+    expect(avisoDaCobranca({ due_on: "2026-10-12", ...base }, "2026-10-12")).toBe("hoje");
+    expect(avisoDaCobranca({ due_on: "2026-10-11", ...base }, "2026-10-12")).toBe("atrasada");
+    expect(
+      avisoDaCobranca(
+        { due_on: "2026-10-13", reminded_before_on: "2026-10-12", reminded_after_on: null },
+        "2026-10-12",
+      ),
+    ).toBeNull();
+    expect(avisoDaCobranca({ due_on: "2026-10-20", ...base }, "2026-10-12")).toBeNull();
+    expect(precisaDeConfirmacao("2026-10-13", "2026-10-12")).toBe(true);
+    expect(precisaDeConfirmacao("2026-10-14", "2026-10-12")).toBe(false);
+  });
+});

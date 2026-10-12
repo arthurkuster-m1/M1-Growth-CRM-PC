@@ -1,0 +1,10 @@
+[Unit]
+Description=Recorrências e cobranças do M1 (uma vez por dia, 7h30 em São Paulo)
+
+[Timer]
+OnCalendar=*-*-* 10:30:00 UTC
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

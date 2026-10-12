@@ -61,6 +61,7 @@ import { autorizarContatoParaIA } from "@/lib/ai/elegibilidade/autorizacao";
 import { kickLocalPipeline } from "@/lib/dev/kick-local-pipeline";
 import { sinaisDoPayload } from "@/lib/marketing/origem-da-campanha";
 import {
+  adotarLeadDaConversa,
   carimbarOrigemNoLead,
   primeiraEtapaDoFunil,
   resolverOrigemDaCampanha,
@@ -580,6 +581,34 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     campanhaDeDemandaId:
       (source as unknown as { demand_campaign_id?: string | null }).demand_campaign_id ?? null,
   });
+  // O formulário vence a conversa: se o contato já tinha lead nascido de conversa, ele é
+  // ATUALIZADO (respostas, UTMs e origem do formulário), não duplicado.
+  if (contactId) {
+    const adotado = await adotarLeadDaConversa(admin, {
+      organizationId: source.organization_id,
+      contactId,
+      origem: origemDaCampanha,
+      customFields: mapped.custom_fields,
+      sourceMetadata: mapped.source_metadata,
+      webhookSourceId: source.id,
+    });
+    if (adotado) {
+      await registrarCaptacao(admin, {
+        ...fonteDaCaptacao,
+        ...origemDaCaptacao,
+        ...dadosDaCaptacao,
+        leadId: adotado,
+        contactId,
+        outcome: "duplicado",
+      });
+      await admin
+        .from("webhook_sources")
+        .update({ last_received_at: new Date().toISOString() })
+        .eq("id", source.id);
+      return respondWithLead(adotado);
+    }
+  }
+
   let funilDoLead = source.default_pipeline_id;
   let etapaDoLead = source.default_stage_id;
   if (origemDaCampanha?.pipelineId) {

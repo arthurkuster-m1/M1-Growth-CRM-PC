@@ -14,6 +14,7 @@ import {
 } from "@/components/marketing/campanhas/rotulos";
 import { LandingPagesDaCampanha } from "@/components/marketing/campanhas/LandingPagesDaCampanha";
 import { OrigemDosLeads } from "@/components/marketing/campanhas/OrigemDosLeads";
+import { WebhooksDaCampanha } from "@/components/marketing/campanhas/WebhooksDaCampanha";
 import { EntradaDeLeads } from "@/components/marketing/campanhas/EntradaDeLeads";
 import { FunilDeConversao } from "@/components/marketing/campanhas/FunilDeConversao";
 import { AbordagensDaCampanha } from "@/components/marketing/campanhas/AbordagensDaCampanha";
@@ -243,7 +244,15 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       ) : null}
 
       {aba === "landing" ? (
-        <LandingPagesDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+        <>
+          <LandingPagesDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+          <WebhooksDaCampanha
+            campanhaId={c.id}
+            nomeDaCampanha={c.name}
+            podeEditar={podeEditar}
+            temFunil={Boolean(c.pipeline_id)}
+          />
+        </>
       ) : null}
 
       {podeEditar && ehAbaOpcional(aba) ? (
@@ -452,6 +461,34 @@ export function DetalheDaCampanha({ id }: { id: string }) {
               </strong>{" "}
               {c.tax_pct > 0 ? `(${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%)` : ""}
             </p>
+          </Bloco>
+
+          <Bloco titulo={t("Produto e ticket previsto")}>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "Todo lead que entra nesta campanha já gera uma venda de INTERESSE com este produto e este valor — o LTV previsto. Na hora de fechar, o valor real é informado.",
+              )}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Rotulo texto={t("Produto que a campanha vende")}>
+                <TextoGravavel
+                  valor={c.product_name}
+                  aoGravar={(product_name) => grava({ product_name })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Produto que a campanha vende")}
+                  max={200}
+                />
+              </Rotulo>
+              <Rotulo texto={t("Ticket previsto por lead")}>
+                <NumeroGravavel
+                  valor={c.ticket_cents === null ? null : c.ticket_cents / 100}
+                  aoGravar={(n) => grava({ ticket_cents: n === null ? null : Math.round(n * 100) })}
+                  desabilitado={bloqueado}
+                  rotulo={t("Ticket previsto por lead")}
+                  prefixo="R$"
+                />
+              </Rotulo>
+            </div>
           </Bloco>
 
           <Bloco titulo={t("Metas")}>

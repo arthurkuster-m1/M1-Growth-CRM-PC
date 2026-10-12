@@ -21,7 +21,13 @@ function Lista({
   vazio,
 }: {
   titulo: string;
-  linhas: Array<{ id: string; nome: string; leads: number; custo?: number | null }>;
+  linhas: Array<{
+    id: string;
+    nome: string;
+    leads: number;
+    custo?: number | null;
+    faturamento?: number | null;
+  }>;
   total: number;
   vazio: string;
 }) {
@@ -42,6 +48,7 @@ function Lista({
                   <span className="text-xs text-muted-foreground">
                     ({pct(l.leads, total)})
                     {l.custo != null ? ` · ${t("CPL")} ${moedaDoNumero(l.custo)}` : ""}
+                    {l.faturamento ? ` · ${moedaDoNumero(l.faturamento / 100)}` : ""}
                   </span>
                 </span>
               </div>
@@ -80,12 +87,18 @@ export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
         nome: c.name,
         leads,
         custo: leads > 0 && c.spend > 0 ? c.spend / leads : null,
+        faturamento: origem.faturamento?.porCriativo[c.id] ?? null,
       };
     })
     .filter((l) => l.leads > 0)
     .sort((a, b) => b.leads - a.leads);
   const porLp = lps
-    .map((l) => ({ id: l.id, nome: l.name, leads: origem.porLandingPage[l.id] ?? 0 }))
+    .map((l) => ({
+      id: l.id,
+      nome: l.name,
+      leads: origem.porLandingPage[l.id] ?? 0,
+      faturamento: origem.faturamento?.porLandingPage[l.id] ?? null,
+    }))
     .filter((l) => l.leads > 0)
     .sort((a, b) => b.leads - a.leads);
   const porConjunto = origem.porConjunto.map((c) => ({
@@ -106,6 +119,32 @@ export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
             : ""}
         </p>
       </div>
+      {origem.faturamento && (origem.faturamento.vendas > 0 || origem.faturamento.recebido > 0) ? (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">{t("Faturamento recebido")}</p>
+            <p className="text-base font-semibold tabular-nums">
+              {moedaDoNumero(origem.faturamento.recebido / 100)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t("A receber (comprometido)")}</p>
+            <p className="text-base font-semibold tabular-nums">
+              {moedaDoNumero(origem.faturamento.aReceber / 100)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t("Vendas fechadas")}</p>
+            <p className="text-base font-semibold tabular-nums">{origem.faturamento.vendas}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t("Conversão lead → venda")}</p>
+            <p className="text-base font-semibold tabular-nums">
+              {pct(origem.faturamento.vendas, origem.total)}
+            </p>
+          </div>
+        </div>
+      ) : null}
       {origem.total === 0 ? (
         <p className="text-sm text-muted-foreground">
           {t("Ainda não há leads com origem nesta campanha.")}

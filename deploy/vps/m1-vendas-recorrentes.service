@@ -1,0 +1,7 @@
+[Unit]
+Description=Parcelas e avisos de cobrança das recorrências (M1)
+After=m1-app.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/m1-vendas-recorrentes.sh

@@ -114,8 +114,56 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     };
   });
 
+  // O FATURAMENTO: o que de fato caiu (parcelas recebidas), por criativo, LP e campanha; e o que
+  // está comprometido (a receber). Quem não vê dinheiro (viewer) recebe zeros — a RLS filtra.
+  const faturamento = {
+    recebido: 0,
+    aReceber: 0,
+    vendas: 0,
+    porCriativo: {} as Record<string, number>,
+    porLandingPage: {} as Record<string, number>,
+  };
+  const { data: vendas } = await a.supabase
+    .from("crm_sales")
+    .select(
+      "id, status, amount_cents, paid_on, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
+    )
+    .eq("organization_id", a.orgId)
+    .eq("demand_campaign_id", id)
+    .in("status", ["comprometida", "concluida"])
+    .limit(LIMITE);
+  for (const v of (vendas ?? []) as Array<{
+    status: string;
+    amount_cents: number | string;
+    demand_creative_id: string | null;
+    demand_landing_page_id: string | null;
+    payments: Array<{ status: string; amount_cents: number | string }> | null;
+  }>) {
+    const pagas = v.payments ?? [];
+    let recebido = 0;
+    let previsto = 0;
+    if (pagas.length > 0) {
+      for (const p of pagas) {
+        if (p.status === "recebida") recebido += Number(p.amount_cents);
+        else if (p.status === "prevista") previsto += Number(p.amount_cents);
+      }
+    } else if (v.status === "concluida") recebido = Number(v.amount_cents);
+    else previsto = Number(v.amount_cents);
+    faturamento.recebido += recebido;
+    faturamento.aReceber += previsto;
+    faturamento.vendas += 1;
+    if (v.demand_creative_id) {
+      faturamento.porCriativo[v.demand_creative_id] =
+        (faturamento.porCriativo[v.demand_creative_id] ?? 0) + recebido;
+    }
+    if (v.demand_landing_page_id) {
+      faturamento.porLandingPage[v.demand_landing_page_id] =
+        (faturamento.porLandingPage[v.demand_landing_page_id] ?? 0) + recebido;
+    }
+  }
+
   return ok(
-    { ...contarOrigemDosLeads(entrada), de: janela.de, ate: janela.ate },
+    { ...contarOrigemDosLeads(entrada), faturamento, de: janela.de, ate: janela.ate },
     { requestId: a.requestId },
   );
 }

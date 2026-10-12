@@ -53,6 +53,11 @@ export interface ClienteDaLista {
   entrou_em: string;
   primeira_abordagem: string | null;
   primeira_compra: string | null;
+  ltv_cents: number;
+  ltv_previsto_cents: number;
+  interesse_cents: number;
+  vendas: number;
+  ultima_compra: string | null;
   ultima_atividade: string | null;
   campos: Record<string, unknown>;
   participacoes: ParticipacaoDoCliente[];
@@ -124,7 +129,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeContatos = supabase
     .from("contacts")
     .select(
-      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields",
+      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on",
     )
     .eq("organization_id", orgId)
     .eq("kind", "person")
@@ -178,6 +183,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       created_at: string;
       first_approached_at: string | null;
       first_purchase_on: string | null;
+      ltv_cents: number | string | null;
+      ltv_forecast_cents: number | string | null;
+      interest_cents: number | string | null;
+      sales_count: number | null;
+      last_purchase_on: string | null;
       last_activity_at: string | null;
       custom_fields: Record<string, unknown> | null;
     }>
@@ -193,6 +203,11 @@ export async function GET(req: NextRequest): Promise<Response> {
     entrou_em: c.created_at,
     primeira_abordagem: c.first_approached_at,
     primeira_compra: c.first_purchase_on,
+    ltv_cents: Number(c.ltv_cents) || 0,
+    ltv_previsto_cents: Number(c.ltv_forecast_cents) || 0,
+    interesse_cents: Number(c.interest_cents) || 0,
+    vendas: c.sales_count ?? 0,
+    ultima_compra: c.last_purchase_on,
     ultima_atividade: c.last_activity_at,
     campos: c.custom_fields ?? {},
     participacoes: porContato.get(c.id) ?? [],

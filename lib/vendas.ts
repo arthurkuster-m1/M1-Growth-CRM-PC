@@ -1,0 +1,267 @@
+import { z } from "zod";
+
+/**
+ * AS VENDAS (migration 0609): cada transação de um cliente. Uma assessoria de 6 meses são 6
+ * vendas do mesmo cliente. O status diz em que pé o dinheiro está:
+ *   interesse    — potencial, ainda sem compromisso;
+ *   comprometida — o cliente se comprometeu: vai entrar (contas a receber);
+ *   concluida    — recebida;
+ *   cancelada    — não conta.
+ *
+ * ⚠️ A FORMA de `STATUS_DA_VENDA` é requisito de instrumento (extrator do vocabulário banco×TS).
+ */
+export const STATUS_DA_VENDA = ["interesse", "comprometida", "concluida", "cancelada"] as const;
+export type StatusDaVenda = (typeof STATUS_DA_VENDA)[number];
+
+export const STATUS_DA_PARCELA = ["prevista", "recebida", "cancelada"] as const;
+export type StatusDaParcela = (typeof STATUS_DA_PARCELA)[number];
+
+export const FORMAS_DE_PAGAMENTO = [
+  "pix",
+  "cartao_credito",
+  "cartao_debito",
+  "boleto",
+  "transferencia",
+  "dinheiro",
+  "recorrencia",
+  "outro",
+] as const;
+export type FormaDePagamento = (typeof FORMAS_DE_PAGAMENTO)[number];
+
+export interface ItemDaVenda {
+  id?: string;
+  product_name: string;
+  quantity: number;
+  amount_cents: number;
+}
+
+export interface ParcelaDaVenda {
+  id?: string;
+  number: number;
+  due_on: string;
+  paid_on: string | null;
+  amount_cents: number;
+  status: StatusDaParcela;
+}
+
+export interface Venda {
+  id: string;
+  contact_id: string;
+  lead_id: string | null;
+  pipeline_id: string | null;
+  demand_campaign_id: string | null;
+  demand_landing_page_id: string | null;
+  demand_creative_id: string | null;
+  product_name: string;
+  description: string;
+  amount_cents: number;
+  currency: string;
+  status: StatusDaVenda;
+  expected_on: string | null;
+  paid_on: string | null;
+  is_recurring: boolean;
+  reference: string;
+  notes: string;
+  payment_method: string;
+  installments: number;
+  closed_on: string | null;
+  /** Venda efetivada automaticamente (lead ganho) que ainda precisa dos detalhes. */
+  needs_details: boolean;
+  /** Assinatura em andamento: a parcela do próximo mês é gerada sozinha (e cobrada). */
+  recurrence_active: boolean;
+  created_at: string;
+  itens?: ItemDaVenda[];
+  parcelas?: ParcelaDaVenda[];
+  /** Preenchidos pela listagem (junções). */
+  cliente?: { nome: string; telefone: string | null } | null;
+  campanha?: string | null;
+  funil?: string | null;
+}
+
+export const COLUNAS_DA_VENDA =
+  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, description, amount_cents, currency, status, expected_on, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, created_at";
+
+const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const itemSchema = z.object({
+  product_name: z.string().trim().min(1).max(200),
+  quantity: z.number().int().min(1).max(10000).default(1),
+  amount_cents: z.number().int().min(0).max(100_000_000_000),
+});
+const parcelaSchema = z.object({
+  number: z.number().int().min(1).max(120),
+  due_on: dia,
+  paid_on: dia.nullable().optional(),
+  amount_cents: z.number().int().min(0).max(100_000_000_000),
+  status: z.enum(STATUS_DA_PARCELA),
+});
+
+const camposSchema = z.object({
+  product_name: z.string().trim().max(200),
+  description: z.string().trim().max(2000),
+  amount_cents: z.number().int().min(0).max(100_000_000_000),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  status: z.enum(STATUS_DA_VENDA),
+  expected_on: dia.nullable(),
+  paid_on: dia.nullable(),
+  is_recurring: z.boolean(),
+  reference: z.string().trim().max(200),
+  notes: z.string().trim().max(2000),
+  demand_campaign_id: z.string().uuid().nullable(),
+  payment_method: z.string().trim().max(60),
+  installments: z.number().int().min(1).max(120),
+  closed_on: dia.nullable(),
+  recurrence_active: z.boolean(),
+  itens: z.array(itemSchema).max(50),
+  pagamentos: z.array(parcelaSchema).max(120),
+});
+
+/** Criar: o cliente basta; valor sai dos itens (ou de `amount_cents`). */
+export const novaVendaSchema = camposSchema
+  .partial()
+  .extend({ contact_id: z.string().uuid(), lead_id: z.string().uuid().nullable().optional() });
+
+/** Editar: ausente = não mexe (sem `.default()` de propósito). `itens`/`pagamentos` SUBSTITUEM. */
+export const edicaoDeVendaSchema = camposSchema
+  .partial()
+  .extend({ needs_details: z.boolean().optional() })
+  .refine((v) => Object.keys(v).length > 0, { message: "Nada para alterar." });
+
+export function vendaDaLinha(l: Record<string, unknown>): Venda {
+  const cliente = l.contact as
+    | { name?: string | null; display_name?: string | null; phone_number?: string | null }
+    | null
+    | undefined;
+  const nome =
+    cliente?.display_name?.trim() || cliente?.name?.trim() || cliente?.phone_number || "—";
+  const itens = Array.isArray(l.items)
+    ? (l.items as Array<Record<string, unknown>>)
+        .map((i) => ({
+          id: i.id as string,
+          product_name: String(i.product_name ?? ""),
+          quantity: Number(i.quantity) || 1,
+          amount_cents: Number(i.amount_cents) || 0,
+          position: Number(i.position) || 0,
+        }))
+        .sort((a, b) => a.position - b.position)
+        .map(({ position: _p, ...resto }) => resto)
+    : undefined;
+  const parcelas = Array.isArray(l.payments)
+    ? (l.payments as Array<Record<string, unknown>>)
+        .map((p) => ({
+          id: p.id as string,
+          number: Number(p.number) || 1,
+          due_on: String(p.due_on),
+          paid_on: (p.paid_on as string | null) ?? null,
+          amount_cents: Number(p.amount_cents) || 0,
+          status: p.status as StatusDaParcela,
+        }))
+        .sort((a, b) => a.number - b.number)
+    : undefined;
+  return {
+    ...(l as unknown as Venda),
+    itens,
+    parcelas,
+    amount_cents: Number(l.amount_cents) || 0,
+    cliente: cliente ? { nome, telefone: cliente.phone_number ?? null } : null,
+    campanha: (l.campaign as { name?: string } | null | undefined)?.name ?? null,
+    funil: (l.pipeline as { name?: string } | null | undefined)?.name ?? null,
+  };
+}
+
+export interface TotaisDeVendas {
+  recebido: number;
+  comprometido: number;
+  interesse: number;
+  vendasConcluidas: number;
+  ticketMedio: number | null;
+}
+
+export function totaisDeVendas(
+  vendas: readonly Pick<Venda, "status" | "amount_cents">[],
+): TotaisDeVendas {
+  let recebido = 0;
+  let comprometido = 0;
+  let interesse = 0;
+  let n = 0;
+  for (const v of vendas) {
+    if (v.status === "concluida") {
+      recebido += v.amount_cents;
+      n += 1;
+    } else if (v.status === "comprometida") comprometido += v.amount_cents;
+    else if (v.status === "interesse") interesse += v.amount_cents;
+  }
+  return {
+    recebido,
+    comprometido,
+    interesse,
+    vendasConcluidas: n,
+    ticketMedio: n > 0 ? recebido / n : null,
+  };
+}
+
+/** Meses entre a primeira e a última compra, contando os dois (assessoria de 6 meses = 6). */
+export function mesesAtivo(primeira: string | null, ultima: string | null): number | null {
+  if (!primeira || !ultima) return null;
+  const [a1, m1] = primeira.split("-").map(Number) as [number, number];
+  const [a2, m2] = ultima.split("-").map(Number) as [number, number];
+  return Math.max(1, (a2 - a1) * 12 + (m2 - m1) + 1);
+}
+
+/**
+ * Divide o total em parcelas iguais (a sobra de centavos vai para a PRIMEIRA, para as demais
+ * ficarem redondas) e espaça os vencimentos em meses. A venda em 12x de R$ 3.600 gera 12 parcelas
+ * de R$ 300 — e cada uma só conta no mês em que cair.
+ */
+export function gerarParcelas(
+  totalCents: number,
+  quantidade: number,
+  primeiroVencimento: string,
+  intervaloEmMeses = 1,
+): ParcelaDaVenda[] {
+  const n = Math.max(1, Math.min(120, Math.round(quantidade)));
+  const base = Math.floor(totalCents / n);
+  const sobra = totalCents - base * n;
+  const [a, m, d] = primeiroVencimento.split("-").map(Number) as [number, number, number];
+  return Array.from({ length: n }, (_, i) => {
+    const mesAlvo = m - 1 + i * intervaloEmMeses;
+    const ano = a + Math.floor(mesAlvo / 12);
+    const mes = ((mesAlvo % 12) + 12) % 12;
+    const ultimo = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+    const dia = Math.min(d, ultimo);
+    return {
+      number: i + 1,
+      due_on: `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
+      paid_on: null,
+      amount_cents: base + (i === 0 ? sobra : 0),
+      status: "prevista" as const,
+    };
+  });
+}
+
+/** O que entrou e o que está previsto num mês (`AAAA-MM`): só o que de fato cai naquele mês. */
+export function fluxoDoMes(
+  vendas: readonly Pick<
+    Venda,
+    "parcelas" | "status" | "amount_cents" | "paid_on" | "expected_on"
+  >[],
+  mes: string,
+): { recebido: number; aReceber: number } {
+  let recebido = 0;
+  let aReceber = 0;
+  for (const v of vendas) {
+    if (v.status === "cancelada" || v.status === "interesse") continue;
+    if (v.parcelas && v.parcelas.length > 0) {
+      for (const p of v.parcelas) {
+        if (p.status === "recebida" && (p.paid_on ?? p.due_on).startsWith(mes))
+          recebido += p.amount_cents;
+        else if (p.status === "prevista" && p.due_on.startsWith(mes)) aReceber += p.amount_cents;
+      }
+    } else if (v.status === "concluida" && (v.paid_on ?? "").startsWith(mes)) {
+      recebido += v.amount_cents;
+    } else if (v.status === "comprometida" && (v.expected_on ?? "").startsWith(mes)) {
+      aReceber += v.amount_cents;
+    }
+  }
+  return { recebido, aReceber };
+}

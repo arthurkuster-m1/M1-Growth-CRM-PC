@@ -28,7 +28,8 @@ import {
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { MagnifyingGlass, Rows, Kanban, TextAa, Users } from "@/lib/ui/icons";
+import { FinalizarVenda } from "@/components/vendas/FinalizarVenda";
+import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import type { ClienteDaLista, ParticipacaoDoCliente } from "@/app/api/v1/clientes/route";
 
@@ -129,6 +130,11 @@ export function ClientesCRM() {
     () => new Map((dados?.campanhas ?? []).map((c) => [c.id, c.name])),
     [dados],
   );
+  const [finalizando, setFinalizando] = useState<{
+    contatoId: string;
+    nome: string;
+    leadId: string;
+  } | null>(null);
   const funisPorId = useMemo(() => new Map((dados?.funis ?? []).map((f) => [f.id, f])), [dados]);
 
   const linhas: Linha[] = useMemo(() => {
@@ -181,7 +187,7 @@ export function ClientesCRM() {
       showApiError(e);
     }
   }
-  async function moverEtapa(p: ParticipacaoDoCliente, etapaId: string) {
+  async function moverEtapa(p: ParticipacaoDoCliente, etapaId: string, contato?: ClienteDaLista) {
     try {
       await apiClient.post(`/api/v1/leads/${p.lead_id}/move`, {
         stage_id: etapaId,
@@ -189,12 +195,22 @@ export function ClientesCRM() {
         expected_updated_at: p.atualizado_em,
       });
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      // Lead ganho: o pop-up pede os detalhes da venda (produtos, valor real, parcelas).
+      const etapa = dados?.etapas.find((e) => e.id === etapaId);
+      if (etapa?.is_won && podeVerVendas) {
+        const lead =
+          contato ??
+          dados?.clientes.find((c) => c.participacoes.some((x) => x.lead_id === p.lead_id));
+        if (lead)
+          setFinalizando({ contatoId: lead.contact_id, nome: lead.nome, leadId: p.lead_id });
+      }
     } catch (e) {
       showApiError(e);
     }
   }
 
   const podeEditar = (dados?.pode_editar ?? false) && ROLE_RANK[role] >= ROLE_RANK.agent;
+  const podeVerVendas = podeEditar;
 
   const opcoesDeEtapa = (dados?.etapas ?? [])
     .filter((e) => !funilAtual || e.pipeline_id === funilAtual.id)
@@ -447,6 +463,48 @@ export function ClientesCRM() {
       ),
     },
     {
+      id: "ltv",
+      titulo: t("LTV atual"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 140,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm font-medium tabular-nums">
+          {l.ltv_cents > 0 ? moeda(l.ltv_cents) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "ltv-previsto",
+      titulo: t("LTV previsto"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 140,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm tabular-nums">
+          {l.ltv_previsto_cents > 0 ? moeda(l.ltv_previsto_cents) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "interesse",
+      titulo: t("Em interesse"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 140,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm tabular-nums">
+          {l.interesse_cents > 0 ? moeda(l.interesse_cents) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "vendas",
+      titulo: t("Vendas"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 100,
+      padrao: false,
+      celula: (l) => <span className="block px-2 text-sm tabular-nums">{l.vendas || "—"}</span>,
+    },
+    {
       id: "atividade",
       titulo: t("Última atividade"),
       icone: <TextAa size={14} aria-hidden />,
@@ -536,6 +594,14 @@ export function ClientesCRM() {
       tipo: "data",
       valorDe: (l) => l.primeira_abordagem?.slice(0, 10) ?? null,
     },
+    { id: "ltv", titulo: t("LTV atual"), tipo: "numero", valorDe: (l) => l.ltv_cents / 100 },
+    {
+      id: "ltv-previsto",
+      titulo: t("LTV previsto"),
+      tipo: "numero",
+      valorDe: (l) => l.ltv_previsto_cents / 100,
+    },
+    { id: "vendas", titulo: t("Vendas"), tipo: "numero", valorDe: (l) => l.vendas },
   ];
   // Etapa e situação são de UM funil: na lista "Todos" não há uma só etapa por lead.
   const campos = todosOsCampos.filter(
@@ -637,6 +703,15 @@ export function ClientesCRM() {
       </section>
 
       <div className="flex flex-wrap items-center gap-2">
+        {dados?.pode_editar ? (
+          <Link
+            href="/app/vendas"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
+          >
+            {t("Vendas")}
+            <ArrowRight size={14} weight="bold" aria-hidden />
+          </Link>
+        ) : null}
         <div
           role="tablist"
           aria-label={t("Funis")}
