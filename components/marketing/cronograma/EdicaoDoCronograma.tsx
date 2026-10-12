@@ -12,13 +12,16 @@ import {
   STATUS_DO_ITEM,
   TIPOS_DE_META,
   domingoDe,
+  type CalculoDaMeta,
   type ConfigDoCronograma,
   type DadosDaMeta,
+  type FonteDaMeta,
   type ItemDoCronograma,
   type MetaDoCronograma,
   type StatusDoItem,
   type TipoDeMeta,
 } from "@/lib/marketing/cronograma";
+import type { Periodo } from "@/lib/marketing/periodos";
 import { Archive, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -189,6 +192,61 @@ function LinhaDeMeta({
           <Trash size={16} aria-hidden />
         </button>
       </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Rotulo texto={t("De onde vem o número de hoje")}>
+          <select
+            value={meta.fonte}
+            aria-label={t("De onde vem o número de hoje")}
+            onChange={(e) => void aoEditar({ fonte: e.target.value as FonteDaMeta })}
+            className={CAMPO}
+          >
+            <option value="manual">{t("Digitado por mim")}</option>
+            <option value="leads">{t("Leads do CRM")}</option>
+            <option value="vendas">{t("Vendas fechadas")}</option>
+            <option value="faturamento">{t("Faturamento recebido")}</option>
+            <option value="a_receber">{t("A receber (comprometido)")}</option>
+            <option value="investido">{t("Investimento em anúncios")}</option>
+            <option value="cpl">{t("CPL (custo por lead)")}</option>
+            <option value="roas">{t("ROAS (retorno sobre o investido)")}</option>
+          </select>
+        </Rotulo>
+        {meta.fonte !== "manual" ? (
+          <>
+            <Rotulo texto={t("Período")}>
+              <select
+                value={meta.periodo}
+                aria-label={t("Período")}
+                onChange={(e) => void aoEditar({ periodo: e.target.value as Periodo })}
+                className={CAMPO}
+              >
+                <option value="hoje">{t("Hoje")}</option>
+                <option value="ontem">{t("Ontem")}</option>
+                <option value="ultimos_5_dias">{t("Últimos 5 dias")}</option>
+                <option value="ultimos_7_dias">{t("Últimos 7 dias")}</option>
+                <option value="ultimos_30_dias">{t("Últimos 30 dias")}</option>
+                <option value="semana">{t("Esta semana")}</option>
+                <option value="mes">{t("Este mês")}</option>
+                <option value="mes_passado">{t("Mês passado")}</option>
+              </select>
+            </Rotulo>
+            {meta.fonte !== "cpl" && meta.fonte !== "roas" ? (
+              <Rotulo texto={t("Cálculo")}>
+                <select
+                  value={meta.calculo}
+                  aria-label={t("Cálculo")}
+                  onChange={(e) => void aoEditar({ calculo: e.target.value as CalculoDaMeta })}
+                  className={CAMPO}
+                >
+                  <option value="soma">{t("Soma do período")}</option>
+                  <option value="media_diaria">{t("Média por dia")}</option>
+                </select>
+              </Rotulo>
+            ) : (
+              <span />
+            )}
+          </>
+        ) : null}
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <Rotulo texto={t("Onde queremos chegar")}>
           <CampoDeValor
@@ -199,14 +257,26 @@ function LinhaDeMeta({
             rotulo={t("Onde queremos chegar")}
           />
         </Rotulo>
-        <Rotulo texto={t("Onde estamos hoje")}>
-          <CampoDeValor
-            tipo={meta.tipo}
-            texto={atual}
-            aoMudar={setAtual}
-            aoConfirmar={(v) => v !== meta.valor_atual && void aoEditar({ valor_atual: v })}
-            rotulo={t("Onde estamos hoje")}
-          />
+        <Rotulo
+          texto={
+            meta.fonte === "manual"
+              ? t("Onde estamos hoje")
+              : t("Onde estamos hoje (automático, do CRM)")
+          }
+        >
+          {meta.fonte !== "manual" ? (
+            <p className="flex h-10 items-center rounded-xl border border-dashed px-3 text-sm text-muted-foreground tabular-nums">
+              {t("Atualiza sozinho — aparece no cronograma")}
+            </p>
+          ) : (
+            <CampoDeValor
+              tipo={meta.tipo}
+              texto={atual}
+              aoMudar={setAtual}
+              aoConfirmar={(v) => v !== meta.valor_atual && void aoEditar({ valor_atual: v })}
+              rotulo={t("Onde estamos hoje")}
+            />
+          )}
         </Rotulo>
       </div>
     </div>
@@ -285,6 +355,9 @@ function NovaMeta({ aoCriar }: { aoCriar: (m: DadosDaMeta) => Promise<unknown> }
               unidade: tipo === "numero" ? unidade : "",
               valor_alvo: alvo.trim() === "" ? null : lerNumero(alvo),
               valor_atual: null,
+              fonte: "manual" as const,
+              periodo: "mes" as const,
+              calculo: "soma" as const,
               descricao: "",
             });
             setTitulo("");

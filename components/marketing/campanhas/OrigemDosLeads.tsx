@@ -6,6 +6,7 @@ import {
   useLandingPagesDaCampanha,
   useOrigemDosLeads,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
+import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { cn } from "@/lib/utils";
 
@@ -33,14 +34,14 @@ function Lista({
 }) {
   const t = useT();
   return (
-    <div className="grid content-start gap-2">
+    <div className="grid grid-cols-1 content-start gap-2">
       <h4 className="text-xs font-semibold tracking-wider text-text-subtle uppercase">{titulo}</h4>
       {linhas.length === 0 ? (
         <p className="text-sm text-muted-foreground">{vazio}</p>
       ) : (
-        <ul className="grid gap-1.5">
+        <ul className="grid grid-cols-1 gap-1.5">
           {linhas.map((l) => (
-            <li key={l.id} className="grid gap-1">
+            <li key={l.id} className="grid grid-cols-1 gap-1">
               <div className="flex items-baseline justify-between gap-2 text-sm">
                 <span className="min-w-0 truncate">{l.nome}</span>
                 <span className="shrink-0 tabular-nums">
@@ -70,7 +71,13 @@ function Lista({
  * DE ONDE VIERAM OS LEADS: por criativo (com o CPL real), por landing page e por conjunto de
  * anúncios, mais a fatia sem origem identificada. Os leads são os do CRM.
  */
-export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
+export function OrigemDosLeads({
+  campanhaId,
+  campanha,
+}: {
+  campanhaId: string;
+  campanha?: CampanhaDeDemanda;
+}) {
   const t = useT();
   const { origem, carregando } = useOrigemDosLeads(campanhaId);
   const { criativos } = useCriativosDaCampanha(campanhaId);
@@ -109,7 +116,7 @@ export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
   const semOrigem = origem.semCriativo;
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">{t("De onde vieram os leads")}</h3>
         <p className="text-xs text-muted-foreground">
@@ -119,6 +126,7 @@ export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
             : ""}
         </p>
       </div>
+      {campanha ? <MetasDoPeriodo campanha={campanha} origem={origem} /> : null}
       {origem.faturamento && (origem.faturamento.vendas > 0 || origem.faturamento.recebido > 0) ? (
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-4">
           <div>
@@ -151,7 +159,7 @@ export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
         </p>
       ) : (
         <>
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <Lista
               titulo={t("Por criativo")}
               linhas={porCriativo}
@@ -187,5 +195,103 @@ export function OrigemDosLeads({ campanhaId }: { campanhaId: string }) {
         </>
       )}
     </section>
+  );
+}
+
+/** As metas da campanha lidas dos números reais (CRM, vendas e Meta) no período delas. */
+function MetasDoPeriodo({
+  campanha,
+  origem,
+}: {
+  campanha: CampanhaDeDemanda;
+  origem: NonNullable<ReturnType<typeof useOrigemDosLeads>["origem"]>;
+}) {
+  const t = useT();
+  const leads = origem.total;
+  const vendas = origem.faturamento?.vendas ?? 0;
+  const faturamento = (origem.faturamento?.recebido ?? 0) / 100;
+  const investido = origem.investido ?? 0;
+  const cpl = leads > 0 && investido > 0 ? investido / leads : null;
+  const linhas: Array<{
+    rotulo: string;
+    atual: string;
+    meta: string;
+    progresso: number | null;
+    menorEMelhor?: boolean;
+    bom?: boolean;
+  }> = [];
+  if (campanha.goal_leads !== null) {
+    linhas.push({
+      rotulo: t("Leads"),
+      atual: String(leads),
+      meta: String(campanha.goal_leads),
+      progresso: campanha.goal_leads > 0 ? leads / campanha.goal_leads : null,
+    });
+  }
+  if (campanha.goal_sales !== null) {
+    linhas.push({
+      rotulo: t("Vendas"),
+      atual: String(vendas),
+      meta: String(campanha.goal_sales),
+      progresso: campanha.goal_sales > 0 ? vendas / campanha.goal_sales : null,
+    });
+  }
+  if (campanha.goal_revenue !== null) {
+    linhas.push({
+      rotulo: t("Faturamento recebido"),
+      atual: moedaDoNumero(faturamento),
+      meta: moedaDoNumero(campanha.goal_revenue),
+      progresso: campanha.goal_revenue > 0 ? faturamento / campanha.goal_revenue : null,
+    });
+  }
+  if (campanha.goal_cpl !== null) {
+    linhas.push({
+      rotulo: t("CPL"),
+      atual: cpl === null ? "—" : moedaDoNumero(cpl),
+      meta: moedaDoNumero(campanha.goal_cpl),
+      progresso: cpl !== null && campanha.goal_cpl > 0 ? campanha.goal_cpl / cpl : null,
+      menorEMelhor: true,
+      bom: cpl !== null && cpl <= campanha.goal_cpl,
+    });
+  }
+  if (linhas.length === 0) return null;
+  const periodo =
+    origem.de && origem.ate
+      ? `${origem.de.split("-").reverse().join("/")} → ${origem.ate.split("-").reverse().join("/")}`
+      : "";
+  return (
+    <div className="grid grid-cols-1 gap-2 rounded-xl border p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 className="text-xs font-semibold tracking-wider text-text-subtle uppercase">
+          {origem.mensal ? t("Metas deste mês") : t("Metas da campanha")}
+        </h4>
+        <span className="text-xs text-muted-foreground">{periodo}</span>
+      </div>
+      <ul className="grid grid-cols-1 gap-2.5">
+        {linhas.map((l) => {
+          const p = l.progresso === null ? 0 : Math.min(1, l.progresso);
+          const ok = l.menorEMelhor ? l.bom : (l.progresso ?? 0) >= 1;
+          return (
+            <li key={l.rotulo} className="grid grid-cols-1 gap-1">
+              <div className="flex items-baseline justify-between gap-2 text-sm">
+                <span>{l.rotulo}</span>
+                <span className="tabular-nums">
+                  <strong>{l.atual}</strong>{" "}
+                  <span className="text-xs text-muted-foreground">
+                    / {l.menorEMelhor ? t("teto") : t("meta")} {l.meta}
+                  </span>
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={cn("h-full rounded-full", ok ? "bg-success-fg" : "bg-primary")}
+                  style={{ width: `${Math.round(p * 100)}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

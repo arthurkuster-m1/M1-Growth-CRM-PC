@@ -81,7 +81,7 @@ export function LinhaDoTempoDeCampanhas({
           type="button"
           aria-label={t("Semanas anteriores")}
           onClick={() => setInicio(somarDias(inicio, -passo))}
-          className="grid h-9 w-9 place-items-center rounded-lg border hover:bg-secondary"
+          className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg border hover:bg-secondary"
         >
           <CaretLeft size={14} aria-hidden />
         </button>
@@ -89,7 +89,7 @@ export function LinhaDoTempoDeCampanhas({
           type="button"
           aria-label={t("Próximas semanas")}
           onClick={() => setInicio(somarDias(inicio, passo))}
-          className="grid h-9 w-9 place-items-center rounded-lg border hover:bg-secondary"
+          className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg border hover:bg-secondary"
         >
           <CaretRight size={14} aria-hidden />
         </button>
@@ -151,7 +151,7 @@ export function LinhaDoTempoDeCampanhas({
       <div className="overflow-x-auto rounded-2xl border bg-card">
         <div style={{ minWidth: larguraMinima }}>
           <div
-            className="grid border-b text-xs text-muted-foreground"
+            className="grid grid-cols-1 border-b text-xs text-muted-foreground"
             style={{ gridTemplateColumns: `300px repeat(${DIAS}, minmax(0, 1fr))` }}
           >
             <div className="px-3 py-2">{t("Campanha")}</div>

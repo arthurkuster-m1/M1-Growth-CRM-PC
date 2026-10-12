@@ -317,3 +317,19 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
   destaque). Landing pages: Leads (CRM), Conversão da LP (leads ÷ visitas) e CPL real.
 - Vale só para leads que entraram a partir da sessão 6 (origem gravada na entrada).
 - Vendas e faturamento por origem entram com a sessão 7 do CRM (Vendas).
+
+### C6 — Metas automáticas e resultados por período (feita em 13/10/2026; migration 0612)
+- **Metas da campanha com período:** `goal_period` (a campanha toda, ou cada mês). O card
+  "De onde vieram os leads" ganhou "Metas da campanha / deste mês": leads, vendas, faturamento
+  recebido e CPL (teto) lidos do CRM, das vendas e do Meta, com barra de progresso.
+- **Metas do cronograma automáticas:** cada meta escolhe de onde vem o "onde estamos hoje" —
+  digitado, leads, vendas, faturamento recebido, a receber, investido, CPL ou ROAS —, o período
+  (hoje, ontem, últimos 5/7/30 dias, semana, mês, mês passado) e o cálculo (soma ou média por
+  dia: "30 leads/dia = média dos últimos 5 dias"). Aparece sozinho no cronograma interno e no
+  link público. `lib/marketing/metas-automaticas.ts`, `fn_metricas_do_crm`.
+- **Resultados:** `/app/marketing/geracao-de-demanda/resultados`: todas as campanhas num período,
+  com investido, leads, CPL, vendas, CAC, recebido, a receber e ROAS (`fn_demand_campaigns_resultados`).
+  Faturamento conta só o que caiu no período (parcelas recebidas).
+- **Pop-up da venda em qualquer tela:** `PopupDeVendaPendente` na casca do app: toda venda "a
+  detalhar" (lead ganho por qualquer caminho) abre o pop-up; mudar a situação para
+  comprometida/concluída em Vendas também abre.

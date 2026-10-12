@@ -194,7 +194,7 @@ export function DiaADiaDaCampanha({
   }
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Dia a dia")}</h2>
         <div className="flex flex-wrap gap-2">
@@ -234,7 +234,7 @@ export function DiaADiaDaCampanha({
               type="button"
               aria-label={t("Mês anterior")}
               onClick={() => setMes(somarMeses(janela.mes!, -1))}
-              className="grid h-9 w-9 place-items-center rounded-[10px] hover:bg-card"
+              className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
             >
               ‹
             </button>
@@ -243,7 +243,7 @@ export function DiaADiaDaCampanha({
               type="button"
               aria-label={t("Próximo mês")}
               onClick={() => setMes(somarMeses(janela.mes!, 1))}
-              className="grid h-9 w-9 place-items-center rounded-[10px] hover:bg-card"
+              className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
             >
               ›
             </button>
@@ -340,7 +340,7 @@ export function DiaADiaDaCampanha({
                           type="button"
                           aria-label={t("Apagar dia")}
                           onClick={() => void apagar(d.day)}
-                          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                          className="grid h-8 w-8 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
                         >
                           <Trash size={14} aria-hidden />
                         </button>

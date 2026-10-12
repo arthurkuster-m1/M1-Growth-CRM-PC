@@ -126,8 +126,8 @@ export function DialogoDaVenda({
       recebida: boolean;
       paid_on: string | null;
     }>
-  >(() =>
-    (venda?.parcelas ?? [])
+  >(() => {
+    const existentes = (venda?.parcelas ?? [])
       .filter((p) => p.status !== "cancelada")
       .map((p) => ({
         number: p.number,
@@ -135,8 +135,21 @@ export function DialogoDaVenda({
         valor: textoDe(p.amount_cents),
         recebida: p.status === "recebida",
         paid_on: p.paid_on,
-      })),
-  );
+      }));
+    // Venda marcada como concluída sem parcelas: uma parcela única, já recebida hoje.
+    if (existentes.length === 0 && venda?.status === "concluida") {
+      return [
+        {
+          number: 1,
+          due_on: hoje(),
+          valor: textoDe(venda.amount_cents),
+          recebida: true,
+          paid_on: hoje(),
+        },
+      ];
+    }
+    return existentes;
+  });
   const [qtd, setQtd] = useState(String(Math.max(1, venda?.installments ?? 1)));
   const [primeiro, setPrimeiro] = useState(venda?.expected_on ?? hoje());
   const [salvando, setSalvando] = useState(false);
@@ -221,7 +234,7 @@ export function DialogoDaVenda({
           )}
         </DialogDescription>
 
-        <div className="grid gap-1">
+        <div className="grid grid-cols-1 gap-1">
           <span className="text-xs text-muted-foreground">{t("Cliente")}</span>
           {venda || (contatoInicial && contato === contatoInicial.contact_id) ? (
             <p className="text-sm font-medium">
@@ -248,7 +261,7 @@ export function DialogoDaVenda({
                 className={CAMPO}
               />
               {sugestoes.length > 0 ? (
-                <ul className="grid gap-1 rounded-xl border p-1">
+                <ul className="grid grid-cols-1 gap-1 rounded-xl border p-1">
                   {sugestoes.map((c) => (
                     <li key={c.contact_id}>
                       <button
@@ -267,7 +280,7 @@ export function DialogoDaVenda({
           )}
         </div>
 
-        <div className="grid gap-1">
+        <div className="grid grid-cols-1 gap-1">
           <span className="text-xs text-muted-foreground">{t("Situação")}</span>
           <div className="flex flex-wrap gap-1.5" role="radiogroup">
             {(
@@ -295,7 +308,7 @@ export function DialogoDaVenda({
           </div>
         </div>
 
-        <div className="grid gap-2 rounded-xl border p-3">
+        <div className="grid grid-cols-1 gap-2 rounded-xl border p-3">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             {t("Produtos e serviços")}
           </p>
@@ -331,7 +344,7 @@ export function DialogoDaVenda({
                 aria-label={t("Tirar item")}
                 disabled={itens.length === 1}
                 onClick={() => setItens((l) => l.filter((_, k) => k !== i))}
-                className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg disabled:opacity-30"
+                className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg disabled:opacity-30"
               >
                 <Trash size={14} aria-hidden />
               </button>
@@ -353,12 +366,12 @@ export function DialogoDaVenda({
         </div>
 
         {situacao === "fechada" ? (
-          <div className="grid gap-3 rounded-xl border p-3">
+          <div className="grid grid-cols-1 gap-3 rounded-xl border p-3">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {t("Pagamento")}
             </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label className="grid gap-1">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Forma de pagamento")}</span>
                 <select
                   value={forma}
@@ -375,7 +388,7 @@ export function DialogoDaVenda({
                   ))}
                 </select>
               </label>
-              <label className="grid gap-1">
+              <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Número de parcelas")}</span>
                 <input
                   value={qtd}
@@ -384,7 +397,7 @@ export function DialogoDaVenda({
                   className={CAMPO}
                 />
               </label>
-              <label className="grid gap-1">
+              <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Primeira parcela em")}</span>
                 <input
                   type="date"
@@ -518,7 +531,7 @@ export function DialogoDaVenda({
           </div>
         ) : null}
 
-        <label className="grid gap-1">
+        <label className="grid grid-cols-1 gap-1">
           <span className="text-xs text-muted-foreground">
             {t("Referência (ex.: Mensalidade 03/2026)")}
           </span>
@@ -528,7 +541,7 @@ export function DialogoDaVenda({
             className={CAMPO}
           />
         </label>
-        <label className="grid gap-1">
+        <label className="grid grid-cols-1 gap-1">
           <span className="text-xs text-muted-foreground">{t("Observações")}</span>
           <textarea
             rows={2}

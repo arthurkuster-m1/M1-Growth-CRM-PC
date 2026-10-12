@@ -209,7 +209,12 @@ export function VendasCRM() {
           valorId={v.status}
           podeEditar
           rotulo={t("Situação da venda")}
-          aoEscolher={(id) => mudarStatus.mutate({ id: v.id, status: id as StatusDaVenda })}
+          aoEscolher={(id) => {
+            // Fechar a venda (comprometida/concluída) pede os detalhes: produtos, valor real,
+            // forma de pagamento e parcelas. Interesse e cancelada mudam direto.
+            if (id === "concluida" || id === "comprometida") setEditando({ ...v, status: id });
+            else mudarStatus.mutate({ id: v.id, status: id as StatusDaVenda });
+          }}
         >
           <Etiqueta ponto cor={COR[v.status]}>
             {rotuloDoStatusDaVenda(t, v.status)}
@@ -394,7 +399,7 @@ export function VendasCRM() {
       {cobrancas.length > 0 ? (
         <section
           aria-label={t("Cobranças para confirmar")}
-          className="grid gap-2 rounded-2xl border border-warning/40 bg-warning-bg/40 p-4"
+          className="grid grid-cols-1 gap-2 rounded-2xl border border-warning/40 bg-warning-bg/40 p-4"
         >
           <h2 className="text-sm font-semibold">
             {t("Cobranças para confirmar")} ({cobrancas.length})
@@ -404,7 +409,7 @@ export function VendasCRM() {
               "Venceu ou vence até amanhã. Confirme se o lead pagou e se o valor mudou — nada é dado como pago sozinho.",
             )}
           </p>
-          <ul className="grid gap-2">
+          <ul className="grid grid-cols-1 gap-2">
             {cobrancas.map(({ venda, parcela }) => (
               <CobrancaParaConfirmar
                 key={parcela.id}
@@ -428,7 +433,7 @@ export function VendasCRM() {
           type="button"
           aria-label={t("Mês anterior")}
           onClick={() => setMes(somarMeses(mes, -1))}
-          className="grid h-9 w-9 place-items-center rounded-[10px] hover:bg-card"
+          className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
         >
           ‹
         </button>
@@ -443,7 +448,7 @@ export function VendasCRM() {
           type="button"
           aria-label={t("Próximo mês")}
           onClick={() => setMes(somarMeses(mes, 1))}
-          className="grid h-9 w-9 place-items-center rounded-[10px] hover:bg-card"
+          className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
         >
           ›
         </button>
@@ -548,7 +553,11 @@ export function VendasCRM() {
           key={editando === "nova" ? "nova" : editando.id}
           venda={editando === "nova" ? null : editando}
           clientes={clientes.data ?? []}
-          titulo={editando !== "nova" && editando.needs_details ? t("Finalizar venda") : undefined}
+          titulo={
+            editando !== "nova" && (editando.needs_details || editando.status !== "interesse")
+              ? t("Finalizar venda")
+              : undefined
+          }
           aoFechar={() => setEditando(null)}
           aoSalvar={async (v) => {
             await salvar.mutateAsync(v).catch(() => undefined);
@@ -596,7 +605,7 @@ function CobrancaParaConfirmar({
     (Number(valor.replace(/\./g, "").replace(",", ".")) || 0) * 100,
   );
   return (
-    <li className="grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+    <li className="grid grid-cols-1 gap-2 rounded-xl border bg-card p-3 sm:grid-cols-[1fr_auto] sm:items-center">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">{cliente}</p>
         <p className="truncate text-xs text-muted-foreground">

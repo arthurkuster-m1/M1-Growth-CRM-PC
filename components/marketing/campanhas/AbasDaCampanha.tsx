@@ -85,14 +85,14 @@ export function AbasDaCampanha({
             <button
               type="button"
               aria-label={t("Páginas da campanha")}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-card hover:text-foreground"
+              className="grid h-10 w-10 shrink-0 grid-cols-1 place-items-center rounded-xl text-muted-foreground hover:bg-card hover:text-foreground"
             >
               <Plus size={16} weight="bold" aria-hidden />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="grid w-64 gap-3 p-2">
+          <PopoverContent align="end" className="grid w-64 grid-cols-1 gap-3 p-2">
             {faltam.length > 0 ? (
-              <div className="grid gap-0.5">
+              <div className="grid grid-cols-1 gap-0.5">
                 <p className="px-2 pt-1 text-xs font-semibold tracking-wider text-text-subtle uppercase">
                   {t("Adicionar página")}
                 </p>
@@ -110,7 +110,7 @@ export function AbasDaCampanha({
               </div>
             ) : null}
             {ativas.length > 0 ? (
-              <div className="grid gap-0.5">
+              <div className="grid grid-cols-1 gap-0.5">
                 <p className="px-2 pt-1 text-xs font-semibold tracking-wider text-text-subtle uppercase">
                   {t("Tirar página")}
                 </p>

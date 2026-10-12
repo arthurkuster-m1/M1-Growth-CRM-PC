@@ -28,7 +28,7 @@ import {
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { FinalizarVenda } from "@/components/vendas/FinalizarVenda";
+import { CHAVE_DE_VENDAS_PENDENTES } from "@/components/vendas/PopupDeVendaPendente";
 import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import type { ClienteDaLista, ParticipacaoDoCliente } from "@/app/api/v1/clientes/route";
@@ -130,11 +130,6 @@ export function ClientesCRM() {
     () => new Map((dados?.campanhas ?? []).map((c) => [c.id, c.name])),
     [dados],
   );
-  const [finalizando, setFinalizando] = useState<{
-    contatoId: string;
-    nome: string;
-    leadId: string;
-  } | null>(null);
   const funisPorId = useMemo(() => new Map((dados?.funis ?? []).map((f) => [f.id, f])), [dados]);
 
   const linhas: Linha[] = useMemo(() => {
@@ -187,7 +182,7 @@ export function ClientesCRM() {
       showApiError(e);
     }
   }
-  async function moverEtapa(p: ParticipacaoDoCliente, etapaId: string, contato?: ClienteDaLista) {
+  async function moverEtapa(p: ParticipacaoDoCliente, etapaId: string) {
     try {
       await apiClient.post(`/api/v1/leads/${p.lead_id}/move`, {
         stage_id: etapaId,
@@ -195,14 +190,9 @@ export function ClientesCRM() {
         expected_updated_at: p.atualizado_em,
       });
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
-      // Lead ganho: o pop-up pede os detalhes da venda (produtos, valor real, parcelas).
-      const etapa = dados?.etapas.find((e) => e.id === etapaId);
-      if (etapa?.is_won && podeVerVendas) {
-        const lead =
-          contato ??
-          dados?.clientes.find((c) => c.participacoes.some((x) => x.lead_id === p.lead_id));
-        if (lead)
-          setFinalizando({ contatoId: lead.contact_id, nome: lead.nome, leadId: p.lead_id });
+      // Lead ganho: o banco efetiva a venda e o pop-up global (casca do app) a abre na hora.
+      if (dados?.etapas.find((e) => e.id === etapaId)?.is_won) {
+        await queryClient.invalidateQueries({ queryKey: CHAVE_DE_VENDAS_PENDENTES });
       }
     } catch (e) {
       showApiError(e);
@@ -210,7 +200,6 @@ export function ClientesCRM() {
   }
 
   const podeEditar = (dados?.pode_editar ?? false) && ROLE_RANK[role] >= ROLE_RANK.agent;
-  const podeVerVendas = podeEditar;
 
   const opcoesDeEtapa = (dados?.etapas ?? [])
     .filter((e) => !funilAtual || e.pipeline_id === funilAtual.id)

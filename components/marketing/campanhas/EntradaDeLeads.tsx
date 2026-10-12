@@ -55,7 +55,7 @@ function Porta({
       <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 hover:bg-secondary/40 sm:px-4 [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary font-mono text-xs font-semibold text-muted-foreground"
+          className="grid h-8 w-8 shrink-0 grid-cols-1 place-items-center rounded-full bg-secondary font-mono text-xs font-semibold text-muted-foreground"
         >
           {numero}
         </span>
@@ -78,7 +78,7 @@ function Porta({
           ›
         </span>
       </summary>
-      <div className="grid gap-3 border-t bg-secondary/20 px-3 py-4 sm:px-4 sm:pl-[3.75rem]">
+      <div className="grid grid-cols-1 gap-3 border-t bg-secondary/20 px-3 py-4 sm:px-4 sm:pl-[3.75rem]">
         {children}
       </div>
     </details>
@@ -142,7 +142,7 @@ export function EntradaDeLeads({
   const ligadas = (fontes ?? []).filter((f) => f.desta_campanha);
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card shadow-sm">
       <div className="px-4 pt-4">
         <h2 className="text-sm font-semibold">{t("Como os leads chegam a esta campanha")}</h2>
         <p className="text-xs text-muted-foreground">
@@ -178,9 +178,12 @@ export function EntradaDeLeads({
               </Link>
             </p>
           ) : (
-            <ul className="grid gap-2">
+            <ul className="grid grid-cols-1 gap-2">
               {fontes.map((f) => (
-                <li key={f.id} className="grid gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm">
+                <li
+                  key={f.id}
+                  className="grid grid-cols-1 gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{f.name}</span>

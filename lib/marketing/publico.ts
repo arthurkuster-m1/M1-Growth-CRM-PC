@@ -1,3 +1,4 @@
+import { aplicarMetasAutomaticas } from "@/lib/marketing/metas-automaticas";
 import {
   COLUNAS_DO_RETRATO,
   RETRATOS_NA_TELA,
@@ -266,7 +267,11 @@ export async function cronogramaPublico(
   return {
     config: (cfg.data as ConfigDoCronograma | null) ?? CONFIG_PADRAO,
     itens: ((itens.data ?? []) as Array<Record<string, unknown>>).map(itemDaLinha),
-    metas: ((metas.data ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
+    metas: await aplicarMetasAutomaticas(
+      admin,
+      org,
+      ((metas.data ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
+    ),
     tarefas: tarefasDaSemana(todas, domingo),
   };
 }

@@ -666,3 +666,44 @@ describe("vendas (sessão 7)", () => {
     expect(precisaDeConfirmacao("2026-10-14", "2026-10-12")).toBe(false);
   });
 });
+
+import { diasDecorridos, janelaDoPeriodo } from "@/lib/marketing/periodos";
+
+describe("períodos das metas (C6)", () => {
+  const hoje = "2026-10-14"; // quarta-feira
+  it("janelas relativas a hoje", () => {
+    expect(janelaDoPeriodo("hoje", hoje)).toEqual({ de: hoje, ate: hoje, dias: 1 });
+    expect(janelaDoPeriodo("ontem", hoje)).toEqual({
+      de: "2026-10-13",
+      ate: "2026-10-13",
+      dias: 1,
+    });
+    expect(janelaDoPeriodo("ultimos_5_dias", hoje)).toEqual({
+      de: "2026-10-10",
+      ate: hoje,
+      dias: 5,
+    });
+    expect(janelaDoPeriodo("ultimos_30_dias", hoje).dias).toBe(30);
+  });
+  it("semana começa no domingo; mês e mês passado inteiros", () => {
+    expect(janelaDoPeriodo("semana", hoje)).toEqual({
+      de: "2026-10-11",
+      ate: "2026-10-17",
+      dias: 7,
+    });
+    expect(janelaDoPeriodo("mes", hoje)).toEqual({ de: "2026-10-01", ate: "2026-10-31", dias: 31 });
+    expect(janelaDoPeriodo("mes_passado", hoje)).toEqual({
+      de: "2026-09-01",
+      ate: "2026-09-30",
+      dias: 30,
+    });
+    expect(janelaDoPeriodo("mes_passado", "2026-01-10")).toMatchObject({
+      de: "2025-12-01",
+      ate: "2025-12-31",
+    });
+  });
+  it("média diária usa só os dias que já passaram no mês em andamento", () => {
+    expect(diasDecorridos(janelaDoPeriodo("mes", hoje), hoje)).toBe(14);
+    expect(diasDecorridos(janelaDoPeriodo("mes_passado", hoje), hoje)).toBe(30);
+  });
+});

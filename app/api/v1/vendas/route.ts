@@ -22,7 +22,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("agent", { requestId, resource: "crm_sales" });
   if (!authz.ok) return authz.response;
-  const contato = new URL(req.url).searchParams.get("contato");
+  const parametros = new URL(req.url).searchParams;
+  const contato = parametros.get("contato");
+  const soPendentes = parametros.get("pendentes") === "1";
   if (contato && !z.string().uuid().safeParse(contato).success) {
     return fail("validation_failed", "Parâmetros inválidos.", 422, { requestId });
   }
@@ -34,6 +36,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .order("created_at", { ascending: false })
     .limit(LIMITE);
   if (contato) q = q.eq("contact_id", contato);
+  if (soPendentes) q = q.eq("needs_details", true).limit(20);
   const { data, error } = await q;
   if (error) return fail("internal_error", "Erro ao carregar as vendas.", 500, { requestId });
   return ok(

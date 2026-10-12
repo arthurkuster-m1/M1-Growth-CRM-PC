@@ -102,7 +102,7 @@ export function LandingPagesDaCampanha({
   const melhorConexao = Math.max(...comDados.map((l) => l.m.connectRate ?? -1));
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Landing pages")}</h2>
         {podeEditar ? (
@@ -129,9 +129,9 @@ export function LandingPagesDaCampanha({
           {t("Nenhuma landing page ainda. Cadastre a primeira.")}
         </p>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="grid grid-cols-1 gap-3">
           {linhas.map(({ lp, m }) => (
-            <li key={lp.id} className="grid gap-3 rounded-2xl border p-3">
+            <li key={lp.id} className="grid grid-cols-1 gap-3 rounded-2xl border p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Etiqueta cor={COR_DO_STATUS_DO_CRIATIVO[lp.status]}>
                   {rotuloDoStatusDoCriativo(t, lp.status)}
@@ -140,7 +140,7 @@ export function LandingPagesDaCampanha({
                   {m.criativos} {t("criativos apontam para ela")}
                 </span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_auto]">
                 <Texto
                   valor={lp.name}
                   aoGravar={(name) => name.trim() && void editar(lp.id, { name })}
@@ -240,7 +240,7 @@ export function LandingPagesDaCampanha({
               </div>
               {laudos[lp.id]?.pode === false ? <GuiaDeEmbed laudo={laudos[lp.id]!} /> : null}
               {vendo === lp.id && lp.url ? (
-                <div className="grid gap-1">
+                <div className="grid grid-cols-1 gap-1">
                   <iframe
                     src={lp.url}
                     title={`${t("Pré-visualização")} — ${lp.name}`}
@@ -262,7 +262,7 @@ export function LandingPagesDaCampanha({
       )}
 
       {comDados.length > 1 ? (
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <h3 className="text-sm font-semibold">{t("Comparativo das landing pages")}</h3>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full min-w-max text-sm">
@@ -348,7 +348,7 @@ function GuiaDeEmbed({ laudo }: { laudo: Laudo }) {
   const apache = `# Apache — .htaccess\nHeader unset X-Frame-Options\nHeader always set Content-Security-Policy "frame-ancestors 'self' ${origem}"`;
   const next = `// Next.js — next.config.js\nasync headers() {\n  return [{ source: "/(.*)", headers: [\n    { key: "Content-Security-Policy", value: "frame-ancestors 'self' ${origem}" },\n  ] }];\n}`;
   return (
-    <div className="grid gap-3 rounded-xl border border-warning/40 bg-warning-bg p-3 text-sm text-warning-fg">
+    <div className="grid grid-cols-1 gap-3 rounded-xl border border-warning/40 bg-warning-bg p-3 text-sm text-warning-fg">
       <p className="font-semibold">{t("Esta página não permite aparecer dentro do painel.")}</p>
       <p>
         {laudo.motivo === "x_frame_options"

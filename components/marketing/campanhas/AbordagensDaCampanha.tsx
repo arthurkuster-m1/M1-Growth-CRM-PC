@@ -69,7 +69,7 @@ function Cartao({
   const t = useT();
   const bloqueado = !podeEditar;
   return (
-    <article className="grid content-start gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <article className="grid grid-cols-1 content-start gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <Etiqueta cor={COR_DO_STATUS_DO_CRIATIVO[a.status]}>
           {rotuloDoStatusDoCriativo(t, a.status)}
@@ -83,7 +83,7 @@ function Cartao({
         rotulo={t("Nome da abordagem")}
         max={160}
       />
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <select
           className={CAMPO}
           disabled={bloqueado}
@@ -156,7 +156,7 @@ function Cartao({
             onClick={() => {
               if (window.confirm(t("Apagar esta abordagem?"))) apagar();
             }}
-            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+            className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
           >
             <Trash size={16} aria-hidden />
           </button>
@@ -177,7 +177,7 @@ export function AbordagensDaCampanha({
   const t = useT();
   const { abordagens, carregando, criar, editar, apagar } = useAbordagensDaCampanha(campanhaId);
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Abordagens")}</h2>
         {podeEditar ? (
@@ -203,7 +203,7 @@ export function AbordagensDaCampanha({
           {t("Nenhuma abordagem ainda. Crie a primeira.")}
         </p>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {abordagens.map((a) => (
             <Cartao
               key={a.id}

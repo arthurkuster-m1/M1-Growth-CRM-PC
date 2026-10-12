@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
+import { janelaDoPeriodo } from "@/lib/marketing/periodos";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 import { contarOrigemDosLeads, type LeadDaOrigem } from "@/lib/marketing/origem-dos-leads";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,7 +26,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
 
   const { data: c } = await a.supabase
     .from("demand_campaigns")
-    .select("id, pipeline_id, start_date, end_date")
+    .select("id, pipeline_id, start_date, end_date, goal_period, continuous")
     .eq("id", id)
     .eq("organization_id", a.orgId)
     .maybeSingle();
@@ -37,10 +38,15 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     .eq("id", a.orgId)
     .maybeSingle();
   const fuso = (org?.timezone as string | null) || "America/Sao_Paulo";
-  const janela = janelaDaSync(
-    { start_date: c.start_date as string | null, end_date: c.end_date as string | null },
-    new Date(),
-  );
+  // Meta mensal (ou contínua): a janela é o mês corrente; senão, do início da campanha até hoje.
+  const hojeLocal = new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date());
+  const mensal = c.goal_period === "mensal";
+  const janela = mensal
+    ? (({ de, ate }) => ({ de, ate }))(janelaDoPeriodo("mes", hojeLocal))
+    : janelaDaSync(
+        { start_date: c.start_date as string | null, end_date: c.end_date as string | null },
+        new Date(),
+      );
   if (!janela) {
     return ok({ ...contarOrigemDosLeads([]), de: null, ate: null }, { requestId: a.requestId });
   }
@@ -162,8 +168,25 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     }
   }
 
+  const { data: dias } = await a.supabase
+    .from("demand_campaign_days")
+    .select("spend")
+    .eq("organization_id", a.orgId)
+    .eq("campaign_id", id)
+    .gte("day", janela.de)
+    .lte("day", janela.ate)
+    .limit(1000);
+  const investido = (dias ?? []).reduce((s2, d) => s2 + (Number(d.spend) || 0), 0);
+
   return ok(
-    { ...contarOrigemDosLeads(entrada), faturamento, de: janela.de, ate: janela.ate },
+    {
+      ...contarOrigemDosLeads(entrada),
+      faturamento,
+      investido: Math.round(investido * 100) / 100,
+      mensal,
+      de: janela.de,
+      ate: janela.ate,
+    },
     { requestId: a.requestId },
   );
 }

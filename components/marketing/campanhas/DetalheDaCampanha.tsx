@@ -60,7 +60,7 @@ const AREA =
 
 function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold">{titulo}</h2>
       {children}
     </section>
@@ -220,7 +220,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       {aba === "visao" ? (
         <>
           <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} />
-          <OrigemDosLeads campanhaId={c.id} />
+          <OrigemDosLeads campanhaId={c.id} campanha={c} />
         </>
       ) : null}
 
@@ -311,7 +311,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 max={160}
               />
             </Rotulo>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Rotulo texto={t("Canal")}>
                 <select
                   className={CAMPO}
@@ -343,7 +343,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 </select>
               </Rotulo>
             </div>
-            <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
               <Rotulo texto={t("Início")}>
                 <SeletorDeData
                   valor={c.start_date ?? ""}
@@ -384,7 +384,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 max={4000}
               />
             </Rotulo>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Rotulo texto={t("Ideia")}>
                 <TextoGravavel
                   valor={c.idea}
@@ -418,7 +418,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           </Bloco>
 
           <Bloco titulo={t("Investimento")}>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Rotulo texto={t("Investimento bruto")}>
                 <NumeroGravavel
                   valor={c.budget}
@@ -469,7 +469,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 "Todo lead que entra nesta campanha já gera uma venda de INTERESSE com este produto e este valor — o LTV previsto. Na hora de fechar, o valor real é informado.",
               )}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Rotulo texto={t("Produto que a campanha vende")}>
                 <TextoGravavel
                   valor={c.product_name}
@@ -492,7 +492,20 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           </Bloco>
 
           <Bloco titulo={t("Metas")}>
-            <div className="grid gap-3 sm:grid-cols-4">
+            <Rotulo texto={t("As metas valem para")}>
+              <select
+                className={CAMPO}
+                disabled={bloqueado}
+                value={c.goal_period}
+                onChange={(e) =>
+                  grava({ goal_period: e.target.value as CampanhaDeDemanda["goal_period"] })
+                }
+              >
+                <option value="total">{t("A campanha toda (início ao fim)")}</option>
+                <option value="mensal">{t("Cada mês (renova todo mês)")}</option>
+              </select>
+            </Rotulo>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
               <Rotulo texto={t("Meta de leads")}>
                 <NumeroGravavel
                   valor={c.goal_leads}
@@ -639,7 +652,7 @@ function CampanhasDaPlataforma({
       {c.platform_campaigns.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("Nenhuma campanha atrelada ainda.")}</p>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {c.platform_campaigns.map((p, i) => (
             <li
               key={`${p.id ?? p.name}-${i}`}
@@ -659,7 +672,7 @@ function CampanhasDaPlataforma({
                         platform_campaigns: c.platform_campaigns.filter((_, k) => k !== i),
                       })
                     }
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                    className="grid h-8 w-8 shrink-0 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
                   >
                     <Trash size={14} aria-hidden />
                   </button>
@@ -702,7 +715,7 @@ function CampanhasDaPlataforma({
       ) : null}
 
       {podeEditar && escolhendo ? (
-        <div className="grid gap-2 rounded-xl border border-dashed p-3">
+        <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
           {meta.carregando && !meta.opcoes ? (
             <div className="h-16 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
           ) : meta.erro ? (
@@ -746,7 +759,7 @@ function CampanhasDaPlataforma({
                   {t("Nenhuma campanha do Meta para mostrar com esse filtro.")}
                 </p>
               ) : (
-                <ul className="grid max-h-72 gap-1.5 overflow-y-auto">
+                <ul className="grid max-h-72 grid-cols-1 gap-1.5 overflow-y-auto">
                   {visiveis.map((m) => (
                     <li key={m.id}>
                       <button
@@ -817,8 +830,8 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
   return (
     <Bloco titulo={t("Diário de bordo")}>
       {podeEditar ? (
-        <div className="grid gap-2 rounded-xl border border-dashed p-3">
-          <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
+        <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr]">
             <select
               className={CAMPO}
               value={tipo}
@@ -900,9 +913,9 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
       ) : visiveis.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("Nenhuma nota ainda.")}</p>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {visiveis.map((n) => (
-            <li key={n.id} className="grid gap-1.5 rounded-xl border p-3">
+            <li key={n.id} className="grid grid-cols-1 gap-1.5 rounded-xl border p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Etiqueta cor={COR_DA_NOTA[n.kind]}>{rotuloDaNota(t, n.kind)}</Etiqueta>
                 <span className="text-xs text-muted-foreground">

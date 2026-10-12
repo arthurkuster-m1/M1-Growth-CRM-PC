@@ -37,6 +37,11 @@ export default async function GeracaoDeDemandaPage() {
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
         <Atalho
+          href="/app/marketing/geracao-de-demanda/resultados"
+          titulo={t("Resultados das campanhas")}
+          descricao={t("Investido, leads, vendas e faturamento por período")}
+        />
+        <Atalho
           href="/app/clientes"
           titulo={t("Clientes (CRM)")}
           descricao={t("Os leads de todos os funis, em tabela ou quadro")}

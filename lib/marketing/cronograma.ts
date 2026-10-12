@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
+import { PERIODOS, type Periodo } from "@/lib/marketing/periodos";
 
 /**
  * O CRONOGRAMA DO CLIENTE (migration 0591): as barras do cronograma geral e as tarefas da
@@ -40,6 +41,22 @@ export interface ItemDoCronograma {
 export const TIPOS_DE_META = ["moeda", "numero", "percentual"] as const;
 export type TipoDeMeta = (typeof TIPOS_DE_META)[number];
 
+/** De onde sai o "onde estamos hoje": digitado ou lido do CRM e das campanhas. */
+export const FONTES_DA_META = [
+  "manual",
+  "leads",
+  "vendas",
+  "faturamento",
+  "a_receber",
+  "investido",
+  "cpl",
+  "roas",
+] as const;
+export type FonteDaMeta = (typeof FONTES_DA_META)[number];
+
+export const CALCULOS_DA_META = ["soma", "media_diaria"] as const;
+export type CalculoDaMeta = (typeof CALCULOS_DA_META)[number];
+
 export interface MetaDoCronograma {
   id: string;
   titulo: string;
@@ -50,15 +67,27 @@ export interface MetaDoCronograma {
   valor_atual: number | null;
   descricao: string;
   ordem: number;
+  /** `manual` = digitado; senão o valor atual é calculado do CRM (ver `metas-automaticas`). */
+  fonte: FonteDaMeta;
+  periodo: Periodo;
+  calculo: CalculoDaMeta;
 }
 
 export type DadosDaMeta = Pick<
   MetaDoCronograma,
-  "titulo" | "tipo" | "unidade" | "valor_alvo" | "valor_atual" | "descricao"
+  | "titulo"
+  | "tipo"
+  | "unidade"
+  | "valor_alvo"
+  | "valor_atual"
+  | "descricao"
+  | "fonte"
+  | "periodo"
+  | "calculo"
 >;
 
 export const COLUNAS_DA_META =
-  "id, titulo, tipo, unidade, valor_alvo, valor_atual, descricao, ordem";
+  "id, titulo, tipo, unidade, valor_alvo, valor_atual, descricao, ordem, source, period, aggregation";
 
 const comoNumero = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -79,6 +108,24 @@ export function metaDaLinha(linha: Record<string, unknown>): MetaDoCronograma {
     valor_atual: comoNumero(linha.valor_atual),
     descricao: String(linha.descricao ?? ""),
     ordem: Number(linha.ordem),
+    fonte: (FONTES_DA_META as readonly string[]).includes(String(linha.source))
+      ? (linha.source as FonteDaMeta)
+      : "manual",
+    periodo: (PERIODOS as readonly string[]).includes(String(linha.period))
+      ? (linha.period as Periodo)
+      : "mes",
+    calculo: linha.aggregation === "media_diaria" ? "media_diaria" : "soma",
+  };
+}
+
+/** Os campos da meta como colunas do banco (`fonte`→`source`, `periodo`→`period`, `calculo`→`aggregation`). */
+export function colunasDaMeta(d: Record<string, unknown>): Record<string, unknown> {
+  const { fonte, periodo, calculo, ...resto } = d;
+  return {
+    ...resto,
+    ...(fonte !== undefined ? { source: fonte } : {}),
+    ...(periodo !== undefined ? { period: periodo } : {}),
+    ...(calculo !== undefined ? { aggregation: calculo } : {}),
   };
 }
 
@@ -143,6 +190,9 @@ export const metaSchema = z.object({
   valor_alvo: valorDeMeta.default(null),
   valor_atual: valorDeMeta.default(null),
   descricao: z.string().trim().max(200).default(""),
+  fonte: z.enum(FONTES_DA_META).default("manual"),
+  periodo: z.enum(PERIODOS).default("mes"),
+  calculo: z.enum(CALCULOS_DA_META).default("soma"),
 });
 
 // Sem `.default()`: no Zod 4 o `.partial()` reaplica o padrão de campo ausente, e editar só o
@@ -155,6 +205,9 @@ export const edicaoDeMetaSchema = z
     valor_alvo: valorDeMeta,
     valor_atual: valorDeMeta,
     descricao: z.string().trim().max(200),
+    fonte: z.enum(FONTES_DA_META),
+    periodo: z.enum(PERIODOS),
+    calculo: z.enum(CALCULOS_DA_META),
   })
   .partial();
 

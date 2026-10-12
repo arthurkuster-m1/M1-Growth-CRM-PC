@@ -458,6 +458,9 @@ export interface OrigemDosLeads {
     porCriativo: Record<string, number>;
     porLandingPage: Record<string, number>;
   };
+  /** Gasto do Meta no mesmo período dos leads e das vendas. */
+  investido?: number;
+  mensal?: boolean;
   de: string | null;
   ate: string | null;
 }

@@ -2,6 +2,8 @@
  * GET /api/v1/marketing/cronograma — config + itens do cronograma geral (a empresa toda lê).
  * PUT /api/v1/marketing/cronograma — grava a config (manager+).
  */
+import { aplicarMetasAutomaticas } from "@/lib/marketing/metas-automaticas";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { type NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
@@ -50,7 +52,12 @@ export async function GET(): Promise<Response> {
     {
       config: ((cfg as ConfigDoCronograma | null) ?? CONFIG_PADRAO) as ConfigDoCronograma,
       itens: ((itens ?? []) as Array<Record<string, unknown>>).map(itemDaLinha),
-      metas: ((metas ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
+      // As metas ligadas ao CRM trazem o número real (o cronograma é da própria empresa).
+      metas: await aplicarMetasAutomaticas(
+        createAdminClient(),
+        a.orgId,
+        ((metas ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
+      ),
       pode_editar: a.podeEditar,
     },
     { requestId: a.requestId },
@@ -65,17 +72,15 @@ export async function PUT(req: NextRequest): Promise<Response> {
   const corpo = configSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success)
     return fail("validation_failed", a.t("Dados inválidos."), 422, { requestId: a.requestId });
-  const { error } = await a.supabase
-    .from("marketing_cronograma_config")
-    .upsert(
-      {
-        organization_id: a.orgId,
-        ...corpo.data,
-        updated_by: a.userId,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "organization_id" },
-    );
+  const { error } = await a.supabase.from("marketing_cronograma_config").upsert(
+    {
+      organization_id: a.orgId,
+      ...corpo.data,
+      updated_by: a.userId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "organization_id" },
+  );
   if (error)
     return fail("internal_error", a.t("Erro ao salvar o cronograma."), 500, {
       requestId: a.requestId,

@@ -100,7 +100,7 @@ export function WebhooksDaCampanha({
   const outras = (fontes ?? []).filter((f) => !f.desta_campanha && !f.de_outra_campanha);
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Webhooks desta campanha")}</h2>
         <Link
@@ -123,9 +123,9 @@ export function WebhooksDaCampanha({
           {t("Nenhum webhook nesta campanha ainda.")}
         </p>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {desta.map((f) => (
-            <li key={f.id} className="grid gap-1.5 rounded-xl bg-secondary/50 p-3">
+            <li key={f.id} className="grid grid-cols-1 gap-1.5 rounded-xl bg-secondary/50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-medium">{f.name}</span>
                 <span className="text-xs text-muted-foreground">
@@ -158,7 +158,7 @@ export function WebhooksDaCampanha({
         </ul>
       )}
 
-      <div className="grid gap-2 rounded-xl border border-dashed p-3">
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
         {temFunil ? (
           <>
             <p className="text-sm font-medium">{t("Criar webhook")}</p>
@@ -194,7 +194,7 @@ export function WebhooksDaCampanha({
           </p>
         )}
         {outras.length > 0 ? (
-          <label className="grid gap-1">
+          <label className="grid grid-cols-1 gap-1">
             <span className="text-xs text-muted-foreground">
               {t("Ou ligar um webhook que já existe")}
             </span>

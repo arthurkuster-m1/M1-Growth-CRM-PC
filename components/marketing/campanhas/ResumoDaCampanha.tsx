@@ -50,7 +50,7 @@ function Numero({
 
 function Cartao({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <h3 className="text-sm font-semibold">{titulo}</h3>
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">{children}</div>
     </section>
@@ -101,11 +101,11 @@ export function ResumoDaCampanha({
   const adiant = r.metas.adiantamento;
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3">
       {r.alertas.length > 0 ? (
-        <section className="grid gap-2 rounded-2xl border bg-card p-4 shadow-sm">
+        <section className="grid grid-cols-1 gap-2 rounded-2xl border bg-card p-4 shadow-sm">
           <h3 className="text-sm font-semibold">{t("O que fazer agora")}</h3>
-          <ul className="grid gap-1.5">
+          <ul className="grid grid-cols-1 gap-1.5">
             {r.alertas.map((a) => (
               <li
                 key={a.codigo}

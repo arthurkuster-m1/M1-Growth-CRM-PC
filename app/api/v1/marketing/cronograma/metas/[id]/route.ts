@@ -3,7 +3,12 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
-import { COLUNAS_DA_META, edicaoDeMetaSchema, metaDaLinha } from "@/lib/marketing/cronograma";
+import {
+  COLUNAS_DA_META,
+  colunasDaMeta,
+  edicaoDeMetaSchema,
+  metaDaLinha,
+} from "@/lib/marketing/cronograma";
 import { autorizarCronograma, naoEncontrado } from "@/lib/marketing/cronograma-servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 
@@ -23,7 +28,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const { data, error } = await a.supabase
     .from("marketing_cronograma_metas")
-    .update(corpo.data)
+    .update(colunasDaMeta(corpo.data))
     .eq("id", id)
     .eq("organization_id", a.orgId)
     .select(COLUNAS_DA_META)
@@ -31,10 +36,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   if (error)
     return fail("internal_error", a.t("Erro ao salvar a meta."), 500, { requestId: a.requestId });
   if (!data) return naoEncontrado(a.t, a.requestId);
-  return ok(
-    { meta: metaDaLinha(data as Record<string, unknown>) },
-    { requestId: a.requestId },
-  );
+  return ok({ meta: metaDaLinha(data as Record<string, unknown>) }, { requestId: a.requestId });
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {

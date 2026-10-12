@@ -188,7 +188,7 @@ function ImagensDoCriativo({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-1 gap-2">
       {imagens.length > 0 ? (
         <ul className="flex flex-wrap gap-2">
           {imagens.map((arq, i) => (
@@ -273,9 +273,9 @@ function CartaoDoCriativo({
     c.thumbnail_url || (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(c.media_url) ? c.media_url : "");
   const bloqueado = !podeEditar;
   return (
-    <article className="grid content-start gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <article className="grid grid-cols-1 content-start gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex gap-3">
-        <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-secondary text-xs text-muted-foreground">
+        <div className="grid h-24 w-24 shrink-0 grid-cols-1 place-items-center overflow-hidden rounded-xl bg-secondary text-xs text-muted-foreground">
           {imagem && !imagemFalhou ? (
             // eslint-disable-next-line @next/next/no-img-element -- miniatura externa (Meta), sem otimização do Next
             <img
@@ -288,7 +288,7 @@ function CartaoDoCriativo({
             rotuloDoFormato(t, c.format)
           )}
         </div>
-        <div className="grid min-w-0 flex-1 content-start gap-2">
+        <div className="grid min-w-0 flex-1 grid-cols-1 content-start gap-2">
           <Texto
             valor={c.name}
             aoGravar={(name) => name.trim() && editar({ name })}
@@ -305,7 +305,7 @@ function CartaoDoCriativo({
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <select
           className={CAMPO}
           disabled={bloqueado}
@@ -364,7 +364,7 @@ function CartaoDoCriativo({
         desabilitado={bloqueado}
         aoGravar={(descriptions) => editar({ descriptions })}
       />
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Texto
           valor={c.media_url}
           aoGravar={(media_url) => editar({ media_url })}
@@ -412,7 +412,7 @@ function CartaoDoCriativo({
             onClick={() => {
               if (window.confirm(t("Apagar este criativo?"))) apagar();
             }}
-            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+            className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
           >
             <Trash size={16} aria-hidden />
           </button>
@@ -535,7 +535,7 @@ function TabelaDeCriativos({
     v !== null && melhorValor !== null && v === melhorValor ? "font-semibold text-success-fg" : "";
 
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-1 gap-2">
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full min-w-max text-sm">
           <thead className="bg-secondary/60 text-xs text-muted-foreground">
@@ -666,7 +666,7 @@ export function CriativosDaCampanha({
   const visiveis = filtro === null ? criativos : criativos.filter((c) => c.status === filtro);
 
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Criativos e legendas")}</h2>
         {podeEditar ? (
@@ -784,7 +784,7 @@ export function CriativosDaCampanha({
           aoAbrir={() => setVista("cartoes")}
         />
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {visiveis.map((c) => (
             <CartaoDoCriativo
               key={c.id}

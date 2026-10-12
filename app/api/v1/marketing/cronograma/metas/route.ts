@@ -2,7 +2,12 @@
 import { type NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
-import { COLUNAS_DA_META, metaDaLinha, metaSchema } from "@/lib/marketing/cronograma";
+import {
+  COLUNAS_DA_META,
+  colunasDaMeta,
+  metaDaLinha,
+  metaSchema,
+} from "@/lib/marketing/cronograma";
 import { autorizarCronograma } from "@/lib/marketing/cronograma-servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 
@@ -27,7 +32,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const { data, error } = await a.supabase
     .from("marketing_cronograma_metas")
-    .insert({ organization_id: a.orgId, ...corpo.data })
+    .insert({ organization_id: a.orgId, ...colunasDaMeta(corpo.data) })
     .select(COLUNAS_DA_META)
     .single();
   if (error || !data)

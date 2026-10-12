@@ -22,6 +22,10 @@ export type CanalDaCampanha = (typeof CANAIS_DA_CAMPANHA)[number];
 export const STATUS_DA_CAMPANHA = ["planejada", "ativa", "pausada", "encerrada"] as const;
 export type StatusDaCampanha = (typeof STATUS_DA_CAMPANHA)[number];
 
+/** As metas valem para a campanha toda ou se renovam todo mês (campanhas contínuas). */
+export const PERIODOS_DA_META = ["total", "mensal"] as const;
+export type PeriodoDaMeta = (typeof PERIODOS_DA_META)[number];
+
 export const PERIODOS_DO_ORCAMENTO = ["total", "diario", "semanal", "mensal"] as const;
 export type PeriodoDoOrcamento = (typeof PERIODOS_DO_ORCAMENTO)[number];
 
@@ -54,6 +58,7 @@ export interface CampanhaDeDemanda {
   goal_cpl: number | null;
   goal_sales: number | null;
   goal_revenue: number | null;
+  goal_period: PeriodoDaMeta;
   /** O produto que a campanha vende e o ticket previsto: todo lead que entra gera a venda de INTERESSE. */
   product_name: string;
   ticket_cents: number | null;
@@ -84,7 +89,7 @@ export interface EstadoDaCampanha {
 }
 
 export const COLUNAS_DA_CAMPANHA =
-  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, product_name, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
+  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, goal_period, product_name, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dinheiro = z.number().finite().min(0).max(1e10);
@@ -114,6 +119,7 @@ const camposSchema = z.object({
   goal_cpl: dinheiro.nullable(),
   goal_sales: contagem.nullable(),
   goal_revenue: dinheiro.nullable(),
+  goal_period: z.enum(PERIODOS_DA_META),
   product_name: z.string().trim().max(200),
   ticket_cents: z.number().int().min(0).max(100_000_000_000).nullable(),
   platform: z.string().trim().max(40),
