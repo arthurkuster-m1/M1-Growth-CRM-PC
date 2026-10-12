@@ -26,6 +26,8 @@ export const novaSubpaginaSchema = z
 
 /** Uma subpágina na lista do módulo. */
 export interface ResumoDeSubpagina {
+  /** O id da página (é o id do produto, nas vendas). */
+  id: string;
   key: string;
   tipo: string;
   title: string;

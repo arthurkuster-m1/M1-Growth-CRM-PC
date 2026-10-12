@@ -10,13 +10,14 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { completarItensComProduto } from "@/lib/vendas-servidor";
 import { COLUNAS_DA_VENDA, novaVendaSchema, vendaDaLinha } from "@/lib/vendas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 const LIMITE = 3000;
 
-const SELECAO = `${COLUNAS_DA_VENDA}, contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), pipeline:crm_pipelines(name), items:crm_sale_items(id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`;
+const SELECAO = `${COLUNAS_DA_VENDA}, contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), pipeline:crm_pipelines(name), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`;
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -65,7 +66,17 @@ export async function POST(req: NextRequest): Promise<Response> {
     .maybeSingle();
   if (!contato) return fail("not_found", "Cliente não encontrado.", 404, { requestId });
 
-  const { itens, pagamentos, ...campos } = corpo.data;
+  const { itens: itensBrutos, pagamentos, ...campos } = corpo.data;
+  const completos = await completarItensComProduto(supabase, authz.org.orgId, itensBrutos ?? []);
+  if (!completos.ok) {
+    return fail(
+      "validation_failed",
+      "Toda venda precisa ser de um produto cadastrado em Produtos e Ofertas.",
+      422,
+      { requestId },
+    );
+  }
+  const itens = completos.itens;
   const { data: criada, error } = await supabase
     .from("crm_sales")
     .insert({

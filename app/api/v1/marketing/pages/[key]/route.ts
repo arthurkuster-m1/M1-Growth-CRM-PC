@@ -119,7 +119,20 @@ export async function DELETE(_req: NextRequest, ctx: Contexto): Promise<Response
     .eq("module_key", chave)
     .select("id")
     .maybeSingle();
-  if (error) return fail("internal_error", t("Erro ao apagar a página."), 500, { requestId });
+  if (error) {
+    // 23503: o produto tem vendas registradas (toda venda é de um produto cadastrado).
+    if ((error as { code?: string }).code === "23503") {
+      return fail(
+        "conflict",
+        t(
+          "Este produto tem vendas registradas e não pode ser apagado. Despublique-o para tirar da vitrine.",
+        ),
+        409,
+        { requestId },
+      );
+    }
+    return fail("internal_error", t("Erro ao apagar a página."), 500, { requestId });
+  }
   if (!data) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   await audit({

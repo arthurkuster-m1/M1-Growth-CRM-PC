@@ -100,7 +100,14 @@ export async function GET(req: NextRequest): Promise<Response> {
         };
       }
     }
-    subpaginas.push({ key: l.module_key, tipo: chave.tipo, title: l.title, publicada, oferta });
+    subpaginas.push({
+      id: l.id,
+      key: l.module_key,
+      tipo: chave.tipo,
+      title: l.title,
+      publicada,
+      oferta,
+    });
   }
   return ok({ subpaginas, pode_editar: podeEditar }, { requestId });
 }

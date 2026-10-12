@@ -7,6 +7,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
+import { completarItensComProduto } from "@/lib/vendas-servidor";
 import { COLUNAS_DA_VENDA, edicaoDeVendaSchema, vendaDaLinha } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,22 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     return fail("validation_failed", "Dados inválidos.", 422, { requestId });
   }
   const supabase = await createClient();
-  const { itens, pagamentos, ...campos } = corpo.data;
+  const { itens: itensBrutos, pagamentos, ...campos } = corpo.data;
+  let itens:
+    | Array<{ product_id: string; product_name: string; quantity: number; amount_cents: number }>
+    | undefined;
+  if (itensBrutos !== undefined) {
+    const completos = await completarItensComProduto(supabase, authz.org.orgId, itensBrutos);
+    if (!completos.ok) {
+      return fail(
+        "validation_failed",
+        "Toda venda precisa ser de um produto cadastrado em Produtos e Ofertas.",
+        422,
+        { requestId },
+      );
+    }
+    itens = completos.itens;
+  }
   const orgId = authz.org.orgId;
   const detalhou = itens !== undefined || pagamentos !== undefined;
   const { data, error } = await supabase
@@ -78,7 +94,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { data: venda } = await supabase
     .from("crm_sales")
     .select(
-      `${COLUNAS_DA_VENDA}, items:crm_sale_items(id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
+      `${COLUNAS_DA_VENDA}, items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
     )
     .eq("id", id)
     .single();

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
+import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { lerNumero } from "@/lib/marketing/calculadora";
 import { Plus, Trash } from "@/lib/ui/icons";
 import {
@@ -27,7 +28,7 @@ export interface DadosDaVenda {
   id?: string;
   contact_id: string;
   status: "interesse" | "comprometida" | "cancelada";
-  itens: Array<{ product_name: string; quantity: number; amount_cents: number }>;
+  itens: Array<{ product_id: string; quantity: number; amount_cents: number }>;
   pagamentos: Array<{
     number: number;
     due_on: string;
@@ -105,12 +106,13 @@ export function DialogoDaVenda({
           : "fechada"
       : "fechada",
   );
-  const [itens, setItens] = useState<Array<{ produto: string; valor: string }>>(() => {
+  const { produtos } = useCatalogoDeProdutos();
+  const [itens, setItens] = useState<Array<{ produtoId: string; valor: string }>>(() => {
     if (venda?.itens && venda.itens.length > 0) {
-      return venda.itens.map((i) => ({ produto: i.product_name, valor: textoDe(i.amount_cents) }));
+      return venda.itens.map((i) => ({ produtoId: i.product_id, valor: textoDe(i.amount_cents) }));
     }
     return [
-      { produto: venda?.product_name ?? "", valor: venda ? textoDe(venda.amount_cents) : "" },
+      { produtoId: "", valor: venda && venda.amount_cents > 0 ? textoDe(venda.amount_cents) : "" },
     ];
   });
   const [forma, setForma] = useState<string>(venda?.payment_method ?? "pix");
@@ -187,7 +189,7 @@ export function DialogoDaVenda({
     );
   }
 
-  const itensValidos = itens.filter((i) => i.produto.trim() !== "");
+  const itensValidos = itens.filter((i) => i.produtoId !== "");
   const valido =
     contato !== "" &&
     (situacao === "cancelada" || itensValidos.length > 0) &&
@@ -201,7 +203,7 @@ export function DialogoDaVenda({
       contact_id: contato,
       status: situacao === "fechada" ? "comprometida" : situacao,
       itens: itensValidos.map((i) => ({
-        product_name: i.produto.trim(),
+        product_id: i.produtoId,
         quantity: 1,
         amount_cents: centavos(i.valor),
       })),
@@ -314,17 +316,36 @@ export function DialogoDaVenda({
           </p>
           {itens.map((it, i) => (
             <div key={i} className="grid grid-cols-[1fr_8rem_auto] items-center gap-2">
-              <input
-                value={it.produto}
-                onChange={(e) =>
+              <select
+                value={it.produtoId}
+                onChange={(e) => {
+                  const p = produtos.find((x) => x.id === e.target.value);
                   setItens((l) =>
-                    l.map((x, k) => (k === i ? { ...x, produto: e.target.value } : x)),
-                  )
-                }
-                placeholder={t("Produto ou serviço")}
+                    l.map((x, k) =>
+                      k === i
+                        ? {
+                            ...x,
+                            produtoId: e.target.value,
+                            // O preço de tabela entra de partida; pode mudar (desconto, negociação).
+                            valor:
+                              x.valor === "" && p && p.valor > 0
+                                ? textoDe(Math.round(p.valor * 100))
+                                : x.valor,
+                          }
+                        : x,
+                    ),
+                  );
+                }}
                 aria-label={`${t("Produto")} ${i + 1}`}
                 className={CAMPO}
-              />
+              >
+                <option value="">{t("Escolha o produto cadastrado")}</option>
+                {produtos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
               <input
                 value={it.valor}
                 inputMode="decimal"
@@ -350,10 +371,17 @@ export function DialogoDaVenda({
               </button>
             </div>
           ))}
+          {produtos.length === 0 ? (
+            <p className="rounded-lg bg-warning-bg px-3 py-2 text-xs text-warning-fg">
+              {t(
+                "Nenhum produto cadastrado ainda. Cadastre em Marketing › Produtos e ofertas: toda venda é de um produto do catálogo.",
+              )}
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
-              onClick={() => setItens((l) => [...l, { produto: "", valor: "" }])}
+              onClick={() => setItens((l) => [...l, { produtoId: "", valor: "" }])}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary"
             >
               <Plus size={14} weight="bold" aria-hidden />

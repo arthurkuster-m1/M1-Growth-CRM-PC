@@ -30,6 +30,8 @@ export type FormaDePagamento = (typeof FORMAS_DE_PAGAMENTO)[number];
 
 export interface ItemDaVenda {
   id?: string;
+  /** O produto cadastrado em Produtos e Ofertas: toda venda é de um produto do catálogo. */
+  product_id: string;
   product_name: string;
   quantity: number;
   amount_cents: number;
@@ -84,7 +86,8 @@ export const COLUNAS_DA_VENDA =
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const itemSchema = z.object({
-  product_name: z.string().trim().min(1).max(200),
+  product_id: z.string().uuid(),
+  product_name: z.string().trim().max(200).optional(),
   quantity: z.number().int().min(1).max(10000).default(1),
   amount_cents: z.number().int().min(0).max(100_000_000_000),
 });
@@ -138,6 +141,7 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
     ? (l.items as Array<Record<string, unknown>>)
         .map((i) => ({
           id: i.id as string,
+          product_id: String(i.product_id ?? ""),
           product_name: String(i.product_name ?? ""),
           quantity: Number(i.quantity) || 1,
           amount_cents: Number(i.amount_cents) || 0,
