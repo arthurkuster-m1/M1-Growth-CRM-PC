@@ -113,7 +113,7 @@ function ContatoVinculado({ contactId, pipelineId }: { contactId: string; pipeli
  * 40) e o nome vem do cadastro: dado de quem usou o produto, não frase de
  * interface, então os dois saem como vieram em qualquer idioma.
  */
-function PessoasRelacionadas({ leadId }: { leadId: string | null }) {
+export function PessoasRelacionadas({ leadId }: { leadId: string | null }) {
   const t = useT();
   const { data, isLoading, isError } = useContatosRelacionados(leadId);
   if (isError) {
@@ -197,7 +197,13 @@ function DadosDoContato({ contato }: { contato: Contact }) {
   );
 }
 
-function FormularioDeLinks({ contato, pipelineId }: { contato: Contact; pipelineId: string }) {
+export function FormularioDeLinks({
+  contato,
+  pipelineId,
+}: {
+  contato: Contact;
+  pipelineId: string;
+}) {
   const t = useT();
   const qc = useQueryClient();
   const atualizar = useUpdateContact(contato.id);

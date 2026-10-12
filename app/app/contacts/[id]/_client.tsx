@@ -6,7 +6,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ShieldCheck, PencilSimple, LockOpen } from "@/lib/ui/icons";
-import { VendasDoCliente } from "@/components/vendas/VendasDoCliente";
+import { FichasDoContato } from "@/components/leads/FichasDoContato";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
@@ -315,7 +315,7 @@ export function ContactDetailClient({ contactId }: Props) {
 
         <TabsContent value="overview" className="mt-4">
           <Card className="mb-4 p-4">
-            <VendasDoCliente contactId={contactId} />
+            <FichasDoContato contactId={contactId} />
           </Card>
           <Card className="p-4">
             <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">

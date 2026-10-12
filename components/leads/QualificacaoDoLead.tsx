@@ -30,7 +30,13 @@ interface Qualificacao {
  * A QUALIFICAÇÃO do lead (que é o contato, um por telefone): quando entrou, quando foi
  * abordado pela primeira vez, se é MQL e em quais funis está — com a etapa em cada um.
  */
-export function QualificacaoDoLead({ contactId }: { contactId: string | null }) {
+export function QualificacaoDoLead({
+  contactId,
+  semTitulo = false,
+}: {
+  contactId: string | null;
+  semTitulo?: boolean;
+}) {
   const t = useT();
   const tag = useTagDeIdioma();
   const queryClient = useQueryClient();
@@ -76,10 +82,12 @@ export function QualificacaoDoLead({ contactId }: { contactId: string | null }) 
     s === "won" ? t("Ganho") : s === "lost" ? t("Perdido") : t("Aberto");
 
   return (
-    <section className="border-b border-border py-3">
-      <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
-        {t("Qualificação")}
-      </h3>
+    <section className={semTitulo ? "" : "border-b border-border py-3"}>
+      {semTitulo ? null : (
+        <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
+          {t("Qualificação")}
+        </h3>
+      )}
       {consulta.isLoading ? (
         <div className="h-16 animate-pulse rounded-lg bg-secondary" aria-busy="true" />
       ) : !d ? null : (

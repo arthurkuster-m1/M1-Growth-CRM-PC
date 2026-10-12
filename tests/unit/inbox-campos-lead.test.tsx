@@ -80,6 +80,11 @@ vi.mock("@/hooks/pipelines/useDefaultPipeline", () => ({
     isLoading: false,
   }),
 }));
+vi.mock("@/components/leads/FichaDoLead", () => ({
+  FichaDoLead: ({ leadId }: { leadId: string }) => (
+    <div data-testid="ficha-do-lead" data-lead={leadId} />
+  ),
+}));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock("@/hooks/inbox/useConversationTags", () => ({
   useUpdateConversationTags: () => ({ mutate: vi.fn(), isPending: false }),
@@ -99,68 +104,27 @@ beforeEach(() => {
 });
 
 describe("painel do inbox — campos do lead", () => {
-  it("mostra SÓ os campos do funil — título e valor não entram nesta barra", async () => {
+  it("o painel mostra a ficha única do lead selecionado", async () => {
     get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
 
-    const secao = await screen.findByTestId("inbox-campos-lead");
-    expect(secao.querySelector("#title")).toBeNull();
-    expect(secao.querySelector("#valueReais")).toBeNull();
-
-    const empresa = await screen.findByLabelText("Empresa");
-    expect((empresa as HTMLInputElement).value).toBe("ACME");
+    const ficha = await screen.findByTestId("ficha-do-lead");
+    expect(ficha.getAttribute("data-lead")).toBe("l-1");
   });
 
-  it("funil sem campos extras diz isso — não inventa o formulário padrão", async () => {
-    get.mockResolvedValue({
-      data: { ...RESPOSTA, leads: [{ ...LEAD, field_defs: [] }] },
-    });
-    renderPainel();
-
-    const secao = await screen.findByTestId("inbox-campos-lead");
-    await waitFor(() => expect(secao.textContent).toMatch(/não tem campos extras/i));
-    expect(screen.queryByLabelText("Empresa")).toBeNull();
-  });
-
-  it("gravar manda o campo customizado no PATCH do lead", async () => {
-    get.mockResolvedValue({ data: RESPOSTA });
-    renderPainel();
-
-    const empresa = await screen.findByLabelText("Empresa");
-    await userEvent.clear(empresa);
-    await userEvent.type(empresa, "Nova Co");
-    const chamadasAntes = get.mock.calls.length;
-    await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await waitFor(() => expect(patch).toHaveBeenCalled());
-    const [rota, corpo] = patch.mock.calls[0] as [string, Record<string, unknown>];
-    expect(rota).toBe("/api/v1/leads/l-1");
-    expect(corpo.custom_fields).toEqual({ empresa: "Nova Co" });
-    await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(chamadasAntes));
-  });
-
-  it("dois negócios: trocar o selecionado troca o formulário", async () => {
+  it("dois negócios: trocar o selecionado troca a ficha", async () => {
     get.mockResolvedValue({
       data: {
         ...RESPOSTA,
-        leads: [
-          LEAD,
-          {
-            ...LEAD,
-            id: "l-2",
-            title: "Outro negócio",
-            custom_fields: {},
-            field_defs: LEAD.field_defs,
-          },
-        ],
+        leads: [LEAD, { ...LEAD, id: "l-2", title: "Outro negócio", custom_fields: {} }],
       },
     });
     renderPainel();
 
     await screen.findByTestId("inbox-lead-l-1");
-    expect((screen.getByLabelText("Empresa") as HTMLInputElement).value).toBe("ACME");
+    expect(screen.getByTestId("ficha-do-lead").getAttribute("data-lead")).toBe("l-1");
     await userEvent.click(screen.getByTestId("inbox-lead-l-2"));
-    expect((screen.getByLabelText("Empresa") as HTMLInputElement).value).toBe("");
+    expect(screen.getByTestId("ficha-do-lead").getAttribute("data-lead")).toBe("l-2");
   });
 
   it("leitura que FALHA não vira 'Sem leads.'", async () => {

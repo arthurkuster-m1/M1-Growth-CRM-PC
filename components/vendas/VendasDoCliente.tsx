@@ -19,7 +19,15 @@ const dataBr = (iso: string | null) => (iso ? iso.split("-").reverse().join("/")
  * (potencial, ainda sem compromisso) e as VENDAS realizadas (comprometidas e recebidas), com o LTV
  * atual e o previsto. Só a equipe do CRM (agent+) vê dinheiro: para os demais, não aparece.
  */
-export function VendasDoCliente({ contactId, nome }: { contactId: string; nome?: string }) {
+export function VendasDoCliente({
+  contactId,
+  nome,
+  semTitulo = false,
+}: {
+  contactId: string;
+  nome?: string;
+  semTitulo?: boolean;
+}) {
   const t = useT();
   const queryClient = useQueryClient();
   const [editando, setEditando] = useState<Venda | "nova" | null>(null);
@@ -100,11 +108,15 @@ export function VendasDoCliente({ contactId, nome }: { contactId: string; nome?:
   };
 
   return (
-    <section className="grid grid-cols-1 gap-3 py-3">
+    <section className={semTitulo ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 py-3"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-xs font-medium tracking-wide text-text-muted uppercase">
-          {t("Vendas")}
-        </h3>
+        {semTitulo ? (
+          <span />
+        ) : (
+          <h3 className="text-xs font-medium tracking-wide text-text-muted uppercase">
+            {t("Vendas")}
+          </h3>
+        )}
         <button
           type="button"
           onClick={() => setEditando("nova")}

@@ -23,13 +23,12 @@ import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
-import { soChavesAlteradas } from "@/lib/leads/custom-fields-so-diff";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
-import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
-import { useEditLead } from "@/hooks/kanban/useUpdateLead";
+import { FichaDoLead } from "@/components/leads/FichaDoLead";
+import { type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { useBulkAction } from "@/hooks/kanban/useBulkAction";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -401,14 +400,7 @@ function InboxLeadEditor({
         </div>
       )}
       <EtapaDoNegocio key={`etapa-${ativo.id}`} lead={ativo} onMovido={onSalvo} />
-      <CamposDoFunil
-        key={ativo.id}
-        leadId={ativo.id}
-        pipelineId={ativo.pipeline_id}
-        fieldDefs={ativo.field_defs ?? []}
-        valores={ativo.custom_fields ?? {}}
-        onSalvo={onSalvo}
-      />
+      <FichaDoLead key={`ficha-${ativo.id}`} leadId={ativo.id} />
     </div>
   );
 }
@@ -457,65 +449,6 @@ function EtapaDoNegocio({ lead, onMovido }: { lead: LeadRow; onMovido: () => voi
           ))}
         </SelectContent>
       </Select>
-    </div>
-  );
-}
-
-function CamposDoFunil({
-  leadId,
-  pipelineId,
-  fieldDefs,
-  valores,
-  onSalvo,
-}: {
-  leadId: string;
-  pipelineId: string;
-  fieldDefs: CustomFieldDef[];
-  valores: Record<string, unknown>;
-  onSalvo: () => void;
-}) {
-  const t = useT();
-  const edit = useEditLead(pipelineId);
-  const [customFields, setCustomFields] = useState(valores);
-  // A RÉGUA do diff (issue #2132): o valor carregado quando o painel abriu.
-  // Só o que a pessoa mudar daqui vai viajar — o merge é do servidor.
-  const [camposCarregados, setCamposCarregados] = useState(valores);
-
-  if (fieldDefs.length === 0) {
-    return <p className="text-xs text-muted-foreground">{t("Este funil não tem campos extras.")}</p>;
-  }
-
-  async function salvar() {
-    const payload = soChavesAlteradas(camposCarregados, customFields);
-    try {
-      await edit.mutateAsync({ leadId, patch: { custom_fields: payload } });
-      // O que acabou de gravar vira a nova régua: o próximo salvamento não
-      // reenvia este, e uma limpeza alheia no intervalo não é atropelada.
-      setCamposCarregados({ ...customFields });
-      toast.success(t("Campos atualizados"));
-      onSalvo();
-    } catch {
-      // toast already shown
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <CustomFieldsEditor
-        fields={fieldDefs}
-        value={customFields}
-        onChange={setCustomFields}
-        mode="lead"
-        className="gap-3 md:grid-cols-1"
-      />
-      <Button
-        size="sm"
-        className="h-7 w-full text-xs"
-        disabled={edit.isPending}
-        onClick={() => void salvar()}
-      >
-        {edit.isPending ? "Salvando…" : "Salvar"}
-      </Button>
     </div>
   );
 }

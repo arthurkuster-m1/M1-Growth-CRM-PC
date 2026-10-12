@@ -29,6 +29,11 @@ function leadRow(id: string, funil: string, etapa: string, status: string) {
 }
 
 const get = vi.fn();
+vi.mock("@/components/leads/FichaDoLead", () => ({
+  FichaDoLead: ({ leadId }: { leadId: string }) => (
+    <div data-testid="ficha-do-lead" data-lead={leadId} />
+  ),
+}));
 vi.mock("@/lib/api/client", () => ({
   apiClient: { get: (...args: unknown[]) => get(...args), post: vi.fn(), patch: vi.fn() },
 }));

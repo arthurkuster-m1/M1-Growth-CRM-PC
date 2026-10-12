@@ -82,10 +82,10 @@ describe("o elo que some sem barulho", () => {
     );
   });
 
-  it("e o bloco vem ANTES da linha do tempo que anuncia o canal", () => {
+  it("e o bloco vem ANTES da ficha, que traz a linha do tempo que anuncia o canal", () => {
     // É a timeline que diz "Entrou no funil". A porta atrás do anúncio
     // obrigaria a rolar para achar o que o próprio texto acabou de prometer.
     const fonte = readFileSync("components/kanban/LeadDossier.tsx", "utf8");
-    expect(fonte.indexOf("<ConversaNoDossie")).toBeLessThan(fonte.indexOf("<LeadTimeline"));
+    expect(fonte.indexOf("<ConversaNoDossie")).toBeLessThan(fonte.indexOf("<FichaDoLead"));
   });
 });

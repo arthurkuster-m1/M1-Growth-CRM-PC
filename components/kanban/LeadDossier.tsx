@@ -4,19 +4,12 @@ import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useRef } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
-import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
-import { ROLE_RANK } from "@/lib/auth/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useLeadTimeline } from "@/hooks/leads/useLeadTimeline";
 import type { Lead } from "@/lib/types/leads";
-import { ContatoDoNegocio } from "./ContatoDoNegocio";
 import { ConversaNoDossie } from "./ConversaNoDossie";
-import { LeadFieldsForm } from "./LeadFieldsForm";
 import { ScoreSlot } from "./ScoreSlot";
-import { QualificacaoDoLead } from "@/components/leads/QualificacaoDoLead";
-import { VendasDoCliente } from "@/components/vendas/VendasDoCliente";
-import { LeadTimeline } from "./LeadTimeline";
-import { PropostasDoNegocio } from "./PropostasDoNegocio";
+import { FichaDoLead } from "@/components/leads/FichaDoLead";
 import { OwnerBadge } from "./OwnerBadge";
 import { resolveLeadOwner } from "@/lib/kanban/owner";
 import { formatValorDoNegocio, MOEDA_PADRAO } from "@/lib/money";
@@ -66,16 +59,6 @@ export function LeadDossier({
   const timeline = useLeadTimeline(open ? lead.id : null, lead.contact_id);
   const owner = resolveLeadOwner(lead, ownerNames);
   const score = lead.score ?? null;
-  // N1 — o atalho "Nova proposta" é manager+ (mesmo gate do envio, mesma
-  // régua do BulkActionBar). O dossiê não tinha nenhuma checagem de papel;
-  // esta é a primeira, no padrão já estabelecido do kanban.
-  const user = useUser();
-  const activeOrg = useActiveOrg();
-  const podeCriarProposta =
-    user.is_platform_admin ||
-    (activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager) ||
-    false;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -145,47 +128,10 @@ export function LeadDossier({
           phone={lead.contact_phone}
         />
 
-        {/* Os dados do CLIENTE: telefone e e-mail numa aba, links (Instagram,
-            site, Google Meu Negócio…) na outra. Vêm do contato, não do lead. */}
-        <section className="border-b border-border py-3">
-          <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
-            {t("Contato")}
-          </h3>
-          <ContatoDoNegocio contactId={lead.contact_id} pipelineId={pipelineId} leadId={lead.id} />
-        </section>
-
-        <QualificacaoDoLead contactId={lead.contact_id} />
-
-        {lead.contact_id ? <VendasDoCliente contactId={lead.contact_id} /> : null}
-
-        {/* ② timeline */}
-        <section className="flex-1 py-3">
-          <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
-            {t("Linha do tempo")}
-          </h3>
-          <LeadTimeline
-            itens={timeline.itens}
-            chegouAoVivo={timeline.chegouAoVivo}
-            isLoading={timeline.isLoading}
-            isError={timeline.isError}
-          />
-        </section>
-
-        {/* ③ campos, por último */}
-        <div ref={campos} className="border-t border-border pt-3">
-          <h3 className="mb-2 text-xs font-medium tracking-wide text-text-muted uppercase">
-            {t("Dados do negócio")}
-          </h3>
-          <LeadFieldsForm lead={lead} pipelineId={pipelineId} fieldDefs={fieldDefs} />
+        {/* A FICHA ÚNICA do lead: a mesma no CRM, no Inbox e na ficha do contato. */}
+        <div ref={campos}>
+          <FichaDoLead leadId={lead.id} linhaDoTempo={timeline} />
         </div>
-
-        {/* N1 — seção "Propostas", depois de "Dados do negócio". Some sozinha
-            (null) quando a capacidade está desligada — ver PropostasDoNegocio. */}
-        <PropostasDoNegocio
-          leadId={lead.id}
-          pipelineId={pipelineId}
-          podeCriar={podeCriarProposta}
-        />
       </SheetContent>
     </Sheet>
   );

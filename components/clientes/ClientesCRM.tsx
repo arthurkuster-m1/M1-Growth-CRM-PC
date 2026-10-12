@@ -12,6 +12,7 @@ import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
+import { AcoesEmMassaDeClientes } from "@/components/clientes/AcoesEmMassaDeClientes";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { PipelinePageClient } from "@/app/app/pipelines/[id]/_client";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
@@ -86,6 +87,7 @@ export function ClientesCRM() {
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
   const [configurando, setConfigurando] = useState(false);
+  const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
 
   const consulta = useQuery({
     queryKey: ["clientes", funilEscolhido],
@@ -825,6 +827,28 @@ export function ClientesCRM() {
             aoReordenar={() => undefined}
             podeReordenar={false}
             rotuloDaTabela={t("Leads")}
+            selecionadas={selecionadas}
+            aoSelecionar={(id, { faixa }) =>
+              setSelecionadas((atual) => {
+                const proximo = new Set(atual);
+                const ids = resultado.linhas.map((l) => l.contact_id);
+                if (faixa && atual.size > 0) {
+                  const ultimo = ids.findLastIndex((x) => atual.has(x));
+                  const alvo = ids.indexOf(id);
+                  if (ultimo >= 0 && alvo >= 0) {
+                    const [de, ate] = ultimo < alvo ? [ultimo, alvo] : [alvo, ultimo];
+                    for (const x of ids.slice(de, ate + 1)) proximo.add(x);
+                    return proximo;
+                  }
+                }
+                if (proximo.has(id)) proximo.delete(id);
+                else proximo.add(id);
+                return proximo;
+              })
+            }
+            aoSelecionarTodas={(marcar) =>
+              setSelecionadas(marcar ? new Set(resultado.linhas.map((l) => l.contact_id)) : new Set())
+            }
             vazio={
               <p className="p-6 text-center text-sm text-muted-foreground">
                 {consulta.isError
@@ -833,6 +857,13 @@ export function ClientesCRM() {
               </p>
             }
           />
+          {podeEditar ? (
+            <AcoesEmMassaDeClientes
+              contatoIds={[...selecionadas]}
+              podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
+              aoLimpar={() => setSelecionadas(new Set())}
+            />
+          ) : null}
           <ConfigurarVisualizacao
             aberto={configurando}
             aoFechar={() => setConfigurando(false)}
