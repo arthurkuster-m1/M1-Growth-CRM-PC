@@ -9,6 +9,7 @@
  * o layout monta; esta suíte prova os dois estados em cada um.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +25,7 @@ const ORG = { orgId: "org-1", name: "Clínica", role: "admin", cliente_pela_agen
 const USER = { id: "u-1", is_platform_admin: false, support: null };
 
 vi.mock("@/hooks/auth/AuthProvider", () => ({
+  useUser: () => USER,
   useActiveOrg: () => ({ ...ORG, cliente_pela_agenda: ligada }),
   useAuth: () => ({ user: USER, activeOrg: { ...ORG, cliente_pela_agenda: ligada } }),
 }));
@@ -108,9 +110,14 @@ describe("selo 'Cliente' na lista de contatos", () => {
   });
 });
 
+/** Os dados da pessoa moram na aba Cadastro. */
+async function abrirCadastro() {
+  await userEvent.click(screen.getByRole("tab", { name: "Cadastro" }));
+}
+
 describe("'Cliente desde' na ficha do contato", () => {
 
-  it("desligada: a linha não aparece", () => {
+  it("desligada: a linha não aparece", async () => {
     render(comQuery(<ContactDetailClient contactId="c-1" />));
     // O controle de vacuidade prende o ELEMENTO, não o texto: a ficha mostra o
     // nome DUAS vezes de propósito — o `<h1>` do cabeçalho e um campo do card
@@ -130,20 +137,24 @@ describe("'Cliente desde' na ficha do contato", () => {
     // `queryByText` abaixo ser nulo significa que a linha não está lá, e não
     // que a tela está vazia.
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Joana");
+    await abrirCadastro();
+    expect(screen.getByText("Criado em")).toBeInTheDocument();
     expect(screen.queryByText("Cliente desde")).toBeNull();
   });
 
-  it("ligada: a linha aparece com a data", () => {
+  it("ligada: a linha aparece com a data", async () => {
     ligada = true;
     render(comQuery(<ContactDetailClient contactId="c-1" />));
+    await abrirCadastro();
     expect(screen.getByText("Cliente desde")).toBeInTheDocument();
     expect(screen.getByText("12/03/2025")).toBeInTheDocument();
   });
 });
 
 describe("nome do perfil do WhatsApp na ficha do contato", () => {
-  it("identifica o campo sem expor o rótulo técnico em inglês", () => {
+  it("identifica o campo sem expor o rótulo técnico em inglês", async () => {
     render(comQuery(<ContactDetailClient contactId="c-1" />));
+    await abrirCadastro();
     expect(screen.getByText("Nome · WhatsApp")).toBeInTheDocument();
     expect(screen.queryByText("Display name")).toBeNull();
   });

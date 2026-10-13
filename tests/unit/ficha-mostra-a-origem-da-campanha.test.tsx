@@ -11,6 +11,7 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,6 +22,7 @@ const ORG = { orgId: "org-1", name: "Loja", role: "admin", cliente_pela_agenda: 
 const USER = { id: "u-1", is_platform_admin: false, support: null };
 
 vi.mock("@/hooks/auth/AuthProvider", () => ({
+  useUser: () => USER,
   useActiveOrg: () => ORG,
   useAuth: () => ({ user: USER, activeOrg: ORG }),
 }));
@@ -81,7 +83,7 @@ const FRASE = "A plataforma não informa o posicionamento de cada clique em anú
  * `fn_estampar_atribuicao_de_anuncio` faz `source = p_platform` — `site` no
  * link do site, o nome da plataforma no clique em anúncio.
  */
-function abrirFicha(sourceMetadata: Record<string, unknown>, source = BASE.source) {
+async function abrirFicha(sourceMetadata: Record<string, unknown>, source = BASE.source) {
   contato = { ...BASE, source, source_metadata: sourceMetadata };
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const comQuery = (ui: ReactNode) => <QueryClientProvider client={qc}>{ui}</QueryClientProvider>;
@@ -89,6 +91,8 @@ function abrirFicha(sourceMetadata: Record<string, unknown>, source = BASE.sourc
   // Controle de vacuidade: a ficha renderizou, então um nível ausente abaixo é
   // ausência de verdade, e não tela vazia.
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Joana");
+  // A origem mora na aba Cadastro.
+  await userEvent.click(screen.getByRole("tab", { name: "Cadastro" }));
 }
 
 /** O valor ao lado do rótulo, na `<dl>` da ficha — ou `null` se o rótulo não está lá. */
@@ -98,8 +102,8 @@ function valorDe(rotulo: string): string | null {
 }
 
 describe("a ficha do contato mostra a origem da campanha", () => {
-  it("link do site: a origem é a fonte da campanha, e os quatro níveis aparecem", () => {
-    abrirFicha(
+  it("link do site: a origem é a fonte da campanha, e os quatro níveis aparecem", async () => {
+    await abrirFicha(
       {
         ad_platform: "site",
         origem: "site",
@@ -120,19 +124,20 @@ describe("a ficha do contato mostra a origem da campanha", () => {
     expect(screen.queryByText(FRASE)).toBeNull();
   });
 
-  it("clique em anúncio sem posicionamento: a ficha diz que a plataforma não informa", () => {
-    abrirFicha({ ad_platform: "meta_ads", ad_title: "Promoção de verão" }, "meta_ads");
+  it("clique em anúncio sem posicionamento: a ficha diz que a plataforma não informa", async () => {
+    await abrirFicha({ ad_platform: "meta_ads", ad_title: "Promoção de verão" }, "meta_ads");
 
     expect(valorDe("Anúncio")).toBe("Promoção de verão");
     expect(screen.getByText(FRASE)).toBeInTheDocument();
   });
 
-  it("contato que não veio de campanha: a coluna `source`, e nenhum nível vazio", () => {
-    abrirFicha({});
+  it("contato que não veio de campanha: a coluna `source`, e nenhum nível preenchido", async () => {
+    await abrirFicha({});
 
     expect(valorDe("Origem")).toBe("whatsapp");
+    // O Cadastro mostra todos os níveis (para poderem ser corrigidos à mão); sem dado, "—".
     for (const nivel of ["Campanha", "Conjunto", "Anúncio", "Posicionamento"]) {
-      expect(valorDe(nivel), nivel).toBeNull();
+      expect(valorDe(nivel), nivel).toBe("—");
     }
     expect(screen.queryByText(FRASE)).toBeNull();
   });

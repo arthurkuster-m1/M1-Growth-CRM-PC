@@ -12,12 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
-import { Trash } from "@/lib/ui/icons";
+import { Star, Trash } from "@/lib/ui/icons";
 
 interface Anotacao {
   id: string;
   titulo: string;
   texto: string;
+  fixada: boolean;
   criada_em: string;
 }
 
@@ -44,6 +45,12 @@ export function AnotacoesDoLead({ contactId, podeEditar }: { contactId: string; 
       setTexto("");
       void qc.invalidateQueries({ queryKey: chave });
     },
+    onError: showApiError,
+  });
+  const fixar = useMutation({
+    mutationFn: async (n: { id: string; fixada: boolean }) =>
+      apiClient.patch(`/api/v1/contacts/${contactId}/anotacoes/${n.id}`, { fixada: n.fixada }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: chave }),
     onError: showApiError,
   });
   const remover = useMutation({
@@ -92,7 +99,10 @@ export function AnotacoesDoLead({ contactId, podeEditar }: { contactId: string; 
         ) : (
           <ul className="grid gap-2">
             {(lista.data ?? []).map((n) => (
-              <li key={n.id} className="rounded-xl border border-l-4 border-l-yellow-400 p-3">
+              <li
+                key={n.id}
+                className={`rounded-xl border border-l-4 p-3 ${n.fixada ? "border-l-yellow-500 bg-yellow-500/5" : "border-l-gray-300"}`}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     {n.titulo ? <p className="text-sm font-semibold break-words">{n.titulo}</p> : null}
@@ -101,6 +111,21 @@ export function AnotacoesDoLead({ contactId, podeEditar }: { contactId: string; 
                       {format(new Date(n.criada_em), "dd/MM/yyyy HH:mm", { locale })}
                     </p>
                   </div>
+                  {podeEditar ? (
+                    <button
+                      type="button"
+                      aria-label={n.fixada ? t("Desafixar anotação") : t("Fixar como importante")}
+                      title={n.fixada ? t("Importante — clique para desafixar") : t("Marcar como importante")}
+                      onClick={() => fixar.mutate({ id: n.id, fixada: !n.fixada })}
+                      className={
+                        n.fixada
+                          ? "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-yellow-500 hover:bg-secondary"
+                          : "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-yellow-500"
+                      }
+                    >
+                      <Star size={14} weight={n.fixada ? "fill" : "regular"} aria-hidden />
+                    </button>
+                  ) : null}
                   {podeEditar ? (
                     <button
                       type="button"

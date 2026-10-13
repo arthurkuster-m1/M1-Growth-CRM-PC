@@ -5,11 +5,12 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useState } from "react";
 import { format } from "date-fns";
-import { ShieldCheck, PencilSimple, LockOpen } from "@/lib/ui/icons";
+import { ShieldCheck, LockOpen } from "@/lib/ui/icons";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
 import { FunisDoLead } from "@/components/contacts/ficha/FunisDoLead";
+import { PainelDaVisaoGeral } from "@/components/contacts/ficha/PainelDaVisaoGeral";
 import { LinhaDoTempoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
 import { VendasDaFicha } from "@/components/contacts/ficha/VendasDaFicha";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +41,6 @@ import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { EditContactDialog } from "@/components/contacts/EditContactDialog";
 import { AnonymizeDialog } from "@/components/contacts/AnonymizeDialog";
 import { PropostasDeDado } from "@/components/contacts/PropostasDeDado";
 import { RoteirosDoContato } from "@/components/contacts/RoteirosDoContato";
@@ -54,24 +54,6 @@ interface Props {
   contactId: string;
 }
 
-/**
- * Um nível da origem, ou nada.
- *
- * Escondido quando não há valor, em vez de mostrar "—": quatro travessões
- * seguidos leem como cadastro quebrado, e não como "este contato não veio de
- * campanha". O rótulo chega já traduzido porque `t()` com argumento não literal
- * escapa do guardião de espanhol.
- */
-function NivelDaOrigem({ rotulo, valor }: { rotulo: string; valor: string | null }) {
-  if (!valor) return null;
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground uppercase">{rotulo}</dt>
-      <dd className="mt-1 break-words">{valor}</dd>
-    </div>
-  );
-}
-
 export function ContactDetailClient({ contactId }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
@@ -81,8 +63,8 @@ export function ContactDetailClient({ contactId }: Props) {
   // As DEFINIÇÕES continuam no funil (`crm_pipelines.settings.fields[]`) — só o
   // VALOR mora no contato. `camposDoFunil` é o mesmo leitor que o Kanban usa.
   const pipelineQuery = useDefaultPipeline(Boolean(activeOrg));
-  const [editOpen, setEditOpen] = useState(false);
   const [anonOpen, setAnonOpen] = useState(false);
+  const [aba, setAba] = useState("overview");
   // Desfazer o descadastro é o override da regra W-02 — só admin, e auditado.
   // O hook fica ANTES dos early returns: chamá-lo depois mudaria a ordem dos
   // hooks entre renderizações e o React reprova.
@@ -292,10 +274,6 @@ export function ContactDetailClient({ contactId }: Props) {
               </Button>
             )}
             <DialButton contactId={contactId} hasPhone={!!contact.phone_number} />
-            <Button variant="outline" onClick={() => setEditOpen(true)} className="shrink-0">
-              <PencilSimple size={16} weight="bold" aria-hidden />
-              <span>{t("Editar")}</span>
-            </Button>
           </div>
         )}
       </header>
@@ -314,7 +292,7 @@ export function ContactDetailClient({ contactId }: Props) {
         />
       )}
 
-      <Tabs defaultValue="overview">
+      <Tabs value={aba} onValueChange={setAba}>
         <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
@@ -327,107 +305,7 @@ export function ContactDetailClient({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <Card className="rounded-2xl border-l-4 border-l-blue-500 p-4">
-            <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">{t("Nome")}</dt>
-                <dd className="mt-1">{contact.name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">{t("Nome")} · WhatsApp</dt>
-                <dd className="mt-1">{contact.display_name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">Email</dt>
-                <dd className="mt-1">{contact.email ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">{t("Telefone")}</dt>
-                <dd className="mt-1">
-                  {contact.phone_number ? phoneForDisplay(contact.phone_number) : "—"}
-                </dd>
-              </div>
-              {/*
-                A data gravada pelo "Editar contato" (e pela proposta aprovada),
-                enxergada aqui — é ela que o cron `contact-birthdays` lê para
-                emitir `contact.birthday`. A string vira `dd/MM/yyyy` PELOS
-                PEDAÇOS: `new Date("1990-09-14")` nasce à meia-noite em UTC, e
-                `format` no fuso da tela (UTC-3) devolveria 13/09 — o
-                aniversário de ontem para quem olha.
-              */}
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">
-                  {t("Data de nascimento")}
-                </dt>
-                <dd className="mt-1">
-                  {contact.birthdate ? contact.birthdate.split("-").reverse().join("/") : "—"}
-                </dd>
-              </div>
-              {/*
-                A origem sai do `source_metadata` quando ele tem algo melhor a
-                dizer, e cai na coluna `source` quando não tem. Antes esta linha
-                lia só a coluna, e a resposta era `site` para quem chegou pelo
-                link do site, ou o nome da plataforma para quem clicou num
-                anúncio — mesmo com o `utm_source` da campanha gravado ao lado.
-              */}
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">{t("Origem")}</dt>
-                <dd className="mt-1">{origem.origem}</dd>
-              </div>
-              <NivelDaOrigem rotulo={t("Campanha")} valor={origem.campanha} />
-              <NivelDaOrigem rotulo={t("Conjunto")} valor={origem.conjunto} />
-              <NivelDaOrigem rotulo={t("Anúncio")} valor={origem.anuncio} />
-              <NivelDaOrigem rotulo={t("Posicionamento")} valor={origem.posicionamento} />
-              {origem.semPosicionamentoDeAnuncio && (
-                <div>
-                  <dt className="text-xs text-muted-foreground uppercase">{t("Posicionamento")}</dt>
-                  <dd className="mt-1 text-sm text-muted-foreground">
-                    {t("A plataforma não informa o posicionamento de cada clique em anúncio.")}
-                  </dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">{t("Última atividade")}</dt>
-                <dd className="mt-1">
-                  {contact.last_activity_at
-                    ? format(new Date(contact.last_activity_at), "dd/MM/yyyy HH:mm", {
-                        locale: localeDaData,
-                      })
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">{t("Criado em")}</dt>
-                <dd className="mt-1">
-                  {format(new Date(contact.created_at), "dd/MM/yyyy", { locale: localeDaData })}
-                </dd>
-              </div>
-              {/*
-                Escondido quando nulo, em vez de mostrar "—": aqui a ausência não
-                é dado faltando, é "ainda não é cliente". Um travessão nesta
-                linha leria como falha de cadastro. E escondido com a regra
-                "Clientes pela agenda" desligada: a data está congelada.
-              */}
-              {clientesLigado && contact.first_service_at && (
-                <div>
-                  <dt className="text-xs text-muted-foreground uppercase">{t("Cliente desde")}</dt>
-                  <dd className="mt-1">
-                    {format(new Date(contact.first_service_at), "dd/MM/yyyy", {
-                      locale: localeDaData,
-                    })}
-                  </dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-xs text-muted-foreground uppercase">Tags</dt>
-                <dd className="mt-1 flex flex-wrap gap-1">
-                  {contact.tags.length === 0
-                    ? "—"
-                    : contact.tags.map((t) => <ChipDeEtiqueta key={t} tag={t} />)}
-                </dd>
-              </div>
-            </dl>
-          </Card>
+          <PainelDaVisaoGeral contactId={contactId} aoAbrir={setAba} />
           <div className="mt-4">
             <RoteirosDoContato contactId={contactId} />
           </div>
@@ -439,6 +317,7 @@ export function ContactDetailClient({ contactId }: Props) {
             origem={origem}
             podeEditar={podeEditarFicha}
             camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
+            clientesLigado={clientesLigado}
           />
         </TabsContent>
 
@@ -494,12 +373,6 @@ export function ContactDetailClient({ contactId }: Props) {
         )}
       </Tabs>
 
-      <EditContactDialog
-        contact={contact}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        customFieldDefs={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
-      />
       <AnonymizeDialog contactId={contactId} open={anonOpen} onOpenChange={setAnonOpen} />
     </div>
   );

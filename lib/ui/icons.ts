@@ -59,6 +59,7 @@ export {
   Checks,
   X,
   Plus,
+  Star,
   Trash,
   PencilSimple,
   MagnifyingGlass,

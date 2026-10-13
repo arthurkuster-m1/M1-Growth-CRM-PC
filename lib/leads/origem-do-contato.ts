@@ -79,7 +79,14 @@ export function origemDoContato(
   source: string,
 ): OrigemDoContato {
   const meta = metadata && typeof metadata === "object" ? metadata : {};
-  const posicionamento = primeiro(meta, ["utm_placement"]);
+  // O que a equipe corrigiu à mão (ficha › Cadastro › Origem) vale sobre o que veio do rastreamento
+  // — que continua intacto, para quem quiser conferir o dado original.
+  const manual =
+    meta.origem_manual && typeof meta.origem_manual === "object"
+      ? (meta.origem_manual as Record<string, unknown>)
+      : {};
+  const doManual = (k: string) => texto(manual[k]);
+  const posicionamento = doManual("posicionamento") ?? primeiro(meta, ["utm_placement"]);
 
   // "Veio de anúncio" é o que a `fn_estampar_atribuicao_de_anuncio` carimbou, e
   // não a presença de UTM: `ad_platform: "site"` é origem de site, que TEM
@@ -89,10 +96,10 @@ export function origemDoContato(
   const deAnuncio = plataforma !== null && plataforma !== "site";
 
   return {
-    origem: primeiro(meta, CHAVES_DA_ORIGEM) ?? source,
-    campanha: primeiro(meta, ["utm_campaign", "campaign_name"]),
-    conjunto: primeiro(meta, ["utm_adset", "adset_name"]),
-    anuncio: primeiro(meta, ["utm_ad", "ad_name", "ad_title"]),
+    origem: doManual("origem") ?? primeiro(meta, CHAVES_DA_ORIGEM) ?? source,
+    campanha: doManual("campanha") ?? primeiro(meta, ["utm_campaign", "campaign_name"]),
+    conjunto: doManual("conjunto") ?? primeiro(meta, ["utm_adset", "adset_name"]),
+    anuncio: doManual("anuncio") ?? primeiro(meta, ["utm_ad", "ad_name", "ad_title"]),
     posicionamento,
     semPosicionamentoDeAnuncio: deAnuncio && posicionamento === null,
   };

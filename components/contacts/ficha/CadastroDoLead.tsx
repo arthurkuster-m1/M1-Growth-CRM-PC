@@ -6,6 +6,16 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoDaFicha, CampoLido } from "@/components/contacts/ficha/BlocoDaFicha";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useDadosDosNegocios, useQualificacaoDoContato } from "@/components/contacts/ficha/dados-da-ficha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
@@ -31,7 +41,7 @@ import {
 import { normalizarTags } from "@/lib/contacts/tag-normalizada";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import type { Contact } from "@/lib/types/contacts";
-import { X } from "@/lib/ui/icons";
+import { Plus, Trash, X } from "@/lib/ui/icons";
 
 interface OrigemLida {
   origem: string;
@@ -56,11 +66,14 @@ export function CadastroDoLead({
   origem,
   podeEditar,
   camposDefinidos,
+  clientesLigado,
 }: {
   contact: Contact;
-  origem: OrigemLida;
+  origem: OrigemLida & { semPosicionamentoDeAnuncio?: boolean };
   podeEditar: boolean;
   camposDefinidos: CustomFieldDef[];
+  /** "Clientes pela agenda" ligado: mostra "Cliente desde". */
+  clientesLigado: boolean;
 }) {
   const t = useT();
   const locale = useLocaleDeData();
@@ -112,9 +125,18 @@ export function CadastroDoLead({
     }
   }
 
-  // ── Campos do formulário (do contato + de cada funil, juntos) ──
+  // ── Campos personalizados (do contato + de cada funil, juntos; dá para criar e apagar) ──
+  const rotulosGuardados =
+    contact.custom_fields && typeof contact.custom_fields._rotulos === "object"
+      ? (contact.custom_fields._rotulos as Record<string, string>)
+      : {};
   const camposDoContato = Object.entries(contact.custom_fields ?? {}).filter(
-    ([k, v]) => !k.startsWith(PREFIXO_DA_CHAVE) && v !== null && v !== "" && typeof v !== "object",
+    ([k, v]) =>
+      !k.startsWith(PREFIXO_DA_CHAVE) &&
+      !k.startsWith("_") &&
+      v !== null &&
+      v !== "" &&
+      typeof v !== "object",
   );
   const juntos = new Map<string, unknown>();
   for (const [k, v] of camposDoContato) juntos.set(k, v);
@@ -125,29 +147,122 @@ export function CadastroDoLead({
     }
   }
   const [edicao, setEdicao] = useState<Record<string, string>>({});
+  const [removidos, setRemovidos] = useState<Set<string>>(new Set());
+  const [novoNome, setNovoNome] = useState("");
+  const [novoValor, setNovoValor] = useState("");
+  const [novos, setNovos] = useState<Array<{ chave: string; rotulo: string; valor: string }>>([]);
   const rotuloDoCampo = (k: string) =>
+    rotulosGuardados[k] ??
     camposDefinidos.find((d) => d.key === k)?.label ??
     negocios.dados.flatMap((n) => n.negocio.field_defs).find((d) => d.key === k)?.label ??
     rotuloDaChave(k);
+  const sujoCampos = Object.keys(edicao).length > 0 || removidos.size > 0 || novos.length > 0;
 
+  function chaveDoNome(nome: string): string {
+    const base = nome
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 36);
+    return /^[a-z]/.test(base) ? base : `campo_${base}`;
+  }
+  function juntarNovo() {
+    const nome = novoNome.trim();
+    if (!nome) return;
+    const chave = chaveDoNome(nome);
+    if (juntos.has(chave) || novos.some((n) => n.chave === chave)) {
+      toast.error(t("Já existe um campo com esse nome."));
+      return;
+    }
+    setNovos((a) => [...a, { chave, rotulo: nome, valor: novoValor.trim() }]);
+    setNovoNome("");
+    setNovoValor("");
+  }
   async function salvarCampos() {
-    const novos: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(edicao)) novos[k] = v;
     try {
-      // O contato guarda o valor; cada funil que já tinha o campo recebe o mesmo, para nada divergir.
-      await atualizar.mutateAsync({ custom_fields: { ...(contact.custom_fields ?? {}), ...novos } });
+      const atuais: Record<string, unknown> = { ...(contact.custom_fields ?? {}) };
+      const rotulos: Record<string, string> = { ...rotulosGuardados };
+      for (const k of removidos) {
+        delete atuais[k];
+        delete rotulos[k];
+      }
+      for (const [k, v] of Object.entries(edicao)) if (!removidos.has(k)) atuais[k] = v;
+      for (const n of novos) {
+        atuais[n.chave] = n.valor;
+        rotulos[n.chave] = n.rotulo;
+      }
+      if (Object.keys(rotulos).length > 0) atuais._rotulos = rotulos;
+      else delete atuais._rotulos;
+      await atualizar.mutateAsync({ custom_fields: atuais });
+      // Cada funil que já tinha o campo recebe o mesmo valor (ou perde o campo), para nada divergir.
       for (const n of negocios.dados) {
-        const dele = Object.keys(novos).filter((k) => k in (n.custom_fields ?? {}));
-        if (dele.length === 0) continue;
-        await apiClient.patch(`/api/v1/leads/${n.lead_id}`, {
-          custom_fields: Object.fromEntries(dele.map((k) => [k, novos[k]])),
-        });
+        const dele: Record<string, unknown> = {};
+        for (const k of Object.keys(n.custom_fields ?? {})) {
+          if (removidos.has(k)) dele[k] = null;
+          else if (k in edicao) dele[k] = edicao[k];
+        }
+        if (Object.keys(dele).length === 0) continue;
+        await apiClient.patch(`/api/v1/leads/${n.lead_id}`, { custom_fields: dele });
       }
       setEdicao({});
+      setRemovidos(new Set());
+      setNovos([]);
       await queryClient.invalidateQueries({ queryKey: ["ficha-do-lead"] });
-      toast.success(t("Campos atualizados em todos os funis"));
+      toast.success(t("Campos personalizados atualizados"));
     } catch (e) {
       showApiError(e);
+    }
+  }
+
+  // ── Origem (editável, com confirmação) ──
+  const manualAtual =
+    contact.source_metadata && typeof (contact.source_metadata as Record<string, unknown>).origem_manual === "object"
+      ? ((contact.source_metadata as Record<string, unknown>).origem_manual as Record<string, string>)
+      : {};
+  const paginaDosFunis =
+    negocios.dados
+      .map((n) => n.campanhas.flatMap((c) => c.landing_pages).find((p) => p.id === n.landing_page_id))
+      .find(Boolean)?.nome ?? null;
+  const origemAtual = {
+    origem: origem.origem,
+    campanha: origem.campanha ?? "",
+    conjunto: origem.conjunto ?? "",
+    anuncio: origem.anuncio ?? "",
+    lp: manualAtual.lp?.trim() || paginaDosFunis || "",
+    posicionamento: origem.posicionamento ?? "",
+  };
+  const [editandoOrigem, setEditandoOrigem] = useState(false);
+  const [origemEdit, setOrigemEdit] = useState(origemAtual);
+  const [confirmarOrigem, setConfirmarOrigem] = useState(false);
+  async function salvarOrigem() {
+    try {
+      const manual: Record<string, string> = { ...manualAtual };
+      const tagsNovas: string[] = [];
+      (Object.keys(origemEdit) as Array<keyof typeof origemEdit>).forEach((k) => {
+        const novo = origemEdit[k].trim();
+        if (novo === origemAtual[k]) return;
+        manual[k] = novo;
+        if (!novo) return;
+        if (k === "campanha") tagsNovas.push(`Campanha: ${novo}`);
+        if (k === "anuncio") tagsNovas.push(`Ad: ${novo}`);
+        if (k === "lp") tagsNovas.push(`LP: ${novo}`);
+      });
+      const jaTem = new Set(contact.tags.map((x) => x.toLowerCase()));
+      const tags = [
+        ...contact.tags,
+        ...tagsNovas.filter((x) => !jaTem.has(x.toLowerCase().slice(0, 40))),
+      ];
+      await atualizar.mutateAsync({
+        source_metadata: { ...(contact.source_metadata ?? {}), origem_manual: manual },
+        ...(tagsNovas.length > 0 ? { tags } : {}),
+      });
+      setEditandoOrigem(false);
+      setConfirmarOrigem(false);
+      toast.success(t("Origem do lead atualizada"));
+    } catch {
+      setConfirmarOrigem(false);
     }
   }
 
@@ -169,6 +284,16 @@ export function CadastroDoLead({
       await atualizar.mutateAsync({ tags });
     } catch {
       /* o hook já avisou */
+    }
+  }
+  async function salvarPrimeiraCompra(v: string) {
+    try {
+      await apiClient.put(`/api/v1/contacts/${contact.id}/qualificacao`, {
+        primeira_compra: v === "" ? null : v,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["qualificacao-do-lead", contact.id] });
+    } catch (e) {
+      showApiError(e);
     }
   }
   const dia = (iso: string | null | undefined, comHora = false) =>
@@ -252,71 +377,242 @@ export function CadastroDoLead({
         </div>
       </BlocoDaFicha>
 
-      <BlocoDaFicha titulo={t("Qualificação")} cor="green">
-        <QualificacaoDoLead contactId={contact.id} semTitulo />
-      </BlocoDaFicha>
-
-      <BlocoDaFicha titulo={t("Origem")} cor="orange">
-        <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <CampoLido rotulo={t("Origem")} valor={origem.origem} />
-          <CampoLido rotulo={t("Campanha")} valor={origem.campanha} />
-          <CampoLido rotulo={t("Conjunto")} valor={origem.conjunto} />
-          <CampoLido rotulo={t("Anúncio")} valor={origem.anuncio} />
-          <CampoLido rotulo={t("Posicionamento")} valor={origem.posicionamento} />
-        </dl>
-        <p className="mt-3 text-xs text-muted-foreground">
-          {t("A origem de cada funil (campanha, criativo e página) está na aba Funis.")}
-        </p>
-      </BlocoDaFicha>
-
       <BlocoDaFicha
-        titulo={t("Respostas e campos do formulário")}
-        cor="pink"
+        titulo={t("Qualificação")}
+        cor="green"
         acao={
-          podeEditar && Object.keys(edicao).length > 0 ? (
+          podeEditar && sujoCampos ? (
             <Button size="sm" disabled={atualizar.isPending} onClick={() => void salvarCampos()}>
               {t("Salvar campos")}
             </Button>
           ) : null
         }
       >
-        {juntos.size === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("Sem respostas de formulário.")}</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[...juntos.entries()].map(([k, v]) => (
+        <QualificacaoDoLead contactId={contact.id} semTitulo semDatas />
+
+        <div className="mt-4 border-t pt-4">
+          <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("Campos personalizados")}
+          </h3>
+          {juntos.size === 0 && novos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t("Nenhum campo ainda. Adicione abaixo o que ajuda a qualificar este lead.")}
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[...juntos.entries()]
+                .filter(([k]) => !removidos.has(k))
+                .map(([k, v]) => (
+                  <div key={k} className="grid gap-1">
+                    <Label className="text-xs">{rotuloDoCampo(k)}</Label>
+                    <div className="flex gap-1">
+                      <Input
+                        value={edicao[k] ?? texto(v)}
+                        disabled={!podeEditar || Array.isArray(v)}
+                        onChange={(e) => setEdicao((a) => ({ ...a, [k]: e.target.value }))}
+                      />
+                      {podeEditar ? (
+                        <button
+                          type="button"
+                          aria-label={`${t("Apagar campo")} ${rotuloDoCampo(k)}`}
+                          onClick={() => setRemovidos((a) => new Set(a).add(k))}
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                        >
+                          <Trash size={14} aria-hidden />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              {novos.map((n) => (
+                <div key={n.chave} className="grid gap-1">
+                  <Label className="text-xs">
+                    {n.rotulo} <span className="text-primary">· {t("novo")}</span>
+                  </Label>
+                  <div className="flex gap-1">
+                    <Input
+                      value={n.valor}
+                      onChange={(e) =>
+                        setNovos((a) =>
+                          a.map((x) => (x.chave === n.chave ? { ...x, valor: e.target.value } : x)),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      aria-label={`${t("Remover")} ${n.rotulo}`}
+                      onClick={() => setNovos((a) => a.filter((x) => x.chave !== n.chave))}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                    >
+                      <X size={14} aria-hidden />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {podeEditar ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+              <Input
+                value={novoNome}
+                maxLength={60}
+                placeholder={t("Nome do campo (ex.: Renda mensal)")}
+                onChange={(e) => setNovoNome(e.target.value)}
+              />
+              <Input
+                value={novoValor}
+                maxLength={500}
+                placeholder={t("Valor")}
+                onChange={(e) => setNovoValor(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && juntarNovo()}
+              />
+              <Button type="button" variant="outline" disabled={!novoNome.trim()} onClick={juntarNovo}>
+                <Plus size={14} weight="bold" aria-hidden className="mr-1" />
+                {t("Adicionar campo")}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </BlocoDaFicha>
+
+      <BlocoDaFicha
+        titulo={t("Origem")}
+        cor="orange"
+        acao={
+          podeEditar ? (
+            editandoOrigem ? (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditandoOrigem(false);
+                    setOrigemEdit(origemAtual);
+                  }}
+                >
+                  {t("Cancelar")}
+                </Button>
+                <Button size="sm" onClick={() => setConfirmarOrigem(true)}>
+                  {t("Salvar origem")}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setOrigemEdit(origemAtual);
+                  setEditandoOrigem(true);
+                }}
+              >
+                {t("Alterar origem")}
+              </Button>
+            )
+          ) : null
+        }
+      >
+        {editandoOrigem ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(
+              [
+                ["origem", t("Origem")],
+                ["campanha", t("Campanha")],
+                ["conjunto", t("Conjunto")],
+                ["anuncio", t("Anúncio (criativo)")],
+                ["lp", t("Landing page")],
+                ["posicionamento", t("Posicionamento")],
+              ] as const
+            ).map(([k, rotulo]) => (
               <div key={k} className="grid gap-1">
-                <Label className="text-xs">{rotuloDoCampo(k)}</Label>
+                <Label className="text-xs">{rotulo}</Label>
                 <Input
-                  value={edicao[k] ?? texto(v)}
-                  disabled={!podeEditar || Array.isArray(v)}
-                  onChange={(e) => setEdicao((a) => ({ ...a, [k]: e.target.value }))}
+                  value={origemEdit[k]}
+                  onChange={(e) => setOrigemEdit((a) => ({ ...a, [k]: e.target.value }))}
                 />
               </div>
             ))}
           </div>
-        )}
-      </BlocoDaFicha>
-
-      <BlocoDaFicha titulo={t("Rastreamento (UTMs, anúncio, página)")} cor="gray">
-        {rastros.size === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("Sem dados de rastreamento.")}</p>
         ) : (
           <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[...rastros.entries()].map(([k, v]) => (
-              <CampoLido key={k} rotulo={rotuloDaChave(k)} valor={v} />
-            ))}
+            <CampoLido rotulo={t("Origem")} valor={origem.origem} />
+            <CampoLido rotulo={t("Campanha")} valor={origem.campanha} />
+            <CampoLido rotulo={t("Conjunto")} valor={origem.conjunto} />
+            <CampoLido rotulo={t("Anúncio")} valor={origem.anuncio} />
+            <CampoLido rotulo={t("Landing page")} valor={origemAtual.lp} />
+            <CampoLido rotulo={t("Posicionamento")} valor={origem.posicionamento} />
           </dl>
         )}
+        {origem.semPosicionamentoDeAnuncio && !editandoOrigem ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("A plataforma não informa o posicionamento de cada clique em anúncio.")}
+          </p>
+        ) : null}
+        <p className="mt-3 text-xs text-muted-foreground">
+          {t("A origem de cada funil (campanha, criativo e página) está na aba Funis.")}
+        </p>
+
+        <div className="mt-4 border-t pt-4">
+          <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("Rastreamento (UTMs, anúncio, página)")}
+          </h3>
+          {rastros.size === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("Sem dados de rastreamento.")}</p>
+          ) : (
+            <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {[...rastros.entries()]
+                .filter(([k]) => k !== "origem_manual")
+                .map(([k, v]) => (
+                  <CampoLido
+                    key={k}
+                    rotulo={k === "origem" ? t("Origem (rastreamento)") : rotuloDaChave(k)}
+                    valor={v}
+                  />
+                ))}
+            </dl>
+          )}
+        </div>
       </BlocoDaFicha>
+
+      <AlertDialog open={confirmarOrigem} onOpenChange={setConfirmarOrigem}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Alterar a origem deste lead?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "Isso muda a fonte do lead (origem, campanha, conjunto e anúncio) onde quer que ele apareça. O rastreamento original (UTMs) continua guardado.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void salvarOrigem()}>
+              {t("Confirmar alteração")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BlocoDaFicha titulo={t("Datas")} cor="yellow">
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <CampoLido rotulo={t("Criado em")} valor={dia(contact.created_at)} />
-          <CampoLido rotulo={t("Última atividade")} valor={dia(contact.last_activity_at, true)} />
+          <CampoLido rotulo={t("Entrou no CRM em")} valor={dia(qual.data?.entrou_em, true)} />
           <CampoLido rotulo={t("Primeira abordagem")} valor={dia(qual.data?.primeira_abordagem, true)} />
-          <CampoLido rotulo={t("Cliente desde")} valor={dia(contact.first_service_at)} />
+          <CampoLido rotulo={t("Última atividade")} valor={dia(contact.last_activity_at, true)} />
+          {clientesLigado && contact.first_service_at ? (
+            <CampoLido rotulo={t("Cliente desde")} valor={dia(contact.first_service_at)} />
+          ) : null}
         </dl>
+        <div className="mt-3 grid max-w-xs gap-1">
+          <Label className="text-xs">{t("Primeira compra")}</Label>
+          <CampoDeData
+            valor={qual.data?.primeira_compra ?? ""}
+            aoMudar={(v) => void salvarPrimeiraCompra(v)}
+            rotulo={t("Primeira compra")}
+            placeholder={t("Sem compra registrada")}
+            desabilitado={!podeEditar}
+            className="w-full"
+          />
+        </div>
       </BlocoDaFicha>
 
       <BlocoDaFicha titulo={t("Tags")} cor="red">

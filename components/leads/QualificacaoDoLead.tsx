@@ -33,9 +33,12 @@ interface Qualificacao {
 export function QualificacaoDoLead({
   contactId,
   semTitulo = false,
+  semDatas = false,
 }: {
   contactId: string | null;
   semTitulo?: boolean;
+  /** Esconde "Entrou em", "Primeira abordagem" e "Primeira compra" (a ficha as mostra em Datas). */
+  semDatas?: boolean;
 }) {
   const t = useT();
   const tag = useTagDeIdioma();
@@ -92,6 +95,8 @@ export function QualificacaoDoLead({
         <div className="h-16 animate-pulse rounded-lg bg-secondary" aria-busy="true" />
       ) : !d ? null : (
         <div className="grid gap-3 text-sm">
+          {semDatas ? null : (
+            <>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
             <div>
               <dt className="text-text-muted">{t("Entrou em")}</dt>
@@ -112,6 +117,9 @@ export function QualificacaoDoLead({
               aoMudar={(v) => (pode ? salvarCompra.mutate(v === "" ? null : v) : undefined)}
             />
           </div>
+
+            </>
+          )}
 
           <label
             className={cn(

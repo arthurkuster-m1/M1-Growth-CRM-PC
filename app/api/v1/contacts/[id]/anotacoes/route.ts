@@ -47,9 +47,10 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const { data, error } = await createAdminClient()
     .from("lead_notes")
-    .select("id, headline, body, created_at")
+    .select("id, headline, body, pinned, created_at")
     .eq("organization_id", authz.org.orgId)
     .eq("contact_id", id.data)
+    .order("pinned", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) return fail("internal_error", t("Erro ao carregar as anotações."), 500, { requestId });
@@ -58,6 +59,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       id: n.id as string,
       titulo: (n.headline as string) ?? "",
       texto: (n.body as string) ?? "",
+      fixada: Boolean(n.pinned),
       criada_em: n.created_at as string,
     })),
     { requestId },
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       headline: corpo.data.titulo ?? "",
       body: corpo.data.texto,
     })
-    .select("id, headline, body, created_at")
+    .select("id, headline, body, pinned, created_at")
     .single();
   if (error || !data) {
     return fail("internal_error", t("Erro ao salvar a anotação."), 500, { requestId });
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       id: data.id as string,
       titulo: (data.headline as string) ?? "",
       texto: (data.body as string) ?? "",
+      fixada: Boolean(data.pinned),
       criada_em: data.created_at as string,
     },
     { requestId, status: 201 },

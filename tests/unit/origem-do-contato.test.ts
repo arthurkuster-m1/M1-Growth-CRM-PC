@@ -106,3 +106,27 @@ describe("o posicionamento que não existe no clique-para-WhatsApp", () => {
     expect(r.semPosicionamentoDeAnuncio).toBe(false);
   });
 });
+
+describe("origemDoContato — correção manual (origem_manual)", () => {
+  it("o que a equipe corrigiu vale sobre o rastreamento, que fica intacto", () => {
+    const o = origemDoContato(
+      {
+        utm_source: "facebook",
+        utm_campaign: "campanha-original",
+        ad_name: "ANUNCIO-ORIGINAL",
+        origem_manual: { campanha: "Campanha certa", anuncio: "Ad certo" },
+      },
+      "site",
+    );
+    expect(o.origem).toBe("facebook");
+    expect(o.campanha).toBe("Campanha certa");
+    expect(o.anuncio).toBe("Ad certo");
+  });
+  it("campo manual vazio não apaga o original", () => {
+    const o = origemDoContato(
+      { utm_campaign: "original", origem_manual: { campanha: "  " } },
+      "site",
+    );
+    expect(o.campanha).toBe("original");
+  });
+});
