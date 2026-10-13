@@ -65,18 +65,24 @@ export function ImportarLeadsDoCRM({
   const { camposDoFunil } = useCamposDosFunis(aberto);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
-  const [funilId, setFunilId] = useState(funilInicial ?? funis[0]?.id ?? "");
+  // Começa SEM funil: os contatos ficam só guardados (sem funil e sem venda).
+  const [funilId, setFunilId] = useState(funilInicial && false ? funilInicial : "");
   const [etapaId, setEtapaId] = useState("");
-  const definicoes = camposDoFunil(funilId);
+  const [colunasExtras, setColunasExtras] = useState<string[]>([]);
+  const [novaColuna, setNovaColuna] = useState("");
+  const definicoes = funilId ? camposDoFunil(funilId) : [];
 
   const colunas = useMemo(
     () => [
       ...COLUNAS_DO_LEAD.map((c) => ({ id: c.id as string, rotulo: t(c.rotulo), cabecalho: c.rotulo })),
       ...definicoes.map((d) => ({ id: `campo:${d.key}`, rotulo: d.label, cabecalho: d.label })),
+      ...colunasExtras
+        .filter((nome) => !definicoes.some((d) => d.label.toLowerCase() === nome.toLowerCase()))
+        .map((nome) => ({ id: `extra:${nome}`, rotulo: nome, cabecalho: nome })),
     ],
     // `t` é identidade; as definições mudam com o funil.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [funilId, definicoes.length],
+    [funilId, definicoes.length, colunasExtras],
   );
   const [linhas, setLinhas] = useState<string[][]>(() =>
     Array.from({ length: LINHAS_INICIAIS }, () => vazia(COLUNAS_DO_LEAD.length)),
@@ -146,19 +152,48 @@ export function ImportarLeadsDoCRM({
           (c) => c.id.startsWith("campo:") && normalizarCabecalho(c.cabecalho) === alvo,
         );
       });
-      const ignoradas = cab.filter((_, i) => destino[i] === -1 && cab[i]!.trim() !== "");
+      // Coluna que não é do cadastro vira coluna personalizada (campo personalizado do lead).
+      const novas = cab
+        .map((c) => c.trim())
+        .filter((c, i) => destino[i] === -1 && c !== "")
+        .filter((c, i, a) => a.indexOf(c) === i);
+      const todasExtras = [...new Set([...colunasExtras, ...novas])];
+      const colunasFinais = [
+        ...colunas.filter((c) => !c.id.startsWith("extra:")),
+        ...todasExtras
+          .filter((nome) => !definicoes.some((d) => d.label.toLowerCase() === nome.toLowerCase()))
+          .map((nome) => ({ id: `extra:${nome}`, rotulo: nome, cabecalho: nome })),
+      ];
+      setColunasExtras(todasExtras);
+      const destinoFinal = cab.map((titulo) => {
+        const campo = campoDaColuna(titulo);
+        if (campo) return colunasFinais.findIndex((c) => c.id === campo);
+        const alvo = normalizarCabecalho(titulo);
+        return colunasFinais.findIndex(
+          (c) =>
+            (c.id.startsWith("campo:") || c.id.startsWith("extra:")) &&
+            normalizarCabecalho(c.cabecalho) === alvo,
+        );
+      });
+      const nCols = colunasFinais.length;
       const dados = celulas.slice(1, MAX_LINHAS + 1).map((cels) => {
-        const l = vazia(ncols);
+        const l = vazia(nCols);
         cels.forEach((v, i) => {
-          const d = destino[i];
+          const d = destinoFinal[i];
           if (d !== undefined && d >= 0) l[d] = v.trim();
         });
         return l;
       });
-      setLinhas(dados.length >= LINHAS_INICIAIS ? dados : [...dados, ...Array.from({ length: LINHAS_INICIAIS - dados.length }, () => vazia(ncols))]);
+      setLinhas(
+        dados.length >= LINHAS_INICIAIS
+          ? dados
+          : [...dados, ...Array.from({ length: LINHAS_INICIAIS - dados.length }, () => vazia(nCols))],
+      );
       setAviso(
         `${dados.length} ${t("linhas lidas do arquivo.")}` +
-          (ignoradas.length > 0 ? ` ${t("Colunas que não reconheci:")} ${ignoradas.join(", ")}.` : "") +
+          (novas.length > 0
+            ? ` ${t("Colunas novas viraram campos personalizados:")} ${novas.join(", ")}.`
+            : "") +
           (celulas.length - 1 > MAX_LINHAS ? ` ${t("Só as primeiras 500 linhas entram por vez.")}` : ""),
       );
     });
@@ -166,18 +201,22 @@ export function ImportarLeadsDoCRM({
   }
 
   function baixarModelo(formato: "csv" | "xls") {
-    const exemplo = [
-      "Maria Silva",
-      "(11) 99999-8888",
-      "maria@exemplo.com",
-      "1.500,00",
-      "Instagram",
-      etapasAbertas[0]?.name ?? "",
-      "30/12/2026",
-      "vip; recompra",
-      "Pediu orçamento",
-      ...definicoes.map(() => ""),
-    ];
+    const exemplos: Record<string, string> = {
+      titulo: "Maria Silva",
+      telefone: "(11) 99999-8888",
+      email: "maria@exemplo.com",
+      origem: "Instagram",
+      funil: funis.find((f) => f.id === funilId)?.name ?? "",
+      etapa: etapasAbertas[0]?.name ?? "",
+      produto: "",
+      valor: "1.500,00",
+      status_da_venda: "Interesse",
+      previsao: "30/12/2026",
+      descricao: "Pediu orçamento",
+      etiquetas: "vip; recompra",
+      nascimento: "15/03/1990",
+    };
+    const exemplo = colunas.map((c) => exemplos[c.id] ?? "");
     const tabela = [colunas.map((c) => c.cabecalho), exemplo];
     if (formato === "csv") baixar("modelo-de-leads.csv", csvDe(tabela), "text/csv;charset=utf-8");
     else baixar("modelo-de-leads.xls", xlsDe(tabela), "application/vnd.ms-excel");
@@ -193,8 +232,8 @@ export function ImportarLeadsDoCRM({
     setResumo(null);
     try {
       const r = await enviarLeadsParaOCRM({
-        pipeline_id: funilId,
-        ...(etapaId ? { stage_id: etapaId } : {}),
+        pipeline_id: funilId || null,
+        stage_id: funilId && etapaId ? etapaId : null,
         celulas: [
           colunas.map((c) => c.cabecalho),
           ...preenchidas.map(({ l }) => ajustada(l).map((c) => c.trim())),
@@ -202,7 +241,9 @@ export function ImportarLeadsDoCRM({
       });
       void queryClient.invalidateQueries({ queryKey: ["clientes"] });
       if (r.erros.length === 0) {
-        toast.success(`${r.criados} ${t("leads adicionados ao CRM")}`);
+        toast.success(
+          `${r.contatos_criados} ${t("novos")} · ${r.contatos_atualizados} ${t("atualizados")} · ${r.cards_criados} ${t("no funil")}`,
+        );
         setLinhas(Array.from({ length: LINHAS_INICIAIS }, () => vazia(ncols)));
         aoFechar();
         return;
@@ -229,20 +270,21 @@ export function ImportarLeadsDoCRM({
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
-            <Label>{t("Funil de destino")}</Label>
+            <Label>{t("Funil padrão")}</Label>
             <Select
-              value={funilId}
+              value={funilId || "__sem__"}
               onValueChange={(v) => {
-                setFunilId(v);
+                setFunilId(v === "__sem__" ? "" : v);
                 setEtapaId("");
                 // Colunas do funil novo: as células personalizadas recomeçam.
                 setLinhas((atual) => atual.map((l) => l.slice(0, COLUNAS_DO_LEAD.length)));
               }}
             >
-              <SelectTrigger className="w-60">
+              <SelectTrigger className="w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__sem__">{t("Sem funil — só guardar os contatos")}</SelectItem>
                 {funis.map((f) => (
                   <SelectItem key={f.id} value={f.id}>
                     {f.name}
@@ -251,6 +293,7 @@ export function ImportarLeadsDoCRM({
               </SelectContent>
             </Select>
           </div>
+          {funilId ? (
           <div className="space-y-1.5">
             <Label>{t("Etapa padrão")}</Label>
             <Select value={etapaId || "inicial"} onValueChange={(v) => setEtapaId(v === "inicial" ? "" : v)}>
@@ -267,6 +310,7 @@ export function ImportarLeadsDoCRM({
               </SelectContent>
             </Select>
           </div>
+          ) : null}
 
           <input
             ref={arquivoRef}
@@ -290,10 +334,38 @@ export function ImportarLeadsDoCRM({
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={novaColuna}
+            maxLength={60}
+            placeholder={t("Nova coluna personalizada (ex.: Renda, Cidade)")}
+            aria-label={t("Nome da nova coluna personalizada")}
+            onChange={(e) => setNovaColuna(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && novaColuna.trim()) {
+                setColunasExtras((a) => (a.includes(novaColuna.trim()) ? a : [...a, novaColuna.trim()]));
+                setNovaColuna("");
+              }
+            }}
+            className="h-9 w-72 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!novaColuna.trim()}
+            onClick={() => {
+              setColunasExtras((a) => (a.includes(novaColuna.trim()) ? a : [...a, novaColuna.trim()]));
+              setNovaColuna("");
+            }}
+          >
+            {t("+ Adicionar coluna")}
+          </Button>
+        </div>
         {aviso ? <p className="text-xs text-muted-foreground">{aviso}</p> : null}
         <p className="text-xs text-muted-foreground">
           {t(
-            "Só o nome é obrigatório, mas sem telefone nem e-mail o lead entra sem contato. Telefone sem código do país vale como Brasil (+55). Datas: DD/MM/AAAA.",
+            "Só o nome e o telefone ou o e-mail são obrigatórios: sem funil, o lead fica guardado (sem venda). Funil, etapa, produto e valor são opcionais. Telefone sem código do país vale como Brasil (+55). Datas: DD/MM/AAAA.",
           )}
         </p>
 
@@ -389,8 +461,9 @@ export function ImportarLeadsDoCRM({
         {resumo ? (
           <div className="max-h-40 overflow-y-auto rounded-xl border p-3 text-sm" role="status">
             <p className="font-medium">
-              {resumo.criados} {t("leads adicionados")} · {resumo.contatos_criados}{" "}
-              {t("contatos novos")} · {resumo.erros.length} {t("avisos")}
+              {resumo.contatos_criados} {t("novos")} · {resumo.contatos_atualizados} {t("atualizados")} ·{" "}
+              {resumo.cards_criados} {t("no funil")} · {resumo.sem_funil} {t("só guardados")} ·{" "}
+              {resumo.erros.length} {t("avisos")}
             </p>
             <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
               {resumo.erros.map((e, i) => (

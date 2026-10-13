@@ -37,7 +37,15 @@ describe("ImportarLeadsDoCRM", () => {
 
   it("cola uma tabela do Excel, envia cabeçalho + linhas e fecha quando tudo entra", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({
-      data: { total_linhas: 2, criados: 2, contatos_criados: 2, erros: [], colunas_ignoradas: [] },
+      data: {
+        total_linhas: 2,
+        contatos_criados: 2,
+        contatos_atualizados: 0,
+        cards_criados: 0,
+        sem_funil: 2,
+        erros: [],
+        colunas_personalizadas: [],
+      },
     });
     const { aoFechar } = montar();
 
@@ -51,9 +59,10 @@ describe("ImportarLeadsDoCRM", () => {
     fireEvent.click(screen.getByText("Adicionar Leads ao CRM"));
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
     const [url, corpo] = vi.mocked(apiClient.post).mock.calls[0]!;
-    expect(url).toBe("/api/v1/leads/import");
-    const c = corpo as { pipeline_id: string; celulas: string[][] };
-    expect(c.pipeline_id).toBe(FUNIL);
+    expect(url).toBe("/api/v1/clientes/importar");
+    const c = corpo as { pipeline_id: string | null; celulas: string[][] };
+    // Começa sem funil: os contatos ficam só guardados.
+    expect(c.pipeline_id).toBeNull();
     expect(c.celulas[0]![0]).toBe("Nome");
     expect(c.celulas).toHaveLength(3);
     expect(c.celulas[1]!.slice(0, 3)).toEqual(["Ana", "11999998888", "ana@x.com"]);
@@ -64,10 +73,12 @@ describe("ImportarLeadsDoCRM", () => {
     vi.mocked(apiClient.post).mockResolvedValue({
       data: {
         total_linhas: 1,
-        criados: 1,
-        contatos_criados: 0,
+        contatos_criados: 1,
+        contatos_atualizados: 0,
+        cards_criados: 0,
+        sem_funil: 1,
         erros: [{ linha: 2, motivo: "telefone não reconhecido" }],
-        colunas_ignoradas: [],
+        colunas_personalizadas: [],
       },
     });
     const { aoFechar } = montar();

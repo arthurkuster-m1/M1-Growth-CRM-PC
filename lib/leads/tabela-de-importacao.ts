@@ -5,17 +5,24 @@
  * O servidor continua sendo quem VALIDA (`lerLinhasDeLeads`): aqui só se separa em células.
  */
 
-/** As colunas fixas do cadastro, na ordem da tabela. O rótulo é o cabeçalho que o servidor reconhece. */
+/**
+ * As colunas do cadastro, na ordem da tabela. Só `Nome` é obrigatória (e telefone ou e-mail para
+ * achar a pessoa); o resto é opcional — sem funil o lead fica só guardado, sem venda.
+ */
 export const COLUNAS_DO_LEAD = [
   { id: "titulo", rotulo: "Nome", obrigatoria: true },
   { id: "telefone", rotulo: "Telefone" },
   { id: "email", rotulo: "E-mail" },
-  { id: "valor", rotulo: "Valor" },
   { id: "origem", rotulo: "Origem" },
+  { id: "funil", rotulo: "Funil" },
   { id: "etapa", rotulo: "Etapa" },
+  { id: "produto", rotulo: "Produto" },
+  { id: "valor", rotulo: "Valor da venda" },
+  { id: "status_da_venda", rotulo: "Status da venda" },
   { id: "previsao", rotulo: "Previsão de fechamento" },
-  { id: "etiquetas", rotulo: "Etiquetas" },
   { id: "descricao", rotulo: "Observações" },
+  { id: "etiquetas", rotulo: "Etiquetas" },
+  { id: "nascimento", rotulo: "Nascimento" },
 ] as const;
 
 /** Quebra um texto em linhas e células. Aceita tabulação (colar do Excel/Sheets), ; e , (CSV). */

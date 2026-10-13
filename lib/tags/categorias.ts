@@ -67,6 +67,15 @@ export function lerConfigDeCategorias(settings: unknown): ConfigDeCategorias {
     return mudou ? { ...p, nome: mudou.nome, cor: mudou.cor } : { ...p };
   });
   for (const l of lidas) if (!categorias.some((c) => c.id === l.id)) categorias.push(l);
+  // A ordem que a organização guardou (arrastar no popup de ordem) vale; o que não estiver na
+  // lista guardada fica no fim, na ordem de fábrica.
+  if (lidas.length > 0) {
+    const posicao = (id: string) => {
+      const i = lidas.findIndex((l) => l.id === id);
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    categorias.sort((a, b) => posicao(a.id) - posicao(b.id));
+  }
 
   const tags: Record<string, string> = {};
   if (bruto && bruto.tags && typeof bruto.tags === "object") {

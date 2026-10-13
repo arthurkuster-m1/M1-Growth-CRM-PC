@@ -366,3 +366,33 @@ export function valorPrevistoDaVenda(v: Pick<Venda, "status" | "amount_cents" | 
   if (v.status === "cancelada") return 0;
   return Math.max(0, v.amount_cents - valorPagoDaVenda(v));
 }
+
+/**
+ * Depois de editar o valor de UMA parcela (e dar Enter), as parcelas que ainda estão abertas
+ * depois dela absorvem a diferença para a soma continuar igual ao total: R$ 1.000 em 2 parcelas,
+ * a primeira vira 750 e a segunda vira 250. Com várias abertas depois, a diferença se divide entre
+ * elas (a sobra de centavos vai para a primeira). Sem nenhuma aberta depois, nada muda (o aviso de
+ * diferença continua na tela).
+ */
+export function redistribuirAposEditar(
+  parcelas: readonly ParcelaDoFormulario[],
+  indiceEditado: number,
+  totalCents: number,
+): ParcelaDoFormulario[] {
+  const soma = parcelas.reduce((s, p) => s + p.amount_cents, 0);
+  const diferenca = totalCents - soma;
+  if (diferenca === 0) return [...parcelas];
+  const alvos = parcelas
+    .map((p, i) => (i > indiceEditado && !p.recebida ? i : -1))
+    .filter((i) => i >= 0);
+  if (alvos.length === 0) return [...parcelas];
+  const somaDosAlvos = alvos.reduce((s, i) => s + parcelas[i]!.amount_cents, 0);
+  const novaSoma = Math.max(0, somaDosAlvos + diferenca);
+  const base = Math.floor(novaSoma / alvos.length);
+  const sobra = novaSoma - base * alvos.length;
+  return parcelas.map((p, i) => {
+    const pos = alvos.indexOf(i);
+    if (pos < 0) return p;
+    return { ...p, amount_cents: base + (pos === 0 ? sobra : 0) };
+  });
+}

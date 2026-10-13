@@ -17,6 +17,7 @@ import {
   FORMAS_DE_PAGAMENTO,
   ajustarParcelasAoTotal,
   gerarParcelas,
+  redistribuirAposEditar,
   type FormaDePagamento,
   type ParcelaDaVenda,
   type Venda,
@@ -292,6 +293,47 @@ export function DialogoDaVenda({
       ? { ...contatoInicial, telefone: null }
       : null);
 
+  /**
+   * Trocar o status pela tag. "Concluída" marca todas as parcelas como recebidas (a tela mostra o
+   * que vai ser gravado); as outras não mexem nas parcelas.
+   */
+  function escolherSituacao(v: "interesse" | "comprometida" | "concluida" | "cancelada") {
+    setSituacao(v);
+    if (v === "concluida") {
+      setParcelas((l) =>
+        l.map((x) => ({ ...x, recebida: true, paid_on: x.paid_on ?? hoje() })),
+      );
+    }
+  }
+
+  /** Marcar ou desmarcar uma parcela também acerta o status: tudo pago = concluída; faltou uma = comprometida. */
+  function marcarParcelaNoFormulario(i: number, recebida: boolean) {
+    const proximas = parcelas.map((x, k) =>
+      k === i ? { ...x, recebida, paid_on: recebida ? (x.paid_on ?? hoje()) : null } : x,
+    );
+    setParcelas(proximas);
+    if (proximas.length > 0 && proximas.every((x) => x.recebida)) {
+      if (situacao === "comprometida") setSituacao("concluida");
+    } else if (situacao === "concluida") {
+      setSituacao("comprometida");
+    }
+  }
+
+  /** Enter (ou sair do campo) no valor de uma parcela: as seguintes abertas absorvem a diferença. */
+  function aplicarValorDaParcela(i: number) {
+    const base = parcelas.map((x) => ({
+      number: x.number,
+      due_on: x.due_on,
+      amount_cents: centavos(x.valor),
+      recebida: x.recebida,
+      paid_on: x.paid_on,
+    }));
+    const novas = redistribuirAposEditar(base, i, total);
+    setParcelas((l) =>
+      l.map((x, k) => ({ ...x, valor: textoDe(novas[k]?.amount_cents ?? centavos(x.valor)) })),
+    );
+  }
+
   function gerar() {
     const n = Math.max(1, Math.min(120, Math.round(lerNumero(qtd) ?? 1)));
     const lista = gerarParcelas(total, n, primeiro || hoje());
@@ -343,17 +385,20 @@ export function DialogoDaVenda({
   async function salvar() {
     setSalvando(true);
     setErro(null);
-    // "Concluída" = tudo pago: as parcelas entram como recebidas.
+    // As parcelas vão como estão na tela (o status "concluída" já marcou todas como recebidas).
     const base = parcelasAjustadas();
-    const pagos = fechadaSit
-      ? situacao === "concluida"
-        ? base.map((p) => ({ ...p, recebida: true }))
-        : base
-      : [];
+    const todasRecebidas = base.length > 0 && base.every((p) => p.recebida);
+    const pagos = fechadaSit ? base : [];
     const salvou = await aoSalvar({
       ...(venda ? { id: venda.id } : {}),
       contact_id: contato,
-      status: situacao,
+      // Faltou uma parcela? Não é "concluída": é comprometida. E tudo pago fecha como concluída.
+      status:
+        fechadaSit && base.length > 0
+          ? todasRecebidas
+            ? "concluida"
+            : "comprometida"
+          : situacao,
       itens: itensValidos.map((i) => ({
         product_id: i.produtoId,
         quantity: 1,
@@ -538,7 +583,7 @@ export function DialogoDaVenda({
                     <button
                       key={v}
                       type="button"
-                      onClick={() => setSituacao(v)}
+                      onClick={() => escolherSituacao(v)}
                       className={`rounded-full border-[1.5px] px-3 py-1.5 text-left text-sm font-medium ${STATUS_DA_VENDA_TAG[v].classe} ${
                         v === situacao ? "ring-2 ring-primary/40" : ""
                       }`}
@@ -802,6 +847,13 @@ export function DialogoDaVenda({
                                 ),
                               )
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                aplicarValorDaParcela(i);
+                              }
+                            }}
+                            onBlur={() => aplicarValorDaParcela(i)}
                             className="h-9 w-28 rounded-lg border bg-background px-2 text-right text-sm tabular-nums"
                           />
                         </td>
@@ -810,15 +862,7 @@ export function DialogoDaVenda({
                             className="mx-auto size-6"
                             marcado={p.recebida}
                             rotulo={`${t("Parcela recebida")} ${i + 1}`}
-                            aoMudar={(v) =>
-                              setParcelas((l) =>
-                                l.map((x, k) =>
-                                  k === i
-                                    ? { ...x, recebida: v, paid_on: v ? hoje() : null }
-                                    : x,
-                                ),
-                              )
-                            }
+                            aoMudar={(v) => marcarParcelaNoFormulario(i, v)}
                           />
                         </td>
                       </tr>

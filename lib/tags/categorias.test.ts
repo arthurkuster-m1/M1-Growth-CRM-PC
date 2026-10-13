@@ -44,6 +44,22 @@ describe("lerConfigDeCategorias", () => {
   });
 });
 
+describe("ordem das categorias", () => {
+  it("a ordem guardada vale; o que não foi guardado vai para o fim", () => {
+    const c = lerConfigDeCategorias({
+      categorias_de_tags: {
+        categorias: [
+          { id: "funil", nome: "Funil", cor: "#00655a" },
+          { id: "c_vip", nome: "VIP", cor: "#ffb224" },
+          { id: "acao", nome: "Ação", cor: "#cf3716" },
+        ],
+        tags: {},
+      },
+    });
+    expect(c.categorias.map((x) => x.id)).toEqual(["funil", "c_vip", "acao", "tracking", "qualificacao"]);
+  });
+});
+
 describe("categoriaDaTag / corDaCategoria", () => {
   const config = lerConfigDeCategorias({
     categorias_de_tags: {

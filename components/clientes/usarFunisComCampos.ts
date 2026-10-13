@@ -26,18 +26,26 @@ export function useCamposDosFunis(ativo: boolean) {
 
 export interface ResumoDaImportacaoDoCRM {
   total_linhas: number;
-  criados: number;
   contatos_criados: number;
+  contatos_atualizados: number;
+  cards_criados: number;
+  sem_funil: number;
   erros: { linha: number; motivo: string }[];
-  colunas_ignoradas: string[];
+  colunas_personalizadas: string[];
 }
 
-/** Manda a tabela (cabeçalho + linhas) para o servidor, que valida linha a linha. */
+/**
+ * Manda as pessoas (cabeçalho + linhas) para o CRM. Sem `pipeline_id` (e sem coluna "Funil"), o
+ * lead fica só guardado, sem funil e sem venda.
+ */
 export async function enviarLeadsParaOCRM(corpo: {
-  pipeline_id: string;
-  stage_id?: string;
+  pipeline_id?: string | null;
+  stage_id?: string | null;
   celulas: string[][];
 }): Promise<ResumoDaImportacaoDoCRM> {
-  const r = await apiClient.post<{ data: ResumoDaImportacaoDoCRM }>("/api/v1/leads/import", corpo);
+  const r = await apiClient.post<{ data: ResumoDaImportacaoDoCRM }>(
+    "/api/v1/clientes/importar",
+    corpo,
+  );
   return r.data;
 }

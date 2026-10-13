@@ -133,6 +133,7 @@ export function VendasCRM() {
   }
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
+  const [soComRecebimento, setSoComRecebimento] = useState(false);
   const [editando, setEditando] = useState<Venda | "nova" | null>(null);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
 
@@ -204,18 +205,44 @@ export function VendasCRM() {
         .map((p) => ({ venda: v, parcela: p })),
     )
     .sort((a, b) => a.parcela.due_on.localeCompare(b.parcela.due_on));
+  // Parcelas por mês: o que ENTROU na conta (paid_on) e o que vence (due_on) no mês escolhido —
+  // vale também para venda comprometida que já recebeu um sinal.
+  const recebidoNoMes = (v: Venda) => {
+    const p = (v.parcelas ?? []).filter((x) => x.status === "recebida");
+    if (p.length === 0) {
+      return v.status === "concluida" && v.paid_on?.slice(0, 7) === mes ? v.amount_cents : 0;
+    }
+    return p
+      .filter((x) => x.paid_on?.slice(0, 7) === mes)
+      .reduce((s, x) => s + x.amount_cents, 0);
+  };
+  const aReceberNoMes = (v: Venda) =>
+    (v.parcelas ?? [])
+      .filter((x) => x.status === "prevista" && x.due_on.slice(0, 7) === mes)
+      .reduce((s, x) => s + x.amount_cents, 0);
+  const parcelasPagas = (v: Venda) =>
+    (v.parcelas ?? []).filter((x) => x.status === "recebida").length;
+  const ultimoPagamento = (v: Venda) => {
+    const datas = (v.parcelas ?? [])
+      .filter((x) => x.status === "recebida" && x.paid_on)
+      .map((x) => x.paid_on!.slice(0, 10))
+      .sort();
+    return datas.length > 0 ? datas[datas.length - 1]! : v.status === "concluida" ? v.paid_on : null;
+  };
   const termo = busca.trim().toLowerCase();
   const filtradas = useMemo(
     () =>
       vendas.filter(
         (v) =>
           (filtroStatus === null || v.status === filtroStatus) &&
+          (!soComRecebimento || recebidoNoMes(v) > 0) &&
           (termo === "" ||
             `${v.cliente?.nome ?? ""} ${v.product_name} ${v.reference} ${v.campanha ?? ""}`
               .toLowerCase()
               .includes(termo)),
       ),
-    [vendas, filtroStatus, termo],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vendas, filtroStatus, termo, soComRecebimento, mes],
   );
   const totais = totaisDeVendas(filtradas);
 
@@ -354,6 +381,46 @@ export function VendasCRM() {
       },
     },
     {
+      id: "recebido_no_mes",
+      titulo: t("Recebido no mês"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      celula: (v) => (
+        <span className="block px-2 text-sm tabular-nums text-green-700 dark:text-green-400">
+          {reais(recebidoNoMes(v))}
+        </span>
+      ),
+    },
+    {
+      id: "a_receber_no_mes",
+      titulo: t("A receber no mês"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      celula: (v) => (
+        <span className="block px-2 text-sm tabular-nums">{reais(aReceberNoMes(v))}</span>
+      ),
+    },
+    {
+      id: "parcelas_pagas",
+      titulo: t("Parcelas pagas"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 130,
+      padrao: false,
+      celula: (v) => (
+        <span className="block px-2 text-sm tabular-nums">
+          {parcelasPagas(v)}/{(v.parcelas ?? []).filter((x) => x.status !== "cancelada").length}
+        </span>
+      ),
+    },
+    {
+      id: "ultimo_pagamento",
+      titulo: t("Último pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      padrao: false,
+      celula: (v) => <span className="block px-2 text-sm tabular-nums">{dataBr(ultimoPagamento(v))}</span>,
+    },
+    {
       id: "etapa",
       titulo: t("Etapa"),
       icone: <TextAa size={14} aria-hidden />,
@@ -466,6 +533,30 @@ export function VendasCRM() {
       tipo: "opcao",
       valorDe: (v) => v.status,
       opcoes: opcoesDeStatus,
+    },
+    {
+      id: "recebido_no_mes",
+      titulo: t("Recebido no mês"),
+      tipo: "numero",
+      valorDe: (v) => recebidoNoMes(v) / 100,
+    },
+    {
+      id: "a_receber_no_mes",
+      titulo: t("A receber no mês"),
+      tipo: "numero",
+      valorDe: (v) => aReceberNoMes(v) / 100,
+    },
+    {
+      id: "parcelas_pagas",
+      titulo: t("Parcelas pagas"),
+      tipo: "numero",
+      valorDe: (v) => parcelasPagas(v),
+    },
+    {
+      id: "ultimo_pagamento",
+      titulo: t("Último pagamento"),
+      tipo: "data",
+      valorDe: (v) => ultimoPagamento(v),
     },
     { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (v) => v.etapa ?? "" },
     {
@@ -674,6 +765,18 @@ export function VendasCRM() {
           className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            aria-pressed={soComRecebimento}
+            onClick={() => setSoComRecebimento((x) => !x)}
+            title={t("Só as vendas com algum pagamento recebido no mês escolhido (mesmo comprometidas)")}
+            className={cn(
+              "h-9 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+              soComRecebimento ? "border-green-600 bg-green-600/10" : "hover:bg-secondary",
+            )}
+          >
+            {t("Recebeu no mês")}
+          </button>
           <button
             type="button"
             aria-pressed={filtroStatus === null}
