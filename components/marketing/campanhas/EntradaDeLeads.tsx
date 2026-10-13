@@ -142,7 +142,7 @@ export function EntradaDeLeads({
   const ligadas = (fontes ?? []).filter((f) => f.desta_campanha);
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-teal-500 bg-card shadow-sm">
       <div className="px-4 pt-4">
         <h2 className="text-sm font-semibold">{t("Como os leads chegam a esta campanha")}</h2>
         <p className="text-xs text-muted-foreground">

@@ -194,7 +194,7 @@ export function DiaADiaDaCampanha({
   }
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Dia a dia")}</h2>
         <div className="flex flex-wrap gap-2">

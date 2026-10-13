@@ -48,6 +48,12 @@ const CAMPO =
 const AREA =
   "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
+const FAIXA_DO_STATUS: Record<Criativo["status"], string> = {
+  ativo: "border-l-emerald-500",
+  pausado: "border-l-amber-500",
+  encerrado: "border-l-slate-400",
+};
+
 const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
 const pct = (n: number | null) =>
   n === null ? "—" : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
@@ -291,7 +297,12 @@ function CartaoDoCriativo({
     c.thumbnail_url || (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(c.media_url) ? c.media_url : "");
   const bloqueado = !podeEditar;
   return (
-    <article className="grid grid-cols-1 content-start gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <article
+      className={cn(
+        "grid grid-cols-1 content-start gap-3 rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
+        FAIXA_DO_STATUS[c.status],
+      )}
+    >
       <div className="flex gap-3">
         <div className="grid h-24 w-24 shrink-0 grid-cols-1 place-items-center overflow-hidden rounded-xl bg-secondary text-xs text-muted-foreground">
           {imagem && !imagemFalhou ? (
@@ -703,7 +714,7 @@ export function CriativosDaCampanha({
   ];
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-violet-500 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Criativos e legendas")}</h2>
         <div className="flex flex-wrap items-center gap-2">

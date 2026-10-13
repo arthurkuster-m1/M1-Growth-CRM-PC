@@ -100,7 +100,7 @@ export function WebhooksDaCampanha({
   const outras = (fontes ?? []).filter((f) => !f.desta_campanha && !f.de_outra_campanha);
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-indigo-500 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Webhooks desta campanha")}</h2>
         <Link

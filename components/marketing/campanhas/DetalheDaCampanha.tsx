@@ -66,9 +66,31 @@ const CAMPO =
 const AREA =
   "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
-function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
+const FAIXA_DO_BLOCO = {
+  blue: "border-l-blue-500",
+  emerald: "border-l-emerald-500",
+  violet: "border-l-violet-500",
+  amber: "border-l-amber-500",
+  teal: "border-l-teal-500",
+  rose: "border-l-rose-500",
+} as const;
+
+function Bloco({
+  titulo,
+  children,
+  tom = "blue",
+}: {
+  titulo: string;
+  children: ReactNode;
+  tom?: keyof typeof FAIXA_DO_BLOCO;
+}) {
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section
+      className={cn(
+        "grid grid-cols-1 gap-3 rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
+        FAIXA_DO_BLOCO[tom],
+      )}
+    >
       <h2 className="text-sm font-semibold">{titulo}</h2>
       {children}
     </section>
@@ -476,7 +498,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             </Rotulo>
           </Bloco>
 
-          <Bloco titulo={t("Investimento")}>
+          <Bloco titulo={t("Investimento")} tom="emerald">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Rotulo texto={t("Investimento bruto")}>
                 <NumeroGravavel
@@ -527,7 +549,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             </p>
           </Bloco>
 
-          <Bloco titulo={t("Produtos e ticket médio esperado")}>
+          <Bloco titulo={t("Produtos e ticket médio esperado")} tom="violet">
             <p className="text-xs text-muted-foreground">
               {t(
                 "Todo lead que entra nesta campanha já gera uma venda de INTERESSE com estes produtos e este ticket — o LTV previsto. Na hora de fechar, o valor real é informado.",
@@ -609,7 +631,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             ) : null}
           </Bloco>
 
-          <Bloco titulo={t("Metas")}>
+          <Bloco titulo={t("Metas")} tom="amber">
             <Rotulo texto={t("As metas valem para")}>
               <select
                 className={CAMPO}
@@ -776,7 +798,7 @@ function CampanhasDaPlataforma({
     : null;
 
   return (
-    <Bloco titulo={t("Campanhas da plataforma")}>
+    <Bloco titulo={t("Campanhas da plataforma")} tom="teal">
       <p className="text-xs text-muted-foreground">
         {t(
           "Uma campanha do Software pode ter várias campanhas do Meta ou do Google atreladas ao mesmo objetivo. Escolha da lista do Meta para o dia a dia entrar sozinho, ou digite o nome.",
@@ -962,7 +984,7 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
   const visiveis = filtro === null ? notas : notas.filter((n) => n.kind === filtro);
 
   return (
-    <Bloco titulo={t("Diário de bordo")}>
+    <Bloco titulo={t("Diário de bordo")} tom="rose">
       {podeEditar ? (
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr]">

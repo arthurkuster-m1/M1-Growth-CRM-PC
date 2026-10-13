@@ -38,6 +38,12 @@ import { cn } from "@/lib/utils";
 const CAMPO =
   "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
+const FAIXA_DO_STATUS: Record<LandingPage["status"], string> = {
+  ativo: "border-l-emerald-500",
+  pausado: "border-l-amber-500",
+  encerrado: "border-l-slate-400",
+};
+
 const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
 const pct = (n: number | null) =>
   n === null ? "—" : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
@@ -304,7 +310,7 @@ export function LandingPagesDaCampanha({
   ];
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-amber-500 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Landing pages")}</h2>
         <div className="flex flex-wrap items-center gap-2">
@@ -443,7 +449,12 @@ function CartaoDaLp({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 rounded-2xl border p-3">
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-3 rounded-2xl border border-l-4 p-3",
+        FAIXA_DO_STATUS[lp.status],
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2 pr-20">
         <Etiqueta cor={COR_DO_STATUS_DO_CRIATIVO[lp.status]}>
           {rotuloDoStatusDoCriativo(t, lp.status)}

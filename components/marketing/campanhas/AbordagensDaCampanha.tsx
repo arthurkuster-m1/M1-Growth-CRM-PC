@@ -47,6 +47,12 @@ const CAMPO =
 const AREA =
   "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
+const FAIXA_DO_STATUS: Record<Abordagem["status"], string> = {
+  ativo: "border-l-emerald-500",
+  pausado: "border-l-amber-500",
+  encerrado: "border-l-slate-400",
+};
+
 function Texto({
   valor,
   aoGravar,
@@ -94,7 +100,9 @@ function Cartao({
   const t = useT();
   const bloqueado = !podeEditar;
   return (
-    <article className="grid grid-cols-1 content-start gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <article
+      className={`grid grid-cols-1 content-start gap-3 rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${FAIXA_DO_STATUS[a.status]}`}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <Etiqueta cor={COR_DO_STATUS_DO_CRIATIVO[a.status]}>
           {rotuloDoStatusDoCriativo(t, a.status)}
@@ -322,7 +330,7 @@ export function AbordagensDaCampanha({
   ];
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-rose-500 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Abordagens")}</h2>
         <div className="flex flex-wrap items-center gap-2">

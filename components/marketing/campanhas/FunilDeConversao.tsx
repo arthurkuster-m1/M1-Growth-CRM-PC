@@ -197,7 +197,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   // Sem funil: o convite para criar o da campanha (do zero ou de um modelo).
   if (!c.pipeline_id) {
     return (
-      <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-5 shadow-sm">
+      <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-5 shadow-sm">
         <h2 className="text-sm font-semibold">{t("Funil de conversão")}</h2>
         <p className="text-sm text-muted-foreground">
           {t(
@@ -269,7 +269,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4 [&>*]:min-w-0">
-      <section className="grid min-w-0 grid-cols-1 gap-4 rounded-2xl border bg-card p-4 shadow-sm">
+      <section className="grid min-w-0 grid-cols-1 gap-4 rounded-2xl border border-l-4 border-l-violet-500 bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">{t("Funil de conversão")}</h2>
           <div className="flex flex-wrap gap-2">
@@ -483,7 +483,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
       </section>
 
       {podeEditar ? (
-        <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+        <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-emerald-500 bg-card p-4 shadow-sm">
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">
               {t("Quando o lead ganhar neste funil, ele entra em")}
