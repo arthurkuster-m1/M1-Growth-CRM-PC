@@ -7,6 +7,7 @@ import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
 import { createHash, randomUUID } from "node:crypto";
 
 import { extensaoDe, farejarTipo } from "@/lib/branding/logo-arquivo";
+import { comprimirImagem } from "@/lib/marketing/comprimir-imagem";
 import { BUCKET_DE_IMAGENS, TAMANHO_MAXIMO_DA_IMAGEM, caminhoDaImagem } from "@/lib/marketing/imagens";
 import {
   lerAnuncios,
@@ -104,16 +105,22 @@ async function guardarImagem(
     if (declarado > TAMANHO_MAXIMO_DA_IMAGEM) return null;
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (bytes.length === 0 || bytes.length > TAMANHO_MAXIMO_DA_IMAGEM) return null;
-    const tipo = farejarTipo(bytes);
-    if (!tipo) return null;
+    const original = farejarTipo(bytes);
+    if (!original) return null;
     // A mesma imagem por dois endereços (a do anúncio e a da biblioteca) entra uma vez só.
     const impressao = createHash("sha256").update(bytes).digest("hex");
     if (vistos.has(impressao)) return null;
     vistos.add(impressao);
+    // Guarda reduzida (até 1080 px, JPG): o plano de armazenamento é limitado.
+    const reduzida = await comprimirImagem(bytes);
+    const tipo = reduzida.tipo ?? original;
     const arquivo = `${randomUUID()}.${extensaoDe(tipo)}`;
     const { error } = await admin.storage
       .from(BUCKET_DE_IMAGENS)
-      .upload(caminhoDaImagem(orgId, arquivo), bytes, { contentType: tipo, upsert: false });
+      .upload(caminhoDaImagem(orgId, arquivo), reduzida.bytes, {
+        contentType: tipo,
+        upsert: false,
+      });
     return error ? null : arquivo;
   } catch {
     return null;
