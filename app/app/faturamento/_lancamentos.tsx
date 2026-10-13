@@ -13,6 +13,7 @@
  */
 import { useState } from "react";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { formatCents, parseReaisToCents } from "@/lib/money";
@@ -138,12 +139,11 @@ export function ListaDeLancamentos({
 
           <label className="flex flex-col gap-1 text-xs text-text-muted">
             {t("Data")}
-            <input
-              type="date"
-              value={data}
-              data-testid="lancamento-data"
-              onChange={(e) => setData(e.target.value)}
-              className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+            <CampoDeData
+              valor={data}
+              rotulo={t("Data")}
+              limpavel={false}
+              aoMudar={setData}
             />
           </label>
 

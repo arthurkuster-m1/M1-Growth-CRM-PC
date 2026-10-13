@@ -14,8 +14,8 @@ import {
 } from "recharts";
 
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
+import { useAtalhosDePeriodo } from "@/components/motor/atalhos-de-periodo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EvolutionGaps } from "@/components/ai/EvolutionGaps";
 import { EvolutionTimeline } from "@/components/ai/EvolutionTimeline";
@@ -346,6 +346,7 @@ export function EvolutionClient({ defaultRange }: { defaultRange: { from: string
   const [from, setFrom] = React.useState(defaultRange.from);
   const [to, setTo] = React.useState(defaultRange.to);
   const q = useEvolution({ from, to });
+  const { atalhos } = useAtalhosDePeriodo();
 
   return (
     <div className="flex flex-col gap-8">
@@ -358,32 +359,16 @@ export function EvolutionClient({ defaultRange }: { defaultRange: { from: string
             )}
           </p>
         </div>
-        <div className="flex gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="evolution-de" className="text-xs text-text-muted">
-              {t("De")}
-            </Label>
-            <Input
-              id="evolution-de"
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="evolution-ate" className="text-xs text-text-muted">
-              {t("Até")}
-            </Label>
-            <Input
-              id="evolution-ate"
-              type="date"
-              value={to}
-              min={from}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </div>
-        </div>
+        <SeletorDePeriodo
+          de={from}
+          ate={to}
+          rotulo={t("Período analisado")}
+          atalhos={atalhos}
+          aoMudar={(p) => {
+            setFrom(p.de);
+            setTo(p.ate);
+          }}
+        />
       </Card>
 
       {q.error ? (

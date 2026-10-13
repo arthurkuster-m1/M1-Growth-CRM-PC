@@ -588,6 +588,40 @@ export function janelaDoDiaADia(
   return { linhas, de, ate, mensal: !comPeriodo, mes };
 }
 
+/**
+ * As linhas do Dia a dia para um período QUALQUER (o Seletor de Período): um dia por linha,
+ * do primeiro ao último, trazendo o que existe e zerando o resto. `soComDados` esconde os vazios.
+ */
+export function linhasDoPeriodo(
+  dias: readonly DiaDaCampanha[],
+  de: string,
+  ate: string,
+  soComDados: boolean,
+): DiaDaCampanha[] {
+  const porDia = new Map(dias.map((d) => [d.day, d]));
+  const linhas: DiaDaCampanha[] = [];
+  const total = Math.min(emDias(ate) - emDias(de) + 1, MAXIMO_DE_LINHAS_DO_DIA_A_DIA);
+  for (let i = 0; i < total; i++) {
+    const day = new Date((emDias(de) + i) * MS_DO_DIA).toISOString().slice(0, 10);
+    const existente = porDia.get(day);
+    if (soComDados && !(existente && diaTemDados(existente))) continue;
+    linhas.push(
+      existente ?? {
+        day,
+        impressions: 0,
+        reach: 0,
+        link_clicks: 0,
+        lp_views: 0,
+        leads: 0,
+        spend: 0,
+        extras: {},
+        source: "manual",
+      },
+    );
+  }
+  return linhas;
+}
+
 /** `AAAA-MM` do mês anterior/seguinte. */
 export function somarMeses(mes: string, n: number): string {
   const [a, m] = mes.split("-").map(Number) as [number, number];

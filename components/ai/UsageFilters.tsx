@@ -1,5 +1,6 @@
 "use client";
-import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
+import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
+import { useAtalhosDePeriodo } from "@/components/motor/atalhos-de-periodo";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -9,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -43,6 +43,7 @@ const DEBOUNCE_MS = 300;
 
 export function UsageFilters({ agents, initial }: Props) {
   const t = useT();
+  const { atalhos } = useAtalhosDePeriodo();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -114,18 +115,28 @@ export function UsageFilters({ agents, initial }: Props) {
         </Select>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="usage-from" className="text-xs text-muted-foreground">
-          {t("De")}
-        </Label>
-        <CampoDeData valor={from} aoMudar={setFrom} rotulo={t("De")} className="w-full" />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="usage-to" className="text-xs text-muted-foreground">
-          {t("Até")}
-        </Label>
-        <CampoDeData valor={to} aoMudar={setTo} rotulo={t("Até")} className="w-full" />
+      <div className="space-y-1 sm:col-span-2">
+        <Label className="text-xs text-muted-foreground">{t("Período")}</Label>
+        <SeletorDePeriodo
+          de={from}
+          ate={to}
+          rotulo={t("Período")}
+          atalhos={atalhos}
+          className="w-full"
+          aoMudar={(p) => {
+            setFrom(p.de);
+            setTo(p.ate);
+          }}
+          rotuloVoltar={t("Limpar período (ver tudo)")}
+          aoVoltarAoPadrao={
+            from || to
+              ? () => {
+                  setFrom("");
+                  setTo("");
+                }
+              : undefined
+          }
+        />
       </div>
     </div>
   );

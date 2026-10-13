@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
+import { useAtalhosDePeriodo } from "@/components/motor/atalhos-de-periodo";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -71,23 +72,6 @@ const STATUS_DA_CONTA: Record<number, string> = {
   101: "encerrada",
 };
 
-function comoData(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-/** Ontem — nunca hoje. O dia corrente está incompleto e a plataforma ainda o reprocessa. */
-function ontem(): Date {
-  return new Date(Date.now() - 24 * 60 * 60 * 1000);
-}
-
-function haDias(dias: number): { de: string; ate: string } {
-  const fim = ontem();
-  const inicio = new Date(fim.getTime() - (dias - 1) * 24 * 60 * 60 * 1000);
-  return { de: comoData(inicio), ate: comoData(fim) };
-}
-
-const PERSONALIZADO = "personalizado";
-
 interface Props {
   contaPadrao: string | null;
   idioma: Idioma;
@@ -100,8 +84,12 @@ export function MetaAdsClient({ contaPadrao }: Props) {
   const tagDoIdioma = useTagDeIdioma();
 
   const [conta, setConta] = useState<string | null>(contaPadrao);
-  const [preset, setPreset] = useState<string>("7");
-  const [intervalo, setIntervalo] = useState(() => haDias(7));
+  // Nunca inclui hoje: o dia corrente está incompleto e a plataforma ainda o reprocessa.
+  const { atalhos, max: ultimoDia } = useAtalhosDePeriodo({ semHoje: true });
+  const [intervalo, setIntervalo] = useState(() => {
+    const padrao = atalhos.find((a) => a.id === "ultimos_7");
+    return { de: padrao?.de ?? "", ate: padrao?.ate ?? "" };
+  });
 
   const contas = useMetaAdAccounts(true);
 
@@ -129,11 +117,6 @@ export function MetaAdsClient({ contaPadrao }: Props) {
     de: intervalo.de,
     ate: intervalo.ate,
   });
-
-  function trocarPreset(valor: string) {
-    setPreset(valor);
-    if (valor !== PERSONALIZADO) setIntervalo(haDias(Number(valor)));
-  }
 
   function mensagemDeErro(erro: unknown): string {
     if (erro instanceof ApiError) {
@@ -173,48 +156,16 @@ export function MetaAdsClient({ contaPadrao }: Props) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="periodo">{t("Período")}</Label>
-          <Select value={preset} onValueChange={trocarPreset}>
-            <SelectTrigger id="periodo" className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">{t("Últimos 7 dias")}</SelectItem>
-              <SelectItem value="14">{t("Últimos 14 dias")}</SelectItem>
-              <SelectItem value="30">{t("Últimos 30 dias")}</SelectItem>
-              <SelectItem value="90">{t("Últimos 90 dias")}</SelectItem>
-              <SelectItem value={PERSONALIZADO}>{t("Personalizado")}</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>{t("Período")}</Label>
+          <SeletorDePeriodo
+            de={intervalo.de}
+            ate={intervalo.ate}
+            rotulo={t("Período")}
+            atalhos={atalhos}
+            max={ultimoDia}
+            aoMudar={setIntervalo}
+          />
         </div>
-
-        {preset === PERSONALIZADO && (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="de">{t("De")}</Label>
-              <Input
-                id="de"
-                type="date"
-                className="w-40"
-                value={intervalo.de}
-                max={intervalo.ate}
-                onChange={(e) => setIntervalo((i) => ({ ...i, de: e.target.value }))}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ate">{t("Até")}</Label>
-              <Input
-                id="ate"
-                type="date"
-                className="w-40"
-                value={intervalo.ate}
-                min={intervalo.de}
-                max={comoData(ontem())}
-                onChange={(e) => setIntervalo((i) => ({ ...i, ate: e.target.value }))}
-              />
-            </div>
-          </>
-        )}
 
         {/*
           `disabled` enquanto busca não é polimento: cada clique gasta 2 chamadas

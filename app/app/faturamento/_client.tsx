@@ -21,6 +21,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
+import { useAtalhosDePeriodo } from "@/components/motor/atalhos-de-periodo";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
@@ -94,6 +96,7 @@ export function Faturamento({
   const qc = useQueryClient();
   const [de, setDe] = useState(primeiroDoMes);
   const [ate, setAte] = useState(hoje);
+  const { atalhos } = useAtalhosDePeriodo();
 
   const relatorio = useQuery({
     queryKey: ["relatorio", "financeiro", de, ate],
@@ -186,28 +189,19 @@ export function Faturamento({
 
   return (
     <div className="flex flex-col gap-4">
-      <form className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-text-muted">
-          {t("De")}
-          <input
-            type="date"
-            value={de}
-            data-testid="periodo-de"
-            onChange={(e) => setDe(e.target.value)}
-            className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-text-muted">
-          {t("Até")}
-          <input
-            type="date"
-            value={ate}
-            data-testid="periodo-ate"
-            onChange={(e) => setAte(e.target.value)}
-            className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
-          />
-        </label>
-      </form>
+      <div className="flex flex-col gap-1 text-xs text-text-muted" data-testid="periodo">
+        {t("Período")}
+        <SeletorDePeriodo
+          de={de}
+          ate={ate}
+          rotulo={t("Período")}
+          atalhos={atalhos}
+          aoMudar={(p) => {
+            setDe(p.de);
+            setAte(p.ate);
+          }}
+        />
+      </div>
 
       {relatorio.isError ? (
         <p className="text-sm text-danger">{t("Não foi possível carregar o período.")}</p>

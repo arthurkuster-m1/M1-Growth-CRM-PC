@@ -4,9 +4,8 @@ import { useState } from "react";
 
 import { SeletorDePeriodo, type AtalhoDePeriodo } from "@/components/motor/CalendarioDePeriodo";
 import { useT } from "@/hooks/i18n/useT";
-import { PERIODOS, janelaDoPeriodo, type Periodo } from "@/lib/marketing/periodos";
-
-const hojeLocal = () => new Intl.DateTimeFormat("en-CA").format(new Date());
+import { PERIODOS, janelaDoPeriodo } from "@/lib/marketing/periodos";
+import { hojeLocal, rotuloDoPeriodo } from "@/components/motor/atalhos-de-periodo";
 
 /** O estado do filtro: `null` = o período da campanha (padrão). */
 export function usePeriodoDaCampanha(padrao: { de: string; ate: string }) {
@@ -15,27 +14,6 @@ export function usePeriodoDaCampanha(padrao: { de: string; ate: string }) {
   const ehPadrao =
     escolhido === null || (escolhido.de === padrao.de && escolhido.ate === padrao.ate);
   return { janela, ehPadrao, escolhido, setEscolhido, padrao };
-}
-
-function rotuloDoAtalho(t: (s: string) => string, p: Periodo): string {
-  switch (p) {
-    case "hoje":
-      return t("Hoje");
-    case "ontem":
-      return t("Ontem");
-    case "ultimos_5_dias":
-      return t("Últimos 5 dias");
-    case "ultimos_7_dias":
-      return t("Últimos 7 dias");
-    case "ultimos_30_dias":
-      return t("Últimos 30 dias");
-    case "semana":
-      return t("Esta semana");
-    case "mes":
-      return t("Este mês");
-    case "mes_passado":
-      return t("Mês passado");
-  }
 }
 
 /**
@@ -52,7 +30,7 @@ export function FiltroDePeriodoDaCampanha({
   const hoje = hojeLocal();
   const atalhos: AtalhoDePeriodo[] = [
     { id: "padrao", rotulo: t("Período da campanha"), ...periodo.padrao },
-    ...PERIODOS.map((p) => ({ id: p, rotulo: rotuloDoAtalho(t, p), ...janelaDoPeriodo(p, hoje) })),
+    ...PERIODOS.map((p) => ({ id: p, rotulo: rotuloDoPeriodo(t, p), ...janelaDoPeriodo(p, hoje) })),
   ];
   return (
     <SeletorDePeriodo

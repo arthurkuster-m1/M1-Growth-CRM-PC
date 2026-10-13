@@ -307,9 +307,15 @@ export function SeletorDePeriodo({
   atalhos = [],
   className,
   aoVoltarAoPadrao,
+  rotuloVoltar,
+  max,
 }: {
-  /** Quando passado, o painel ganha "Voltar ao período da campanha". */
+  /** Quando passado, o painel ganha o botão de voltar ao período padrão da tela. */
   aoVoltarAoPadrao?: () => void;
+  /** O texto desse botão (padrão: "Voltar ao período da campanha"). */
+  rotuloVoltar?: string;
+  /** Último dia que se pode escolher (ex.: ontem, nas telas que não leem o dia em andamento). */
+  max?: string;
   de: string;
   ate: string;
   aoMudar: (p: { de: string; ate: string }) => void;
@@ -400,6 +406,7 @@ export function SeletorDePeriodo({
               estado={(d) => ({
                 extremo: d === a || d === b,
                 dentro: a !== "" && b !== "" && d > a && d < b,
+                desabilitado: max !== undefined && d > max,
               })}
               aoEscolher={escolher}
               aoPassarPor={(d) => inicio !== null && setSobre(d ?? inicio)}
@@ -418,7 +425,7 @@ export function SeletorDePeriodo({
                 }}
                 className="mt-3 h-9 w-full rounded-lg border text-sm font-medium hover:bg-secondary"
               >
-                {t("Voltar ao período da campanha")}
+                {rotuloVoltar ?? t("Voltar ao período da campanha")}
               </button>
             ) : null}
           </div>

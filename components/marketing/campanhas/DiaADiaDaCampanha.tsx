@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  FiltroDePeriodoDaCampanha,
+  usePeriodoDaCampanha,
+} from "@/components/marketing/campanhas/FiltroDePeriodoDaCampanha";
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
 import { useT } from "@/hooks/i18n/useT";
 import { lerNumero } from "@/lib/marketing/calculadora";
@@ -9,11 +13,11 @@ import { lerDias, modeloDoDiaAdia } from "@/lib/marketing/campanhas-csv";
 import {
   METRICAS_DO_CANAL,
   hojeIso,
-  janelaDoDiaADia,
-  somarMeses,
+  linhasDoPeriodo,
   type DiaDaCampanha,
 } from "@/lib/marketing/campanhas-resumo";
 import type { CampanhaDeDemanda, CanalDaCampanha } from "@/lib/marketing/campanhas";
+import { periodoPadraoDaCampanha } from "@/lib/marketing/periodo-da-campanha";
 import { Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -143,17 +147,11 @@ export function DiaADiaDaCampanha({
   const colunas = colunasDoCanal(t, canal);
   const [mensagem, setMensagem] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
-  const [mes, setMes] = useState<string | null>(null);
   const [soComDados, setSoComDados] = useState(false);
   const hoje = hojeIso();
-  const janela = janelaDoDiaADia(campanha, dias, hoje, mes, soComDados);
-  const ordenados = janela.linhas;
+  const periodo = usePeriodoDaCampanha(periodoPadraoDaCampanha(campanha, hoje));
+  const ordenados = linhasDoPeriodo(dias, periodo.janela.de, periodo.janela.ate, soComDados);
   const guardados = new Set(dias.filter((d) => d.id).map((d) => d.day));
-  const nomeDoMes = janela.mes
-    ? new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(
-        new Date(`${janela.mes}-01T12:00:00Z`),
-      )
-    : "";
 
   async function aoEscolherArquivo(f: File | undefined) {
     if (!f) return;
@@ -228,40 +226,7 @@ export function DiaADiaDaCampanha({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {janela.mensal ? (
-          <div className="inline-flex items-center gap-1 rounded-xl bg-secondary p-0.5">
-            <button
-              type="button"
-              aria-label={t("Mês anterior")}
-              onClick={() => setMes(somarMeses(janela.mes!, -1))}
-              className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
-            >
-              ‹
-            </button>
-            <span className="min-w-36 text-center text-sm font-medium capitalize">{nomeDoMes}</span>
-            <button
-              type="button"
-              aria-label={t("Próximo mês")}
-              onClick={() => setMes(somarMeses(janela.mes!, 1))}
-              className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
-            >
-              ›
-            </button>
-            {janela.mes !== hoje.slice(0, 7) ? (
-              <button
-                type="button"
-                onClick={() => setMes(null)}
-                className="h-9 rounded-[10px] px-3 text-sm font-medium text-primary hover:bg-card"
-              >
-                {t("Mês atual")}
-              </button>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {dataBr(janela.de)} → {dataBr(janela.ate)}
-          </p>
-        )}
+        <FiltroDePeriodoDaCampanha periodo={periodo} />
         <label className="flex items-center gap-2 text-sm whitespace-nowrap">
           <input
             type="checkbox"
