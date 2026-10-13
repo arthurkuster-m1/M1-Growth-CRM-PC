@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { AcoesDaColecao } from "@/components/marketing/campanhas/AcoesDaColecao";
 import { toast } from "sonner";
 
 import {
@@ -381,6 +382,36 @@ export function AbordagensDaCampanha({
         textoDaBusca={(l) => `${l.a.name} ${l.a.audience} ${l.a.hook} ${l.a.script}`}
         aoMudarPosicao={(id, position) => void editar(id, { position })}
         destacarId={novaId}
+        acoesEmMassa={(ids, limpar) => (
+          <AcoesDaColecao
+            ids={ids}
+            limpar={limpar}
+            nomeDoItem={t("abordagens")}
+            grupos={[
+              {
+                rotulo: t("Status"),
+                opcoes: opcoesDeStatus,
+                aplicar: async (alvo, status) => {
+                  await Promise.all(
+                    alvo.map((id) => editar(id, { status: status as Abordagem["status"] })),
+                  );
+                },
+              },
+              {
+                rotulo: t("Meio de contato"),
+                opcoes: opcoesDeMeio,
+                aplicar: async (alvo, meio) => {
+                  await Promise.all(
+                    alvo.map((id) => editar(id, { medium: meio as Abordagem["medium"] })),
+                  );
+                },
+              },
+            ]}
+            apagar={async (alvo) => {
+              await Promise.all(alvo.map((id) => apagar(id)));
+            }}
+          />
+        )}
         cartao={(l) => (
           <Cartao
             a={l.a}

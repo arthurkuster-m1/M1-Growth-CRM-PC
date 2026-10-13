@@ -18,6 +18,7 @@ import {
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
 import { ConjuntosDeAnuncios } from "@/components/marketing/campanhas/ConjuntosDeAnuncios";
+import { AcoesDaColecao } from "@/components/marketing/campanhas/AcoesDaColecao";
 import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
@@ -769,6 +770,36 @@ export function CriativosDaCampanha({
         textoDaBusca={(l) => `${l.c.name} ${l.c.headline} ${l.c.caption} ${l.c.ad_name}`}
         aoMudarPosicao={(id, position) => void editar(id, { position })}
         destacarId={novoId}
+        acoesEmMassa={(ids, limpar) => (
+          <AcoesDaColecao
+            ids={ids}
+            limpar={limpar}
+            nomeDoItem={t("criativos")}
+            grupos={[
+              {
+                rotulo: t("Status"),
+                opcoes: opcoesDeStatus,
+                aplicar: async (alvo, status) => {
+                  await Promise.all(
+                    alvo.map((id) => editar(id, { status: status as Criativo["status"] })),
+                  );
+                },
+              },
+              {
+                rotulo: t("Formato"),
+                opcoes: opcoesDeFormato,
+                aplicar: async (alvo, formato) => {
+                  await Promise.all(
+                    alvo.map((id) => editar(id, { format: formato as Criativo["format"] })),
+                  );
+                },
+              },
+            ]}
+            apagar={async (alvo) => {
+              await Promise.all(alvo.map((id) => apagar(id)));
+            }}
+          />
+        )}
         cartao={(l) => (
           <CartaoDoCriativo
             c={l.c}

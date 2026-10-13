@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -16,6 +17,7 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { CaretDown, CaretUp } from "@/lib/ui/icons";
@@ -49,6 +51,11 @@ interface Props<T extends { id: string; position: number }> {
   aoMudarPosicao?: (id: string, posicao: number) => void;
   /** Um item acabou de nascer: leva a tela até ele e o destaca. */
   destacarId?: string | null;
+  /**
+   * As ações da barra que aparece ao selecionar várias linhas da tabela (editar em massa).
+   * Recebe os ids selecionados e uma função que limpa a seleção.
+   */
+  acoesEmMassa?: (ids: string[], limpar: () => void) => ReactNode;
 }
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -72,6 +79,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   gradeDosCartoes = "grid grid-cols-1 gap-3 lg:grid-cols-2",
   aoMudarPosicao,
   destacarId,
+  acoesEmMassa,
 }: Props<T>) {
   const t = useT();
   const [busca, setBusca] = useState("");
@@ -79,6 +87,8 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   const [aba, setAba] = useState<string>(ID_DA_PADRAO);
   const [forcarCartoes, setForcarCartoes] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
+  const ultimoMarcado = useRef<string | null>(null);
 
   const padrao = useVisualizacao(tela);
   const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
@@ -183,6 +193,29 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
             : (antes + depois) / 2;
     aoMudarPosicao(id, posicao);
   }
+
+  // O item aberto sumiu (foi apagado dentro do painel): fecha o painel e volta para a tabela.
+  const itemAberto = abertoId ? itens.find((i) => i.id === abertoId) : undefined;
+  useEffect(() => {
+    if (abertoId && !itemAberto && !carregando) setAbertoId(null);
+  }, [abertoId, itemAberto, carregando]);
+
+  // Seleção (edição em massa): só ids que ainda existem.
+  const idsDaTabela = resultado.linhas.map((i) => i.id);
+  const vivas = podarSelecao(selecionadas, idsDaTabela);
+  const idsSelecionados = idsDaTabela.filter((id) => vivas.has(id));
+  const selecionar = (id: string, { faixa }: { faixa: boolean }) => {
+    setSelecionadas((atual) => {
+      const base = podarSelecao(atual, idsDaTabela);
+      if (faixa && ultimoMarcado.current) {
+        const proximo = new Set(base);
+        for (const m of faixaEntre(idsDaTabela, ultimoMarcado.current, id)) proximo.add(m);
+        return proximo;
+      }
+      return alternarId(base, id);
+    });
+    ultimoMarcado.current = id;
+  };
 
   // Item recém-criado: leva a tela até ele (nos cartões) e o destaca por um instante.
   const [piscando, setPiscando] = useState<string | null>(null);
@@ -333,6 +366,16 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
           aoReordenar={(id, destino) => moverPara(id, destino)}
           podeReordenar={ordemManual}
           rotuloDaTabela={rotuloDaTabela}
+          selecionadas={vivas}
+          aoSelecionar={podeEditar && acoesEmMassa ? selecionar : undefined}
+          aoSelecionarTodas={
+            podeEditar && acoesEmMassa
+              ? (marcar) => {
+                  setSelecionadas(marcar ? new Set(idsDaTabela) : new Set());
+                  ultimoMarcado.current = null;
+                }
+              : undefined
+          }
         />
       ) : grupos ? (
         <div className="grid grid-cols-1 gap-5">
@@ -347,18 +390,22 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
         cartoes(resultado.linhas)
       )}
 
-      <Dialog open={abertoId !== null} onOpenChange={(a) => !a && setAbertoId(null)}>
+      {podeEditar && acoesEmMassa ? (
+        <BarraDeSelecao
+          quantidade={idsSelecionados.length}
+          aoLimpar={() => setSelecionadas(new Set())}
+        >
+          {acoesEmMassa(idsSelecionados, () => setSelecionadas(new Set()))}
+        </BarraDeSelecao>
+      ) : null}
+
+      <Dialog open={itemAberto !== undefined} onOpenChange={(a) => !a && setAbertoId(null)}>
         <DialogContent className="max-h-[90vh] w-[min(96vw,820px)] max-w-none overflow-y-auto p-3 sm:max-w-none sm:rounded-2xl">
           <DialogTitle className="sr-only">{rotuloDaTabela}</DialogTitle>
           <DialogDescription className="sr-only">
             {t("Edite os campos deste item.")}
           </DialogDescription>
-          {abertoId
-            ? (() => {
-                const aberto = itens.find((i) => i.id === abertoId);
-                return aberto ? cartao(aberto) : null;
-              })()
-            : null}
+          {itemAberto ? cartao(itemAberto) : null}
         </DialogContent>
       </Dialog>
 

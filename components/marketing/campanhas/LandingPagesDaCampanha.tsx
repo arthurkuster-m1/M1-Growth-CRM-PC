@@ -16,6 +16,7 @@ import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
+import { AcoesDaColecao } from "@/components/marketing/campanhas/AcoesDaColecao";
 import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
@@ -352,6 +353,27 @@ export function LandingPagesDaCampanha({
         gradeDosCartoes="grid grid-cols-1 gap-3"
         aoMudarPosicao={(id, position) => void editar(id, { position })}
         destacarId={novaId}
+        acoesEmMassa={(ids, limpar) => (
+          <AcoesDaColecao
+            ids={ids}
+            limpar={limpar}
+            nomeDoItem={t("landing pages")}
+            grupos={[
+              {
+                rotulo: t("Status"),
+                opcoes: opcoesDeStatus,
+                aplicar: async (alvo, status) => {
+                  await Promise.all(
+                    alvo.map((id) => editar(id, { status: status as LandingPage["status"] })),
+                  );
+                },
+              },
+            ]}
+            apagar={async (alvo) => {
+              await Promise.all(alvo.map((id) => apagar(id)));
+            }}
+          />
+        )}
         cartao={(l) => (
           <CartaoDaLp
             lp={l.lp}
