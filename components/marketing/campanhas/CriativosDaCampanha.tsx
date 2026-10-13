@@ -17,6 +17,7 @@ import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
+import { ConjuntosDeAnuncios } from "@/components/marketing/campanhas/ConjuntosDeAnuncios";
 import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
@@ -25,6 +26,7 @@ import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
+  useMetaPorAnuncio,
   useOrigemDosLeads,
   type EdicaoDeCriativo,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
@@ -483,10 +485,31 @@ export function CriativosDaCampanha({
   periodoPadrao: { de: string; ate: string };
 }) {
   const t = useT();
-  const { criativos, carregando, criar, editar, duplicar, apagar, importarDoMeta } =
-    useCriativosDaCampanha(campanhaId);
+  const {
+    criativos: criativosCrus,
+    carregando,
+    criar,
+    editar,
+    duplicar,
+    apagar,
+    importarDoMeta,
+  } = useCriativosDaCampanha(campanhaId);
   const periodo = usePeriodoDaCampanha(periodoPadrao);
   const { origem } = useOrigemDosLeads(campanhaId, periodo.janela);
+  const { dados: meta } = useMetaPorAnuncio(campanhaId, periodo.janela);
+  // Com a base diária, cada criativo mostra o que o anúncio dele fez NO PERÍODO escolhido.
+  const criativos: Criativo[] = criativosCrus.map((c) => {
+    const d = meta?.base && c.ad_id ? meta.anuncios[c.ad_id] : undefined;
+    if (!meta?.base || !c.ad_id) return c;
+    return {
+      ...c,
+      spend: d?.spend ?? 0,
+      impressions: d?.impressions ?? 0,
+      link_clicks: d?.link_clicks ?? 0,
+      lp_views: d?.lp_views ?? 0,
+    };
+  });
+  const semDeliveryNoPeriodo = !meta?.base && !periodo.ehPadrao;
   const [importando, setImportando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [novoId, setNovoId] = useState<string | null>(null);
@@ -501,8 +524,8 @@ export function CriativosDaCampanha({
       leads,
       faturamento,
       x: taxasDoCriativo(c),
-      cpl: periodo.ehPadrao && leads > 0 && c.spend > 0 ? c.spend / leads : null,
-      roas: periodo.ehPadrao && c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
+      cpl: !semDeliveryNoPeriodo && leads > 0 && c.spend > 0 ? c.spend / leads : null,
+      roas: !semDeliveryNoPeriodo && c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
     };
   });
   const opcoesDeStatus = STATUS_DO_CRIATIVO.map((s) => ({
@@ -731,13 +754,25 @@ export function CriativosDaCampanha({
 
       <FiltroDePeriodoDaCampanha periodo={periodo} />
       <p className="text-xs text-muted-foreground">
-        {periodo.ehPadrao
-          ? t(
-              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
-            )
-          : t(
-              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
-            )}
+        {meta?.base
+          ? `${t(
+              "Gasto, impressões, cliques e visitas vêm da base diária por anúncio do Meta, no período escolhido.",
+            )}${
+              meta.sincronizado_em
+                ? ` ${t("Atualizada em")} ${new Date(meta.sincronizado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.`
+                : ""
+            }${
+              meta.diferenca_pct !== null && Math.abs(meta.diferenca_pct) > 2
+                ? ` ${t("Atenção: a soma dos anúncios difere do total da campanha em")} ${meta.diferenca_pct.toLocaleString("pt-BR")}%.`
+                : ""
+            }`
+          : periodo.ehPadrao
+            ? t(
+                "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
+              )
+            : t(
+                "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
+              )}
       </p>
 
       <ColecaoDaCampanha
@@ -763,6 +798,7 @@ export function CriativosDaCampanha({
           />
         )}
       />
+      <ConjuntosDeAnuncios meta={meta} origem={origem} />
     </section>
   );
 }

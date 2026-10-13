@@ -10,6 +10,7 @@ import {
   importarCriativosDoMeta,
 } from "@/lib/marketing/criativos-servidor";
 import { lerInsightsPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia";
+import { sincronizarBaseDiaria } from "@/lib/marketing/meta-por-anuncio-servidor";
 
 /**
  * A SINCRONIZAÇÃO com o Meta (C3): puxa o dia a dia das campanhas do Meta atreladas a uma
@@ -46,6 +47,7 @@ export async function sincronizarCampanhaComMeta(
   admin: SupabaseClient,
   c: CampanhaParaSync,
   agora: Date = new Date(),
+  opcoes: { manual?: boolean } = {},
 ): Promise<ResultadoDaSync> {
   const marcar = async (motivo: MotivoDaFalhaDeSync | "") => {
     await admin
@@ -122,6 +124,23 @@ export async function sincronizarCampanhaComMeta(
       null,
     ).catch(() => undefined);
   }
+
+  // A base diária POR ANÚNCIO (criativo, conjunto, LP em qualquer período). Falha aqui não
+  // derruba o dia a dia da campanha: fica no log e na conferência.
+  await sincronizarBaseDiaria(
+    admin,
+    c,
+    credencial.credencial.accessToken,
+    conta,
+    ids,
+    agora,
+    opcoes.manual === true,
+  ).catch((e) =>
+    logger.error("[campanhas-meta] base por anúncio falhou", {
+      campanha: c.id,
+      error: e instanceof Error ? e.message : String(e),
+    }),
+  );
 
   // As métricas por criativo andam junto (só gasta chamada se houver criativo do Meta cadastrado).
   await atualizarMetricasDosCriativos(

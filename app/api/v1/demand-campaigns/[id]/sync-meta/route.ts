@@ -33,14 +33,19 @@ export async function POST(_req: NextRequest, ctx: Ctx): Promise<Response> {
   if (!data) return campanhaNaoEncontrada(a.t, a.requestId);
   const c = campanhaDaLinha(data as Record<string, unknown>);
 
-  const r = await sincronizarCampanhaComMeta(createAdminClient(), {
-    id: c.id,
-    organization_id: a.orgId,
-    start_date: c.start_date,
-    end_date: c.end_date,
-    meta_account_id: c.meta_account_id ?? "",
-    platform_campaigns: c.platform_campaigns,
-  });
+  const r = await sincronizarCampanhaComMeta(
+    createAdminClient(),
+    {
+      id: c.id,
+      organization_id: a.orgId,
+      start_date: c.start_date,
+      end_date: c.end_date,
+      meta_account_id: c.meta_account_id ?? "",
+      platform_campaigns: c.platform_campaigns,
+    },
+    new Date(),
+    { manual: true },
+  );
   if (!r.ok) {
     // 422: o problema é do recurso (conexão, token, campanhas atreladas), não da sessão.
     return fail("meta_sync_failed", r.motivo, 422, { requestId: a.requestId });

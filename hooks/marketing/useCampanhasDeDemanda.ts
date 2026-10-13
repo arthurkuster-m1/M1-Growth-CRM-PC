@@ -512,3 +512,42 @@ export function useOrigemDosLeads(campanhaId: string, janela?: { de: string; ate
   });
   return { origem: consulta.data ?? null, carregando: consulta.isLoading };
 }
+
+export interface MetaPorAnuncio {
+  /** Há base diária por anúncio para esta campanha. */
+  base: boolean;
+  anuncios: Record<
+    string,
+    { spend: number; impressions: number; link_clicks: number; lp_views: number; adset_id: string }
+  >;
+  conjuntos: Array<{
+    adset_id: string;
+    nome: string;
+    anuncios: number;
+    spend: number;
+    impressions: number;
+    link_clicks: number;
+    lp_views: number;
+  }>;
+  sincronizado_em: string | null;
+  /** Diferença (%) entre a soma dos anúncios e o total da campanha, nos dias sincronizados. */
+  diferenca_pct: number | null;
+}
+
+/**
+ * Gasto, impressões, cliques e visitas à LP por ANÚNCIO e por CONJUNTO no período, da base
+ * diária do Meta. Com isso CPL e ROAS valem para qualquer período.
+ */
+export function useMetaPorAnuncio(campanhaId: string, janela: { de: string; ate: string }) {
+  const consulta = useQuery({
+    queryKey: ["demand-campaign-meta-por-anuncio", campanhaId, janela.de, janela.ate],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: MetaPorAnuncio }>(
+          `${BASE}/${campanhaId}/meta-por-anuncio?de=${janela.de}&ate=${janela.ate}`,
+        )
+      ).data,
+  });
+  return { dados: consulta.data ?? null, carregando: consulta.isLoading };
+}

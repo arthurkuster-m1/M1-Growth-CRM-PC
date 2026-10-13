@@ -333,3 +333,15 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
 - **Pop-up da venda em qualquer tela:** `PopupDeVendaPendente` na casca do app: toda venda "a
   detalhar" (lead ganho por qualquer caminho) abre o pop-up; mudar a situação para
   comprometida/concluída em Vendas também abre.
+
+## Base diária por anúncio (13/10/2026 — migration 0618)
+- **`ad_insights_daily`**: uma linha por anúncio e dia (gasto, impressões, alcance, cliques no link,
+  visitas à LP; conjunto e campanha da plataforma junto). Escrita só pelo servidor; leitura da
+  empresa. Leads e resultados NUNCA vêm do Meta (vêm do CRM).
+- **Sincronização** (dentro de `sincronizarCampanhaComMeta`): primeira carga (do início da campanha,
+  máx. 90 dias, em pedaços de 7 dias) → de 6 em 6 horas os últimos 7 dias → às 3h (Brasília) os
+  últimos 28 (o Meta corrige números por dias). Botão "Sincronizar agora" = últimos 7 dias.
+- **Conferência:** `demand_campaigns.meta_ads_diff_pct` = soma dos anúncios × total da campanha;
+  a tela avisa se passar de 2%.
+- **Telas:** criativos, LPs e conjuntos mostram gasto/cliques/CPL/ROAS do período escolhido (rota
+  `GET /api/v1/demand-campaigns/[id]/meta-por-anuncio`). Alcance não é somado entre dias.

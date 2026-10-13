@@ -26,6 +26,7 @@ import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
   useLandingPagesDaCampanha,
+  useMetaPorAnuncio,
   useOrigemDosLeads,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { STATUS_DA_LP, metricasDaLp, type LandingPage } from "@/lib/marketing/landing-pages";
@@ -99,9 +100,23 @@ export function LandingPagesDaCampanha({
 }) {
   const t = useT();
   const { lps, carregando, criar, editar, apagar } = useLandingPagesDaCampanha(campanhaId);
-  const { criativos } = useCriativosDaCampanha(campanhaId);
+  const { criativos: criativosCrus } = useCriativosDaCampanha(campanhaId);
   const periodo = usePeriodoDaCampanha(periodoPadrao);
   const { origem } = useOrigemDosLeads(campanhaId, periodo.janela);
+  const { dados: meta } = useMetaPorAnuncio(campanhaId, periodo.janela);
+  // Com a base diária, a entrega de cada LP é a dos anúncios dela NO PERÍODO escolhido.
+  const criativos = criativosCrus.map((c) => {
+    if (!meta?.base || !c.ad_id) return c;
+    const d = meta.anuncios[c.ad_id];
+    return {
+      ...c,
+      spend: d?.spend ?? 0,
+      impressions: d?.impressions ?? 0,
+      link_clicks: d?.link_clicks ?? 0,
+      lp_views: d?.lp_views ?? 0,
+    };
+  });
+  const semDeliveryNoPeriodo = !meta?.base && !periodo.ehPadrao;
   const [novaId, setNovaId] = useState<string | null>(null);
 
   const linhas: LinhaDaLp[] = lps.map((lp) => ({
@@ -119,9 +134,9 @@ export function LandingPagesDaCampanha({
     cor: COR_DO_STATUS_DO_CRIATIVO[s],
   }));
   const conversao = (l: LinhaDaLp) =>
-    periodo.ehPadrao && l.m.lp_views > 0 ? (l.leads / l.m.lp_views) * 100 : null;
+    !semDeliveryNoPeriodo && l.m.lp_views > 0 ? (l.leads / l.m.lp_views) * 100 : null;
   const cplReal = (l: LinhaDaLp) =>
-    periodo.ehPadrao && l.leads > 0 && l.m.spend > 0 ? l.m.spend / l.leads : null;
+    !semDeliveryNoPeriodo && l.leads > 0 && l.m.spend > 0 ? l.m.spend / l.leads : null;
 
   const campos: CampoDaColecao<LinhaDaLp>[] = [
     { id: "nome", titulo: t("Landing page"), tipo: "texto", valorDe: (l) => l.lp.name },
@@ -316,13 +331,25 @@ export function LandingPagesDaCampanha({
 
       <FiltroDePeriodoDaCampanha periodo={periodo} />
       <p className="text-xs text-muted-foreground">
-        {periodo.ehPadrao
-          ? t(
-              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
-            )
-          : t(
-              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
-            )}
+        {meta?.base
+          ? `${t(
+              "Gasto, impressões, cliques e visitas vêm da base diária por anúncio do Meta, no período escolhido.",
+            )}${
+              meta.sincronizado_em
+                ? ` ${t("Atualizada em")} ${new Date(meta.sincronizado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.`
+                : ""
+            }${
+              meta.diferenca_pct !== null && Math.abs(meta.diferenca_pct) > 2
+                ? ` ${t("Atenção: a soma dos anúncios difere do total da campanha em")} ${meta.diferenca_pct.toLocaleString("pt-BR")}%.`
+                : ""
+            }`
+          : periodo.ehPadrao
+            ? t(
+                "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
+              )
+            : t(
+                "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
+              )}
       </p>
 
       <ColecaoDaCampanha
