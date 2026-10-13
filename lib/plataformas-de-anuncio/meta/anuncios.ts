@@ -20,6 +20,14 @@ export interface AnuncioDoMeta {
   formato: "imagem" | "video" | "carrossel" | "outro";
   /** A página de destino do anúncio (sem os parâmetros de UTM); vazio quando o Meta não a expõe. */
   link: string;
+  /** TODAS as variações de texto (anúncio dinâmico: até 5 de cada), sem repetir. */
+  titulos: string[];
+  legendas: string[];
+  descricoes: string[];
+  /** Endereços das imagens (até 10): a do anúncio, as do carrossel e as do anúncio dinâmico. */
+  imagens: string[];
+  /** Hashes de imagem do anúncio dinâmico sem endereço (resolvidos depois pela conta). */
+  hashesDeImagem: string[];
 }
 
 interface AnuncioCru {
@@ -35,11 +43,102 @@ interface AnuncioCru {
     object_type?: string;
     video_id?: string;
     object_url?: string;
+    image_hash?: string;
     object_story_spec?: {
-      link_data?: { link?: string; child_attachments?: Array<{ link?: string }> };
-      video_data?: { call_to_action?: { value?: { link?: string } } };
+      link_data?: {
+        link?: string;
+        message?: string;
+        name?: string;
+        description?: string;
+        picture?: string;
+        image_hash?: string;
+        child_attachments?: Array<{
+          link?: string;
+          name?: string;
+          description?: string;
+          picture?: string;
+          image_hash?: string;
+        }>;
+      };
+      video_data?: {
+        message?: string;
+        title?: string;
+        image_url?: string;
+        call_to_action?: { value?: { link?: string } };
+      };
     };
-    asset_feed_spec?: { link_urls?: Array<{ website_url?: string }> };
+    asset_feed_spec?: {
+      link_urls?: Array<{ website_url?: string }>;
+      bodies?: Array<{ text?: string }>;
+      titles?: Array<{ text?: string }>;
+      descriptions?: Array<{ text?: string }>;
+      images?: Array<{ hash?: string; url?: string }>;
+    };
+  };
+}
+
+const MAX_VARIACOES_DE_TEXTO = 5;
+export const MAX_IMAGENS_DO_ANUNCIO = 10;
+
+/** Textos sem vazio e sem repetição, na ordem em que o Meta os devolve. */
+function textosUnicos(
+  lista: ReadonlyArray<string | undefined>,
+  max: number,
+  limite: number,
+): string[] {
+  const vistos = new Set<string>();
+  for (const bruto of lista) {
+    const t = (bruto ?? "").trim();
+    if (t) vistos.add(t.slice(0, limite));
+    if (vistos.size >= max) break;
+  }
+  return [...vistos];
+}
+
+/** As variações do anúncio: onde o Meta guarda cada tipo (dinâmico, carrossel, vídeo, simples). */
+export function variacoesDoAnuncio(a: AnuncioCru): Pick<
+  AnuncioDoMeta,
+  "titulos" | "legendas" | "descricoes" | "imagens" | "hashesDeImagem"
+> {
+  const c = a.creative;
+  const feed = c?.asset_feed_spec;
+  const ld = c?.object_story_spec?.link_data;
+  const vd = c?.object_story_spec?.video_data;
+  const cartoes = ld?.child_attachments ?? [];
+  const url = (u: string | undefined) => (u && /^https:\/\/\S+$/i.test(u) ? u : undefined);
+
+  const imagens = [
+    c?.image_url,
+    ld?.picture,
+    vd?.image_url,
+    ...(feed?.images ?? []).map((i) => i.url),
+    ...cartoes.map((x) => x.picture),
+  ]
+    .map(url)
+    .filter((u): u is string => !!u);
+  const hashes = [
+    ...(feed?.images ?? []).filter((i) => !i.url).map((i) => i.hash),
+    ...cartoes.filter((x) => !x.picture).map((x) => x.image_hash),
+  ].filter((h): h is string => !!h && /^[0-9a-f]{8,64}$/i.test(h));
+
+  return {
+    titulos: textosUnicos(
+      [...(feed?.titles ?? []).map((x) => x.text), c?.title, ld?.name, vd?.title],
+      MAX_VARIACOES_DE_TEXTO,
+      300,
+    ),
+    legendas: textosUnicos(
+      [...(feed?.bodies ?? []).map((x) => x.text), c?.body, ld?.message, vd?.message],
+      MAX_VARIACOES_DE_TEXTO,
+      4000,
+    ),
+    descricoes: textosUnicos(
+      [...(feed?.descriptions ?? []).map((x) => x.text), ld?.description],
+      MAX_VARIACOES_DE_TEXTO,
+      1000,
+    ),
+    imagens: [...new Set(imagens)].slice(0, MAX_IMAGENS_DO_ANUNCIO),
+    hashesDeImagem: [...new Set(hashes)].slice(0, MAX_IMAGENS_DO_ANUNCIO),
   };
 }
 
@@ -94,6 +193,7 @@ export function anuncioDoMeta(a: AnuncioCru): AnuncioDoMeta | null {
     imagem: a.creative?.image_url ?? "",
     formato: formatoDe(a),
     link: linkDoAnuncio(a),
+    ...variacoesDoAnuncio(a),
   };
 }
 
@@ -120,7 +220,7 @@ export async function lerAnuncios(
     const r = await buscarPaginado<AnuncioCru>(
       montarUrl(`${encodeURIComponent(id)}/ads`, {
         fields:
-          "id,name,effective_status,campaign_id,creative{title,body,thumbnail_url,image_url,object_type,video_id,object_url,object_story_spec{link_data{link,child_attachments{link}},video_data{call_to_action{value{link}}}},asset_feed_spec{link_urls{website_url}}}",
+          "id,name,effective_status,campaign_id,creative{title,body,thumbnail_url,image_url,image_hash,object_type,video_id,object_url,object_story_spec{link_data{link,message,name,description,picture,image_hash,child_attachments{link,name,description,picture,image_hash}},video_data{message,title,image_url,call_to_action{value{link}}}},asset_feed_spec{link_urls{website_url},bodies,titles,descriptions,images}}",
         limit: "100",
       }),
       token,
@@ -133,6 +233,32 @@ export async function lerAnuncios(
     }
   }
   return { ok: true, dados: todos };
+}
+
+/**
+ * Os endereços das imagens a partir dos hashes (anúncio dinâmico guarda só o hash). Uma chamada
+ * por conta; o que o Meta não devolver fica de fora.
+ */
+export async function urlsDasImagens(
+  token: string,
+  contaId: string,
+  hashes: readonly string[],
+): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  const unicos = [...new Set(hashes)].slice(0, 100);
+  if (unicos.length === 0) return mapa;
+  const r = await buscarPaginado<{ hash?: string; url?: string }>(
+    montarUrl(`${encodeURIComponent(contaId)}/adimages`, {
+      hashes: JSON.stringify(unicos),
+      fields: "hash,url",
+      limit: "100",
+    }),
+    token,
+    "imagens-do-anuncio",
+  );
+  if (!r.ok) return mapa;
+  for (const i of r.dados) if (i.hash && i.url) mapa.set(i.hash, i.url);
+  return mapa;
 }
 
 /** As métricas de entrega por anúncio, no período, das campanhas pedidas. */

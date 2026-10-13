@@ -129,6 +129,7 @@ export async function sincronizarCampanhaComMeta(
       credencial.credencial.accessToken,
       ids,
       null,
+      conta,
     ).catch(() => undefined);
   }
 
