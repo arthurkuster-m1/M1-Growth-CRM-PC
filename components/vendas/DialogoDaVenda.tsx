@@ -207,7 +207,7 @@ export function DialogoDaVenda({
   const [responsavel, setResponsavel] = useState(responsavelInicial);
   // A equipe da empresa: quem pode ser o responsável por esta venda.
   const equipeConsulta = useQuery({
-    queryKey: ["team", "assignable"],
+    queryKey: ["team", "assignable", "venda"],
     staleTime: 60_000,
     queryFn: async () =>
       (
