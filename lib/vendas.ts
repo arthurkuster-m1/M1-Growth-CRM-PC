@@ -55,6 +55,8 @@ export interface Venda {
   demand_landing_page_id: string | null;
   demand_creative_id: string | null;
   product_name: string;
+  /** O nome dado à venda (vazio = usa os produtos juntados). */
+  name: string;
   description: string;
   amount_cents: number;
   currency: string;
@@ -89,7 +91,7 @@ export interface Venda {
 }
 
 export const COLUNAS_DA_VENDA =
-  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, created_at";
+  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -109,6 +111,7 @@ const parcelaSchema = z.object({
 
 const camposSchema = z.object({
   product_name: z.string().trim().max(200),
+  name: z.string().trim().max(120),
   description: z.string().trim().max(2000),
   amount_cents: z.number().int().min(0).max(100_000_000_000),
   currency: z.string().regex(/^[A-Z]{3}$/),
@@ -402,4 +405,9 @@ export function redistribuirAposEditar(
     if (pos < 0) return p;
     return { ...p, amount_cents: base + (pos === 0 ? sobra : 0) };
   });
+}
+
+/** O nome da venda na tela: o que a pessoa deu, ou os produtos juntados quando não deu nome. */
+export function nomeDaVenda(v: Pick<Venda, "name" | "product_name">): string {
+  return v.name?.trim() || v.product_name;
 }

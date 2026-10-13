@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
+import { CaretDown, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export type CorDoBloco = "blue" | "green" | "purple" | "orange" | "pink" | "yellow" | "gray" | "red";
@@ -22,15 +23,48 @@ export function BlocoDaFicha({
   titulo,
   cor = "blue",
   acao,
+  recolhivel,
   children,
   className,
 }: {
   titulo: string;
   cor?: CorDoBloco;
   acao?: ReactNode;
+  /**
+   * Bloco que abre e fecha: fechado mostra UMA linha (título, um texto curto e os selos); aberto
+   * mostra tudo. Começa fechado.
+   */
+  recolhivel?: { texto: string; selos: ReactNode; abertoInicial?: boolean };
   children: ReactNode;
   className?: string;
 }) {
+  const [aberto, setAberto] = useState(recolhivel?.abertoInicial ?? false);
+  if (recolhivel) {
+    return (
+      <section
+        className={cn("min-w-0 rounded-2xl border border-l-4 bg-card shadow-sm", BARRA[cor], className)}
+      >
+        <button
+          type="button"
+          aria-expanded={aberto}
+          onClick={() => setAberto((a) => !a)}
+          className="flex w-full min-w-0 items-center gap-2 rounded-2xl px-4 py-3 text-left hover:bg-secondary/40"
+        >
+          {aberto ? (
+            <CaretDown size={14} weight="bold" aria-hidden className="shrink-0" />
+          ) : (
+            <CaretRight size={14} weight="bold" aria-hidden className="shrink-0" />
+          )}
+          <span className="max-w-[40%] shrink-0 truncate text-sm font-semibold">{titulo}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground" title={recolhivel.texto}>
+            {recolhivel.texto}
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">{recolhivel.selos}</span>
+        </button>
+        {aberto ? <div className="border-t p-4">{children}</div> : null}
+      </section>
+    );
+  }
   return (
     <section
       className={cn("min-w-0 rounded-2xl border border-l-4 bg-card p-4 shadow-sm", BARRA[cor], className)}

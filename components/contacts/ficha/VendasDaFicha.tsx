@@ -21,6 +21,7 @@ import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus } from "@/lib/ui/icons";
 import {
   STATUS_DA_VENDA,
+  nomeDaVenda,
   valorPagoDaVenda,
   valorPrevistoDaVenda,
   type StatusDaVenda,
@@ -103,6 +104,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
       opcoes?: { id: string; rotulo: string }[];
     }
   > = [
+    { id: "nome", titulo: t("Nome"), tipo: "texto", valorDe: (v) => nomeDaVenda(v) },
     { id: "produto", titulo: t("Produto"), tipo: "texto", valorDe: (v) => v.product_name },
     { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (v) => v.funil ?? "" },
     {
@@ -141,7 +143,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     .trim();
   const buscadas = termo
     ? vendas.filter((v) =>
-        `${v.product_name} ${v.funil ?? ""} ${v.payment_method} ${v.notes} ${v.reference}`
+        `${nomeDaVenda(v)} ${v.product_name} ${v.funil ?? ""} ${v.payment_method} ${v.notes} ${v.reference}`
           .normalize("NFD")
           .replace(/\p{Diacritic}/gu, "")
           .toLowerCase()
@@ -296,13 +298,14 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                       const parcelas = (v.parcelas ?? []).filter((p) => p.status !== "cancelada");
                       return (
                         <tr key={v.id} className="border-t align-top hover:bg-secondary/40">
-                          <td className="px-3 py-2">
+                          <td className="max-w-[18rem] px-3 py-2">
                             <button
                               type="button"
-                              className="text-left font-medium hover:underline"
+                              title={nomeDaVenda(v)}
+                              className="block max-w-full truncate text-left font-medium hover:underline"
                               onClick={() => setEditando(v)}
                             >
-                              {v.product_name || t("Sem produto")}
+                              {nomeDaVenda(v) || t("Sem produto")}
                             </button>
                           </td>
                           <td className="px-3 py-2">{v.funil ?? "—"}</td>

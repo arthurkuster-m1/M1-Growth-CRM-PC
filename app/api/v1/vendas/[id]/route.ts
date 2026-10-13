@@ -1,4 +1,4 @@
-/** PATCH/DELETE /api/v1/vendas/[id] — edita ou apaga uma venda (agent+). */
+/** PATCH/DELETE /api/v1/vendas/[id] — edita ou apaga uma venda (agent+); apagar a última venda de um card apaga o card. */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -125,11 +125,30 @@ export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
     return fail("not_found", "Venda não encontrada.", 404, { requestId });
   }
   const supabase = await createClient();
+  const orgId = authz.org.orgId;
+  const { data: antes } = await supabase
+    .from("crm_sales")
+    .select("lead_id")
+    .eq("id", id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  const leadId = (antes as { lead_id: string | null } | null)?.lead_id ?? null;
   const { error } = await supabase
     .from("crm_sales")
     .delete()
     .eq("id", id)
-    .eq("organization_id", authz.org.orgId);
+    .eq("organization_id", orgId);
   if (error) return fail("internal_error", "Erro ao apagar a venda.", 500, { requestId });
+  // A venda é o card do funil: sem venda, não há card. O card some junto com a última venda dele.
+  if (leadId) {
+    const { count } = await supabase
+      .from("crm_sales")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", leadId)
+      .eq("organization_id", orgId);
+    if ((count ?? 0) === 0) {
+      await supabase.from("crm_leads").delete().eq("id", leadId).eq("organization_id", orgId);
+    }
+  }
   return ok({ apagado: true }, { requestId });
 }

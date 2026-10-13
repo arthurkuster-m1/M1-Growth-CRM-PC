@@ -10,7 +10,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import type { Tarefa } from "@/lib/tarefas/tipos";
-import type { Venda } from "@/lib/vendas";
+import { nomeDaVenda, type Venda } from "@/lib/vendas";
 import { Star } from "@/lib/ui/icons";
 
 const reais = (c: number) => moedaDoNumero(c / 100);
@@ -160,7 +160,7 @@ export function PainelDaVisaoGeral({
                 return (
                   <li key={v.id} className="flex items-center justify-between gap-3 rounded-xl border p-2.5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{v.product_name || t("Sem produto")}</p>
+                      <p className="truncate text-sm font-medium">{nomeDaVenda(v) || t("Sem produto")}</p>
                       <p className={atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"}>
                         {vence ? `${t("Vence")} ${diaBr(vence)}` : t("Sem data")}
                         {atrasada ? ` · ${t("atrasada")}` : ""}

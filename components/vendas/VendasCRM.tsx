@@ -44,6 +44,7 @@ import {
   STATUS_DA_VENDA,
   fluxoDoMes,
   totaisDeVendas,
+  nomeDaVenda,
   valorPagoDaVenda,
   valorPrevistoDaVenda,
   type StatusDaVenda,
@@ -237,7 +238,7 @@ export function VendasCRM() {
           (filtroStatus === null || v.status === filtroStatus) &&
           (!soComRecebimento || recebidoNoMes(v) > 0) &&
           (termo === "" ||
-            `${v.cliente?.nome ?? ""} ${v.product_name} ${v.reference} ${v.campanha ?? ""}`
+            `${v.cliente?.nome ?? ""} ${nomeDaVenda(v)} ${v.product_name} ${v.reference} ${v.campanha ?? ""}`
               .toLowerCase()
               .includes(termo)),
       ),
@@ -269,6 +270,13 @@ export function VendasCRM() {
           {v.cliente?.nome ?? "—"}
         </button>
       ),
+    },
+    {
+      id: "nome",
+      titulo: t("Nome"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      celula: (v) => texto(nomeDaVenda(v)),
     },
     {
       id: "produto",
@@ -517,6 +525,7 @@ export function VendasCRM() {
     }
   > = [
     { id: "cliente", titulo: t("Cliente"), tipo: "texto", valorDe: (v) => v.cliente?.nome ?? "" },
+    { id: "nome", titulo: t("Nome"), tipo: "texto", valorDe: (v) => nomeDaVenda(v) },
     { id: "produto", titulo: t("Produto"), tipo: "texto", valorDe: (v) => v.product_name },
     { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (v) => v.funil ?? "" },
     { id: "valor", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
@@ -674,7 +683,7 @@ export function VendasCRM() {
               <CobrancaParaConfirmar
                 key={parcela.id}
                 cliente={venda.cliente?.nome ?? "—"}
-                produto={venda.product_name}
+                produto={nomeDaVenda(venda)}
                 parcela={parcela}
                 hoje={hojeIso}
                 aoReceber={(valor) =>

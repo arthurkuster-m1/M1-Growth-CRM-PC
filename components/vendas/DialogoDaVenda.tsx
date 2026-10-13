@@ -53,6 +53,8 @@ export interface DadosDaVenda {
   /** Previsão de fechamento e descrição: campos da venda (o card do funil). */
   expected_close_date?: string | null;
   description?: string;
+  /** O nome dado à venda (vazio = os produtos juntados). */
+  name?: string;
   /** Quem da equipe é o responsável pela venda (só vem quando mudou). */
   responsavel_id?: string | null;
 }
@@ -202,6 +204,7 @@ export function DialogoDaVenda({
   const [notas, setNotas] = useState(venda?.notes ?? "");
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
   const [descricao, setDescricao] = useState(venda?.description ?? "");
+  const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
   const [etapaId, setEtapaId] = useState(negocio?.etapaId ?? "");
   const responsavelInicial = venda?.responsavel_id ?? negocio?.responsavelId ?? "";
   const [responsavel, setResponsavel] = useState(responsavelInicial);
@@ -220,6 +223,11 @@ export function DialogoDaVenda({
     id: p.user_id,
     nome: p.full_name?.trim() || t("Membro da equipe"),
   }));
+  // Sem nome dado, a venda se chama pelos produtos (é o que aparece como sugestão no campo).
+  const nomesDosProdutos = itens
+    .map((it) => produtos.find((p) => p.id === it.produtoId)?.nome ?? "")
+    .filter(Boolean)
+    .join(" + ");
   const [camposDoNegocio, setCamposDoNegocio] = useState<Record<string, unknown>>(
     negocio?.camposValores ?? {},
   );
@@ -437,6 +445,7 @@ export function DialogoDaVenda({
       notes: notas.trim(),
       expected_close_date: previsao || null,
       description: descricao.trim(),
+      name: nomeDaVendaTexto.trim(),
       ...(responsavel !== responsavelInicial ? { responsavel_id: responsavel || null } : {}),
     });
     if (salvou === false) {
@@ -600,6 +609,16 @@ export function DialogoDaVenda({
         {/* O NEGÓCIO da venda: previsão, descrição e campos do funil. */}
         <Fase titulo={t("Negócio")} cor="purple">
           <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Nome da venda")}</span>
+              <input
+                value={nomeDaVendaTexto}
+                maxLength={120}
+                onChange={(e) => setNomeDaVendaTexto(e.target.value)}
+                placeholder={nomesDosProdutos || t("Ex.: Plano anual — Maria")}
+                className="h-10 w-full min-w-0 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
             <div className="grid gap-1">
               <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
               <CampoDeData

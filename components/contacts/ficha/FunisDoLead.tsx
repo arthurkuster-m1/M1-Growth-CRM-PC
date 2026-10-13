@@ -12,7 +12,14 @@ import {
   OrigemEmCascata,
   type ValorDaOrigem,
 } from "@/components/contacts/ficha/OrigemEmCascata";
+import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { Button } from "@/components/ui/button";
+import {
+  aplicarConsulta,
+  consultaAtiva,
+  type CampoConsultavel,
+  type ConsultaDaTabela,
+} from "@/lib/motor/consulta";
 import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import type { DadosDoLead } from "@/components/leads/FichaDoLead";
@@ -25,9 +32,11 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus } from "@/lib/ui/icons";
-import type { Venda } from "@/lib/vendas";
+import { nomeDaVenda, type Venda } from "@/lib/vendas";
 
 const reais = (c: number) => moedaDoNumero(c / 100);
+const corDoStatusDaVenda = (s: string) =>
+  s === "concluida" ? "green" : s === "comprometida" ? "yellow" : s === "cancelada" ? "gray" : "blue";
 const SELECT = "h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60";
 
 const ROTULO_VENDA: Record<string, string> = {
@@ -73,6 +82,9 @@ export function FunisDoLead({
       ).data.map((p) => ({ user_id: p.user_id, name: p.full_name, email: null as string | null })),
   });
 
+  const [busca, setBusca] = useState("");
+  const [consulta, setConsulta] = useState<ConsultaDaTabela>({});
+
   if (qual.isLoading || negocios.carregando) {
     return <div className="h-24 animate-pulse rounded-2xl bg-secondary" />;
   }
@@ -83,21 +95,163 @@ export function FunisDoLead({
       </p>
     );
   }
+  // ── Busca, filtro, agrupamento e ordem (o mesmo motor das outras tabelas) ──
+  interface LinhaDoFunil {
+    n: DadosDoLead;
+    vendas: Venda[];
+  }
+  const linhas: LinhaDoFunil[] = negocios.dados.map((n) => ({
+    n,
+    vendas: (vendasQ.data ?? []).filter(
+      (v) => v.lead_id === n.lead_id || (!v.lead_id && v.pipeline_id === n.negocio.pipeline_id),
+    ),
+  }));
+  const SITUACOES = ["open", "won", "lost"] as const;
+  const rotuloSituacao = (s: string) =>
+    s === "won" ? t("Ganho") : s === "lost" ? t("Perdido") : t("Em andamento");
+  const STATUS = ["interesse", "comprometida", "concluida", "cancelada"];
+  const campos: Array<
+    CampoConsultavel<LinhaDoFunil> & { titulo: string; opcoes?: { id: string; rotulo: string }[] }
+  > = [
+    { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (l) => l.n.negocio.funil_nome ?? "" },
+    {
+      id: "venda",
+      titulo: t("Venda"),
+      tipo: "texto",
+      valorDe: (l) => (l.vendas[0] ? nomeDaVenda(l.vendas[0]) : ""),
+    },
+    {
+      id: "situacao",
+      titulo: t("Situação do funil"),
+      tipo: "opcao",
+      valorDe: (l) => l.n.negocio.status,
+      opcoes: SITUACOES.map((s) => ({ id: s, rotulo: rotuloSituacao(s) })),
+      rotuloDoValor: rotuloSituacao,
+      ordemDoValor: (v) => SITUACOES.indexOf(v as (typeof SITUACOES)[number]),
+    },
+    { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (l) => l.n.negocio.etapa_nome ?? "" },
+    {
+      id: "status_venda",
+      titulo: t("Status da venda"),
+      tipo: "opcao",
+      valorDe: (l) => l.vendas[0]?.status ?? "",
+      opcoes: STATUS.map((s) => ({ id: s, rotulo: t(ROTULO_VENDA[s] ?? s) })),
+      rotuloDoValor: (v) => t(ROTULO_VENDA[v] ?? v),
+      ordemDoValor: (v) => STATUS.indexOf(v),
+    },
+    {
+      id: "valor",
+      titulo: t("Valor da venda"),
+      tipo: "numero",
+      valorDe: (l) => l.vendas.reduce((s, v) => s + v.amount_cents, 0) / 100,
+    },
+    {
+      id: "responsavel",
+      titulo: t("Responsável"),
+      tipo: "texto",
+      valorDe: (l) => l.n.sistema.responsavel ?? "",
+    },
+    {
+      id: "previsao",
+      titulo: t("Previsão de fechamento"),
+      tipo: "data",
+      valorDe: (l) => l.n.negocio.expected_close_date,
+    },
+    {
+      id: "entrou",
+      titulo: t("Entrou no funil"),
+      tipo: "data",
+      valorDe: (l) => l.n.sistema.criado_em?.slice(0, 10) ?? null,
+    },
+    { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (l) => l.n.source ?? "" },
+  ];
+  const camposDaBarra: CampoDaBarra[] = campos.map((c) => ({
+    id: c.id,
+    titulo: c.titulo,
+    tipo: c.tipo,
+    opcoes: c.opcoes,
+  }));
+  const normal = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .trim();
+  const termo = normal(busca);
+  const buscadas = termo
+    ? linhas.filter((l) =>
+        normal(
+          `${l.n.negocio.funil_nome ?? ""} ${l.n.negocio.etapa_nome ?? ""} ${l.vendas
+            .map((v) => `${nomeDaVenda(v)} ${v.product_name}`)
+            .join(" ")} ${l.n.source ?? ""}`,
+        ).includes(termo),
+      )
+    : linhas;
+  const resultado = aplicarConsulta(buscadas, campos, consulta, {
+    hoje: new Date().toISOString().slice(0, 10),
+  });
+  const grupos = resultado.grupos?.map((g) => {
+    const campo = campos.find((c) => c.id === consulta.agrupar);
+    const rotulo =
+      g.chave === ""
+        ? t("Sem valor")
+        : (campo?.opcoes?.find((o) => o.id === g.chave)?.rotulo ?? g.rotulo);
+    return { chave: g.chave || "__vazio", rotulo, linhas: g.linhas };
+  });
+  const cartao = (l: LinhaDoFunil) => (
+    <CartaoDoFunil
+      key={l.n.lead_id}
+      n={l.n}
+      contactId={contactId}
+      nomeDoContato={nomeDoContato}
+      podeEditar={podeEditar}
+      vendas={l.vendas}
+      equipe={equipe.data ?? []}
+    />
+  );
+
   return (
-    <div className="grid gap-4">
-      {negocios.dados.map((n) => (
-        <CartaoDoFunil
-          key={n.lead_id}
-          n={n}
-          contactId={contactId}
-          nomeDoContato={nomeDoContato}
-          podeEditar={podeEditar}
-          vendas={(vendasQ.data ?? []).filter(
-            (v) => v.lead_id === n.lead_id || (!v.lead_id && v.pipeline_id === n.negocio.pipeline_id),
-          )}
-          equipe={equipe.data ?? []}
-        />
-      ))}
+    <div className="grid min-w-0 gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-1 basis-56">
+          <span className="sr-only">{t("Buscar")}</span>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={t("Buscar funil ou venda")}
+            className="h-9 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          />
+        </label>
+        <BarraDeConsulta compacta campos={camposDaBarra} consulta={consulta} aoMudar={setConsulta} />
+      </div>
+      {resultado.linhas.length === 0 ? (
+        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+          {t("Nada combina com a busca e os filtros.")}
+          {consultaAtiva(consulta) || busca ? (
+            <button
+              type="button"
+              className="ml-2 font-medium text-primary hover:underline"
+              onClick={() => {
+                setBusca("");
+                setConsulta({});
+              }}
+            >
+              {t("Limpar")}
+            </button>
+          ) : null}
+        </p>
+      ) : grupos ? (
+        grupos.map((g) => (
+          <div key={g.chave} className="grid gap-2">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {g.rotulo} · {g.linhas.length}
+            </p>
+            {g.linhas.map(cartao)}
+          </div>
+        ))
+      ) : (
+        resultado.linhas.map(cartao)
+      )}
     </div>
   );
 }
@@ -251,8 +405,23 @@ function CartaoDoFunil({
     <BlocoDaFicha
       cor={status === "won" ? "green" : status === "lost" ? "red" : "blue"}
       titulo={n.negocio.funil_nome ?? t("Funil")}
-      acao={<div className="flex flex-wrap items-center gap-2">{selo}</div>}
+      recolhivel={{
+        texto: vendas[0] ? nomeDaVenda(vendas[0]) || t("Sem produto") : t("Sem venda"),
+        selos: (
+          <>
+            <SeloDaFicha cor={status === "won" ? "green" : status === "lost" ? "red" : "blue"}>
+              {n.negocio.etapa_nome ?? (status === "won" ? t("Ganho") : status === "lost" ? t("Perdido") : t("Em andamento"))}
+            </SeloDaFicha>
+            {vendas[0] ? (
+              <SeloDaFicha cor={corDoStatusDaVenda(vendas[0].status)}>
+                {t(ROTULO_VENDA[vendas[0].status] ?? vendas[0].status)}
+              </SeloDaFicha>
+            ) : null}
+          </>
+        ),
+      }}
     >
+      <div className="mb-3 flex flex-wrap items-center gap-2">{selo}</div>
       {/* ── Situação ── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="grid gap-1">
@@ -357,7 +526,7 @@ function CartaoDoFunil({
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* ── Vendas atreladas ── */}
-        <div className="rounded-xl border p-3">
+        <div className="min-w-0 rounded-xl border p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase">
               {t("Venda deste card")}
@@ -378,28 +547,20 @@ function CartaoDoFunil({
           {vendas.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Nenhuma venda atrelada a este funil.")}</p>
           ) : (
-            <ul className="grid gap-1.5">
+            <ul className="grid min-w-0 gap-1.5">
               {vendas.map((v) => (
-                <li key={v.id}>
+                <li key={v.id} className="min-w-0">
                   <button
                     type="button"
                     onClick={() => setEditandoVenda(v)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-sm hover:bg-secondary"
+                    className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-sm hover:bg-secondary"
                   >
-                    <span className="min-w-0 truncate">{v.product_name || t("Sem produto")}</span>
+                    <span className="min-w-0 truncate" title={nomeDaVenda(v)}>
+                      {nomeDaVenda(v) || t("Sem produto")}
+                    </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="tabular-nums">{reais(v.amount_cents)}</span>
-                      <SeloDaFicha
-                        cor={
-                          v.status === "concluida"
-                            ? "green"
-                            : v.status === "comprometida"
-                              ? "yellow"
-                              : v.status === "cancelada"
-                                ? "gray"
-                                : "blue"
-                        }
-                      >
+                      <SeloDaFicha cor={corDoStatusDaVenda(v.status)}>
                         {t(ROTULO_VENDA[v.status] ?? v.status)}
                       </SeloDaFicha>
                     </span>

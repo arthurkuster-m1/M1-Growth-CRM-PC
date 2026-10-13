@@ -9,7 +9,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus } from "@/lib/ui/icons";
-import type { Venda } from "@/lib/vendas";
+import { nomeDaVenda, type Venda } from "@/lib/vendas";
 
 const reais = (c: number) => moedaDoNumero(c / 100);
 const dataBr = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "—");
@@ -85,7 +85,7 @@ export function VendasDoCliente({
         >
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">
-              {v.product_name || t("Venda")}
+              {nomeDaVenda(v) || t("Venda")}
               {v.needs_details ? ` · ${t("detalhar")}` : ""}
             </span>
             <span className="block truncate text-xs text-muted-foreground">
