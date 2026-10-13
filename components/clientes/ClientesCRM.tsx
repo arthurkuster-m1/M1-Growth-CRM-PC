@@ -118,7 +118,7 @@ export function ClientesCRM() {
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const [destaque, setDestaque] = useState<
-    null | "abertos" | "compraram" | "vendas" | "mql" | "semcontato"
+    null | "faturamento" | "abertos" | "compraram" | "vendas" | "mql" | "semcontato"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
 
@@ -273,10 +273,25 @@ export function ClientesCRM() {
       currency: "BRL",
       maximumFractionDigits: 0,
     });
-  const valorAberto = (l: Linha) =>
-    (l.participacao ? [l.participacao] : l.participacoes)
-      .filter((p) => p.status === "open")
-      .reduce((s, p) => s + (p.valor_cents ?? 0), 0);
+  /**
+   * Os valores do lead, SOMADOS DAS VENDAS e definidos pelo status delas (no funil escolhido, se
+   * houver): pago = o que já entrou; comprometido = valor das vendas comprometidas e concluídas
+   * (pago + a receber); interesse = valor das vendas em interesse.
+   */
+  const valoresDoLead = (l: Linha) => {
+    let pago = 0;
+    let comprometido = 0;
+    let interesse = 0;
+    for (const v of l.vendas_ativas ?? []) {
+      if (funilAtual && v.funil_id !== funilAtual.id) continue;
+      if (v.status === "interesse") interesse += v.valor_cents;
+      else {
+        pago += Math.min(v.pago_cents, v.valor_cents);
+        comprometido += v.valor_cents;
+      }
+    }
+    return { pago, comprometido, aReceber: Math.max(0, comprometido - pago), interesse };
+  };
   async function alterarMql(contactId: string, is_mql: boolean) {
     try {
       await apiClient.put(`/api/v1/contacts/${contactId}/qualificacao`, { is_mql });
@@ -567,36 +582,6 @@ export function ClientesCRM() {
       ),
     },
     {
-      id: "valor",
-      titulo: t("Valor"),
-      icone: <Rows size={14} aria-hidden />,
-      largura: 150,
-      celula: (l) => {
-        const alvo = alvoDaLinha(l);
-        const v = valorAberto(l);
-        const exibicao = v > 0 ? moeda(v) : "—";
-        if (!alvo) return <span className="block truncate px-2 text-sm">{exibicao}</span>;
-        const atual = alvo.valor_cents ?? 0;
-        return (
-          <CelulaDeTexto
-            valor={atual > 0 ? String(atual / 100).replace(".", ",") : ""}
-            exibir={atual > 0 ? moeda(atual) : "—"}
-            rotulo={t("Valor")}
-            vazioRotulo="—"
-            permitirVazio
-            inputMode="decimal"
-            podeEditar={podeEditar}
-            aoSalvar={(texto) => {
-              const n = texto.trim() === "" ? 0 : lerNumero(texto);
-              if (n === null || n < 0) return;
-              const cents = Math.round(n * 100);
-              void salvarNegocio(l, alvo, { value_cents: cents }, { valor_cents: cents });
-            }}
-          />
-        );
-      },
-    },
-    {
       id: "responsavel",
       titulo: t("Responsável"),
       icone: <Users size={14} aria-hidden />,
@@ -735,37 +720,41 @@ export function ClientesCRM() {
     },
     {
       id: "ltv",
-      titulo: t("LTV atual"),
+      titulo: t("LTV atual (valor pago)"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      celula: (l) => (
-        <span className="block truncate px-2 text-sm font-medium tabular-nums">
-          {l.ltv_cents > 0 ? moeda(l.ltv_cents) : "—"}
-        </span>
-      ),
+      largura: 170,
+      celula: (l) => {
+        const v = valoresDoLead(l).pago;
+        return (
+          <span className="block truncate px-2 text-sm font-medium tabular-nums">
+            {v > 0 ? moeda(v) : "—"}
+          </span>
+        );
+      },
     },
     {
       id: "ltv-previsto",
-      titulo: t("LTV previsto"),
+      titulo: t("LTV previsto (comprometido)"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      celula: (l) => (
-        <span className="block truncate px-2 text-sm tabular-nums">
-          {l.ltv_previsto_cents > 0 ? moeda(l.ltv_previsto_cents) : "—"}
-        </span>
-      ),
+      largura: 190,
+      celula: (l) => {
+        const v = valoresDoLead(l).comprometido;
+        return (
+          <span className="block truncate px-2 text-sm tabular-nums">{v > 0 ? moeda(v) : "—"}</span>
+        );
+      },
     },
     {
       id: "interesse",
       titulo: t("Em interesse"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      padrao: false,
-      celula: (l) => (
-        <span className="block truncate px-2 text-sm tabular-nums">
-          {l.interesse_cents > 0 ? moeda(l.interesse_cents) : "—"}
-        </span>
-      ),
+      largura: 150,
+      celula: (l) => {
+        const v = valoresDoLead(l).interesse;
+        return (
+          <span className="block truncate px-2 text-sm tabular-nums">{v > 0 ? moeda(v) : "—"}</span>
+        );
+      },
     },
     {
       id: "vendas",
@@ -891,7 +880,6 @@ export function ClientesCRM() {
       valorDe: (l) => l.is_mql,
       rotuloDoValor: (v) => (v === "1" ? t("Sim") : t("Não")),
     },
-    { id: "valor", titulo: t("Valor"), tipo: "numero", valorDe: (l) => valorAberto(l) / 100 },
     { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (l) => l.origem },
     { id: "tags", titulo: t("Tags"), tipo: "multi", valorDe: (l) => l.tags },
     {
@@ -912,12 +900,23 @@ export function ClientesCRM() {
       tipo: "data",
       valorDe: (l) => l.primeira_abordagem?.slice(0, 10) ?? null,
     },
-    { id: "ltv", titulo: t("LTV atual"), tipo: "numero", valorDe: (l) => l.ltv_cents / 100 },
+    {
+      id: "ltv",
+      titulo: t("LTV atual (valor pago)"),
+      tipo: "numero",
+      valorDe: (l) => valoresDoLead(l).pago / 100,
+    },
     {
       id: "ltv-previsto",
-      titulo: t("LTV previsto"),
+      titulo: t("LTV previsto (comprometido)"),
       tipo: "numero",
-      valorDe: (l) => l.ltv_previsto_cents / 100,
+      valorDe: (l) => valoresDoLead(l).comprometido / 100,
+    },
+    {
+      id: "interesse",
+      titulo: t("Em interesse"),
+      tipo: "numero",
+      valorDe: (l) => valoresDoLead(l).interesse / 100,
     },
     { id: "vendas", titulo: t("Vendas pagas (qtd)"), tipo: "numero", valorDe: (l) => l.vendas },
     {
@@ -998,8 +997,10 @@ export function ClientesCRM() {
       (p) => p.status === "open",
     );
     switch (destaque) {
+      case "faturamento":
+        return valoresDoLead(l).pago > 0;
       case "abertos":
-        return emAberto.length > 0;
+        return valoresDoLead(l).aReceber + valoresDoLead(l).interesse > 0;
       case "compraram":
       case "vendas":
         return vendasDoLead(l) > 0;
@@ -1036,6 +1037,10 @@ export function ClientesCRM() {
     }));
   }
 
+  const totalPago = alvos.reduce((s2, l) => s2 + valoresDoLead(l).pago, 0);
+  const totalAReceber = alvos.reduce((s2, l) => s2 + valoresDoLead(l).aReceber, 0);
+  const totalInteresse = alvos.reduce((s2, l) => s2 + valoresDoLead(l).interesse, 0);
+  const totalEmAberto = totalAReceber + totalInteresse;
   const numeros: Array<{
     id: "todos" | NonNullable<typeof destaque>;
     rotulo: string;
@@ -1044,10 +1049,16 @@ export function ClientesCRM() {
   }> = [
     { id: "todos", rotulo: t("Total de leads"), valor: String(alvos.length) },
     {
+      id: "faturamento",
+      rotulo: t("Faturamento recebido"),
+      valor: moeda(totalPago),
+      detalhe: t("Soma do LTV atual (valor pago)"),
+    },
+    {
       id: "abertos",
       rotulo: t("Valor em aberto"),
-      valor: moeda(abertas.reduce((s2, p) => s2 + (p.valor_cents ?? 0), 0)),
-      detalhe: `${abertas.length} ${abertas.length === 1 ? t("negócio aberto") : t("negócios abertos")}`,
+      valor: moeda(totalEmAberto),
+      detalhe: `${moeda(totalAReceber)} ${t("previsto")} · ${moeda(totalInteresse)} ${t("em interesse")}`,
     },
     {
       id: "compraram",
@@ -1140,7 +1151,7 @@ export function ClientesCRM() {
 
       <section
         aria-label={t("Resumo")}
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-7"
       >
         {numeros.map((n) => {
           const clicavel = n.id !== "todos";
