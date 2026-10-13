@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { lerPlanilhaDeLeads } from "./planilha";
+import { lerLinhasDeLeads, lerPlanilhaDeLeads } from "./planilha";
 
 /**
  * `traduzir()` real só troca a CHAVE que bate byte a byte com uma entrada do
@@ -150,6 +150,9 @@ describe("lerPlanilhaDeLeads — planilha em espanhol", () => {
         email: "ana@ejemplo.com",
         tags: ["vip", "nuevo"],
         source: "Feria",
+        etapa: null,
+        previsao: null,
+        campos: {},
       },
     ]);
   });
@@ -190,5 +193,44 @@ describe("lerPlanilhaDeLeads — planilha em espanhol", () => {
     expect(resultado).toEqual({
       erro: "A planilha precisa de uma coluna com o nome do negócio ou do contato. Encontrei: Teléfono, Correo.",
     });
+  });
+});
+
+describe("lerLinhasDeLeads — etapa, previsão e campos personalizados do funil", () => {
+  const campos = [
+    { key: "cidade", label: "Cidade", type: "text" as const },
+    { key: "interesse", label: "Interesse", type: "select" as const, options: [{ value: "kids", label: "Kids" }, { value: "plus", label: "Plus Size" }] },
+    { key: "idade", label: "Idade", type: "number" as const },
+  ];
+  it("lê a etapa, a previsão e cada campo pelo nome da coluna", () => {
+    const r = lerLinhasDeLeads(
+      [
+        ["Nome", "Telefone", "Etapa", "Previsão de fechamento", "Cidade", "Interesse", "Idade"],
+        ["Maria", "11999998888", "Contato feito", "15/11/2026", "BH", "plus size", "32"],
+      ],
+      undefined,
+      campos,
+    );
+    if ("erro" in r) throw new Error(r.erro);
+    expect(r.erros).toEqual([]);
+    expect(r.leads[0]).toMatchObject({
+      etapa: "Contato feito",
+      previsao: "2026-11-15",
+      campos: { cidade: "BH", interesse: "plus", idade: 32 },
+    });
+  });
+  it("valor de campo que não existe nas opções é avisado e a linha entra", () => {
+    const r = lerLinhasDeLeads(
+      [
+        ["Nome", "Interesse"],
+        ["Ana", "Inexistente"],
+      ],
+      undefined,
+      campos,
+    );
+    if ("erro" in r) throw new Error(r.erro);
+    expect(r.leads).toHaveLength(1);
+    expect(r.leads[0]!.campos).toEqual({});
+    expect(r.erros[0]!.motivo).toContain("Interesse");
   });
 });

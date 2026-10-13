@@ -75,7 +75,10 @@ function supabaseFake({ contatosComNegocio = [] as string[] } = {}) {
       apagando = true;
       return cadeia;
     };
-    cadeia.maybeSingle = async () => ({ data: null, error: null });
+    cadeia.maybeSingle = async () => ({
+      data: tabela === "crm_pipelines" ? { id: FUNIL, settings: {} } : null,
+      error: null,
+    });
     cadeia.single = async () => ({ data: { id: CONTATO_NOVO }, error: null });
     // A cadeia postgrest é await-ável (o `await` de `.in()` final).
     cadeia.then = (ok: (valor: unknown) => void) => {

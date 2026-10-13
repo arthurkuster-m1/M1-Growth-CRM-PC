@@ -1,5 +1,7 @@
-import { normalizaTelefone, parseCsv } from "@/lib/contacts/csv";
+import { normalizaData, normalizaTelefone, parseCsv } from "@/lib/contacts/csv";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
+import { campoDaColuna, normalizarCabecalho } from "@/lib/leads/colunas-da-planilha";
+import type { CustomFieldDef } from "@/lib/schemas/settings";
 
 /**
  * A PLANILHA DE LEADS — da lista que a empresa já tem para dentro do funil.
@@ -39,48 +41,6 @@ import { precoParaCentavos } from "@/lib/schemas/produtos";
  * linha recusada com o motivo, nunca um chute.
  */
 
-/**
- * Como cada coluna pode vir escrita. A primeira forma é a que a gente sugere.
- * As de espanhol (`nombre`, `teléfono`, `correo`…) cumprem o que a tela promete
- * a quem a usa nesse idioma; a comparação tira acento e caixa dos dois lados.
- */
-const COLUNAS: Record<string, readonly string[]> = {
-  titulo: [
-    "nome", "titulo", "título", "lead", "negocio", "negócio", "oportunidade", "empresa", "assunto",
-    "nombre", "oportunidad", "asunto",
-  ],
-  contato: [
-    "nome do contato", "contato", "responsavel", "responsável", "pessoa",
-    "nombre del contacto", "contacto", "responsable", "persona",
-  ],
-  telefone: ["telefone", "celular", "whatsapp", "fone", "phone", "telefono", "movil"],
-  email: ["email", "e-mail", "correo", "correo electronico"],
-  descricao: [
-    "descricao", "descrição", "observacao", "observação", "observacoes", "observações", "notas", "detalhes",
-    "descripcion", "observacion", "observaciones", "detalles",
-  ],
-  valor: ["valor", "preco", "preço", "ticket", "value", "precio", "importe", "monto"],
-  origem: ["origem", "fonte", "canal", "source", "origen", "fuente"],
-  etiquetas: ["tags", "etiquetas", "marcadores"],
-};
-
-function normalizarCabecalho(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function campoDaColuna(cabecalho: string): string | null {
-  const alvo = normalizarCabecalho(cabecalho);
-  for (const [campo, formas] of Object.entries(COLUNAS)) {
-    if (formas.some((f) => normalizarCabecalho(f) === alvo)) return campo;
-  }
-  return null;
-}
-
 export interface LinhaDeLead {
   /** A linha como a pessoa a vê na planilha: 1 é o cabeçalho. */
   linha: number;
@@ -93,6 +53,12 @@ export interface LinhaDeLead {
   email: string | null;
   tags: string[];
   source: string;
+  /** O nome da etapa pedida na planilha; nulo = a primeira etapa aberta do funil. */
+  etapa: string | null;
+  /** Previsão de fechamento, ISO `AAAA-MM-DD`. */
+  previsao: string | null;
+  /** Os campos personalizados do funil, já convertidos (chave → valor). */
+  campos: Record<string, unknown>;
 }
 
 export interface ErroDaLinha {
@@ -110,21 +76,78 @@ export interface ResultadoDaLeitura {
 /** A origem gravada em `crm_leads.source` — vocabulário, não string solta. */
 export const ORIGEM_DA_PLANILHA = "importacao_planilha";
 
+/** Lê o texto CSV de uma planilha de leads. */
 export function lerPlanilhaDeLeads(
   conteudo: string,
   t?: (text: string) => string,
+  camposDoFunil: readonly CustomFieldDef[] = [],
+): ResultadoDaLeitura | { erro: string } {
+  return lerLinhasDeLeads(parseCsv(conteudo), t, camposDoFunil);
+}
+
+/** Converte o texto de uma célula no valor do campo personalizado; `undefined` = não reconhecido. */
+function valorDoCampo(def: CustomFieldDef, texto: string): unknown {
+  const bruto = texto.trim();
+  if (bruto === "") return null;
+  const mesmo = (a: string, b: string) => normalizarCabecalho(a) === normalizarCabecalho(b);
+  switch (def.type) {
+    case "number": {
+      const n = Number(bruto.replace(/\s/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."));
+      return Number.isFinite(n) ? n : undefined;
+    }
+    case "boolean":
+      if (/^(sim|s|true|1|yes|x|verdadeiro)$/i.test(bruto)) return true;
+      if (/^(nao|não|n|false|0|no|falso)$/i.test(bruto)) return false;
+      return undefined;
+    case "date":
+      return normalizaData(bruto) ?? undefined;
+    case "select": {
+      const o = (def.options ?? []).find((x) => mesmo(x.value, bruto) || mesmo(x.label, bruto));
+      return o ? o.value : undefined;
+    }
+    case "multiselect": {
+      const partes = bruto.split(/[|;]/).map((p) => p.trim()).filter(Boolean);
+      const achados = partes.map((p) =>
+        (def.options ?? []).find((x) => mesmo(x.value, p) || mesmo(x.label, p)),
+      );
+      return achados.every(Boolean) ? achados.map((o) => o!.value) : undefined;
+    }
+    default:
+      return bruto.slice(0, 2000);
+  }
+}
+
+/**
+ * Lê as linhas JÁ SEPARADAS em células (a 1ª é o cabeçalho). É o que o arquivo CSV e a tabela do
+ * popup de importar têm em comum — uma só regra de leitura para os dois.
+ */
+export function lerLinhasDeLeads(
+  celulas: string[][],
+  t?: (text: string) => string,
+  camposDoFunil: readonly CustomFieldDef[] = [],
 ): ResultadoDaLeitura | { erro: string } {
   const _t = t || ((x) => x);
-  const linhas = parseCsv(conteudo).filter((l) => l.some((c) => c.trim() !== ""));
+  const linhas = celulas.filter((l) => l.some((c) => c.trim() !== ""));
   if (linhas.length === 0) return { erro: _t("A planilha está vazia.") };
 
   const cabecalho = linhas[0]!;
   const mapa = new Map<number, string>();
   const colunasIgnoradas: string[] = [];
+  const camposPorColuna = new Map<number, CustomFieldDef>();
   cabecalho.forEach((titulo, i) => {
     const campo = campoDaColuna(titulo);
-    if (campo && ![...mapa.values()].includes(campo)) mapa.set(i, campo);
-    else if (titulo.trim() !== "") colunasIgnoradas.push(titulo.trim());
+    if (campo && ![...mapa.values()].includes(campo)) {
+      mapa.set(i, campo);
+      return;
+    }
+    // Coluna com o nome (ou a chave) de um campo personalizado do funil.
+    const alvo = normalizarCabecalho(titulo);
+    const def = camposDoFunil.find(
+      (f) => normalizarCabecalho(f.label) === alvo || normalizarCabecalho(f.key) === alvo,
+    );
+    if (def && ![...camposPorColuna.values()].some((d) => d.key === def.key)) {
+      camposPorColuna.set(i, def);
+    } else if (titulo.trim() !== "") colunasIgnoradas.push(titulo.trim());
   });
 
   const campos = new Set(mapa.values());
@@ -190,6 +213,34 @@ export function lerPlanilhaDeLeads(
 
     const emailTexto = valor("email");
 
+    const previsaoTexto = valor("previsao");
+    const previsao = previsaoTexto === "" ? null : normalizaData(previsaoTexto);
+    if (previsaoTexto !== "" && previsao === null) {
+      erros.push({
+        linha: numeroNaPlanilha,
+        motivo:
+          _t("previsão de fechamento não reconhecida (") +
+          `"${previsaoTexto}"` +
+          ")" +
+          _t(" — use DD/MM/AAAA"),
+      });
+    }
+
+    const campos: Record<string, unknown> = {};
+    for (const [idx, def] of camposPorColuna) {
+      const texto = (bruto[idx] ?? "").trim();
+      if (texto === "") continue;
+      const v = valorDoCampo(def, texto);
+      if (v === undefined) {
+        erros.push({
+          linha: numeroNaPlanilha,
+          motivo: `${_t("campo")} "${def.label}" ${_t("não reconhecido")} ("${texto}")`,
+        });
+        continue;
+      }
+      campos[def.key] = v;
+    }
+
     leads.push({
       linha: numeroNaPlanilha,
       title,
@@ -204,6 +255,9 @@ export function lerPlanilhaDeLeads(
         .filter(Boolean)
         .slice(0, 20),
       source: valor("origem") || ORIGEM_DA_PLANILHA,
+      etapa: valor("etapa") || null,
+      previsao,
+      campos,
     });
   }
 

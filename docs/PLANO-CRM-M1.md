@@ -259,3 +259,16 @@ prospecção por scraping.
   responsável, campanha, origem, etapa, situação e funil). Cards de campanha editam status e metas.
 - **Em aberto:** "Comandas" (`/app/comandas`, tabelas `sales`/`sale_items`, módulo Financeiro) é um
   terceiro conceito de venda — decidir se vira Vendas.
+
+## Sessão 9 — Novo lead e Importar leads no CRM (/app/clientes)
+
+- Dois botões ao lado de "Vendas →": **Novo lead** (ficha num popup: funil, etapa, contato,
+  valor, previsão, origem, etiquetas, observações e os campos personalizados do funil) e
+  **Importar leads** (arquivo CSV, modelo CSV/XLS, ou tabela para preencher/colar do Excel/Sheets).
+- Os dois usam `POST /api/v1/leads/import`, agora também em JSON (`{pipeline_id, stage_id?, celulas}`):
+  uma só regra de leitura (`lerLinhasDeLeads`) para arquivo e tabela. Colunas novas: **Etapa** (pelo
+  nome), **Previsão de fechamento** e uma por **campo personalizado** do funil (pelo nome).
+- Sem telefone, a pessoa é achada/criada pelo e-mail. Quem já existe no funil tem as informações
+  juntadas (`quandoJaExiste: "reaproveitar"`).
+- Vocabulário das colunas: `lib/leads/colunas-da-planilha.ts` (puro); tabela/modelos no navegador:
+  `lib/leads/tabela-de-importacao.ts`.

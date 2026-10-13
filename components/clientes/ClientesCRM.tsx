@@ -7,6 +7,8 @@ import { useMemo, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
+import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
+import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { CelulaDeEtiquetas } from "@/components/clientes/CelulaDeEtiquetas";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
@@ -39,7 +41,7 @@ import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { CHAVE_DE_VENDAS_PENDENTES } from "@/components/vendas/PopupDeVendaPendente";
-import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users } from "@/lib/ui/icons";
+import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users, UploadSimple, Plus } from "@/lib/ui/icons";
 import type { ClienteDaLista, ParticipacaoDoCliente } from "@/app/api/v1/clientes/route";
 interface Funil {
   id: string;
@@ -104,6 +106,8 @@ export function ClientesCRM() {
   const [configurando, setConfigurando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string } | null>(null);
+  const [novoLeadAberto, setNovoLeadAberto] = useState(false);
+  const [importarAberto, setImportarAberto] = useState(false);
 
   const chaveDaConsulta = ["clientes", funilEscolhido] as const;
   const consulta = useQuery({
@@ -987,15 +991,52 @@ export function ClientesCRM() {
           </p>
         </div>
         {dados?.pode_editar ? (
-          <Link
-            href="/app/vendas"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
-          >
-            {t("Vendas")}
-            <ArrowRight size={14} weight="bold" aria-hidden />
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/app/vendas"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
+            >
+              {t("Vendas")}
+              <ArrowRight size={14} weight="bold" aria-hidden />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setNovoLeadAberto(true)}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+            >
+              <Plus size={14} weight="bold" aria-hidden />
+              {t("Novo lead")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportarAberto(true)}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+            >
+              <UploadSimple size={14} weight="bold" aria-hidden />
+              {t("Importar leads")}
+            </button>
+          </div>
         ) : null}
       </header>
+
+      {novoLeadAberto ? (
+        <NovoLeadDoCRM
+          aberto
+          aoFechar={() => setNovoLeadAberto(false)}
+          funis={dados?.funis ?? []}
+          etapas={dados?.etapas ?? []}
+          funilInicial={funilValido && funilEscolhido !== TODOS ? funilEscolhido : null}
+        />
+      ) : null}
+      {importarAberto ? (
+        <ImportarLeadsDoCRM
+          aberto
+          aoFechar={() => setImportarAberto(false)}
+          funis={dados?.funis ?? []}
+          etapas={dados?.etapas ?? []}
+          funilInicial={funilValido && funilEscolhido !== TODOS ? funilEscolhido : null}
+        />
+      ) : null}
 
       <section
         aria-label={t("Resumo")}

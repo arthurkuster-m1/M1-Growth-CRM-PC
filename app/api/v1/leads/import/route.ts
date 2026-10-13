@@ -25,6 +25,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
+import { z } from "zod";
 
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
@@ -33,7 +34,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { CSV_MAX_BYTES, CSV_MAX_DATA_ROWS, decodificarCsv } from "@/lib/contacts/csv";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { lerPlanilhaDeLeads, type ErroDaLinha } from "@/lib/leads/planilha";
+import { camposDoFunil } from "@/lib/leads/campos-do-funil";
+import { lerLinhasDeLeads, lerPlanilhaDeLeads, type ErroDaLinha } from "@/lib/leads/planilha";
 import { createLeadHandler } from "@/app/api/v1/leads/_handler";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
@@ -59,76 +61,110 @@ export async function POST(req: NextRequest): Promise<Response> {
   const orgId = authz.org.orgId;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  let form: FormData;
-  try {
-    form = await req.formData();
-  } catch {
-    return fail("validation_failed", t("Envie o arquivo como multipart/form-data."), 422, {
-      requestId,
-    });
+  // Duas portas, uma só regra de leitura: o ARQUIVO CSV (multipart) e a TABELA do popup do CRM
+  // (JSON com as células já separadas). As duas viram `string[][]` e passam por `lerLinhasDeLeads`.
+  const ehJson = (req.headers.get("content-type") ?? "").includes("application/json");
+  let pipelineId = "";
+  let stageId = "";
+  let textoCsv: string | null = null;
+  let celulas: string[][] | null = null;
+
+  if (ehJson) {
+    const corpo = z
+      .object({
+        pipeline_id: z.string().uuid(),
+        stage_id: z.string().uuid().optional(),
+        celulas: z.array(z.array(z.string().max(4000)).max(60)).min(1).max(CSV_MAX_DATA_ROWS + 1),
+      })
+      .safeParse(await req.json().catch(() => null));
+    if (!corpo.success) {
+      return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
+    }
+    pipelineId = corpo.data.pipeline_id;
+    stageId = corpo.data.stage_id ?? "";
+    celulas = corpo.data.celulas;
+  } else {
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch {
+      return fail("validation_failed", t("Envie o arquivo como multipart/form-data."), 422, {
+        requestId,
+      });
+    }
+
+    const arquivo = form.get("file");
+    // ⚠️ POR FORMA, e não `instanceof File` (três realms: undici, jsdom, browser — o `instanceof`
+    // é falso para um File legítimo vindo de outro). O que interessa é o que a rota vai FAZER
+    // com o valor: ler os bytes e o tamanho.
+    const pareceArquivo =
+      typeof arquivo === "object" &&
+      arquivo !== null &&
+      typeof (arquivo as { arrayBuffer?: unknown }).arrayBuffer === "function" &&
+      typeof (arquivo as { size?: unknown }).size === "number";
+    if (!pareceArquivo) {
+      return fail("validation_failed", t("Envie o arquivo no campo 'file'."), 422, { requestId });
+    }
+    const enviado = arquivo as unknown as File;
+    // O funil vem do FORM e é conferido contra a organização por `createLeadHandler` (404 para
+    // etapa de outra org, 422 para etapa que não é do funil). `stage_id` é opcional: gente nova
+    // entra na primeira etapa ABERTA do funil.
+    pipelineId = String(form.get("pipeline_id") ?? "");
+    stageId = String(form.get("stage_id") ?? "");
+    if (!pipelineId) {
+      return fail("validation_failed", t("Escolha o funil de destino."), 422, { requestId });
+    }
+    if (enviado.size > CSV_MAX_BYTES) {
+      return fail(
+        "validation_failed",
+        t("Arquivo maior que ") + `${Math.floor(CSV_MAX_BYTES / 1024 / 1024)}MB.`,
+        413,
+        { requestId },
+      );
+    }
+    const decodificado = decodificarCsv(await enviado.arrayBuffer());
+    if ("erro" in decodificado) {
+      return fail("validation_failed", t(decodificado.erro), 422, { requestId });
+    }
+    textoCsv = decodificado.texto;
   }
 
-  const arquivo = form.get("file");
-  // ⚠️ POR FORMA, e não `instanceof File`, que é o que as duas rotas de
-  // importação mais antigas usam.
-  //
-  // `instanceof` compara contra o construtor do REALM em que o código roda, e
-  // aqui há três: undici (o runtime do Next), jsdom (o ambiente da suíte) e o
-  // browser. O objeto que o `formData()` devolve é um File legítimo em todos, e
-  // mesmo assim o `instanceof` é falso quando o construtor global vem de outro
-  // realm. Consequência prática: a guarda de entrada daquelas rotas NUNCA foi
-  // exercitada por teste — o único teste que as menciona lê o código-fonte
-  // delas, não o comportamento. Guarda que ninguém consegue exercitar é guarda
-  // que ninguém sabe se funciona.
-  //
-  // O que interessa é o que a rota vai FAZER com o valor: ler os bytes e o
-  // tamanho. É isso que a forma abaixo exige, e é isso que um campo de texto
-  // solto no multipart não tem.
-  const pareceArquivo =
-    typeof arquivo === "object" &&
-    arquivo !== null &&
-    typeof (arquivo as { arrayBuffer?: unknown }).arrayBuffer === "function" &&
-    typeof (arquivo as { size?: unknown }).size === "number";
-  if (!pareceArquivo) {
-    return fail("validation_failed", t("Envie o arquivo no campo 'file'."), 422, { requestId });
-  }
-  const enviado = arquivo as unknown as File;
-  // ⚠️ O funil vem do FORM, e é conferido contra a organização ativa logo
-  // abaixo por `createLeadHandler` — que já responde 404 para etapa de outra
-  // org e 422 para etapa que não é do funil informado. É o mesmo gate do POST
-  // unitário; reescrevê-lo aqui seria a segunda verdade.
-  const pipelineId = String(form.get("pipeline_id") ?? "");
-  // `stage_id` é OPCIONAL de propósito: o `ImportarLeads.tsx` nunca manda esse
-  // campo (comentário no próprio componente — planilha traz gente NOVA, e
-  // gente nova entra na primeira etapa ABERTA do funil). Resolvida logo abaixo,
-  // depois que o Supabase client existir.
-  //
-  // ⚠️ CONVERGÊNCIA INDEPENDENTE entre os PRs #597 e #600. O #597 REMOVEU a
-  // validação que exigia `stage_id` (o front nunca manda esse campo, então ela
-  // devolvia 422 em 100% das importações); o #600, saído da mesma main, envolveu
-  // ESSA MESMA linha errada em `t()`. Nenhum dos dois lados sozinho está certo —
-  // um devolve o bug, o outro perde a tradução. Vale a lógica do #597 com a
-  // tradução do #600, e as duas frases novas entraram no dicionário.
-  let stageId = String(form.get("stage_id") ?? "");
-  if (!pipelineId) {
-    return fail("validation_failed", t("Escolha o funil de destino."), 422, { requestId });
-  }
+  const supabase = await createClient();
 
-  if (enviado.size > CSV_MAX_BYTES) {
-    return fail(
-      "validation_failed",
-      t("Arquivo maior que ") + `${Math.floor(CSV_MAX_BYTES / 1024 / 1024)}MB.`,
-      413,
-      { requestId },
-    );
+  // As etapas e os campos personalizados do funil: a planilha pode trazer a coluna "Etapa" (pelo
+  // nome) e uma coluna por campo personalizado. Tudo conferido contra a ORGANIZAÇÃO ativa.
+  const { data: funilRow } = await supabase
+    .from("crm_pipelines")
+    .select("id, settings")
+    .eq("id", pipelineId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!funilRow) {
+    return fail("not_found", t("Funil não encontrado."), 404, { requestId });
   }
+  const camposDefinidos = camposDoFunil(
+    (funilRow as { settings: Record<string, unknown> | null }).settings,
+  );
+  const { data: etapasDoFunil } = await supabase
+    .from("crm_stages")
+    .select("id, name, is_won, is_lost, is_archived, position")
+    .eq("pipeline_id", pipelineId)
+    .eq("organization_id", orgId)
+    .order("position", { ascending: true });
+  const etapasAbertas = ((etapasDoFunil ?? []) as Array<{
+    id: string;
+    name: string;
+    is_won: boolean;
+    is_lost: boolean;
+    is_archived: boolean;
+  }>).filter((e) => !e.is_won && !e.is_lost && !e.is_archived);
+  const semAcento = (x: string) =>
+    x.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toLowerCase();
 
-  const decodificado = decodificarCsv(await enviado.arrayBuffer());
-  if ("erro" in decodificado) {
-    return fail("validation_failed", t(decodificado.erro), 422, { requestId });
-  }
-
-  const lido = lerPlanilhaDeLeads(decodificado.texto, t);
+  const lido =
+    celulas !== null
+      ? lerLinhasDeLeads(celulas, t, camposDefinidos)
+      : lerPlanilhaDeLeads(textoCsv ?? "", t, camposDefinidos);
   if ("erro" in lido) {
     return fail("validation_failed", lido.erro, 422, { requestId });
   }
@@ -140,8 +176,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       { requestId },
     );
   }
-
-  const supabase = await createClient();
 
   if (!stageId) {
     // Primeira etapa ABERTA do funil, por posição, dentro da organização ativa —
@@ -241,19 +275,74 @@ export async function POST(req: NextRequest): Promise<Response> {
           if (contactId) contatoPorTelefone.set(linha.telefone, contactId);
         }
       }
+      // Sem telefone, mas com e-mail: a pessoa é achada (ou criada) pelo e-mail.
+      if (!contactId && !linha.telefone && linha.email) {
+        const chave = `email:${linha.email.toLowerCase()}`;
+        contactId = contatoPorTelefone.get(chave) ?? null;
+        if (!contactId) {
+          const { data: existente } = await supabase
+            .from("contacts")
+            .select("id")
+            .eq("organization_id", orgId)
+            .eq("email_normalized", linha.email.trim().toLowerCase())
+            .is("is_merged_into", null)
+            .limit(1)
+            .maybeSingle();
+          if (existente) {
+            contactId = (existente as { id: string }).id;
+          } else {
+            const { data: criado, error: erroContato } = await supabase
+              .from("contacts")
+              .insert({
+                organization_id: orgId,
+                display_name: linha.nome_do_contato ?? linha.title,
+                email: linha.email,
+                source: linha.source,
+              })
+              .select("id")
+              .single();
+            if (erroContato) {
+              resumo.erros.push({
+                linha: linha.linha,
+                motivo: t("o contato não pôde ser criado — o negócio entrou sem ele"),
+              });
+            } else {
+              contactId = (criado as { id: string }).id;
+              resumo.contatos_criados += 1;
+              contatosCriados.push(contactId);
+            }
+          }
+          if (contactId) contatoPorTelefone.set(chave, contactId);
+        }
+      }
+
+      // A etapa da linha (coluna "Etapa", pelo nome); sem ela, ou se não existir, a padrão.
+      let etapaDaLinha = stageId;
+      if (linha.etapa) {
+        const achada = etapasAbertas.find((e) => semAcento(e.name) === semAcento(linha.etapa!));
+        if (achada) etapaDaLinha = achada.id;
+        else {
+          resumo.erros.push({
+            linha: linha.linha,
+            motivo: `${t("etapa")} "${linha.etapa}" ${t("não existe neste funil — entrou na etapa inicial")}`,
+          });
+        }
+      }
 
       await createLeadHandler(
         supabase,
         { organization_id: orgId, actor: { type: "user", id: authz.user.id }, requestId },
         {
           pipeline_id: pipelineId,
-          stage_id: stageId,
+          stage_id: etapaDaLinha,
           title: linha.title,
           description: linha.description,
           contact_id: contactId,
           value_cents: linha.value_cents,
           tags: linha.tags,
           source: linha.source,
+          ...(linha.previsao ? { expected_close_date: linha.previsao } : {}),
+          ...(Object.keys(linha.campos).length > 0 ? { custom_fields: linha.campos } : {}),
           via_planilha: true,
         },
         // A mesma pessoa na planilha e no funil: junta as informações no negócio que já existe.
