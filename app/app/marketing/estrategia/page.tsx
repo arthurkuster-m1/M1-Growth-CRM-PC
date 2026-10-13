@@ -3,14 +3,14 @@ import type { Metadata } from "next";
 import { CartaoDeModulo, CartaoLargo, classeDaGaleria } from "@/components/marketing/Cartoes";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { PublicacaoEmMassa } from "@/components/marketing/PublicacaoEmMassa";
-import { Atalho, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { nomeDaFase, textosDoModulo } from "@/components/marketing/textos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { produtosCadastrados } from "@/lib/marketing/produtos-cadastrados";
 import { modulosPublicados } from "@/lib/marketing/publicadas";
 import { modulosDaFase } from "@/lib/marketing/modulos";
-import { Compass, Package } from "@/lib/ui/icons";
+import { Binoculars, Compass, MapTrifold, Package, UsersThree } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Estratégia" };
@@ -39,20 +39,26 @@ export default async function EstrategiaPage() {
       <PublicacaoEmMassa />
 
       <section aria-label={t("Atalhos da estratégia")} className="grid gap-3 sm:grid-cols-3">
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/marketing/estrategia/estudo-de-persona"
           titulo={t("Público-alvo")}
           descricao={t("Estudo de persona")}
+          icone={<UsersThree weight="duotone" aria-hidden />}
+          tom="orange"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/marketing/estrategia/posicionamento-zmot"
           titulo={t("Mapa de Posicionamento")}
           descricao={t("Acompanhamento")}
+          icone={<MapTrifold weight="duotone" aria-hidden />}
+          tom="blue"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/marketing/estrategia/analise-de-concorrencia"
           titulo={t("Análise da concorrência")}
           descricao={t("Quem disputa a atenção do seu cliente")}
+          icone={<Binoculars weight="duotone" aria-hidden />}
+          tom="purple"
         />
       </section>
 
@@ -95,7 +101,6 @@ export default async function EstrategiaPage() {
           ) : null}
         </section>
       ))}
-
     </PaginaDeMarketing>
   );
 }

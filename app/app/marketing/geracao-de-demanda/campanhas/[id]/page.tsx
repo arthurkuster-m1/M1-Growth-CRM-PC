@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DetalheDaCampanha } from "@/components/marketing/campanhas/DetalheDaCampanha";
-import { Atalho, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { Megaphone } from "@/lib/ui/icons";
+import { Megaphone, Users } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Campanha" };
@@ -35,15 +35,19 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
     >
       <DetalheDaCampanha id={id} />
       <section className="grid gap-3 sm:grid-cols-2">
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/clientes"
           titulo={t("Clientes (CRM)")}
           descricao={t("Os leads de todos os funis")}
+          icone={<Users weight="duotone" aria-hidden />}
+          tom="green"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/ads/meta"
           titulo={t("Meta Ads")}
           descricao={t("Resultados das campanhas pagas")}
+          icone={<Megaphone weight="duotone" aria-hidden />}
+          tom="purple"
         />
       </section>
     </PaginaDeMarketing>

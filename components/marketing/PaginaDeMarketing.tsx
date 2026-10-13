@@ -86,7 +86,10 @@ export function Atalho({
   );
 }
 
-const TOM_DO_ATALHO: Record<"blue" | "green" | "purple", string> = {
+const TOM_DO_ATALHO: Record<"blue" | "green" | "purple" | "orange" | "pink", string> = {
+  orange:
+    "bg-orange-500/10 text-orange-600 group-hover:bg-orange-500 group-hover:text-white dark:text-orange-300",
+  pink: "bg-pink-500/10 text-pink-600 group-hover:bg-pink-500 group-hover:text-white dark:text-pink-300",
   blue: "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white dark:text-blue-300",
   green:
     "bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white dark:text-emerald-300",
@@ -106,7 +109,7 @@ export function AtalhoEmDestaque({
   titulo: string;
   descricao: string;
   icone: ReactNode;
-  tom?: "blue" | "green" | "purple";
+  tom?: "blue" | "green" | "purple" | "orange" | "pink";
 }) {
   return (
     <Link
@@ -121,9 +124,7 @@ export function AtalhoEmDestaque({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{titulo}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-          {descricao}
-        </span>
+        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{descricao}</span>
       </span>
       <ArrowRight
         size={18}

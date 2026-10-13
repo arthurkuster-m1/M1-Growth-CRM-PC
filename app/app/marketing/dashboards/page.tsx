@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 
-import { Atalho, OQueVem, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import {
+  AtalhoEmDestaque,
+  OQueVem,
+  PaginaDeMarketing,
+} from "@/components/marketing/PaginaDeMarketing";
 import { requireAuth } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { ChartLineUp } from "@/lib/ui/icons";
+import { ChartLineUp, Megaphone, Receipt } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dashboards" };
@@ -27,20 +31,26 @@ export default async function DashboardsPage() {
         aria-label={t("Telas relacionadas")}
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/metrics"
           titulo={t("Métricas")}
           descricao={t("Os números do atendimento e das vendas")}
+          icone={<ChartLineUp weight="duotone" aria-hidden />}
+          tom="blue"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/faturamento"
           titulo={t("Faturamento")}
           descricao={t("Compras e receita")}
+          icone={<Receipt weight="duotone" aria-hidden />}
+          tom="green"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/ads/meta"
           titulo={t("Meta Ads")}
           descricao={t("Resultados das campanhas pagas")}
+          icone={<Megaphone weight="duotone" aria-hidden />}
+          tom="purple"
         />
       </section>
 
