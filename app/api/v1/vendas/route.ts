@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 const LIMITE = 3000;
 
-const SELECAO = `${COLUNAS_DA_VENDA}, contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), pipeline:crm_pipelines(name), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`;
+const SELECAO = `${COLUNAS_DA_VENDA}, contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), pipeline:crm_pipelines(name), lead:crm_leads(stage_id, status, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`;
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();

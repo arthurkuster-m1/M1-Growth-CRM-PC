@@ -1,6 +1,7 @@
 "use client";
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -42,6 +43,9 @@ export interface DadosDaVenda {
   recurrence_active: boolean;
   reference: string;
   notes: string;
+  /** Previsão de fechamento e descrição: campos da venda (o card do funil). */
+  expected_close_date?: string | null;
+  description?: string;
 }
 
 function rotuloDaForma(t: (s: string) => string, f: FormaDePagamento): string {
@@ -85,7 +89,15 @@ export function DialogoDaVenda({
   aoFechar,
   aoSalvar,
   aoApagar,
+  negocio,
 }: {
+  /** Quando a venda é o card de um funil: a etapa (editável) e o atalho para a ficha do lead. */
+  negocio?: {
+    etapas: Array<{ id: string; nome: string }>;
+    etapaId: string | null;
+    aoMoverEtapa: (etapaId: string) => Promise<void>;
+    fichaHref?: string;
+  };
   venda: Venda | null;
   contatoInicial?: { contact_id: string; nome: string } | null;
   clientes: ClienteOpcao[];
@@ -121,6 +133,9 @@ export function DialogoDaVenda({
   const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(venda?.recurrence_active ?? true);
   const [referencia, setReferencia] = useState(venda?.reference ?? "");
   const [notas, setNotas] = useState(venda?.notes ?? "");
+  const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
+  const [descricao, setDescricao] = useState(venda?.description ?? "");
+  const [etapaId, setEtapaId] = useState(negocio?.etapaId ?? "");
   const [parcelas, setParcelas] = useState<
     Array<{
       number: number;
@@ -220,6 +235,8 @@ export function DialogoDaVenda({
       recurrence_active: recorrente && recorrenciaAtiva,
       reference: referencia.trim(),
       notes: notas.trim(),
+      expected_close_date: previsao || null,
+      description: descricao.trim(),
     });
     setSalvando(false);
     aoFechar();
@@ -281,6 +298,57 @@ export function DialogoDaVenda({
               ) : null}
             </>
           )}
+        </div>
+
+        {/* O NEGÓCIO da venda: a etapa do card no funil, a previsão de fechamento e a descrição. */}
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-l-4 border-l-blue-500 p-3 sm:grid-cols-2">
+          {negocio ? (
+            <div className="grid gap-1">
+              <span className="text-xs text-muted-foreground">{t("Etapa no funil")}</span>
+              <select
+                className={CAMPO}
+                value={etapaId}
+                onChange={(e) => {
+                  setEtapaId(e.target.value);
+                  if (e.target.value) void negocio.aoMoverEtapa(e.target.value);
+                }}
+              >
+                {negocio.etapas.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className="grid gap-1">
+            <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
+            <CampoDeData
+              valor={previsao}
+              aoMudar={setPrevisao}
+              rotulo={t("Previsão de fechamento")}
+              className="w-full"
+            />
+          </div>
+          <label className="grid gap-1 sm:col-span-2">
+            <span className="text-xs text-muted-foreground">{t("Descrição da venda")}</span>
+            <textarea
+              rows={2}
+              maxLength={2000}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder={t("Contexto desta negociação…")}
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            />
+          </label>
+          {negocio?.fichaHref ? (
+            <Link
+              href={negocio.fichaHref}
+              className="text-xs font-medium text-primary hover:underline sm:col-span-2"
+            >
+              {t("Abrir a ficha do lead (cadastro, atendimento, linha do tempo)")}
+            </Link>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 gap-1">

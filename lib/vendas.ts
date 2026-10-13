@@ -60,6 +60,8 @@ export interface Venda {
   currency: string;
   status: StatusDaVenda;
   expected_on: string | null;
+  /** A previsão de fechamento da venda (espelhada no card do funil). */
+  expected_close_date: string | null;
   paid_on: string | null;
   is_recurring: boolean;
   reference: string;
@@ -78,10 +80,14 @@ export interface Venda {
   cliente?: { nome: string; telefone: string | null } | null;
   campanha?: string | null;
   funil?: string | null;
+  /** A etapa do card desta venda no funil (a venda anda de etapa). */
+  etapa?: string | null;
+  etapa_id?: string | null;
+  lead_status?: "open" | "won" | "lost" | null;
 }
 
 export const COLUNAS_DA_VENDA =
-  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, description, amount_cents, currency, status, expected_on, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, created_at";
+  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -106,6 +112,7 @@ const camposSchema = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/),
   status: z.enum(STATUS_DA_VENDA),
   expected_on: dia.nullable(),
+  expected_close_date: dia.nullable(),
   paid_on: dia.nullable(),
   is_recurring: z.boolean(),
   reference: z.string().trim().max(200),
@@ -129,6 +136,22 @@ export const edicaoDeVendaSchema = camposSchema
   .partial()
   .extend({ needs_details: z.boolean().optional() })
   .refine((v) => Object.keys(v).length > 0, { message: "Nada para alterar." });
+
+/** A etapa do card (negócio) a que a venda está atrelada — vem do embed `lead:crm_leads(...)`. */
+function etapaDoCard(embed: unknown): Pick<Venda, "etapa" | "etapa_id" | "lead_status"> {
+  const lead = (Array.isArray(embed) ? embed[0] : embed) as
+    | { stage_id?: string | null; status?: string | null; stage?: unknown }
+    | null
+    | undefined;
+  if (!lead) return { etapa: null, etapa_id: null, lead_status: null };
+  const e = (Array.isArray(lead.stage) ? lead.stage[0] : lead.stage) as { name?: string } | null;
+  const status = lead.status;
+  return {
+    etapa: e?.name ?? null,
+    etapa_id: lead.stage_id ?? null,
+    lead_status: status === "open" || status === "won" || status === "lost" ? status : null,
+  };
+}
 
 export function vendaDaLinha(l: Record<string, unknown>): Venda {
   const cliente = l.contact as
@@ -170,6 +193,7 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
     cliente: cliente ? { nome, telefone: cliente.phone_number ?? null } : null,
     campanha: (l.campaign as { name?: string } | null | undefined)?.name ?? null,
     funil: (l.pipeline as { name?: string } | null | undefined)?.name ?? null,
+    ...etapaDoCard(l.lead),
   };
 }
 

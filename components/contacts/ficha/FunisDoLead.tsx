@@ -123,7 +123,7 @@ function CartaoDoFunil({
   const queryClient = useQueryClient();
   const [descricao, setDescricao] = useState(n.negocio.description ?? "");
   const [perdendo, setPerdendo] = useState(false);
-  const [editandoVenda, setEditandoVenda] = useState<Venda | "nova" | null>(null);
+  const [editandoVenda, setEditandoVenda] = useState<Venda | null>(null);
 
   const status = n.negocio.status;
   const aberto = status === "open";
@@ -168,16 +168,31 @@ function CartaoDoFunil({
 
   async function salvarVenda(v: DadosDaVenda) {
     await executar(async () => {
-      const { id, contact_id, ...resto } = v;
+      const { id, contact_id: _contato, ...resto } = v;
       if (id) await apiClient.patch(`/api/v1/vendas/${id}`, resto);
-      else
-        await apiClient.post("/api/v1/vendas", {
-          contact_id,
-          lead_id: n.lead_id,
-          currency: "BRL",
-          ...resto,
-        });
     });
+  }
+
+  /**
+   * Uma venda a mais no MESMO funil é um card a mais, na sua própria etapa: cria o card e abre a
+   * venda dele para preencher.
+   */
+  async function novaVendaNoFunil() {
+    try {
+      const r = await apiClient.post<{ data: { lead_id: string; sale_id: string | null } }>(
+        `/api/v1/leads/${n.lead_id}/venda-adicional`,
+        {},
+      );
+      await recarregar();
+      const vendas = (
+        await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`)
+      ).data.vendas;
+      const nova = vendas.find((x) => x.id === r.data.sale_id);
+      toast.success(t("Novo card criado neste funil. Preencha a venda."));
+      if (nova) setEditandoVenda(nova);
+    } catch (e) {
+      showApiError(e);
+    }
   }
 
   // ── Origem deste funil ──
@@ -299,17 +314,18 @@ function CartaoDoFunil({
         <div className="rounded-xl border p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase">
-              {t("Vendas deste funil")}
+              {t("Venda deste card")}
               {realizadas.length > 0 ? ` · ${realizadas.length} · ${reais(soma)}` : ""}
             </p>
             {podeEditar ? (
               <button
                 type="button"
-                onClick={() => setEditandoVenda("nova")}
+                onClick={() => void novaVendaNoFunil()}
+                title={t("Cria um novo card neste funil, com a própria etapa")}
                 className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-2 text-[11px] font-medium text-primary-foreground"
               >
                 <Plus size={11} weight="bold" aria-hidden />
-                {t("Nova venda")}
+                {t("Nova venda neste funil")}
               </button>
             ) : null}
           </div>
@@ -443,19 +459,15 @@ function CartaoDoFunil({
 
       {editandoVenda ? (
         <DialogoDaVenda
-          key={editandoVenda === "nova" ? "nova" : editandoVenda.id}
-          venda={editandoVenda === "nova" ? null : editandoVenda}
+          key={editandoVenda.id}
+          venda={editandoVenda}
           contatoInicial={{ contact_id: contactId, nome: nomeDoContato }}
           clientes={[]}
           aoFechar={() => setEditandoVenda(null)}
           aoSalvar={salvarVenda}
-          aoApagar={
-            editandoVenda !== "nova"
-              ? async () => {
-                  await executar(() => apiClient.delete(`/api/v1/vendas/${editandoVenda.id}`));
-                }
-              : undefined
-          }
+          aoApagar={async () => {
+            await executar(() => apiClient.delete(`/api/v1/vendas/${editandoVenda.id}`));
+          }}
         />
       ) : null}
     </BlocoDaFicha>

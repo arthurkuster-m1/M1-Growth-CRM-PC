@@ -16,6 +16,7 @@ import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
 import { StageColumn } from "./StageColumn";
 import { LeadDossier } from "./LeadDossier";
+import { VendaDoCard } from "./VendaDoCard";
 import { RetomarComoNovoNegocioDialog } from "./RetomarComoNovoNegocioDialog";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 
@@ -304,16 +305,23 @@ export function KanbanBoard({
         ))}
       </div>
       {leadDoDossie && (
-        <LeadDossier
-          open
-          onOpenChange={(v: boolean) => !v && setDossieId(null)}
+        // O card é a venda: abre a venda (com etapa, previsão e descrição). Sem venda (negócio
+        // antigo, sem contato), cai no dossiê de antes.
+        <VendaDoCard
           lead={leadDoDossie}
-          pipelineId={pipelineId}
-          fieldDefs={camposDoFunil(data.pipeline.settings ?? null)}
-          stageName={
-            data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"
-          }
-          ownerNames={ownerNames}
+          etapas={data.stages}
+          aoFechar={() => setDossieId(null)}
+          semVenda={() => (
+            <LeadDossier
+              open
+              onOpenChange={(v: boolean) => !v && setDossieId(null)}
+              lead={leadDoDossie}
+              pipelineId={pipelineId}
+              fieldDefs={camposDoFunil(data.pipeline.settings ?? null)}
+              stageName={data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"}
+              ownerNames={ownerNames}
+            />
+          )}
         />
       )}
 

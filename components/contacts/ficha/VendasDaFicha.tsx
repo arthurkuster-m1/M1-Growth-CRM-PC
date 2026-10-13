@@ -103,6 +103,13 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     { id: "total", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
     { id: "pago", titulo: t("Valor pago"), tipo: "numero", valorDe: (v) => recebido(v) / 100 },
     { id: "falta", titulo: t("A comprometido"), tipo: "numero", valorDe: (v) => faltando(v) / 100 },
+    { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (v) => v.etapa ?? "" },
+    {
+      id: "previsao",
+      titulo: t("Previsão de fechamento"),
+      tipo: "data",
+      valorDe: (v) => v.expected_close_date,
+    },
     { id: "compromisso", titulo: t("Compromisso"), tipo: "data", valorDe: (v) => v.expected_on },
     { id: "pago_em", titulo: t("Pago em"), tipo: "data", valorDe: (v) => v.paid_on },
     { id: "pagamento", titulo: t("Pagamento"), tipo: "texto", valorDe: (v) => v.payment_method },
@@ -285,6 +292,8 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                   <th className="px-3 py-2 text-right font-medium">{t("A comprometido")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Parcelas")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Etapa")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Previsão")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Compromisso")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Pagamento")}</th>
                 </tr>
@@ -294,7 +303,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                   <Fragment key={g.chave}>
                     {grupos ? (
                       <tr className="bg-secondary/40">
-                        <td colSpan={9} className="px-3 py-1.5 text-xs font-semibold">
+                        <td colSpan={11} className="px-3 py-1.5 text-xs font-semibold">
                           {g.rotulo} <span className="font-normal text-muted-foreground">({g.linhas.length})</span>
                         </td>
                       </tr>
@@ -368,6 +377,8 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                               </ul>
                             )}
                           </td>
+                          <td className="px-3 py-2">{v.etapa ?? "—"}</td>
+                          <td className="px-3 py-2 tabular-nums">{dataBr(v.expected_close_date)}</td>
                           <td className="px-3 py-2 tabular-nums">{dataBr(v.expected_on)}</td>
                           <td className="px-3 py-2">{v.payment_method ? v.payment_method : "—"}</td>
                         </tr>
