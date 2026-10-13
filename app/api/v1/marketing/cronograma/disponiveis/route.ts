@@ -12,7 +12,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 80);
   let consulta = a.supabase
     .from("crm_tasks")
-    .select("id, title, due_date")
+    .select("id, title, due_date, start_date")
     .eq("organization_id", a.orgId)
     .is("cronograma_lado", null)
     .in("status", ["pending", "in_progress"])

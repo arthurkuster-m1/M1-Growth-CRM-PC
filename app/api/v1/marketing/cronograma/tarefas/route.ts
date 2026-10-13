@@ -32,6 +32,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         .update({
           cronograma_lado: corpo.data.lado,
           ...(corpo.data.due_date !== undefined ? { due_date: corpo.data.due_date } : {}),
+          ...(corpo.data.start_date !== undefined ? { start_date: corpo.data.start_date } : {}),
         })
         .eq("id", corpo.data.id)
         .eq("organization_id", a.orgId)

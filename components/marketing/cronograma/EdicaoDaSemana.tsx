@@ -11,7 +11,7 @@ import {
   type LadoDaTarefa,
   type TarefaDoCronograma,
 } from "@/lib/marketing/cronograma";
-import { chaveDoDia } from "@/lib/inicio/datas";
+import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
 import { Plus, X } from "@/lib/ui/icons";
 
 const CAMPO =
@@ -34,6 +34,7 @@ interface Acoes {
     id?: string;
     title?: string;
     due_date?: string | null;
+    start_date?: string | null;
     lado: LadoDaTarefa;
   }) => Promise<unknown>;
   editar: (
@@ -43,7 +44,9 @@ interface Acoes {
   fechar: (d: Decisao[]) => Promise<unknown>;
   disponiveis: (
     q: string,
-  ) => Promise<Array<{ id: string; title: string; due_date: string | null }>>;
+  ) => Promise<
+    Array<{ id: string; title: string; due_date: string | null; start_date?: string | null }>
+  >;
 }
 
 /** Edição da semana: incluir/criar tarefas, mudar lado, concluir, adiar com motivo e fechar a semana. */
@@ -65,8 +68,14 @@ export function EdicaoDaSemana({
   const [lado, setLado] = useState<LadoDaTarefa>("agencia");
   const [busca, setBusca] = useState("");
   const [achadas, setAchadas] = useState<
-    Array<{ id: string; title: string; due_date: string | null }>
+    Array<{ id: string; title: string; due_date: string | null; start_date?: string | null }>
   >([]);
+  const [incluindo, setIncluindo] = useState<{
+    id: string;
+    title: string;
+    due_date: string | null;
+    start_date?: string | null;
+  } | null>(null);
   const [adiando, setAdiando] = useState<TarefaDoCronograma | null>(null);
   const [fechando, setFechando] = useState(false);
 
@@ -223,13 +232,7 @@ export function EdicaoDaSemana({
               <span className="min-w-0 truncate">{a.title}</span>
               <button
                 type="button"
-                onClick={() =>
-                  void acoes.adicionar({
-                    id: a.id,
-                    lado,
-                    ...(a.due_date ? {} : { due_date: isoDoDia(dia) }),
-                  })
-                }
+                onClick={() => setIncluindo(a)}
                 className="h-8 shrink-0 rounded-lg border px-3 text-xs hover:bg-secondary"
               >
                 {t("Incluir na semana")}
@@ -239,6 +242,24 @@ export function EdicaoDaSemana({
         </div>
       </fieldset>
 
+      <DialogoDeIncluir
+        tarefa={incluindo}
+        semana={inicioDaSemana}
+        ladoInicial={lado}
+        empresa={empresa}
+        aoFechar={() => setIncluindo(null)}
+        aoConfirmar={async (d) => {
+          if (incluindo) {
+            await acoes.adicionar({
+              id: incluindo.id,
+              lado: d.lado,
+              due_date: isoDoDia(d.prazo),
+              start_date: d.inicio ? isoDoDia(d.inicio) : null,
+            });
+          }
+          setIncluindo(null);
+        }}
+      />
       <DialogoDeAdiar
         tarefa={adiando}
         aoFechar={() => setAdiando(null)}
@@ -257,6 +278,87 @@ export function EdicaoDaSemana({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * "Incluir na semana": a tarefa já existe na base, com o prazo dela. Aqui se escolhe o novo início
+ * e o novo prazo (por padrão, os da semana que está na tela) e quem faz.
+ */
+function DialogoDeIncluir({
+  tarefa,
+  semana,
+  ladoInicial,
+  empresa,
+  aoFechar,
+  aoConfirmar,
+}: {
+  tarefa: { id: string; title: string; due_date: string | null; start_date?: string | null } | null;
+  semana: string;
+  ladoInicial: LadoDaTarefa;
+  empresa: string;
+  aoFechar: () => void;
+  aoConfirmar: (d: { inicio: string; prazo: string; lado: LadoDaTarefa }) => Promise<void>;
+}) {
+  const t = useT();
+  const [inicio, setInicio] = useState("");
+  const [prazo, setPrazo] = useState("");
+  const [lado, setLado] = useState<LadoDaTarefa>(ladoInicial);
+  useEffect(() => {
+    if (!tarefa) return;
+    const fim = somarDias(semana, 6);
+    const prazoAtual = diaDoIso(tarefa.due_date);
+    const dentro = prazoAtual !== "" && prazoAtual >= semana && prazoAtual <= fim;
+    setPrazo(dentro ? prazoAtual : fim);
+    setInicio(diaDoIso(tarefa.start_date ?? null) || (dentro ? "" : semana));
+    setLado(ladoInicial);
+  }, [tarefa, semana, ladoInicial]);
+  const invalido = prazo === "" || (inicio !== "" && inicio > prazo);
+  return (
+    <Dialog open={tarefa !== null} onOpenChange={(o) => (o ? null : aoFechar())}>
+      <DialogContent className="max-w-md">
+        <DialogTitle>{t("Incluir na semana")}</DialogTitle>
+        <DialogDescription className="[overflow-wrap:anywhere]">{tarefa?.title}</DialogDescription>
+        <div className="grid gap-3">
+          <p className="text-xs text-muted-foreground">
+            {t("Prazo atual")}:{" "}
+            {diaDoIso(tarefa?.due_date ?? null).split("-").reverse().join("/") || t("sem prazo")}
+          </p>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">{t("Novo início")}</span>
+            <SeletorDeData valor={inicio} rotulo={t("Novo início")} aoMudar={setInicio} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">{t("Novo prazo")}</span>
+            <SeletorDeData
+              valor={prazo}
+              rotulo={t("Novo prazo")}
+              aoMudar={setPrazo}
+              limpavel={false}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">{t("Quem faz")}</span>
+            <select
+              value={lado}
+              onChange={(e) => setLado(e.target.value as LadoDaTarefa)}
+              className={CAMPO}
+            >
+              <option value="agencia">{t("Agência")}</option>
+              <option value="cliente">{empresa || t("Cliente")}</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={invalido}
+            onClick={() => void aoConfirmar({ inicio, prazo, lado })}
+            className="h-10 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {t("Incluir na semana")}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

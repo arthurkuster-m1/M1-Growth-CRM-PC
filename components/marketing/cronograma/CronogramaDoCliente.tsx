@@ -6,6 +6,7 @@ import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { EdicaoDaSemana } from "@/components/marketing/cronograma/EdicaoDaSemana";
 import { EdicaoDoCronograma } from "@/components/marketing/cronograma/EdicaoDoCronograma";
 import { HistoricoDaSemana } from "@/components/marketing/cronograma/HistoricoDaSemana";
+import { TarefasAdiadas } from "@/components/marketing/cronograma/TarefasAdiadas";
 import { PainelDoCronograma } from "@/components/marketing/cronograma/PainelDoCronograma";
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
@@ -24,7 +25,7 @@ import {
 import { CalendarBlank, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
-type Aba = "geral" | "semana" | "historico";
+type Aba = "geral" | "semana" | "historico" | "adiadas";
 
 /**
  * O CRONOGRAMA do cliente: duas frentes (cronograma geral e tarefas da semana), o botão de
@@ -68,7 +69,12 @@ export function CronogramaDoCliente() {
   const abas: Array<[Aba, string]> = [
     ["geral", t("Cronograma geral")],
     ["semana", t("Tarefas da semana")],
-    ...(podeEditar ? ([["historico", t("Histórico")]] as Array<[Aba, string]>) : []),
+    ...(podeEditar
+      ? ([
+          ["historico", t("Histórico")],
+          ["adiadas", t("Adiadas")],
+        ] as Array<[Aba, string]>)
+      : []),
   ];
 
   return (
@@ -97,7 +103,7 @@ export function CronogramaDoCliente() {
           ))}
         </div>
 
-        {aba !== "geral" ? (
+        {aba === "semana" || aba === "historico" ? (
           <div className="flex w-full items-center justify-between gap-1 sm:inline-flex sm:w-auto sm:justify-start">
             <button
               type="button"
@@ -131,7 +137,7 @@ export function CronogramaDoCliente() {
         ) : null}
 
         <div className="flex w-full flex-wrap items-center gap-2 border-t pt-3 sm:ml-auto sm:w-auto sm:border-t-0 sm:pt-0 [&>button]:h-10 [&>button]:flex-1 sm:[&>button]:h-9 sm:[&>button]:flex-none">
-          {aba !== "historico" ? (
+          {aba !== "historico" && aba !== "adiadas" ? (
             <button
               type="button"
               disabled={baixar.isPending}
@@ -188,6 +194,8 @@ export function CronogramaDoCliente() {
 
       {aba === "historico" ? (
         <HistoricoDaSemana eventos={c.historico} />
+      ) : aba === "adiadas" ? (
+        <TarefasAdiadas empresa={empresa} />
       ) : (
         <div ref={captura}>
           <PainelDoCronograma

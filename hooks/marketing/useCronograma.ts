@@ -116,6 +116,7 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
       id?: string;
       title?: string;
       due_date?: string | null;
+      start_date?: string | null;
       lado: "agencia" | "cliente";
     }) => executar(() => apiClient.post(`${BASE}/tarefas`, t), recarregarSemana),
     editarTarefa: (
@@ -142,7 +143,14 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
     disponiveis: async (q: string) =>
       (
         await apiClient.get<{
-          data: { tarefas: Array<{ id: string; title: string; due_date: string | null }> };
+          data: {
+            tarefas: Array<{
+              id: string;
+              title: string;
+              due_date: string | null;
+              start_date?: string | null;
+            }>;
+          };
         }>(`${BASE}/disponiveis?q=${encodeURIComponent(q)}`)
       ).data.tarefas,
   };
@@ -180,5 +188,20 @@ export function useBaixarImagem() {
       URL.revokeObjectURL(url);
     },
     onError: showApiError,
+  });
+}
+
+/** As tarefas adiadas num período qualquer (só a agência vê): cada adiamento com o motivo. */
+export function useTarefasAdiadas(de: string, ate: string, ativo: boolean) {
+  return useQuery({
+    queryKey: ["cronograma-adiadas", de, ate],
+    enabled: ativo,
+    staleTime: 10_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: { eventos: EventoDoHistorico[] } }>(
+          `${BASE}/historico?adiadas=1&de=${de}&ate=${ate}`,
+        )
+      ).data.eventos,
   });
 }

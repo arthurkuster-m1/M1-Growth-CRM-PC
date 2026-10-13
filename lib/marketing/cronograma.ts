@@ -340,6 +340,8 @@ export const novaTarefaSchema = z.object({
   /** …ou criar uma nova. */
   title: z.string().trim().min(1).max(255).optional(),
   due_date: z.string().datetime({ offset: true }).nullable().optional(),
+  /** Início da tarefa (barra da linha do tempo); só vale ao incluir uma tarefa existente. */
+  start_date: z.string().datetime({ offset: true }).nullable().optional(),
   lado: z.enum(LADOS_DA_TAREFA).default("agencia"),
 });
 
