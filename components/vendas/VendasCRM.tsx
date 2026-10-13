@@ -25,6 +25,7 @@ import {
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
+import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas } from "@/lib/motor/layout";
 import { somarMeses } from "@/lib/marketing/campanhas-resumo";
 import { precisaDeConfirmacao } from "@/lib/vendas-recorrentes";
@@ -523,6 +524,16 @@ export function VendasCRM() {
         <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
       ) : (
         <TabelaDoMotor
+          aoOrdenarPor={(coluna) =>
+            mudarConsulta({
+              filtros: preferencias.filtros,
+              ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
+              agrupar: preferencias.agrupar,
+              agruparPor: preferencias.agruparPor,
+            })
+          }
+          ordenacao={preferencias.ordenacao}
+          colunasOrdenaveis={new Set(camposDaBarra.map((c) => c.id))}
           linhas={resultado.linhas}
           idDe={(v) => v.id}
           colunas={mostradas}

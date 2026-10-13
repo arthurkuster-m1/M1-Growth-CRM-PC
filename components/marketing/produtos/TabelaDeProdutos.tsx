@@ -29,6 +29,7 @@ import {
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
+import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { ResumoDeSubpagina } from "@/lib/marketing/paginas";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -512,6 +513,16 @@ export function TabelaDeProdutos({
       />
       {vista === "tabela" ? (
         <TabelaDoMotor
+          aoOrdenarPor={(coluna) =>
+            mudarConsulta({
+              filtros: preferencias.filtros,
+              ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
+              agrupar: preferencias.agrupar,
+              agruparPor: preferencias.agruparPor,
+            })
+          }
+          ordenacao={preferencias.ordenacao}
+          colunasOrdenaveis={new Set(camposDaBarra.map((c) => c.id))}
           linhas={resultado.linhas}
           idDe={(p) => p.key}
           colunas={mostradas}

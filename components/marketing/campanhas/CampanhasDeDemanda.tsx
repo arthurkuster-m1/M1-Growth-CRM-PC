@@ -41,6 +41,7 @@ import {
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
+import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -722,6 +723,16 @@ export function CampanhasDeDemanda() {
               aoRedimensionarColuna={(id, largura) =>
                 atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
               }
+              aoOrdenarPor={(coluna) =>
+                mudarConsulta({
+                  filtros: preferencias.filtros,
+                  ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
+                  agrupar: preferencias.agrupar,
+                  agruparPor: preferencias.agruparPor,
+                })
+              }
+              ordenacao={preferencias.ordenacao}
+              colunasOrdenaveis={new Set(campos.map((c) => c.id))}
               aoReordenar={() => undefined}
               podeReordenar={false}
               selecionadas={vivas}

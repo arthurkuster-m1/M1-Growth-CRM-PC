@@ -31,7 +31,15 @@ import { useCelular } from "@/hooks/motor/useCelular";
 import { useT } from "@/hooks/i18n/useT";
 import { limitarLargura, type DefinicaoDeColuna } from "@/lib/motor/layout";
 import { estadoDoMarcarTodas } from "@/lib/motor/selecao";
-import { CaretDown, CaretRight, Check, DotsSixVertical, Minus, Plus } from "@/lib/ui/icons";
+import {
+  CaretDown,
+  CaretRight,
+  CaretUp,
+  Check,
+  DotsSixVertical,
+  Minus,
+  Plus,
+} from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface ColunaDoMotor<T> extends DefinicaoDeColuna {
@@ -71,6 +79,13 @@ interface Props<T> {
   /** O botão "⋯" do fim da linha (menu de ações). */
   acoesDaLinha?: (linha: T) => ReactNode;
   aoCriar?: () => void;
+  /**
+   * Clicar no título da coluna ordena por ela (crescente, decrescente, nada). `ordenacao` é a
+   * ordem atual (para a seta); `colunasOrdenaveis` diz quais colunas têm campo para ordenar.
+   */
+  aoOrdenarPor?: (colunaId: string) => void;
+  ordenacao?: readonly { campo: string; direcao: "asc" | "desc" }[];
+  colunasOrdenaveis?: ReadonlySet<string>;
   /** O "+" no título de cada grupo: cria uma linha já com o valor do grupo (`chave`). */
   aoCriarNoGrupo?: (chave: string) => void;
   rotuloDeCriarNoGrupo?: string;
@@ -308,6 +323,9 @@ export function TabelaDoMotor<T>({
   aoMoverColuna,
   aoRedimensionarColuna,
   menuDaColuna,
+  aoOrdenarPor,
+  ordenacao,
+  colunasOrdenaveis,
   fimDoCabecalho,
   aoReordenar,
   podeReordenar,
@@ -424,7 +442,37 @@ export function TabelaDoMotor<T>({
               ) : null}
               {comAlca ? <div role="columnheader" aria-hidden /> : null}
               {colunas.map((c) => {
-                const titulo = (
+                const ordenavel = Boolean(aoOrdenarPor) && Boolean(colunasOrdenaveis?.has(c.id));
+                const direcao = ordenacao?.[0]?.campo === c.id ? ordenacao[0]!.direcao : null;
+                const titulo = ordenavel ? (
+                  <button
+                    type="button"
+                    onClick={() => aoOrdenarPor?.(c.id)}
+                    aria-label={`${t("Ordenar por")} ${c.titulo}`}
+                    title={t("Clique para ordenar")}
+                    className="flex w-full min-w-0 items-center gap-1.5 px-2 py-2.5 text-left hover:text-foreground"
+                  >
+                    {c.icone}
+                    <span className="truncate">{c.titulo}</span>
+                    {direcao ? (
+                      direcao === "asc" ? (
+                        <CaretUp
+                          size={12}
+                          weight="bold"
+                          className="shrink-0 text-primary"
+                          aria-hidden
+                        />
+                      ) : (
+                        <CaretDown
+                          size={12}
+                          weight="bold"
+                          className="shrink-0 text-primary"
+                          aria-hidden
+                        />
+                      )
+                    ) : null}
+                  </button>
+                ) : (
                   <span className="flex min-w-0 items-center gap-1.5 px-2 py-2.5">
                     {c.icone}
                     <span className="truncate">{c.titulo}</span>
