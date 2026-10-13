@@ -72,13 +72,17 @@ export function useCampanhasDeDemanda() {
     }
   }
 
-  async function apagar(ids: string[]) {
+  /** Apaga as campanhas e os funis delas; os leads dos funis passam para `destino`. */
+  async function apagar(ids: string[], destino?: string | null): Promise<boolean> {
     try {
-      await Promise.all(ids.map((id) => apiClient.delete(`${BASE}/${id}`)));
+      await apiClient.post(`${BASE}/apagar`, { ids, destino: destino ?? null });
+      return true;
     } catch (e) {
       showApiError(e);
+      return false;
     } finally {
       void recarregar();
+      void queryClient.invalidateQueries({ queryKey: ["clientes"] });
     }
   }
 
@@ -466,12 +470,16 @@ export interface OrigemDosLeads {
 }
 
 /** De onde vieram os leads da campanha (CRM): por criativo, LP e conjunto de anúncios. */
-export function useOrigemDosLeads(campanhaId: string) {
+export function useOrigemDosLeads(campanhaId: string, janela?: { de: string; ate: string } | null) {
   const consulta = useQuery({
-    queryKey: ["demand-campaign-origem", campanhaId],
+    queryKey: ["demand-campaign-origem", campanhaId, janela?.de ?? "", janela?.ate ?? ""],
     staleTime: 30_000,
     queryFn: async () =>
-      (await apiClient.get<{ data: OrigemDosLeads }>(`${BASE}/${campanhaId}/origem`)).data,
+      (
+        await apiClient.get<{ data: OrigemDosLeads }>(
+          `${BASE}/${campanhaId}/origem${janela ? `?de=${janela.de}&ate=${janela.ate}` : ""}`,
+        )
+      ).data,
   });
   return { origem: consulta.data ?? null, carregando: consulta.isLoading };
 }

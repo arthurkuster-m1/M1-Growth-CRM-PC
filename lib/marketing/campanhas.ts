@@ -63,6 +63,8 @@ export interface CampanhaDeDemanda {
   product_name: string;
   /** O produto cadastrado em Produtos e Ofertas que a campanha vende. */
   product_id: string | null;
+  /** Todos os produtos cadastrados que a campanha vende (o primeiro é o `product_id`). */
+  product_ids: string[];
   ticket_cents: number | null;
   platform: string;
   sheet_url: string;
@@ -91,7 +93,7 @@ export interface EstadoDaCampanha {
 }
 
 export const COLUNAS_DA_CAMPANHA =
-  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, goal_period, product_name, product_id, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
+  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, goal_period, product_name, product_id, product_ids, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dinheiro = z.number().finite().min(0).max(1e10);
@@ -124,6 +126,7 @@ const camposSchema = z.object({
   goal_period: z.enum(PERIODOS_DA_META),
   product_name: z.string().trim().max(200),
   product_id: z.string().uuid().nullable(),
+  product_ids: z.array(z.string().uuid()).max(20),
   ticket_cents: z.number().int().min(0).max(100_000_000_000).nullable(),
   platform: z.string().trim().max(40),
   sheet_url: z
@@ -186,6 +189,9 @@ export function campanhaDaLinha(l: Record<string, unknown>): CampanhaDeDemanda {
     goal_leads: numero(l.goal_leads),
     goal_sales: numero(l.goal_sales),
     ticket_cents: numero(l.ticket_cents),
+    product_ids: Array.isArray(l.product_ids)
+      ? l.product_ids.filter((x): x is string => typeof x === "string")
+      : [],
     position: Number(l.position),
     platform_campaigns: lista
       .map((c) => campanhaDaPlataformaSchema.safeParse(c))

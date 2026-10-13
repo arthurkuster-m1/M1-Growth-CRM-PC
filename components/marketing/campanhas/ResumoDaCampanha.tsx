@@ -19,24 +19,53 @@ const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
 const decimal = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 const pct = (n: number) => `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 
+type Tom = "blue" | "violet" | "green" | "amber" | "rose" | "slate";
+
+const FAIXA: Record<Tom, string> = {
+  blue: "border-l-blue-500",
+  violet: "border-l-violet-500",
+  green: "border-l-emerald-500",
+  amber: "border-l-amber-500",
+  rose: "border-l-rose-500",
+  slate: "border-l-slate-400",
+};
+const FUNDO: Record<Tom, string> = {
+  blue: "bg-blue-500/8",
+  violet: "bg-violet-500/8",
+  green: "bg-emerald-500/8",
+  amber: "bg-amber-500/10",
+  rose: "bg-rose-500/8",
+  slate: "bg-secondary/60",
+};
+const BARRA: Record<Tom, string> = {
+  blue: "bg-blue-500",
+  violet: "bg-violet-500",
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  rose: "bg-rose-500",
+  slate: "bg-slate-500",
+};
+
 function Numero({
   rotulo,
   valor,
   destaque,
   tom,
+  fundo,
 }: {
   rotulo: string;
   valor: string | null;
   destaque?: boolean;
   tom?: "bom" | "ruim";
+  fundo?: Tom;
 }) {
   return (
-    <div className="min-w-0">
+    <div className={cn("min-w-0 rounded-xl px-3 py-2", FUNDO[fundo ?? "slate"])}>
       <p className="truncate text-xs text-muted-foreground">{rotulo}</p>
       <p
         className={cn(
-          "font-semibold tabular-nums",
-          destaque ? "text-xl" : "text-base",
+          "mt-0.5 font-semibold tabular-nums",
+          destaque ? "text-2xl" : "text-lg",
           tom === "bom" && "text-success-fg",
           tom === "ruim" && "text-error-fg",
           valor === null && "text-muted-foreground",
@@ -48,11 +77,65 @@ function Numero({
   );
 }
 
-function Cartao({ titulo, children }: { titulo: string; children: ReactNode }) {
+/** Uma barra de progresso com legenda e porcentagem. */
+function Barra({
+  rotulo,
+  detalhe,
+  porcentagem,
+  tom,
+}: {
+  rotulo: string;
+  detalhe?: string;
+  porcentagem: number | null;
+  tom: Tom;
+}) {
+  const p = porcentagem === null ? 0 : Math.max(0, Math.min(100, porcentagem));
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+    <div className="col-span-full grid gap-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-xs">
+        <span className="font-medium">{rotulo}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {detalhe ? `${detalhe} · ` : ""}
+          <strong className="text-foreground">
+            {porcentagem === null ? "—" : pct(porcentagem)}
+          </strong>
+        </span>
+      </div>
+      <div
+        className="h-3 overflow-hidden rounded-full bg-secondary"
+        role="progressbar"
+        aria-valuenow={Math.round(p)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={rotulo}
+      >
+        <div
+          className={cn("h-full rounded-full transition-all", BARRA[tom])}
+          style={{ width: `${p}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Cartao({
+  titulo,
+  children,
+  tom = "slate",
+}: {
+  titulo: string;
+  children: ReactNode;
+  tom?: Tom;
+}) {
+  return (
+    <section
+      className={cn(
+        "grid grid-cols-1 gap-3 rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
+        FAIXA[tom],
+      )}
+    >
       <h3 className="text-sm font-semibold">{titulo}</h3>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">{children}</div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{children}</div>
     </section>
   );
 }
@@ -97,13 +180,27 @@ export function ResumoDaCampanha({
   const r = resumoDaCampanha(c, dias, hoje);
   const dinheiro = (n: number | null) => (n === null ? null : moedaDoNumero(n));
   const trafego = c.channel === "trafego_pago";
-  const progresso = r.periodo ? Math.round((r.periodo.passados / r.periodo.totais) * 100) : null;
+  const progresso = r.periodo ? (r.periodo.passados / r.periodo.totais) * 100 : null;
   const adiant = r.metas.adiantamento;
+  const progressoLeads =
+    r.metas.metaDeLeads && r.metas.metaDeLeads > 0
+      ? (r.metas.captados / r.metas.metaDeLeads) * 100
+      : null;
+  const orcamentoGasto =
+    r.investimentoLiquido !== null && r.investimentoLiquido > 0
+      ? (r.funil.investido / r.investimentoLiquido) * 100
+      : null;
+  const ajuste = r.pace.ajusteDiario;
+  // Menos de 5% de diferença é "no ritmo"; acima disso, quanto gastar a mais ou a menos por dia.
+  const noRitmo =
+    ajuste !== null &&
+    r.pace.ideal !== null &&
+    Math.abs(ajuste) <= Math.max(r.pace.ideal * 0.05, 0.5);
 
   return (
     <div className="grid grid-cols-1 gap-3">
       {r.alertas.length > 0 ? (
-        <section className="grid grid-cols-1 gap-2 rounded-2xl border bg-card p-4 shadow-sm">
+        <section className="grid grid-cols-1 gap-2 rounded-2xl border border-l-4 border-l-amber-500 bg-card p-4 shadow-sm">
           <h3 className="text-sm font-semibold">{t("O que fazer agora")}</h3>
           <ul className="grid grid-cols-1 gap-1.5">
             {r.alertas.map((a) => (
@@ -124,15 +221,32 @@ export function ResumoDaCampanha({
       ) : null}
 
       {trafego ? (
-        <Cartao titulo={t("Metas de leads")}>
+        <Cartao titulo={t("Metas de leads")} tom="blue">
+          <Barra
+            rotulo={t("Leads captados da meta")}
+            detalhe={
+              r.metas.metaDeLeads === null
+                ? undefined
+                : `${inteiro(r.metas.captados)} / ${inteiro(r.metas.metaDeLeads)}`
+            }
+            porcentagem={progressoLeads}
+            tom="blue"
+          />
           <Numero
             rotulo={t("Meta de leads")}
             valor={r.metas.metaDeLeads === null ? null : inteiro(r.metas.metaDeLeads)}
+            fundo="blue"
           />
-          <Numero rotulo={t("Leads captados")} valor={inteiro(r.metas.captados)} destaque />
+          <Numero
+            rotulo={t("Leads captados")}
+            valor={inteiro(r.metas.captados)}
+            destaque
+            fundo="blue"
+          />
           <Numero
             rotulo={t("Faltam")}
             valor={r.metas.faltam === null ? null : inteiro(r.metas.faltam)}
+            fundo="blue"
           />
           <Numero rotulo={t("Meta de CPL")} valor={dinheiro(r.metas.metaDeCpl)} />
           <Numero
@@ -152,6 +266,17 @@ export function ResumoDaCampanha({
             valor={r.metas.porDia === null ? null : decimal(r.metas.porDia)}
           />
           <Numero
+            rotulo={t("Leads por dia (média)")}
+            valor={r.metas.mediaPorDia === null ? null : decimal(r.metas.mediaPorDia)}
+            tom={
+              r.metas.mediaPorDia !== null && r.metas.porDia !== null
+                ? r.metas.mediaPorDia >= r.metas.porDia
+                  ? "bom"
+                  : "ruim"
+                : undefined
+            }
+          />
+          <Numero
             rotulo={t("Meta para hoje")}
             valor={r.metas.metaParaHoje === null ? null : inteiro(r.metas.metaParaHoje)}
           />
@@ -167,15 +292,42 @@ export function ResumoDaCampanha({
         </Cartao>
       ) : null}
 
-      <Cartao titulo={t("Métricas principais")}>
-        <Numero rotulo={t("Dias totais")} valor={r.periodo ? inteiro(r.periodo.totais) : null} />
+      <Cartao titulo={t("Dias")} tom="violet">
+        <Barra
+          rotulo={t("Tempo da campanha que já passou")}
+          detalhe={
+            r.periodo ? `${inteiro(r.periodo.passados)} / ${inteiro(r.periodo.totais)}` : undefined
+          }
+          porcentagem={progresso}
+          tom="violet"
+        />
+        <Numero
+          rotulo={t("Dias totais")}
+          valor={r.periodo ? inteiro(r.periodo.totais) : null}
+          fundo="violet"
+        />
         <Numero
           rotulo={t("Dias passados")}
           valor={r.periodo ? inteiro(r.periodo.passados) : null}
+          fundo="violet"
         />
         <Numero
           rotulo={t("Dias restantes")}
           valor={r.periodo ? inteiro(r.periodo.restantes) : null}
+          fundo="violet"
+        />
+      </Cartao>
+
+      <Cartao titulo={t("Pace de gastos")} tom="green">
+        <Barra
+          rotulo={t("Orçamento já gasto")}
+          detalhe={
+            r.investimentoLiquido === null
+              ? undefined
+              : `${moedaDoNumero(r.funil.investido)} / ${moedaDoNumero(r.investimentoLiquido)}`
+          }
+          porcentagem={orcamentoGasto}
+          tom={orcamentoGasto !== null && orcamentoGasto > 100 ? "rose" : "green"}
         />
         <Numero rotulo={t("Investimento bruto")} valor={dinheiro(r.investimentoBruto)} />
         <Numero rotulo={t("Investimento líquido")} valor={dinheiro(r.investimentoLiquido)} />
@@ -185,63 +337,86 @@ export function ResumoDaCampanha({
           valor={dinheiro(r.valorRestante)}
           tom={r.valorRestante !== null && r.valorRestante < 0 ? "ruim" : undefined}
         />
-        {progresso !== null ? (
-          <div className="col-span-2 self-end sm:col-span-2">
-            <div
-              className="h-2 overflow-hidden rounded-full bg-secondary"
-              role="progressbar"
-              aria-valuenow={progresso}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={t("Dias passados")}
-            >
-              <div className="h-full rounded-full bg-primary" style={{ width: `${progresso}%` }} />
-            </div>
-          </div>
+        <Numero
+          rotulo={t("Valor diário programado")}
+          valor={dinheiro(r.pace.metaDiaria)}
+          fundo="green"
+        />
+        <Numero
+          rotulo={t("Valor diário atual (2 últimos dias)")}
+          valor={dinheiro(r.pace.atualUltimosDias)}
+          fundo="green"
+        />
+        <Numero
+          rotulo={t("Valor diário ideal")}
+          valor={dinheiro(r.pace.ideal)}
+          destaque
+          fundo="green"
+        />
+        {ajuste !== null ? (
+          <p
+            className={cn(
+              "col-span-full rounded-xl px-3 py-2 text-sm font-medium",
+              noRitmo
+                ? "bg-success-bg text-success-fg"
+                : ajuste > 0
+                  ? "bg-warning-bg text-warning-fg"
+                  : "bg-secondary text-foreground",
+            )}
+          >
+            {noRitmo
+              ? t("No ritmo: o gasto diário atual está igual ao ideal.")
+              : ajuste > 0
+                ? `${t("Gastar")} ${moedaDoNumero(ajuste)} ${t("a mais por dia para fechar o orçamento.")}`
+                : `${t("Gastar")} ${moedaDoNumero(Math.abs(ajuste))} ${t("a menos por dia para não estourar o orçamento.")}`}
+          </p>
         ) : null}
       </Cartao>
 
       {trafego ? (
-        <>
-          <Cartao titulo={t("Pace de gastos")}>
-            <Numero rotulo={t("Meta de orçamento diário")} valor={dinheiro(r.pace.metaDiaria)} />
-            <Numero rotulo={t("Média atual por dia")} valor={dinheiro(r.pace.mediaAtual)} />
-            <Numero
-              rotulo={
-                r.pace.diferenca !== null && r.pace.diferenca < 0
-                  ? t("Acima do previsto")
-                  : t("Abaixo do previsto")
-              }
-              valor={dinheiro(r.pace.diferenca === null ? null : Math.abs(r.pace.diferenca))}
-            />
-            <Numero
-              rotulo={t("Novo orçamento diário")}
-              valor={dinheiro(r.pace.novoOrcamentoDiario)}
-              destaque
-            />
-          </Cartao>
-
-          <Cartao titulo={t("Funil completo")}>
-            <Numero rotulo={t("Impressões")} valor={inteiro(r.funil.impressoes)} />
-            <Numero rotulo={t("Alcance")} valor={inteiro(r.funil.alcance)} />
-            <Numero rotulo={t("CPM")} valor={dinheiro(r.funil.cpm)} />
-            <Numero rotulo={t("Cliques no link")} valor={inteiro(r.funil.cliques)} />
-            <Numero rotulo={t("CPC")} valor={dinheiro(r.funil.cpc)} />
-            <Numero rotulo={t("CTR")} valor={r.funil.ctr === null ? null : pct(r.funil.ctr)} />
-            <Numero rotulo={t("Visitas à LP")} valor={inteiro(r.funil.visitas)} />
-            <Numero rotulo={t("Custo por visita")} valor={dinheiro(r.funil.custoPorVisita)} />
-            <Numero
-              rotulo={t("Connection rate")}
-              valor={r.funil.connectionRate === null ? null : pct(r.funil.connectionRate)}
-            />
-            <Numero rotulo={t("Leads")} valor={inteiro(r.funil.leads)} />
-            <Numero rotulo={t("CPL")} valor={dinheiro(r.funil.cpl)} />
-            <Numero
-              rotulo={t("Conversão da LP")}
-              valor={r.funil.conversaoDaLp === null ? null : pct(r.funil.conversaoDaLp)}
-            />
-          </Cartao>
-        </>
+        <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-rose-500 bg-card p-4 shadow-sm">
+          <h3 className="text-sm font-semibold">{t("Funil completo")}</h3>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid content-start gap-2 rounded-xl bg-blue-500/8 p-3">
+              <p className="text-xs font-semibold tracking-wide text-blue-600 uppercase dark:text-blue-300">
+                {t("Anúncio")}
+              </p>
+              <Numero rotulo={t("Impressões")} valor={inteiro(r.funil.impressoes)} />
+              <Numero rotulo={t("Alcance")} valor={inteiro(r.funil.alcance)} />
+              <Numero rotulo={t("CPM")} valor={dinheiro(r.funil.cpm)} />
+            </div>
+            <div className="grid content-start gap-2 rounded-xl bg-violet-500/8 p-3">
+              <p className="text-xs font-semibold tracking-wide text-violet-600 uppercase dark:text-violet-300">
+                {t("Clique")}
+              </p>
+              <Numero rotulo={t("Cliques no link")} valor={inteiro(r.funil.cliques)} />
+              <Numero rotulo={t("CPC")} valor={dinheiro(r.funil.cpc)} />
+              <Numero rotulo={t("CTR")} valor={r.funil.ctr === null ? null : pct(r.funil.ctr)} />
+            </div>
+            <div className="grid content-start gap-2 rounded-xl bg-amber-500/10 p-3">
+              <p className="text-xs font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-300">
+                {t("Página")}
+              </p>
+              <Numero rotulo={t("Visitas à LP")} valor={inteiro(r.funil.visitas)} />
+              <Numero rotulo={t("Custo por visita")} valor={dinheiro(r.funil.custoPorVisita)} />
+              <Numero
+                rotulo={t("Connection rate")}
+                valor={r.funil.connectionRate === null ? null : pct(r.funil.connectionRate)}
+              />
+            </div>
+            <div className="grid content-start gap-2 rounded-xl bg-emerald-500/8 p-3">
+              <p className="text-xs font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-300">
+                {t("Lead")}
+              </p>
+              <Numero rotulo={t("Leads")} valor={inteiro(r.funil.leads)} />
+              <Numero rotulo={t("CPL")} valor={dinheiro(r.funil.cpl)} />
+              <Numero
+                rotulo={t("Conversão da LP")}
+                valor={r.funil.conversaoDaLp === null ? null : pct(r.funil.conversaoDaLp)}
+              />
+            </div>
+          </div>
+        </section>
       ) : (
         <FunilDoCanal c={c} dias={dias} leads={r.funil.leads} investido={r.funil.investido} />
       )}

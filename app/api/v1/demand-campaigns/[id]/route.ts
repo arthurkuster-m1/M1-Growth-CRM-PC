@@ -11,6 +11,7 @@ import {
   edicaoDeCampanhaSchema,
 } from "@/lib/marketing/campanhas";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -59,26 +60,38 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   );
 }
 
-export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
+export async function DELETE(req: NextRequest, ctx: Ctx): Promise<Response> {
   const negado = await requireSupportWrite();
   if (negado) return negado;
   const a = await autorizarCampanhas("manager", true);
   if (!a.ok) return a.response;
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) return campanhaNaoEncontrada(a.t, a.requestId);
-  const { data, error } = await a.supabase
-    .from("demand_campaigns")
-    .delete()
-    .eq("id", id)
-    .eq("organization_id", a.orgId)
-    .select("id")
-    .maybeSingle();
+  const destino = req.nextUrl.searchParams.get("destino");
+
+  // O funil da campanha vai junto; os leads dele passam para `destino` (obrigatório se houver).
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("fn_demand_campaign_apagar", {
+    p_org: a.orgId,
+    p_campaigns: [id],
+    p_destino: destino && z.string().uuid().safeParse(destino).success ? destino : null,
+  });
   if (error) {
+    if (
+      error.message.includes("destino_obrigatorio") ||
+      error.message.includes("destino_invalido")
+    ) {
+      return fail("validation_failed", a.t("Escolha para qual funil os leads vão passar."), 422, {
+        requestId: a.requestId,
+      });
+    }
     return fail("internal_error", a.t("Erro ao apagar a campanha."), 500, {
       requestId: a.requestId,
     });
   }
-  if (!data) return campanhaNaoEncontrada(a.t, a.requestId);
+  if (!(data as { campanhas_apagadas?: number } | null)?.campanhas_apagadas) {
+    return campanhaNaoEncontrada(a.t, a.requestId);
+  }
   await audit({
     organizationId: a.orgId,
     actorUserId: a.userId,

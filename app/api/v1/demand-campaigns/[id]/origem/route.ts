@@ -18,7 +18,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 const LIMITE = 5000;
 
-export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
+export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   const a = await autorizarCampanhas("viewer", false);
   if (!a.ok) return a.response;
   const { id } = await ctx.params;
@@ -41,12 +41,18 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
   // Meta mensal (ou contínua): a janela é o mês corrente; senão, do início da campanha até hoje.
   const hojeLocal = new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date());
   const mensal = c.goal_period === "mensal";
-  const janela = mensal
+  const padrao = mensal
     ? (({ de, ate }) => ({ de, ate }))(janelaDoPeriodo("mes", hojeLocal))
     : janelaDaSync(
         { start_date: c.start_date as string | null, end_date: c.end_date as string | null },
         new Date(),
       );
+  // Período escolhido na tela (atalho ou datas livres); sem ele vale o da campanha.
+  const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  const deP = dia.safeParse(req.nextUrl.searchParams.get("de"));
+  const ateP = dia.safeParse(req.nextUrl.searchParams.get("ate"));
+  const personalizado = deP.success && ateP.success && deP.data <= ateP.data;
+  const janela = personalizado ? { de: deP.data, ate: ateP.data } : padrao;
   if (!janela) {
     return ok({ ...contarOrigemDosLeads([]), de: null, ate: null }, { requestId: a.requestId });
   }
@@ -129,15 +135,19 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     porCriativo: {} as Record<string, number>,
     porLandingPage: {} as Record<string, number>,
   };
-  const { data: vendas } = await a.supabase
+  let consultaDeVendas = a.supabase
     .from("crm_sales")
     .select(
       "id, status, amount_cents, paid_on, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
     )
     .eq("organization_id", a.orgId)
     .eq("demand_campaign_id", id)
-    .in("status", ["comprometida", "concluida"])
-    .limit(LIMITE);
+    .in("status", ["comprometida", "concluida"]);
+  // Com período escolhido, só as vendas fechadas dentro dele.
+  if (personalizado) {
+    consultaDeVendas = consultaDeVendas.gte("closed_on", janela.de).lte("closed_on", janela.ate);
+  }
+  const { data: vendas } = await consultaDeVendas.limit(LIMITE);
   for (const v of (vendas ?? []) as Array<{
     status: string;
     amount_cents: number | string;

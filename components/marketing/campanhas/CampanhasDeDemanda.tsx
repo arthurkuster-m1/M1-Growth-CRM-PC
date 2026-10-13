@@ -13,6 +13,7 @@ import {
   rotuloDoStatus,
   textoDoEstado,
 } from "@/components/marketing/campanhas/rotulos";
+import { ApagarCampanhasDialog } from "@/components/marketing/campanhas/ApagarCampanhasDialog";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { AcaoEmMassa, BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
@@ -70,6 +71,7 @@ export function CampanhasDeDemanda() {
   const [nova, setNova] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
   const ultimoMarcado = useRef<string | null>(null);
+  const [apagando, setApagando] = useState<string[]>([]);
 
   const padrao = useVisualizacao("campanhas");
   const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
@@ -841,15 +843,7 @@ export function CampanhasDeDemanda() {
             rotulo={t("Apagar")}
             icone={<Trash size={14} aria-hidden />}
             destrutivo
-            aoClicar={async () => {
-              if (
-                !window.confirm(t("Apagar as campanhas selecionadas? Isso não pode ser desfeito."))
-              ) {
-                return;
-              }
-              await apagar(idsSelecionados);
-              setSelecionadas(new Set());
-            }}
+            aoClicar={() => setApagando(idsSelecionados)}
           />
         </BarraDeSelecao>
       ) : null}
@@ -912,6 +906,17 @@ export function CampanhasDeDemanda() {
               }
             : undefined
         }
+      />
+
+      <ApagarCampanhasDialog
+        ids={apagando}
+        aoFechar={() => setApagando([])}
+        aoConfirmar={async (destino) => {
+          if (await apagar(apagando, destino)) {
+            setApagando([]);
+            setSelecionadas(new Set());
+          }
+        }}
       />
 
       <NovaCampanha

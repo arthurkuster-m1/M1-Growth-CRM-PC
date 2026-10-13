@@ -184,11 +184,19 @@ export interface MetasDaCampanha {
   /** captados − meta de hoje: positivo = adiantado, negativo = atrasado. */
   adiantamento: number | null;
   novaMetaDiaria: number | null;
+  /** Leads captados ÷ dias passados: a média real por dia até hoje. */
+  mediaPorDia: number | null;
 }
 
 export interface PaceDeGastos {
   metaDiaria: number | null;
   mediaAtual: number | null;
+  /** O que se gasta por dia, em média, nos 2 últimos dias com gasto (até hoje). */
+  atualUltimosDias: number | null;
+  /** O que deveria ser gasto por dia daqui para a frente: valor restante ÷ dias restantes. */
+  ideal: number | null;
+  /** ideal − atual: positivo = gastar a mais por dia; negativo = gastar a menos. */
+  ajusteDiario: number | null;
   /** meta − média: positivo = está gastando abaixo do previsto. */
   diferenca: number | null;
   novoOrcamentoDiario: number | null;
@@ -266,11 +274,27 @@ export function resumoDaCampanha(
     adiantamento: metaParaHoje === null ? null : funil.leads - metaParaHoje,
     novaMetaDiaria:
       faltam !== null && periodo && periodo.restantes > 0 ? faltam / periodo.restantes : null,
+    mediaPorDia: periodo && periodo.passados > 0 ? funil.leads / periodo.passados : null,
   };
+
+  // Os 2 últimos dias (até hoje) em que houve registro: a "velocidade" de gasto de agora.
+  const ultimos = dias
+    .filter((d) => d.day <= hoje)
+    .sort((a, b) => b.day.localeCompare(a.day))
+    .slice(0, 2);
+  const atualUltimosDias =
+    ultimos.length > 0 ? ultimos.reduce((soma, d) => soma + d.spend, 0) / ultimos.length : null;
+  const ideal =
+    restante !== null && periodo && periodo.restantes > 0 && restante > 0
+      ? restante / periodo.restantes
+      : null;
 
   const pace: PaceDeGastos = {
     metaDiaria: liquido !== null && periodo ? liquido / periodo.totais : null,
     mediaAtual: periodo && periodo.passados > 0 ? funil.investido / periodo.passados : null,
+    atualUltimosDias,
+    ideal,
+    ajusteDiario: ideal !== null && atualUltimosDias !== null ? ideal - atualUltimosDias : null,
     diferenca: null,
     novoOrcamentoDiario:
       restante !== null && periodo && periodo.restantes > 0 && restante > 0

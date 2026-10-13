@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
@@ -7,6 +9,7 @@ import {
   useOrigemDosLeads,
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
+import { PERIODOS, janelaDoPeriodo, type Periodo } from "@/lib/marketing/periodos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +17,27 @@ const pct = (parte: number, total: number) =>
   total > 0
     ? `${((parte / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%`
     : "—";
+
+function rotuloDoAtalho(t: (s: string) => string, p: Periodo): string {
+  switch (p) {
+    case "hoje":
+      return t("Hoje");
+    case "ontem":
+      return t("Ontem");
+    case "ultimos_5_dias":
+      return t("Últimos 5 dias");
+    case "ultimos_7_dias":
+      return t("Últimos 7 dias");
+    case "ultimos_30_dias":
+      return t("Últimos 30 dias");
+    case "semana":
+      return t("Esta semana");
+    case "mes":
+      return t("Este mês");
+    case "mes_passado":
+      return t("Mês passado");
+  }
+}
 
 function Lista({
   titulo,
@@ -79,7 +103,20 @@ export function OrigemDosLeads({
   campanha?: CampanhaDeDemanda;
 }) {
   const t = useT();
-  const { origem, carregando } = useOrigemDosLeads(campanhaId);
+  const [periodo, setPeriodo] = useState<Periodo | "padrao" | "personalizado">("padrao");
+  const [de, setDe] = useState("");
+  const [ate, setAte] = useState("");
+  // "Hoje" fixado na montagem: a janela dos atalhos não muda a cada render.
+  const [hoje] = useState(() => new Date().toISOString().slice(0, 10));
+  const janela =
+    periodo === "padrao"
+      ? null
+      : periodo === "personalizado"
+        ? de !== "" && ate !== "" && de <= ate
+          ? { de, ate }
+          : null
+        : (({ de: d, ate: a }) => ({ de: d, ate: a }))(janelaDoPeriodo(periodo, hoje));
+  const { origem, carregando } = useOrigemDosLeads(campanhaId, janela);
   const { criativos } = useCriativosDaCampanha(campanhaId);
   const { lps } = useLandingPagesDaCampanha(campanhaId);
 
@@ -118,7 +155,44 @@ export function OrigemDosLeads({
   return (
     <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">{t("De onde vieram os leads")}</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold">{t("De onde vieram os leads")}</h3>
+          <select
+            value={periodo}
+            aria-label={t("Período")}
+            onChange={(e) => setPeriodo(e.target.value as Periodo | "padrao" | "personalizado")}
+            className="h-8 rounded-lg border bg-background px-2 text-xs"
+          >
+            <option value="padrao">{t("Período da campanha")}</option>
+            {PERIODOS.map((p) => (
+              <option key={p} value={p}>
+                {rotuloDoAtalho(t, p)}
+              </option>
+            ))}
+            <option value="personalizado">{t("Personalizado")}</option>
+          </select>
+          {periodo === "personalizado" ? (
+            <>
+              <input
+                type="date"
+                value={de}
+                max={ate || undefined}
+                aria-label={t("Data inicial")}
+                onChange={(e) => setDe(e.target.value)}
+                className="h-8 rounded-lg border bg-background px-2 text-xs"
+              />
+              <span className="text-xs text-muted-foreground">{t("até")}</span>
+              <input
+                type="date"
+                value={ate}
+                min={de || undefined}
+                aria-label={t("Data final")}
+                onChange={(e) => setAte(e.target.value)}
+                className="h-8 rounded-lg border bg-background px-2 text-xs"
+              />
+            </>
+          ) : null}
+        </div>
         <p className="text-xs text-muted-foreground">
           {origem.total} {t("leads no CRM")}
           {origem.de
