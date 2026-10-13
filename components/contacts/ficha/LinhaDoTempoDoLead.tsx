@@ -32,6 +32,25 @@ export function LinhaDoTempoDoLead({
   podeEditar: boolean;
 }) {
   const t = useT();
+  return (
+    <div className="grid gap-4">
+      <RegistrarAcaoDoLead contactId={contactId} podeEditar={podeEditar} />
+      <BlocoDaFicha titulo={t("Histórico")} cor="blue">
+        <TimelineView contactId={contactId} />
+      </BlocoDaFicha>
+    </div>
+  );
+}
+
+/** O bloco "Registrar ação" (ligação + resultado, mensagem enviada, remarcou…): usado aqui e na Visão geral. */
+export function RegistrarAcaoDoLead({
+  contactId,
+  podeEditar,
+}: {
+  contactId: string;
+  podeEditar: boolean;
+}) {
+  const t = useT();
   const qc = useQueryClient();
   const [acao, setAcao] = useState<IdDaAcao | null>(null);
   const [titulo, setTitulo] = useState("");
@@ -79,6 +98,7 @@ export function LinhaDoTempoDoLead({
   const exigeTitulo = Boolean(atual && "exigeTitulo" in atual && atual.exigeTitulo);
   const podeRegistrar = !exigeTitulo || titulo.trim().length >= 3;
 
+  if (!podeEditar) return null;
   return (
     <div className="grid gap-4">
       {podeEditar ? (
@@ -177,10 +197,6 @@ export function LinhaDoTempoDoLead({
           ) : null}
         </BlocoDaFicha>
       ) : null}
-
-      <BlocoDaFicha titulo={t("Histórico")} cor="blue">
-        <TimelineView contactId={contactId} />
-      </BlocoDaFicha>
     </div>
   );
 }

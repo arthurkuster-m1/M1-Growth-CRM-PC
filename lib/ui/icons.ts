@@ -128,6 +128,7 @@ export {
   CaretLeft,
   CaretRight,
   ArrowRight,
+  ArrowLeft,
   SignOut,
   WebhooksLogo,
   PuzzlePiece,

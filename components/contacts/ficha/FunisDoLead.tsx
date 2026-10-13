@@ -13,6 +13,7 @@ import {
   type ValorDaOrigem,
 } from "@/components/contacts/ficha/OrigemEmCascata";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
+import { corpoDaOrigem, valorDaOrigemDoCard } from "@/components/contacts/ficha/origem-do-card";
 import { Button } from "@/components/ui/button";
 import {
   aplicarConsulta,
@@ -363,31 +364,11 @@ function CartaoDoFunil({
         }>("/api/v1/marketing/origem-opcoes")
       ).data,
   });
-  const campanhaDoCard = n.campanhas.find((c) => c.id === n.campaign_id) ?? null;
-  const origemDoCard: ValorDaOrigem = {
-    origem: n.source === "base_de_clientes" ? "Base de clientes" : (n.source ?? ""),
-    campanha: campanhaDoCard?.nome ?? "",
-    conjunto: n.conjunto ?? "",
-    anuncio: campanhaDoCard?.criativos.find((c) => c.id === n.creative_id)?.nome ?? "",
-    lp: campanhaDoCard?.landing_pages.find((p) => p.id === n.landing_page_id)?.nome ?? "",
-    posicionamento: n.posicionamento ?? "",
-  };
+  const origemDoCard: ValorDaOrigem = valorDaOrigemDoCard(n);
   const [origemEdit, setOrigemEdit] = useState<ValorDaOrigem>(origemDoCard);
   const origemMudou = JSON.stringify(origemEdit) !== JSON.stringify(origemDoCard);
   async function salvarOrigemDoCard() {
-    const arvore = opcoesDeOrigem.data?.campanhas ?? [];
-    const camp = arvore.find((c) => c.nome === origemEdit.campanha);
-    const todos = camp ? [...camp.conjuntos.flatMap((c) => c.anuncios), ...camp.anuncios_soltos] : [];
-    const anuncio = todos.find((a) => a.nome === origemEdit.anuncio);
-    const pagina = camp?.paginas.find((p) => p.nome === origemEdit.lp);
-    await mudarOrigem({
-      campaign_id: camp?.id ?? null,
-      // O anúncio do cadastro de criativos pode não existir (nome digitado): só vale com id.
-      ...(camp ? { creative_id: anuncio?.id ?? null, landing_page_id: pagina?.id ?? null } : {}),
-      ...(origemEdit.origem.trim() ? { source: origemEdit.origem.trim() } : {}),
-      conjunto: origemEdit.conjunto || null,
-      posicionamento: origemEdit.posicionamento || null,
-    });
+    await mudarOrigem(corpoDaOrigem(origemEdit, opcoesDeOrigem.data?.campanhas ?? []));
   }
 
   const selo =

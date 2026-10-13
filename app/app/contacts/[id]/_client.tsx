@@ -5,7 +5,8 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useState } from "react";
 import { format } from "date-fns";
-import { ShieldCheck, LockOpen } from "@/lib/ui/icons";
+import Link from "next/link";
+import { ArrowLeft, ShieldCheck, LockOpen } from "@/lib/ui/icons";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
@@ -179,6 +180,13 @@ function ContactDetailInner({ contactId }: Props) {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
+          <Link
+            href="/app/clientes"
+            className="mb-2 inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1 text-xs font-medium hover:bg-secondary"
+          >
+            <ArrowLeft size={12} weight="bold" aria-hidden />
+            {t("Voltar ao CRM")}
+          </Link>
           {/* Sem truncar: nome é dado que a tela existe pra mostrar, e cortar
               com reticências sem um jeito de ver o resto violaria o princípio
               de nunca esconder informação crítica. Deixa quebrar linha. */}
@@ -320,7 +328,7 @@ function ContactDetailInner({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <PainelDaVisaoGeral contactId={contactId} aoAbrir={irParaAba} />
+          <PainelDaVisaoGeral contactId={contactId} aoAbrir={irParaAba} podeEditar={podeEditarFicha} />
           <div className="mt-4">
             <RoteirosDoContato contactId={contactId} />
           </div>

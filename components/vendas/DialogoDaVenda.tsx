@@ -1,9 +1,13 @@
 "use client";
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
+import { OrigemEmCascata, type ValorDaOrigem } from "@/components/contacts/ficha/OrigemEmCascata";
+import { corpoDaOrigem, valorDaOrigemDoCard } from "@/components/contacts/ficha/origem-do-card";
+import type { DadosDoLead } from "@/components/leads/FichaDoLead";
+import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import Link from "next/link";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -116,6 +120,7 @@ const BARRAS = {
   green: "border-l-green-500",
   yellow: "border-l-yellow-500",
   gray: "border-l-gray-400",
+  pink: "border-l-pink-500",
 } as const;
 
 /** Uma fase do popup: cartão com a barra colorida na lateral e o título. */
@@ -231,6 +236,35 @@ export function DialogoDaVenda({
   const [camposDoNegocio, setCamposDoNegocio] = useState<Record<string, unknown>>(
     negocio?.camposValores ?? {},
   );
+  // ── Origem da venda (o mesmo modelo do lead): fonte + campanha → conjunto → anúncio → página ──
+  const queryClient = useQueryClient();
+  const leadDaVenda = venda?.lead_id ?? null;
+  const origemDoCard = useQuery({
+    queryKey: ["ficha-do-lead", leadDaVenda],
+    enabled: Boolean(leadDaVenda),
+    staleTime: 10_000,
+    queryFn: async () =>
+      (await apiClient.get<{ data: DadosDoLead }>(`/api/v1/leads/${leadDaVenda}/origem`)).data,
+  });
+  const opcoesDeOrigem = useQuery({
+    queryKey: ["origem-opcoes"],
+    enabled: Boolean(leadDaVenda),
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: { campanhas: CampanhaOpcao[]; posicionamentos: string[]; fontes: string[] };
+        }>("/api/v1/marketing/origem-opcoes")
+      ).data,
+  });
+  const origemInicial: ValorDaOrigem | null = origemDoCard.data
+    ? valorDaOrigemDoCard(origemDoCard.data)
+    : null;
+  const [origemEditada, setOrigemEditada] = useState<ValorDaOrigem | null>(null);
+  const origemAtual = origemEditada ?? origemInicial;
+  const origemMudou =
+    origemEditada !== null && JSON.stringify(origemEditada) !== JSON.stringify(origemInicial);
+
   // Lembrete da venda: vira uma tarefa com data e hora (a de Tarefas avisa na hora certa).
   const [lembreteAtivo, setLembreteAtivo] = useState(false);
   const [lembreteDia, setLembreteDia] = useState("");
@@ -475,6 +509,19 @@ export function DialogoDaVenda({
       }
     } catch {
       // O lembrete não derruba o salvar da venda.
+    }
+    if (origemMudou && origemEditada && leadDaVenda) {
+      try {
+        await apiClient.put(
+          `/api/v1/leads/${leadDaVenda}/origem`,
+          corpoDaOrigem(origemEditada, opcoesDeOrigem.data?.campanhas ?? []),
+        );
+        await queryClient.invalidateQueries();
+      } catch {
+        setSalvando(false);
+        setErro(t("A venda foi salva, mas não consegui salvar a origem. Tente de novo."));
+        return;
+      }
     }
     if (negocio?.aoSalvarExtras) {
       await negocio.aoSalvarExtras({
@@ -996,6 +1043,30 @@ export function DialogoDaVenda({
             </div>
           ) : null}
         </Fase>
+
+        {leadDaVenda ? (
+          <Fase titulo={t("Origem")} cor="pink">
+            {origemAtual ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "De onde veio esta venda. É isto que leva o valor para a análise de landing pages e criativos.",
+                  )}
+                </p>
+                <OrigemEmCascata
+                  valor={origemAtual}
+                  aoMudar={setOrigemEditada}
+                  campanhas={opcoesDeOrigem.data?.campanhas ?? []}
+                  posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
+                  fontes={opcoesDeOrigem.data?.fontes ?? []}
+                  carregando={opcoesDeOrigem.isLoading}
+                />
+              </>
+            ) : (
+              <div className="h-16 animate-pulse rounded-lg bg-secondary" />
+            )}
+          </Fase>
+        ) : null}
 
         {erro ? (
           <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm">

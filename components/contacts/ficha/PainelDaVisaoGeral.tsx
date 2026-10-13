@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 import { BlocoDaFicha, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
+import { RegistrarAcaoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
+import { UltimasAcoesDoLead } from "@/components/contacts/ficha/UltimasAcoesDoLead";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -57,9 +59,11 @@ function pendencia(v: Venda): { falta: number; vence: string | null } {
 export function PainelDaVisaoGeral({
   contactId,
   aoAbrir,
+  podeEditar = false,
 }: {
   contactId: string;
   aoAbrir: (aba: string) => void;
+  podeEditar?: boolean;
 }) {
   const t = useT();
   const locale = useLocaleDeData();
@@ -215,6 +219,9 @@ export function PainelDaVisaoGeral({
           )}
         </BlocoDaFicha>
       </div>
+
+      <RegistrarAcaoDoLead contactId={contactId} podeEditar={podeEditar} />
+      <UltimasAcoesDoLead contactId={contactId} aoVerTodas={() => aoAbrir("timeline")} />
 
       <BlocoDaFicha
         titulo={t("Anotações importantes")}
