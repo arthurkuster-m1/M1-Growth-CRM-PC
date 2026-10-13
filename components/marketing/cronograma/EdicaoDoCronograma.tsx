@@ -44,17 +44,47 @@ function Rotulo({ texto, children }: { texto: string; children: React.ReactNode 
   );
 }
 
+/** Barras coloridas: cada bloco da edição tem a sua cor, para as seções não se misturarem. */
+const BARRA_DO_GRUPO = {
+  violet: "border-l-violet-500",
+  blue: "border-l-blue-500",
+  green: "border-l-green-500",
+  orange: "border-l-orange-500",
+  gray: "border-l-gray-400",
+} as const;
+
+/** As fases se revezam nestas cores (a barra e o fundo suave do cartão). */
+const CORES_DE_FASE = [
+  "border-l-blue-500 bg-blue-500/5",
+  "border-l-emerald-500 bg-emerald-500/5",
+  "border-l-orange-500 bg-orange-500/5",
+  "border-l-purple-500 bg-purple-500/5",
+  "border-l-pink-500 bg-pink-500/5",
+  "border-l-cyan-500 bg-cyan-500/5",
+] as const;
+
+/** A barra de cada ação-chave segue a situação dela. */
+const BARRA_DO_STATUS: Record<string, string> = {
+  planejado: "border-l-slate-400",
+  andamento: "border-l-yellow-500",
+  concluido: "border-l-green-500",
+};
+
 function Grupo({
   titulo,
   dica,
+  cor = "gray",
   children,
 }: {
   titulo: string;
   dica?: string;
+  cor?: keyof typeof BARRA_DO_GRUPO;
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="grid gap-3 rounded-2xl border bg-card p-4">
+    <fieldset
+      className={cn("grid gap-3 rounded-2xl border border-l-4 bg-card p-4", BARRA_DO_GRUPO[cor])}
+    >
       <legend className="px-2 text-sm font-semibold">{titulo}</legend>
       {dica ? <p className="-mt-1 text-xs text-muted-foreground">{dica}</p> : null}
       {children}
@@ -149,7 +179,7 @@ function LinhaDeMeta({
         : t("Quantidade");
 
   return (
-    <div className="grid gap-2 rounded-xl bg-secondary/40 p-3">
+    <div className="grid gap-2 rounded-xl border border-l-4 border-l-violet-500 bg-violet-500/5 p-3">
       <div className="grid gap-2 sm:grid-cols-[1.6fr_1fr_1fr_auto]">
         <input
           defaultValue={meta.titulo}
@@ -394,7 +424,12 @@ function LinhaDeAcao({
   const rotuloDoStatus = (s: StatusDoItem) =>
     s === "planejado" ? t("Planejado") : s === "andamento" ? t("Em andamento") : t("Concluído");
   return (
-    <div className="grid gap-2 rounded-xl border bg-background p-3">
+    <div
+      className={cn(
+        "grid gap-2 rounded-xl border border-l-4 bg-background p-3",
+        BARRA_DO_STATUS[item.status],
+      )}
+    >
       <input
         defaultValue={item.acao}
         aria-label={t("Ação")}
@@ -623,7 +658,10 @@ function CartaoDeFase({
   aoRenomear,
   aoMoverFase,
   aoMoverItem,
+  cor = "border-l-gray-400 bg-secondary/30",
 }: {
+  /** Classes da barra e do fundo da fase. */
+  cor?: string;
   nome: string;
   itens: ItemDoCronograma[];
   fases: string[];
@@ -637,7 +675,7 @@ function CartaoDeFase({
   const concluidas = itens.filter((i) => i.status === "concluido");
   const sugerida = itens.length ? Math.max(...itens.map((i) => i.semana_fim)) : 1;
   return (
-    <div className="grid gap-3 rounded-2xl border bg-secondary/30 p-3">
+    <div className={cn("grid gap-3 rounded-2xl border border-l-4 p-3", cor)}>
       <div className="flex flex-wrap items-center gap-2">
         {nome ? (
           <input
@@ -823,6 +861,7 @@ export function EdicaoDoCronograma({
   return (
     <div className="grid gap-4">
       <Grupo
+        cor="violet"
         titulo={t("Metas (o topo da página)")}
         dica={t("Escolha o tipo: o valor é formatado e a barra de progresso é calculada sozinha.")}
       >
@@ -838,6 +877,7 @@ export function EdicaoDoCronograma({
       </Grupo>
 
       <Grupo
+        cor="blue"
         titulo={t("Fases e ações-chave")}
         dica={t(
           "Cada fase reúne várias ações-chave. Escolha o período por data: o sistema mostra em que semana do projeto ele cai. Use as setas para reordenar fases e ações.",
@@ -856,6 +896,7 @@ export function EdicaoDoCronograma({
               descer: k < nomesDeFase.length - 1 ? () => moverFase(nome, 1) : undefined,
             }}
             aoMoverItem={moverItem}
+            cor={CORES_DE_FASE[k % CORES_DE_FASE.length]}
           />
         ))}
         {semFase.length > 0 ? (
@@ -933,7 +974,7 @@ export function EdicaoDoCronograma({
         ) : null}
       </Grupo>
 
-      <Grupo titulo={t("Configuração")}>
+      <Grupo cor="green" titulo={t("Configuração")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Rotulo texto={t("Quantas semanas aparecem na tela")}>
             <input

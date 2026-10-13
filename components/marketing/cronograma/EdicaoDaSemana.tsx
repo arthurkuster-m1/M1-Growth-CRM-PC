@@ -102,7 +102,7 @@ export function EdicaoDaSemana({
 
   return (
     <div className="grid gap-4">
-      <fieldset className="grid gap-3 rounded-2xl border bg-card p-4">
+      <fieldset className="grid gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4">
         <legend className="px-2 text-sm font-semibold">{t("Tarefas desta semana")}</legend>
         {tarefas.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa nesta semana ainda.")}</p>
@@ -112,7 +112,15 @@ export function EdicaoDaSemana({
           return (
             <div
               key={x.id}
-              className="grid gap-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-[1fr_auto]"
+              className={`grid gap-2 rounded-xl border border-l-4 p-3 sm:grid-cols-[1fr_auto] ${
+                x.status === "done"
+                  ? "border-l-green-500 bg-green-500/5"
+                  : situacao === "atrasada"
+                    ? "border-l-red-500 bg-red-500/5"
+                    : x.lado === "cliente"
+                      ? "border-l-orange-500 bg-orange-500/5"
+                      : "border-l-blue-500 bg-blue-500/5"
+              }`}
             >
               <div>
                 <p className="text-sm font-medium">{x.title}</p>
