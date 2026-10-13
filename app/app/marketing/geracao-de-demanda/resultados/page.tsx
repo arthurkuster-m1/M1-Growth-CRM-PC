@@ -20,12 +20,12 @@ export default async function ResultadosPage() {
     <PaginaDeMarketing
       tom="blue"
       icone={<Megaphone weight="duotone" aria-hidden />}
-      superior={t("Geração de demanda")}
+      superior={t("Campanhas")}
       titulo={t("Resultados")}
       descricao={t(
         "Investido, leads, vendas e faturamento de cada campanha, no período que você escolher.",
       )}
-      voltar={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Geração de demanda") }}
+      voltar={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Campanhas") }}
     >
       <ResultadosDasCampanhas />
     </PaginaDeMarketing>

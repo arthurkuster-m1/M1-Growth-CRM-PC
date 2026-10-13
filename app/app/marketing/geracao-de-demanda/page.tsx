@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { CampanhasDeDemanda } from "@/components/marketing/campanhas/CampanhasDeDemanda";
-import { Atalho, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { Megaphone } from "@/lib/ui/icons";
+import { ChartBar, Megaphone, Users } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Geração de demanda" };
+export const metadata: Metadata = { title: "Campanhas" };
 
 /**
- * Geração de demanda: as CAMPANHAS do cliente. Cada campanha tem o seu funil, criado dentro
+ * Campanhas: as CAMPANHAS do cliente. Cada campanha tem o seu funil, criado dentro
  * dela (aba "Funil de conversão" da campanha) — não existe funil solto. Os leads de todos os
  * funis aparecem na página Clientes.
  */
@@ -26,32 +26,38 @@ export default async function GeracaoDeDemandaPage() {
       tom="blue"
       icone={<Megaphone weight="duotone" aria-hidden />}
       superior={t("Marketing")}
-      titulo={t("Geração de demanda")}
+      titulo={t("Campanhas")}
       descricao={t("As campanhas do cliente, com o funil e os resultados de cada uma.")}
       voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
-      <CampanhasDeDemanda />
-
       <section
         aria-label={t("Telas relacionadas")}
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/marketing/geracao-de-demanda/resultados"
           titulo={t("Resultados das campanhas")}
           descricao={t("Investido, leads, vendas e faturamento por período")}
+          icone={<ChartBar weight="duotone" aria-hidden />}
+          tom="blue"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/clientes"
           titulo={t("Clientes (CRM)")}
           descricao={t("Os leads de todos os funis, em tabela ou quadro")}
+          icone={<Users weight="duotone" aria-hidden />}
+          tom="green"
         />
-        <Atalho
+        <AtalhoEmDestaque
           href="/app/ads/meta"
           titulo={t("Meta Ads")}
           descricao={t("Resultados das campanhas pagas")}
+          icone={<Megaphone weight="duotone" aria-hidden />}
+          tom="purple"
         />
       </section>
+
+      <CampanhasDeDemanda />
     </PaginaDeMarketing>
   );
 }

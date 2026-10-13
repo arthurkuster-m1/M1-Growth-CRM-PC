@@ -8,6 +8,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
+import { CANAIS_DA_CAMPANHA } from "@/lib/marketing/campanhas";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 import { PERIODOS, janelaDoPeriodo } from "@/lib/marketing/periodos";
 
@@ -23,7 +24,17 @@ const querySchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  /** Só estas campanhas (ids separados por vírgula). */
+  campanhas: z.string().optional(),
+  /** Só estes canais (separados por vírgula). */
+  canais: z.string().optional(),
 });
+
+const lista = (v: string | undefined) =>
+  (v ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 export async function GET(req: NextRequest): Promise<Response> {
   const a = await autorizarCampanhas("viewer", false);
@@ -63,7 +74,11 @@ export async function GET(req: NextRequest): Promise<Response> {
     .eq("organization_id", a.orgId)
     .limit(500);
   const porId = new Map((campanhas ?? []).map((c) => [c.id as string, c]));
-  const linhas = (
+  const idsPedidos = new Set(lista(q.data.campanhas));
+  const canaisPedidos = new Set(
+    lista(q.data.canais).filter((c) => (CANAIS_DA_CAMPANHA as readonly string[]).includes(c)),
+  );
+  const todasAsLinhas = (
     (data ?? []) as Array<{
       campaign_id: string;
       investido: number | string;
@@ -91,5 +106,29 @@ export async function GET(req: NextRequest): Promise<Response> {
       a_receber: (Number(r.a_receber) || 0) / 100,
     };
   });
-  return ok({ de: janela.de, ate: janela.ate, linhas }, { requestId: a.requestId });
+  const catalogo = todasAsLinhas
+    .map((l) => ({ id: l.id, name: l.name, channel: l.channel }))
+    .sort((x, y) => x.name.localeCompare(y.name, "pt-BR"));
+  const linhas = todasAsLinhas.filter(
+    (l) =>
+      (idsPedidos.size === 0 || idsPedidos.has(l.id)) &&
+      (canaisPedidos.size === 0 || canaisPedidos.has(l.channel)),
+  );
+
+  // Cada pessoa conta UMA vez no total, mesmo que esteja em mais de uma campanha.
+  let leadsUnicos = 0;
+  if (linhas.length > 0) {
+    const { data: unicos } = await a.supabase.rpc("fn_demand_leads_unicos", {
+      p_org: a.orgId,
+      p_from: janela.de,
+      p_to: janela.ate,
+      p_tz: fuso,
+      p_campaigns: linhas.map((l) => l.id),
+    });
+    leadsUnicos = Number(unicos) || 0;
+  }
+  return ok(
+    { de: janela.de, ate: janela.ate, linhas, catalogo, leads_unicos: leadsUnicos },
+    { requestId: a.requestId },
+  );
 }

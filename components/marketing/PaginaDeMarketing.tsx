@@ -86,6 +86,54 @@ export function Atalho({
   );
 }
 
+const TOM_DO_ATALHO: Record<"blue" | "green" | "purple", string> = {
+  blue: "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white dark:text-blue-300",
+  green:
+    "bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white dark:text-emerald-300",
+  purple:
+    "bg-violet-500/10 text-violet-600 group-hover:bg-violet-500 group-hover:text-white dark:text-violet-300",
+};
+
+/** Um atalho em destaque: ícone num bloco colorido, título e descrição, para a entrada da página. */
+export function AtalhoEmDestaque({
+  href,
+  titulo,
+  descricao,
+  icone,
+  tom = "blue",
+}: {
+  href: string;
+  titulo: string;
+  descricao: string;
+  icone: ReactNode;
+  tom?: "blue" | "green" | "purple";
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+    >
+      <span
+        aria-hidden
+        className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-2xl transition-colors ${TOM_DO_ATALHO[tom]}`}
+      >
+        {icone}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{titulo}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+          {descricao}
+        </span>
+      </span>
+      <ArrowRight
+        size={18}
+        className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary"
+        aria-hidden
+      />
+    </Link>
+  );
+}
+
 /** O bloco "o que vem aqui" das páginas ainda em construção. */
 export function OQueVem({ titulo, itens }: { titulo: string; itens: string[] }) {
   return (

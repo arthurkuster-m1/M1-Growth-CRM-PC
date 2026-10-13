@@ -205,7 +205,7 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/marketing/geracao-de-demanda",
-    label: "Geração de demanda",
+    label: "Campanhas",
     description: "Campanhas, criativos e textos que trazem clientes.",
     icon: "Megaphone",
     group: "marketing",

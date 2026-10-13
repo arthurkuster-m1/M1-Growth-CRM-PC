@@ -47,7 +47,7 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/vendas":
     "botão \"Vendas\" no topo de Clientes — é a visão do dinheiro daquela lista, não uma porta do menu",
   "/app/marketing/geracao-de-demanda/resultados":
-    "alcançada pelas abas de Geração de demanda; o hub já lista a tela-mãe",
+    "alcançada pelas abas de Campanhas; o hub já lista a tela-mãe",
   "/app/settings/atualizacao":
     "porta é o rodapé de versão (VersionFooter), que aparece justamente quando há versão nova — melhor que um card fixo. Além disso é só do dono do servidor (is_platform_admin), papel que o registro não modela",
 };

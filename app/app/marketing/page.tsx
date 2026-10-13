@@ -79,7 +79,7 @@ export default async function MarketingPage() {
           href="/app/marketing/geracao-de-demanda"
           tom="blue"
           icone={<Megaphone weight="duotone" aria-hidden />}
-          titulo={t("Geração de demanda")}
+          titulo={t("Campanhas")}
           descricao={t("Campanhas, criativos e textos que trazem clientes.")}
           estado={emBreve}
           abrir={abrir}

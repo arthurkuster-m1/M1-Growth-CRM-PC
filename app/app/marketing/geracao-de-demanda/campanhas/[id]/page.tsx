@@ -25,12 +25,12 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
     <PaginaDeMarketing
       tom="blue"
       icone={<Megaphone weight="duotone" aria-hidden />}
-      superior={t("Geração de demanda")}
+      superior={t("Campanhas")}
       titulo={t("Campanha")}
       descricao={t("Cadastro, investimento, metas e o diário de bordo desta ação de vendas.")}
       voltar={{
         href: "/app/marketing/geracao-de-demanda",
-        rotulo: t("Geração de demanda"),
+        rotulo: t("Campanhas"),
       }}
     >
       <DetalheDaCampanha id={id} />
