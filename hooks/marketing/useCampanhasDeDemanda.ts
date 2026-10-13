@@ -525,6 +525,8 @@ export interface MetaPorAnuncio {
     adset_id: string;
     nome: string;
     anuncios: number;
+    /** Status efetivo no Meta (ACTIVE, PAUSED…); vazio quando o cadastro ainda não foi lido. */
+    status: string;
     spend: number;
     impressions: number;
     link_clicks: number;

@@ -18,6 +18,8 @@ export interface AnuncioDoMeta {
   miniatura: string;
   imagem: string;
   formato: "imagem" | "video" | "carrossel" | "outro";
+  /** A página de destino do anúncio (sem os parâmetros de UTM); vazio quando o Meta não a expõe. */
+  link: string;
 }
 
 interface AnuncioCru {
@@ -32,6 +34,12 @@ interface AnuncioCru {
     image_url?: string;
     object_type?: string;
     video_id?: string;
+    object_url?: string;
+    object_story_spec?: {
+      link_data?: { link?: string; child_attachments?: Array<{ link?: string }> };
+      video_data?: { call_to_action?: { value?: { link?: string } } };
+    };
+    asset_feed_spec?: { link_urls?: Array<{ website_url?: string }> };
   };
 }
 
@@ -59,6 +67,20 @@ function formatoDe(a: AnuncioCru): AnuncioDoMeta["formato"] {
   return "outro";
 }
 
+/** O link de destino: onde cada tipo de anúncio o guarda (link, carrossel, vídeo, dinâmico). */
+export function linkDoAnuncio(a: AnuncioCru): string {
+  const c = a.creative;
+  const candidatos = [
+    c?.object_story_spec?.link_data?.link,
+    c?.object_story_spec?.link_data?.child_attachments?.find((x) => x.link)?.link,
+    c?.object_story_spec?.video_data?.call_to_action?.value?.link,
+    c?.asset_feed_spec?.link_urls?.find((x) => x.website_url)?.website_url,
+    c?.object_url,
+  ];
+  const achado = candidatos.find((u) => typeof u === "string" && /^https?:\/\/\S+$/i.test(u));
+  return (achado ?? "").slice(0, 1000);
+}
+
 export function anuncioDoMeta(a: AnuncioCru): AnuncioDoMeta | null {
   if (!a.id) return null;
   return {
@@ -71,6 +93,7 @@ export function anuncioDoMeta(a: AnuncioCru): AnuncioDoMeta | null {
     miniatura: a.creative?.thumbnail_url ?? "",
     imagem: a.creative?.image_url ?? "",
     formato: formatoDe(a),
+    link: linkDoAnuncio(a),
   };
 }
 
@@ -97,7 +120,7 @@ export async function lerAnuncios(
     const r = await buscarPaginado<AnuncioCru>(
       montarUrl(`${encodeURIComponent(id)}/ads`, {
         fields:
-          "id,name,effective_status,campaign_id,creative{title,body,thumbnail_url,image_url,object_type,video_id}",
+          "id,name,effective_status,campaign_id,creative{title,body,thumbnail_url,image_url,object_type,video_id,object_url,object_story_spec{link_data{link,child_attachments{link}},video_data{call_to_action{value{link}}}},asset_feed_spec{link_urls{website_url}}}",
         limit: "100",
       }),
       token,
@@ -145,4 +168,48 @@ export async function lerMetricasPorAnuncio(
       return m ? [m] : [];
     }),
   };
+}
+
+export interface ConjuntoDoMeta {
+  id: string;
+  name: string;
+  status: string;
+  effectiveStatus: string;
+  campaignId: string;
+}
+
+/** Os conjuntos de anúncios das campanhas pedidas — todos, tenham entregado ou não. */
+export async function lerConjuntos(
+  token: string,
+  campanhaIds: readonly string[],
+): Promise<Leitura<ConjuntoDoMeta[]>> {
+  const todos: ConjuntoDoMeta[] = [];
+  for (const id of campanhaIds) {
+    const r = await buscarPaginado<{
+      id?: string;
+      name?: string;
+      status?: string;
+      effective_status?: string;
+      campaign_id?: string;
+    }>(
+      montarUrl(`${encodeURIComponent(id)}/adsets`, {
+        fields: "id,name,status,effective_status,campaign_id",
+        limit: "200",
+      }),
+      token,
+      "conjuntos",
+    );
+    if (!r.ok) return { ok: false, falha: r.falha, detalhe: r.detalhe };
+    for (const c of r.dados) {
+      if (!c.id) continue;
+      todos.push({
+        id: c.id,
+        name: c.name ?? c.id,
+        status: c.status ?? "",
+        effectiveStatus: c.effective_status ?? c.status ?? "",
+        campaignId: c.campaign_id ?? id,
+      });
+    }
+  }
+  return { ok: true, dados: todos };
 }

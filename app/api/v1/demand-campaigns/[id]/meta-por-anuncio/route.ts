@@ -77,6 +77,24 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     .eq("platform", "meta_ads")
     .in("campaign_id", idsDaPlataforma);
 
+  // O cadastro dos conjuntos (nome e status): conjunto ativo sem entrega no período também entra.
+  const { data: cadastro } = await createAdminClient()
+    .from("ad_adsets")
+    .select("adset_id, name, status, effective_status")
+    .eq("organization_id", a.orgId)
+    .eq("platform", "meta_ads")
+    .in("campaign_id", idsDaPlataforma)
+    .limit(2000);
+  const statusDe = new Map<string, { nome: string; status: string }>();
+  for (const x of (cadastro ?? []) as Array<{
+    adset_id: string;
+    name: string;
+    status: string;
+    effective_status: string;
+  }>) {
+    statusDe.set(x.adset_id, { nome: x.name, status: x.effective_status || x.status });
+  }
+
   const anuncios: Record<string, Soma & { adset_id: string }> = {};
   const conjuntos = new Map<
     string,
@@ -116,6 +134,17 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (l.adset_name) cj.nome = l.adset_name;
     conjuntos.set(l.adset_id, cj);
   }
+  // Conjuntos do cadastro que não tiveram entrega no período entram com zero.
+  for (const [adsetId, x] of statusDe) {
+    if (!conjuntos.has(adsetId)) {
+      conjuntos.set(adsetId, {
+        ...zero(),
+        adset_id: adsetId,
+        nome: x.nome,
+        anuncios: new Set<string>(),
+      });
+    }
+  }
   for (const k of Object.keys(anuncios))
     anuncios[k]!.spend = Math.round(anuncios[k]!.spend * 100) / 100;
 
@@ -128,12 +157,17 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
           adset_id: x.adset_id,
           nome: x.nome,
           anuncios: x.anuncios.size,
+          status: statusDe.get(x.adset_id)?.status ?? "",
           spend: Math.round(x.spend * 100) / 100,
           impressions: x.impressions,
           link_clicks: x.link_clicks,
           lp_views: x.lp_views,
         }))
-        .sort((p, q) => q.spend - p.spend),
+        // Ativos primeiro; dentro de cada grupo, quem mais gastou.
+        .sort(
+          (p, q) =>
+            Number(q.status === "ACTIVE") - Number(p.status === "ACTIVE") || q.spend - p.spend,
+        ),
       sincronizado_em: (c.meta_ads_synced_at as string | null) ?? null,
       diferenca_pct: c.meta_ads_diff_pct === null ? null : Number(c.meta_ads_diff_pct),
     },

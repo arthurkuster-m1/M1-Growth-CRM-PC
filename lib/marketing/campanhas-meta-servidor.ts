@@ -13,6 +13,7 @@ import {
   importarCriativosDoMeta,
 } from "@/lib/marketing/criativos-servidor";
 import { lerInsightsPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia";
+import { sincronizarConjuntos } from "@/lib/marketing/meta-por-anuncio-servidor";
 import { sincronizarBaseDiaria } from "@/lib/marketing/meta-por-anuncio-servidor";
 
 /**
@@ -116,7 +117,7 @@ export async function sincronizarCampanhaComMeta(
   }
   // Anúncio novo no Meta vira criativo da campanha (a cada 6 horas: poupa a cota). É o que
   // permite casar o lead que chega pelo anúncio com o criativo dele.
-  if (agora.getUTCHours() % 6 === 0) {
+  if (opcoes.manual === true || agora.getUTCHours() % 6 === 0) {
     await importarCriativosDoMeta(
       admin,
       {
@@ -130,6 +131,14 @@ export async function sincronizarCampanhaComMeta(
       null,
     ).catch(() => undefined);
   }
+
+  // Os conjuntos (cadastro: nome e status), mesmo os que não tiveram entrega no período.
+  await sincronizarConjuntos(admin, c, credencial.credencial.accessToken, ids, agora).catch((e) =>
+    logger.error("[campanhas-meta] conjuntos falharam", {
+      campanha: c.id,
+      error: e instanceof Error ? e.message : String(e),
+    }),
+  );
 
   // A base diária POR ANÚNCIO (criativo, conjunto, LP em qualquer período). Falha aqui não
   // derruba o dia a dia da campanha: fica no log e na conferência.

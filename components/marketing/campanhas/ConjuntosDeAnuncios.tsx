@@ -31,6 +31,7 @@ export function ConjuntosDeAnuncios({
           <thead className="bg-secondary/60 text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">{t("Conjunto")}</th>
+              <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("Anúncios")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("Investido")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("Impressões")}</th>
@@ -48,6 +49,23 @@ export function ConjuntosDeAnuncios({
                 <tr key={c.adset_id || c.nome} className="border-t">
                   <td className="max-w-72 truncate px-3 py-2 font-medium" title={c.nome}>
                     {c.nome || t("Sem conjunto")}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={
+                        c.status === "ACTIVE"
+                          ? "rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+                          : "rounded-md bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground"
+                      }
+                    >
+                      {c.status === "ACTIVE"
+                        ? t("Ativo")
+                        : c.status === ""
+                          ? "—"
+                          : c.status === "PAUSED" || c.status.endsWith("_PAUSED")
+                            ? t("Pausado")
+                            : t("Inativo")}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{inteiro(c.anuncios)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{moedaDoNumero(c.spend)}</td>

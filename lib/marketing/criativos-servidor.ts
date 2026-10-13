@@ -93,11 +93,25 @@ export async function importarCriativosDoMeta(
 
   const { data: ja } = await admin
     .from("demand_campaign_creatives")
-    .select("ad_id")
+    .select("ad_id, link_url")
     .eq("organization_id", c.organization_id)
     .eq("campaign_id", c.id)
     .not("ad_id", "is", null);
   const existentes = new Set((ja ?? []).map((r) => r.ad_id as string));
+  // Criativo já importado sem link de destino: completa com o que o Meta tem agora.
+  const semLink = new Set(
+    (ja ?? []).filter((r) => !(r.link_url as string | null)).map((r) => r.ad_id as string),
+  );
+  for (const a of leitura.dados) {
+    if (a.link && semLink.has(a.id)) {
+      await admin
+        .from("demand_campaign_creatives")
+        .update({ link_url: a.link })
+        .eq("organization_id", c.organization_id)
+        .eq("campaign_id", c.id)
+        .eq("ad_id", a.id);
+    }
+  }
   const novos = leitura.dados.filter((a) => !existentes.has(a.id));
   if (novos.length > 0) {
     const status = (s: string | null) =>
@@ -119,6 +133,7 @@ export async function importarCriativosDoMeta(
         bodies: a.legenda ? [a.legenda.slice(0, 4000)] : [],
         media_url: "",
         thumbnail_url: (a.miniatura || a.imagem).slice(0, 2000),
+        link_url: a.link,
         ad_id: a.id.slice(0, 40),
         ad_name: a.name.slice(0, 300),
         created_by: userId,

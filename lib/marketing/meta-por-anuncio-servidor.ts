@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@/lib/logger";
+import { lerConjuntos } from "@/lib/plataformas-de-anuncio/meta/anuncios";
 import { lerInsightsPorAnuncio } from "@/lib/plataformas-de-anuncio/meta/insights-por-anuncio";
 
 /**
@@ -165,4 +166,31 @@ export async function sincronizarBaseDiaria(
     .eq("id", c.id)
     .eq("organization_id", c.organization_id);
   return { ok: true, linhas: gravadas, diferencaPct };
+}
+
+/** Grava os conjuntos de anúncios (nome e status) das campanhas atreladas. */
+export async function sincronizarConjuntos(
+  admin: SupabaseClient,
+  c: { id: string; organization_id: string },
+  token: string,
+  campanhaIds: readonly string[],
+  agora: Date,
+): Promise<void> {
+  const leitura = await lerConjuntos(token, campanhaIds);
+  if (!leitura.ok || leitura.dados.length === 0) return;
+  const { error } = await admin.from("ad_adsets").upsert(
+    leitura.dados.map((x) => ({
+      organization_id: c.organization_id,
+      platform: "meta_ads",
+      adset_id: x.id,
+      campaign_id: x.campaignId,
+      name: x.name,
+      status: x.status,
+      effective_status: x.effectiveStatus,
+      synced_at: agora.toISOString(),
+    })),
+    { onConflict: "organization_id,platform,adset_id" },
+  );
+  if (error)
+    logger.error("[meta-por-anuncio] conjuntos: gravação falhou", { error: error.message });
 }

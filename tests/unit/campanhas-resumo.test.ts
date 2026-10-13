@@ -132,6 +132,22 @@ describe("investimento por período", () => {
     );
     expect(r.investimentoBruto).toBe(600);
   });
+
+  it("orçamento 'mensal' vale como o gestor digitou: não é rateado pelos dias da campanha", () => {
+    const r = resumoDaCampanha(
+      campanha({
+        budget: 20000,
+        budget_period: "mensal",
+        tax_pct: 12.5,
+        start_date: "2026-10-12",
+        end_date: "2026-10-13",
+      }),
+      [],
+      "2026-10-13",
+    );
+    expect(r.investimentoBruto).toBe(20000);
+    expect(r.investimentoLiquido).toBeCloseTo(17777.78, 2);
+  });
 });
 
 describe("alertas", () => {

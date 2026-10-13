@@ -105,7 +105,11 @@ export function periodoDaCampanha(
   return { totais, passados, restantes: totais - passados };
 }
 
-/** O investimento bruto do período todo, a partir do valor e do "vale por". */
+/**
+ * O investimento bruto da campanha, a partir do valor digitado e do "vale por": total e mensal
+ * valem como digitados (é o investimento da campanha); diário e semanal são taxas, então
+ * multiplicam pelos dias da campanha.
+ */
 export function investimentoBrutoTotal(
   c: Pick<CampanhaDeDemanda, "budget" | "budget_period">,
   totais: number,
@@ -119,7 +123,8 @@ export function investimentoBrutoTotal(
     case "semanal":
       return (c.budget * totais) / 7;
     case "mensal":
-      return (c.budget * totais) / 30;
+      // O valor que o gestor digitou é o investimento da campanha: não se rateia por dias.
+      return c.budget;
   }
 }
 
