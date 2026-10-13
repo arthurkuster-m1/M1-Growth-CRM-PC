@@ -293,3 +293,63 @@ export function fluxoDoMes(
   }
   return { recebido, aReceber };
 }
+
+/** Uma parcela como o formulário da venda a guarda: valor em centavos, recebida ou não. */
+export interface ParcelaDoFormulario {
+  number: number;
+  due_on: string;
+  amount_cents: number;
+  recebida: boolean;
+  paid_on: string | null;
+}
+
+/**
+ * AJUSTA AS PARCELAS AO TOTAL. Quando o total muda (produto novo, valor novo) as parcelas que já
+ * estavam no formulário deixam de somar o total, e a venda não podia ser salva:
+ *  - sem parcelas: uma parcela à vista, com o total;
+ *  - já somam o total (até R$ 0,01): ficam como estão;
+ *  - nenhuma recebida: refeitas com o mesmo número de parcelas e o mesmo primeiro vencimento;
+ *  - alguma recebida: a diferença vai para a última ainda aberta (ou vira uma parcela nova).
+ */
+export function ajustarParcelasAoTotal(
+  parcelas: readonly ParcelaDoFormulario[],
+  totalCents: number,
+  primeiroVencimento: string,
+  hoje: string,
+): ParcelaDoFormulario[] {
+  if (totalCents <= 0) return [...parcelas];
+  if (parcelas.length === 0) {
+    return [
+      { number: 1, due_on: primeiroVencimento || hoje, amount_cents: totalCents, recebida: false, paid_on: null },
+    ];
+  }
+  const soma = parcelas.reduce((s, p) => s + p.amount_cents, 0);
+  const diferenca = totalCents - soma;
+  if (Math.abs(diferenca) <= 1) return [...parcelas];
+  if (!parcelas.some((p) => p.recebida)) {
+    return gerarParcelas(
+      totalCents,
+      parcelas.length,
+      parcelas[0]!.due_on || primeiroVencimento || hoje,
+    ).map((p) => ({
+      number: p.number,
+      due_on: p.due_on,
+      amount_cents: p.amount_cents,
+      recebida: false,
+      paid_on: null,
+    }));
+  }
+  let ultimaAberta = -1;
+  parcelas.forEach((p, i) => {
+    if (!p.recebida) ultimaAberta = i;
+  });
+  if (ultimaAberta < 0) {
+    return [
+      ...parcelas,
+      { number: parcelas.length + 1, due_on: hoje, amount_cents: diferenca, recebida: false, paid_on: null },
+    ];
+  }
+  return parcelas.map((p, i) =>
+    i === ultimaAberta ? { ...p, amount_cents: Math.max(0, p.amount_cents + diferenca) } : p,
+  );
+}

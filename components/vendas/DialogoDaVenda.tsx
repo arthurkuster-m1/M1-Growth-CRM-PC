@@ -3,15 +3,18 @@
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import Link from "next/link";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { lerNumero } from "@/lib/marketing/calculadora";
-import { Plus, Trash } from "@/lib/ui/icons";
+import { CaretDown, Check, Plus, Trash } from "@/lib/ui/icons";
 import {
   FORMAS_DE_PAGAMENTO,
+  ajustarParcelasAoTotal,
   gerarParcelas,
   type FormaDePagamento,
   type ParcelaDaVenda,
@@ -76,6 +79,86 @@ const textoDe = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const reais = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+
+const STATUS_DA_VENDA_TAG: Record<
+  "interesse" | "comprometida" | "concluida" | "cancelada",
+  { rotulo: string; classe: string }
+> = {
+  interesse: {
+    rotulo: "Interesse",
+    classe: "border-blue-500/60 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  },
+  comprometida: {
+    rotulo: "Comprometida",
+    classe: "border-yellow-500/70 bg-yellow-500/10 text-yellow-800 dark:text-yellow-300",
+  },
+  concluida: {
+    rotulo: "Concluída",
+    classe: "border-green-500/60 bg-green-500/10 text-green-700 dark:text-green-300",
+  },
+  cancelada: {
+    rotulo: "Cancelada",
+    classe: "border-gray-400/70 bg-gray-500/10 text-muted-foreground",
+  },
+};
+
+const BARRAS = {
+  blue: "border-l-blue-500",
+  purple: "border-l-purple-500",
+  orange: "border-l-orange-500",
+  green: "border-l-green-500",
+  yellow: "border-l-yellow-500",
+  gray: "border-l-gray-400",
+} as const;
+
+/** Uma fase do popup: cartão com a barra colorida na lateral e o título. */
+function Fase({
+  titulo,
+  cor,
+  children,
+}: {
+  titulo: string;
+  cor: keyof typeof BARRAS;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`grid gap-3 rounded-2xl border border-l-4 bg-card p-4 ${BARRAS[cor]}`}>
+      <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        {titulo}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+/** O círculo de "recebida": bolinha que se preenche com o visto. */
+function CirculoDeRecebida({
+  marcado,
+  rotulo,
+  aoMudar,
+}: {
+  marcado: boolean;
+  rotulo: string;
+  aoMudar: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={marcado}
+      aria-label={rotulo}
+      onClick={() => aoMudar(!marcado)}
+      className={`mx-auto grid size-6 place-items-center rounded-full border-2 transition-colors ${
+        marcado
+          ? "border-green-600 bg-green-600 text-white"
+          : "border-muted-foreground/50 hover:border-green-600"
+      }`}
+    >
+      {marcado ? <Check size={14} weight="bold" aria-hidden /> : null}
+    </button>
+  );
+}
+
 /**
  * A VENDA, do jeito que acontece: um ou mais produtos, a forma de pagamento e as parcelas — cada
  * uma com a data e o valor, marcada como recebida quando cai na conta. O dinheiro só conta no
@@ -113,7 +196,8 @@ export function DialogoDaVenda({
   clientes: ClienteOpcao[];
   titulo?: string;
   aoFechar: () => void;
-  aoSalvar: (v: DadosDaVenda) => Promise<void>;
+  /** Devolver `false` = não salvou (a janela fica aberta para corrigir). */
+  aoSalvar: (v: DadosDaVenda) => Promise<void | boolean>;
   aoApagar?: () => Promise<void>;
 }) {
   const t = useT();
@@ -146,6 +230,12 @@ export function DialogoDaVenda({
   const [camposDoNegocio, setCamposDoNegocio] = useState<Record<string, unknown>>(
     negocio?.camposValores ?? {},
   );
+  // Lembrete da venda: vira uma tarefa com data e hora (a de Tarefas avisa na hora certa).
+  const [lembreteAtivo, setLembreteAtivo] = useState(false);
+  const [lembreteDia, setLembreteDia] = useState("");
+  const [lembreteHora, setLembreteHora] = useState("09:00");
+  const [tarefaDoLembrete, setTarefaDoLembrete] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
   const [parcelas, setParcelas] = useState<
     Array<{
       number: number;
@@ -181,6 +271,34 @@ export function DialogoDaVenda({
   const [qtd, setQtd] = useState(String(Math.max(1, venda?.installments ?? 1)));
   const [primeiro, setPrimeiro] = useState(venda?.expected_on ?? hoje());
   const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    const id = venda?.id;
+    const cid = venda?.contact_id;
+    if (!id || !cid) return;
+    let vivo = true;
+    void apiClient
+      .get<{
+        data: { tasks: Array<{ id: string; due_date: string | null; description: string | null }> };
+      }>(`/api/v1/tasks?contact_id=${cid}&aberto=true`)
+      .then((r) => {
+        if (!vivo) return;
+        const t = r.data.tasks.find((x) => (x.description ?? "").includes(`[venda:${id}]`));
+        if (!t) return;
+        setTarefaDoLembrete(t.id);
+        setLembreteAtivo(true);
+        if (t.due_date) {
+          const d = new Date(t.due_date);
+          const dois = (n: number) => String(n).padStart(2, "0");
+          setLembreteDia(`${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`);
+          setLembreteHora(`${dois(d.getHours())}:${dois(d.getMinutes())}`);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [venda?.id, venda?.contact_id]);
 
   const total = itens.reduce((s, i) => s + centavos(i.valor), 0);
   const somaParcelas = parcelas.reduce((s, p) => s + centavos(p.valor), 0);
@@ -219,17 +337,47 @@ export function DialogoDaVenda({
   const valido =
     contato !== "" &&
     (situacao === "cancelada" || itensValidos.length > 0) &&
-    (!fechadaSit || (total > 0 && parcelas.length > 0 && Math.abs(diferenca) <= 1));
+    (!fechadaSit || total > 0) &&
+    (!lembreteAtivo || lembreteDia !== "");
+
+  /**
+   * As parcelas que vão para o servidor: se o total mudou (produto novo, valor novo), elas se
+   * ajustam sozinhas — sem parcelas, uma à vista; sem nenhuma recebida, refeitas com o mesmo
+   * número; com alguma recebida, a diferença vai para a última ainda aberta.
+   */
+  function parcelasAjustadas(): typeof parcelas {
+    if (!fechadaSit || total <= 0) return parcelas;
+    return ajustarParcelasAoTotal(
+      parcelas.map((p) => ({
+        number: p.number,
+        due_on: p.due_on,
+        amount_cents: centavos(p.valor),
+        recebida: p.recebida,
+        paid_on: p.paid_on,
+      })),
+      total,
+      primeiro || hoje(),
+      hoje(),
+    ).map((p) => ({
+      number: p.number,
+      due_on: p.due_on,
+      valor: textoDe(p.amount_cents),
+      recebida: p.recebida,
+      paid_on: p.paid_on,
+    }));
+  }
 
   async function salvar() {
     setSalvando(true);
+    setErro(null);
     // "Concluída" = tudo pago: as parcelas entram como recebidas.
+    const base = parcelasAjustadas();
     const pagos = fechadaSit
       ? situacao === "concluida"
-        ? parcelas.map((p) => ({ ...p, recebida: true }))
-        : parcelas
+        ? base.map((p) => ({ ...p, recebida: true }))
+        : base
       : [];
-    await aoSalvar({
+    const salvou = await aoSalvar({
       ...(venda ? { id: venda.id } : {}),
       contact_id: contato,
       status: situacao,
@@ -253,6 +401,34 @@ export function DialogoDaVenda({
       expected_close_date: previsao || null,
       description: descricao.trim(),
     });
+    if (salvou === false) {
+      setSalvando(false);
+      setErro(t("Não consegui salvar a venda. Confira os campos e tente de novo."));
+      return;
+    }
+    // O lembrete: cria, muda a data ou desliga a tarefa.
+    try {
+      const nome = itensValidos[0] ? (produtos.find((p) => p.id === itensValidos[0]!.produtoId)?.nome ?? "") : "";
+      const quando = lembreteDia ? new Date(`${lembreteDia}T${lembreteHora || "09:00"}:00`).toISOString() : null;
+      if (lembreteAtivo && quando) {
+        if (tarefaDoLembrete) {
+          await apiClient.patch(`/api/v1/tasks/${tarefaDoLembrete}`, { due_date: quando, status: "pending" });
+        } else {
+          await apiClient.post("/api/v1/tasks", {
+            title: `${t("Lembrete da venda")}${nome ? `: ${nome}` : ""}`,
+            description: `${t("Lembrete da venda")}${venda ? ` [venda:${venda.id}]` : ""}`,
+            due_date: quando,
+            contact_id: contato,
+            lead_id: venda?.lead_id ?? null,
+            priority: "medium",
+          });
+        }
+      } else if (!lembreteAtivo && tarefaDoLembrete) {
+        await apiClient.patch(`/api/v1/tasks/${tarefaDoLembrete}`, { status: "cancelled" });
+      }
+    } catch {
+      // O lembrete não derruba o salvar da venda.
+    }
     if (negocio?.aoSalvarExtras) {
       await negocio.aoSalvarExtras({
         ...(responsavel !== (negocio.responsavelId ?? "")
@@ -269,7 +445,7 @@ export function DialogoDaVenda({
 
   return (
     <Dialog open onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-h-[92vh] max-w-2xl gap-3 overflow-y-auto p-5 sm:rounded-2xl">
+      <DialogContent className="max-h-[92vh] max-w-3xl gap-4 overflow-y-auto bg-background p-5 sm:rounded-2xl">
         <DialogTitle className="text-base font-semibold">
           {titulo ?? (venda ? t("Editar venda") : t("Nova venda"))}
         </DialogTitle>
@@ -279,6 +455,7 @@ export function DialogoDaVenda({
           )}
         </DialogDescription>
 
+        <Fase titulo={t("Cliente, funil e status")} cor="blue">
         <div className="grid grid-cols-1 gap-1">
           <span className="text-xs text-muted-foreground">{t("Cliente")}</span>
           {venda || (contatoInicial && contato === contatoInicial.contact_id) ? (
@@ -325,118 +502,137 @@ export function DialogoDaVenda({
           )}
         </div>
 
-        {/* O NEGÓCIO da venda: a etapa do card no funil, a previsão de fechamento e a descrição. */}
-        <div className="grid grid-cols-1 gap-3 rounded-xl border border-l-4 border-l-blue-500 p-3 sm:grid-cols-2">
-          {negocio ? (
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {venda?.funil ? (
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Funil")}</span>
+                <p className="flex h-10 items-center rounded-xl border bg-secondary/40 px-3 text-sm font-medium">
+                  {venda.funil}
+                </p>
+              </div>
+            ) : null}
+            {negocio ? (
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Status no funil")}</span>
+                <select
+                  className={CAMPO}
+                  value={etapaId}
+                  onChange={(e) => {
+                    setEtapaId(e.target.value);
+                    if (e.target.value) void negocio.aoMoverEtapa(e.target.value);
+                  }}
+                >
+                  {negocio.etapas.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+            {negocio?.responsaveis ? (
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
+                <select
+                  className={CAMPO}
+                  value={responsavel}
+                  onChange={(e) => setResponsavel(e.target.value)}
+                >
+                  <option value="">{t("Sem responsável")}</option>
+                  {negocio.responsaveis.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Etapa no funil")}</span>
-              <select
-                className={CAMPO}
-                value={etapaId}
-                onChange={(e) => {
-                  setEtapaId(e.target.value);
-                  if (e.target.value) void negocio.aoMoverEtapa(e.target.value);
-                }}
-              >
-                {negocio.etapas.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nome}
-                  </option>
-                ))}
-              </select>
+              <span className="text-xs text-muted-foreground">{t("Status da venda")}</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={`inline-flex h-10 w-fit items-center gap-2 rounded-full border-[1.5px] px-4 text-sm font-medium ${STATUS_DA_VENDA_TAG[situacao].classe}`}
+                  >
+                    {t(STATUS_DA_VENDA_TAG[situacao].rotulo)}
+                    <CaretDown size={12} weight="bold" aria-hidden />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="grid w-56 gap-1.5 p-2">
+                  {(["interesse", "comprometida", "concluida", "cancelada"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setSituacao(v)}
+                      className={`rounded-full border-[1.5px] px-3 py-1.5 text-left text-sm font-medium ${STATUS_DA_VENDA_TAG[v].classe} ${
+                        v === situacao ? "ring-2 ring-primary/40" : ""
+                      }`}
+                    >
+                      {t(STATUS_DA_VENDA_TAG[v].rotulo)}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
             </div>
-          ) : null}
-          <div className="grid gap-1">
-            <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
-            <CampoDeData
-              valor={previsao}
-              aoMudar={setPrevisao}
-              rotulo={t("Previsão de fechamento")}
-              className="w-full"
-            />
           </div>
-          {negocio?.responsaveis ? (
+        </Fase>
+
+        {/* O NEGÓCIO da venda: previsão, descrição e campos do funil. */}
+        <Fase titulo={t("Negócio")} cor="purple">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
-              <select
-                className={CAMPO}
-                value={responsavel}
-                onChange={(e) => setResponsavel(e.target.value)}
-              >
-                <option value="">{t("Sem responsável")}</option>
-                {negocio.responsaveis.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-          <label className="grid gap-1 sm:col-span-2">
-            <span className="text-xs text-muted-foreground">{t("Descrição da venda")}</span>
-            <textarea
-              rows={2}
-              maxLength={2000}
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder={t("Contexto desta negociação…")}
-              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            />
-          </label>
-          {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
-            <div className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Campos do funil")}</span>
-              <CustomFieldsEditor
-                fields={negocio.camposDoFunil}
-                value={camposDoNegocio}
-                onChange={setCamposDoNegocio}
-                mode="lead"
+              <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
+              <CampoDeData
+                valor={previsao}
+                aoMudar={setPrevisao}
+                rotulo={t("Previsão de fechamento")}
+                className="w-full"
               />
             </div>
-          ) : null}
-          {negocio?.fichaHref ? (
-            <Link
-              href={negocio.fichaHref}
-              className="text-xs font-medium text-primary hover:underline sm:col-span-2"
-            >
-              {t("Abrir a ficha do lead (cadastro, atendimento, linha do tempo)")}
-            </Link>
-          ) : null}
-        </div>
-
-        <div className="grid grid-cols-1 gap-1">
-          <span className="text-xs text-muted-foreground">{t("Situação")}</span>
-          <div className="flex flex-wrap gap-1.5" role="radiogroup">
-            {(
-              [
-                ["interesse", t("Interesse (ainda não fechou)")],
-                ["comprometida", t("Comprometida (venda fechada)")],
-                ["concluida", t("Concluída (tudo pago)")],
-                ["cancelada", t("Cancelada")],
-              ] as const
-            ).map(([valor, rotulo]) => (
-              <button
-                key={valor}
-                type="button"
-                role="radio"
-                aria-checked={situacao === valor}
-                onClick={() => setSituacao(valor)}
-                className={`h-9 rounded-lg border px-3 text-sm ${
-                  situacao === valor
-                    ? "border-primary bg-primary/10 font-medium"
-                    : "hover:bg-secondary"
-                }`}
+            {venda?.campanha ? (
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Campanha de origem")}</span>
+                <p className="flex h-10 items-center rounded-xl border bg-secondary/40 px-3 text-sm">
+                  {venda.campanha}
+                </p>
+              </div>
+            ) : null}
+            <label className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Descrição da venda")}</span>
+              <textarea
+                rows={2}
+                maxLength={2000}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder={t("Contexto desta negociação…")}
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
+              <div className="grid gap-1 sm:col-span-2">
+                <span className="text-xs text-muted-foreground">{t("Campos do funil")}</span>
+                <CustomFieldsEditor
+                  fields={negocio.camposDoFunil}
+                  value={camposDoNegocio}
+                  onChange={setCamposDoNegocio}
+                  mode="lead"
+                />
+              </div>
+            ) : null}
+            {negocio?.fichaHref ? (
+              <Link
+                href={negocio.fichaHref}
+                className="text-xs font-medium text-primary hover:underline sm:col-span-2"
               >
-                {rotulo}
-              </button>
-            ))}
+                {t("Abrir a ficha do lead (cadastro, atendimento, linha do tempo)")}
+              </Link>
+            ) : null}
           </div>
-        </div>
+        </Fase>
 
-        <div className="grid grid-cols-1 gap-2 rounded-xl border p-3">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("Produtos e serviços")}
-          </p>
+        <Fase titulo={t("Produtos e serviços")} cor="orange">
           {itens.map((it, i) => (
             <div key={i} className="grid grid-cols-[1fr_8rem_auto] items-center gap-2">
               <select
@@ -514,13 +710,10 @@ export function DialogoDaVenda({
               {t("Total")}: <strong className="tabular-nums">{reais(total)}</strong>
             </p>
           </div>
-        </div>
+        </Fase>
 
         {fechadaSit ? (
-          <div className="grid grid-cols-1 gap-3 rounded-xl border p-3">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("Pagamento")}
-            </p>
+          <Fase titulo={t("Pagamento")} cor="green">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Forma de pagamento")}</span>
@@ -640,19 +833,14 @@ export function DialogoDaVenda({
                           />
                         </td>
                         <td className="px-3 py-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={p.recebida}
-                            aria-label={`${t("Parcela recebida")} ${i + 1}`}
-                            onChange={(e) =>
+                          <CirculoDeRecebida
+                            marcado={p.recebida}
+                            rotulo={`${t("Parcela recebida")} ${i + 1}`}
+                            aoMudar={(v) =>
                               setParcelas((l) =>
                                 l.map((x, k) =>
                                   k === i
-                                    ? {
-                                        ...x,
-                                        recebida: e.target.checked,
-                                        paid_on: e.target.checked ? hoje() : null,
-                                      }
+                                    ? { ...x, recebida: v, paid_on: v ? hoje() : null }
                                     : x,
                                 ),
                               )
@@ -675,31 +863,100 @@ export function DialogoDaVenda({
                 className="rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning-fg"
               >
                 {t("A soma das parcelas difere do total em")} {reais(Math.abs(diferenca))}.{" "}
-                {t("Ajuste os valores ou refaça as parcelas.")}
+                {t("As parcelas serão ajustadas ao total ao salvar.")}
               </p>
             ) : null}
-          </div>
+          </Fase>
         ) : null}
 
-        <label className="grid grid-cols-1 gap-1">
-          <span className="text-xs text-muted-foreground">
-            {t("Referência (ex.: Mensalidade 03/2026)")}
-          </span>
-          <input
-            value={referencia}
-            onChange={(e) => setReferencia(e.target.value)}
-            className={CAMPO}
-          />
-        </label>
-        <label className="grid grid-cols-1 gap-1">
-          <span className="text-xs text-muted-foreground">{t("Observações")}</span>
-          <textarea
-            rows={2}
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            className="w-full rounded-xl border bg-background px-3 py-2 text-sm"
-          />
-        </label>
+        <Fase titulo={t("Detalhes")} cor="gray">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid grid-cols-1 gap-1">
+              <span className="text-xs text-muted-foreground">
+                {t("Referência (ex.: Mensalidade 03/2026)")}
+              </span>
+              <input
+                value={referencia}
+                onChange={(e) => setReferencia(e.target.value)}
+                className={CAMPO}
+              />
+            </label>
+            <label className="grid grid-cols-1 gap-1">
+              <span className="text-xs text-muted-foreground">{t("Observações")}</span>
+              <textarea
+                rows={2}
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            {venda ? (
+              <dl className="grid gap-x-4 gap-y-1 text-xs text-muted-foreground sm:col-span-2 sm:grid-cols-3">
+                <div>
+                  <dt className="uppercase">{t("Criada em")}</dt>
+                  <dd className="text-sm text-foreground">
+                    {venda.created_at ? venda.created_at.slice(0, 10).split("-").reverse().join("/") : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="uppercase">{t("Fechada em")}</dt>
+                  <dd className="text-sm text-foreground">
+                    {venda.closed_on ? venda.closed_on.slice(0, 10).split("-").reverse().join("/") : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="uppercase">{t("Último pagamento")}</dt>
+                  <dd className="text-sm text-foreground">
+                    {venda.paid_on ? venda.paid_on.slice(0, 10).split("-").reverse().join("/") : "—"}
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
+          </div>
+        </Fase>
+
+        <Fase titulo={t("Lembrete")} cor="yellow">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={lembreteAtivo}
+              onChange={(e) => setLembreteAtivo(e.target.checked)}
+            />
+            {t("Ativar um lembrete para esta venda")}
+          </label>
+          {lembreteAtivo ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Data")}</span>
+                <CampoDeData
+                  valor={lembreteDia}
+                  aoMudar={setLembreteDia}
+                  rotulo={t("Data do lembrete")}
+                  limpavel={false}
+                  className="w-full"
+                />
+              </div>
+              <label className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Hora")}</span>
+                <input
+                  type="time"
+                  value={lembreteHora}
+                  onChange={(e) => setLembreteHora(e.target.value)}
+                  className={CAMPO}
+                />
+              </label>
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                {t("Vira uma tarefa com este dia e hora, ligada ao lead — ela aparece em Tarefas e avisa na hora.")}
+              </p>
+            </div>
+          ) : null}
+        </Fase>
+
+        {erro ? (
+          <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm">
+            {erro}
+          </p>
+        ) : null}
 
         <div className="flex flex-wrap justify-between gap-2 pt-1">
           {aoApagar && venda ? (

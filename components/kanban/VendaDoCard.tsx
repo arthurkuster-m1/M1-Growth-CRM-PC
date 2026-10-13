@@ -68,7 +68,7 @@ export function VendaDoCard({
     await queryClient.invalidateQueries();
   }
 
-  async function salvar(v: DadosDaVenda) {
+  async function salvar(v: DadosDaVenda): Promise<boolean> {
     try {
       const { id, contact_id: _contato, ...resto } = v;
       await apiClient.patch(`/api/v1/vendas/${id ?? venda!.id}`, resto);
@@ -77,8 +77,10 @@ export function VendaDoCard({
         await apiClient.post(`/api/v1/leads/${lead.id}/win`, {});
       }
       await recarregar();
+      return true;
     } catch (e) {
       showApiError(e);
+      return false;
     }
   }
 

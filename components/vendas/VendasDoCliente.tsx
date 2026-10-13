@@ -60,14 +60,16 @@ export function VendasDoCliente({
     await queryClient.invalidateQueries({ queryKey: ["clientes"] });
   }
 
-  async function salvar(v: DadosDaVenda) {
+  async function salvar(v: DadosDaVenda): Promise<boolean> {
     try {
       const { id, contact_id, ...resto } = v;
       if (id) await apiClient.patch(`/api/v1/vendas/${id}`, resto);
       else await apiClient.post("/api/v1/vendas", { contact_id, currency: "BRL", ...resto });
       await atualizar();
+      return true;
     } catch (e) {
       showApiError(e);
+      return false;
     }
   }
 

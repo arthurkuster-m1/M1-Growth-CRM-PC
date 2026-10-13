@@ -166,11 +166,16 @@ function CartaoDoFunil({
       t("Etapa atualizada"),
     );
 
-  async function salvarVenda(v: DadosDaVenda) {
-    await executar(async () => {
+  async function salvarVenda(v: DadosDaVenda): Promise<boolean> {
+    try {
       const { id, contact_id: _contato, ...resto } = v;
       if (id) await apiClient.patch(`/api/v1/vendas/${id}`, resto);
-    });
+      await recarregar();
+      return true;
+    } catch (e) {
+      showApiError(e);
+      return false;
+    }
   }
 
   /**

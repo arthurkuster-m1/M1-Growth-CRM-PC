@@ -574,7 +574,12 @@ export function VendasCRM() {
           }
           aoFechar={() => setEditando(null)}
           aoSalvar={async (v) => {
-            await salvar.mutateAsync(v).catch(() => undefined);
+            try {
+              await salvar.mutateAsync(v);
+              return true;
+            } catch {
+              return false;
+            }
           }}
           aoApagar={
             editando !== "nova"

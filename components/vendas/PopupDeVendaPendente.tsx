@@ -57,15 +57,17 @@ export function PopupDeVendaPendente() {
     }
   }
 
-  async function salvar(v: DadosDaVenda) {
+  async function salvar(v: DadosDaVenda): Promise<boolean> {
     try {
       const { id, contact_id: _c, ...resto } = v;
       await apiClient.patch(`/api/v1/vendas/${id}`, resto);
       await queryClient.invalidateQueries({ queryKey: CHAVE });
       await queryClient.invalidateQueries({ queryKey: ["vendas"] });
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      return true;
     } catch (e) {
       showApiError(e);
+      return false;
     }
   }
 
