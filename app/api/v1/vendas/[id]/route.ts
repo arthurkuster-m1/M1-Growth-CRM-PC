@@ -107,7 +107,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { data: venda } = await supabase
     .from("crm_sales")
     .select(
-      `${COLUNAS_DA_VENDA}, lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
+      `${COLUNAS_DA_VENDA}, creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
     )
     .eq("id", id)
     .single();

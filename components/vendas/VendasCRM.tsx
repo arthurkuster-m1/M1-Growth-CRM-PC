@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
@@ -132,6 +133,59 @@ export function VendasCRM() {
     p.set("v", id);
     router.replace(`${caminho}?${p.toString()}`, { scroll: false });
   }
+  // ── Funis (como em Clientes): ver as vendas de cada funil/campanha ──
+  const funilEscolhido = parametros.get("funil") ?? "todos";
+  const barraDeFunis = useVisualizacao("vendas-funis");
+  const dadosDeFunis = useQuery({
+    queryKey: ["clientes", "todos"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: {
+            funis: Array<{ id: string; name: string }>;
+            campanhas: Array<{ pipeline_id: string | null; status: string; channel: string }>;
+          };
+        }>("/api/v1/clientes?funil=todos")
+      ).data,
+  });
+  const arquivadosDeFunis = useMemo(
+    () => new Set(barraDeFunis.preferencias.funis?.arquivados ?? []),
+    [barraDeFunis.preferencias.funis?.arquivados],
+  );
+  const funisNaOrdem: FunilDaBarra[] = useMemo(() => {
+    const ordem = barraDeFunis.preferencias.funis?.ordem ?? [];
+    const rank = (id: string) => {
+      const i = ordem.indexOf(id);
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    const campanha = new Map(
+      (dadosDeFunis.data?.campanhas ?? [])
+        .filter((c) => c.pipeline_id)
+        .map((c) => [c.pipeline_id as string, c]),
+    );
+    return [...(dadosDeFunis.data?.funis ?? [])]
+      .sort((a, b) => rank(a.id) - rank(b.id))
+      .map((f) => ({
+        id: f.id,
+        nome: f.name,
+        statusDaCampanha: campanha.get(f.id)?.status ?? null,
+        canal: campanha.get(f.id)?.channel ?? null,
+      }));
+  }, [dadosDeFunis.data, barraDeFunis.preferencias.funis?.ordem]);
+  function escolherFunil(id: string) {
+    const p = new URLSearchParams(parametros.toString());
+    if (id === "todos") p.delete("funil");
+    else p.set("funil", id);
+    const qs = p.toString();
+    router.replace(qs ? `${caminho}?${qs}` : caminho, { scroll: false });
+  }
+  const salvarFunis = (
+    mudar: (
+      atual: NonNullable<PreferenciasDaTabela["funis"]>,
+    ) => NonNullable<PreferenciasDaTabela["funis"]>,
+  ) => barraDeFunis.atualizar((p) => ({ ...p, funis: mudar(p.funis ?? {}) }));
+
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
   const [soComRecebimento, setSoComRecebimento] = useState(false);
@@ -235,6 +289,7 @@ export function VendasCRM() {
     () =>
       vendas.filter(
         (v) =>
+          (funilEscolhido === "todos" || v.pipeline_id === funilEscolhido) &&
           (filtroStatus === null || v.status === filtroStatus) &&
           (!soComRecebimento || recebidoNoMes(v) > 0) &&
           (termo === "" ||
@@ -243,7 +298,7 @@ export function VendasCRM() {
               .includes(termo)),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [vendas, filtroStatus, termo, soComRecebimento, mes],
+    [vendas, filtroStatus, termo, soComRecebimento, mes, funilEscolhido],
   );
   const totais = totaisDeVendas(filtradas);
 
@@ -291,6 +346,20 @@ export function VendasCRM() {
       icone: <TextAa size={14} aria-hidden />,
       largura: 200,
       celula: (v) => texto(v.funil ?? ""),
+    },
+    {
+      id: "anuncio",
+      titulo: t("Anúncio"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      celula: (v) => texto(v.anuncio ?? ""),
+    },
+    {
+      id: "lp",
+      titulo: t("Landing page"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      celula: (v) => texto(v.lp ?? ""),
     },
     {
       id: "valor",
@@ -528,6 +597,8 @@ export function VendasCRM() {
     { id: "nome", titulo: t("Nome"), tipo: "texto", valorDe: (v) => nomeDaVenda(v) },
     { id: "produto", titulo: t("Produto"), tipo: "texto", valorDe: (v) => v.product_name },
     { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (v) => v.funil ?? "" },
+    { id: "anuncio", titulo: t("Anúncio"), tipo: "texto", valorDe: (v) => v.anuncio ?? "" },
+    { id: "lp", titulo: t("Landing page"), tipo: "texto", valorDe: (v) => v.lp ?? "" },
     { id: "valor", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
     { id: "pago", titulo: t("Valor pago"), tipo: "numero", valorDe: (v) => valorPagoDaVenda(v) / 100 },
     {
@@ -738,6 +809,33 @@ export function VendasCRM() {
       </section>
 
       <PorProduto mes={mes} />
+
+      <BarraDeFunis
+        funis={funisNaOrdem}
+        arquivados={arquivadosDeFunis}
+        filtros={{
+          status: barraDeFunis.preferencias.funis?.status ?? [],
+          canais: barraDeFunis.preferencias.funis?.canais ?? [],
+        }}
+        aoFiltrar={(f) =>
+          salvarFunis((atual) => ({ ...atual, status: f.status, canais: f.canais }))
+        }
+        escolhido={funilEscolhido}
+        todosId="todos"
+        podeOrganizar={podeEditarVisoes}
+        aoEscolher={escolherFunil}
+        aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
+        aoArquivar={(ids, arquivar) =>
+          salvarFunis((f) => {
+            const atuais = new Set(f.arquivados ?? []);
+            for (const id of ids) {
+              if (arquivar) atuais.add(id);
+              else atuais.delete(id);
+            }
+            return { ...f, arquivados: [...atuais] };
+          })
+        }
+      />
 
       <AbasDeVisualizacao
         abas={[ID_DA_PADRAO, ...visoes.map((v) => v.id)]

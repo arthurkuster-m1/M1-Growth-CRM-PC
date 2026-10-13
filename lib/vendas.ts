@@ -81,6 +81,9 @@ export interface Venda {
   /** Preenchidos pela listagem (junções). */
   cliente?: { nome: string; telefone: string | null } | null;
   campanha?: string | null;
+  /** O anúncio (criativo) e a landing page de origem da venda. */
+  anuncio?: string | null;
+  lp?: string | null;
   funil?: string | null;
   /** A etapa do card desta venda no funil (a venda anda de etapa). */
   etapa?: string | null;
@@ -202,6 +205,8 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
     amount_cents: Number(l.amount_cents) || 0,
     cliente: cliente ? { nome, telefone: cliente.phone_number ?? null } : null,
     campanha: (l.campaign as { name?: string } | null | undefined)?.name ?? null,
+    anuncio: (l.creative as { name?: string } | null | undefined)?.name ?? null,
+    lp: (l.landing_page as { name?: string } | null | undefined)?.name ?? null,
     funil: (l.pipeline as { name?: string } | null | undefined)?.name ?? null,
     ...etapaDoCard(l.lead),
   };

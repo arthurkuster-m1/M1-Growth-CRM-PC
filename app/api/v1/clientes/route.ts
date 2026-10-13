@@ -41,6 +41,16 @@ export interface ParticipacaoDoCliente {
   campanha_id: string | null;
 }
 
+/** Uma venda ativa (não cancelada) do cliente, para a coluna "Vendas" do CRM. */
+export interface VendaAtivaDoCliente {
+  id: string;
+  nome: string;
+  status: "interesse" | "comprometida" | "concluida";
+  funil_id: string | null;
+  valor_cents: number;
+  pago_cents: number;
+}
+
 export interface ClienteDaLista {
   contact_id: string;
   nome: string;
@@ -59,6 +69,11 @@ export interface ClienteDaLista {
   vendas: number;
   /** Vendas PAGAS (ao menos uma parcela recebida) por funil: funil_id → quantidade. */
   vendas_por_funil: Record<string, number>;
+  /** As vendas ativas (interesse, comprometida, concluída) com o status de cada uma. */
+  vendas_ativas: VendaAtivaDoCliente[];
+  /** Anúncios e landing pages de onde vieram as vendas (e, sem venda com origem, os cards). */
+  anuncios: string[];
+  lps: string[];
   ultima_compra: string | null;
   ultima_atividade: string | null;
   campos: Record<string, unknown>;
@@ -100,7 +115,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeNegocios = supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id",
+      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id",
     )
     .eq("organization_id", orgId)
     .not("contact_id", "is", null)
@@ -129,6 +144,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     expected_close_date: string | null;
     source: string | null;
     demand_campaign_id: string | null;
+    demand_creative_id: string | null;
+    demand_landing_page_id: string | null;
   }>;
 
   // Quem aparece: no funil escolhido, os contatos dele; em "todos", todos os contatos.
@@ -179,32 +196,96 @@ export async function GET(req: NextRequest): Promise<Response> {
   // ou é concluída sem parcelas). Alimenta "Vendas" e a taxa de conversão do topo do CRM.
   const idsDosContatos = ((contatos ?? []) as Array<{ id: string }>).map((c) => c.id);
   const vendasPorContato = new Map<string, Record<string, number>>();
+  const ativasPorContato = new Map<string, VendaAtivaDoCliente[]>();
+  const idsDeAnuncio = new Map<string, Set<string>>();
+  const idsDeLp = new Map<string, Set<string>>();
+  const juntar = (m: Map<string, Set<string>>, contato: string, id: string | null) => {
+    if (!id) return;
+    const s2 = m.get(contato) ?? new Set<string>();
+    s2.add(id);
+    m.set(contato, s2);
+  };
   for (let i = 0; i < idsDosContatos.length; i += 200) {
     const { data: vendas } = await supabase
       .from("crm_sales")
-      .select("id, contact_id, pipeline_id, status, payments:crm_sale_payments(status)")
+      .select(
+        "id, contact_id, pipeline_id, status, name, product_name, amount_cents, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
+      )
       .eq("organization_id", orgId)
-      .in("status", ["comprometida", "concluida"])
+      .in("status", ["interesse", "comprometida", "concluida"])
       .in("contact_id", idsDosContatos.slice(i, i + 200))
       .limit(5000);
     for (const v of (vendas ?? []) as unknown as Array<{
+      id: string;
       contact_id: string;
       pipeline_id: string | null;
-      status: string;
-      payments: Array<{ status: string }> | null;
+      status: "interesse" | "comprometida" | "concluida";
+      name: string | null;
+      product_name: string | null;
+      amount_cents: number | string;
+      demand_creative_id: string | null;
+      demand_landing_page_id: string | null;
+      payments: Array<{ status: string; amount_cents: number | string }> | null;
     }>) {
       const pagamentos = (v.payments ?? []).filter((p) => p.status !== "cancelada");
-      const paga =
+      const pago =
         pagamentos.length === 0
           ? v.status === "concluida"
-          : pagamentos.some((p) => p.status === "recebida");
-      if (!paga) continue;
+            ? Number(v.amount_cents)
+            : 0
+          : pagamentos
+              .filter((p) => p.status === "recebida")
+              .reduce((s2, p) => s2 + Number(p.amount_cents), 0);
+      const lista = ativasPorContato.get(v.contact_id) ?? [];
+      lista.push({
+        id: v.id,
+        nome: (v.name ?? "").trim() || v.product_name || "",
+        status: v.status,
+        funil_id: v.pipeline_id,
+        valor_cents: Number(v.amount_cents) || 0,
+        pago_cents: pago,
+      });
+      ativasPorContato.set(v.contact_id, lista);
+      juntar(idsDeAnuncio, v.contact_id, v.demand_creative_id);
+      juntar(idsDeLp, v.contact_id, v.demand_landing_page_id);
+      if (v.status === "interesse") continue;
+      if (pago <= 0) continue;
       const mapa = vendasPorContato.get(v.contact_id) ?? {};
       const chave = v.pipeline_id ?? "sem_funil";
       mapa[chave] = (mapa[chave] ?? 0) + 1;
       vendasPorContato.set(v.contact_id, mapa);
     }
   }
+  // Sem origem na venda, vale a do card (o lead) — para o cliente nunca ficar sem anúncio/LP à toa.
+  for (const [contato, lista] of porContato) {
+    for (const n of linhasDeNegocio.filter((x) => x.contact_id === contato)) {
+      if (!idsDeAnuncio.get(contato)?.size) juntar(idsDeAnuncio, contato, n.demand_creative_id);
+      if (!idsDeLp.get(contato)?.size) juntar(idsDeLp, contato, n.demand_landing_page_id);
+    }
+    void lista;
+  }
+  const todosAnuncios = [...new Set([...idsDeAnuncio.values()].flatMap((s2) => [...s2]))];
+  const todasLps = [...new Set([...idsDeLp.values()].flatMap((s2) => [...s2]))];
+  const nomeDoAnuncio = new Map<string, string>();
+  const nomeDaLp = new Map<string, string>();
+  if (todosAnuncios.length > 0) {
+    const { data } = await supabase
+      .from("demand_campaign_creatives")
+      .select("id, name")
+      .eq("organization_id", orgId)
+      .in("id", todosAnuncios.slice(0, 1000));
+    for (const r of data ?? []) nomeDoAnuncio.set(r.id as string, String(r.name ?? ""));
+  }
+  if (todasLps.length > 0) {
+    const { data } = await supabase
+      .from("demand_campaign_landing_pages")
+      .select("id, name")
+      .eq("organization_id", orgId)
+      .in("id", todasLps.slice(0, 1000));
+    for (const r of data ?? []) nomeDaLp.set(r.id as string, String(r.name ?? ""));
+  }
+  const nomesDe = (m: Map<string, Set<string>>, nomes: Map<string, string>, contato: string) =>
+    [...(m.get(contato) ?? [])].map((id) => nomes.get(id)).filter((n): n is string => Boolean(n));
 
   const clientes: ClienteDaLista[] = (
     (contatos ?? []) as Array<{
@@ -245,6 +326,9 @@ export async function GET(req: NextRequest): Promise<Response> {
     interesse_cents: Number(c.interest_cents) || 0,
     vendas: c.sales_count ?? 0,
     vendas_por_funil: vendasPorContato.get(c.id) ?? {},
+    vendas_ativas: ativasPorContato.get(c.id) ?? [],
+    anuncios: nomesDe(idsDeAnuncio, nomeDoAnuncio, c.id),
+    lps: nomesDe(idsDeLp, nomeDaLp, c.id),
     ultima_compra: c.last_purchase_on,
     ultima_atividade: c.last_activity_at,
     campos: c.custom_fields ?? {},

@@ -77,6 +77,16 @@ interface Linha extends ClienteDaLista {
 
 const PALETA: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
 const TODOS = "todos";
+const ROTULO_DA_VENDA: Record<string, string> = {
+  interesse: "Interesse",
+  comprometida: "Comprometida",
+  concluida: "Concluída",
+};
+const COR_DA_VENDA: Record<string, string> = {
+  interesse: "border-blue-500/60 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  comprometida: "border-yellow-500/70 bg-yellow-500/10 text-yellow-800 dark:text-yellow-300",
+  concluida: "border-green-500/60 bg-green-500/10 text-green-700 dark:text-green-300",
+};
 const ID_DA_PADRAO = "padrao";
 const TIPOS_DO_CRM = ["tabela", "kanban"] as const;
 
@@ -106,6 +116,10 @@ export function ClientesCRM() {
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
+  /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
+  const [destaque, setDestaque] = useState<
+    null | "abertos" | "compraram" | "vendas" | "mql" | "semcontato"
+  >(null);
   const [importarAberto, setImportarAberto] = useState(false);
 
   const chaveDaConsulta = ["clientes", funilEscolhido] as const;
@@ -755,11 +769,70 @@ export function ClientesCRM() {
     },
     {
       id: "vendas",
-      titulo: t("Vendas"),
+      titulo: t("Vendas pagas (qtd)"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 100,
+      largura: 130,
       padrao: false,
       celula: (l) => <span className="block px-2 text-sm tabular-nums">{l.vendas || "—"}</span>,
+    },
+    {
+      id: "vendas-ativas",
+      titulo: t("Vendas"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 320,
+      celula: (l) => {
+        const lista = (l.vendas_ativas ?? []).filter(
+          (v) => !funilAtual || v.funil_id === funilAtual.id,
+        );
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map((v) => (
+            <span key={v.id} className="flex min-w-0 items-center gap-1.5 px-2 text-sm">
+              <span className="min-w-0 truncate" title={v.nome}>
+                {v.nome || t("Sem produto")}
+              </span>
+              <span
+                className={`shrink-0 rounded-full border px-1.5 text-[11px] font-medium ${
+                  COR_DA_VENDA[v.status] ?? ""
+                }`}
+              >
+                {t(ROTULO_DA_VENDA[v.status] ?? v.status)}
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                {moeda(v.valor_cents)}
+              </span>
+            </span>
+          )),
+        );
+      },
+    },
+    {
+      id: "anuncio",
+      titulo: t("Anúncio"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      celula: (l) =>
+        l.anuncios && l.anuncios.length > 0 ? (
+          <span className="block min-w-0 truncate px-2 text-sm" title={l.anuncios.join(", ")}>
+            {l.anuncios.join(", ")}
+          </span>
+        ) : (
+          semValor
+        ),
+    },
+    {
+      id: "lp",
+      titulo: t("Landing page"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      celula: (l) =>
+        l.lps && l.lps.length > 0 ? (
+          <span className="block min-w-0 truncate px-2 text-sm" title={l.lps.join(", ")}>
+            {l.lps.join(", ")}
+          </span>
+        ) : (
+          semValor
+        ),
     },
     {
       id: "atividade",
@@ -846,7 +919,33 @@ export function ClientesCRM() {
       tipo: "numero",
       valorDe: (l) => l.ltv_previsto_cents / 100,
     },
-    { id: "vendas", titulo: t("Vendas"), tipo: "numero", valorDe: (l) => l.vendas },
+    { id: "vendas", titulo: t("Vendas pagas (qtd)"), tipo: "numero", valorDe: (l) => l.vendas },
+    {
+      id: "vendas-ativas",
+      titulo: t("Status da venda"),
+      tipo: "multi",
+      valorDe: (l) => [...new Set((l.vendas_ativas ?? []).map((v) => v.status))],
+      opcoes: Object.entries(ROTULO_DA_VENDA).map(([id, rotulo]) => ({ id, rotulo: t(rotulo) })),
+      rotuloDoValor: (v) => t(ROTULO_DA_VENDA[v] ?? v),
+    },
+    {
+      id: "anuncio",
+      titulo: t("Anúncio"),
+      tipo: "multi",
+      valorDe: (l) => l.anuncios ?? [],
+      opcoes: [...new Set((dados?.clientes ?? []).flatMap((c) => c.anuncios ?? []))]
+        .sort()
+        .map((n) => ({ id: n, rotulo: n })),
+    },
+    {
+      id: "lp",
+      titulo: t("Landing page"),
+      tipo: "multi",
+      valorDe: (l) => l.lps ?? [],
+      opcoes: [...new Set((dados?.clientes ?? []).flatMap((c) => c.lps ?? []))]
+        .sort()
+        .map((n) => ({ id: n, rotulo: n })),
+    },
   ];
   // Etapa e situação são de UM funil: na lista "Todos" não há uma só etapa por lead.
   const campos = todosOsCampos.filter(
@@ -871,7 +970,50 @@ export function ClientesCRM() {
         ),
       )
     : linhas;
-  const resultado = aplicarConsulta(buscadas, campos, preferencias, {
+  // Os números do topo (como na referência), sobre o que a lista mostra.
+  const alvos = buscadas;
+  const abertas = alvos.flatMap((l) =>
+    (l.participacao ? [l.participacao] : l.participacoes).filter((p) => p.status === "open"),
+  );
+  // VENDAS = as vendas realizadas (com pagamento recebido), no funil escolhido ou em todos.
+  const vendasDoLead = (l: Linha) =>
+    funilAtual ? (l.vendas_por_funil?.[funilAtual.id] ?? 0) : l.vendas;
+  const totalDeVendas = alvos.reduce((s, l) => s + vendasDoLead(l), 0);
+  // TAXA DE CONVERSÃO = leads com ao menos uma venda paga ÷ total de leads (não é a contagem de
+  // vendas: um lead com três vendas conta uma vez).
+  const leadsComVenda = alvos.filter((l) => vendasDoLead(l) > 0).length;
+  const taxa = alvos.length > 0 ? Math.round((leadsComVenda / alvos.length) * 100) : 0;
+  const seteDias = agora - 7 * 86_400_000;
+  /** Lead com negócio aberto e sem atividade há mais de 7 dias. */
+  const estaSemContato = (l: Linha) =>
+    (l.participacao ? [l.participacao] : l.participacoes).some(
+      (p) =>
+        p.status === "open" &&
+        new Date(p.ultima_atividade ?? p.criado_em).getTime() < seteDias,
+    );
+  const semContato = alvos.filter(estaSemContato).length;
+  /** Quem aparece na lista quando se clica num número do topo. */
+  const passaNoDestaque = (l: Linha): boolean => {
+    const emAberto = (l.participacao ? [l.participacao] : l.participacoes).filter(
+      (p) => p.status === "open",
+    );
+    switch (destaque) {
+      case "abertos":
+        return emAberto.length > 0;
+      case "compraram":
+      case "vendas":
+        return vendasDoLead(l) > 0;
+      case "mql":
+        return l.is_mql;
+      case "semcontato":
+        return estaSemContato(l);
+      default:
+        return true;
+    }
+  };
+  const visiveis = destaque ? buscadas.filter(passaNoDestaque) : buscadas;
+
+  const resultado = aplicarConsulta(visiveis, campos, preferencias, {
     hoje: new Date(agora).toISOString().slice(0, 10),
   });
   const grupos = resultado.grupos?.map((g) => {
@@ -894,35 +1036,29 @@ export function ClientesCRM() {
     }));
   }
 
-  // Os números do topo (como na referência), sobre o que a lista mostra.
-  const alvos = buscadas;
-  const abertas = alvos.flatMap((l) =>
-    (l.participacao ? [l.participacao] : l.participacoes).filter((p) => p.status === "open"),
-  );
-  // VENDAS = as vendas realizadas (com pagamento recebido), no funil escolhido ou em todos.
-  const vendasDoLead = (l: Linha) =>
-    funilAtual ? (l.vendas_por_funil?.[funilAtual.id] ?? 0) : l.vendas;
-  const totalDeVendas = alvos.reduce((s, l) => s + vendasDoLead(l), 0);
-  // TAXA DE CONVERSÃO = leads com ao menos uma venda paga ÷ total de leads (não é a contagem de
-  // vendas: um lead com três vendas conta uma vez).
-  const leadsComVenda = alvos.filter((l) => vendasDoLead(l) > 0).length;
-  const taxa = alvos.length > 0 ? Math.round((leadsComVenda / alvos.length) * 100) : 0;
-  const seteDias = agora - 7 * 86_400_000;
-  const semContato = abertas.filter((p) => {
-    const u = p.ultima_atividade ?? p.criado_em;
-    return new Date(u).getTime() < seteDias;
-  }).length;
-  const numeros: Array<[string, string, string?]> = [
-    [t("Total de leads"), String(alvos.length)],
-    [t("Valor em aberto"), moeda(abertas.reduce((s, p) => s + (p.valor_cents ?? 0), 0))],
-    [
-      t("Taxa de conversão"),
-      `${taxa}%`,
-      leadsComVenda === 1 ? t("1 cliente comprou") : `${leadsComVenda} ${t("clientes compraram")}`,
-    ],
-    [t("Vendas"), String(totalDeVendas)],
-    [t("MQL"), String(alvos.filter((l) => l.is_mql).length)],
-    [t("Sem contato (+7d)"), String(semContato)],
+  const numeros: Array<{
+    id: "todos" | NonNullable<typeof destaque>;
+    rotulo: string;
+    valor: string;
+    detalhe?: string;
+  }> = [
+    { id: "todos", rotulo: t("Total de leads"), valor: String(alvos.length) },
+    {
+      id: "abertos",
+      rotulo: t("Valor em aberto"),
+      valor: moeda(abertas.reduce((s2, p) => s2 + (p.valor_cents ?? 0), 0)),
+      detalhe: `${abertas.length} ${abertas.length === 1 ? t("negócio aberto") : t("negócios abertos")}`,
+    },
+    {
+      id: "compraram",
+      rotulo: t("Taxa de conversão"),
+      valor: `${taxa}%`,
+      detalhe:
+        leadsComVenda === 1 ? t("1 cliente comprou") : `${leadsComVenda} ${t("clientes compraram")}`,
+    },
+    { id: "vendas", rotulo: t("Vendas"), valor: String(totalDeVendas) },
+    { id: "mql", rotulo: t("MQL"), valor: String(alvos.filter((l) => l.is_mql).length) },
+    { id: "semcontato", rotulo: t("Sem contato (+7d)"), valor: String(semContato) },
   ];
 
   const abasPorId = new Map([
@@ -1006,16 +1142,49 @@ export function ClientesCRM() {
         aria-label={t("Resumo")}
         className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-6"
       >
-        {numeros.map(([rotulo, valor, detalhe]) => (
-          <div key={rotulo} className="bg-card px-4 py-3">
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {rotulo}
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{valor}</p>
-            {detalhe ? <p className="text-[11px] text-muted-foreground">{detalhe}</p> : null}
-          </div>
-        ))}
+        {numeros.map((n) => {
+          const clicavel = n.id !== "todos";
+          const ativo = clicavel && destaque === n.id;
+          return (
+            <button
+              key={n.id}
+              type="button"
+              disabled={!clicavel && destaque === null}
+              aria-pressed={ativo}
+              title={
+                clicavel ? t("Clique para ver quem compõe este número") : t("Mostrar todos os leads")
+              }
+              onClick={() => setDestaque(n.id === "todos" || destaque === n.id ? null : n.id)}
+              className={`bg-card px-4 py-3 text-left transition-colors hover:bg-secondary/60 ${
+                ativo ? "ring-2 ring-inset ring-primary" : ""
+              }`}
+            >
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                {n.rotulo}
+              </p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{n.valor}</p>
+              {n.detalhe ? <p className="text-[11px] text-muted-foreground">{n.detalhe}</p> : null}
+            </button>
+          );
+        })}
       </section>
+
+      {destaque ? (
+        <p className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            {t("Mostrando só quem compõe")}{" "}
+            <strong>{numeros.find((n) => n.id === destaque)?.rotulo}</strong> · {visiveis.length}{" "}
+            {visiveis.length === 1 ? t("lead") : t("leads")}
+          </span>
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => setDestaque(null)}
+          >
+            {t("Limpar")}
+          </button>
+        </p>
+      ) : null}
 
       <BarraDeFunis
         funis={funisNaOrdem}
