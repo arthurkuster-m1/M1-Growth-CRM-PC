@@ -330,6 +330,14 @@ function CartaoDoCriativo({
               {rotuloDoStatusDoCriativo(t, c.status)}
             </Etiqueta>
             {c.ad_id ? <Etiqueta cor="blue">{t("Meta")}</Etiqueta> : null}
+            {c.ad_id ? (
+              <span
+                title={t("ID do anúncio no Meta")}
+                className="text-[11px] text-muted-foreground tabular-nums select-all"
+              >
+                {c.ad_id}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
