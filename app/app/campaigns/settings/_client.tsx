@@ -49,11 +49,11 @@ export function ConfiguracaoDeCampanhas() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-text"
         >
           <ArrowBendUpLeft size={14} aria-hidden />
-          {t("Campanhas")}
+          {t("Disparos")}
         </Link>
       </div>
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Configuração de campanhas")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Configuração de disparos")}</h1>
         <p className="text-sm text-muted-foreground">
           {t("O que vale para todas as campanhas, e não para uma só.")}
         </p>

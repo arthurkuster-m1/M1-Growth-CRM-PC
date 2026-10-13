@@ -117,7 +117,7 @@ export function EditarCampanha({ id }: { id: string }) {
   if (c.status !== "draft") {
     return (
       <div className="mx-auto max-w-3xl space-y-4 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Editar campanha")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Editar disparo")}</h1>
         <Card className="space-y-3 p-4">
           <p className="text-sm">
             {t(
@@ -128,7 +128,7 @@ export function EditarCampanha({ id }: { id: string }) {
             {t("O ritmo você ajusta na própria tela da campanha, sem descartar nada.")}
           </p>
           <Button variant="outline" onClick={() => router.push(`/app/campaigns/${id}`)}>
-            {t("Voltar para a campanha")}
+            {t("Voltar para o disparo")}
           </Button>
         </Card>
       </div>
@@ -145,7 +145,7 @@ export function EditarCampanha({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Editar campanha")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Editar disparo")}</h1>
         <p className="text-sm text-muted-foreground">
           {t("Enquanto é rascunho, tudo muda. Depois de preparada, só o ritmo.")}
         </p>
@@ -154,7 +154,7 @@ export function EditarCampanha({ id }: { id: string }) {
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Informações")}</h2>
         <div className="space-y-2">
-          <Label htmlFor="e-nome">{t("Nome da campanha")}</Label>
+          <Label htmlFor="e-nome">{t("Nome do disparo")}</Label>
           <Input id="e-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
         </div>
         <div className="space-y-2">

@@ -33,7 +33,7 @@ export function ListaDeCampanhas() {
     <div className="space-y-4 p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Campanhas")}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("Disparos")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("Escolha o público, escreva a mensagem e acompanhe quem recebeu.")}
           </p>
@@ -45,7 +45,7 @@ export function ListaDeCampanhas() {
         <Button asChild>
           <Link href="/app/campaigns/new">
             <Plus size={16} weight="bold" aria-hidden />
-            <span>{t("Nova campanha")}</span>
+            <span>{t("Novo disparo")}</span>
           </Link>
         </Button>
         </div>
@@ -78,7 +78,7 @@ export function ListaDeCampanhas() {
         </div>
       ) : q.isError ? (
         <Card className="p-6 text-center">
-          <p className="text-sm text-error-fg">{t("Erro ao carregar as campanhas.")}</p>
+          <p className="text-sm text-error-fg">{t("Erro ao carregar os disparos.")}</p>
           <Button size="sm" variant="outline" className="mt-2" onClick={() => q.refetch()}>
             {t("Tentar novamente")}
           </Button>
@@ -87,11 +87,11 @@ export function ListaDeCampanhas() {
         <Card className="p-2">
           <EmptyState
             icon={Megaphone}
-            headline={t("Nenhuma campanha ainda.")}
+            headline={t("Nenhum disparo ainda.")}
             subcopy={t(
               "Uma campanha fala com uma lista de contatos que você escolhe, no ritmo do número — nunca em rajada.",
             )}
-            primary={{ label: t("Nova campanha"), href: "/app/campaigns/new" }}
+            primary={{ label: t("Novo disparo"), href: "/app/campaigns/new" }}
           />
         </Card>
       ) : (

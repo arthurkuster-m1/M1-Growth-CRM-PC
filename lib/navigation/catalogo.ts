@@ -296,7 +296,7 @@ export const NAV_CATALOG = [
     // QUEM vai falar, não no número que fala. O ritmo (que é de Conexões) ela
     // herda, e só sabe deixar mais devagar.
     href: "/app/campaigns",
-    label: "Campanhas",
+    label: "Disparos",
     description: "Fale com uma lista de contatos que você escolhe, no ritmo do número.",
     icon: "Megaphone",
     group: "crm",

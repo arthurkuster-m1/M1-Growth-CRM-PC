@@ -116,7 +116,7 @@ export function NovaCampanha() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Nova campanha")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Novo disparo")}</h1>
         <p className="text-sm text-muted-foreground">
           {t("Isto cria um rascunho. Nada é enviado antes de você preparar a lista e iniciar.")}
         </p>
@@ -125,7 +125,7 @@ export function NovaCampanha() {
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Informações")}</h2>
         <div className="space-y-2">
-          <Label htmlFor="nome">{t("Nome da campanha")}</Label>
+          <Label htmlFor="nome">{t("Nome do disparo")}</Label>
           <Input
             id="nome"
             value={nome}
