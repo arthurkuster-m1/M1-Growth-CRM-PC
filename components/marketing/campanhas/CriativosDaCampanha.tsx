@@ -704,76 +704,58 @@ export function CriativosDaCampanha({
     <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Criativos e legendas")}</h2>
-        {podeEditar ? (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={importando}
-              onClick={async () => {
-                setImportando(true);
-                setAviso(null);
-                const r = await importarDoMeta();
-                setImportando(false);
-                setAviso(
-                  r.ok
-                    ? `${r.criados} ${t("criativos novos trazidos do Meta.")}`
-                    : textoDaFalha(t, r.motivo),
-                );
-              }}
-              className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
-            >
-              {importando ? t("Importando…") : t("Importar do Meta")}
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                const novo = await criar({ name: t("Novo criativo") });
-                if (novo) {
-                  setNovoId(novo.id);
-                  toast.success(t("Criativo criado. Preencha os dados dele."));
-                }
-              }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
-            >
-              <Plus size={14} weight="bold" aria-hidden />
-              {t("Novo criativo")}
-            </button>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <FiltroDePeriodoDaCampanha periodo={periodo} />
+          {podeEditar ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={importando}
+                onClick={async () => {
+                  setImportando(true);
+                  setAviso(null);
+                  const r = await importarDoMeta();
+                  setImportando(false);
+                  setAviso(
+                    r.ok
+                      ? `${r.criados} ${t("criativos novos trazidos do Meta.")}`
+                      : textoDaFalha(t, r.motivo),
+                  );
+                }}
+                className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
+              >
+                {importando ? t("Importando…") : t("Importar do Meta")}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const novo = await criar({ name: t("Novo criativo") });
+                  if (novo) {
+                    setNovoId(novo.id);
+                    toast.success(t("Criativo criado. Preencha os dados dele."));
+                  }
+                }}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
+              >
+                <Plus size={14} weight="bold" aria-hidden />
+                {t("Novo criativo")}
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {t(
-          "Do Meta entram só gasto, impressões, cliques e visitas à LP. Os leads e o CPL real vêm do CRM, pela origem de cada lead.",
-        )}
-      </p>
       {aviso ? (
         <p role="status" className="text-sm text-muted-foreground">
           {aviso}
         </p>
       ) : null}
 
-      <FiltroDePeriodoDaCampanha periodo={periodo} />
-      <p className="text-xs text-muted-foreground">
-        {meta?.base
-          ? `${t(
-              "Gasto, impressões, cliques e visitas vêm da base diária por anúncio do Meta, no período escolhido.",
-            )}${
-              meta.sincronizado_em
-                ? ` ${t("Atualizada em")} ${new Date(meta.sincronizado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.`
-                : ""
-            }${
-              meta.diferenca_pct !== null && Math.abs(meta.diferenca_pct) > 2
-                ? ` ${t("Atenção: a soma dos anúncios difere do total da campanha em")} ${meta.diferenca_pct.toLocaleString("pt-BR")}%.`
-                : ""
-            }`
-          : periodo.ehPadrao
-            ? t(
-                "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
-              )
-            : t(
-                "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
-              )}
-      </p>
+      {meta?.base && meta.diferenca_pct !== null && Math.abs(meta.diferenca_pct) > 2 ? (
+        <p role="status" className="rounded-xl bg-warning-bg px-3 py-2 text-xs text-warning-fg">
+          {t("Atenção: a soma dos anúncios difere do total da campanha em")}{" "}
+          {meta.diferenca_pct.toLocaleString("pt-BR")}%.
+        </p>
+      ) : null}
 
       <ColecaoDaCampanha
         tela="campanha-criativos"

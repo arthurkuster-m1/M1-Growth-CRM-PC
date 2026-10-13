@@ -55,27 +55,13 @@ export function FiltroDePeriodoDaCampanha({
     ...PERIODOS.map((p) => ({ id: p, rotulo: rotuloDoAtalho(t, p), ...janelaDoPeriodo(p, hoje) })),
   ];
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <SeletorDePeriodo
-        de={periodo.janela.de}
-        ate={periodo.janela.ate}
-        rotulo={t("Período analisado")}
-        atalhos={atalhos}
-        aoMudar={(p) => periodo.setEscolhido(p)}
-      />
-      {periodo.ehPadrao ? (
-        <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
-          {t("Período da campanha")}
-        </span>
-      ) : (
-        <button
-          type="button"
-          onClick={() => periodo.setEscolhido(null)}
-          className="rounded-lg px-2 py-1 text-xs font-medium text-primary hover:bg-secondary"
-        >
-          {t("Voltar ao período da campanha")}
-        </button>
-      )}
-    </div>
+    <SeletorDePeriodo
+      de={periodo.janela.de}
+      ate={periodo.janela.ate}
+      rotulo={t("Período analisado")}
+      atalhos={atalhos}
+      aoMudar={(p) => periodo.setEscolhido(p)}
+      aoVoltarAoPadrao={periodo.ehPadrao ? undefined : () => periodo.setEscolhido(null)}
+    />
   );
 }

@@ -324,29 +324,31 @@ export function AbordagensDaCampanha({
     <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Abordagens")}</h2>
-        {podeEditar ? (
-          <button
-            type="button"
-            onClick={async () => {
-              const nova = await criar({ name: t("Nova abordagem") });
-              if (nova) {
-                setNovaId(nova.id);
-                toast.success(t("Abordagem criada. Preencha os dados dela."));
-              }
-            }}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
-          >
-            <Plus size={14} weight="bold" aria-hidden />
-            {t("Nova abordagem")}
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <FiltroDePeriodoDaCampanha periodo={periodo} />
+          {podeEditar ? (
+            <button
+              type="button"
+              onClick={async () => {
+                const nova = await criar({ name: t("Nova abordagem") });
+                if (nova) {
+                  setNovaId(nova.id);
+                  toast.success(t("Abordagem criada. Preencha os dados dela."));
+                }
+              }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
+            >
+              <Plus size={14} weight="bold" aria-hidden />
+              {t("Nova abordagem")}
+            </button>
+          ) : null}
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">
         {t(
           "O que a equipe fala e como: meio, gancho, mensagem e follow-up. Os números de cada dia vão na página Dia a dia.",
         )}
       </p>
-      <FiltroDePeriodoDaCampanha periodo={periodo} />
       {metricas.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 rounded-xl border border-l-4 border-l-violet-500 p-3 sm:grid-cols-4 xl:grid-cols-7">
           {metricas.map((m) => {
@@ -366,11 +368,6 @@ export function AbordagensDaCampanha({
           })}
         </div>
       ) : null}
-      <p className="text-xs text-muted-foreground">
-        {t(
-          "Os números acima são os do Dia a dia da campanha somados no período escolhido (a campanha toda, por padrão).",
-        )}
-      </p>
 
       <ColecaoDaCampanha
         tela="campanha-abordagens"

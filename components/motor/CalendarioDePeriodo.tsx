@@ -306,7 +306,10 @@ export function SeletorDePeriodo({
   rotulo,
   atalhos = [],
   className,
+  aoVoltarAoPadrao,
 }: {
+  /** Quando passado, o painel ganha "Voltar ao período da campanha". */
+  aoVoltarAoPadrao?: () => void;
   de: string;
   ate: string;
   aoMudar: (p: { de: string; ate: string }) => void;
@@ -406,6 +409,18 @@ export function SeletorDePeriodo({
                 ? t("Clique no primeiro dia e depois no último.")
                 : t("Agora clique no último dia do período.")}
             </p>
+            {aoVoltarAoPadrao ? (
+              <button
+                type="button"
+                onClick={() => {
+                  aoVoltarAoPadrao();
+                  setAberto(false);
+                }}
+                className="mt-3 h-9 w-full rounded-lg border text-sm font-medium hover:bg-secondary"
+              >
+                {t("Voltar ao período da campanha")}
+              </button>
+            ) : null}
           </div>
         </div>
       </PopoverContent>
