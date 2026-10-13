@@ -30,10 +30,12 @@ import {
 } from "@/lib/tarefas/propriedades";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
 
+import { COLUNAS_COM_CLIENTE, comNomeDoCliente } from "@/lib/tarefas/cliente-da-tarefa";
+
 export const dynamic = "force-dynamic";
 
 const COLUNAS =
-  "id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado";
+  `id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado, ${COLUNAS_COM_CLIENTE}`;
 
 const edicaoSchema = z
   .object({
@@ -142,7 +144,9 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
     return fail("internal_error", t("Erro ao salvar a tarefa."), 500, { requestId });
   }
 
-  const tarefa = data as unknown as Tarefa;
+  const tarefa = comNomeDoCliente(
+    data as unknown as Record<string, unknown>,
+  ) as unknown as Tarefa;
 
   await audit({
     organizationId: authz.org.orgId,

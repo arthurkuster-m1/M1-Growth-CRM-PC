@@ -37,6 +37,7 @@ export default async function TarefasPage() {
       podeEditar={podeEditar}
       podeConfigurar={podeConfigurar}
       agoraIso={new Date().toISOString()}
+      nomeDaOrganizacao={activeOrg.name ?? ""}
     />
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DndContext,
   MouseSensor,
@@ -58,6 +59,10 @@ export function QuadroKanban({
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
   );
 
+  // Durante o arrasto o encaixe automático das colunas sai: ele puxava a tela de uma vez para a
+  // última coluna no celular.
+  const [arrastando, setArrastando] = useState(false);
+
   const porOpcao = new Map<string, Tarefa[]>(opcoes.map((o) => [o.id, []]));
   for (const tarefa of tarefas) {
     const opcao = opcaoDaTarefa(tarefa, opcoes);
@@ -65,6 +70,7 @@ export function QuadroKanban({
   }
 
   function aoSoltar(evento: DragEndEvent) {
+    setArrastando(false);
     const destino = opcoes.find((o) => o.id === evento.over?.id);
     const tarefa = tarefas.find((x) => x.id === evento.active.id);
     if (!destino || !tarefa) return;
@@ -77,8 +83,24 @@ export function QuadroKanban({
   }
 
   return (
-    <DndContext sensors={sensores} onDragEnd={aoSoltar}>
-      <div className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-3 md:snap-none">
+    <DndContext
+      sensors={sensores}
+      onDragStart={() => setArrastando(true)}
+      onDragCancel={() => setArrastando(false)}
+      onDragEnd={aoSoltar}
+      // Rolagem automática devagar: dá para ver as colunas uma a uma e soltar com calma.
+      autoScroll={{
+        acceleration: 1.5,
+        interval: 30,
+        threshold: { x: 0.12, y: 0.15 },
+      }}
+    >
+      <div
+        className={cn(
+          "flex items-start gap-3 overflow-x-auto pb-3 md:snap-none",
+          !arrastando && "snap-x snap-mandatory",
+        )}
+      >
         {opcoes.map((opcao) => (
           <Coluna
             key={opcao.id}
@@ -95,7 +117,7 @@ export function QuadroKanban({
               >
                 <p
                   className={cn(
-                    "text-sm leading-snug font-medium",
+                    "text-sm leading-snug font-medium [overflow-wrap:anywhere]",
                     tarefa.status === "done" && "text-muted-foreground line-through",
                   )}
                 >
@@ -108,6 +130,10 @@ export function QuadroKanban({
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
+                    // O arrasto do cartão nasce de mousedown/touchstart: selecionar texto numa
+                    // propriedade não pode arrastar o cartão.
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                   >
                     {colunas.map((c) => (
                       <div key={c.id} className="-mx-1 min-w-0">
@@ -148,7 +174,7 @@ function Coluna({
       ref={setNodeRef}
       aria-label={opcao.name}
       className={cn(
-        "flex w-[85vw] max-w-72 shrink-0 snap-start flex-col gap-2 rounded-2xl bg-secondary/50 p-2.5 transition-colors md:w-72",
+        "flex w-[85vw] max-w-72 min-w-0 shrink-0 snap-start flex-col gap-2 rounded-2xl bg-secondary/50 p-2.5 transition-colors md:w-72",
         isOver && "bg-primary/10 ring-2 ring-primary/40",
       )}
     >
@@ -158,7 +184,7 @@ function Coluna({
         </Etiqueta>
         <span className="text-xs text-muted-foreground">{quantidade}</span>
       </header>
-      <div className="flex min-h-12 flex-col gap-2">
+      <div className="flex min-h-12 min-w-0 flex-col gap-2">
         {children}
         {quantidade === 0 && isOver ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">{t("Solte aqui")}</p>
@@ -207,7 +233,7 @@ function Cartao({
         transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
       }
       className={cn(
-        "rounded-xl border border-border bg-card p-3 shadow-sm",
+        "min-w-0 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm",
         arrastavel && "cursor-grab active:cursor-grabbing",
         isDragging && "relative z-10 opacity-90 shadow-lg",
       )}

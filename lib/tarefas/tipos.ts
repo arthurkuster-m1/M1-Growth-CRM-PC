@@ -56,6 +56,8 @@ export interface Tarefa {
   position?: number;
   /** Valor de cada propriedade personalizada, por id de `crm_task_properties` (migration 0584). */
   custom_fields?: Record<string, unknown>;
+  /** Nome do lead (cliente) da tarefa, junto da leitura; `contact_id` nulo = tarefa interna. */
+  cliente_nome?: string | null;
   /** Quem faz a tarefa no cronograma do cliente; nulo/ausente = fora do cronograma (migration 0591). */
   cronograma_lado?: "agencia" | "cliente" | null;
 }

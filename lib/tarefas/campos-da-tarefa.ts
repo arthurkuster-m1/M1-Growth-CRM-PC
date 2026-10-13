@@ -32,6 +32,10 @@ export interface EntradaDosCampos {
   membros: readonly { id: string; nome: string }[];
   propriedades: readonly PropriedadeDaTarefa[];
   fuso: string;
+  /** Os leads que aparecem como cliente nas tarefas (para filtrar por cliente). */
+  clientes?: readonly { id: string; nome: string }[];
+  /** O rótulo da opção "interna" (a própria organização). */
+  interno?: string;
   /** A coluna "Cronograma" só existe para quem gerencia o cronograma (gerente+). */
   cronograma?: boolean;
 }
@@ -57,6 +61,8 @@ export function metasDaTarefa({
   membros,
   propriedades,
   fuso,
+  clientes = [],
+  interno,
   cronograma = false,
 }: EntradaDosCampos): MetaDeCampo[] {
   return [
@@ -88,6 +94,17 @@ export function metasDaTarefa({
       tipo: "pessoa",
       valorDe: (x) => x.assigned_to,
       opcoes: membros.map((m) => ({ id: m.id, rotulo: m.nome })),
+    },
+    {
+      id: "cliente",
+      titulo: t("Cliente"),
+      tipo: "opcao",
+      // Sem contato = tarefa interna (da própria organização).
+      valorDe: (x) => x.contact_id ?? "interno",
+      opcoes: [
+        { id: "interno", rotulo: interno ?? t("Interno") },
+        ...clientes.map((c) => ({ id: c.id, rotulo: c.nome })),
+      ],
     },
     { id: "descricao", titulo: t("Descrição"), tipo: "texto", valorDe: (x) => x.description },
     {

@@ -64,6 +64,7 @@ export function CelulaDePropriedade({
           valor={typeof valor === "string" ? valor : ""}
           rotulo={rotulo}
           vazioRotulo={t("Vazio")}
+          caixaGrande
           permitirVazio
           podeEditar={podeEditar}
           aoSalvar={(texto) => aoSalvar(texto || null)}

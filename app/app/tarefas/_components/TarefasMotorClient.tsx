@@ -43,6 +43,7 @@ import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { toast } from "sonner";
 
+import { CelulaDeCliente } from "./CelulaDeCliente";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useModelosDeTarefa } from "@/hooks/tarefas/useModelosDeTarefa";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
@@ -129,6 +130,8 @@ interface Props {
   podeConfigurar: boolean;
   /** O instante em que o servidor pintou a tela — o mesmo "agora" do Início. */
   agoraIso: string;
+  /** O nome da organização: é o "cliente" das tarefas internas ("Interno · Nome"). */
+  nomeDaOrganizacao?: string;
 }
 
 /**
@@ -144,6 +147,7 @@ export function TarefasMotorClient({
   podeEditar,
   podeConfigurar,
   agoraIso,
+  nomeDaOrganizacao = "",
 }: Props) {
   void usuarioId;
   const t = useT();
@@ -217,6 +221,7 @@ export function TarefasMotorClient({
             <CelulaDeTexto
               valor={tarefa.title}
               rotulo={t("Título da tarefa")}
+              caixaGrande
               podeEditar={podeEditar}
               riscado={tarefa.status === "done"}
               iniciarEditando={editandoId === tarefa.id}
@@ -363,6 +368,28 @@ export function TarefasMotorClient({
         />
       ),
     },
+    {
+      id: "cliente",
+      titulo: t("Cliente"),
+      icone: <UserCircle size={14} aria-hidden />,
+      largura: 220,
+      celula: (tarefa) => (
+        <CelulaDeCliente
+          contactId={tarefa.contact_id}
+          nome={tarefa.cliente_nome}
+          organizacao={nomeDaOrganizacao}
+          podeEditar={podeEditar}
+          aoEscolher={(c) =>
+            // Mudar o cliente solta o negócio antigo (era de outro lead).
+            void editarTarefa(
+              tarefa.id,
+              { contact_id: c.id, lead_id: null },
+              { contact_id: c.id, lead_id: null, cliente_nome: c.nome },
+            )
+          }
+        />
+      ),
+    },
     // A coluna do cronograma do cliente: só para a gestão. Escolher "Agência" ou "Cliente" põe a
     // tarefa na semana do prazo, no cronograma; limpar a tira de lá.
     ...(podeConfigurar
@@ -418,6 +445,7 @@ export function TarefasMotorClient({
           valor={tarefa.description ?? ""}
           rotulo={t("Descrição da tarefa")}
           vazioRotulo={t("Vazio")}
+          caixaGrande
           permitirVazio
           podeEditar={podeEditar}
           aoSalvar={(texto) => {
@@ -551,6 +579,14 @@ export function TarefasMotorClient({
     membros,
     propriedades,
     fuso,
+    clientes: [
+      ...new Map(
+        tarefas
+          .filter((x) => x.contact_id)
+          .map((x) => [x.contact_id as string, x.cliente_nome ?? t("Lead")] as const),
+      ),
+    ].map(([id, nome]) => ({ id, nome })),
+    interno: `${t("Interno")} · ${nomeDaOrganizacao}`,
     cronograma: podeConfigurar,
   });
   const camposConsultaveis: CampoConsultavel<Tarefa>[] = metasDeCampo.map((m) => ({
