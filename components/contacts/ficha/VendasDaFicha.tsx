@@ -12,6 +12,7 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -360,32 +361,31 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                           </td>
                           <td className="px-3 py-2">
                             {parcelas.length === 0 ? (
-                              <label className="flex items-center gap-2 text-xs">
-                                <input
-                                  type="checkbox"
-                                  checked={v.status === "concluida"}
-                                  disabled={v.status === "cancelada"}
-                                  onChange={(e) =>
-                                    void mudarStatus(v, e.target.checked ? "concluida" : "comprometida")
-                                  }
+                              <div className="flex items-center gap-2 text-xs">
+                                <CirculoDeRecebida
+                                  marcado={v.status === "concluida"}
+                                  desabilitado={v.status === "cancelada"}
+                                  rotulo={`${t("À vista")} ${t("recebido")}`}
+                                  aoMudar={(ok) => void mudarStatus(v, ok ? "concluida" : "comprometida")}
                                 />
-                                {t("À vista")} · {reais(v.amount_cents)} · {t("recebido")}
-                              </label>
+                                <span className="tabular-nums">
+                                  {t("À vista")} · {reais(v.amount_cents)} · {t("recebido")}
+                                </span>
+                              </div>
                             ) : (
                               <ul className="grid gap-1">
                                 {parcelas.map((p) => (
                                   <li key={p.number}>
-                                    <label className="flex items-center gap-2 text-xs whitespace-nowrap">
-                                      <input
-                                        type="checkbox"
-                                        checked={p.status === "recebida"}
-                                        onChange={(e) => void marcarParcela(v, p.number, e.target.checked)}
-                                        aria-label={`${t("Parcela")} ${p.number} ${t("recebida")}`}
+                                    <div className="flex items-center gap-2 text-xs whitespace-nowrap">
+                                      <CirculoDeRecebida
+                                        marcado={p.status === "recebida"}
+                                        rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
+                                        aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
                                       />
                                       <span className="tabular-nums">
                                         {p.number}/{parcelas.length} · {reais(p.amount_cents)} · {dataBr(p.due_on)}
                                       </span>
-                                    </label>
+                                    </div>
                                   </li>
                                 ))}
                               </ul>

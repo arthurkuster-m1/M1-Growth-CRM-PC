@@ -11,7 +11,8 @@ import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { lerNumero } from "@/lib/marketing/calculadora";
-import { CaretDown, Check, Plus, Trash } from "@/lib/ui/icons";
+import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
+import { CaretDown, Plus, Trash } from "@/lib/ui/icons";
 import {
   FORMAS_DE_PAGAMENTO,
   ajustarParcelasAoTotal,
@@ -128,34 +129,6 @@ function Fase({
       </h3>
       {children}
     </section>
-  );
-}
-
-/** O círculo de "recebida": bolinha que se preenche com o visto. */
-function CirculoDeRecebida({
-  marcado,
-  rotulo,
-  aoMudar,
-}: {
-  marcado: boolean;
-  rotulo: string;
-  aoMudar: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={marcado}
-      aria-label={rotulo}
-      onClick={() => aoMudar(!marcado)}
-      className={`mx-auto grid size-6 place-items-center rounded-full border-2 transition-colors ${
-        marcado
-          ? "border-green-600 bg-green-600 text-white"
-          : "border-muted-foreground/50 hover:border-green-600"
-      }`}
-    >
-      {marcado ? <Check size={14} weight="bold" aria-hidden /> : null}
-    </button>
   );
 }
 
@@ -834,6 +807,7 @@ export function DialogoDaVenda({
                         </td>
                         <td className="px-3 py-1 text-center">
                           <CirculoDeRecebida
+                            className="mx-auto size-6"
                             marcado={p.recebida}
                             rotulo={`${t("Parcela recebida")} ${i + 1}`}
                             aoMudar={(v) =>
