@@ -14,6 +14,7 @@ import {
   novaCampanhaSchema,
   type CampanhaDeDemanda,
 } from "@/lib/marketing/campanhas";
+import { contaDoMetaPermitida } from "@/lib/marketing/conta-do-meta-servidor";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 
 export const dynamic = "force-dynamic";
@@ -137,6 +138,17 @@ export async function POST(req: NextRequest): Promise<Response> {
   const corpo = novaCampanhaSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success) {
     return fail("validation_failed", a.t("Dados inválidos."), 422, { requestId: a.requestId });
+  }
+  if (
+    corpo.data.meta_account_id &&
+    !(await contaDoMetaPermitida(a.orgId, corpo.data.meta_account_id))
+  ) {
+    return fail(
+      "forbidden",
+      a.t("Esta conta de anúncio não está liberada para a sua empresa."),
+      403,
+      { requestId: a.requestId },
+    );
   }
   const { count } = await a.supabase
     .from("demand_campaigns")

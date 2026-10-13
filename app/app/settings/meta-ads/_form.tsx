@@ -29,6 +29,8 @@ const ERRO_EM_PORTUGUES: Record<string, string> = {
   mfa_required: "Confirme o segundo fator para salvar esta mudança.",
   cifra_indisponivel:
     "Esta instalação está sem a chave mestra de criptografia, e o token não foi gravado. Quem instalou o sistema precisa configurá-la — refazer o cadastro aqui não resolve.",
+  conta_nao_liberada:
+    "Esta conta de anúncio não está liberada para a sua empresa. Fale com a agência.",
   erro_ao_gravar: "Não consegui gravar agora. Tente de novo em instantes.",
 };
 

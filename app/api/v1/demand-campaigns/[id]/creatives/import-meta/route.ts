@@ -14,7 +14,10 @@ import {
   atualizarMetricasDosCriativos,
   importarCriativosDoMeta,
 } from "@/lib/marketing/criativos-servidor";
-import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import {
+  contaLiberada,
+  lerCredencialDeLeitura,
+} from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +61,7 @@ export async function POST(_req: NextRequest, ctx: Ctx): Promise<Response> {
   if (!r.ok) return fail("meta_sync_failed", r.falha, 422, { requestId: a.requestId });
 
   const conta = c.meta_account_id || credencial.credencial.contaPadrao;
-  if (conta) await atualizarMetricasDosCriativos(admin, alvo, token, conta, ids);
+  if (conta && contaLiberada(credencial.credencial, conta))
+    await atualizarMetricasDosCriativos(admin, alvo, token, conta, ids);
   return ok({ criados: r.criados, existentes: r.existentes }, { requestId: a.requestId });
 }

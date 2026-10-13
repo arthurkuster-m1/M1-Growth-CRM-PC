@@ -11,7 +11,11 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import {
+  contaLiberada,
+  contasVisiveis,
+  lerCredencialDeLeitura,
+} from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import { lerCampanhas, listarContas } from "@/lib/plataformas-de-anuncio/meta/insights";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -46,7 +50,16 @@ export async function GET(req: NextRequest): Promise<Response> {
   const contas = await listarContas(token);
   if (!contas.ok) return respostaDeFalha(contas.falha, contas.detalhe, { requestId });
 
-  const conta = parsed.data.account_id ?? credencial.credencial.contaPadrao ?? null;
+  // Conta fora da lista liberada para esta organização: nem lista, nem lê.
+  if (parsed.data.account_id && !contaLiberada(credencial.credencial, parsed.data.account_id)) {
+    return fail("forbidden", "Esta conta de anúncio não está liberada para a sua empresa.", 403, {
+      requestId,
+    });
+  }
+  const padrao = contaLiberada(credencial.credencial, credencial.credencial.contaPadrao)
+    ? credencial.credencial.contaPadrao
+    : null;
+  const conta = parsed.data.account_id ?? padrao ?? null;
   let campanhas: Array<{ id: string; name: string; status: string | null }> = [];
   if (conta) {
     const lidas = await lerCampanhas(token, conta);
@@ -74,8 +87,8 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   return ok(
     {
-      contas: contas.dados,
-      conta_padrao: credencial.credencial.contaPadrao,
+      contas: contasVisiveis(credencial.credencial, contas.dados),
+      conta_padrao: padrao,
       account_id: conta,
       campanhas: campanhas.map((c) => ({ ...c, associada_a: dono.get(c.id) ?? null })),
     },

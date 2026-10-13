@@ -715,6 +715,8 @@ function textoDaFalhaDeSync(t: (s: string) => string, motivo: string): string {
       return t("Escolha a conta de anúncio do Meta.");
     case "sem_conexao":
       return t("O Meta não está conectado. Conecte em Configurações › Meta Ads.");
+    case "conta_nao_liberada":
+      return t("Esta conta de anúncio não está liberada para a sua empresa. Fale com a agência.");
     case "token_invalido":
       return t("O Meta recusou o token de acesso. Gere um novo em Configurações › Meta Ads.");
     case "permissao_insuficiente":

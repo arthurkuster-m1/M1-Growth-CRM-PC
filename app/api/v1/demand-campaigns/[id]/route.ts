@@ -11,6 +11,7 @@ import {
   edicaoDeCampanhaSchema,
 } from "@/lib/marketing/campanhas";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
+import { contaDoMetaPermitida } from "@/lib/marketing/conta-do-meta-servidor";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const corpo = edicaoDeCampanhaSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success) {
     return fail("validation_failed", a.t("Dados inválidos."), 422, { requestId: a.requestId });
+  }
+  if (
+    corpo.data.meta_account_id &&
+    !(await contaDoMetaPermitida(a.orgId, corpo.data.meta_account_id))
+  ) {
+    return fail(
+      "forbidden",
+      a.t("Esta conta de anúncio não está liberada para a sua empresa."),
+      403,
+      { requestId: a.requestId },
+    );
   }
   const { data, error } = await a.supabase
     .from("demand_campaigns")

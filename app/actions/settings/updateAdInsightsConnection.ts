@@ -56,6 +56,7 @@ export type UpdateAdInsightsConnectionResult =
         | "forbidden_role"
         | "mfa_required"
         | "cifra_indisponivel"
+        | "conta_nao_liberada"
         | "erro_ao_gravar";
       details?: unknown;
     };
@@ -111,7 +112,7 @@ export async function updateAdInsightsConnection(
 
   const { data: existente, error: erroDeLeitura } = await admin
     .from("ad_insights_connections")
-    .select("id")
+    .select("id, restrict_accounts, allowed_account_ids")
     .eq("organization_id", activeOrg.orgId)
     .eq("platform", parsed.data.platform)
     .maybeSingle();
@@ -148,6 +149,30 @@ export async function updateAdInsightsConnection(
     const cifrado = await encryptWebhookSecret(admin, parsed.data.access_token);
     if (!cifrado) return { ok: false, error: "cifra_indisponivel" };
     valores.access_token_encrypted = cifrado;
+    // Quem coloca o token manda no alcance dele: o administrador da plataforma (agência) coloca
+    // um token que pode ver contas de outros clientes — então as contas passam a ser LIBERADAS
+    // uma a uma, na tela do administrador (começa sem nenhuma). A própria empresa colocando o
+    // token dela: sem restrição, o token é só dela.
+    valores.restrict_accounts = authUser.is_platform_admin === true;
+    valores.allowed_account_ids = [];
+  }
+
+  // Conexão restrita: a conta padrão também precisa estar liberada.
+  const ex = existente as {
+    restrict_accounts?: boolean | null;
+    allowed_account_ids?: string[] | null;
+  } | null;
+  const restrita = parsed.data.access_token
+    ? authUser.is_platform_admin === true
+    : ex?.restrict_accounts === true;
+  const permitidas = parsed.data.access_token ? [] : (ex?.allowed_account_ids ?? []);
+  const padraoNovo = parsed.data.default_account_id;
+  if (
+    restrita &&
+    padraoNovo &&
+    !permitidas.some((p) => p.replace(/^act_/, "") === padraoNovo.replace(/^act_/, ""))
+  ) {
+    return { ok: false, error: "conta_nao_liberada" };
   }
 
   // `upsert` e não `update`: a linha não existe em quem nunca conectou, e um

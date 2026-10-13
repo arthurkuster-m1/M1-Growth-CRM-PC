@@ -21,7 +21,10 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import {
+  contaLiberada,
+  lerCredencialDeLeitura,
+} from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import { lerCampanhas, lerInsights } from "@/lib/plataformas-de-anuncio/meta/insights";
 import { montarTabelaDeCampanhas } from "@/lib/plataformas-de-anuncio/meta/tabela-de-campanhas";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,6 +94,11 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const token = credencial.credencial.accessToken;
   const contaId = parsed.data.account_id;
+  if (!contaLiberada(credencial.credencial, contaId)) {
+    return fail("forbidden", "Esta conta de anúncio não está liberada para a sua empresa.", 403, {
+      requestId,
+    });
+  }
 
   const [campanhas, insights] = await Promise.all([
     lerCampanhas(token, contaId),

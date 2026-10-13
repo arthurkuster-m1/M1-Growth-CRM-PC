@@ -35,8 +35,7 @@ import type { CredencialDeLeitura, PlataformaDeAnuncio } from "./types";
 export type MotivoSemLeitura = "sem_conexao" | "cifra_indisponivel";
 
 export type LeituraDeCredencialDeLeitura =
-  | { ok: true; credencial: CredencialDeLeitura }
-  | { ok: false; motivo: MotivoSemLeitura };
+  { ok: true; credencial: CredencialDeLeitura } | { ok: false; motivo: MotivoSemLeitura };
 
 export async function lerCredencialDeLeitura(
   admin: SupabaseClient,
@@ -45,7 +44,7 @@ export async function lerCredencialDeLeitura(
 ): Promise<LeituraDeCredencialDeLeitura> {
   const { data, error } = await admin
     .from("ad_insights_connections")
-    .select("access_token_encrypted, default_account_id")
+    .select("access_token_encrypted, default_account_id, restrict_accounts, allowed_account_ids")
     .eq("organization_id", organizationId)
     .eq("platform", plataforma)
     .maybeSingle();
@@ -64,6 +63,8 @@ export async function lerCredencialDeLeitura(
   const linha = data as {
     access_token_encrypted: string | null;
     default_account_id: string | null;
+    restrict_accounts: boolean | null;
+    allowed_account_ids: string[] | null;
   };
 
   // A coluna é NOT NULL no schema, então isto não deveria acontecer. A guarda
@@ -79,8 +80,37 @@ export async function lerCredencialDeLeitura(
 
   return {
     ok: true,
-    credencial: { accessToken: token, contaPadrao: linha.default_account_id },
+    credencial: {
+      accessToken: token,
+      contaPadrao: linha.default_account_id,
+      restringir: linha.restrict_accounts === true,
+      contasPermitidas: linha.allowed_account_ids ?? [],
+    },
   };
+}
+
+const semPrefixo = (id: string) => id.replace(/^act_/, "");
+
+/**
+ * A conta pode ser usada por esta organização? Token da própria empresa: sim, qualquer uma que o
+ * token alcança. Token da agência (restrito): só as que o administrador da plataforma liberou —
+ * e lista vazia não libera nenhuma.
+ */
+export function contaLiberada(
+  c: { restringir: boolean; contasPermitidas: readonly string[] },
+  conta: string | null | undefined,
+): boolean {
+  if (!c.restringir) return true;
+  if (!conta) return false;
+  return c.contasPermitidas.some((p) => semPrefixo(p) === semPrefixo(conta));
+}
+
+/** Das contas que o token alcança, só as que esta organização pode ver. */
+export function contasVisiveis<T extends { id: string }>(
+  c: { restringir: boolean; contasPermitidas: readonly string[] },
+  contas: readonly T[],
+): T[] {
+  return contas.filter((x) => contaLiberada(c, x.id));
 }
 
 /**
@@ -95,10 +125,15 @@ export async function existeConexaoDeLeitura(
   admin: SupabaseClient,
   organizationId: string,
   plataforma: PlataformaDeAnuncio,
-): Promise<{ conectada: boolean; contaPadrao: string | null }> {
+): Promise<{
+  conectada: boolean;
+  contaPadrao: string | null;
+  restringir: boolean;
+  contasPermitidas: string[];
+}> {
   const { data, error } = await admin
     .from("ad_insights_connections")
-    .select("default_account_id")
+    .select("default_account_id, restrict_accounts, allowed_account_ids")
     .eq("organization_id", organizationId)
     .eq("platform", plataforma)
     .maybeSingle();
@@ -109,9 +144,18 @@ export async function existeConexaoDeLeitura(
       plataforma,
       error: error.message,
     });
-    return { conectada: false, contaPadrao: null };
+    return { conectada: false, contaPadrao: null, restringir: false, contasPermitidas: [] };
   }
 
-  const linha = data as { default_account_id: string | null } | null;
-  return { conectada: Boolean(linha), contaPadrao: linha?.default_account_id ?? null };
+  const linha = data as {
+    default_account_id: string | null;
+    restrict_accounts: boolean | null;
+    allowed_account_ids: string[] | null;
+  } | null;
+  return {
+    conectada: Boolean(linha),
+    contaPadrao: linha?.default_account_id ?? null,
+    restringir: linha?.restrict_accounts === true,
+    contasPermitidas: linha?.allowed_account_ids ?? [],
+  };
 }

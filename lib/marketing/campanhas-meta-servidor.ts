@@ -4,7 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@/lib/logger";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
-import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import {
+  contaLiberada,
+  lerCredencialDeLeitura,
+} from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import {
   atualizarMetricasDosCriativos,
   importarCriativosDoMeta,
@@ -24,6 +27,7 @@ export type MotivoDaFalhaDeSync =
   | "sem_campanhas"
   | "sem_conta"
   | "sem_conexao"
+  | "conta_nao_liberada"
   | "token_invalido"
   | "permissao_insuficiente"
   | "limite_de_chamadas"
@@ -71,6 +75,8 @@ export async function sincronizarCampanhaComMeta(
   if (!credencial.ok) return falha("sem_conexao");
   const conta = c.meta_account_id || credencial.credencial.contaPadrao;
   if (!conta) return falha("sem_conta");
+  // Token da agência: a conta precisa estar liberada para ESTA organização.
+  if (!contaLiberada(credencial.credencial, conta)) return falha("conta_nao_liberada");
 
   const janela = janelaDaSync(c, agora);
   if (!janela) {

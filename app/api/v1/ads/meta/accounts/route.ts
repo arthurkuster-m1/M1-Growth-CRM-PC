@@ -19,7 +19,11 @@ import { randomUUID } from "node:crypto";
 
 import { requireRole } from "@/lib/auth/require-role";
 import { listarContas } from "@/lib/plataformas-de-anuncio/meta/insights";
-import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import {
+  contaLiberada,
+  contasVisiveis,
+  lerCredencialDeLeitura,
+} from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import { ok } from "@/lib/api/wrappers";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -45,8 +49,10 @@ export async function GET(): Promise<Response> {
 
   return ok(
     {
-      contas: contas.dados,
-      conta_padrao: credencial.credencial.contaPadrao,
+      contas: contasVisiveis(credencial.credencial, contas.dados),
+      conta_padrao: contaLiberada(credencial.credencial, credencial.credencial.contaPadrao)
+        ? credencial.credencial.contaPadrao
+        : null,
     },
     { requestId },
   );

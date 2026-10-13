@@ -192,6 +192,12 @@ export interface CredencialDeLeitura {
   accessToken: string;
   /** `act_<id>` que a tela abre por padrão. Nulo = ninguém escolheu ainda. */
   contaPadrao: string | null;
+  /**
+   * Token colocado pelo administrador da plataforma (agência): só as `contasPermitidas` valem.
+   * Falso = token da própria empresa, que vê o que o token alcança.
+   */
+  restringir: boolean;
+  contasPermitidas: string[];
 }
 
 /**
