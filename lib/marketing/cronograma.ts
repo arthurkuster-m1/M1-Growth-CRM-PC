@@ -373,6 +373,54 @@ export function progressoDaMeta(
   return Math.max(0, Math.min(100, Math.round((atual / m.valor_alvo) * 100)));
 }
 
+/**
+ * Meta em que MENOR é melhor (CPL, custo por lead): passar do alvo é ruim, não "mais de 100%".
+ * Vale para a fonte CPL e para a meta manual cujo título fala em CPL / custo por lead.
+ */
+export function menorEhMelhor(m: Pick<MetaDoCronograma, "fonte" | "titulo">): boolean {
+  return m.fonte === "cpl" || /\bcpl\b|custo por (lead|clique|venda|aquisi)/i.test(m.titulo);
+}
+
+export interface LeituraDaMeta {
+  /** Quanto da barra enche (0–100). */
+  barra: number;
+  /** Quanto o atual está acima (+) ou abaixo (−) do alvo, em %; `null` = sem atual. */
+  variacao: number | null;
+  /** Dentro da meta? `null` = ainda sem dado. */
+  bom: boolean | null;
+  /** Só quando menor é melhor e está acima: quanto o valor precisa cair, em %, para bater a meta. */
+  reduzir: number | null;
+  menorEMelhor: boolean;
+}
+
+/**
+ * Como a meta é LIDA na tela. Maior é melhor (leads, vendas, faturamento): a barra é atual ÷ alvo.
+ * Menor é melhor (CPL): alvo R$ 10 e CPL R$ 5 = −50% (cabe na meta, barra cheia); CPL R$ 20 = +100%
+ * (estourou; precisa cair 50% para bater a meta, e a barra mostra o alvo ÷ atual).
+ */
+export function leituraDaMeta(
+  m: Pick<MetaDoCronograma, "valor_alvo" | "valor_atual" | "fonte" | "titulo">,
+): LeituraDaMeta | null {
+  if (m.valor_alvo === null || m.valor_alvo <= 0) return null;
+  if (!menorEhMelhor(m)) {
+    const p = progressoDaMeta(m) ?? 0;
+    return { barra: p, variacao: null, bom: m.valor_atual === null ? null : p >= 100, reduzir: null, menorEMelhor: false };
+  }
+  const atual = m.valor_atual;
+  if (atual === null || atual <= 0) {
+    return { barra: 0, variacao: null, bom: null, reduzir: null, menorEMelhor: true };
+  }
+  const variacao = Math.round(((atual - m.valor_alvo) / m.valor_alvo) * 100);
+  const dentro = atual <= m.valor_alvo;
+  return {
+    barra: Math.min(100, Math.round((m.valor_alvo / atual) * 100)),
+    variacao,
+    bom: dentro,
+    reduzir: dentro ? 0 : Math.round((1 - m.valor_alvo / atual) * 100),
+    menorEMelhor: true,
+  };
+}
+
 /** O valor já no formato do tipo: R$ 15.000,00 · 1.200 leads · 35%. */
 export function formatarValorDaMeta(
   valor: number | null,

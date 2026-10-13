@@ -51,10 +51,13 @@ export function EdicaoDaSemana({
   tarefas,
   inicioDaSemana,
   acoes,
+  empresa = "",
 }: {
   tarefas: TarefaDoCronograma[];
   inicioDaSemana: string;
   acoes: Acoes;
+  /** O nome da empresa do cliente: é o rótulo do "lado do cliente". */
+  empresa?: string;
 }) {
   const t = useT();
   const [titulo, setTitulo] = useState("");
@@ -120,7 +123,7 @@ export function EdicaoDaSemana({
                   className="h-9 rounded-lg border bg-background px-2 text-sm"
                 >
                   <option value="agencia">{t("Agência")}</option>
-                  <option value="cliente">{t("Cliente")}</option>
+                  <option value="cliente">{empresa || t("Cliente")}</option>
                 </select>
                 <select
                   value={x.status === "cancelled" ? "pending" : x.status}
@@ -188,7 +191,7 @@ export function EdicaoDaSemana({
             className={CAMPO}
           >
             <option value="agencia">{t("Agência")}</option>
-            <option value="cliente">{t("Cliente")}</option>
+            <option value="cliente">{empresa || t("Cliente")}</option>
           </select>
           <button
             type="button"

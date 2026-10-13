@@ -8,6 +8,7 @@ import { EdicaoDoCronograma } from "@/components/marketing/cronograma/EdicaoDoCr
 import { HistoricoDaSemana } from "@/components/marketing/cronograma/HistoricoDaSemana";
 import { PainelDoCronograma } from "@/components/marketing/cronograma/PainelDoCronograma";
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
+import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { useBaixarImagem, useCronograma } from "@/hooks/marketing/useCronograma";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
@@ -42,7 +43,8 @@ export function CronogramaDoCliente() {
   const baixar = useBaixarImagem();
 
   const c = useCronograma(inicio, aba === "historico");
-  const rotulos = useMemo(() => rotulosDoCronograma(t), [t]);
+  const empresa = useActiveOrg()?.name ?? "";
+  const rotulos = useMemo(() => rotulosDoCronograma(t, empresa), [t, empresa]);
 
   if (c.carregando) {
     return <div className="h-64 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
@@ -71,11 +73,11 @@ export function CronogramaDoCliente() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         <div
           role="group"
           aria-label={t("Visão do cronograma")}
-          className="inline-flex max-w-full overflow-x-auto rounded-xl bg-secondary p-0.5"
+          className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-xl bg-secondary p-1 sm:inline-flex sm:w-auto sm:max-w-full sm:overflow-x-auto sm:p-0.5"
         >
           {abas.map(([valor, rotulo]) => (
             <button
@@ -84,7 +86,7 @@ export function CronogramaDoCliente() {
               aria-pressed={aba === valor}
               onClick={() => setAba(valor)}
               className={cn(
-                "h-8 shrink-0 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors",
+                "h-10 shrink-0 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors sm:h-8",
                 aba === valor
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -96,7 +98,7 @@ export function CronogramaDoCliente() {
         </div>
 
         {aba !== "geral" ? (
-          <div className="inline-flex items-center gap-1">
+          <div className="flex w-full items-center justify-between gap-1 sm:inline-flex sm:w-auto sm:justify-start">
             <button
               type="button"
               aria-label={t("Semana anterior")}
@@ -128,7 +130,7 @@ export function CronogramaDoCliente() {
           </div>
         ) : null}
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 border-t pt-3 sm:ml-auto sm:w-auto sm:border-t-0 sm:pt-0 [&>button]:h-10 [&>button]:flex-1 sm:[&>button]:h-9 sm:[&>button]:flex-none">
           {aba !== "historico" ? (
             <button
               type="button"
@@ -222,6 +224,7 @@ export function CronogramaDoCliente() {
 
       {podeEditar && editando && aba === "semana" ? (
         <EdicaoDaSemana
+          empresa={empresa}
           tarefas={c.tarefas}
           inicioDaSemana={inicio}
           acoes={{

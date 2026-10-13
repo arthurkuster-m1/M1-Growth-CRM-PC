@@ -5,6 +5,8 @@ import {
   itemSchema,
   numeroDaSemana,
   periodoDaSemana,
+  leituraDaMeta,
+  menorEhMelhor,
   progressoDaMeta,
   domingoDe,
   domingoDaSemana,
@@ -162,5 +164,30 @@ describe("tarefas da semana", () => {
     expect(tarefasDaSemana(todas, "2026-09-27").map((t) => t.id)).toEqual(["atrasada"]);
     expect(tarefasDaSemana(todas, "2026-10-11")).toEqual([]);
     expect(tarefasDaSemana(todas, "2026-10-18")).toEqual([]);
+  });
+});
+
+describe("meta em que menor é melhor (CPL)", () => {
+  const base = { fonte: "cpl" as const, titulo: "CPL" };
+  it("reconhece CPL pela fonte e pelo título", () => {
+    expect(menorEhMelhor(base)).toBe(true);
+    expect(menorEhMelhor({ fonte: "manual", titulo: "Custo por lead" })).toBe(true);
+    expect(menorEhMelhor({ fonte: "leads", titulo: "Leads" })).toBe(false);
+  });
+  it("abaixo do alvo é bom: −50% e barra cheia", () => {
+    const l = leituraDaMeta({ ...base, valor_alvo: 10, valor_atual: 5 })!;
+    expect(l).toMatchObject({ barra: 100, variacao: -50, bom: true, reduzir: 0 });
+  });
+  it("acima do alvo é ruim: variação positiva e precisa cair para bater a meta", () => {
+    const l = leituraDaMeta({ ...base, valor_alvo: 5, valor_atual: 630.12 })!;
+    expect(l.bom).toBe(false);
+    expect(l.variacao).toBe(12502);
+    expect(l.reduzir).toBe(99);
+    expect(l.barra).toBeLessThan(2);
+  });
+  it("maior é melhor continua igual", () => {
+    expect(
+      leituraDaMeta({ fonte: "leads", titulo: "Leads", valor_alvo: 100, valor_atual: 150 }),
+    ).toMatchObject({ barra: 100, bom: true, menorEMelhor: false });
   });
 });

@@ -402,7 +402,7 @@ export function TarefasMotorClient({
             celula: (tarefa: Tarefa) => {
               const lados = [
                 { id: "agencia", rotulo: t("Agência"), cor: "blue" as CorDaOpcao },
-                { id: "cliente", rotulo: t("Cliente"), cor: "orange" as CorDaOpcao },
+                { id: "cliente", rotulo: nomeDaOrganizacao || t("Cliente"), cor: "orange" as CorDaOpcao },
               ];
               const atual = lados.find((l) => l.id === tarefa.cronograma_lado);
               return (
@@ -587,6 +587,7 @@ export function TarefasMotorClient({
       ),
     ].map(([id, nome]) => ({ id, nome })),
     interno: `${t("Interno")} · ${nomeDaOrganizacao}`,
+    empresa: nomeDaOrganizacao,
     cronograma: podeConfigurar,
   });
   const camposConsultaveis: CampoConsultavel<Tarefa>[] = metasDeCampo.map((m) => ({

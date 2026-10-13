@@ -81,7 +81,7 @@ export default async function CronogramaPublicoPage({
               inicioDaSemana={domingo}
               semanaDeHoje={numeroDaSemana(dados.config, domingoDeHoje())}
               tag={tagDeIdioma(empresa.idioma)}
-              rotulos={rotulosDoCronograma(t)}
+              rotulos={rotulosDoCronograma(t, empresa.nome)}
               textos={{
                 geral: t("Cronograma geral"),
                 semana: t("Tarefas da semana"),

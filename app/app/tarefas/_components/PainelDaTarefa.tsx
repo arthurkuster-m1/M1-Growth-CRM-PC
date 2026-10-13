@@ -41,17 +41,17 @@ export function PainelDaTarefa({
 
   return (
     <Dialog open={tarefa !== null} onOpenChange={(aberto) => !aberto && aoFechar()}>
-      <DialogContent className="max-w-xl gap-5 p-5 sm:rounded-2xl sm:p-6">
+      <DialogContent className="max-w-xl gap-5 overflow-x-hidden p-5 sm:rounded-2xl sm:p-6 [&>*]:min-w-0">
         {tarefa ? (
           <>
             <DialogTitle className="sr-only">{tarefa.title}</DialogTitle>
             <DialogDescription className="sr-only">{t("Propriedades da tarefa")}</DialogDescription>
-            <div className="pr-8 text-xl font-semibold [&_button]:text-xl [&_input]:text-lg">
+            <div className="min-w-0 pr-8 text-xl font-semibold [overflow-wrap:anywhere] [&_button]:text-xl [&_input]:text-lg">
               {titulo?.celula(tarefa)}
             </div>
             <dl className="grid gap-1">
               {propriedades.map((c) => (
-                <div key={c.id} className="grid grid-cols-[7.5rem_1fr] items-center gap-2">
+                <div key={c.id} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-[6rem_minmax(0,1fr)]">
                   <dt className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
                     {c.icone}
                     <span className="truncate">{c.titulo}</span>

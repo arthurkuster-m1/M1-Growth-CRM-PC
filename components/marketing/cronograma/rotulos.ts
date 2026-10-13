@@ -3,7 +3,7 @@ import type { RotulosDoCronograma } from "@/components/marketing/cronograma/Pain
 type Traduz = (texto: string) => string;
 
 /** Os textos fixos do painel do cronograma, já traduzidos (app e link público usam os mesmos). */
-export function rotulosDoCronograma(t: Traduz): RotulosDoCronograma {
+export function rotulosDoCronograma(t: Traduz, empresa?: string): RotulosDoCronograma {
   return {
     titulo: t("Cronograma de"),
     destaqueDoTitulo: t("Implementação"),
@@ -11,7 +11,7 @@ export function rotulosDoCronograma(t: Traduz): RotulosDoCronograma {
     caminho: t("O caminho: o que fizemos, o que estamos fazendo e o que vem"),
     semana: t("Tarefas da semana"),
     agencia: t("Responsabilidades da agência"),
-    cliente: t("Responsabilidade do cliente"),
+    cliente: empresa?.trim() ? empresa.trim() : t("Responsabilidade do cliente"),
     feita: t("Concluída"),
     andamento: t("Em andamento"),
     aFazer: t("A fazer"),

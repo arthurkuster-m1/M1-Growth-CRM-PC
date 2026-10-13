@@ -128,6 +128,15 @@
 .progressoBarraCheia {
   background: var(--c-feito);
 }
+.progressoBarraRuim {
+  background: var(--c-atraso);
+}
+.pctBom {
+  color: var(--c-feito-fg);
+}
+.pctRuim {
+  color: var(--c-atraso);
+}
 .progressoPct {
   font-size: 12px;
   font-weight: 700;

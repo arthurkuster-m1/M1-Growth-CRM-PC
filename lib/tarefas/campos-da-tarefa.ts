@@ -34,6 +34,8 @@ export interface EntradaDosCampos {
   fuso: string;
   /** Os leads que aparecem como cliente nas tarefas (para filtrar por cliente). */
   clientes?: readonly { id: string; nome: string }[];
+  /** O nome da empresa do cliente: rótulo do lado "cliente" do cronograma. */
+  empresa?: string;
   /** O rótulo da opção "interna" (a própria organização). */
   interno?: string;
   /** A coluna "Cronograma" só existe para quem gerencia o cronograma (gerente+). */
@@ -63,6 +65,7 @@ export function metasDaTarefa({
   fuso,
   clientes = [],
   interno,
+  empresa,
   cronograma = false,
 }: EntradaDosCampos): MetaDeCampo[] {
   return [
@@ -122,7 +125,7 @@ export function metasDaTarefa({
             valorDe: (x: Tarefa) => x.cronograma_lado ?? undefined,
             opcoes: [
               { id: "agencia", rotulo: t("Agência"), cor: "blue" },
-              { id: "cliente", rotulo: t("Cliente"), cor: "orange" },
+              { id: "cliente", rotulo: empresa || t("Cliente"), cor: "orange" },
             ],
           } satisfies MetaDeCampo,
         ]

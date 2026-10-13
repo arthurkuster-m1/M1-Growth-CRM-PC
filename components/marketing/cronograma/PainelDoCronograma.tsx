@@ -11,7 +11,7 @@ import {
   domingoDaSemana,
   formatarValorDaMeta,
   periodoDaSemana,
-  progressoDaMeta,
+  leituraDaMeta,
   situacaoDaTarefa,
   type ConfigDoCronograma,
   type ItemDoCronograma,
@@ -241,7 +241,9 @@ export function PainelDoCronograma({
           ) : (
             <div className={css.metas}>
               {metas.map((m) => {
-                const p = progressoDaMeta(m);
+                const leitura = leituraDaMeta(m);
+                const p = leitura?.barra ?? null;
+                const ruim = leitura?.bom === false;
                 return (
                   <div key={m.id} className={css.meta}>
                     <p className={css.metaTitulo}>{m.titulo}</p>
@@ -265,11 +267,30 @@ export function PainelDoCronograma({
                           aria-label={m.titulo}
                         >
                           <div
-                            className={`${css.progressoBarra} ${p >= 100 ? css.progressoBarraCheia : ""}`}
+                            className={`${css.progressoBarra} ${
+                              ruim ? css.progressoBarraRuim : p >= 100 ? css.progressoBarraCheia : ""
+                            }`}
                             style={{ width: `${p}%` }}
                           />
                         </div>
-                        <span className={css.progressoPct}>{p}%</span>
+                        <span
+                          className={`${css.progressoPct} ${
+                            leitura?.menorEMelhor && leitura.variacao !== null
+                              ? ruim
+                                ? css.pctRuim
+                                : css.pctBom
+                              : ""
+                          }`}
+                        >
+                          {leitura?.menorEMelhor && leitura.variacao !== null
+                            ? `${leitura.variacao > 0 ? "+" : ""}${leitura.variacao}%`
+                            : `${p}%`}
+                        </span>
+                      </div>
+                    ) : null}
+                    {leitura?.menorEMelhor && leitura.reduzir ? (
+                      <div className={css.metaDescricao}>
+                        {`Reduzir ${leitura.reduzir}% para bater a meta`}
                       </div>
                     ) : null}
                     {m.descricao ? <div className={css.metaDescricao}>{m.descricao}</div> : null}
