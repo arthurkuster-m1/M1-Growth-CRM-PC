@@ -45,6 +45,13 @@ export const preferenciasDaTabelaSchema = z
         escala: z.enum(["dia", "semana"]),
       })
       .optional(),
+    /** A barra de funis do CRM: a ordem que a pessoa escolheu e os funis arquivados da barra. */
+    funis: z
+      .object({
+        ordem: z.array(z.string().uuid()).max(500).optional(),
+        arquivados: z.array(z.string().uuid()).max(500).optional(),
+      })
+      .optional(),
     /** Filtros, ordenação e agrupamento (ver `consulta.ts`). */
     ...consultaSchema.shape,
   })

@@ -6,9 +6,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
+import { CelulaDeEtiquetas } from "@/components/clientes/CelulaDeEtiquetas";
+import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
+import { telefoneE164 } from "@/components/leads/FichaDoLead";
+import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
+import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
@@ -19,9 +25,11 @@ import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { apiClient } from "@/lib/api/client";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { lerNumero } from "@/lib/marketing/calculadora";
 import {
   aplicarConsulta,
   type CampoConsultavel,
@@ -31,9 +39,7 @@ import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/m
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { CHAVE_DE_VENDAS_PENDENTES } from "@/components/vendas/PopupDeVendaPendente";
 import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users } from "@/lib/ui/icons";
-import { cn } from "@/lib/utils";
 import type { ClienteDaLista, ParticipacaoDoCliente } from "@/app/api/v1/clientes/route";
-
 interface Funil {
   id: string;
   name: string;
@@ -50,7 +56,7 @@ interface Etapa {
 interface Dados {
   funis: Funil[];
   etapas: Etapa[];
-  campanhas?: Array<{ id: string; name: string }>;
+  campanhas?: Array<{ id: string; name: string; status?: string; pipeline_id?: string | null }>;
   clientes: ClienteDaLista[];
   pode_editar: boolean;
   pode_gerir: boolean;
@@ -63,13 +69,16 @@ interface Linha extends ClienteDaLista {
 
 const PALETA: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
 const TODOS = "todos";
+const ID_DA_PADRAO = "padrao";
+const TIPOS_DO_CRM = ["tabela", "kanban"] as const;
 
 const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /**
  * O CRM FINAL: a página Clientes. Uma lista de leads (um por telefone), a seleção do funil
- * ("Todos" é a lista completa), a alternância Tabela | Kanban e o motor das Tarefas —
- * filtros, ordem, agrupamento e colunas que se escondem e reordenam.
+ * ("Todos" é a lista completa) e o motor das Tarefas — abas de visualização salvas (Tabela ou
+ * Quadro), filtros, ordem, agrupamento e colunas que se escondem e reordenam. As células da
+ * tabela se editam no lugar, como no Notion.
  */
 export function ClientesCRM() {
   const t = useT();
@@ -82,15 +91,16 @@ export function ClientesCRM() {
   const role = org?.role ?? "viewer";
 
   const funilEscolhido = parametros.get("funil") ?? TODOS;
-  const vistaPedida = parametros.get("vista") === "quadro" ? "quadro" : "tabela";
   const [busca, setBusca] = useState("");
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
   const [configurando, setConfigurando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
+  const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string } | null>(null);
 
+  const chaveDaConsulta = ["clientes", funilEscolhido] as const;
   const consulta = useQuery({
-    queryKey: ["clientes", funilEscolhido],
+    queryKey: chaveDaConsulta,
     queryFn: async () =>
       (await apiClient.get<{ data: Dados }>(`/api/v1/clientes?funil=${funilEscolhido}`)).data,
     staleTime: 10_000,
@@ -98,7 +108,6 @@ export function ClientesCRM() {
   const dados = consulta.data;
   const funilAtual = dados?.funis.find((f) => f.id === funilEscolhido) ?? null;
   const funilValido = funilEscolhido === TODOS || funilAtual !== null;
-  const vista = funilAtual && vistaPedida === "quadro" ? "quadro" : "tabela";
 
   const membrosDaEquipe = useAssignableMembers(true);
   const membros = (membrosDaEquipe.data ?? []).map((m) => ({
@@ -107,25 +116,88 @@ export function ClientesCRM() {
   }));
   const nomeDoMembro = (id: string | null) => membros.find((m) => m.id === id)?.nome ?? null;
 
-  const chavePrefs = `clientes-${funilEscolhido === TODOS ? TODOS : funilEscolhido}`;
-  const prefs = useVisualizacao(chavePrefs);
-  const preferencias: PreferenciasDaTabela = prefs.preferencias;
-  const atualizar = prefs.atualizar;
+  const podeEditar = (dados?.pode_editar ?? false) && ROLE_RANK[role] >= ROLE_RANK.agent;
 
-  function ir(novo: { funil?: string; vista?: "tabela" | "quadro" }) {
+  // As abas salvas do CRM (da organização, como as de Tarefas): cada uma é Tabela ou Quadro,
+  // com os próprios filtros, ordem e colunas. "Tabela" é a aba de fábrica.
+  const padrao = useVisualizacao("clientes");
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+    "clientes",
+    podeEditar,
+  );
+  const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
+  const ordemDasAbas = [
+    { id: ID_DA_PADRAO, posicao: posicaoDaPadrao },
+    ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
+  ].sort((a, b) => a.posicao - b.posicao);
+  const abaPedida = parametros.get("v");
+  const visaoAtiva =
+    abaPedida === ID_DA_PADRAO
+      ? undefined
+      : (visoes.find((v) => v.id === abaPedida) ??
+        (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+  const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
+  const vista = visaoAtiva?.type === "kanban" ? "quadro" : "tabela";
+  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
+    if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
+    else padrao.atualizar(mudar);
+  };
+  const moverAba = (direcao: -1 | 1) => {
+    const ids = ordemDasAbas.map((a) => a.id);
+    const i = ids.indexOf(ativaId);
+    const j = i + direcao;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    ids.forEach((id, k) => {
+      const posicao = (k + 1) * 1000;
+      if (id === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(id, { position: posicao });
+    });
+  };
+  const indiceDaAba = ordemDasAbas.findIndex((a) => a.id === ativaId);
+
+  function ir(novo: { funil?: string; aba?: string }) {
     const p = new URLSearchParams(parametros.toString());
     if (novo.funil !== undefined) {
       if (novo.funil === TODOS) p.delete("funil");
       else p.set("funil", novo.funil);
-      if (novo.funil === TODOS) p.delete("vista");
     }
-    if (novo.vista !== undefined) {
-      if (novo.vista === "tabela") p.delete("vista");
-      else p.set("vista", novo.vista);
-    }
+    if (novo.aba !== undefined) p.set("v", novo.aba);
     const qs = p.toString();
     router.replace(qs ? `${caminho}?${qs}` : caminho, { scroll: false });
   }
+
+  // A barra de funis (ordem e arquivados) é de quem está olhando, guardada na conta.
+  const barra = useVisualizacao("clientes-funis");
+  const arquivados = useMemo(
+    () => new Set(barra.preferencias.funis?.arquivados ?? []),
+    [barra.preferencias.funis?.arquivados],
+  );
+  const statusDaCampanhaDoFunil = useMemo(
+    () =>
+      new Map(
+        (dados?.campanhas ?? [])
+          .filter((c) => c.pipeline_id)
+          .map((c) => [c.pipeline_id as string, c.status ?? null]),
+      ),
+    [dados],
+  );
+  const funisNaOrdem: FunilDaBarra[] = useMemo(() => {
+    const ordem = barra.preferencias.funis?.ordem ?? [];
+    const base = dados?.funis ?? [];
+    const rank = (id: string) => {
+      const i = ordem.indexOf(id);
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    return [...base]
+      .sort((a, b) => rank(a.id) - rank(b.id))
+      .map((f) => ({
+        id: f.id,
+        nome: f.name,
+        statusDaCampanha: statusDaCampanhaDoFunil.get(f.id) ?? null,
+      }));
+  }, [dados, barra.preferencias.funis?.ordem, statusDaCampanhaDoFunil]);
 
   const etapasPorId = useMemo(() => new Map((dados?.etapas ?? []).map((e) => [e.id, e])), [dados]);
   const campanhasPorId = useMemo(
@@ -133,6 +205,10 @@ export function ClientesCRM() {
     [dados],
   );
   const funisPorId = useMemo(() => new Map((dados?.funis ?? []).map((f) => [f.id, f])), [dados]);
+  const todasAsTags = useMemo(
+    () => [...new Set((dados?.clientes ?? []).flatMap((c) => c.tags))].sort(),
+    [dados],
+  );
 
   const linhas: Linha[] = useMemo(() => {
     const base = dados?.clientes ?? [];
@@ -175,7 +251,6 @@ export function ClientesCRM() {
     (l.participacao ? [l.participacao] : l.participacoes)
       .filter((p) => p.status === "open")
       .reduce((s, p) => s + (p.valor_cents ?? 0), 0);
-
   async function alterarMql(contactId: string, is_mql: boolean) {
     try {
       await apiClient.put(`/api/v1/contacts/${contactId}/qualificacao`, { is_mql });
@@ -201,7 +276,120 @@ export function ClientesCRM() {
     }
   }
 
-  const podeEditar = (dados?.pode_editar ?? false) && ROLE_RANK[role] >= ROLE_RANK.agent;
+  /** Os negócios que a linha mostra: o do funil escolhido, ou um por funil em "Todos". */
+  const partes = (l: Linha): ParticipacaoDoCliente[] =>
+    l.participacao ? [l.participacao] : porFunil(l);
+  /** O negócio que uma edição de linha única atinge (valor, campanha, origem, responsável). */
+  const alvoDaLinha = (l: Linha): ParticipacaoDoCliente | null => {
+    const lista = partes(l);
+    if (lista.length === 1) return lista[0]!;
+    const abertas = lista.filter((p) => p.status === "open");
+    return abertas.length === 1 ? abertas[0]! : null;
+  };
+
+  // Edição no lugar: a tela muda NA HORA (cache) e o servidor confirma; se falhar, relê tudo.
+  function otimista(mudar: (c: ClienteDaLista) => ClienteDaLista, contactId: string) {
+    queryClient.setQueryData<{ data?: never } | Dados>(chaveDaConsulta, (atual) => {
+      const d = atual as Dados | undefined;
+      if (!d?.clientes) return atual;
+      return {
+        ...d,
+        clientes: d.clientes.map((c) => (c.contact_id === contactId ? mudar(c) : c)),
+      };
+    });
+  }
+  function otimistaNegocio(
+    contactId: string,
+    leadId: string,
+    mudar: (p: ParticipacaoDoCliente) => ParticipacaoDoCliente,
+  ) {
+    otimista(
+      (c) => ({
+        ...c,
+        participacoes: c.participacoes.map((p) => (p.lead_id === leadId ? mudar(p) : p)),
+      }),
+      contactId,
+    );
+  }
+  async function executar(acao: () => Promise<unknown>) {
+    try {
+      await acao();
+    } catch (e) {
+      showApiError(e);
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    }
+  }
+  const salvarContato = (
+    l: Linha,
+    patch: Record<string, unknown>,
+    local: Partial<ClienteDaLista>,
+  ) => {
+    otimista((c) => ({ ...c, ...local }), l.contact_id);
+    return executar(() => apiClient.patch(`/api/v1/contacts/${l.contact_id}`, patch));
+  };
+  const salvarNegocio = (
+    l: Linha,
+    p: ParticipacaoDoCliente,
+    patch: Record<string, unknown>,
+    local: Partial<ParticipacaoDoCliente>,
+  ) => {
+    otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, ...local }));
+    return executar(() => apiClient.patch(`/api/v1/leads/${p.lead_id}`, patch));
+  };
+  const salvarOrigem = (
+    l: Linha,
+    p: ParticipacaoDoCliente,
+    corpo: { campaign_id?: string | null; source?: string },
+  ) => {
+    otimistaNegocio(l.contact_id, p.lead_id, (x) => ({
+      ...x,
+      ...(corpo.campaign_id !== undefined ? { campanha_id: corpo.campaign_id } : {}),
+      ...(corpo.source !== undefined ? { origem: corpo.source } : {}),
+    }));
+    return executar(() => apiClient.put(`/api/v1/leads/${p.lead_id}/origem`, corpo));
+  };
+  const ganhar = (p: ParticipacaoDoCliente) =>
+    executar(async () => {
+      await apiClient.post(`/api/v1/leads/${p.lead_id}/win`, {});
+      // O banco efetiva a venda e o pop-up global (casca do app) a abre na hora.
+      await queryClient.invalidateQueries({ queryKey: CHAVE_DE_VENDAS_PENDENTES });
+    });
+  const levarParaFunil = (p: ParticipacaoDoCliente, destinoId: string) => {
+    const destino = funisPorId.get(destinoId)?.name ?? "";
+    if (
+      !window.confirm(
+        t(
+          "Levar este negócio para o funil “{funil}”? Ele nasce lá na primeira etapa e o atual é encerrado como perdido (“Levado para outro funil”).",
+        ).replace("{funil}", destino),
+      )
+    ) {
+      return;
+    }
+    return executar(() =>
+      apiClient.post(`/api/v1/leads/${p.lead_id}/clone`, { pipeline_id: destinoId }),
+    );
+  };
+  const etapasAbertasDoFunil = (funilId: string) =>
+    (dados?.etapas ?? [])
+      .filter((e) => e.pipeline_id === funilId && !e.is_won && !e.is_lost)
+      .map((e) => ({ id: e.id, rotulo: e.name, cor: corDaEtapa(e) }));
+  const opcoesDeFunil = (dados?.funis ?? []).map((f) => ({
+    id: f.id,
+    rotulo: f.name,
+    cor: "gray" as CorDaOpcao,
+  }));
+  const opcoesDeSituacao: Array<{ id: string; rotulo: string; cor: CorDaOpcao }> = [
+    { id: "open", rotulo: t("Aberto"), cor: "blue" },
+    { id: "won", rotulo: t("Ganho"), cor: "green" },
+    { id: "lost", rotulo: t("Perdido"), cor: "red" },
+  ];
+  const corDaSituacao = (s: string): CorDaOpcao =>
+    s === "won" ? "green" : s === "lost" ? "red" : "blue";
+  const empilhado = (itens: React.ReactNode[]) => (
+    <div className="flex min-w-0 flex-col items-stretch gap-0.5 py-0.5">{itens}</div>
+  );
+  const semValor = <span className="block px-2 text-sm text-muted-foreground">—</span>;
 
   const opcoesDeEtapa = (dados?.etapas ?? [])
     .filter((e) => !funilAtual || e.pipeline_id === funilAtual.id)
@@ -212,42 +400,50 @@ export function ClientesCRM() {
       id: "nome",
       titulo: t("Nome"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 280,
+      largura: 300,
       semOcultar: true,
       celula: (l) => (
-        <Link
-          href={`/app/contacts/${l.contact_id}`}
-          className="flex min-w-0 items-center gap-2 px-2 text-sm font-medium hover:text-primary hover:underline"
-        >
-          <span
-            aria-hidden
-            className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft text-[11px] font-bold text-primary"
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <CelulaDeTexto
+              valor={l.nome}
+              rotulo={t("Nome do lead")}
+              podeEditar={podeEditar}
+              aoSalvar={(nome) => void salvarContato(l, { name: nome }, { nome })}
+            />
+          </div>
+          <Link
+            href={`/app/contacts/${l.contact_id}`}
+            className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
           >
-            {[...l.nome.trim()][0]?.toUpperCase() ?? "?"}
-          </span>
-          <span className="truncate">{l.nome}</span>
-        </Link>
+            {t("Abrir")}
+          </Link>
+        </div>
       ),
     },
     {
       id: "funis",
       titulo: t("Funis"),
       icone: <Rows size={14} aria-hidden />,
-      largura: 240,
+      largura: 230,
       celula: (l) => {
-        const lista = porFunil(l);
-        return (
-          <div className="flex min-w-0 flex-col items-start gap-1 px-2 py-0.5">
-            {lista.length === 0 ? (
-              <span className="text-sm text-muted-foreground">—</span>
-            ) : (
-              lista.map((p) => (
-                <Etiqueta key={p.funil_id} cor="gray">
-                  {funisPorId.get(p.funil_id)?.name ?? "—"}
-                </Etiqueta>
-              ))
-            )}
-          </div>
+        const lista = partes(l);
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map((p) => (
+            <SeletorDeOpcao
+              key={p.lead_id}
+              opcoes={opcoesDeFunil}
+              valorId={p.funil_id}
+              podeEditar={podeEditar && p.status === "open" && opcoesDeFunil.length > 1}
+              rotulo={t("Funil do negócio")}
+              aoEscolher={(id) => {
+                if (id !== p.funil_id) void levarParaFunil(p, id);
+              }}
+            >
+              <Etiqueta cor="gray">{funisPorId.get(p.funil_id)?.name ?? "—"}</Etiqueta>
+            </SeletorDeOpcao>
+          )),
         );
       },
     },
@@ -255,67 +451,30 @@ export function ClientesCRM() {
       id: "etapa",
       titulo: t("Etapa"),
       icone: <Kanban size={14} aria-hidden />,
-      largura: 230,
+      largura: 250,
       celula: (l) => {
-        if (l.participacao) {
-          const atual = etapasPorId.get(l.participacao.etapa_id);
-          const fechado = l.participacao.status !== "open";
-          const livres = opcoesDeEtapa.filter((o) => {
-            const e = etapasPorId.get(o.id);
-            return e && !e.is_won && !e.is_lost;
-          });
-          return (
-            <SeletorDeOpcao
-              opcoes={livres}
-              valorId={atual?.id}
-              podeEditar={podeEditar && !fechado}
-              rotulo={t("Etapa do negócio")}
-              aoEscolher={(id) => void moverEtapa(l.participacao!, id)}
-            >
-              <Etiqueta ponto cor={corDaEtapa(atual)}>
-                {atual?.name ?? "—"}
-              </Etiqueta>
-            </SeletorDeOpcao>
-          );
-        }
-        const lista = porFunil(l);
-        return (
-          <div className="flex min-w-0 flex-col items-start gap-1 px-2 py-0.5">
-            {lista.length === 0 ? (
-              <span className="text-sm text-muted-foreground">—</span>
-            ) : (
-              lista.map((p) => {
-                const etapa = etapasPorId.get(p.etapa_id);
-                const fechado =
-                  p.status === "won" ? t("Ganho") : p.status === "lost" ? t("Perdido") : null;
-                return (
-                  <Etiqueta key={p.funil_id} cor={corDaEtapa(etapa)}>
-                    {`${funisPorId.get(p.funil_id)?.name ?? "—"} - ${etapa?.name ?? "—"}${fechado ? ` (${fechado})` : ""}`}
-                  </Etiqueta>
-                );
-              })
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      id: "campanha",
-      titulo: t("Campanha"),
-      icone: <Rows size={14} aria-hidden />,
-      largura: 220,
-      celula: (l) => {
-        const nomes = [
-          ...new Set(
-            (l.participacao ? [l.participacao] : l.participacoes)
-              .map((p) => (p.campanha_id ? campanhasPorId.get(p.campanha_id) : null))
-              .filter((n): n is string => Boolean(n)),
-          ),
-        ];
-        return (
-          <span className="block truncate px-2 text-sm" title={nomes.join(", ")}>
-            {nomes.length > 0 ? nomes.join(", ") : "—"}
-          </span>
+        const lista = partes(l);
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map((p) => {
+            const atual = etapasPorId.get(p.etapa_id);
+            const fechado = p.status !== "open";
+            const prefixo = lista.length > 1 ? `${funisPorId.get(p.funil_id)?.name ?? "—"} - ` : "";
+            return (
+              <SeletorDeOpcao
+                key={p.lead_id}
+                opcoes={etapasAbertasDoFunil(p.funil_id)}
+                valorId={atual?.id}
+                podeEditar={podeEditar && !fechado}
+                rotulo={t("Etapa do negócio")}
+                aoEscolher={(id) => void moverEtapa(p, id)}
+              >
+                <Etiqueta ponto cor={corDaEtapa(atual)}>
+                  {`${prefixo}${atual?.name ?? "—"}${fechado ? ` (${rotuloDoStatus(p.status)})` : ""}`}
+                </Etiqueta>
+              </SeletorDeOpcao>
+            );
+          }),
         );
       },
     },
@@ -323,22 +482,75 @@ export function ClientesCRM() {
       id: "status",
       titulo: t("Situação"),
       icone: <Rows size={14} aria-hidden />,
-      largura: 130,
-      padrao: false,
-      celula: (l) =>
-        l.participacao ? (
-          <Etiqueta
-            cor={
-              l.participacao.status === "won"
-                ? "green"
-                : l.participacao.status === "lost"
-                  ? "red"
-                  : "blue"
-            }
+      largura: 170,
+      celula: (l) => {
+        const lista = partes(l);
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map((p) => (
+            <SeletorDeOpcao
+              key={p.lead_id}
+              opcoes={opcoesDeSituacao}
+              valorId={p.status}
+              podeEditar={podeEditar}
+              rotulo={t("Situação do negócio")}
+              aoEscolher={(id) => {
+                if (id === p.status) return;
+                if (id === "won") void ganhar(p);
+                else if (id === "lost") setPerdendo({ leadId: p.lead_id, funilId: p.funil_id });
+                else {
+                  const primeira = (dados?.etapas ?? []).find(
+                    (e) => e.pipeline_id === p.funil_id && !e.is_won && !e.is_lost,
+                  );
+                  if (primeira) void moverEtapa(p, primeira.id);
+                }
+              }}
+            >
+              <Etiqueta ponto cor={corDaSituacao(p.status)}>
+                {rotuloDoStatus(p.status)}
+              </Etiqueta>
+            </SeletorDeOpcao>
+          )),
+        );
+      },
+    },
+    {
+      id: "campanha",
+      titulo: t("Campanha"),
+      icone: <Rows size={14} aria-hidden />,
+      largura: 230,
+      celula: (l) => {
+        const alvo = alvoDaLinha(l);
+        const nomes = [
+          ...new Set(
+            partes(l)
+              .map((p) => (p.campanha_id ? campanhasPorId.get(p.campanha_id) : null))
+              .filter((n): n is string => Boolean(n)),
+          ),
+        ];
+        const conteudo = (
+          <span className="block min-w-0 truncate text-sm" title={nomes.join(", ")}>
+            {nomes.length > 0 ? nomes.join(", ") : "—"}
+          </span>
+        );
+        if (!alvo) return <div className="px-2">{conteudo}</div>;
+        return (
+          <SeletorDeOpcao
+            opcoes={(dados?.campanhas ?? []).map((c) => ({
+              id: c.id,
+              rotulo: c.name,
+              cor: "gray" as CorDaOpcao,
+            }))}
+            valorId={alvo.campanha_id ?? undefined}
+            podeEditar={podeEditar}
+            rotulo={t("Campanha de origem")}
+            aoEscolher={(id) => void salvarOrigem(l, alvo, { campaign_id: id })}
+            aoLimpar={() => void salvarOrigem(l, alvo, { campaign_id: null })}
           >
-            {rotuloDoStatus(l.participacao.status)}
-          </Etiqueta>
-        ) : null,
+            {conteudo}
+          </SeletorDeOpcao>
+        );
+      },
     },
     {
       id: "mql",
@@ -358,10 +570,30 @@ export function ClientesCRM() {
       id: "valor",
       titulo: t("Valor"),
       icone: <Rows size={14} aria-hidden />,
-      largura: 140,
+      largura: 150,
       celula: (l) => {
+        const alvo = alvoDaLinha(l);
         const v = valorAberto(l);
-        return <span className="block truncate px-2 text-sm">{v > 0 ? moeda(v) : "—"}</span>;
+        const exibicao = v > 0 ? moeda(v) : "—";
+        if (!alvo) return <span className="block truncate px-2 text-sm">{exibicao}</span>;
+        const atual = alvo.valor_cents ?? 0;
+        return (
+          <CelulaDeTexto
+            valor={atual > 0 ? String(atual / 100).replace(".", ",") : ""}
+            exibir={atual > 0 ? moeda(atual) : "—"}
+            rotulo={t("Valor do negócio")}
+            vazioRotulo="—"
+            permitirVazio
+            inputMode="decimal"
+            podeEditar={podeEditar}
+            aoSalvar={(texto) => {
+              const n = texto.trim() === "" ? 0 : lerNumero(texto);
+              if (n === null || n < 0) return;
+              const cents = Math.round(n * 100);
+              void salvarNegocio(l, alvo, { value_cents: cents }, { valor_cents: cents });
+            }}
+          />
+        );
       },
     },
     {
@@ -369,43 +601,91 @@ export function ClientesCRM() {
       titulo: t("Responsável"),
       icone: <Users size={14} aria-hidden />,
       largura: 190,
-      celula: (l) =>
-        l.participacao ? (
+      celula: (l) => {
+        const alvo = alvoDaLinha(l);
+        if (!alvo) {
+          return (
+            <span className="block truncate px-2 text-sm text-muted-foreground">
+              {nomeDoMembro(
+                l.participacoes.find((p) => p.responsavel_id)?.responsavel_id ?? null,
+              ) ?? "—"}
+            </span>
+          );
+        }
+        return (
           <CelulaDePessoa
             membros={membros}
-            valorId={l.participacao.responsavel_id}
-            podeEditar={false}
-            rotulo={t("Responsável pela tarefa")}
-            aoEscolher={() => undefined}
+            valorId={alvo.responsavel_id}
+            podeEditar={podeEditar}
+            rotulo={t("Responsável pelo negócio")}
+            aoEscolher={(id) =>
+              void salvarNegocio(l, alvo, { owner_user_id: id }, { responsavel_id: id })
+            }
           />
-        ) : (
-          <span className="block truncate px-2 text-sm text-muted-foreground">
-            {nomeDoMembro(l.participacoes.find((p) => p.responsavel_id)?.responsavel_id ?? null) ??
-              "—"}
-          </span>
-        ),
+        );
+      },
     },
     {
       id: "telefone",
       titulo: t("Telefone"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 170,
-      celula: (l) => <span className="block truncate px-2 text-sm">{l.telefone ?? "—"}</span>,
+      largura: 180,
+      celula: (l) => (
+        <CelulaDeTexto
+          valor={l.telefone ?? ""}
+          rotulo={t("Telefone")}
+          vazioRotulo="—"
+          inputMode="numeric"
+          podeEditar={podeEditar}
+          aoSalvar={(texto) => {
+            const fone = telefoneE164(texto);
+            if (!fone || fone === l.telefone) return;
+            void salvarContato(l, { phone_number: fone }, { telefone: fone });
+          }}
+        />
+      ),
     },
     {
       id: "email",
       titulo: t("E-mail"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 220,
+      largura: 230,
       padrao: false,
-      celula: (l) => <span className="block truncate px-2 text-sm">{l.email ?? "—"}</span>,
+      celula: (l) => (
+        <CelulaDeTexto
+          valor={l.email ?? ""}
+          rotulo={t("E-mail")}
+          vazioRotulo="—"
+          podeEditar={podeEditar}
+          aoSalvar={(email) => {
+            if (!email.includes("@") || email === l.email) return;
+            void salvarContato(l, { email }, { email });
+          }}
+        />
+      ),
     },
     {
       id: "origem",
       titulo: t("Origem"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 150,
-      celula: (l) => <span className="block truncate px-2 text-sm">{l.origem ?? "—"}</span>,
+      largura: 170,
+      celula: (l) => {
+        const alvo = alvoDaLinha(l);
+        const atual = alvo?.origem ?? l.origem ?? "";
+        if (!alvo) return <span className="block truncate px-2 text-sm">{atual || "—"}</span>;
+        return (
+          <CelulaDeTexto
+            valor={atual}
+            rotulo={t("Origem")}
+            vazioRotulo="—"
+            podeEditar={podeEditar}
+            aoSalvar={(source) => {
+              if (source === atual) return;
+              void salvarOrigem(l, alvo, { source });
+            }}
+          />
+        );
+      },
     },
     {
       id: "tags",
@@ -414,13 +694,13 @@ export function ClientesCRM() {
       largura: 260,
       padrao: false,
       celula: (l) => (
-        <div className="flex min-w-0 flex-wrap gap-1 px-2">
-          {l.tags.map((x) => (
-            <Etiqueta key={x} cor="gray">
-              {x}
-            </Etiqueta>
-          ))}
-        </div>
+        <CelulaDeEtiquetas
+          tags={l.tags}
+          sugestoes={todasAsTags}
+          podeEditar={podeEditar}
+          rotulo={t("Tags do lead")}
+          aoMudar={(tags) => void salvarContato(l, { tags }, { tags })}
+        />
       ),
     },
     {
@@ -506,7 +786,6 @@ export function ClientesCRM() {
       ),
     },
   ];
-
   const todosOsCampos: Array<
     CampoConsultavel<Linha> & {
       titulo: string;
@@ -606,10 +885,7 @@ export function ClientesCRM() {
     opcoes: c.opcoes,
   }));
 
-  const resolvidas = resolverColunas(
-    colunas.filter((c) => funilAtual !== null || c.id !== "status"),
-    preferencias,
-  );
+  const resolvidas = resolverColunas(colunas, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
 
   const termo = semAcento(busca);
@@ -670,13 +946,45 @@ export function ClientesCRM() {
     [t("Sem contato (+7d)"), String(semContato)],
   ];
 
+  const abasPorId = new Map([
+    [
+      ID_DA_PADRAO,
+      { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Tabela"), tipo: "tabela" as const },
+    ],
+    ...visoes.map((v) => [v.id, { id: v.id, nome: v.name, tipo: v.type }] as const),
+  ]);
+  const abas = ordemDasAbas.flatMap((a) => {
+    const aba = abasPorId.get(a.id);
+    return aba ? [aba] : [];
+  });
+
+  function salvarFunis(
+    mudar: (atual: NonNullable<PreferenciasDaTabela["funis"]>) => {
+      ordem?: string[];
+      arquivados?: string[];
+    },
+  ) {
+    barra.atualizar((p) => ({ ...p, funis: mudar(p.funis ?? {}) }));
+  }
+
   return (
-    <div className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Clientes")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("Todos os seus leads, em cada funil, num só lugar.")}
-        </p>
+    <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("Clientes")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("Todos os seus leads, em cada funil, num só lugar.")}
+          </p>
+        </div>
+        {dados?.pode_editar ? (
+          <Link
+            href="/app/vendas"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
+          >
+            {t("Vendas")}
+            <ArrowRight size={14} weight="bold" aria-hidden />
+          </Link>
+        ) : null}
       </header>
 
       <section
@@ -693,187 +1001,171 @@ export function ClientesCRM() {
         ))}
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {dados?.pode_editar ? (
-          <Link
-            href="/app/vendas"
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
-          >
-            {t("Vendas")}
-            <ArrowRight size={14} weight="bold" aria-hidden />
-          </Link>
-        ) : null}
-        <div
-          role="tablist"
-          aria-label={t("Funis")}
-          className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-1 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden"
-        >
-          {[{ id: TODOS, name: t("Todos") }, ...(dados?.funis ?? [])].map((f) => {
-            const ativa = f.id === funilEscolhido;
-            return (
-              <button
-                key={f.id}
-                type="button"
-                role="tab"
-                aria-selected={ativa}
-                onClick={() => ir({ funil: f.id })}
-                className={cn(
-                  "h-9 shrink-0 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors",
-                  ativa
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "bg-card text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {f.name}
-              </button>
-            );
-          })}
-        </div>
-        <div
-          role="group"
-          aria-label={t("Como ver os leads")}
-          className="ml-auto inline-flex rounded-xl bg-secondary p-0.5"
-        >
-          {(
-            [
-              ["tabela", t("Tabela"), <Rows key="t" size={14} aria-hidden />],
-              ["quadro", t("Quadro"), <Kanban key="k" size={14} aria-hidden />],
-            ] as const
-          ).map(([valor, rotulo, icone]) => {
-            const desligado = valor === "quadro" && funilAtual === null;
-            return (
-              <button
-                key={valor}
-                type="button"
-                aria-pressed={vista === valor}
-                disabled={desligado}
-                title={desligado ? t("Escolha um funil para ver o quadro.") : undefined}
-                onClick={() => ir({ vista: valor })}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-40",
-                  vista === valor
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {icone}
-                {rotulo}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <BarraDeFunis
+        funis={funisNaOrdem}
+        arquivados={arquivados}
+        escolhido={funilEscolhido}
+        todosId={TODOS}
+        podeOrganizar
+        aoEscolher={(id) => ir({ funil: id })}
+        aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
+        aoArquivar={(ids, arquivar) =>
+          salvarFunis((f) => {
+            const atuais = new Set(f.arquivados ?? []);
+            for (const id of ids) {
+              if (arquivar) atuais.add(id);
+              else atuais.delete(id);
+            }
+            return { ...f, arquivados: [...atuais] };
+          })
+        }
+      />
 
       {!funilValido && !consulta.isLoading ? (
         <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
           {t("Este funil não existe mais.")}
         </p>
-      ) : vista === "quadro" && funilAtual ? (
-        <PipelinePageClient pipelineId={funilAtual.id} initialName={funilAtual.name} role={role} />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-56">
-              <span className="sr-only">{t("Buscar")}</span>
-              <MagnifyingGlass
-                size={16}
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder={t("Buscar por nome, telefone, e-mail ou tag")}
-                className="h-10 w-full rounded-xl border bg-background pr-3 pl-9 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => setConfigurando(true)}
-              className="h-10 rounded-xl border bg-card px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
-            >
-              {t("Colunas")}
-            </button>
-          </div>
-          <BarraDeConsulta
-            campos={camposDaBarra}
-            consulta={{
-              filtros: preferencias.filtros,
-              ordenacao: preferencias.ordenacao,
-              agrupar: preferencias.agrupar,
-              agruparPor: preferencias.agruparPor,
-            }}
-            aoMudar={mudarConsulta}
+          <AbasDeVisualizacao
+            abas={abas}
+            ativaId={ativaId}
+            podeEditar={podeEditar}
+            tipos={TIPOS_DO_CRM}
+            aoEscolher={(id) => ir({ aba: id })}
+            aoCriar={(nome, tipo) =>
+              void criarVisao({ name: nome, type: tipo, config: preferencias }).then(
+                (v) => v && ir({ aba: v.id }),
+              )
+            }
+            aoConfigurar={() => setConfigurando(true)}
           />
-          <TabelaDoMotor
-            linhas={resultado.linhas}
-            idDe={(l) => l.contact_id}
-            colunas={mostradas}
-            grupos={grupos}
-            carregando={consulta.isLoading}
-            aoMoverColuna={(movido, alvo) =>
-              atualizar((p) => ({
-                ...p,
-                ordem: moverColuna(
-                  resolvidas.filter((c) => !c.fixa).map((c) => c.id),
-                  movido,
-                  alvo,
-                ),
-              }))
-            }
-            aoRedimensionarColuna={(id, largura) =>
-              atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
-            }
-            aoReordenar={() => undefined}
-            podeReordenar={false}
-            rotuloDaTabela={t("Leads")}
-            selecionadas={selecionadas}
-            aoSelecionar={(id, { faixa }) =>
-              setSelecionadas((atual) => {
-                const proximo = new Set(atual);
-                const ids = resultado.linhas.map((l) => l.contact_id);
-                if (faixa && atual.size > 0) {
-                  const ultimo = ids.findLastIndex((x) => atual.has(x));
-                  const alvo = ids.indexOf(id);
-                  if (ultimo >= 0 && alvo >= 0) {
-                    const [de, ate] = ultimo < alvo ? [ultimo, alvo] : [alvo, ultimo];
-                    for (const x of ids.slice(de, ate + 1)) proximo.add(x);
-                    return proximo;
-                  }
-                }
-                if (proximo.has(id)) proximo.delete(id);
-                else proximo.add(id);
-                return proximo;
-              })
-            }
-            aoSelecionarTodas={(marcar) =>
-              setSelecionadas(marcar ? new Set(resultado.linhas.map((l) => l.contact_id)) : new Set())
-            }
-            vazio={
-              <p className="p-6 text-center text-sm text-muted-foreground">
-                {consulta.isError
-                  ? t("Não foi possível carregar os leads.")
-                  : t("Nenhum lead por aqui ainda.")}
+
+          {vista === "quadro" ? (
+            funilAtual ? (
+              <PipelinePageClient
+                key={funilAtual.id}
+                pipelineId={funilAtual.id}
+                initialName={funilAtual.name}
+                role={role}
+              />
+            ) : (
+              <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+                {t("Escolha um funil na linha de cima para ver o quadro.")}
               </p>
-            }
-          />
-          {podeEditar ? (
-            <AcoesEmMassaDeClientes
-              contatoIds={[...selecionadas]}
-              podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
-              aoLimpar={() => setSelecionadas(new Set())}
-            />
-          ) : null}
+            )
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="relative min-w-0 flex-1 basis-56">
+                  <span className="sr-only">{t("Buscar")}</span>
+                  <MagnifyingGlass
+                    size={16}
+                    aria-hidden
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <input
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder={t("Buscar por nome, telefone, e-mail ou tag")}
+                    className="h-9 w-full rounded-xl border bg-background pr-3 pl-9 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  />
+                </label>
+                <BarraDeConsulta
+                  compacta
+                  campos={camposDaBarra}
+                  consulta={{
+                    filtros: preferencias.filtros,
+                    ordenacao: preferencias.ordenacao,
+                    agrupar: preferencias.agrupar,
+                    agruparPor: preferencias.agruparPor,
+                  }}
+                  aoMudar={mudarConsulta}
+                />
+              </div>
+              <TabelaDoMotor
+                linhas={resultado.linhas}
+                idDe={(l) => l.contact_id}
+                colunas={mostradas}
+                grupos={grupos}
+                carregando={consulta.isLoading}
+                aoMoverColuna={(movido, alvo) =>
+                  atualizar((p) => ({
+                    ...p,
+                    ordem: moverColuna(
+                      resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+                      movido,
+                      alvo,
+                    ),
+                  }))
+                }
+                aoRedimensionarColuna={(id, largura) =>
+                  atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
+                }
+                aoReordenar={() => undefined}
+                podeReordenar={false}
+                rotuloDaTabela={t("Leads")}
+                selecionadas={selecionadas}
+                aoSelecionar={(id, { faixa }) =>
+                  setSelecionadas((atual) => {
+                    const proximo = new Set(atual);
+                    const ids = resultado.linhas.map((l) => l.contact_id);
+                    if (faixa && atual.size > 0) {
+                      const ultimo = ids.findLastIndex((x) => atual.has(x));
+                      const alvo = ids.indexOf(id);
+                      if (ultimo >= 0 && alvo >= 0) {
+                        const [de, ate] = ultimo < alvo ? [ultimo, alvo] : [alvo, ultimo];
+                        for (const x of ids.slice(de, ate + 1)) proximo.add(x);
+                        return proximo;
+                      }
+                    }
+                    if (proximo.has(id)) proximo.delete(id);
+                    else proximo.add(id);
+                    return proximo;
+                  })
+                }
+                aoSelecionarTodas={(marcar) =>
+                  setSelecionadas(
+                    marcar ? new Set(resultado.linhas.map((l) => l.contact_id)) : new Set(),
+                  )
+                }
+                vazio={
+                  <p className="p-6 text-center text-sm text-muted-foreground">
+                    {consulta.isError
+                      ? t("Não foi possível carregar os leads.")
+                      : t("Nenhum lead por aqui ainda.")}
+                  </p>
+                }
+              />
+              {podeEditar ? (
+                <AcoesEmMassaDeClientes
+                  contatoIds={[...selecionadas]}
+                  podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
+                  aoLimpar={() => setSelecionadas(new Set())}
+                />
+              ) : null}
+            </>
+          )}
+
           <ConfigurarVisualizacao
             aberto={configurando}
             aoFechar={() => setConfigurando(false)}
-            nome={preferencias.nome ?? funilAtual?.name ?? t("Todos")}
-            tipo="tabela"
-            tipos={["tabela"]}
+            nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
+            tipo={visaoAtiva?.type ?? "tabela"}
+            tipos={TIPOS_DO_CRM}
             podeEditar={podeEditar}
-            ehPadrao
-            aoRenomear={(nome) => atualizar((p) => ({ ...p, nome }))}
-            aoTrocarTipo={() => undefined}
+            ehPadrao={!visaoAtiva}
+            aoRenomear={(nome) =>
+              visaoAtiva
+                ? void editarVisao(visaoAtiva.id, { name: nome })
+                : padrao.atualizar((p) => ({ ...p, nome }))
+            }
+            aoTrocarTipo={(tipo) => visaoAtiva && void editarVisao(visaoAtiva.id, { type: tipo })}
+            aoMoverAba={moverAba}
+            podeMoverAba={{
+              esquerda: indiceDaAba > 0,
+              direita: indiceDaAba >= 0 && indiceDaAba < ordemDasAbas.length - 1,
+            }}
             propriedades={resolvidas.map((c) => ({
               id: c.id,
               titulo: c.titulo,
@@ -904,9 +1196,31 @@ export function ClientesCRM() {
                 ),
               }))
             }
+            aoApagar={
+              visaoAtiva
+                ? () => {
+                    void apagarVisao(visaoAtiva.id);
+                    setConfigurando(false);
+                    ir({ aba: ID_DA_PADRAO });
+                  }
+                : undefined
+            }
           />
         </>
       )}
+
+      {perdendo ? (
+        <LoseLeadDialog
+          open
+          leadId={perdendo.leadId}
+          pipelineId={perdendo.funilId}
+          onOpenChange={(aberto) => {
+            if (aberto) return;
+            setPerdendo(null);
+            void queryClient.invalidateQueries({ queryKey: ["clientes"] });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

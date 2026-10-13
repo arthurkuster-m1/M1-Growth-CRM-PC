@@ -87,7 +87,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       .eq("organization_id", orgId)
       .eq("is_archived", false)
       .order("position", { ascending: true }),
-    supabase.from("demand_campaigns").select("id, name").eq("organization_id", orgId).limit(500),
+    supabase
+      .from("demand_campaigns")
+      .select("id, name, status, pipeline_id")
+      .eq("organization_id", orgId)
+      .limit(500),
   ]);
 
   // Participações (negócios com contato). Com um funil escolhido, primeiro quem está nele.
@@ -221,7 +225,12 @@ export async function GET(req: NextRequest): Promise<Response> {
         is_default: (f as { is_default: boolean }).is_default,
       })),
       etapas: etapas ?? [],
-      campanhas: (campanhas ?? []) as Array<{ id: string; name: string }>,
+      campanhas: (campanhas ?? []) as Array<{
+        id: string;
+        name: string;
+        status: string;
+        pipeline_id: string | null;
+      }>,
       clientes,
       pode_editar: roleAtLeast(authz.org.role, "agent"),
       pode_gerir: roleAtLeast(authz.org.role, "manager"),

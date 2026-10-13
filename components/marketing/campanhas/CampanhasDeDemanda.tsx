@@ -44,7 +44,6 @@ import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/m
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { ArrowRight, CalendarBlank, Check, Megaphone, Plus, TextAa, Trash } from "@/lib/ui/icons";
-import { cn } from "@/lib/utils";
 
 const ID_DA_PADRAO = "padrao";
 const TIPOS_DAS_CAMPANHAS = ["tabela", "galeria", "timeline"] as const;
@@ -585,25 +584,49 @@ export function CampanhasDeDemanda() {
     }
   };
 
+  // As propriedades que o card deixa editar no lugar (as mesmas células da tabela): clicar no
+  // valor abre a escolha, sem entrar na página da campanha.
+  const EDITAVEIS_NO_CARD = new Set([
+    "canal",
+    "status",
+    "funil",
+    "inicio",
+    "fim",
+    "continua",
+    "investimento",
+    "meta-leads",
+    "meta-cpl",
+    "meta-vendas",
+    "meta-faturamento",
+  ]);
+
   const cartoes = (lista: CampanhaDeDemanda[]) => (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {lista.map((c) => (
-        <li key={c.id}>
-          <Link
-            href={`${BASE}/${c.id}`}
-            className="group flex h-full flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-md"
-          >
-            <h3 className="font-semibold">{c.name}</h3>
+        <li key={c.id} className="min-w-0">
+          <div className="flex h-full min-w-0 flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm">
+            <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
+              <Link href={`${BASE}/${c.id}`} className="hover:text-primary hover:underline">
+                {c.name}
+              </Link>
+            </h3>
             {/* As propriedades do card são as da visualização: as que estão ligadas, na ordem. */}
-            <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+            <dl className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {cartao.map((col) => (
                 <div key={col.id} className="contents">
                   <dt className="truncate">{col.titulo}</dt>
-                  <dd className="min-w-0 text-foreground">{valorDoCartao(col.id, c)}</dd>
+                  <dd className="min-w-0 text-sm [overflow-wrap:anywhere] text-foreground">
+                    {podeEditar && EDITAVEIS_NO_CARD.has(col.id)
+                      ? col.celula(c)
+                      : valorDoCartao(col.id, c)}
+                  </dd>
                 </div>
               ))}
             </dl>
-            <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary">
+            <Link
+              href={`${BASE}/${c.id}`}
+              className="group mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary"
+            >
               {t("Abrir")}
               <ArrowRight
                 size={14}
@@ -611,8 +634,8 @@ export function CampanhasDeDemanda() {
                 className="transition-transform group-hover:translate-x-1"
                 aria-hidden
               />
-            </span>
-          </Link>
+            </Link>
+          </div>
         </li>
       ))}
     </ul>
