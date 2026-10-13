@@ -125,7 +125,7 @@ export function ClientesCRM() {
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   /** Status de venda que a tabela mostra (vazio = todos): "só abertas", "só concluídas"… */
-  const [statusDasVendas, setStatusDasVendas] = useState<ReadonlySet<string>>(new Set());
+  // (guardado na visualização: ver `statusDasVendas` logo depois de `preferencias`)
   /** A venda aberta no popup (carregada inteira ao clicar). */
   const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
@@ -178,6 +178,21 @@ export function ClientesCRM() {
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
+  };
+  /** Os status de venda que a tabela mostra (vazio = todos): ficam salvos na visualização. */
+  const statusDasVendas = useMemo<ReadonlySet<string>>(
+    () => new Set(preferencias.statusDasVendas ?? []),
+    [preferencias.statusDasVendas],
+  );
+  const setStatusDasVendas = (
+    novo: ReadonlySet<string> | ((atual: ReadonlySet<string>) => ReadonlySet<string>),
+  ) => {
+    const valor = typeof novo === "function" ? novo(statusDasVendas) : novo;
+    const lista = [...valor].filter(
+      (v): v is "interesse" | "comprometida" | "concluida" | "cancelada" =>
+        v === "interesse" || v === "comprometida" || v === "concluida" || v === "cancelada",
+    );
+    atualizar((p) => ({ ...p, statusDasVendas: lista.length > 0 ? lista : undefined }));
   };
   const moverAba = (direcao: -1 | 1) => {
     const ids = ordemDasAbas.map((a) => a.id);

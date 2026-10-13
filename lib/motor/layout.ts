@@ -55,6 +55,11 @@ export const preferenciasDaTabelaSchema = z
         canais: z.array(z.string().max(30)).max(10).optional(),
       })
       .optional(),
+    /** Clientes: quais status de venda a tabela mostra (vazio = todos); fica salvo na visualização. */
+    statusDasVendas: z
+      .array(z.enum(["interesse", "comprometida", "concluida", "cancelada"]))
+      .max(4)
+      .optional(),
     /** Filtros, ordenação e agrupamento (ver `consulta.ts`). */
     ...consultaSchema.shape,
   })
