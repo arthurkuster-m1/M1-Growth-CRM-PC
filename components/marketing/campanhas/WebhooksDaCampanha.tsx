@@ -158,64 +158,79 @@ export function WebhooksDaCampanha({
         </ul>
       )}
 
-      <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
-        {temFunil ? (
-          <>
-            <p className="text-sm font-medium">{t("Criar webhook")}</p>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={nome}
-                maxLength={120}
-                onChange={(e) => setNome(e.target.value)}
-                aria-label={t("Nome do webhook")}
-                className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-              <button
-                type="button"
-                disabled={criando || nome.trim() === ""}
-                onClick={() => void criar()}
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50"
+      {/* Criar ou ligar um webhook fica recolhido: aberto só quando a campanha ainda não tem nenhum. */}
+      <details
+        className="group rounded-xl border border-dashed"
+        open={fontes !== null && desta.length === 0}
+      >
+        <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-sm font-medium">
+          <span
+            aria-hidden
+            className="inline-block text-xs text-muted-foreground transition-transform group-open:rotate-90"
+          >
+            ▶
+          </span>
+          {t("Criar ou ligar um webhook")}
+        </summary>
+        <div className="grid grid-cols-1 gap-2 p-3 pt-0">
+          {temFunil ? (
+            <>
+              <p className="text-sm font-medium">{t("Criar webhook")}</p>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={nome}
+                  maxLength={120}
+                  onChange={(e) => setNome(e.target.value)}
+                  aria-label={t("Nome do webhook")}
+                  className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                />
+                <button
+                  type="button"
+                  disabled={criando || nome.trim() === ""}
+                  onClick={() => void criar()}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50"
+                >
+                  <Plus size={14} weight="bold" aria-hidden />
+                  {criando ? t("Criando…") : t("Criar webhook")}
+                </button>
+              </div>
+              {erro ? (
+                <p role="alert" className="text-xs text-error-fg">
+                  {erro}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "Para criar o webhook, primeiro crie o funil da campanha na aba Funil de conversão: é nele que os leads vão nascer.",
+              )}
+            </p>
+          )}
+          {outras.length > 0 ? (
+            <label className="grid grid-cols-1 gap-1">
+              <span className="text-xs text-muted-foreground">
+                {t("Ou ligar um webhook que já existe")}
+              </span>
+              <select
+                className="h-10 rounded-xl border bg-background px-3 text-sm"
+                value=""
+                onChange={(e) => {
+                  const f = outras.find((x) => x.id === e.target.value);
+                  if (f) void ligar(f, true);
+                }}
               >
-                <Plus size={14} weight="bold" aria-hidden />
-                {criando ? t("Criando…") : t("Criar webhook")}
-              </button>
-            </div>
-            {erro ? (
-              <p role="alert" className="text-xs text-error-fg">
-                {erro}
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {t(
-              "Para criar o webhook, primeiro crie o funil da campanha na aba Funil de conversão: é nele que os leads vão nascer.",
-            )}
-          </p>
-        )}
-        {outras.length > 0 ? (
-          <label className="grid grid-cols-1 gap-1">
-            <span className="text-xs text-muted-foreground">
-              {t("Ou ligar um webhook que já existe")}
-            </span>
-            <select
-              className="h-10 rounded-xl border bg-background px-3 text-sm"
-              value=""
-              onChange={(e) => {
-                const f = outras.find((x) => x.id === e.target.value);
-                if (f) void ligar(f, true);
-              }}
-            >
-              <option value="">{t("Escolha um webhook")}</option>
-              {outras.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-      </div>
+                <option value="">{t("Escolha um webhook")}</option>
+                {outras.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+      </details>
 
       <details className="rounded-xl border p-2">
         <summary className="cursor-pointer text-sm font-medium">

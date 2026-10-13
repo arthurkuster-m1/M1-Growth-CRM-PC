@@ -264,12 +264,17 @@ export function useCriativosDaCampanha(campanhaId: string) {
   return {
     criativos: consulta.data ?? [],
     carregando: consulta.isLoading,
-    criar: async (entrada: EdicaoDeCriativo & { name: string }) => {
+    criar: async (entrada: EdicaoDeCriativo & { name: string }): Promise<Criativo | null> => {
       try {
-        await apiClient.post(`${BASE}/${campanhaId}/creatives`, entrada);
+        const r = await apiClient.post<{ data: { criativo: Criativo } }>(
+          `${BASE}/${campanhaId}/creatives`,
+          entrada,
+        );
         await recarregar();
+        return r.data.criativo;
       } catch (e) {
         showApiError(e);
+        return null;
       }
     },
     editar: async (id: string, patch: EdicaoDeCriativo) => {
@@ -334,13 +339,22 @@ export type EdicaoDeCriativo = Partial<
     | "headlines"
     | "bodies"
     | "descriptions"
+    | "position"
   >
 >;
 
 export type EdicaoDeAbordagem = Partial<
   Pick<
     Abordagem,
-    "name" | "status" | "medium" | "audience" | "hook" | "script" | "follow_up" | "notes"
+    | "name"
+    | "status"
+    | "medium"
+    | "audience"
+    | "hook"
+    | "script"
+    | "follow_up"
+    | "notes"
+    | "position"
   >
 >;
 
@@ -362,12 +376,17 @@ export function useAbordagensDaCampanha(campanhaId: string) {
   return {
     abordagens: consulta.data ?? [],
     carregando: consulta.isLoading,
-    criar: async (entrada: EdicaoDeAbordagem & { name: string }) => {
+    criar: async (entrada: EdicaoDeAbordagem & { name: string }): Promise<Abordagem | null> => {
       try {
-        await apiClient.post(`${BASE}/${campanhaId}/approaches`, entrada);
+        const r = await apiClient.post<{ data: { abordagem: Abordagem } }>(
+          `${BASE}/${campanhaId}/approaches`,
+          entrada,
+        );
         await recarregar();
+        return r.data.abordagem;
       } catch (e) {
         showApiError(e);
+        return null;
       }
     },
     editar: async (id: string, patch: EdicaoDeAbordagem) => {
@@ -394,7 +413,9 @@ export function useAbordagensDaCampanha(campanhaId: string) {
   };
 }
 
-export type EdicaoDeLp = Partial<Pick<LandingPage, "name" | "url" | "status" | "notes">>;
+export type EdicaoDeLp = Partial<
+  Pick<LandingPage, "name" | "url" | "status" | "notes" | "position">
+>;
 
 /** As landing pages de uma campanha. */
 export function useLandingPagesDaCampanha(campanhaId: string) {
@@ -414,12 +435,17 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
   return {
     lps: consulta.data ?? [],
     carregando: consulta.isLoading,
-    criar: async (entrada: EdicaoDeLp & { name: string }) => {
+    criar: async (entrada: EdicaoDeLp & { name: string }): Promise<LandingPage | null> => {
       try {
-        await apiClient.post(`${BASE}/${campanhaId}/landing-pages`, entrada);
+        const r = await apiClient.post<{ data: { landing_page: LandingPage } }>(
+          `${BASE}/${campanhaId}/landing-pages`,
+          entrada,
+        );
         await recarregar();
+        return r.data.landing_page;
       } catch (e) {
         showApiError(e);
+        return null;
       }
     },
     editar: async (id: string, patch: EdicaoDeLp) => {

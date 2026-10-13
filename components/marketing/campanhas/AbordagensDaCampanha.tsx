@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from "react";
 
+import { toast } from "sonner";
+
+import {
+  ColecaoDaCampanha,
+  type CampoDaColecao,
+} from "@/components/marketing/campanhas/ColecaoDaCampanha";
 import {
   COR_DO_STATUS_DO_CRIATIVO,
   rotuloDoMeio,
   rotuloDoStatusDoCriativo,
 } from "@/components/marketing/campanhas/rotulos";
+import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
+import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
 import { useAbordagensDaCampanha } from "@/hooks/marketing/useCampanhasDeDemanda";
 import {
@@ -15,7 +24,7 @@ import {
   STATUS_DA_ABORDAGEM,
   type Abordagem,
 } from "@/lib/marketing/abordagens";
-import { Plus, Trash } from "@/lib/ui/icons";
+import { Plus, TextAa, Trash } from "@/lib/ui/icons";
 
 const CAMPO =
   "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
@@ -166,6 +175,12 @@ function Cartao({
   );
 }
 
+interface LinhaDaAbordagem {
+  id: string;
+  position: number;
+  a: Abordagem;
+}
+
 /** As ABORDAGENS da campanha de contato direto: o equivalente aos criativos de anúncio. */
 export function AbordagensDaCampanha({
   campanhaId,
@@ -176,6 +191,109 @@ export function AbordagensDaCampanha({
 }) {
   const t = useT();
   const { abordagens, carregando, criar, editar, apagar } = useAbordagensDaCampanha(campanhaId);
+  const [novaId, setNovaId] = useState<string | null>(null);
+  const linhas: LinhaDaAbordagem[] = abordagens.map((a) => ({
+    id: a.id,
+    position: a.position,
+    a,
+  }));
+  const opcoesDeStatus = STATUS_DA_ABORDAGEM.map((s) => ({
+    id: s,
+    rotulo: rotuloDoStatusDoCriativo(t, s),
+    cor: COR_DO_STATUS_DO_CRIATIVO[s],
+  }));
+  const opcoesDeMeio = MEIOS_DA_ABORDAGEM.map((m) => ({
+    id: m,
+    rotulo: rotuloDoMeio(t, m),
+    cor: "blue" as const,
+  }));
+
+  const campos: CampoDaColecao<LinhaDaAbordagem>[] = [
+    { id: "nome", titulo: t("Abordagem"), tipo: "texto", valorDe: (l) => l.a.name },
+    {
+      id: "status",
+      titulo: t("Status"),
+      tipo: "opcao",
+      valorDe: (l) => l.a.status,
+      opcoes: opcoesDeStatus,
+      ordemDoValor: (v) => STATUS_DA_ABORDAGEM.indexOf(v as (typeof STATUS_DA_ABORDAGEM)[number]),
+    },
+    {
+      id: "meio",
+      titulo: t("Meio de contato"),
+      tipo: "opcao",
+      valorDe: (l) => l.a.medium,
+      opcoes: opcoesDeMeio,
+    },
+    { id: "publico", titulo: t("Para quem"), tipo: "texto", valorDe: (l) => l.a.audience },
+    { id: "gancho", titulo: t("Gancho"), tipo: "texto", valorDe: (l) => l.a.hook },
+  ];
+  const texto = (v: string) => (
+    <span className="block truncate px-2 text-sm" title={v}>
+      {v || "—"}
+    </span>
+  );
+  const colunas: ColunaDoMotor<LinhaDaAbordagem>[] = [
+    {
+      id: "nome",
+      titulo: t("Abordagem"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 260,
+      semOcultar: true,
+      celula: (l) => (
+        <CelulaDeTexto
+          valor={l.a.name}
+          rotulo={t("Nome da abordagem")}
+          podeEditar={podeEditar}
+          aoSalvar={(name) => void editar(l.a.id, { name })}
+        />
+      ),
+    },
+    {
+      id: "status",
+      titulo: t("Status"),
+      largura: 150,
+      celula: (l) => (
+        <SeletorDeOpcao
+          opcoes={opcoesDeStatus}
+          valorId={l.a.status}
+          podeEditar={podeEditar}
+          rotulo={t("Status")}
+          aoEscolher={(id) => void editar(l.a.id, { status: id as Abordagem["status"] })}
+        >
+          <Etiqueta ponto cor={COR_DO_STATUS_DO_CRIATIVO[l.a.status]}>
+            {rotuloDoStatusDoCriativo(t, l.a.status)}
+          </Etiqueta>
+        </SeletorDeOpcao>
+      ),
+    },
+    {
+      id: "meio",
+      titulo: t("Meio de contato"),
+      largura: 170,
+      celula: (l) => (
+        <SeletorDeOpcao
+          opcoes={opcoesDeMeio}
+          valorId={l.a.medium}
+          podeEditar={podeEditar}
+          rotulo={t("Meio de contato")}
+          aoEscolher={(id) => void editar(l.a.id, { medium: id as Abordagem["medium"] })}
+        >
+          <Etiqueta cor="blue">{rotuloDoMeio(t, l.a.medium)}</Etiqueta>
+        </SeletorDeOpcao>
+      ),
+    },
+    { id: "publico", titulo: t("Para quem"), largura: 220, celula: (l) => texto(l.a.audience) },
+    { id: "gancho", titulo: t("Gancho"), largura: 280, celula: (l) => texto(l.a.hook) },
+    {
+      id: "followup",
+      titulo: t("Follow-up"),
+      largura: 280,
+      padrao: false,
+      celula: (l) => texto(l.a.follow_up),
+    },
+  ];
+
   return (
     <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -183,7 +301,13 @@ export function AbordagensDaCampanha({
         {podeEditar ? (
           <button
             type="button"
-            onClick={() => void criar({ name: t("Nova abordagem") })}
+            onClick={async () => {
+              const nova = await criar({ name: t("Nova abordagem") });
+              if (nova) {
+                setNovaId(nova.id);
+                toast.success(t("Abordagem criada. Preencha os dados dela."));
+              }
+            }}
             className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
           >
             <Plus size={14} weight="bold" aria-hidden />
@@ -196,25 +320,27 @@ export function AbordagensDaCampanha({
           "O que a equipe fala e como: meio, gancho, mensagem e follow-up. Os números de cada dia vão na página Dia a dia.",
         )}
       </p>
-      {carregando ? (
-        <div className="h-24 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
-      ) : abordagens.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-          {t("Nenhuma abordagem ainda. Crie a primeira.")}
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {abordagens.map((a) => (
-            <Cartao
-              key={a.id}
-              a={a}
-              podeEditar={podeEditar}
-              editar={(p) => void editar(a.id, p)}
-              apagar={() => void apagar(a.id)}
-            />
-          ))}
-        </div>
-      )}
+      <ColecaoDaCampanha
+        tela="campanha-abordagens"
+        itens={linhas}
+        carregando={carregando}
+        podeEditar={podeEditar}
+        vazio={t("Nenhuma abordagem ainda. Crie a primeira.")}
+        rotuloDaTabela={t("Abordagens")}
+        campos={campos}
+        colunas={colunas}
+        textoDaBusca={(l) => `${l.a.name} ${l.a.audience} ${l.a.hook} ${l.a.script}`}
+        aoMudarPosicao={(id, position) => void editar(id, { position })}
+        destacarId={novaId}
+        cartao={(l) => (
+          <Cartao
+            a={l.a}
+            podeEditar={podeEditar}
+            editar={(p) => void editar(l.a.id, p)}
+            apagar={() => void apagar(l.a.id)}
+          />
+        )}
+      />
     </section>
   );
 }

@@ -7,7 +7,16 @@ import {
   rotuloDoFormato,
   rotuloDoStatusDoCriativo,
 } from "@/components/marketing/campanhas/rotulos";
+import { toast } from "sonner";
+
+import {
+  ColecaoDaCampanha,
+  type CampoDaColecao,
+} from "@/components/marketing/campanhas/ColecaoDaCampanha";
+import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
+import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
@@ -23,7 +32,7 @@ import {
 import { BASE_DAS_IMAGENS_DO_PAINEL, TAMANHO_MAXIMO_DA_IMAGEM } from "@/lib/marketing/imagens";
 import { MAXIMO_DE_IMAGENS, MAXIMO_DE_VARIACOES } from "@/lib/marketing/criativos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import { Plus, Trash } from "@/lib/ui/icons";
+import { Check, Plus, TextAa, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
@@ -422,208 +431,6 @@ function CartaoDoCriativo({
   );
 }
 
-type ColunaOrdenavel =
-  | "nome"
-  | "spend"
-  | "impressions"
-  | "link_clicks"
-  | "ctr"
-  | "cpc"
-  | "lp_views"
-  | "connect"
-  | "leads"
-  | "cpl"
-  | "faturamento"
-  | "roas";
-
-/**
- * Os criativos em TABELA, para comparar e achar qual converteu mais: gasto e entrega do Meta,
- * leads e CPL real do CRM, faturamento e ROAS das vendas. Clique no título da coluna para
- * ordenar; o melhor valor de cada coluna de resultado fica em destaque.
- */
-function TabelaDeCriativos({
-  criativos,
-  origem,
-  podeEditar,
-  aoAbrir,
-}: {
-  criativos: Criativo[];
-  origem: ReturnType<typeof useOrigemDosLeads>["origem"];
-  podeEditar: boolean;
-  aoAbrir: () => void;
-}) {
-  const t = useT();
-  const [ordem, setOrdem] = useState<{ col: ColunaOrdenavel; desc: boolean }>({
-    col: "leads",
-    desc: true,
-  });
-
-  const linhas = criativos.map((c) => {
-    const x = taxasDoCriativo(c);
-    const leads = origem?.porCriativo[c.id] ?? 0;
-    const faturamento = (origem?.faturamento?.porCriativo[c.id] ?? 0) / 100;
-    return {
-      c,
-      nome: c.name,
-      spend: c.spend,
-      impressions: c.impressions,
-      link_clicks: c.link_clicks,
-      ctr: x.ctr,
-      cpc: x.cpc,
-      lp_views: c.lp_views,
-      connect: x.connectRate,
-      leads,
-      cpl: leads > 0 && c.spend > 0 ? c.spend / leads : null,
-      faturamento,
-      roas: c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
-    };
-  });
-  const valorDe = (l: (typeof linhas)[number], col: ColunaOrdenavel): number | string | null =>
-    l[col];
-  const ordenadas = [...linhas].sort((a, b) => {
-    const va = valorDe(a, ordem.col);
-    const vb = valorDe(b, ordem.col);
-    if (va === null && vb === null) return 0;
-    if (va === null) return 1; // sem número vai para o fim
-    if (vb === null) return -1;
-    const cmp = typeof va === "string" ? va.localeCompare(String(vb)) : Number(va) - Number(vb);
-    return ordem.desc ? -cmp : cmp;
-  });
-
-  // O melhor de cada coluna: maior para resultado, menor para custo.
-  const melhor = (col: "ctr" | "connect" | "leads" | "faturamento" | "roas" | "cpc" | "cpl") => {
-    const nums = linhas
-      .map((l) => l[col])
-      .filter((v): v is number => typeof v === "number" && v > 0);
-    if (nums.length < 2) return null;
-    return col === "cpc" || col === "cpl" ? Math.min(...nums) : Math.max(...nums);
-  };
-  const m = {
-    ctr: melhor("ctr"),
-    connect: melhor("connect"),
-    leads: melhor("leads"),
-    faturamento: melhor("faturamento"),
-    roas: melhor("roas"),
-    cpc: melhor("cpc"),
-    cpl: melhor("cpl"),
-  };
-
-  const alternar = (col: ColunaOrdenavel) =>
-    setOrdem((o) => (o.col === col ? { col, desc: !o.desc } : { col, desc: col !== "nome" }));
-  const cab = (col: ColunaOrdenavel, rotulo: string, esquerda = false) => (
-    <th
-      key={col}
-      className={cn(
-        "px-3 py-2 font-medium whitespace-nowrap",
-        esquerda ? "text-left" : "text-right",
-      )}
-      aria-sort={ordem.col === col ? (ordem.desc ? "descending" : "ascending") : "none"}
-    >
-      <button
-        type="button"
-        onClick={() => alternar(col)}
-        className="inline-flex items-center gap-1 hover:text-foreground"
-      >
-        {rotulo}
-        <span aria-hidden className="text-[10px]">
-          {ordem.col === col ? (ordem.desc ? "▼" : "▲") : ""}
-        </span>
-      </button>
-    </th>
-  );
-  const destaque = (v: number | null, melhorValor: number | null) =>
-    v !== null && melhorValor !== null && v === melhorValor ? "font-semibold text-success-fg" : "";
-
-  return (
-    <div className="grid grid-cols-1 gap-2">
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full min-w-max text-sm">
-          <thead className="bg-secondary/60 text-xs text-muted-foreground">
-            <tr>
-              {cab("nome", t("Criativo"), true)}
-              <th className="px-3 py-2 text-left font-medium">{t("Situação")}</th>
-              {cab("spend", t("Investido"))}
-              {cab("impressions", t("Impressões"))}
-              {cab("link_clicks", t("Cliques no link"))}
-              {cab("ctr", t("CTR"))}
-              {cab("cpc", t("CPC"))}
-              {cab("lp_views", t("Visitas à LP"))}
-              {cab("connect", t("Connection rate"))}
-              {cab("leads", t("Leads (CRM)"))}
-              {cab("cpl", t("CPL real"))}
-              {cab("faturamento", t("Faturamento"))}
-              {cab("roas", t("ROAS"))}
-            </tr>
-          </thead>
-          <tbody>
-            {ordenadas.map((l) => (
-              <tr key={l.c.id} className="border-t">
-                <td className="max-w-72 px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={aoAbrir}
-                    className="block max-w-full truncate text-left font-medium hover:underline"
-                    title={podeEditar ? t("Abrir nos cartões para editar") : l.nome}
-                  >
-                    {l.nome}
-                  </button>
-                </td>
-                <td className="px-3 py-2">
-                  <Etiqueta cor={COR_DO_STATUS_DO_CRIATIVO[l.c.status]}>
-                    {rotuloDoStatusDoCriativo(t, l.c.status)}
-                  </Etiqueta>
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">{moedaDoNumero(l.spend)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{inteiro(l.impressions)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{inteiro(l.link_clicks)}</td>
-                <td className={cn("px-3 py-2 text-right tabular-nums", destaque(l.ctr, m.ctr))}>
-                  {pct(l.ctr)}
-                </td>
-                <td className={cn("px-3 py-2 text-right tabular-nums", destaque(l.cpc, m.cpc))}>
-                  {reais(l.cpc)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">{inteiro(l.lp_views)}</td>
-                <td
-                  className={cn(
-                    "px-3 py-2 text-right tabular-nums",
-                    destaque(l.connect, m.connect),
-                  )}
-                >
-                  {pct(l.connect)}
-                </td>
-                <td className={cn("px-3 py-2 text-right tabular-nums", destaque(l.leads, m.leads))}>
-                  {inteiro(l.leads)}
-                </td>
-                <td className={cn("px-3 py-2 text-right tabular-nums", destaque(l.cpl, m.cpl))}>
-                  {reais(l.cpl)}
-                </td>
-                <td
-                  className={cn(
-                    "px-3 py-2 text-right tabular-nums",
-                    destaque(l.faturamento > 0 ? l.faturamento : null, m.faturamento),
-                  )}
-                >
-                  {l.faturamento > 0 ? moedaDoNumero(l.faturamento) : "—"}
-                </td>
-                <td className={cn("px-3 py-2 text-right tabular-nums", destaque(l.roas, m.roas))}>
-                  {l.roas === null
-                    ? "—"
-                    : `${l.roas.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {t(
-          "Em verde, o melhor de cada coluna. Leads, CPL, faturamento e ROAS vêm do CRM, pela origem de cada lead e venda; gasto e entrega vêm do Meta.",
-        )}
-      </p>
-    </div>
-  );
-}
-
 function textoDaFalha(t: (s: string) => string, motivo: string): string {
   switch (motivo) {
     case "sem_campanhas":
@@ -643,10 +450,22 @@ function textoDaFalha(t: (s: string) => string, motivo: string): string {
   }
 }
 
+interface LinhaDoCriativo {
+  id: string;
+  position: number;
+  c: Criativo;
+  leads: number;
+  faturamento: number;
+  x: ReturnType<typeof taxasDoCriativo>;
+  cpl: number | null;
+  roas: number | null;
+}
+
 /**
  * Os CRIATIVOS da campanha: cada anúncio com legenda, mídia, LP e as métricas de entrega do
  * Meta. Importar traz os anúncios das campanhas atreladas (nome, título, legenda, miniatura).
  * Leads e CPL por criativo vêm do CRM, quando a origem do lead estiver ligada (C5).
+ * Cartões para editar, tabela para comparar; filtros, ordem, grupos e visualizações salvas.
  */
 export function CriativosDaCampanha({
   campanhaId,
@@ -659,11 +478,177 @@ export function CriativosDaCampanha({
   const { criativos, carregando, criar, editar, duplicar, apagar, importarDoMeta } =
     useCriativosDaCampanha(campanhaId);
   const { origem } = useOrigemDosLeads(campanhaId);
-  const [filtro, setFiltro] = useState<Criativo["status"] | null>(null);
-  const [vista, setVista] = useState<"cartoes" | "tabela">("cartoes");
   const [importando, setImportando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-  const visiveis = filtro === null ? criativos : criativos.filter((c) => c.status === filtro);
+  const [novoId, setNovoId] = useState<string | null>(null);
+
+  const linhas: LinhaDoCriativo[] = criativos.map((c) => {
+    const leads = origem?.porCriativo[c.id] ?? 0;
+    const faturamento = (origem?.faturamento?.porCriativo[c.id] ?? 0) / 100;
+    return {
+      id: c.id,
+      position: c.position,
+      c,
+      leads,
+      faturamento,
+      x: taxasDoCriativo(c),
+      cpl: leads > 0 && c.spend > 0 ? c.spend / leads : null,
+      roas: c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
+    };
+  });
+  const opcoesDeStatus = STATUS_DO_CRIATIVO.map((s) => ({
+    id: s,
+    rotulo: rotuloDoStatusDoCriativo(t, s),
+    cor: COR_DO_STATUS_DO_CRIATIVO[s],
+  }));
+  const opcoesDeFormato = FORMATOS_DO_CRIATIVO.map((f) => ({
+    id: f,
+    rotulo: rotuloDoFormato(t, f),
+    cor: "gray" as const,
+  }));
+
+  const campos: CampoDaColecao<LinhaDoCriativo>[] = [
+    { id: "nome", titulo: t("Criativo"), tipo: "texto", valorDe: (l) => l.c.name },
+    {
+      id: "status",
+      titulo: t("Status"),
+      tipo: "opcao",
+      valorDe: (l) => l.c.status,
+      opcoes: opcoesDeStatus,
+      ordemDoValor: (v) => STATUS_DO_CRIATIVO.indexOf(v as (typeof STATUS_DO_CRIATIVO)[number]),
+    },
+    {
+      id: "formato",
+      titulo: t("Formato"),
+      tipo: "opcao",
+      valorDe: (l) => l.c.format,
+      opcoes: opcoesDeFormato,
+    },
+    { id: "investido", titulo: t("Investido"), tipo: "numero", valorDe: (l) => l.c.spend },
+    { id: "impressoes", titulo: t("Impressões"), tipo: "numero", valorDe: (l) => l.c.impressions },
+    {
+      id: "cliques",
+      titulo: t("Cliques no link"),
+      tipo: "numero",
+      valorDe: (l) => l.c.link_clicks,
+    },
+    { id: "ctr", titulo: t("CTR"), tipo: "numero", valorDe: (l) => l.x.ctr },
+    { id: "cpc", titulo: t("CPC"), tipo: "numero", valorDe: (l) => l.x.cpc },
+    { id: "visitas", titulo: t("Visitas à LP"), tipo: "numero", valorDe: (l) => l.c.lp_views },
+    {
+      id: "connection",
+      titulo: t("Connection rate"),
+      tipo: "numero",
+      valorDe: (l) => l.x.connectRate,
+    },
+    { id: "leads", titulo: t("Leads (CRM)"), tipo: "numero", valorDe: (l) => l.leads },
+    { id: "cpl", titulo: t("CPL real"), tipo: "numero", valorDe: (l) => l.cpl },
+    { id: "faturamento", titulo: t("Faturamento"), tipo: "numero", valorDe: (l) => l.faturamento },
+    { id: "roas", titulo: t("ROAS"), tipo: "numero", valorDe: (l) => l.roas },
+  ];
+
+  const numero = (texto: string) => (
+    <span className="block truncate px-2 text-sm tabular-nums">{texto}</span>
+  );
+  const colunas: ColunaDoMotor<LinhaDoCriativo>[] = [
+    {
+      id: "nome",
+      titulo: t("Criativo"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 280,
+      semOcultar: true,
+      celula: (l) => (
+        <CelulaDeTexto
+          valor={l.c.name}
+          rotulo={t("Nome do criativo")}
+          podeEditar={podeEditar}
+          aoSalvar={(name) => void editar(l.c.id, { name })}
+        />
+      ),
+    },
+    {
+      id: "status",
+      titulo: t("Status"),
+      icone: <Check size={14} aria-hidden />,
+      largura: 150,
+      celula: (l) => (
+        <SeletorDeOpcao
+          opcoes={opcoesDeStatus}
+          valorId={l.c.status}
+          podeEditar={podeEditar}
+          rotulo={t("Status")}
+          aoEscolher={(id) => void editar(l.c.id, { status: id as Criativo["status"] })}
+        >
+          <Etiqueta ponto cor={COR_DO_STATUS_DO_CRIATIVO[l.c.status]}>
+            {rotuloDoStatusDoCriativo(t, l.c.status)}
+          </Etiqueta>
+        </SeletorDeOpcao>
+      ),
+    },
+    {
+      id: "formato",
+      titulo: t("Formato"),
+      largura: 130,
+      padrao: false,
+      celula: (l) => numero(rotuloDoFormato(t, l.c.format)),
+    },
+    {
+      id: "investido",
+      titulo: t("Investido"),
+      largura: 130,
+      celula: (l) => numero(moedaDoNumero(l.c.spend)),
+    },
+    {
+      id: "impressoes",
+      titulo: t("Impressões"),
+      largura: 130,
+      celula: (l) => numero(inteiro(l.c.impressions)),
+    },
+    {
+      id: "cliques",
+      titulo: t("Cliques no link"),
+      largura: 130,
+      celula: (l) => numero(inteiro(l.c.link_clicks)),
+    },
+    { id: "ctr", titulo: t("CTR"), largura: 90, celula: (l) => numero(pct(l.x.ctr)) },
+    { id: "cpc", titulo: t("CPC"), largura: 100, celula: (l) => numero(reais(l.x.cpc)) },
+    {
+      id: "visitas",
+      titulo: t("Visitas à LP"),
+      largura: 120,
+      celula: (l) => numero(inteiro(l.c.lp_views)),
+    },
+    {
+      id: "connection",
+      titulo: t("Connection rate"),
+      largura: 140,
+      celula: (l) => numero(pct(l.x.connectRate)),
+    },
+    {
+      id: "leads",
+      titulo: t("Leads (CRM)"),
+      largura: 120,
+      celula: (l) => numero(inteiro(l.leads)),
+    },
+    { id: "cpl", titulo: t("CPL real"), largura: 110, celula: (l) => numero(reais(l.cpl)) },
+    {
+      id: "faturamento",
+      titulo: t("Faturamento"),
+      largura: 130,
+      celula: (l) => numero(l.faturamento > 0 ? moedaDoNumero(l.faturamento) : "—"),
+    },
+    {
+      id: "roas",
+      titulo: t("ROAS"),
+      largura: 90,
+      celula: (l) =>
+        numero(
+          l.roas === null
+            ? "—"
+            : `${l.roas.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x`,
+        ),
+    },
+  ];
 
   return (
     <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
@@ -691,7 +676,13 @@ export function CriativosDaCampanha({
             </button>
             <button
               type="button"
-              onClick={() => void criar({ name: t("Novo criativo") })}
+              onClick={async () => {
+                const novo = await criar({ name: t("Novo criativo") });
+                if (novo) {
+                  setNovoId(novo.id);
+                  toast.success(t("Criativo criado. Preencha os dados dele."));
+                }
+              }}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
             >
               <Plus size={14} weight="bold" aria-hidden />
@@ -711,93 +702,29 @@ export function CriativosDaCampanha({
         </p>
       ) : null}
 
-      {criativos.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              aria-pressed={filtro === null}
-              onClick={() => setFiltro(null)}
-              className={cn(
-                "h-8 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
-                filtro === null ? "border-primary bg-primary/10" : "hover:bg-secondary",
-              )}
-            >
-              {t("Todos")}
-            </button>
-            {STATUS_DO_CRIATIVO.map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={filtro === s}
-                onClick={() => setFiltro(s)}
-                className={cn(
-                  "h-8 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
-                  filtro === s ? "border-primary bg-primary/10" : "hover:bg-secondary",
-                )}
-              >
-                {rotuloDoStatusDoCriativo(t, s)}
-              </button>
-            ))}
-          </div>
-          <div
-            role="group"
-            aria-label={t("Como ver os criativos")}
-            className="inline-flex rounded-xl bg-secondary p-0.5"
-          >
-            {(
-              [
-                ["cartoes", t("Cartões")],
-                ["tabela", t("Tabela")],
-              ] as const
-            ).map(([valor, rotulo]) => (
-              <button
-                key={valor}
-                type="button"
-                aria-pressed={vista === valor}
-                onClick={() => setVista(valor)}
-                className={cn(
-                  "h-9 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors",
-                  vista === valor
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {rotulo}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {carregando ? (
-        <div className="h-24 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
-      ) : visiveis.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-          {t("Nenhum criativo ainda. Importe do Meta ou crie um novo.")}
-        </p>
-      ) : vista === "tabela" ? (
-        <TabelaDeCriativos
-          criativos={visiveis}
-          origem={origem}
-          podeEditar={podeEditar}
-          aoAbrir={() => setVista("cartoes")}
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {visiveis.map((c) => (
-            <CartaoDoCriativo
-              key={c.id}
-              c={c}
-              leads={origem?.porCriativo[c.id] ?? 0}
-              podeEditar={podeEditar}
-              editar={(patch) => void editar(c.id, patch)}
-              duplicar={() => void duplicar(c.id)}
-              apagar={() => void apagar(c.id)}
-            />
-          ))}
-        </div>
-      )}
+      <ColecaoDaCampanha
+        tela="campanha-criativos"
+        itens={linhas}
+        carregando={carregando}
+        podeEditar={podeEditar}
+        vazio={t("Nenhum criativo ainda. Importe do Meta ou crie um novo.")}
+        rotuloDaTabela={t("Criativos")}
+        campos={campos}
+        colunas={colunas}
+        textoDaBusca={(l) => `${l.c.name} ${l.c.headline} ${l.c.caption} ${l.c.ad_name}`}
+        aoMudarPosicao={(id, position) => void editar(id, { position })}
+        destacarId={novoId}
+        cartao={(l) => (
+          <CartaoDoCriativo
+            c={l.c}
+            leads={l.leads}
+            podeEditar={podeEditar}
+            editar={(patch) => void editar(l.c.id, patch)}
+            duplicar={() => void duplicar(l.c.id)}
+            apagar={() => void apagar(l.c.id)}
+          />
+        )}
+      />
     </section>
   );
 }

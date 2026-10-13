@@ -67,6 +67,7 @@ const camposSchema = z.object({
   headlines: z.array(z.string().trim().max(300)).max(5),
   bodies: z.array(z.string().trim().max(4000)).max(5),
   descriptions: z.array(z.string().trim().max(1000)).max(5),
+  position: z.number().finite(),
 });
 
 export const MAXIMO_DE_VARIACOES = 5;

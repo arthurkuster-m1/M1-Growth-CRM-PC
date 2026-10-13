@@ -1,0 +1,387 @@
+"use client";
+
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
+import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
+import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
+import { useT } from "@/hooks/i18n/useT";
+import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
+import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
+import {
+  aplicarConsulta,
+  type CampoConsultavel,
+  type ConsultaDaTabela,
+} from "@/lib/motor/consulta";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
+import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { CaretDown, CaretUp } from "@/lib/ui/icons";
+import { cn } from "@/lib/utils";
+
+const ID_DA_PADRAO = "padrao";
+const TIPOS = ["galeria", "tabela"] as const;
+
+export interface CampoDaColecao<T> extends CampoConsultavel<T> {
+  titulo: string;
+  opcoes?: { id: string; rotulo: string; cor?: CorDaOpcao }[];
+}
+
+interface Props<T extends { id: string; position: number }> {
+  /** A chave da tela nas visualizações salvas (ex.: "campanha-lps"). */
+  tela: string;
+  itens: readonly T[];
+  carregando: boolean;
+  podeEditar: boolean;
+  vazio: string;
+  rotuloDaTabela: string;
+  campos: CampoDaColecao<T>[];
+  colunas: ColunaDoMotor<T>[];
+  /** O texto em que a busca procura. */
+  textoDaBusca: (item: T) => string;
+  /** O item como cartão (a edição completa). */
+  cartao: (item: T) => ReactNode;
+  /** Classe da grade de cartões. */
+  gradeDosCartoes?: string;
+  /** Muda a posição de um item (a ordem manual). */
+  aoMudarPosicao?: (id: string, posicao: number) => void;
+  /** Um item acabou de nascer: leva a tela até ele e o destaca. */
+  destacarId?: string | null;
+}
+
+const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/**
+ * Uma COLEÇÃO da campanha (landing pages, criativos, abordagens) com o motor das Tarefas:
+ * abas de visualização salvas (Cartões ou Tabela), busca, filtros, ordenação e agrupamento, e
+ * a ordem manual (arrastar na tabela, setas nos cartões) quando nada a esconde.
+ */
+export function ColecaoDaCampanha<T extends { id: string; position: number }>({
+  tela,
+  itens,
+  carregando,
+  podeEditar,
+  vazio,
+  rotuloDaTabela,
+  campos,
+  colunas,
+  textoDaBusca,
+  cartao,
+  gradeDosCartoes = "grid grid-cols-1 gap-3 lg:grid-cols-2",
+  aoMudarPosicao,
+  destacarId,
+}: Props<T>) {
+  const t = useT();
+  const [busca, setBusca] = useState("");
+  const [configurando, setConfigurando] = useState(false);
+  const [aba, setAba] = useState<string>(ID_DA_PADRAO);
+  const [forcarCartoes, setForcarCartoes] = useState(false);
+
+  const padrao = useVisualizacao(tela);
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+    tela,
+    podeEditar,
+  );
+  const visaoAtiva = aba === ID_DA_PADRAO ? undefined : visoes.find((v) => v.id === aba);
+  const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
+  const tipoDaAba: TipoDeVisualizacao = visaoAtiva
+    ? visaoAtiva.type
+    : padrao.preferencias.visualizacao === "tabela"
+      ? "tabela"
+      : "galeria";
+  const vista = forcarCartoes ? "cartoes" : tipoDaAba === "tabela" ? "tabela" : "cartoes";
+  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
+    if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
+    else padrao.atualizar(mudar);
+  };
+
+  const ordenadosPorPosicao = useMemo(
+    () => [...itens].sort((a, b) => a.position - b.position),
+    [itens],
+  );
+  const termo = semAcento(busca).trim();
+  const buscados = termo
+    ? ordenadosPorPosicao.filter((i) => semAcento(textoDaBusca(i)).includes(termo))
+    : ordenadosPorPosicao;
+  const resultado = aplicarConsulta(buscados, campos, preferencias, {
+    hoje: new Date().toISOString().slice(0, 10),
+  });
+  const grupos = resultado.grupos?.map((g) => {
+    const campo = campos.find((c) => c.id === preferencias.agrupar);
+    const rotulo =
+      g.chave === ""
+        ? t("Sem valor")
+        : (campo?.opcoes?.find((o) => o.id === g.chave)?.rotulo ?? g.rotulo);
+    return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
+  });
+  const camposDaBarra: CampoDaBarra[] = campos.map((c) => ({
+    id: c.id,
+    titulo: c.titulo,
+    tipo: c.tipo,
+    opcoes: c.opcoes,
+  }));
+  const resolvidas = resolverColunas(colunas, preferencias);
+  const mostradas = resolvidas.filter((c) => c.visivel);
+
+  function mudarConsulta(c: ConsultaDaTabela) {
+    atualizar((p) => ({
+      ...p,
+      filtros: c.filtros?.length ? c.filtros : undefined,
+      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
+      agrupar: c.agrupar,
+      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
+    }));
+  }
+
+  // A ordem manual só vale quando nada reorganiza a lista (filtro, ordem, grupo, busca).
+  const ordemManual =
+    podeEditar &&
+    Boolean(aoMudarPosicao) &&
+    termo === "" &&
+    !preferencias.filtros?.length &&
+    !preferencias.ordenacao?.length &&
+    !preferencias.agrupar;
+
+  function moverPara(id: string, destino: number) {
+    if (!aoMudarPosicao) return;
+    const resto = ordenadosPorPosicao.filter((i) => i.id !== id);
+    const d = Math.max(0, Math.min(resto.length, destino));
+    const antes = resto[d - 1]?.position;
+    const depois = resto[d]?.position;
+    const posicao =
+      antes === undefined && depois === undefined
+        ? 0
+        : antes === undefined
+          ? (depois as number) - 1000
+          : depois === undefined
+            ? antes + 1000
+            : (antes + depois) / 2;
+    aoMudarPosicao(id, posicao);
+  }
+
+  // Item recém-criado: leva a tela até ele (nos cartões) e o destaca por um instante.
+  const [piscando, setPiscando] = useState<string | null>(null);
+  useEffect(() => {
+    if (!destacarId) return;
+    setForcarCartoes(true);
+    setPiscando(destacarId);
+    const espera = setTimeout(() => {
+      document
+        .getElementById(`colecao-${destacarId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    const fim = setTimeout(() => setPiscando(null), 3500);
+    return () => {
+      clearTimeout(espera);
+      clearTimeout(fim);
+    };
+  }, [destacarId]);
+
+  const cartoes = (lista: readonly T[]) => (
+    <div className={gradeDosCartoes}>
+      {lista.map((item) => {
+        const indice = ordenadosPorPosicao.findIndex((i) => i.id === item.id);
+        return (
+          <div
+            key={item.id}
+            id={`colecao-${item.id}`}
+            className={cn(
+              "relative rounded-2xl transition-shadow",
+              piscando === item.id && "ring-2 ring-primary ring-offset-2",
+            )}
+          >
+            {ordemManual && ordenadosPorPosicao.length > 1 ? (
+              <div className="absolute top-2 right-2 z-10 flex gap-0.5 rounded-lg border bg-card/90 p-0.5 shadow-sm">
+                <button
+                  type="button"
+                  aria-label={t("Mover para antes")}
+                  disabled={indice <= 0}
+                  onClick={() => moverPara(item.id, indice - 1)}
+                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                >
+                  <CaretUp size={14} weight="bold" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("Mover para depois")}
+                  disabled={indice >= ordenadosPorPosicao.length - 1}
+                  onClick={() => moverPara(item.id, indice + 1)}
+                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                >
+                  <CaretDown size={14} weight="bold" aria-hidden />
+                </button>
+              </div>
+            ) : null}
+            {cartao(item)}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const abas = [
+    {
+      id: ID_DA_PADRAO,
+      nome: padrao.preferencias.nome ?? t("Cartões"),
+      tipo: (padrao.preferencias.visualizacao === "tabela"
+        ? "tabela"
+        : "galeria") as TipoDeVisualizacao,
+    },
+    ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      {itens.length > 0 ? (
+        <>
+          <AbasDeVisualizacao
+            abas={abas}
+            ativaId={ativaId}
+            podeEditar={podeEditar}
+            tipos={TIPOS}
+            aoEscolher={(id) => {
+              setAba(id);
+              setForcarCartoes(false);
+            }}
+            aoCriar={(nome, tipo) =>
+              void criarVisao({ name: nome, type: tipo, config: preferencias }).then((v) => {
+                if (v) {
+                  setAba(v.id);
+                  setForcarCartoes(false);
+                }
+              })
+            }
+            aoConfigurar={() => setConfigurando(true)}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative min-w-0 flex-1 basis-56">
+              <span className="sr-only">{t("Buscar")}</span>
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder={t("Buscar")}
+                className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <BarraDeConsulta
+              compacta
+              campos={camposDaBarra}
+              consulta={{
+                filtros: preferencias.filtros,
+                ordenacao: preferencias.ordenacao,
+                agrupar: preferencias.agrupar,
+                agruparPor: preferencias.agruparPor,
+              }}
+              aoMudar={mudarConsulta}
+            />
+          </div>
+        </>
+      ) : null}
+
+      {carregando ? (
+        <div className="h-24 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
+      ) : itens.length === 0 ? (
+        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{vazio}</p>
+      ) : resultado.linhas.length === 0 ? (
+        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+          {t("Nada combina com a busca e os filtros.")}
+        </p>
+      ) : vista === "tabela" ? (
+        <TabelaDoMotor
+          linhas={resultado.linhas}
+          idDe={(i) => i.id}
+          colunas={mostradas}
+          grupos={grupos}
+          aoMoverColuna={(movido, alvo) =>
+            atualizar((p) => ({
+              ...p,
+              ordem: moverColuna(
+                resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+                movido,
+                alvo,
+              ),
+            }))
+          }
+          aoRedimensionarColuna={(id, largura) =>
+            atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
+          }
+          aoReordenar={(id, destino) => moverPara(id, destino)}
+          podeReordenar={ordemManual}
+          rotuloDaTabela={rotuloDaTabela}
+        />
+      ) : grupos ? (
+        <div className="grid grid-cols-1 gap-5">
+          {grupos.map((g) => (
+            <section key={g.chave} className="grid gap-2">
+              <h3 className="text-sm">{g.titulo}</h3>
+              {cartoes(g.linhas)}
+            </section>
+          ))}
+        </div>
+      ) : (
+        cartoes(resultado.linhas)
+      )}
+
+      <ConfigurarVisualizacao
+        aberto={configurando}
+        aoFechar={() => setConfigurando(false)}
+        nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Cartões")}
+        tipo={tipoDaAba}
+        tipos={TIPOS}
+        podeEditar={podeEditar}
+        ehPadrao={!visaoAtiva}
+        aoRenomear={(nome) =>
+          visaoAtiva
+            ? void editarVisao(visaoAtiva.id, { name: nome })
+            : padrao.atualizar((p) => ({ ...p, nome }))
+        }
+        aoTrocarTipo={(tipo) =>
+          visaoAtiva
+            ? void editarVisao(visaoAtiva.id, { type: tipo })
+            : padrao.atualizar((p) => ({ ...p, visualizacao: tipo }))
+        }
+        propriedades={resolvidas.map((c) => ({
+          id: c.id,
+          titulo: c.titulo,
+          icone: c.icone,
+          visivel: c.visivel,
+          obrigatoria: c.fixa || c.semOcultar,
+        }))}
+        aoMover={(movido, alvo) =>
+          atualizar((p) => ({
+            ...p,
+            ordem: moverColuna(
+              resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+              movido,
+              alvo,
+            ),
+          }))
+        }
+        aoAlternar={(id) => {
+          const atual = resolvidas.find((c) => c.id === id);
+          if (!atual || atual.fixa || atual.semOcultar) return;
+          atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+        }}
+        aoMostrarTodas={(mostrar) =>
+          atualizar((p) => ({
+            ...p,
+            visiveis: Object.fromEntries(
+              resolvidas.filter((c) => !c.fixa && !c.semOcultar).map((c) => [c.id, mostrar]),
+            ),
+          }))
+        }
+        aoApagar={
+          visaoAtiva
+            ? () => {
+                void apagarVisao(visaoAtiva.id);
+                setConfigurando(false);
+                setAba(ID_DA_PADRAO);
+              }
+            : undefined
+        }
+      />
+    </div>
+  );
+}

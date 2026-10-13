@@ -48,6 +48,7 @@ const camposSchema = z.object({
   script: z.string().trim().max(6000),
   follow_up: z.string().trim().max(6000),
   notes: z.string().trim().max(2000),
+  position: z.number().finite(),
 });
 
 export const novaAbordagemSchema = camposSchema.partial().required({ name: true });

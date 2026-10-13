@@ -36,6 +36,7 @@ const camposSchema = z.object({
   url: link,
   status: z.enum(STATUS_DA_LP),
   notes: z.string().trim().max(2000),
+  position: z.number().finite(),
 });
 
 export const novaLpSchema = camposSchema.partial().required({ name: true });
