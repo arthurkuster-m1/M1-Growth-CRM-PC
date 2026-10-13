@@ -196,7 +196,8 @@ export function useDiasDaCampanha(campanhaId: string) {
 }
 
 export interface OpcoesDoMeta {
-  contas: Array<{ id: string; name: string }>;
+  /** O `id` (act_…) é o que vale para os motores; o `nome` é o que a tela mostra. */
+  contas: Array<{ id: string; nome: string; moeda?: string; status?: number }>;
   conta_padrao: string | null;
   account_id: string | null;
   campanhas: Array<{

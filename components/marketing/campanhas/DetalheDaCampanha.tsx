@@ -865,7 +865,8 @@ function CampanhasDaPlataforma({
                 >
                   {(meta.opcoes.contas ?? []).map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.id})
+                      {a.nome || t("Conta sem nome")}
+                      {a.status !== undefined && a.status !== 1 ? ` — ${t("inativa")}` : ""}
                     </option>
                   ))}
                 </select>

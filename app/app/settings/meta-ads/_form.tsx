@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/settings/updateAdInsightsConnection";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useMetaAdAccounts } from "@/hooks/ads/useMetaAds";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -49,6 +50,10 @@ export function FormularioDeMetaAds({
 
   const [token, setToken] = useState("");
   const [conta, setConta] = useState(contaPadrao ?? "");
+  // As contas que o token alcança (e que esta empresa pode usar): a escolha é pelo NOME; o
+  // número (act_…) é o que viaja para os motores.
+  const contasQuery = useMetaAdAccounts(conectada);
+  const contasDoToken = contasQuery.data?.data.contas ?? [];
 
   // Na primeira conexão o token é obrigatório — a coluna é NOT NULL (0214) e a
   // Server Action recusa. Barrar aqui explica antes de o clique acontecer, em
@@ -114,12 +119,29 @@ export function FormularioDeMetaAds({
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="default_account_id">{t("Conta padrão (opcional)")}</Label>
-          <Input
-            id="default_account_id"
-            value={conta}
-            onChange={(e) => setConta(e.target.value)}
-            placeholder="act_123456789012345"
-          />
+          {conectada && contasDoToken.length > 0 ? (
+            <select
+              id="default_account_id"
+              value={conta}
+              onChange={(e) => setConta(e.target.value)}
+              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+            >
+              <option value="">{t("Nenhuma (a primeira conta ativa)")}</option>
+              {contasDoToken.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                  {c.moeda ? ` · ${c.moeda}` : ""}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              id="default_account_id"
+              value={conta}
+              onChange={(e) => setConta(e.target.value)}
+              placeholder="act_123456789012345"
+            />
+          )}
           <p className="text-xs text-muted-foreground">
             {t(
               "A conta que a tela de Meta Ads abre por padrão. Em branco, ela abre a primeira conta ativa que o token alcançar.",
@@ -133,12 +155,7 @@ export function FormularioDeMetaAds({
           </Button>
 
           {conectada && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
-              onClick={desconectar}
-            >
+            <Button type="button" variant="outline" disabled={isPending} onClick={desconectar}>
               {t("Desconectar")}
             </Button>
           )}
