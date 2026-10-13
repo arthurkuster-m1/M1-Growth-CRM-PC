@@ -111,3 +111,17 @@ describe("a importação por CSV normaliza o marcador da planilha", () => {
     expect(contato.tags).toBeUndefined();
   });
 });
+
+describe("tags automáticas mantêm a caixa (inicial maiúscula)", () => {
+  it("Campanha/Ad/LP/Funil/Conjunto e MQL", async () => {
+    const { normalizarTag, tagAutomaticaCanonica } = await import("@/lib/contacts/tag-normalizada");
+    expect(normalizarTag("campanha: black friday")).toBe("Campanha: Black friday");
+    expect(normalizarTag("AD: kids01")).toBe("Ad: Kids01");
+    expect(normalizarTag("lp: nova landing page")).toBe("LP: Nova landing page");
+    expect(normalizarTag("Funil: Seletiva XPTO")).toBe("Funil: Seletiva XPTO");
+    expect(normalizarTag("mql")).toBe("MQL");
+    expect(tagAutomaticaCanonica("vip")).toBeNull();
+    // a tag digitada à mão segue em minúsculas
+    expect(normalizarTag("VIP")).toBe("vip");
+  });
+});

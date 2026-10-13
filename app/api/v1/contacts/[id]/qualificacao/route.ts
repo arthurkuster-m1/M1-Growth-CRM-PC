@@ -2,7 +2,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
  * GET /api/v1/contacts/[id]/qualificacao — a ficha de qualificação do lead: quando entrou,
  * quando foi abordado pela primeira vez, se é MQL e em quais funis está.
- * PUT /api/v1/contacts/[id]/qualificacao — marca ou desmarca o MQL (atendente em diante).
+ * PUT /api/v1/contacts/[id]/qualificacao — marca ou desmarca o MQL (atendente em diante). A primeira compra não se edita.
  *
  * "Lead" é o contato: um por telefone. Os funis vêm dos negócios (`crm_leads`) dele.
  */
@@ -88,17 +88,8 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   );
 }
 
-const corpoSchema = z
-  .object({
-    is_mql: z.boolean().optional(),
-    /** `YYYY-MM-DD`, ou `null` para limpar. */
-    primeira_compra: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .nullable()
-      .optional(),
-  })
-  .refine((v) => v.is_mql !== undefined || v.primeira_compra !== undefined);
+// A data da primeira compra NÃO se edita: é sempre a da primeira venda paga (calculada no banco).
+const corpoSchema = z.object({ is_mql: z.boolean() });
 
 export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
   const supportDenied = await requireSupportWrite();
@@ -120,16 +111,9 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
   const { data, error } = await supabase
     .from("contacts")
     .update({
-      ...(corpo.data.is_mql !== undefined
-        ? {
-            is_mql: corpo.data.is_mql,
-            mql_at: corpo.data.is_mql ? agora : null,
-            mql_by: corpo.data.is_mql ? authz.user.id : null,
-          }
-        : {}),
-      ...(corpo.data.primeira_compra !== undefined
-        ? { first_purchase_on: corpo.data.primeira_compra }
-        : {}),
+      is_mql: corpo.data.is_mql,
+      mql_at: corpo.data.is_mql ? agora : null,
+      mql_by: corpo.data.is_mql ? authz.user.id : null,
     })
     .eq("id", id.data)
     .eq("organization_id", authz.org.orgId)
@@ -145,10 +129,7 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
     resourceType: "contact",
     resourceId: contactId,
     requestId,
-    metadata: {
-      is_mql: corpo.data.is_mql ?? null,
-      primeira_compra: corpo.data.primeira_compra ?? null,
-    },
+    metadata: { is_mql: corpo.data.is_mql },
   });
   return ok(data, { requestId });
 }

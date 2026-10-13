@@ -20,7 +20,10 @@ import {
   somarTagComContador,
   tituloDaAcao,
 } from "@/lib/leads/acoes-do-lead";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { categoriaPorRegra, lerConfigDeCategorias } from "@/lib/tags/categorias";
+import { chaveDaEtiqueta } from "@/lib/tags/cor-da-etiqueta";
 
 export const dynamic = "force-dynamic";
 
@@ -129,6 +132,37 @@ export async function POST(
     .update(atualizacao)
     .eq("id", contactId.data)
     .eq("organization_id", orgId);
+
+  // A tag de uma ação é da categoria "Ação": as conhecidas já se reconhecem pelo nome; a que a
+  // pessoa digitou ganha a categoria aqui (uma vez), para ter a cor da categoria.
+  if (corpo.data.tag && categoriaPorRegra(corpo.data.tag) === null) {
+    try {
+      const admin = createAdminClient();
+      const { data: org } = await admin
+        .from("organizations")
+        .select("settings")
+        .eq("id", orgId)
+        .maybeSingle();
+      const config = lerConfigDeCategorias(org?.settings ?? null);
+      const chave = chaveDaEtiqueta(corpo.data.tag);
+      if (!config.tags[chave]) {
+        await admin
+          .from("organizations")
+          .update({
+            settings: {
+              ...((org?.settings as Record<string, unknown> | null) ?? {}),
+              categorias_de_tags: {
+                categorias: config.categorias.map((c) => ({ id: c.id, nome: c.nome, cor: c.cor })),
+                tags: { ...config.tags, [chave]: "acao" },
+              },
+            },
+          })
+          .eq("id", orgId);
+      }
+    } catch {
+      // A categoria é só a cor da tag: não derruba o registro da ação.
+    }
+  }
 
   return ok({ registrado: true, tag: tagFinal }, { requestId, status: 201 });
 }

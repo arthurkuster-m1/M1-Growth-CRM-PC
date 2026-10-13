@@ -146,7 +146,7 @@ export function ContactDetailClient({ contactId }: Props) {
   );
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="min-w-0 space-y-4 p-6">
       {contact.is_anonymized && (
         <div
           role="alert"
@@ -292,7 +292,7 @@ export function ContactDetailClient({ contactId }: Props) {
         />
       )}
 
-      <Tabs value={aba} onValueChange={setAba}>
+      <Tabs value={aba} onValueChange={setAba} className="min-w-0">
         <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
@@ -318,6 +318,7 @@ export function ContactDetailClient({ contactId }: Props) {
             podeEditar={podeEditarFicha}
             camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
             clientesLigado={clientesLigado}
+            podeGerirCategorias={Boolean(podeMarcarPessoal)}
           />
         </TabsContent>
 

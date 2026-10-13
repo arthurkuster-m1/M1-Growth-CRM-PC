@@ -29,7 +29,41 @@
  */
 export const TAMANHO_MAXIMO_DA_TAG = 40;
 
+/** O teto das tags automáticas (`Campanha: …`, `Ad: …`, `LP: …`, `Funil: …`): o mesmo do banco. */
+export const TAMANHO_MAXIMO_DA_TAG_AUTOMATICA = 60;
+
+const PREFIXOS_AUTOMATICOS: Readonly<Record<string, string>> = {
+  campanha: "Campanha",
+  ad: "Ad",
+  lp: "LP",
+  conjunto: "Conjunto",
+  funil: "Funil",
+};
+
+/**
+ * A forma de uma tag AUTOMÁTICA (a que o sistema cria pela origem, pelo funil e pelo MQL):
+ * `Campanha: Nome`, `Ad: Nome`, `LP: Nome`, `Conjunto: Nome`, `Funil: Nome` e `MQL`, com a 1ª letra
+ * do nome em maiúscula e o resto como veio. Devolve `null` quando não é uma delas.
+ */
+export function tagAutomaticaCanonica(cru: string): string | null {
+  const texto = cru.trim();
+  if (/^mql$/i.test(texto)) return "MQL";
+  const m = /^(campanha|ad|lp|conjunto|funil)\s*:\s*(.+)$/i.exec(texto);
+  if (!m) return null;
+  const nome = m[2]!.trim();
+  if (!nome) return null;
+  const prefixo = PREFIXOS_AUTOMATICOS[m[1]!.toLowerCase()]!;
+  return `${prefixo}: ${nome.charAt(0).toUpperCase()}${nome.slice(1)}`.slice(
+    0,
+    TAMANHO_MAXIMO_DA_TAG_AUTOMATICA,
+  );
+}
+
 export function normalizarTag(cru: string): string {
+  // A tag automática mantém a caixa do nome (só a inicial é maiúscula); as digitadas à mão seguem
+  // em minúsculas, que é o que o filtro `?tag=` casa.
+  const automatica = tagAutomaticaCanonica(cru);
+  if (automatica) return automatica;
   return cru.trim().toLowerCase().slice(0, TAMANHO_MAXIMO_DA_TAG);
 }
 

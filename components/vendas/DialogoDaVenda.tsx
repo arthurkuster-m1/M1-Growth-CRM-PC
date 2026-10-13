@@ -2,6 +2,7 @@
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import Link from "next/link";
+import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -29,7 +30,7 @@ export interface ClienteOpcao {
 export interface DadosDaVenda {
   id?: string;
   contact_id: string;
-  status: "interesse" | "comprometida" | "cancelada";
+  status: "interesse" | "comprometida" | "concluida" | "cancelada";
   itens: Array<{ product_id: string; quantity: number; amount_cents: number }>;
   pagamentos: Array<{
     number: number;
@@ -97,6 +98,15 @@ export function DialogoDaVenda({
     etapaId: string | null;
     aoMoverEtapa: (etapaId: string) => Promise<void>;
     fichaHref?: string;
+    /** O que era do "negócio": responsável e campos personalizados do funil. */
+    responsaveis?: Array<{ id: string; nome: string }>;
+    responsavelId?: string | null;
+    camposDoFunil?: CustomFieldDef[];
+    camposValores?: Record<string, unknown>;
+    aoSalvarExtras?: (x: {
+      owner_user_id?: string | null;
+      custom_fields?: Record<string, unknown>;
+    }) => Promise<void>;
   };
   venda: Venda | null;
   contatoInicial?: { contact_id: string; nome: string } | null;
@@ -110,15 +120,11 @@ export function DialogoDaVenda({
   const fechada = venda ? venda.status === "comprometida" || venda.status === "concluida" : true;
   const [busca, setBusca] = useState("");
   const [contato, setContato] = useState(venda?.contact_id ?? contatoInicial?.contact_id ?? "");
-  const [situacao, setSituacao] = useState<"interesse" | "fechada" | "cancelada">(
-    venda
-      ? venda.status === "interesse"
-        ? "interesse"
-        : venda.status === "cancelada"
-          ? "cancelada"
-          : "fechada"
-      : "fechada",
-  );
+  const [situacao, setSituacao] = useState<
+    "interesse" | "comprometida" | "concluida" | "cancelada"
+  >(venda ? venda.status : "comprometida");
+  // Comprometida e concluída pedem os produtos, o valor e as parcelas.
+  const fechadaSit = situacao === "comprometida" || situacao === "concluida";
   const { produtos } = useCatalogoDeProdutos();
   const [itens, setItens] = useState<Array<{ produtoId: string; valor: string }>>(() => {
     if (venda?.itens && venda.itens.length > 0) {
@@ -136,6 +142,10 @@ export function DialogoDaVenda({
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
   const [descricao, setDescricao] = useState(venda?.description ?? "");
   const [etapaId, setEtapaId] = useState(negocio?.etapaId ?? "");
+  const [responsavel, setResponsavel] = useState(negocio?.responsavelId ?? "");
+  const [camposDoNegocio, setCamposDoNegocio] = useState<Record<string, unknown>>(
+    negocio?.camposValores ?? {},
+  );
   const [parcelas, setParcelas] = useState<
     Array<{
       number: number;
@@ -209,15 +219,20 @@ export function DialogoDaVenda({
   const valido =
     contato !== "" &&
     (situacao === "cancelada" || itensValidos.length > 0) &&
-    (situacao !== "fechada" || (total > 0 && parcelas.length > 0 && Math.abs(diferenca) <= 1));
+    (!fechadaSit || (total > 0 && parcelas.length > 0 && Math.abs(diferenca) <= 1));
 
   async function salvar() {
     setSalvando(true);
-    const pagos = situacao === "fechada" ? parcelas : [];
+    // "Concluída" = tudo pago: as parcelas entram como recebidas.
+    const pagos = fechadaSit
+      ? situacao === "concluida"
+        ? parcelas.map((p) => ({ ...p, recebida: true }))
+        : parcelas
+      : [];
     await aoSalvar({
       ...(venda ? { id: venda.id } : {}),
       contact_id: contato,
-      status: situacao === "fechada" ? "comprometida" : situacao,
+      status: situacao,
       itens: itensValidos.map((i) => ({
         product_id: i.produtoId,
         quantity: 1,
@@ -230,7 +245,7 @@ export function DialogoDaVenda({
         amount_cents: centavos(p.valor),
         status: p.recebida ? ("recebida" as const) : ("prevista" as const),
       })),
-      payment_method: situacao === "fechada" ? forma : "",
+      payment_method: fechadaSit ? forma : "",
       is_recurring: recorrente,
       recurrence_active: recorrente && recorrenciaAtiva,
       reference: referencia.trim(),
@@ -238,6 +253,16 @@ export function DialogoDaVenda({
       expected_close_date: previsao || null,
       description: descricao.trim(),
     });
+    if (negocio?.aoSalvarExtras) {
+      await negocio.aoSalvarExtras({
+        ...(responsavel !== (negocio.responsavelId ?? "")
+          ? { owner_user_id: responsavel || null }
+          : {}),
+        ...(negocio.camposDoFunil && negocio.camposDoFunil.length > 0
+          ? { custom_fields: camposDoNegocio }
+          : {}),
+      });
+    }
     setSalvando(false);
     aoFechar();
   }
@@ -330,6 +355,23 @@ export function DialogoDaVenda({
               className="w-full"
             />
           </div>
+          {negocio?.responsaveis ? (
+            <div className="grid gap-1">
+              <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
+              <select
+                className={CAMPO}
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+              >
+                <option value="">{t("Sem responsável")}</option>
+                {negocio.responsaveis.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <label className="grid gap-1 sm:col-span-2">
             <span className="text-xs text-muted-foreground">{t("Descrição da venda")}</span>
             <textarea
@@ -341,6 +383,17 @@ export function DialogoDaVenda({
               className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
             />
           </label>
+          {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
+            <div className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Campos do funil")}</span>
+              <CustomFieldsEditor
+                fields={negocio.camposDoFunil}
+                value={camposDoNegocio}
+                onChange={setCamposDoNegocio}
+                mode="lead"
+              />
+            </div>
+          ) : null}
           {negocio?.fichaHref ? (
             <Link
               href={negocio.fichaHref}
@@ -356,8 +409,9 @@ export function DialogoDaVenda({
           <div className="flex flex-wrap gap-1.5" role="radiogroup">
             {(
               [
-                ["fechada", t("Venda fechada")],
                 ["interesse", t("Interesse (ainda não fechou)")],
+                ["comprometida", t("Comprometida (venda fechada)")],
+                ["concluida", t("Concluída (tudo pago)")],
                 ["cancelada", t("Cancelada")],
               ] as const
             ).map(([valor, rotulo]) => (
@@ -462,7 +516,7 @@ export function DialogoDaVenda({
           </div>
         </div>
 
-        {situacao === "fechada" ? (
+        {fechadaSit ? (
           <div className="grid grid-cols-1 gap-3 rounded-xl border p-3">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {t("Pagamento")}

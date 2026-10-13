@@ -144,7 +144,13 @@ export function useDiasDaCampanha(campanhaId: string) {
     queryKey: chave,
     queryFn: async () =>
       (
-        await apiClient.get<{ data: { dias: DiaDaCampanha[]; funil_definido: boolean } }>(
+        await apiClient.get<{
+          data: {
+            dias: DiaDaCampanha[];
+            funil_definido: boolean;
+            automatico?: { chaves: string[]; investimento: boolean };
+          };
+        }>(
           `${BASE}/${campanhaId}/days`,
         )
       ).data,
@@ -154,6 +160,8 @@ export function useDiasDaCampanha(campanhaId: string) {
   return {
     dias: consulta.data?.dias ?? [],
     funilDefinido: consulta.data?.funil_definido ?? true,
+    /** Fora do tráfego pago: as colunas calculadas pelo sistema (nada se digita). */
+    automatico: consulta.data?.automatico ?? { chaves: [], investimento: false },
     carregando: consulta.isLoading,
     gravar: async (
       dias: Array<Omit<DiaDaCampanha, "id" | "source">>,

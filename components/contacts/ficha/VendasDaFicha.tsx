@@ -77,10 +77,20 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     if (p.length === 0) return v.status === "comprometida" ? v.amount_cents : 0;
     return p.filter((x) => x.status === "prevista").reduce((a, x) => a + x.amount_cents, 0);
   };
+  /** Uma venda "conta" quando algo foi pago: ao menos uma parcela recebida (um sinal já vale). */
+  const foiPaga = (v: Venda) => {
+    const p = (v.parcelas ?? []).filter((x) => x.status !== "cancelada");
+    if (p.length === 0) return v.status === "concluida";
+    return p.some((x) => x.status === "recebida");
+  };
+  const pagas = realizadas.filter(foiPaga);
   const ltv = realizadas.reduce((s, v) => s + recebido(v), 0);
   const previsto = realizadas.reduce((s, v) => s + aReceber(v), 0);
-  const totalVendido = realizadas.reduce((s, v) => s + v.amount_cents, 0);
-  const ticket = realizadas.length > 0 ? Math.round(totalVendido / realizadas.length) : 0;
+  const emInteresse = vendas
+    .filter((v) => v.status === "interesse")
+    .reduce((s, v) => s + v.amount_cents, 0);
+  const totalVendido = pagas.reduce((s, v) => s + v.amount_cents, 0);
+  const ticket = pagas.length > 0 ? Math.round(totalVendido / pagas.length) : 0;
 
   // ── Busca, filtro, agrupamento e ordem (o mesmo motor das outras tabelas) ──
   const campos: Array<
@@ -102,7 +112,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     },
     { id: "total", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
     { id: "pago", titulo: t("Valor pago"), tipo: "numero", valorDe: (v) => recebido(v) / 100 },
-    { id: "falta", titulo: t("A comprometido"), tipo: "numero", valorDe: (v) => faltando(v) / 100 },
+    { id: "falta", titulo: t("Previsto"), tipo: "numero", valorDe: (v) => faltando(v) / 100 },
     { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (v) => v.etapa ?? "" },
     {
       id: "previsao",
@@ -204,10 +214,11 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     }
   }
 
-  const cartoes: Array<[string, string, "green" | "blue" | "purple" | "orange"]> = [
+  const cartoes: Array<[string, string, "green" | "blue" | "purple" | "orange" | "yellow"]> = [
     [t("LTV atual"), reais(ltv), "green"],
     [t("LTV previsto"), reais(ltv + previsto), "blue"],
-    [t("Vendas"), String(realizadas.length), "purple"],
+    [t("LTV em interesse"), reais(emInteresse), "yellow"],
+    [t("Vendas"), String(pagas.length), "purple"],
     [t("Ticket médio"), reais(ticket), "orange"],
   ];
   const BARRA = {
@@ -215,11 +226,12 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     blue: "border-l-blue-500",
     purple: "border-l-purple-500",
     orange: "border-l-orange-500",
+    yellow: "border-l-yellow-500",
   } as const;
 
   return (
-    <div className="grid gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid min-w-0 gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {cartoes.map(([rotulo, valor, cor]) => (
           <div key={rotulo} className={`rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${BARRA[cor]}`}>
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{rotulo}</p>
@@ -281,7 +293,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
             ) : null}
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border">
+          <div className="max-w-full overflow-x-auto rounded-xl border">
             <table className="w-full min-w-max text-sm">
               <thead className="bg-secondary/60 text-xs text-muted-foreground">
                 <tr>
@@ -289,7 +301,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                   <th className="px-3 py-2 text-left font-medium">{t("Funil")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("Valor total")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("Valor pago")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("A comprometido")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("Previsto")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Parcelas")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Etapa")}</th>

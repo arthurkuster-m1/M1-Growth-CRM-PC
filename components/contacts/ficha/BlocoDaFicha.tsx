@@ -33,7 +33,7 @@ export function BlocoDaFicha({
 }) {
   return (
     <section
-      className={cn("rounded-2xl border border-l-4 bg-card p-4 shadow-sm", BARRA[cor], className)}
+      className={cn("min-w-0 rounded-2xl border border-l-4 bg-card p-4 shadow-sm", BARRA[cor], className)}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{titulo}</h2>

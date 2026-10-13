@@ -306,10 +306,8 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             canal={c.channel}
             campanha={c}
             dias={dias.dias}
-            podeEditar={podeEditar}
             funilDefinido={dias.funilDefinido}
-            gravar={dias.gravar}
-            apagar={dias.apagar}
+            automatico={dias.automatico}
           />
           <DiarioDeBordo campanhaId={c.id} podeEditar={podeEditar} />
         </>

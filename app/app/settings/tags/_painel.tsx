@@ -41,7 +41,7 @@
  */
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,8 @@ import { cn } from "@/lib/utils";
 import { PALETA_DE_ETIQUETAS, normalizarCorDeEtiqueta } from "@/lib/tags/cor-da-etiqueta";
 import { traduzir } from "@/lib/i18n/dicionario";
 import type { Idioma } from "@/lib/i18n/idiomas";
+import { useCategoriasDeTags } from "@/components/tags/CoresDasEtiquetas";
+import { categoriaDaTag, corDaCategoria } from "@/lib/tags/categorias";
 import type { AcaoDeVocabulario, LinhaDeVocabulario } from "@/lib/schemas/tags";
 
 /**
@@ -111,6 +113,50 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
   const [destino, setDestino] = useState("");
   const [cor, setCor] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  // Visão por categoria: filtrar, agrupar e ordenar.
+  const config = useCategoriasDeTags();
+  const [filtro, setFiltro] = useState("");
+  const [agrupar, setAgrupar] = useState(false);
+  const [ordem, setOrdem] = useState<"padrao" | "nome" | "categoria" | "uso">("padrao");
+
+  const grupos = useMemo(() => {
+    const posicao = (tag: string) => {
+      const id = categoriaDaTag(tag, config)?.id;
+      const i = id ? config.categorias.findIndex((c) => c.id === id) : -1;
+      return i < 0 ? config.categorias.length : i;
+    };
+    const uso = (l: LinhaDeVocabulario) =>
+      l.uso_em_contatos + l.uso_em_leads + l.uso_em_conversas;
+    const filtradas = tags.filter((l) =>
+      filtro === ""
+        ? true
+        : filtro === "__sem__"
+          ? categoriaDaTag(l.tag, config) === null
+          : categoriaDaTag(l.tag, config)?.id === filtro,
+    );
+    const ordenadas = [...filtradas].sort((a, b) =>
+      ordem === "padrao"
+        ? 0
+        : ordem === "categoria"
+        ? posicao(a.tag) - posicao(b.tag) || a.tag.localeCompare(b.tag)
+        : ordem === "uso"
+          ? uso(b) - uso(a) || a.tag.localeCompare(b.tag)
+          : a.tag.localeCompare(b.tag),
+    );
+    if (!agrupar) return [{ chave: "todas", titulo: null as string | null, linhas: ordenadas }];
+    const porCategoria = new Map<string, LinhaDeVocabulario[]>();
+    for (const l of ordenadas) {
+      const id = categoriaDaTag(l.tag, config)?.id ?? "__sem__";
+      porCategoria.set(id, [...(porCategoria.get(id) ?? []), l]);
+    }
+    return [...config.categorias.map((c) => c.id), "__sem__"]
+      .filter((id) => porCategoria.has(id))
+      .map((id) => ({
+        chave: id,
+        titulo: config.categorias.find((c) => c.id === id)?.nome ?? "Sem categoria",
+        linhas: porCategoria.get(id)!,
+      }));
+  }, [tags, config, filtro, agrupar, ordem]);
 
   const destinos = useMemo(
     () => tags.filter((linha) => linha.tag.toLowerCase() !== alvo?.tag.toLowerCase()),
@@ -204,12 +250,48 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <label className="flex items-center gap-2">
+          <span className="text-muted-foreground">{t("Categoria")}</span>
+          <select
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="h-9 rounded-lg border bg-background px-2"
+          >
+            <option value="">{t("Todas")}</option>
+            {config.categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+            <option value="__sem__">{t("Sem categoria")}</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-muted-foreground">{t("Ordenar por")}</span>
+          <select
+            value={ordem}
+            onChange={(e) => setOrdem(e.target.value as "padrao" | "nome" | "categoria" | "uso")}
+            className="h-9 rounded-lg border bg-background px-2"
+          >
+            <option value="padrao">{t("Padrão")}</option>
+            <option value="nome">{t("Nome")}</option>
+            <option value="categoria">{t("Categoria")}</option>
+            <option value="uso">{t("Mais usadas")}</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={agrupar} onChange={(e) => setAgrupar(e.target.checked)} />
+          {t("Agrupar por categoria")}
+        </label>
+      </div>
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <caption className="sr-only">{t("Etiquetas da organização e onde são usadas")}</caption>
           <thead className="bg-muted/50 text-left">
             <tr>
               <th className="p-3 font-medium">{t("Etiqueta")}</th>
+              <th className="p-3 font-medium">{t("Categoria")}</th>
               <th className="p-3 font-medium">{t("Contatos")}</th>
               <th className="p-3 font-medium">{t("Leads")}</th>
               <th className="p-3 font-medium">{t("Conversas")}</th>
@@ -218,14 +300,23 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
             </tr>
           </thead>
           <tbody>
-            {tags.map((linha) => (
+            {grupos.map((g) => (
+              <Fragment key={g.chave}>
+                {g.titulo ? (
+                  <tr className="bg-muted/40">
+                    <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold">
+                      {g.titulo} <span className="font-normal text-muted-foreground">({g.linhas.length})</span>
+                    </td>
+                  </tr>
+                ) : null}
+                {g.linhas.map((linha) => (
               <tr key={linha.tag} className="border-t border-border/60">
                 <td className="p-3">
                   {/* A cor do SERVIDOR, não a do cache do chip: esta lista acabou
                       de ler o vocabulário, e mostrar o que a outra leitura
                       devolveu seria a tela discordando de si mesma por alguns
                       segundos. */}
-                  <ChipDeEtiqueta tag={linha.tag} cor={linha.cor} />
+                  <ChipDeEtiqueta tag={linha.tag} cor={linha.cor ?? corDaCategoria(linha.tag, config)} />
                   {!linha.no_vocabulario && (
                     // Em uso e fora do vocabulário curado: existe em algum
                     // registro sem passar por nenhuma tela de cadastro. Dar cor
@@ -235,6 +326,9 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
                       {t("em uso, fora do vocabulário")}
                     </span>
                   )}
+                </td>
+                <td className="p-3 text-xs text-muted-foreground">
+                  {categoriaDaTag(linha.tag, config)?.nome ?? "—"}
                 </td>
                 <td className="p-3 tabular-nums">{linha.uso_em_contatos}</td>
                 <td className="p-3 tabular-nums">{linha.uso_em_leads}</td>
@@ -261,6 +355,8 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
                   </Button>
                 </td>
               </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
         </table>

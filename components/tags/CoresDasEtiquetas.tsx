@@ -32,6 +32,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { apiClient } from "@/lib/api/client";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { chaveDaEtiqueta, coresDoVocabulario, type CoresPorEtiqueta } from "@/lib/tags/cor-da-etiqueta";
+import { CONFIG_VAZIA, corDaCategoria, type ConfigDeCategorias } from "@/lib/tags/categorias";
 
 /**
  * A chave do cache, exportada para quem ESCREVE poder invalidar: a tela de Tags
@@ -48,6 +49,14 @@ export function invalidarCoresDasEtiquetas(queryClient: QueryClient): void {
 const VAZIO: CoresPorEtiqueta = {};
 
 const Ctx = createContext<CoresPorEtiqueta>(VAZIO);
+const CtxCategorias = createContext<ConfigDeCategorias>(CONFIG_VAZIA);
+
+/** A chave do cache das categorias de tag (cada uma com a sua cor). */
+export const CHAVE_DAS_CATEGORIAS = "categorias-de-tags";
+
+export function invalidarCategoriasDeTags(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: [CHAVE_DAS_CATEGORIAS] });
+}
 
 export function ProvedorDeCoresDasEtiquetas({ children }: { children: ReactNode }) {
   const { activeOrg } = useAuth();
@@ -67,7 +76,19 @@ export function ProvedorDeCoresDasEtiquetas({ children }: { children: ReactNode 
     },
   });
   const valor = useMemo(() => data ?? VAZIO, [data]);
-  return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
+  const categorias = useQuery({
+    queryKey: [CHAVE_DAS_CATEGORIAS, orgId],
+    enabled: !!orgId,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<ConfigDeCategorias> =>
+      (await apiClient.get<{ data: ConfigDeCategorias }>("/api/v1/tags/categorias")).data,
+  });
+  const config = useMemo(() => categorias.data ?? CONFIG_VAZIA, [categorias.data]);
+  return (
+    <Ctx.Provider value={valor}>
+      <CtxCategorias.Provider value={config}>{children}</CtxCategorias.Provider>
+    </Ctx.Provider>
+  );
 }
 
 /** O mapa inteiro — para quem desenha uma lista de opções (filtros). */
@@ -75,9 +96,18 @@ export function useCoresDasEtiquetas(): CoresPorEtiqueta {
   return useContext(Ctx);
 }
 
-/** A cor de UMA etiqueta, ou `null`. */
+/** As categorias de tag (e a categoria escolhida de cada tag). */
+export function useCategoriasDeTags(): ConfigDeCategorias {
+  return useContext(CtxCategorias);
+}
+
+/**
+ * A cor de UMA etiqueta, ou `null`: a cor escolhida para a própria tag e, na falta dela, a da
+ * CATEGORIA da tag.
+ */
 export function useCorDaEtiqueta(tag: string | null | undefined): string | null {
   const mapa = useCoresDasEtiquetas();
+  const categorias = useCategoriasDeTags();
   if (!tag) return null;
-  return mapa[chaveDaEtiqueta(tag)] ?? null;
+  return mapa[chaveDaEtiqueta(tag)] ?? corDaCategoria(tag, categorias);
 }

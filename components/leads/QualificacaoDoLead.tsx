@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
@@ -56,12 +55,6 @@ export function QualificacaoDoLead({
         .data,
     staleTime: 15_000,
   });
-  const salvarCompra = useMutation({
-    mutationFn: (primeira_compra: string | null) =>
-      apiClient.put(`/api/v1/contacts/${contactId}/qualificacao`, { primeira_compra }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: chave }),
-    onError: showApiError,
-  });
   const alternar = useMutation({
     mutationFn: (is_mql: boolean) =>
       apiClient.put(`/api/v1/contacts/${contactId}/qualificacao`, { is_mql }),
@@ -110,12 +103,11 @@ export function QualificacaoDoLead({
 
           <div className="grid gap-1">
             <span className="text-xs text-text-muted">{t("Primeira compra")}</span>
-            <SeletorDeData
-              valor={d.primeira_compra ?? ""}
-              rotulo={t("Primeira compra")}
-              placeholder={t("Sem compra registrada")}
-              aoMudar={(v) => (pode ? salvarCompra.mutate(v === "" ? null : v) : undefined)}
-            />
+            <span className="text-sm font-medium">
+              {d.primeira_compra
+                ? d.primeira_compra.slice(0, 10).split("-").reverse().join("/")
+                : t("Sem compra paga ainda")}
+            </span>
           </div>
 
             </>

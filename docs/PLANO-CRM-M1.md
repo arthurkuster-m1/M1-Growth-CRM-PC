@@ -306,3 +306,21 @@ Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · 
   (`payload.titulo`) e o resultado/comentário ficam embaixo (vazio se não houver).
 - **Pendente (decisão de modelo):** o card do quadro do funil passar a ser a VENDA atrelada ao lead
   (e a previsão/descrição morarem na venda) — ver conversa com o Arthur antes de mexer no quadro.
+
+### Sessão 10 (continuação 2) — Categorias de tag, origem em cascata, dia a dia automático
+
+- **Categorias de tag** (`lib/tags/categorias.ts`, `GET/PUT /api/v1/tags/categorias`): cada categoria
+  tem uma cor e a tag herda (a cor própria da tag vence). Padrão: Ação (No Show, Remarcou,
+  Compareceu…), Tracking (Campanha/Ad/LP/Conjunto), Funil, Qualificação (MQL); a organização cria as
+  suas. Ficha: chips arrastáveis (ordem), editar nome/categoria, ordenar por categoria, agrupar e
+  filtrar. Settings › Tags: filtrar, ordenar e agrupar por categoria.
+- **Tags automáticas** com inicial maiúscula (`Campanha: X`, `Ad: X`, `LP: X`, `Funil: X`, `MQL`) —
+  `normalizarTag` preserva a caixa delas; migration 0623 ajusta as que já existem.
+- **Primeira compra** = data da primeira parcela recebida (sinal conta); não se edita. Vendas do
+  contato contam quando algo foi pago. Migration 0623 (`fn_crm_sales_refresh_contact`).
+- **Origem em cascata** (ficha › Cadastro): campanha → conjunto → anúncio → LP do anúncio →
+  posicionamento (`GET /api/v1/marketing/origem-opcoes`); ids por trás, nomes na tela.
+- **Dia a dia** das campanhas: nada se digita. Meta = anúncio (Meta) + leads (CRM); demais canais =
+  vendas pagas, ações registradas, leads e orçamento (`lib/marketing/dia-a-dia-automatico.ts`).
+- **Venda**: status explícitos (Interesse/Comprometida/Concluída/Cancelada), responsável e campos do
+  funil dentro do popup; Vendas da ficha: LTV em interesse, "Previsto", sem rolar a página inteira.

@@ -1,11 +1,11 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoDaFicha, CampoLido } from "@/components/contacts/ficha/BlocoDaFicha";
+import { TagsDoLead } from "@/components/contacts/ficha/TagsDoLead";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +21,6 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
 import { QualificacaoDoLead } from "@/components/leads/QualificacaoDoLead";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
-import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,9 +37,10 @@ import {
   type LinksDoContato,
   type TipoDeLink,
 } from "@/lib/leads/links-de-contato";
-import { normalizarTags } from "@/lib/contacts/tag-normalizada";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import type { Contact } from "@/lib/types/contacts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import { Plus, Trash, X } from "@/lib/ui/icons";
 
 interface OrigemLida {
@@ -67,6 +67,7 @@ export function CadastroDoLead({
   podeEditar,
   camposDefinidos,
   clientesLigado,
+  podeGerirCategorias = false,
 }: {
   contact: Contact;
   origem: OrigemLida & { semPosicionamentoDeAnuncio?: boolean };
@@ -74,6 +75,8 @@ export function CadastroDoLead({
   camposDefinidos: CustomFieldDef[];
   /** "Clientes pela agenda" ligado: mostra "Cliente desde". */
   clientesLigado: boolean;
+  /** Gerente em diante: muda a categoria das tags e as cores das categorias. */
+  podeGerirCategorias?: boolean;
 }) {
   const t = useT();
   const locale = useLocaleDeData();
@@ -233,6 +236,16 @@ export function CadastroDoLead({
     lp: manualAtual.lp?.trim() || paginaDosFunis || "",
     posicionamento: origem.posicionamento ?? "",
   };
+  const opcoesDeOrigem = useQuery({
+    queryKey: ["origem-opcoes"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: { campanhas: CampanhaOpcao[]; posicionamentos: string[] };
+        }>("/api/v1/marketing/origem-opcoes")
+      ).data,
+  });
   const [editandoOrigem, setEditandoOrigem] = useState(false);
   const [origemEdit, setOrigemEdit] = useState(origemAtual);
   const [confirmarOrigem, setConfirmarOrigem] = useState(false);
@@ -240,6 +253,19 @@ export function CadastroDoLead({
     try {
       const manual: Record<string, string> = { ...manualAtual };
       const tagsNovas: string[] = [];
+      // Os nomes aparecem na tela; os ids ficam por trás para o sistema cruzar com campanha,
+      // conjunto, anúncio e página.
+      const arvore = opcoesDeOrigem.data?.campanhas ?? [];
+      const camp = arvore.find((c) => c.nome === origemEdit.campanha.trim());
+      const conj = camp?.conjuntos.find((c) => c.nome === origemEdit.conjunto.trim());
+      const todosAnuncios = camp ? [...camp.conjuntos.flatMap((c) => c.anuncios), ...camp.anuncios_soltos] : [];
+      const anun = todosAnuncios.find((a) => a.nome === origemEdit.anuncio.trim());
+      const pag = camp?.paginas.find((p) => p.nome === origemEdit.lp.trim());
+      manual.campanha_id = camp?.id ?? "";
+      manual.conjunto_id = conj?.id ?? "";
+      manual.anuncio_id = anun?.id ?? "";
+      manual.anuncio_ad_id = anun?.ad_id ?? "";
+      manual.lp_id = pag?.id ?? "";
       (Object.keys(origemEdit) as Array<keyof typeof origemEdit>).forEach((k) => {
         const novo = origemEdit[k].trim();
         if (novo === origemAtual[k]) return;
@@ -277,25 +303,6 @@ export function CadastroDoLead({
   juntarRastro(contact.source_metadata as Record<string, unknown> | null);
   for (const n of negocios.dados) juntarRastro(n.rastreamento);
 
-  // ── Tags ──
-  const [novaTag, setNovaTag] = useState("");
-  async function gravarTags(tags: string[]) {
-    try {
-      await atualizar.mutateAsync({ tags });
-    } catch {
-      /* o hook já avisou */
-    }
-  }
-  async function salvarPrimeiraCompra(v: string) {
-    try {
-      await apiClient.put(`/api/v1/contacts/${contact.id}/qualificacao`, {
-        primeira_compra: v === "" ? null : v,
-      });
-      await queryClient.invalidateQueries({ queryKey: ["qualificacao-do-lead", contact.id] });
-    } catch (e) {
-      showApiError(e);
-    }
-  }
   const dia = (iso: string | null | undefined, comHora = false) =>
     iso ? format(new Date(iso), comHora ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy", { locale }) : "—";
 
@@ -512,26 +519,13 @@ export function CadastroDoLead({
         }
       >
         {editandoOrigem ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(
-              [
-                ["origem", t("Origem")],
-                ["campanha", t("Campanha")],
-                ["conjunto", t("Conjunto")],
-                ["anuncio", t("Anúncio (criativo)")],
-                ["lp", t("Landing page")],
-                ["posicionamento", t("Posicionamento")],
-              ] as const
-            ).map(([k, rotulo]) => (
-              <div key={k} className="grid gap-1">
-                <Label className="text-xs">{rotulo}</Label>
-                <Input
-                  value={origemEdit[k]}
-                  onChange={(e) => setOrigemEdit((a) => ({ ...a, [k]: e.target.value }))}
-                />
-              </div>
-            ))}
-          </div>
+          <OrigemEmCascata
+            valor={origemEdit}
+            aoMudar={setOrigemEdit}
+            campanhas={opcoesDeOrigem.data?.campanhas ?? []}
+            posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
+            carregando={opcoesDeOrigem.isLoading}
+          />
         ) : (
           <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <CampoLido rotulo={t("Origem")} valor={origem.origem} />
@@ -597,67 +591,165 @@ export function CadastroDoLead({
           <CampoLido rotulo={t("Criado em")} valor={dia(contact.created_at)} />
           <CampoLido rotulo={t("Entrou no CRM em")} valor={dia(qual.data?.entrou_em, true)} />
           <CampoLido rotulo={t("Primeira abordagem")} valor={dia(qual.data?.primeira_abordagem, true)} />
+          <CampoLido
+            rotulo={t("Primeira compra")}
+            valor={
+              qual.data?.primeira_compra
+                ? qual.data.primeira_compra.slice(0, 10).split("-").reverse().join("/")
+                : t("Sem compra paga ainda")
+            }
+          />
           <CampoLido rotulo={t("Última atividade")} valor={dia(contact.last_activity_at, true)} />
           {clientesLigado && contact.first_service_at ? (
             <CampoLido rotulo={t("Cliente desde")} valor={dia(contact.first_service_at)} />
           ) : null}
         </dl>
-        <div className="mt-3 grid max-w-xs gap-1">
-          <Label className="text-xs">{t("Primeira compra")}</Label>
-          <CampoDeData
-            valor={qual.data?.primeira_compra ?? ""}
-            aoMudar={(v) => void salvarPrimeiraCompra(v)}
-            rotulo={t("Primeira compra")}
-            placeholder={t("Sem compra registrada")}
-            desabilitado={!podeEditar}
-            className="w-full"
-          />
-        </div>
       </BlocoDaFicha>
 
-      <BlocoDaFicha titulo={t("Tags")} cor="red">
-        <div className="flex flex-wrap items-center gap-2">
-          {contact.tags.length === 0 ? (
-            <span className="text-sm text-muted-foreground">{t("Sem tags.")}</span>
-          ) : null}
-          {contact.tags.map((tag) => (
-            <ChipDeEtiqueta key={tag} tag={tag} contorno>
-              {podeEditar ? (
-                <button
-                  type="button"
-                  aria-label={`${t("Remover")} ${tag}`}
-                  className="ml-1.5 rounded-full hover:bg-black/10"
-                  onClick={() => void gravarTags(contact.tags.filter((x) => x !== tag))}
-                >
-                  <X size={12} weight="bold" aria-hidden />
-                </button>
-              ) : null}
-            </ChipDeEtiqueta>
+      <TagsDoLead
+        contact={contact}
+        podeEditar={podeEditar}
+        podeGerirCategorias={podeGerirCategorias}
+      />
+    </div>
+  );
+}
+
+const SELECT_ORIGEM = "h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60";
+const FONTES = ["Meta Ads", "Google Ads", "Instagram", "Facebook", "WhatsApp", "Site", "Indicação", "Base de clientes", "Evento"];
+
+interface ValorDaOrigem {
+  origem: string;
+  campanha: string;
+  conjunto: string;
+  anuncio: string;
+  lp: string;
+  posicionamento: string;
+}
+
+/** Escolhe a origem em cascata: campanha → conjunto → anúncio → página (puxada do anúncio) e posicionamento. */
+function OrigemEmCascata({
+  valor,
+  aoMudar,
+  campanhas,
+  posicionamentos,
+  carregando,
+}: {
+  valor: ValorDaOrigem;
+  aoMudar: (v: ValorDaOrigem) => void;
+  campanhas: CampanhaOpcao[];
+  posicionamentos: string[];
+  carregando: boolean;
+}) {
+  const t = useT();
+  const camp = campanhas.find((c) => c.nome === valor.campanha) ?? null;
+  const conj = camp?.conjuntos.find((c) => c.nome === valor.conjunto) ?? null;
+  const anuncios = conj
+    ? conj.anuncios
+    : camp
+      ? [...camp.conjuntos.flatMap((c) => c.anuncios), ...camp.anuncios_soltos]
+      : [];
+  const comAtual = (lista: string[], atual: string) =>
+    atual && !lista.includes(atual) ? [atual, ...lista] : lista;
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-1">
+        <Label className="text-xs">{t("Origem")}</Label>
+        <Input
+          list="fontes-de-origem"
+          value={valor.origem}
+          onChange={(e) => aoMudar({ ...valor, origem: e.target.value })}
+        />
+        <datalist id="fontes-de-origem">
+          {FONTES.map((f) => (
+            <option key={f} value={f} />
           ))}
-          {podeEditar ? (
-            <form
-              className="flex items-center gap-1"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const novas = normalizarTags([novaTag]);
-                if (novas.length === 0) return;
-                void gravarTags([...new Set([...contact.tags, ...novas])]);
-                setNovaTag("");
-              }}
-            >
-              <Input
-                value={novaTag}
-                onChange={(e) => setNovaTag(e.target.value)}
-                placeholder={t("Nova tag…")}
-                className="h-8 w-36"
-              />
-              <Button size="sm" type="submit" variant="outline" disabled={!novaTag.trim()}>
-                {t("Adicionar")}
-              </Button>
-            </form>
-          ) : null}
-        </div>
-      </BlocoDaFicha>
+        </datalist>
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-xs">{t("Campanha")}</Label>
+        <select
+          className={SELECT_ORIGEM}
+          value={valor.campanha}
+          disabled={carregando}
+          onChange={(e) => aoMudar({ ...valor, campanha: e.target.value, conjunto: "", anuncio: "", lp: "" })}
+        >
+          <option value="">{t("Sem campanha")}</option>
+          {comAtual(campanhas.map((c) => c.nome), valor.campanha).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-xs">{t("Conjunto de anúncios")}</Label>
+        <select
+          className={SELECT_ORIGEM}
+          value={valor.conjunto}
+          disabled={!camp}
+          onChange={(e) => aoMudar({ ...valor, conjunto: e.target.value, anuncio: "", lp: "" })}
+        >
+          <option value="">{camp ? t("Qualquer conjunto") : t("Escolha a campanha")}</option>
+          {comAtual((camp?.conjuntos ?? []).map((c) => c.nome), valor.conjunto).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-xs">{t("Anúncio (criativo)")}</Label>
+        <select
+          className={SELECT_ORIGEM}
+          value={valor.anuncio}
+          disabled={!camp}
+          onChange={(e) => {
+            const a = anuncios.find((x) => x.nome === e.target.value);
+            // A página sai do anúncio (o link de destino dele), já preenchida.
+            aoMudar({ ...valor, anuncio: e.target.value, lp: a?.pagina?.nome ?? valor.lp });
+          }}
+        >
+          <option value="">{camp ? t("Sem anúncio") : t("Escolha a campanha")}</option>
+          {comAtual(anuncios.map((a) => a.nome), valor.anuncio).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-xs">{t("Landing page (do anúncio)")}</Label>
+        <select
+          className={SELECT_ORIGEM}
+          value={valor.lp}
+          disabled={!camp}
+          onChange={(e) => aoMudar({ ...valor, lp: e.target.value })}
+        >
+          <option value="">{t("Sem landing page")}</option>
+          {comAtual((camp?.paginas ?? []).map((p) => p.nome), valor.lp).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1">
+        <Label className="text-xs">{t("Posicionamento")}</Label>
+        <select
+          className={SELECT_ORIGEM}
+          value={valor.posicionamento}
+          onChange={(e) => aoMudar({ ...valor, posicionamento: e.target.value })}
+        >
+          <option value="">{t("Não informado")}</option>
+          {comAtual(posicionamentos, valor.posicionamento).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

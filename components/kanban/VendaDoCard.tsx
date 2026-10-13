@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { apiClient } from "@/lib/api/client";
+import type { DadosDoLead } from "@/components/leads/FichaDoLead";
 import type { Lead } from "@/lib/types/leads";
 import type { Venda } from "@/lib/vendas";
 
@@ -38,8 +39,26 @@ export function VendaDoCard({
         .vendas,
   });
 
+  // O que era do negócio (responsável e campos do funil) mora agora na venda.
+  const dadosDoNegocio = useQuery({
+    queryKey: ["ficha-do-lead", lead.id],
+    staleTime: 10_000,
+    queryFn: async () =>
+      (await apiClient.get<{ data: DadosDoLead }>(`/api/v1/leads/${lead.id}/origem`)).data,
+  });
+  const equipe = useQuery({
+    queryKey: ["team", "assignable"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: Array<{ user_id: string; name: string | null; email: string | null }> }>(
+          "/api/v1/team/assignable",
+        )
+      ).data,
+  });
+
   if (!contactId || consulta.isError) return <>{semVenda()}</>;
-  if (consulta.isLoading) return null;
+  if (consulta.isLoading || dadosDoNegocio.isLoading) return null;
   const venda = (consulta.data ?? [])
     .filter((v) => v.lead_id === lead.id)
     .sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
@@ -94,6 +113,21 @@ export function VendaDoCard({
         etapaId: lead.stage_id,
         aoMoverEtapa: moverEtapa,
         fichaHref: `/app/contacts/${contactId}`,
+        responsaveis: (equipe.data ?? []).map((p) => ({
+          id: p.user_id,
+          nome: p.name ?? p.email ?? p.user_id,
+        })),
+        responsavelId: dadosDoNegocio.data?.sistema.dono_id ?? null,
+        camposDoFunil: dadosDoNegocio.data?.negocio.field_defs ?? [],
+        camposValores: dadosDoNegocio.data?.custom_fields ?? {},
+        aoSalvarExtras: async (x) => {
+          try {
+            if (Object.keys(x).length > 0) await apiClient.patch(`/api/v1/leads/${lead.id}`, x);
+            await recarregar();
+          } catch (e) {
+            showApiError(e);
+          }
+        },
       }}
     />
   );
