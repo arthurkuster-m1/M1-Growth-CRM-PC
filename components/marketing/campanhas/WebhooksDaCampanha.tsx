@@ -110,11 +110,6 @@ export function WebhooksDaCampanha({
           {t("Gerir todos os webhooks em Conexões")}
         </Link>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {t(
-          "O endereço que recebe os leads desta campanha — do n8n, do formulário da LP ou de outro sistema. Aceita qualquer campo: o que chegar vira informação do lead, e o lead nasce no funil da campanha com a origem.",
-        )}
-      </p>
 
       {fontes === null ? (
         <div className="h-16 animate-pulse rounded-xl bg-secondary" aria-busy="true" />

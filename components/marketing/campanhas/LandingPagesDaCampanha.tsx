@@ -72,6 +72,9 @@ interface LinhaDaLp {
   lp: LandingPage;
   m: ReturnType<typeof metricasDaLp>;
   leads: number;
+  /** Vendas fechadas atreladas à LP e o que já caiu delas, em reais. */
+  vendas: number;
+  faturamento: number;
 }
 
 /**
@@ -98,6 +101,8 @@ export function LandingPagesDaCampanha({
     lp,
     m: metricasDaLp(lp, criativos),
     leads: origem?.porLandingPage[lp.id] ?? 0,
+    vendas: origem?.faturamento?.vendasPorLandingPage?.[lp.id] ?? 0,
+    faturamento: (origem?.faturamento?.porLandingPage[lp.id] ?? 0) / 100,
   }));
   const opcoesDeStatus = STATUS_DA_LP.map((s) => ({
     id: s,
@@ -135,6 +140,13 @@ export function LandingPagesDaCampanha({
     { id: "leads", titulo: t("Leads (CRM)"), tipo: "numero", valorDe: (l) => l.leads },
     { id: "conversao", titulo: t("Conversão da LP"), tipo: "numero", valorDe: conversao },
     { id: "cpl", titulo: t("CPL real"), tipo: "numero", valorDe: cplReal },
+    { id: "vendas", titulo: t("Vendas"), tipo: "numero", valorDe: (l) => l.vendas },
+    {
+      id: "faturamento",
+      titulo: t("Faturamento"),
+      tipo: "numero",
+      valorDe: (l) => l.faturamento,
+    },
   ];
 
   const numero = (texto: string) => (
@@ -242,6 +254,18 @@ export function LandingPagesDaCampanha({
       celula: (l) => numero(reais(cplReal(l))),
     },
     {
+      id: "vendas",
+      titulo: t("Vendas"),
+      largura: 100,
+      celula: (l) => numero(inteiro(l.vendas)),
+    },
+    {
+      id: "faturamento",
+      titulo: t("Faturamento"),
+      largura: 140,
+      celula: (l) => numero(l.faturamento > 0 ? moedaDoNumero(l.faturamento) : "—"),
+    },
+    {
       id: "criativos",
       titulo: t("Criativos"),
       largura: 110,
@@ -273,7 +297,7 @@ export function LandingPagesDaCampanha({
       </div>
       <p className="text-xs text-muted-foreground">
         {t(
-          "Cadastre o link de cada LP que está rodando. As métricas vêm dos criativos cuja página de destino é o mesmo link. Leads e conversão vêm do CRM, pela origem de cada lead.",
+          "Cadastre o link de cada LP que está rodando. As métricas vêm dos criativos cuja página de destino é o mesmo link. Leads, conversão, vendas e faturamento vêm do CRM, pela origem de cada lead e de cada venda.",
         )}
       </p>
 
@@ -295,6 +319,8 @@ export function LandingPagesDaCampanha({
             lp={l.lp}
             m={l.m}
             leads={l.leads}
+            vendas={l.vendas}
+            faturamento={l.faturamento}
             campanhaId={campanhaId}
             podeEditar={podeEditar}
             editar={(patch) => void editar(l.lp.id, patch)}
@@ -310,6 +336,8 @@ function CartaoDaLp({
   lp,
   m,
   leads,
+  vendas,
+  faturamento,
   campanhaId,
   podeEditar,
   editar,
@@ -318,6 +346,8 @@ function CartaoDaLp({
   lp: LandingPage;
   m: ReturnType<typeof metricasDaLp>;
   leads: number;
+  vendas: number;
+  faturamento: number;
   campanhaId: string;
   podeEditar: boolean;
   editar: (patch: Partial<Pick<LandingPage, "name" | "url" | "status" | "notes">>) => void;
@@ -407,6 +437,11 @@ function CartaoDaLp({
         <Metrica
           rotulo={t("CPL real")}
           valor={leads > 0 && m.spend > 0 ? moedaDoNumero(m.spend / leads) : "—"}
+        />
+        <Metrica rotulo={t("Vendas")} valor={inteiro(vendas)} />
+        <Metrica
+          rotulo={t("Faturamento")}
+          valor={faturamento > 0 ? moedaDoNumero(faturamento) : "—"}
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">

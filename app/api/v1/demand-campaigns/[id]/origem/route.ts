@@ -134,6 +134,9 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     vendas: 0,
     porCriativo: {} as Record<string, number>,
     porLandingPage: {} as Record<string, number>,
+    /** Quantas vendas fechadas vieram de cada criativo e de cada landing page. */
+    vendasPorCriativo: {} as Record<string, number>,
+    vendasPorLandingPage: {} as Record<string, number>,
   };
   let consultaDeVendas = a.supabase
     .from("crm_sales")
@@ -171,10 +174,14 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (v.demand_creative_id) {
       faturamento.porCriativo[v.demand_creative_id] =
         (faturamento.porCriativo[v.demand_creative_id] ?? 0) + recebido;
+      faturamento.vendasPorCriativo[v.demand_creative_id] =
+        (faturamento.vendasPorCriativo[v.demand_creative_id] ?? 0) + 1;
     }
     if (v.demand_landing_page_id) {
       faturamento.porLandingPage[v.demand_landing_page_id] =
         (faturamento.porLandingPage[v.demand_landing_page_id] ?? 0) + recebido;
+      faturamento.vendasPorLandingPage[v.demand_landing_page_id] =
+        (faturamento.vendasPorLandingPage[v.demand_landing_page_id] ?? 0) + 1;
     }
   }
 

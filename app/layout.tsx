@@ -49,6 +49,20 @@ const atkinson = localFont({
   variable: "--font-atkinson",
 });
 
+// Montserrat: fonte variável (400–700), só latin (cobre o português). Entra na frente da
+// Atkinson na pilha do `globals.css`; para voltar à anterior, basta trocar a ordem lá.
+const montserrat = localFont({
+  src: [
+    {
+      path: "./fonts/montserrat-variable-latin.woff2",
+      weight: "400 700",
+      style: "normal",
+    },
+  ],
+  display: "swap",
+  variable: "--font-montserrat",
+});
+
 const plexMono = localFont({
   src: [
     { path: "./fonts/ibm-plex-mono-400-latin-latin-ext.woff2", weight: "400", style: "normal" },
@@ -328,7 +342,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="pt-BR"
       data-theme="light"
       suppressHydrationWarning
-      className={`${atkinson.variable} ${plexMono.variable}`}
+      className={`${montserrat.variable} ${atkinson.variable} ${plexMono.variable}`}
     >
       <head>
         {/* Primeiro de tudo: a cor da instalação, antes do CSS e do script de tema. */}

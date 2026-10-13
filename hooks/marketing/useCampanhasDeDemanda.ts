@@ -487,6 +487,9 @@ export interface OrigemDosLeads {
     vendas: number;
     porCriativo: Record<string, number>;
     porLandingPage: Record<string, number>;
+    /** Vendas fechadas por criativo e por landing page (contagem). */
+    vendasPorCriativo?: Record<string, number>;
+    vendasPorLandingPage?: Record<string, number>;
   };
   /** Gasto do Meta no mesmo período dos leads e das vendas. */
   investido?: number;
