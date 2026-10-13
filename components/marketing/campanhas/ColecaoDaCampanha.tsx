@@ -6,6 +6,7 @@ import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
@@ -77,6 +78,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   const [configurando, setConfigurando] = useState(false);
   const [aba, setAba] = useState<string>(ID_DA_PADRAO);
   const [forcarCartoes, setForcarCartoes] = useState(false);
+  const [abertoId, setAbertoId] = useState<string | null>(null);
 
   const padrao = useVisualizacao(tela);
   const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
@@ -122,7 +124,28 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
     tipo: c.tipo,
     opcoes: c.opcoes,
   }));
-  const resolvidas = resolverColunas(colunas, preferencias);
+  // A coluna do título ganha "Abrir": o item inteiro num painel no centro da tela.
+  const colunasComAbrir: ColunaDoMotor<T>[] = colunas.map((c) =>
+    c.semOcultar
+      ? {
+          ...c,
+          largura: c.largura + 70,
+          celula: (linha: T) => (
+            <div className="flex min-w-0 items-center gap-1">
+              <div className="min-w-0 flex-1">{c.celula(linha)}</div>
+              <button
+                type="button"
+                onClick={() => setAbertoId(linha.id)}
+                className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
+              >
+                {t("Abrir")}
+              </button>
+            </div>
+          ),
+        }
+      : c,
+  );
+  const resolvidas = resolverColunas(colunasComAbrir, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
 
   function mudarConsulta(c: ConsultaDaTabela) {
@@ -323,6 +346,21 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
       ) : (
         cartoes(resultado.linhas)
       )}
+
+      <Dialog open={abertoId !== null} onOpenChange={(a) => !a && setAbertoId(null)}>
+        <DialogContent className="max-h-[90vh] w-[min(96vw,820px)] max-w-none overflow-y-auto p-3 sm:max-w-none sm:rounded-2xl">
+          <DialogTitle className="sr-only">{rotuloDaTabela}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {t("Edite os campos deste item.")}
+          </DialogDescription>
+          {abertoId
+            ? (() => {
+                const aberto = itens.find((i) => i.id === abertoId);
+                return aberto ? cartao(aberto) : null;
+              })()
+            : null}
+        </DialogContent>
+      </Dialog>
 
       <ConfigurarVisualizacao
         aberto={configurando}

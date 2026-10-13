@@ -12,6 +12,7 @@ import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
+import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
@@ -191,17 +192,19 @@ export function LandingPagesDaCampanha({
       id: "url",
       titulo: t("Link"),
       icone: <LinkSimple size={14} aria-hidden />,
-      largura: 300,
+      largura: 360,
       celula: (l) => (
-        <CelulaDeTexto
-          valor={l.lp.url}
-          rotulo={t("Link da LP (https://…)")}
-          vazioRotulo="—"
-          permitirVazio
-          inputMode="url"
-          podeEditar={podeEditar}
-          aoSalvar={(url) => void editar(l.lp.id, { url })}
-        />
+        <LinkComVer url={l.lp.url}>
+          <CelulaDeTexto
+            valor={l.lp.url}
+            rotulo={t("Link da LP (https://…)")}
+            vazioRotulo="—"
+            permitirVazio
+            inputMode="url"
+            podeEditar={podeEditar}
+            aoSalvar={(url) => void editar(l.lp.id, { url })}
+          />
+        </LinkComVer>
       ),
     },
     {

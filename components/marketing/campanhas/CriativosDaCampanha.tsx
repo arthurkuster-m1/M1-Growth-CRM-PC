@@ -13,6 +13,7 @@ import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
+import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
@@ -583,6 +584,24 @@ export function CriativosDaCampanha({
             {rotuloDoStatusDoCriativo(t, l.c.status)}
           </Etiqueta>
         </SeletorDeOpcao>
+      ),
+    },
+    {
+      id: "link",
+      titulo: t("Link de destino"),
+      largura: 320,
+      celula: (l) => (
+        <LinkComVer url={l.c.link_url}>
+          <CelulaDeTexto
+            valor={l.c.link_url}
+            rotulo={t("Link de destino")}
+            vazioRotulo="—"
+            permitirVazio
+            inputMode="url"
+            podeEditar={podeEditar}
+            aoSalvar={(link_url) => void editar(l.c.id, { link_url })}
+          />
+        </LinkComVer>
       ),
     },
     {
