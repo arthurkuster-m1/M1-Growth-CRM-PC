@@ -77,7 +77,11 @@ export function PainelDaVisaoGeral({
     queryKey: ["tarefas-do-contato", contactId],
     staleTime: 10_000,
     queryFn: async () =>
-      (await apiClient.get<{ data: Tarefa[] }>(`/api/v1/tasks?contact_id=${contactId}&aberto=true`)).data,
+      (
+        await apiClient.get<{ data: { tasks: Tarefa[] } }>(
+          `/api/v1/tasks?contact_id=${contactId}&aberto=true`,
+        )
+      ).data.tasks ?? [],
   });
   const notasQ = useQuery({
     queryKey: ["anotacoes-do-lead", contactId],
