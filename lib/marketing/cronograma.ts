@@ -178,6 +178,8 @@ export const edicaoDeItemSchema = z
     notas: z.string().trim().max(500),
     fase: z.string().trim().max(80),
     arquivado: z.boolean(),
+    /** A posição entre as ações (reordenar sem apagar e recriar). */
+    ordem: z.number().finite().min(-1e9).max(1e9),
   })
   .partial();
 
@@ -222,6 +224,22 @@ export const configSchema = z.object({
 export function domingoDe(chave: string): string {
   const diaDaSemana = new Date(`${chave}T12:00:00Z`).getUTCDay(); // 0 = domingo
   return somarDias(chave, -diaDaSemana);
+}
+
+/**
+ * Em que semana do cronograma cai uma DATA (>= 1; antes do início conta como a 1). `null` sem
+ * data de início — quem chama decide se a data escolhida vira o início.
+ */
+export function semanaDaData(
+  config: Pick<ConfigDoCronograma, "data_inicio">,
+  data: string,
+): number | null {
+  if (!config.data_inicio) return null;
+  const base = domingoDe(config.data_inicio);
+  const dias = Math.round(
+    (Date.parse(`${domingoDe(data)}T12:00:00Z`) - Date.parse(`${base}T12:00:00Z`)) / 86_400_000,
+  );
+  return Math.min(MAXIMO_DE_SEMANAS, Math.max(1, Math.floor(dias / 7) + 1));
 }
 
 /** O domingo de hoje (no fuso do cronograma). */

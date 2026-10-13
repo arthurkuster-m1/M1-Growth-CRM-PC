@@ -102,7 +102,7 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
       executar(() => apiClient.put(BASE, c), recarregarGeral),
     criarItem: (i: Omit<ItemDoCronograma, "id" | "ordem">) =>
       executar(() => apiClient.post(`${BASE}/itens`, i), recarregarGeral),
-    editarItem: (id: string, i: Partial<Omit<ItemDoCronograma, "id" | "ordem">>) =>
+    editarItem: (id: string, i: Partial<Omit<ItemDoCronograma, "id">>) =>
       executar(() => apiClient.patch(`${BASE}/itens/${id}`, i), recarregarGeral),
     apagarItem: (id: string) =>
       executar(() => apiClient.delete(`${BASE}/itens/${id}`), recarregarGeral),

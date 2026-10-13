@@ -6,6 +6,7 @@ import {
   numeroDaSemana,
   periodoDaSemana,
   leituraDaMeta,
+  semanaDaData,
   menorEhMelhor,
   progressoDaMeta,
   domingoDe,
@@ -189,5 +190,19 @@ describe("meta em que menor é melhor (CPL)", () => {
     expect(
       leituraDaMeta({ fonte: "leads", titulo: "Leads", valor_alvo: 100, valor_atual: 150 }),
     ).toMatchObject({ barra: 100, bom: true, menorEMelhor: false });
+  });
+});
+
+describe("semana pela data", () => {
+  const cfg = { data_inicio: "2026-10-04" }; // domingo = semana 1
+  it("calcula a semana do projeto em que cada data cai", () => {
+    expect(semanaDaData(cfg, "2026-10-04")).toBe(1);
+    expect(semanaDaData(cfg, "2026-10-10")).toBe(1);
+    expect(semanaDaData(cfg, "2026-10-11")).toBe(2);
+    expect(semanaDaData(cfg, "2026-10-28")).toBe(4);
+  });
+  it("antes do início conta como a semana 1 e sem início devolve nulo", () => {
+    expect(semanaDaData(cfg, "2026-09-01")).toBe(1);
+    expect(semanaDaData({ data_inicio: null }, "2026-10-10")).toBeNull();
   });
 });
