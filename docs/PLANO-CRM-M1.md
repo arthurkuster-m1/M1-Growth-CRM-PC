@@ -347,3 +347,59 @@ Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · 
 - `GET /api/v1/marketing/origem-opcoes` devolve `fontes`; `PUT /api/v1/leads/[id]/origem` aceita
   `conjunto` e `posicionamento` (em `source_metadata.origem_manual` do card); a importação grava a
   origem no contato e liga o card pelos ids.
+
+### Sessão 10 (continuação 5) — Responsável, nome, origem e cards recolhíveis (13/10/2026; migration 0624)
+
+- **Popup da venda**: saiu "Campanha de origem"; entrou **Responsável** (equipe da empresa; grava no
+  dono do card da venda — `definirResponsavelDaVenda` em `lib/vendas-servidor.ts`), **Nome da
+  venda** (`crm_sales.name`, vazio = produtos juntados; `nomeDaVenda()` em `lib/vendas.ts`) e, no
+  fim, o bloco **Origem** no mesmo modelo do lead (grava no card e nas vendas dele).
+- **Ficha**: botão **Voltar ao CRM**; **Registrar ação** e **Últimas ações** (2) na Visão geral,
+  acima de Anotações; **"Sair sem salvar?"** (`AvisoDeNaoSalvo.tsx`) para troca de aba, links e
+  fechar a página; campo personalizado **salva ao adicionar** e o botão Salvar fica embaixo.
+- **Aba Funis**: cada card é um bloco **recolhível** de 1 linha (funil, venda, etapa, status da
+  venda); busca, filtros, agrupamento e ordem (mesmo motor da aba Vendas).
+- **Card sem venda não existe**: `DELETE /api/v1/vendas/[id]` apaga o card junto com a última venda.
+- **Erro intermitente da aba Funis**: a lista da equipe (`/team/assignable`) era guardada na mesma
+  chave de cache com formatos diferentes; a ficha agora usa `useEquipeDaFicha`.
+
+### Sessão 10 (continuação 6) — Faturamento por origem da venda (migrations 0625, 0626, 0627)
+
+- **Campanhas › Landing Pages e Criativos**: vendas e faturamento vêm da **base de vendas**, pela
+  origem da venda; só contam parcelas **recebidas** (mesmo um sinal), comprometida ou concluída; com
+  período escolhido vale a data do pagamento (`/api/v1/demand-campaigns/[id]/origem`).
+- **Card e venda têm sempre a mesma origem** (0626: a venda espelha o card e acompanha quando ele
+  muda ou a venda troca de card). **Card novo herda a origem do lead** (0627), salvo origem própria
+  informada na criação ou alterada à mão. (A 0625 preenchia só vazios e foi superada pela 0626.)
+- Limpeza dos dados de teste: funis sem campanha e sem cards removidos (o funil padrão fica).
+
+### Sessão 10 (continuação 7) — Clientes: métricas, valores e vendas por linha
+
+- **Topo**: **Faturamento recebido** (soma do LTV atual) à esquerda de **Valor em aberto**
+  (previsto + em interesse); taxa de conversão com "X clientes compraram"; todos os números são
+  **clicáveis** e filtram a lista pelos leads que compõem aquele número.
+- **Colunas**: saiu "Valor"; entram **LTV atual (valor pago)**, **LTV previsto (comprometido)** e
+  **Em interesse**, somados das vendas pelo status delas (no funil escolhido, se houver).
+- **Vendas**: 1 linha por venda, ligada ao funil e à etapa do card; **Campanha, Anúncio e Landing
+  page** são os da própria venda, 1 por linha; clicar abre o **popup da venda**. Filtro de status
+  das vendas (Interesse/Comprometida/Concluída, "Só abertas") **salvo na visualização**
+  (`statusDasVendas` em `lib/motor/layout.ts`).
+- **Vendas (tabela)**: barra de funis igual à de Clientes e colunas Anúncio e Landing page
+  (`/api/v1/vendas` devolve `anuncio` e `lp`).
+- **API** `GET /api/v1/clientes`: `vendas_ativas`, `anuncios`, `lps`, `anuncios_por_id`, `lps_por_id`.
+
+### Pendências e próximos passos (13/10/2026)
+
+1. **Tela de Tarefas do menu** com erro (a aba de Tarefas da ficha funciona).
+2. **Hotmart**: vendas entrando sozinhas.
+3. **Contas a receber**: cobrança das parcelas previstas.
+4. **Lead Ads nativo** do Meta e eventos de **CAPI**; movimentação automática de leads.
+5. Limpeza física das tabelas antigas de propostas.
+6. Ações do usuário no Meta: liberar contas e sincronizar.
+7. Dados: 2 vendas sem campanha (abrir a venda e escolher a origem).
+8. Limites conhecidos: filtros personalizados de tags no navegador (localStorage); Dia a dia de
+   canais fora de tráfego pago só com as colunas calculáveis; campanha/anúncio inexistente na
+   importação vira texto e tag; vendas antigas sem funil não entram nas contas "por funil"; divisão
+   do valor pago por produto só no relatório por produto (não no popup).
+9. Regra assumida: a origem da venda **não** pode diferir da do card (se quiser origem própria da
+   venda, é decisão a tomar).

@@ -1,6 +1,6 @@
 # PLANO DO M1 GROWTH CRM
 
-Atualizado em 11/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
+Atualizado em 13/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
 
@@ -57,6 +57,20 @@ trabalhando em cima, conforme a prioridade do Arthur.
   (`getClaims`, sem ir ao Supabase a cada requisição), memória de 20 s para permissões e contexto
   de suporte, polling do Inbox espaçado. Conferir o consumo depois de alguns dias.
 
+### CRM, Vendas e Campanhas (11 a 13/10/2026)
+Detalhe sessão a sessão em `docs/PLANO-CRM-M1.md`.
+- **Lead único e funis** que pertencem à campanha; página Clientes (tabela e quadro) com Novo lead e
+  Importar leads (CSV, planilha, tabela colada).
+- **Venda é o card do funil**: produtos do catálogo, parcelas, status, nome, responsável, origem.
+- **Ficha do lead** em abas (Visão geral, Cadastro, Atendimento e Tarefas, Vendas, Funis,
+  Anotações, Linha do Tempo, LGPD), com registrar ação e aviso de "sair sem salvar".
+- **Origem num só modelo** (fonte + campanha → conjunto → anúncio → LP → posicionamento); card e
+  venda sempre com a mesma origem; card novo herda a origem do lead.
+- **Métricas do CRM** somadas das vendas: faturamento recebido, valor em aberto, LTV atual/previsto,
+  em interesse, taxa de conversão; vendas e faturamento por anúncio e LP só com valor já pago.
+- **Campanhas**: criativos do Meta com todas as variações de texto e mídia (imagens comprimidas),
+  dia a dia automático, seletor de período nas telas.
+
 ## 2. PEQUENOS AJUSTES PENDENTES
 
 | Item | Situação |
@@ -68,42 +82,44 @@ trabalhando em cima, conforme a prioridade do Arthur.
 | Pendências antigas do menu | Nome real no lugar de "Dono": **feito** (ao entrar com o Google). Faltam: seletor de empresa e redirecionamento pós-onboarding (junto das frentes 12/14) |
 | Página `onboarding` antiga publicada | **Feito** (apagada, com o rascunho e o link) |
 
-## 3. O PLANO (15 frentes, sem ordem fixa)
+## 3. As 15 frentes (sem ordem fixa)
 
-1. **Dashboards atualizados — tudo em um lugar só.** Reunir tráfego (Meta/Google), vendas,
-   faturamento e a meta × realizado do Planejamento. Hoje existem `/app/metrics`, `/app/ads/meta`,
-   `/app/faturamento` e o placeholder de Marketing.
-2. **Cronograma.** **FEITO** (ver histórico). Melhorias planejadas:
-   - **Prazo nas metas:** definir o período de cada meta (diário, semanal, mensal, semestral,
-     anual…).
-   - **Metas que se atualizam sozinhas** dentro do prazo, a partir dos dados reais. Exemplos:
-     meta de 30 leads por dia → média de leads dos últimos 5 dias; meta de R$ 15 mil no mês →
-     soma das vendas realizadas no mês. A mesma lógica vale para os Dashboards (frente 1).
-     Depende do CRM (frente 8): leads e vendas precisam existir como dado.
-   - Ligar as barras das ações às tarefas, resumo semanal para o WhatsApp e motivo visível ao
-     cliente por escolha.
-3. **IA ajudante.** Rascunho de página a partir do Kick Off e dos prompts do método
-   (precisa de chave de IA). Botão "Gerar rascunho" nas páginas.
-4. **Geração de demanda.** Registro de campanhas, criativos e textos com status; o Arthur tem uma
-   base e quer estruturar melhor. **Inclui a criação das campanhas e dos funis que serão usados
-   no CRM** (cada campanha nasce ligada a um funil e a uma origem rastreável; é a ponte entre
-   esta frente e a 8). Fazer em conjunto com o planejamento do CRM.
-   **Plano detalhado: `docs/PLANO-CAMPANHAS-M1.md`** (sessão C1 feita: cadastro, tabela,
-   cards e linha do tempo das campanhas).
-5. **Inbox.** Ajustes visuais e conexões com outros bancos (detalhar "outros bancos").
-6. **Equipe.** Pessoas, papéis e interface por empresa.
-7. **Prospecção.** Scraping de leads + campanhas de disparo automático (API oficial e não oficial)
-   com análise de dados automática por ação e por mensagem. Base existente: `/app/prospecting`.
-8. **CRM — o mais trabalhoso.** *(plano fechado em `docs/PLANO-CRM-M1.md`)* Visualizações + funis + base de leads + base de vendas + conexão com
-   dashboards + trackeamento impecável + disparos de CAPI + movimentação automática de leads
-   (estilo Tintim). Cuidado: leads alimentam Inbox, automações, follow-up, IA e webhooks.
-9. **Conexões e webhooks.** Formulários e landing pages do Arthur entrando como leads.
-10. **Agenda.** Ajustes visuais e de UX.
-11. **Agentes de IA.** Revisar agentes e a fonte de conhecimento (ofertas já alimentam o catálogo).
-12. **Configurações gerais.**
-13. **Barra de pesquisa.** Evoluir a paleta de comandos (⌘K).
-14. **Visão multi-tenant de ADM.** Organização e visualizações (área `/admin`).
-15. **Gestão financeira completa.** Contas, fluxo de caixa, DRE, recorrência (hoje há `/app/faturamento`).
+Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta) ou **A fazer**.
+
+| # | Frente | Escopo | Situação | O que você pode ir decidindo no planejamento |
+| --- | --- | --- | --- | --- |
+| 1 | **Dashboards** | Tráfego (Meta/Google), vendas, faturamento e meta × realizado do Planejamento num lugar só | **Parcial.** Existem `/app/metrics`, `/app/ads/meta`, `/app/faturamento`; o CRM já mostra faturamento recebido, valor em aberto e LTV; campanhas mostram vendas e faturamento por anúncio e LP. Falta a tela única | Quais números mandam na tela inicial? Quais períodos? Quem vê o quê (agência × cliente)? |
+| 2 | **Cronograma** | Feito | **Feito** | Só as melhorias futuras abaixo |
+| 3 | **IA ajudante** | Rascunho de página a partir do Kick Off e dos prompts do método (precisa de chave de IA) | **A fazer** | Quais páginas geram rascunho primeiro? Que modelo de IA e qual orçamento? |
+| 4 | **Geração de demanda** | Campanhas, criativos e textos com status; você já tem uma base | **Em andamento.** Cadastro, tabela, cards e linha do tempo; criativos do Meta com todas as variações; dia a dia automático; origem rastreável. Plano em `docs/PLANO-CAMPANHAS-M1.md` | Mande a base atual. Quais campos e quais status? |
+| 5 | **Inbox** | Ajustes visuais e conexões com "outros bancos" | **A fazer** | O que são esses "outros bancos"? Que ajustes visuais incomodam? |
+| 6 | **Equipe** | Pessoas, papéis e interface por empresa | **A fazer** (a equipe já aparece como responsável por lead e por venda) | Quais papéis existem de fato na agência e no cliente? |
+| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **A fazer** (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? |
+| 8 | **CRM** (o maior) | Visualizações, funis, base de leads e de vendas, ligação com dashboards, rastreamento, CAPI e movimentação automática estilo Tintim | **Em andamento, avançado.** Faltam Hotmart, contas a receber, Lead Ads nativo, CAPI/movimentação automática (ver `docs/PLANO-CRM-M1.md`) | Já está no `PLANO-CRM-M1.md` do fork |
+| 9 | **Conexões e webhooks** | Formulários e LPs entrando como leads | **Parcial.** Receber lead já tratado (n8n/sistema próprio) e importação feitos; falta Lead Ads nativo e os eventos de CAPI | Quais LPs e formulários? Quais campos chegam? Que eventos viram CAPI? |
+| 10 | **Agenda** | Ajustes visuais e de UX | **A fazer** | Liste o que incomoda hoje |
+| 11 | **Agentes de IA** | Revisar agentes e a fonte de conhecimento (as ofertas já alimentam) | **A fazer** | Quais agentes existem? Qual é o papel de cada um? |
+| 12 | **Configurações gerais** | Centralizar ajustes | **A fazer** (categorias e cores de tag já têm tela própria em Configurações › Tags) | O que está espalhado hoje? |
+| 13 | **Barra de pesquisa** | Evoluir a paleta de comandos | **A fazer** | O que deve ser pesquisável (leads, tarefas, produtos, páginas)? |
+| 14 | **Visão multi-tenant (ADM)** | Organizações e visualizações na área `/admin` | **A fazer** | O que você precisa ver de todos os clientes de uma vez? |
+| 15 | **Financeiro completo** | Contas, fluxo de caixa, DRE e recorrência | **Parcial.** Vendas, parcelas, faturamento recebido e a receber existem; faltam contas a receber (cobrança), fluxo de caixa, DRE | Hoje existe `/app/faturamento`. Que relatórios importam? |
+
+### Detalhes das frentes
+
+**2. Cronograma (melhorias futuras)**
+- **Prazo nas metas:** definir o período de cada meta (diário, semanal, mensal, semestral, anual…).
+- **Metas que se atualizam sozinhas** dentro do prazo, a partir dos dados reais. Exemplos: meta de
+  30 leads por dia → média de leads dos últimos 5 dias; meta de R$ 15 mil no mês → soma das vendas
+  realizadas no mês. A mesma lógica vale para os Dashboards (frente 1). Depende do CRM (frente 8):
+  leads e vendas precisam existir como dado (**já existem**).
+- Ligar as barras das ações às tarefas, resumo semanal para o WhatsApp e motivo visível ao cliente
+  por escolha.
+
+**4. Geração de demanda**: inclui a criação das campanhas e dos funis que serão usados no CRM
+(cada campanha nasce ligada a um funil e a uma origem rastreável; é a ponte entre esta frente e a
+8). Plano detalhado: `docs/PLANO-CAMPANHAS-M1.md`.
+
+**8. CRM**: cuidado, leads alimentam Inbox, automações, follow-up, IA e webhooks.
 
 ### Ligações entre as frentes
 - 4 (geração de demanda) cria as campanhas e os funis que o CRM (8) usa; definir os dois juntos.
