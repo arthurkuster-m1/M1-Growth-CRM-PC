@@ -6,7 +6,12 @@ import { useT } from "@/hooks/i18n/useT";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ShieldCheck, PencilSimple, LockOpen } from "@/lib/ui/icons";
-import { FichasDoContato } from "@/components/leads/FichasDoContato";
+import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
+import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
+import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
+import { FunisDoLead } from "@/components/contacts/ficha/FunisDoLead";
+import { LinhaDoTempoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
+import { VendasDaFicha } from "@/components/contacts/ficha/VendasDaFicha";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
@@ -35,7 +40,6 @@ import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { TimelineView } from "@/components/contacts/TimelineView";
 import { EditContactDialog } from "@/components/contacts/EditContactDialog";
 import { AnonymizeDialog } from "@/components/contacts/AnonymizeDialog";
 import { PropostasDeDado } from "@/components/contacts/PropostasDeDado";
@@ -140,6 +144,10 @@ export function ContactDetailClient({ contactId }: Props) {
   // uma das DUAS que ignoravam o telefone: contato com número e sem nome
   // aparecia como "Sem nome" aqui e com o número no inbox.
   const displayName = rotuloDoContato(contact, t);
+  const podeEditarFicha =
+    !contact.is_anonymized &&
+    user.support?.access_mode !== "support_readonly" &&
+    Boolean(activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent);
 
   // Os quatro níveis que quem opera tráfego lê. O jsonb já os recebia dos dois
   // caminhos de entrada — site e clique-para-WhatsApp — e nenhuma tela o abria.
@@ -185,7 +193,7 @@ export function ContactDetailClient({ contactId }: Props) {
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
             {contact.tags.map((t) => (
-              <ChipDeEtiqueta key={t} tag={t} />
+              <ChipDeEtiqueta key={t} tag={t} contorno />
             ))}
             {contact.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
             {/* Selo lido da COLUNA, nunca da etiqueta (critério 5): editar
@@ -307,17 +315,19 @@ export function ContactDetailClient({ contactId }: Props) {
       )}
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
+          <TabsTrigger value="atendimento">{t("Atendimento e Tarefas")}</TabsTrigger>
+          <TabsTrigger value="vendas">{t("Vendas")}</TabsTrigger>
+          <TabsTrigger value="funis">{t("Funis")}</TabsTrigger>
+          <TabsTrigger value="anotacoes">{t("Anotações")}</TabsTrigger>
+          <TabsTrigger value="timeline">{t("Linha do Tempo")}</TabsTrigger>
           {isAdmin && <TabsTrigger value="lgpd">LGPD</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <Card className="mb-4 p-4">
-            <FichasDoContato contactId={contactId} />
-          </Card>
-          <Card className="p-4">
+          <Card className="rounded-2xl border-l-4 border-l-blue-500 p-4">
             <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
               <div>
                 <dt className="text-xs text-muted-foreground uppercase">{t("Nome")}</dt>
@@ -423,8 +433,37 @@ export function ContactDetailClient({ contactId }: Props) {
           </div>
         </TabsContent>
 
+        <TabsContent value="cadastro" className="mt-4">
+          <CadastroDoLead
+            contact={contact}
+            origem={origem}
+            podeEditar={podeEditarFicha}
+            camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
+          />
+        </TabsContent>
+
+        <TabsContent value="atendimento" className="mt-4">
+          <AtendimentoDoLead contactId={contactId} />
+        </TabsContent>
+
+        <TabsContent value="vendas" className="mt-4">
+          <VendasDaFicha contactId={contactId} nome={displayName} />
+        </TabsContent>
+
+        <TabsContent value="funis" className="mt-4">
+          <FunisDoLead
+            contactId={contactId}
+            conjuntoDoAnuncio={origem.conjunto}
+            podeEditar={podeEditarFicha}
+          />
+        </TabsContent>
+
+        <TabsContent value="anotacoes" className="mt-4">
+          <AnotacoesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
+        </TabsContent>
+
         <TabsContent value="timeline" className="mt-4">
-          <TimelineView contactId={contactId} />
+          <LinhaDoTempoDoLead contactId={contactId} podeEditar={podeEditarFicha} />
         </TabsContent>
 
         {isAdmin && (

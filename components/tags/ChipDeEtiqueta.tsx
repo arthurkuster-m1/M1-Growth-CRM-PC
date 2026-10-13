@@ -32,7 +32,7 @@ import type { ReactNode } from "react";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { estiloDoChip } from "@/lib/tags/cor-da-etiqueta";
+import { estiloDoChip, normalizarCorDeEtiqueta } from "@/lib/tags/cor-da-etiqueta";
 import { useCorDaEtiqueta } from "@/components/tags/CoresDasEtiquetas";
 
 interface Props extends Omit<BadgeProps, "children"> {
@@ -45,13 +45,46 @@ interface Props extends Omit<BadgeProps, "children"> {
    * caso de todos os chips de lista.
    */
   cor?: string | null;
+  /**
+   * Visual de TAG de verdade: fundo suave, borda na cor escolhida e o texto no tom normal da
+   * tela (sempre legível). Usado na ficha do lead.
+   */
+  contorno?: boolean;
   /** Conteúdo extra ao lado do nome (o botão de remover dos editores). */
   children?: ReactNode;
 }
 
-export function ChipDeEtiqueta({ tag, cor, className, children, ...props }: Props) {
+export function ChipDeEtiqueta({ tag, cor, contorno, className, children, ...props }: Props) {
   const corDoProvider = useCorDaEtiqueta(tag);
   const efetiva = cor === undefined ? corDoProvider : cor;
+  if (contorno) {
+    const c = normalizarCorDeEtiqueta(efetiva);
+    return (
+      <Badge
+        variant="secondary"
+        className={cn("border-[1.5px] bg-transparent text-foreground", !c && "border-border", className)}
+        style={
+          c
+            ? {
+                borderColor: c,
+                backgroundColor: `color-mix(in srgb, ${c} 16%, transparent)`,
+              }
+            : undefined
+        }
+        {...props}
+      >
+        {c ? (
+          <span
+            aria-hidden
+            className="mr-1.5 inline-block size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: c }}
+          />
+        ) : null}
+        {tag}
+        {children}
+      </Badge>
+    );
+  }
   return (
     <Badge variant="secondary" className={cn(className)} style={estiloDoChip(efetiva)} {...props}>
       {tag}

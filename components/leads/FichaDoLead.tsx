@@ -25,7 +25,7 @@ import { Plus, Trash } from "@/lib/ui/icons";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import type { Lead } from "@/lib/types/leads";
 
-interface DadosDoLead {
+export interface DadosDoLead {
   lead_id: string;
   sistema: {
     criado_em: string;
@@ -68,7 +68,7 @@ interface DadosDoLead {
   }>;
 }
 
-const chaveDaFicha = (leadId: string) => ["ficha-do-lead", leadId] as const;
+export const chaveDaFicha = (leadId: string) => ["ficha-do-lead", leadId] as const;
 
 const classeDoSelect =
   "h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60";
@@ -465,7 +465,7 @@ function FormularioDoContato({
   );
 }
 
-function OrigemEditavel({ leadId, dados }: { leadId: string; dados: DadosDoLead }) {
+export function OrigemEditavel({ leadId, dados }: { leadId: string; dados: DadosDoLead }) {
   const t = useT();
   const queryClient = useQueryClient();
   const [salvando, setSalvando] = useState(false);

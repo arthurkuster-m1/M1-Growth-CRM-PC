@@ -272,3 +272,25 @@ prospecção por scraping.
   juntadas (`quandoJaExiste: "reaproveitar"`).
 - Vocabulário das colunas: `lib/leads/colunas-da-planilha.ts` (puro); tabela/modelos no navegador:
   `lib/leads/tabela-de-importacao.ts`.
+
+## Sessão 10 — Ficha do Lead reorganizada (/app/contacts/[id])
+
+Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · Anotações · Linha do Tempo · LGPD**.
+
+- **Cadastro** (da PESSOA; editar vale para todos os funis): contato, links, qualificação, origem,
+  respostas do formulário (juntam os campos do contato e de cada funil; salvar grava em todos),
+  rastreamento, datas e tags.
+- **Atendimento e Tarefas**: responsável/etapa por funil + tabela das tarefas pendentes do contato
+  (`GET /api/v1/tasks?contact_id=`).
+- **Vendas**: LTV atual, LTV previsto, vendas e ticket médio no topo; tabela com status editável na
+  linha e cadastro/edição pelo mesmo diálogo da tela Vendas.
+- **Funis**: um cartão por funil, só com o que é da passagem (situação, datas, vendas do funil,
+  origem: campanha/criativo/LP e conjunto).
+- **Anotações**: `lead_notes` (a memória que o agente de IA também lê) —
+  `GET/POST /api/v1/contacts/[id]/anotacoes`, `DELETE …/[noteId]`.
+- **Linha do Tempo**: histórico unificado + botões para registrar ação à mão (ligação + resultado,
+  mensagem enviada, remarcou…) — `POST /api/v1/contacts/[id]/atividades` (grava `note` no negócio
+  mais recente do contato; vocabulário em `lib/leads/acoes-do-lead.ts`).
+- Visual: barras coloridas nos tópicos e etiquetas com borda (`ChipDeEtiqueta contorno`).
+- Fica para depois: campos próprios do funil (previsão de fechamento, descrição) editáveis no cartão
+  do funil — hoje continuam no dossiê do card ("Abrir no funil").
