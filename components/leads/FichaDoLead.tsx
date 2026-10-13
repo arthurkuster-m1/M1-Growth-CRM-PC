@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -446,7 +447,12 @@ function FormularioDoContato({
       </div>
       <div className="grid gap-1">
         <Label className="text-xs">{t("Aniversário")}</Label>
-        <Input type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+        <CampoDeData
+          valor={nascimento}
+          aoMudar={setNascimento}
+          rotulo={t("Aniversário")}
+          className="w-full"
+        />
       </div>
       <div className="grid gap-1">
         <Label className="text-xs">{t("Tags do contato (separadas por vírgula)")}</Label>

@@ -4,12 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { rotuloDoCanal } from "@/components/marketing/campanhas/rotulos";
+import { SeletorDePeriodo, type AtalhoDePeriodo } from "@/components/motor/CalendarioDePeriodo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { apiClient } from "@/lib/api/client";
 import { CANAIS_DA_CAMPANHA, type CanalDaCampanha } from "@/lib/marketing/campanhas";
-import { PERIODOS, type Periodo } from "@/lib/marketing/periodos";
+import { PERIODOS, janelaDoPeriodo, type Periodo } from "@/lib/marketing/periodos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { cn } from "@/lib/utils";
 
@@ -144,6 +145,12 @@ export function ResultadosDasCampanhas() {
   const visiveis = propriedades.preferencias.visiveis ?? {};
   const mostra = (m: Metrica) => visiveis[m] !== false;
 
+  const hojeLocal = new Intl.DateTimeFormat("en-CA").format(new Date());
+  const atalhosDePeriodo: AtalhoDePeriodo[] = PERIODOS.map((p) => ({
+    id: p,
+    rotulo: rotuloDoPeriodo(t, p),
+    ...janelaDoPeriodo(p, hojeLocal),
+  }));
   const intervaloValido = de !== "" && ate !== "" && de <= ate;
   const pronto = periodo !== "personalizado" || intervaloValido;
   const filtros = new URLSearchParams();
@@ -254,25 +261,16 @@ export function ResultadosDasCampanhas() {
             </select>
           </label>
           {periodo === "personalizado" ? (
-            <>
-              <input
-                type="date"
-                value={de}
-                max={ate || undefined}
-                aria-label={t("Data inicial")}
-                onChange={(e) => setDe(e.target.value)}
-                className="h-10 rounded-xl border bg-background px-3 text-sm"
-              />
-              <span className="text-sm text-muted-foreground">{t("até")}</span>
-              <input
-                type="date"
-                value={ate}
-                min={de || undefined}
-                aria-label={t("Data final")}
-                onChange={(e) => setAte(e.target.value)}
-                className="h-10 rounded-xl border bg-background px-3 text-sm"
-              />
-            </>
+            <SeletorDePeriodo
+              de={de}
+              ate={ate}
+              rotulo={t("Período personalizado")}
+              atalhos={atalhosDePeriodo}
+              aoMudar={(p) => {
+                setDe(p.de);
+                setAte(p.ate);
+              }}
+            />
           ) : null}
         </div>
       </div>

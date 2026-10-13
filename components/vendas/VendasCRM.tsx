@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -635,13 +636,13 @@ function CobrancaParaConfirmar({
         >
           {t("Pagou")}
         </button>
-        <input
-          type="date"
-          value={novaData}
+        <CampoDeData
+          valor={novaData}
           min={hoje}
-          onChange={(e) => setNovaData(e.target.value)}
-          aria-label={t("Nova data de vencimento")}
-          className="h-9 rounded-lg border bg-background px-2 text-sm"
+          aoMudar={setNovaData}
+          rotulo={t("Nova data de vencimento")}
+          placeholder={t("Nova data")}
+          className="h-9"
         />
         <button
           type="button"

@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useState, type ReactNode } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -190,12 +191,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
     if (campo.tipo === "data") {
       return (
         <span className="flex items-center gap-1">
-          <input
-            type="date"
-            value={typeof f.valor === "string" && f.valor !== "hoje" ? f.valor : ""}
-            aria-label={t("Valor do filtro")}
-            onChange={(e) => alterar(e.target.value || undefined)}
-            className={cn(SELECT, "w-36")}
+          <CampoDeData
+            valor={typeof f.valor === "string" && f.valor !== "hoje" ? f.valor : ""}
+            rotulo={t("Valor do filtro")}
+            aoMudar={(dia) => alterar(dia || undefined)}
+            className="h-8 px-2 text-sm"
           />
           <button
             type="button"

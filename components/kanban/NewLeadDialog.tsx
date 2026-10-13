@@ -1,9 +1,10 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -355,10 +356,17 @@ export function NewLeadDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
-              <Input
-                id="expected_close_date"
-                type="date"
-                {...form.register("expected_close_date")}
+              <Controller
+                control={form.control}
+                name="expected_close_date"
+                render={({ field }) => (
+                  <CampoDeData
+                    valor={typeof field.value === "string" ? field.value : ""}
+                    aoMudar={field.onChange}
+                    rotulo={t("Fechamento previsto")}
+                    className="w-full"
+                  />
+                )}
               />
             </div>
           </div>

@@ -4,6 +4,7 @@
  * input certo por tipo. Usado pelo dossiê e pelo painel do inbox, via
  * `LeadFieldsForm`.
  */
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { Input } from "@/components/ui/input";
 import { perfilDoPais } from "@/lib/legal/perfil-do-pais";
@@ -103,12 +104,12 @@ export function CustomFieldsEditor({ fields, value, onChange, disabled, classNam
             return (
               <div key={f.key} className="space-y-2">
                 {labelEl}
-                <Input
-                  id={id}
-                  type="date"
-                  value={typeof v === "string" ? v : ""}
-                  onChange={(e) => set(f.key, e.target.value)}
-                  disabled={disabled}
+                <CampoDeData
+                  valor={typeof v === "string" ? v : ""}
+                  aoMudar={(dia) => set(f.key, dia)}
+                  rotulo={f.label ?? f.key}
+                  desabilitado={disabled}
+                  className="w-full"
                 />
               </div>
             );

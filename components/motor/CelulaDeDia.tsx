@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarioDoDia } from "@/components/motor/CalendarioDePeriodo";
 import { useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -56,17 +57,8 @@ export function CelulaDeDia({ valor, tag, aoSalvar, podeEditar, rotulo }: Props)
           {texto}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 space-y-2 p-3">
-        <input
-          type="date"
-          aria-label={rotulo}
-          value={rascunho}
-          onChange={(e) => setRascunho(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") abrirOuFechar(false);
-          }}
-          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
-        />
+      <PopoverContent align="start" className="w-[288px] space-y-2 p-3">
+        <CalendarioDoDia valor={rascunho} aoMudar={setRascunho} />
         <button
           type="button"
           onClick={() => setRascunho("")}

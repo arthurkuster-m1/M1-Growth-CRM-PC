@@ -5,6 +5,10 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  FiltroDePeriodoDaCampanha,
+  usePeriodoDaCampanha,
+} from "@/components/marketing/campanhas/FiltroDePeriodoDaCampanha";
+import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
@@ -18,7 +22,18 @@ import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
-import { useAbordagensDaCampanha } from "@/hooks/marketing/useCampanhasDeDemanda";
+import {
+  useAbordagensDaCampanha,
+  useDiasDaCampanha,
+} from "@/hooks/marketing/useCampanhasDeDemanda";
+import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
+import {
+  METRICAS_DO_CANAL,
+  somaDoExtra,
+  type DiaDaCampanha,
+} from "@/lib/marketing/campanhas-resumo";
+import type { CanalDaCampanha } from "@/lib/marketing/campanhas";
+import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import {
   MEIOS_DA_ABORDAGEM,
   STATUS_DA_ABORDAGEM,
@@ -185,12 +200,23 @@ interface LinhaDaAbordagem {
 export function AbordagensDaCampanha({
   campanhaId,
   podeEditar,
+  periodoPadrao,
+  canal,
 }: {
   campanhaId: string;
   podeEditar: boolean;
+  /** O período da campanha (início e fim; contínua = mês atual). */
+  periodoPadrao: { de: string; ate: string };
+  canal: CanalDaCampanha;
 }) {
   const t = useT();
   const { abordagens, carregando, criar, editar, apagar } = useAbordagensDaCampanha(campanhaId);
+  const periodo = usePeriodoDaCampanha(periodoPadrao);
+  const { dias } = useDiasDaCampanha(campanhaId);
+  const diasDoPeriodo: DiaDaCampanha[] = dias.filter(
+    (d) => d.day >= periodo.janela.de && d.day <= periodo.janela.ate,
+  );
+  const metricas = canal === "trafego_pago" ? [] : METRICAS_DO_CANAL[canal];
   const [novaId, setNovaId] = useState<string | null>(null);
   const linhas: LinhaDaAbordagem[] = abordagens.map((a) => ({
     id: a.id,
@@ -320,6 +346,32 @@ export function AbordagensDaCampanha({
           "O que a equipe fala e como: meio, gancho, mensagem e follow-up. Os números de cada dia vão na página Dia a dia.",
         )}
       </p>
+      <FiltroDePeriodoDaCampanha periodo={periodo} />
+      {metricas.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-l-4 border-l-violet-500 p-3 sm:grid-cols-4 xl:grid-cols-7">
+          {metricas.map((m) => {
+            const total = somaDoExtra(diasDoPeriodo, m.chave);
+            return (
+              <div key={m.chave} className="min-w-0 rounded-lg bg-violet-500/8 px-3 py-2">
+                <p className="truncate text-xs text-muted-foreground">
+                  {rotuloDaMetrica(t, m.chave)}
+                </p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {m.tipo === "moeda"
+                    ? moedaDoNumero(total)
+                    : Math.round(total).toLocaleString("pt-BR")}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      <p className="text-xs text-muted-foreground">
+        {t(
+          "Os números acima são os do Dia a dia da campanha somados no período escolhido (a campanha toda, por padrão).",
+        )}
+      </p>
+
       <ColecaoDaCampanha
         tela="campanha-abordagens"
         itens={linhas}

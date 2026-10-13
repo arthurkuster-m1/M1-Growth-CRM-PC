@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -427,11 +428,11 @@ export function DialogoDaVenda({
               </label>
               <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Primeira parcela em")}</span>
-                <input
-                  type="date"
-                  value={primeiro}
-                  onChange={(e) => setPrimeiro(e.target.value)}
-                  className={CAMPO}
+                <CampoDeData
+                  valor={primeiro}
+                  aoMudar={setPrimeiro}
+                  rotulo={t("Primeira parcela em")}
+                  className="w-full"
                 />
               </label>
             </div>
@@ -488,16 +489,15 @@ export function DialogoDaVenda({
                       <tr key={i} className="border-t">
                         <td className="px-3 py-1 tabular-nums">{i + 1}</td>
                         <td className="px-2 py-1">
-                          <input
-                            type="date"
-                            value={p.due_on}
-                            aria-label={`${t("Vencimento da parcela")} ${i + 1}`}
-                            onChange={(e) =>
+                          <CampoDeData
+                            valor={p.due_on}
+                            rotulo={`${t("Vencimento da parcela")} ${i + 1}`}
+                            aoMudar={(dia) =>
                               setParcelas((l) =>
-                                l.map((x, k) => (k === i ? { ...x, due_on: e.target.value } : x)),
+                                l.map((x, k) => (k === i ? { ...x, due_on: dia } : x)),
                               )
                             }
-                            className="h-9 rounded-lg border bg-background px-2 text-sm"
+                            className="h-9"
                           />
                         </td>
                         <td className="px-2 py-1 text-right">

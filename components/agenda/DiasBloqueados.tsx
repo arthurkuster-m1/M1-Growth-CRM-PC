@@ -24,6 +24,7 @@
  * fechado, e cada data de atendimento é uma exceção ABERTA. Essa agenda não
  * tinha como ser montada pela tela — só por SQL.
  */
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -69,7 +70,11 @@ function faixa(e: Excecao, t: (s: string) => string): string {
 function datasSemanais(inicio: string, ate: string, teto: number): string[] {
   const fim = new Date(`${ate}T12:00:00Z`).getTime();
   const datas: string[] = [];
-  for (let d = new Date(`${inicio}T12:00:00Z`); d.getTime() <= fim; d.setUTCDate(d.getUTCDate() + 7)) {
+  for (
+    let d = new Date(`${inicio}T12:00:00Z`);
+    d.getTime() <= fim;
+    d.setUTCDate(d.getUTCDate() + 7)
+  ) {
     if (datas.length >= teto) break;
     datas.push(d.toISOString().slice(0, 10));
   }
@@ -100,8 +105,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
 
   const query = useQuery({
     queryKey: ["agenda", "excecoes"],
-    queryFn: async () =>
-      (await apiClient.get<{ data: Excecao[] }>("/api/v1/agenda/excecoes")).data,
+    queryFn: async () => (await apiClient.get<{ data: Excecao[] }>("/api/v1/agenda/excecoes")).data,
   });
 
   const lista = query.data ?? [];
@@ -190,13 +194,12 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
           </label>
           <label className="block">
             <span className="block text-sm">{t("Dia")}</span>
-            <input
-              aria-label={t("Dia")}
-              className="mt-1 rounded-md border p-2"
-              type="date"
-              value={data}
-              onChange={(e) => {
-                setData(e.target.value);
+            <CampoDeData
+              rotulo={t("Dia")}
+              className="mt-1"
+              valor={data}
+              aoMudar={(dia) => {
+                setData(dia);
                 setResultado(null);
               }}
             />
@@ -238,13 +241,12 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
           </label>
           <label className="block">
             <span className="block text-sm">{t("Repetir toda semana até (opcional)")}</span>
-            <input
-              aria-label={t("Repetir toda semana até (opcional)")}
-              className="mt-1 rounded-md border p-2"
-              type="date"
+            <CampoDeData
+              rotulo={t("Repetir toda semana até (opcional)")}
+              className="mt-1"
               min={data || undefined}
-              value={repetirAte}
-              onChange={(e) => setRepetirAte(e.target.value)}
+              valor={repetirAte}
+              aoMudar={setRepetirAte}
             />
           </label>
           <Button
@@ -278,7 +280,9 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
       ) : query.isLoading ? (
         <p>{t("Carregando…")}</p>
       ) : lista.length === 0 ? (
-        <p className="text-sm text-text-muted">{t("Nenhum dia fora da rotina daqui para a frente.")}</p>
+        <p className="text-sm text-text-muted">
+          {t("Nenhum dia fora da rotina daqui para a frente.")}
+        </p>
       ) : (
         <ul className="space-y-1">
           {lista.map((e) => (

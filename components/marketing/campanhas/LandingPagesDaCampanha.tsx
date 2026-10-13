@@ -9,6 +9,10 @@ import {
 import { toast } from "sonner";
 
 import {
+  FiltroDePeriodoDaCampanha,
+  usePeriodoDaCampanha,
+} from "@/components/marketing/campanhas/FiltroDePeriodoDaCampanha";
+import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
@@ -86,14 +90,18 @@ interface LinhaDaLp {
 export function LandingPagesDaCampanha({
   campanhaId,
   podeEditar,
+  periodoPadrao,
 }: {
   campanhaId: string;
   podeEditar: boolean;
+  /** O período da campanha (início e fim; contínua = mês atual). */
+  periodoPadrao: { de: string; ate: string };
 }) {
   const t = useT();
   const { lps, carregando, criar, editar, apagar } = useLandingPagesDaCampanha(campanhaId);
   const { criativos } = useCriativosDaCampanha(campanhaId);
-  const { origem } = useOrigemDosLeads(campanhaId);
+  const periodo = usePeriodoDaCampanha(periodoPadrao);
+  const { origem } = useOrigemDosLeads(campanhaId, periodo.janela);
   const [novaId, setNovaId] = useState<string | null>(null);
 
   const linhas: LinhaDaLp[] = lps.map((lp) => ({
@@ -110,8 +118,10 @@ export function LandingPagesDaCampanha({
     rotulo: rotuloDoStatusDoCriativo(t, s),
     cor: COR_DO_STATUS_DO_CRIATIVO[s],
   }));
-  const conversao = (l: LinhaDaLp) => (l.m.lp_views > 0 ? (l.leads / l.m.lp_views) * 100 : null);
-  const cplReal = (l: LinhaDaLp) => (l.leads > 0 && l.m.spend > 0 ? l.m.spend / l.leads : null);
+  const conversao = (l: LinhaDaLp) =>
+    periodo.ehPadrao && l.m.lp_views > 0 ? (l.leads / l.m.lp_views) * 100 : null;
+  const cplReal = (l: LinhaDaLp) =>
+    periodo.ehPadrao && l.leads > 0 && l.m.spend > 0 ? l.m.spend / l.leads : null;
 
   const campos: CampoDaColecao<LinhaDaLp>[] = [
     { id: "nome", titulo: t("Landing page"), tipo: "texto", valorDe: (l) => l.lp.name },
@@ -304,6 +314,17 @@ export function LandingPagesDaCampanha({
         )}
       </p>
 
+      <FiltroDePeriodoDaCampanha periodo={periodo} />
+      <p className="text-xs text-muted-foreground">
+        {periodo.ehPadrao
+          ? t(
+              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
+            )
+          : t(
+              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
+            )}
+      </p>
+
       <ColecaoDaCampanha
         tela="campanha-lps"
         itens={linhas}
@@ -324,6 +345,8 @@ export function LandingPagesDaCampanha({
             leads={l.leads}
             vendas={l.vendas}
             faturamento={l.faturamento}
+            conversao={conversao(l)}
+            cplReal={cplReal(l)}
             campanhaId={campanhaId}
             podeEditar={podeEditar}
             editar={(patch) => void editar(l.lp.id, patch)}
@@ -341,11 +364,15 @@ function CartaoDaLp({
   leads,
   vendas,
   faturamento,
+  conversao,
+  cplReal,
   campanhaId,
   podeEditar,
   editar,
   apagar,
 }: {
+  conversao: number | null;
+  cplReal: number | null;
   lp: LandingPage;
   m: ReturnType<typeof metricasDaLp>;
   leads: number;
@@ -433,14 +460,8 @@ function CartaoDaLp({
         <Metrica rotulo={t("Connection rate")} valor={pct(m.connectRate)} />
         <Metrica rotulo={t("CPC")} valor={reais(m.cpc)} />
         <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leads)} />
-        <Metrica
-          rotulo={t("Conversão da LP")}
-          valor={pct(m.lp_views > 0 ? (leads / m.lp_views) * 100 : null)}
-        />
-        <Metrica
-          rotulo={t("CPL real")}
-          valor={leads > 0 && m.spend > 0 ? moedaDoNumero(m.spend / leads) : "—"}
-        />
+        <Metrica rotulo={t("Conversão da LP")} valor={pct(conversao)} />
+        <Metrica rotulo={t("CPL real")} valor={reais(cplReal)} />
         <Metrica rotulo={t("Vendas")} valor={inteiro(vendas)} />
         <Metrica
           rotulo={t("Faturamento")}

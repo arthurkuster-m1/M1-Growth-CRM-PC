@@ -1,4 +1,5 @@
 "use client";
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -117,24 +118,14 @@ export function UsageFilters({ agents, initial }: Props) {
         <Label htmlFor="usage-from" className="text-xs text-muted-foreground">
           {t("De")}
         </Label>
-        <Input
-          id="usage-from"
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
+        <CampoDeData valor={from} aoMudar={setFrom} rotulo={t("De")} className="w-full" />
       </div>
 
       <div className="space-y-1">
         <Label htmlFor="usage-to" className="text-xs text-muted-foreground">
           {t("Até")}
         </Label>
-        <Input
-          id="usage-to"
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-        />
+        <CampoDeData valor={to} aoMudar={setTo} rotulo={t("Até")} className="w-full" />
       </div>
     </div>
   );

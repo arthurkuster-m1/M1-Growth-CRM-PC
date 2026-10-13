@@ -62,6 +62,15 @@ function corpoEnviado(): Record<string, unknown> {
   return post.mock.calls[0]?.[1] as Record<string, unknown>;
 }
 
+/** O campo de data virou o calendário do Notion: abre o painel e digita o dia (dd/mm/aaaa). */
+async function escolherDia(u: ReturnType<typeof userEvent.setup>, rotulo: string, dia: string) {
+  await u.click(screen.getByRole("button", { name: rotulo }));
+  const campo = await screen.findByRole("textbox", { name: rotulo });
+  await u.clear(campo);
+  await u.type(campo, dia);
+  await u.keyboard("{Escape}");
+}
+
 describe("Dias fora da rotina — fechar e abrir", () => {
   beforeEach(() => {
     post.mockClear();
@@ -72,7 +81,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     const u = userEvent.setup();
     montar();
 
-    await u.type(screen.getByLabelText("Dia"), "2026-10-01");
+    await escolherDia(u, "Dia", "01/10/2026");
     await u.click(screen.getByRole("button", { name: "Fechar este dia" }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
@@ -89,7 +98,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     montar();
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
-    await u.type(screen.getByLabelText("Dia"), "2026-10-01");
+    await escolherDia(u, "Dia", "01/10/2026");
     await u.clear(screen.getByLabelText("Das"));
     await u.type(screen.getByLabelText("Das"), "14:00");
     await u.clear(screen.getByLabelText("Até"));
@@ -110,7 +119,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     montar();
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
-    await u.type(screen.getByLabelText("Dia"), "2026-10-01");
+    await escolherDia(u, "Dia", "01/10/2026");
     await u.clear(screen.getByLabelText("Das"));
     await u.type(screen.getByLabelText("Das"), "18:00");
     await u.clear(screen.getByLabelText("Até"));
@@ -125,13 +134,13 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     montar();
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
-    await u.type(screen.getByLabelText("Dia"), "2026-10-01");
+    await escolherDia(u, "Dia", "01/10/2026");
     await u.clear(screen.getByLabelText("Das"));
     await u.type(screen.getByLabelText("Das"), "14:00");
     await u.clear(screen.getByLabelText("Até"));
     await u.type(screen.getByLabelText("Até"), "18:00");
     // 01, 08, 15 e 22 de outubro — quatro quintas.
-    await u.type(screen.getByLabelText("Repetir toda semana até (opcional)"), "2026-10-22");
+    await escolherDia(u, "Repetir toda semana até (opcional)", "22/10/2026");
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
 
     await waitFor(() => expect(post).toHaveBeenCalledTimes(4));
@@ -153,9 +162,9 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     montar();
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
-    await u.type(screen.getByLabelText("Dia"), "2026-10-01");
+    await escolherDia(u, "Dia", "01/10/2026");
     // Dez anos: é o dedo escorregando na data, e sem teto viraria 520 linhas.
-    await u.type(screen.getByLabelText("Repetir toda semana até (opcional)"), "2036-10-01");
+    await escolherDia(u, "Repetir toda semana até (opcional)", "01/10/2036");
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
@@ -181,12 +190,12 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     await screen.findByText(/08\/10\/2026|10\/8\/2026/);
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
-    await u.type(screen.getByLabelText("Dia"), "2026-10-01");
+    await escolherDia(u, "Dia", "01/10/2026");
     await u.clear(screen.getByLabelText("Das"));
     await u.type(screen.getByLabelText("Das"), "14:00");
     await u.clear(screen.getByLabelText("Até"));
     await u.type(screen.getByLabelText("Até"), "18:00");
-    await u.type(screen.getByLabelText("Repetir toda semana até (opcional)"), "2026-10-15");
+    await escolherDia(u, "Repetir toda semana até (opcional)", "15/10/2026");
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
 
     // 01, 08 e 15 eram os alvos; o 08 já existia com a MESMA faixa.

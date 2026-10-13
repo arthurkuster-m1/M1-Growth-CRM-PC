@@ -68,10 +68,9 @@ describe("soChavesAlteradas — só o que a pessoa alterou", () => {
 });
 
 describe("fiação — os dois componentes montam o patch pelo diff", () => {
-  const ARQUIVOS = [
-    "components/kanban/LeadFieldsForm.tsx",
-    "components/inbox/CRMSidePanel.tsx",
-  ];
+  // O painel do Inbox passou a usar a ficha única (`FichaDoLead`), que monta o formulário com o
+  // `LeadFieldsForm` e grava as respostas soltas chave a chave — o diff vive no formulário.
+  const ARQUIVOS = ["components/kanban/LeadFieldsForm.tsx"];
 
   for (const arquivo of ARQUIVOS) {
     it(`${arquivo} passa o custom_fields pelo diff`, () => {

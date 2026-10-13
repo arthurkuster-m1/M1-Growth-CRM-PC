@@ -10,6 +10,10 @@ import {
 import { toast } from "sonner";
 
 import {
+  FiltroDePeriodoDaCampanha,
+  usePeriodoDaCampanha,
+} from "@/components/marketing/campanhas/FiltroDePeriodoDaCampanha";
+import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
@@ -471,14 +475,18 @@ interface LinhaDoCriativo {
 export function CriativosDaCampanha({
   campanhaId,
   podeEditar,
+  periodoPadrao,
 }: {
   campanhaId: string;
   podeEditar: boolean;
+  /** O período da campanha (início e fim; contínua = mês atual). */
+  periodoPadrao: { de: string; ate: string };
 }) {
   const t = useT();
   const { criativos, carregando, criar, editar, duplicar, apagar, importarDoMeta } =
     useCriativosDaCampanha(campanhaId);
-  const { origem } = useOrigemDosLeads(campanhaId);
+  const periodo = usePeriodoDaCampanha(periodoPadrao);
+  const { origem } = useOrigemDosLeads(campanhaId, periodo.janela);
   const [importando, setImportando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [novoId, setNovoId] = useState<string | null>(null);
@@ -493,8 +501,8 @@ export function CriativosDaCampanha({
       leads,
       faturamento,
       x: taxasDoCriativo(c),
-      cpl: leads > 0 && c.spend > 0 ? c.spend / leads : null,
-      roas: c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
+      cpl: periodo.ehPadrao && leads > 0 && c.spend > 0 ? c.spend / leads : null,
+      roas: periodo.ehPadrao && c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
     };
   });
   const opcoesDeStatus = STATUS_DO_CRIATIVO.map((s) => ({
@@ -720,6 +728,17 @@ export function CriativosDaCampanha({
           {aviso}
         </p>
       ) : null}
+
+      <FiltroDePeriodoDaCampanha periodo={periodo} />
+      <p className="text-xs text-muted-foreground">
+        {periodo.ehPadrao
+          ? t(
+              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta.",
+            )
+          : t(
+              "Leads, vendas e faturamento são do período escolhido. Gasto, impressões e cliques são o acumulado do Meta, por isso CPL, conversão e ROAS ficam em “—” fora do período da campanha.",
+            )}
+      </p>
 
       <ColecaoDaCampanha
         tela="campanha-criativos"

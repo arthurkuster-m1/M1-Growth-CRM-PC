@@ -56,6 +56,7 @@ import {
 } from "@/lib/marketing/campanhas-abas";
 import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha";
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
+import { periodoPadraoDaCampanha } from "@/lib/marketing/periodo-da-campanha";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { ArrowSquareOut, Plus, Trash, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -190,6 +191,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       </p>
     );
   }
+  const periodoPadrao = periodoPadraoDaCampanha(c, hojeIso());
   const grava = (patch: EdicaoDeCampanha) => void editar([c.id], patch);
   const bloqueado = !podeEditar;
   const liquido = c.budget === null ? null : investimentoLiquido(c.budget, c.tax_pct);
@@ -291,12 +293,20 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       ) : null}
 
       {aba === "criativos" ? (
-        <CriativosDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+        <CriativosDaCampanha
+          campanhaId={c.id}
+          podeEditar={podeEditar}
+          periodoPadrao={periodoPadrao}
+        />
       ) : null}
 
       {aba === "landing" ? (
         <>
-          <LandingPagesDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+          <LandingPagesDaCampanha
+            campanhaId={c.id}
+            podeEditar={podeEditar}
+            periodoPadrao={periodoPadrao}
+          />
           <WebhooksDaCampanha
             campanhaId={c.id}
             nomeDaCampanha={c.name}
@@ -347,7 +357,12 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       ) : null}
 
       {aba === "abordagem" ? (
-        <AbordagensDaCampanha campanhaId={c.id} podeEditar={podeEditar} />
+        <AbordagensDaCampanha
+          campanhaId={c.id}
+          podeEditar={podeEditar}
+          periodoPadrao={periodoPadrao}
+          canal={c.channel}
+        />
       ) : null}
 
       {aba === "cadastro" ? (

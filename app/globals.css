@@ -770,6 +770,19 @@
     color-scheme: light;
   }
 
+  /* MENU ABERTO NÃO PODE VIRAR CONTÊINER DE ROLAGEM.
+     Os menus do Radix (organização, notificações, usuário…) travam a rolagem pondo
+     `overflow: hidden; position: relative` no `<body>` (`data-scroll-locked`). Como o `<html>`
+     tem `overflow-x: clip` (acima), esse `hidden` NÃO sobe para a janela: o próprio `<body>`
+     vira contêiner de rolagem, o `position: sticky` da barra do topo e da lateral passa a
+     valer dentro dele — e as duas voltam para o topo da PÁGINA, levando o menu junto
+     (o menu "some" de onde se clicou e aparece lá em cima). `clip` corta igual, não cria
+     contêiner de rolagem, e o bloqueio da rolagem continua feito pelo próprio Radix. */
+  html body[data-scroll-locked] {
+    overflow: clip !important;
+    position: static !important;
+  }
+
   body {
     /* Mesma trava do `html` logo acima, duplicada aqui de propósito: alguns
        motores móveis (Safari/iOS em particular) ignoram `overflow-x` só no
