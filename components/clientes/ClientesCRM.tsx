@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
 import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
@@ -41,7 +42,12 @@ import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/m
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { CHAVE_DE_VENDAS_PENDENTES } from "@/components/vendas/PopupDeVendaPendente";
 import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users, UploadSimple, Plus } from "@/lib/ui/icons";
-import type { ClienteDaLista, ParticipacaoDoCliente } from "@/app/api/v1/clientes/route";
+import type {
+  ClienteDaLista,
+  ParticipacaoDoCliente,
+  VendaAtivaDoCliente,
+} from "@/app/api/v1/clientes/route";
+import type { Venda } from "@/lib/vendas";
 interface Funil {
   id: string;
   name: string;
@@ -66,6 +72,8 @@ interface Dados {
     pipeline_id?: string | null;
   }>;
   clientes: ClienteDaLista[];
+  anuncios_por_id?: Record<string, string>;
+  lps_por_id?: Record<string, string>;
   pode_editar: boolean;
   pode_gerir: boolean;
 }
@@ -116,6 +124,10 @@ export function ClientesCRM() {
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
+  /** Status de venda que a tabela mostra (vazio = todos): "só abertas", "só concluídas"… */
+  const [statusDasVendas, setStatusDasVendas] = useState<ReadonlySet<string>>(new Set());
+  /** A venda aberta no popup (carregada inteira ao clicar). */
+  const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const [destaque, setDestaque] = useState<
     null | "faturamento" | "abertos" | "compraram" | "vendas" | "mql" | "semcontato"
@@ -292,6 +304,30 @@ export function ClientesCRM() {
     }
     return { pago, comprometido, aReceber: Math.max(0, comprometido - pago), interesse };
   };
+  /** Abre o popup da venda (carrega a venda inteira: itens, parcelas, origem…). */
+  async function abrirVenda(l: Linha, vendaId: string) {
+    try {
+      const r = await apiClient.get<{ data: { vendas: Venda[] } }>(
+        `/api/v1/vendas?contato=${l.contact_id}`,
+      );
+      const venda = r.data.vendas.find((v) => v.id === vendaId);
+      if (venda) setVendaAberta({ venda, nome: l.nome });
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+  async function salvarVendaAberta(v: DadosDaVenda): Promise<boolean> {
+    try {
+      const { id, contact_id: _contato, ...resto } = v;
+      if (id) await apiClient.patch(`/api/v1/vendas/${id}`, resto);
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+      return true;
+    } catch (e) {
+      showApiError(e);
+      return false;
+    }
+  }
   async function alterarMql(contactId: string, is_mql: boolean) {
     try {
       await apiClient.put(`/api/v1/contacts/${contactId}/qualificacao`, { is_mql });
@@ -318,8 +354,28 @@ export function ClientesCRM() {
   }
 
   /** Os negócios que a linha mostra: o do funil escolhido, ou um por funil em "Todos". */
-  const partes = (l: Linha): ParticipacaoDoCliente[] =>
-    l.participacao ? [l.participacao] : porFunil(l);
+  /** As vendas do lead que a tabela mostra: do funil escolhido e dos status marcados. */
+  const vendasVisiveis = (l: Linha) =>
+    (l.vendas_ativas ?? []).filter(
+      (v) =>
+        (!funilAtual || v.funil_id === funilAtual.id) &&
+        (statusDasVendas.size === 0 || statusDasVendas.has(v.status)),
+    );
+  /**
+   * UMA LINHA POR VENDA: cada venda do lead é uma linha, com o card (funil e etapa) em que ela
+   * está; campanha, anúncio e landing page são os da própria venda. Sem venda, cai nos cards.
+   */
+  const itensDaLinha = (l: Linha): Array<{ venda: VendaAtivaDoCliente | null; p: ParticipacaoDoCliente }> => {
+    const base = l.participacao ? l.participacoes : l.participacoes;
+    const porVenda = vendasVisiveis(l)
+      .map((v) => ({ venda: v, p: base.find((x) => x.lead_id === v.lead_id) ?? null }))
+      .sort((x, y) => (x.p?.criado_em ?? "").localeCompare(y.p?.criado_em ?? ""));
+    if (porVenda.length > 0 && porVenda.every((i) => i.p)) {
+      return porVenda as Array<{ venda: VendaAtivaDoCliente; p: ParticipacaoDoCliente }>;
+    }
+    return (l.participacao ? [l.participacao] : porFunil(l)).map((p) => ({ venda: null, p }));
+  };
+  const partes = (l: Linha): ParticipacaoDoCliente[] => itensDaLinha(l).map((i) => i.p);
   /** O negócio que uma edição de linha única atinge (valor, campanha, origem, responsável). */
   const alvoDaLinha = (l: Linha): ParticipacaoDoCliente | null => {
     const lista = partes(l);
@@ -535,35 +591,32 @@ export function ClientesCRM() {
       icone: <Rows size={14} aria-hidden />,
       largura: 230,
       celula: (l) => {
-        const alvo = alvoDaLinha(l);
-        const nomes = [
-          ...new Set(
-            partes(l)
-              .map((p) => (p.campanha_id ? campanhasPorId.get(p.campanha_id) : null))
-              .filter((n): n is string => Boolean(n)),
-          ),
-        ];
-        const conteudo = (
-          <span className="block min-w-0 truncate text-sm" title={nomes.join(", ")}>
-            {nomes.length > 0 ? nomes.join(", ") : "—"}
-          </span>
-        );
-        if (!alvo) return <div className="px-2">{conteudo}</div>;
-        return (
-          <SeletorDeOpcao
-            opcoes={(dados?.campanhas ?? []).map((c) => ({
-              id: c.id,
-              rotulo: c.name,
-              cor: "gray" as CorDaOpcao,
-            }))}
-            valorId={alvo.campanha_id ?? undefined}
-            podeEditar={podeEditar}
-            rotulo={t("Campanha de origem")}
-            aoEscolher={(id) => void salvarOrigem(l, alvo, { campaign_id: id })}
-            aoLimpar={() => void salvarOrigem(l, alvo, { campaign_id: null })}
-          >
-            {conteudo}
-          </SeletorDeOpcao>
+        const lista = itensDaLinha(l);
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map(({ venda, p }, i) => {
+            const id = venda ? venda.campanha_id : p.campanha_id;
+            const nome = id ? campanhasPorId.get(id) : null;
+            return (
+              <SeletorDeOpcao
+                key={venda?.id ?? `${p.lead_id}-${i}`}
+                opcoes={(dados?.campanhas ?? []).map((c) => ({
+                  id: c.id,
+                  rotulo: c.name,
+                  cor: "gray" as CorDaOpcao,
+                }))}
+                valorId={id ?? undefined}
+                podeEditar={podeEditar}
+                rotulo={t("Campanha de origem")}
+                aoEscolher={(novo) => void salvarOrigem(l, p, { campaign_id: novo })}
+                aoLimpar={() => void salvarOrigem(l, p, { campaign_id: null })}
+              >
+                <span className="block min-w-0 truncate px-2 text-sm" title={nome ?? ""}>
+                  {nome ?? "—"}
+                </span>
+              </SeletorDeOpcao>
+            );
+          }),
         );
       },
     },
@@ -770,27 +823,31 @@ export function ClientesCRM() {
       icone: <TextAa size={14} aria-hidden />,
       largura: 320,
       celula: (l) => {
-        const lista = (l.vendas_ativas ?? []).filter(
-          (v) => !funilAtual || v.funil_id === funilAtual.id,
-        );
+        const lista = itensDaLinha(l).filter((i) => i.venda);
         if (lista.length === 0) return semValor;
         return empilhado(
-          lista.map((v) => (
-            <span key={v.id} className="flex min-w-0 items-center gap-1.5 px-2 text-sm">
-              <span className="min-w-0 truncate" title={v.nome}>
-                {v.nome || t("Sem produto")}
+          lista.map(({ venda }) => (
+            <button
+              key={venda!.id}
+              type="button"
+              onClick={() => void abrirVenda(l, venda!.id)}
+              title={t("Abrir a venda")}
+              className="flex min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-sm hover:bg-secondary"
+            >
+              <span className="min-w-0 truncate" title={venda!.nome}>
+                {venda!.nome || t("Sem produto")}
               </span>
               <span
                 className={`shrink-0 rounded-full border px-1.5 text-[11px] font-medium ${
-                  COR_DA_VENDA[v.status] ?? ""
+                  COR_DA_VENDA[venda!.status] ?? ""
                 }`}
               >
-                {t(ROTULO_DA_VENDA[v.status] ?? v.status)}
+                {t(ROTULO_DA_VENDA[venda!.status] ?? venda!.status)}
               </span>
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {moeda(v.valor_cents)}
+                {moeda(venda!.valor_cents)}
               </span>
-            </span>
+            </button>
           )),
         );
       },
@@ -800,28 +857,48 @@ export function ClientesCRM() {
       titulo: t("Anúncio"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 220,
-      celula: (l) =>
-        l.anuncios && l.anuncios.length > 0 ? (
-          <span className="block min-w-0 truncate px-2 text-sm" title={l.anuncios.join(", ")}>
-            {l.anuncios.join(", ")}
-          </span>
-        ) : (
-          semValor
-        ),
+      celula: (l) => {
+        const lista = itensDaLinha(l);
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map(({ venda, p }, i) => {
+            const nome = venda?.anuncio_id ? dados?.anuncios_por_id?.[venda.anuncio_id] : null;
+            return (
+              <span
+                key={venda?.id ?? `${p.lead_id}-${i}`}
+                className="block min-w-0 truncate px-2 text-sm"
+                title={nome ?? ""}
+              >
+                {nome ?? "—"}
+              </span>
+            );
+          }),
+        );
+      },
     },
     {
       id: "lp",
       titulo: t("Landing page"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 220,
-      celula: (l) =>
-        l.lps && l.lps.length > 0 ? (
-          <span className="block min-w-0 truncate px-2 text-sm" title={l.lps.join(", ")}>
-            {l.lps.join(", ")}
-          </span>
-        ) : (
-          semValor
-        ),
+      celula: (l) => {
+        const lista = itensDaLinha(l);
+        if (lista.length === 0) return semValor;
+        return empilhado(
+          lista.map(({ venda, p }, i) => {
+            const nome = venda?.lp_id ? dados?.lps_por_id?.[venda.lp_id] : null;
+            return (
+              <span
+                key={venda?.id ?? `${p.lead_id}-${i}`}
+                className="block min-w-0 truncate px-2 text-sm"
+                title={nome ?? ""}
+              >
+                {nome ?? "—"}
+              </span>
+            );
+          }),
+        );
+      },
     },
     {
       id: "atividade",
@@ -1012,7 +1089,10 @@ export function ClientesCRM() {
         return true;
     }
   };
-  const visiveis = destaque ? buscadas.filter(passaNoDestaque) : buscadas;
+  const comVendaNoFiltro = (l: Linha) => statusDasVendas.size === 0 || vendasVisiveis(l).length > 0;
+  const visiveis = buscadas.filter(
+    (l) => comVendaNoFiltro(l) && (!destaque || passaNoDestaque(l)),
+  );
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
     hoje: new Date(agora).toISOString().slice(0, 10),
@@ -1179,6 +1259,69 @@ export function ClientesCRM() {
           );
         })}
       </section>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-medium text-muted-foreground">{t("Vendas:")}</span>
+        {Object.entries(ROTULO_DA_VENDA).map(([id, rotulo]) => {
+          const ativo = statusDasVendas.has(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={ativo}
+              onClick={() =>
+                setStatusDasVendas((atual) => {
+                  const novo = new Set(atual);
+                  if (novo.has(id)) novo.delete(id);
+                  else novo.add(id);
+                  return novo;
+                })
+              }
+              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                ativo ? COR_DA_VENDA[id] : "border-border text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {t(rotulo)}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setStatusDasVendas(new Set(["interesse", "comprometida"]))}
+          className="rounded-full border border-dashed px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
+        >
+          {t("Só abertas")}
+        </button>
+        {statusDasVendas.size > 0 ? (
+          <button
+            type="button"
+            onClick={() => setStatusDasVendas(new Set())}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            {t("Mostrar todas")}
+          </button>
+        ) : null}
+      </div>
+
+      {vendaAberta ? (
+        <DialogoDaVenda
+          key={vendaAberta.venda.id}
+          venda={vendaAberta.venda}
+          contatoInicial={{ contact_id: vendaAberta.venda.contact_id, nome: vendaAberta.nome }}
+          clientes={[]}
+          aoFechar={() => setVendaAberta(null)}
+          aoSalvar={salvarVendaAberta}
+          aoApagar={async () => {
+            try {
+              await apiClient.delete(`/api/v1/vendas/${vendaAberta.venda.id}`);
+              await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+              await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+            } catch (e) {
+              showApiError(e);
+            }
+          }}
+        />
+      ) : null}
 
       {destaque ? (
         <p className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">

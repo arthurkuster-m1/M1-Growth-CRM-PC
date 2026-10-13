@@ -49,6 +49,12 @@ export interface VendaAtivaDoCliente {
   funil_id: string | null;
   valor_cents: number;
   pago_cents: number;
+  /** O card (negócio) da venda e a etapa dele; a origem é a da própria venda. */
+  lead_id: string | null;
+  etapa_id: string | null;
+  campanha_id: string | null;
+  anuncio_id: string | null;
+  lp_id: string | null;
 }
 
 export interface ClienteDaLista {
@@ -195,6 +201,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   // As vendas pagas de cada contato, por funil (uma venda "paga" tem ao menos uma parcela recebida,
   // ou é concluída sem parcelas). Alimenta "Vendas" e a taxa de conversão do topo do CRM.
   const idsDosContatos = ((contatos ?? []) as Array<{ id: string }>).map((c) => c.id);
+  const etapaDoCard = new Map(linhasDeNegocio.map((n) => [n.id, n.stage_id] as const));
   const vendasPorContato = new Map<string, Record<string, number>>();
   const ativasPorContato = new Map<string, VendaAtivaDoCliente[]>();
   const idsDeAnuncio = new Map<string, Set<string>>();
@@ -209,7 +216,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     const { data: vendas } = await supabase
       .from("crm_sales")
       .select(
-        "id, contact_id, pipeline_id, status, name, product_name, amount_cents, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
+        "id, contact_id, lead_id, pipeline_id, status, name, product_name, amount_cents, demand_campaign_id, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
       )
       .eq("organization_id", orgId)
       .in("status", ["interesse", "comprometida", "concluida"])
@@ -218,7 +225,9 @@ export async function GET(req: NextRequest): Promise<Response> {
     for (const v of (vendas ?? []) as unknown as Array<{
       id: string;
       contact_id: string;
+      lead_id: string | null;
       pipeline_id: string | null;
+      demand_campaign_id: string | null;
       status: "interesse" | "comprometida" | "concluida";
       name: string | null;
       product_name: string | null;
@@ -244,6 +253,11 @@ export async function GET(req: NextRequest): Promise<Response> {
         funil_id: v.pipeline_id,
         valor_cents: Number(v.amount_cents) || 0,
         pago_cents: pago,
+        lead_id: v.lead_id,
+        etapa_id: v.lead_id ? (etapaDoCard.get(v.lead_id) ?? null) : null,
+        campanha_id: v.demand_campaign_id,
+        anuncio_id: v.demand_creative_id,
+        lp_id: v.demand_landing_page_id,
       });
       ativasPorContato.set(v.contact_id, lista);
       juntar(idsDeAnuncio, v.contact_id, v.demand_creative_id);
@@ -351,6 +365,8 @@ export async function GET(req: NextRequest): Promise<Response> {
         pipeline_id: string | null;
       }>,
       clientes,
+      anuncios_por_id: Object.fromEntries(nomeDoAnuncio),
+      lps_por_id: Object.fromEntries(nomeDaLp),
       pode_editar: roleAtLeast(authz.org.role, "agent"),
       pode_gerir: roleAtLeast(authz.org.role, "manager"),
     },
