@@ -50,6 +50,9 @@ export const preferenciasDaTabelaSchema = z
       .object({
         ordem: z.array(z.string().uuid()).max(500).optional(),
         arquivados: z.array(z.string().uuid()).max(500).optional(),
+        /** Filtros da linha: status da campanha e canal (vazio = todos). */
+        status: z.array(z.string().max(20)).max(10).optional(),
+        canais: z.array(z.string().max(30)).max(10).optional(),
       })
       .optional(),
     /** Filtros, ordenação e agrupamento (ver `consulta.ts`). */

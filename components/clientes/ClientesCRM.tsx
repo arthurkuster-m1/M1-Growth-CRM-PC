@@ -56,7 +56,13 @@ interface Etapa {
 interface Dados {
   funis: Funil[];
   etapas: Etapa[];
-  campanhas?: Array<{ id: string; name: string; status?: string; pipeline_id?: string | null }>;
+  campanhas?: Array<{
+    id: string;
+    name: string;
+    status?: string;
+    channel?: string;
+    pipeline_id?: string | null;
+  }>;
   clientes: ClienteDaLista[];
   pode_editar: boolean;
   pode_gerir: boolean;
@@ -174,12 +180,15 @@ export function ClientesCRM() {
     () => new Set(barra.preferencias.funis?.arquivados ?? []),
     [barra.preferencias.funis?.arquivados],
   );
-  const statusDaCampanhaDoFunil = useMemo(
+  const campanhaDoFunil = useMemo(
     () =>
       new Map(
         (dados?.campanhas ?? [])
           .filter((c) => c.pipeline_id)
-          .map((c) => [c.pipeline_id as string, c.status ?? null]),
+          .map((c) => [
+            c.pipeline_id as string,
+            { status: c.status ?? null, canal: c.channel ?? null },
+          ]),
       ),
     [dados],
   );
@@ -195,9 +204,10 @@ export function ClientesCRM() {
       .map((f) => ({
         id: f.id,
         nome: f.name,
-        statusDaCampanha: statusDaCampanhaDoFunil.get(f.id) ?? null,
+        statusDaCampanha: campanhaDoFunil.get(f.id)?.status ?? null,
+        canal: campanhaDoFunil.get(f.id)?.canal ?? null,
       }));
-  }, [dados, barra.preferencias.funis?.ordem, statusDaCampanhaDoFunil]);
+  }, [dados, barra.preferencias.funis?.ordem, campanhaDoFunil]);
 
   const etapasPorId = useMemo(() => new Map((dados?.etapas ?? []).map((e) => [e.id, e])), [dados]);
   const campanhasPorId = useMemo(
@@ -959,10 +969,9 @@ export function ClientesCRM() {
   });
 
   function salvarFunis(
-    mudar: (atual: NonNullable<PreferenciasDaTabela["funis"]>) => {
-      ordem?: string[];
-      arquivados?: string[];
-    },
+    mudar: (
+      atual: NonNullable<PreferenciasDaTabela["funis"]>,
+    ) => NonNullable<PreferenciasDaTabela["funis"]>,
   ) {
     barra.atualizar((p) => ({ ...p, funis: mudar(p.funis ?? {}) }));
   }
@@ -1004,6 +1013,13 @@ export function ClientesCRM() {
       <BarraDeFunis
         funis={funisNaOrdem}
         arquivados={arquivados}
+        filtros={{
+          status: barra.preferencias.funis?.status ?? [],
+          canais: barra.preferencias.funis?.canais ?? [],
+        }}
+        aoFiltrar={(f) =>
+          salvarFunis((atual) => ({ ...atual, status: f.status, canais: f.canais }))
+        }
         escolhido={funilEscolhido}
         todosId={TODOS}
         podeOrganizar
@@ -1083,60 +1099,75 @@ export function ClientesCRM() {
                   aoMudar={mudarConsulta}
                 />
               </div>
-              <TabelaDoMotor
-                linhas={resultado.linhas}
-                idDe={(l) => l.contact_id}
-                colunas={mostradas}
-                grupos={grupos}
-                carregando={consulta.isLoading}
-                aoMoverColuna={(movido, alvo) =>
-                  atualizar((p) => ({
-                    ...p,
-                    ordem: moverColuna(
-                      resolvidas.filter((c) => !c.fixa).map((c) => c.id),
-                      movido,
-                      alvo,
-                    ),
-                  }))
-                }
-                aoRedimensionarColuna={(id, largura) =>
-                  atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
-                }
-                aoReordenar={() => undefined}
-                podeReordenar={false}
-                rotuloDaTabela={t("Leads")}
-                selecionadas={selecionadas}
-                aoSelecionar={(id, { faixa }) =>
-                  setSelecionadas((atual) => {
-                    const proximo = new Set(atual);
-                    const ids = resultado.linhas.map((l) => l.contact_id);
-                    if (faixa && atual.size > 0) {
-                      const ultimo = ids.findLastIndex((x) => atual.has(x));
-                      const alvo = ids.indexOf(id);
-                      if (ultimo >= 0 && alvo >= 0) {
-                        const [de, ate] = ultimo < alvo ? [ultimo, alvo] : [alvo, ultimo];
-                        for (const x of ids.slice(de, ate + 1)) proximo.add(x);
-                        return proximo;
-                      }
-                    }
-                    if (proximo.has(id)) proximo.delete(id);
-                    else proximo.add(id);
-                    return proximo;
-                  })
-                }
-                aoSelecionarTodas={(marcar) =>
-                  setSelecionadas(
-                    marcar ? new Set(resultado.linhas.map((l) => l.contact_id)) : new Set(),
-                  )
-                }
-                vazio={
-                  <p className="p-6 text-center text-sm text-muted-foreground">
+              {!consulta.isLoading && resultado.linhas.length === 0 ? (
+                <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed px-6 py-14 text-center">
+                  <p className="text-sm font-medium">
                     {consulta.isError
                       ? t("Não foi possível carregar os leads.")
-                      : t("Nenhum lead por aqui ainda.")}
+                      : busca.trim() !== "" || preferencias.filtros?.length
+                        ? t("Nenhum lead combina com a busca e os filtros.")
+                        : funilAtual
+                          ? t("Nenhum lead neste funil ainda.")
+                          : t("Nenhum lead por aqui ainda.")}
                   </p>
-                }
-              />
+                  {!consulta.isError &&
+                  funilAtual &&
+                  !busca.trim() &&
+                  !preferencias.filtros?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("Os leads aparecem aqui assim que entrarem no funil.")}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <TabelaDoMotor
+                  linhas={resultado.linhas}
+                  idDe={(l) => l.contact_id}
+                  colunas={mostradas}
+                  grupos={grupos}
+                  carregando={consulta.isLoading}
+                  aoMoverColuna={(movido, alvo) =>
+                    atualizar((p) => ({
+                      ...p,
+                      ordem: moverColuna(
+                        resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+                        movido,
+                        alvo,
+                      ),
+                    }))
+                  }
+                  aoRedimensionarColuna={(id, largura) =>
+                    atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
+                  }
+                  aoReordenar={() => undefined}
+                  podeReordenar={false}
+                  rotuloDaTabela={t("Leads")}
+                  selecionadas={selecionadas}
+                  aoSelecionar={(id, { faixa }) =>
+                    setSelecionadas((atual) => {
+                      const proximo = new Set(atual);
+                      const ids = resultado.linhas.map((l) => l.contact_id);
+                      if (faixa && atual.size > 0) {
+                        const ultimo = ids.findLastIndex((x) => atual.has(x));
+                        const alvo = ids.indexOf(id);
+                        if (ultimo >= 0 && alvo >= 0) {
+                          const [de, ate] = ultimo < alvo ? [ultimo, alvo] : [alvo, ultimo];
+                          for (const x of ids.slice(de, ate + 1)) proximo.add(x);
+                          return proximo;
+                        }
+                      }
+                      if (proximo.has(id)) proximo.delete(id);
+                      else proximo.add(id);
+                      return proximo;
+                    })
+                  }
+                  aoSelecionarTodas={(marcar) =>
+                    setSelecionadas(
+                      marcar ? new Set(resultado.linhas.map((l) => l.contact_id)) : new Set(),
+                    )
+                  }
+                />
+              )}
               {podeEditar ? (
                 <AcoesEmMassaDeClientes
                   contatoIds={[...selecionadas]}

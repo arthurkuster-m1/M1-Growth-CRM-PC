@@ -89,7 +89,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       .order("position", { ascending: true }),
     supabase
       .from("demand_campaigns")
-      .select("id, name, status, pipeline_id")
+      .select("id, name, status, channel, pipeline_id")
       .eq("organization_id", orgId)
       .limit(500),
   ]);
@@ -229,6 +229,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         id: string;
         name: string;
         status: string;
+        channel: string;
         pipeline_id: string | null;
       }>,
       clientes,

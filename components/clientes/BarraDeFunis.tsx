@@ -16,11 +16,19 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { rotuloDoCanal } from "@/components/marketing/campanhas/rotulos";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
-import { Archive, DotsSixVertical, MagnifyingGlass, SlidersHorizontal } from "@/lib/ui/icons";
+import { CANAIS_DA_CAMPANHA, type CanalDaCampanha } from "@/lib/marketing/campanhas";
+import {
+  Archive,
+  DotsSixVertical,
+  Funnel,
+  MagnifyingGlass,
+  SlidersHorizontal,
+} from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface FunilDaBarra {
@@ -28,32 +36,85 @@ export interface FunilDaBarra {
   nome: string;
   /** Status da campanha dona do funil, quando houver (planejada, ativa, pausada, encerrada). */
   statusDaCampanha: string | null;
+  /** Canal da campanha dona do funil, quando houver. */
+  canal: string | null;
+}
+
+export interface FiltrosDaBarra {
+  status: string[];
+  canais: string[];
 }
 
 interface Props {
   /** Todos os funis, já na ordem escolhida. */
   funis: readonly FunilDaBarra[];
   arquivados: ReadonlySet<string>;
+  filtros: FiltrosDaBarra;
   escolhido: string;
   todosId: string;
   podeOrganizar: boolean;
   aoEscolher: (id: string) => void;
   aoReordenar: (ids: string[]) => void;
   aoArquivar: (ids: string[], arquivar: boolean) => void;
+  aoFiltrar: (filtros: FiltrosDaBarra) => void;
 }
 
 const SENSOR = { activationConstraint: { distance: 6 } };
+const STATUS = ["ativa", "planejada", "pausada", "encerrada", "sem_campanha"] as const;
+
+const COR_DO_STATUS: Record<string, string> = {
+  ativa: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  planejada: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  pausada: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  encerrada: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  sem_campanha: "bg-secondary text-muted-foreground",
+};
+
+function useRotuloDoStatus() {
+  const t = useT();
+  return (s: string | null) => {
+    switch (s) {
+      case "ativa":
+        return t("Ativa");
+      case "planejada":
+        return t("Planejada");
+      case "pausada":
+        return t("Pausada");
+      case "encerrada":
+        return t("Encerrada");
+      default:
+        return t("Sem campanha");
+    }
+  };
+}
+
+function EtiquetaDeStatus({ funil }: { funil: FunilDaBarra }) {
+  const rotulo = useRotuloDoStatus();
+  const chave = funil.statusDaCampanha ?? "sem_campanha";
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+        COR_DO_STATUS[chave] ?? COR_DO_STATUS.sem_campanha,
+      )}
+    >
+      {rotulo(funil.statusDaCampanha)}
+    </span>
+  );
+}
 
 function Pilula({
   funil,
   ativa,
   arrastavel,
   aoEscolher,
+  aoMenu,
 }: {
   funil: FunilDaBarra;
   ativa: boolean;
   arrastavel: boolean;
   aoEscolher: () => void;
+  aoMenu: (x: number, y: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: funil.id,
@@ -64,6 +125,10 @@ function Pilula({
       ref={setNodeRef}
       type="button"
       onClick={aoEscolher}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        aoMenu(e.clientX, e.clientY);
+      }}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
@@ -86,12 +151,14 @@ function LinhaDoGerenciador({
   funil,
   arquivado,
   podeOrganizar,
+  arrastavel,
   aoEscolher,
   aoArquivar,
 }: {
   funil: FunilDaBarra;
   arquivado: boolean;
   podeOrganizar: boolean;
+  arrastavel: boolean;
   aoEscolher: () => void;
   aoArquivar: () => void;
 }) {
@@ -104,17 +171,18 @@ function LinhaDoGerenciador({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: funil.id, disabled: !podeOrganizar });
+  } = useSortable({ id: funil.id, disabled: !arrastavel });
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "flex items-center gap-1 rounded-md px-1 py-1 hover:bg-secondary",
+        arquivado && "opacity-70",
         isDragging && "bg-secondary shadow-md",
       )}
     >
-      {podeOrganizar ? (
+      {arrastavel ? (
         <button
           type="button"
           ref={setActivatorNodeRef}
@@ -125,7 +193,9 @@ function LinhaDoGerenciador({
         >
           <DotsSixVertical size={14} aria-hidden />
         </button>
-      ) : null}
+      ) : (
+        <span className="w-6 shrink-0" aria-hidden />
+      )}
       <button
         type="button"
         onClick={aoEscolher}
@@ -134,11 +204,12 @@ function LinhaDoGerenciador({
       >
         {funil.nome}
       </button>
-      {funil.statusDaCampanha && funil.statusDaCampanha !== "ativa" ? (
-        <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground uppercase">
-          {funil.statusDaCampanha}
+      {arquivado ? (
+        <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase">
+          {t("Arquivado")}
         </span>
       ) : null}
+      <EtiquetaDeStatus funil={funil} />
       {podeOrganizar ? (
         <button
           type="button"
@@ -150,38 +221,74 @@ function LinhaDoGerenciador({
             arquivado ? "text-primary" : "text-muted-foreground",
           )}
         >
-          <Archive size={14} aria-hidden />
+          <Archive size={14} weight={arquivado ? "fill" : "regular"} aria-hidden />
         </button>
       ) : null}
     </div>
   );
 }
 
+function alternar<T>(lista: T[], item: T): T[] {
+  return lista.includes(item) ? lista.filter((v) => v !== item) : [...lista, item];
+}
+
 /**
  * A linha de funis do CRM, enxuta para o dia a dia: mostra só os funis que NÃO estão
- * arquivados, na ordem que a pessoa escolheu (arrastar muda a ordem). "Arquivados" troca a
- * linha para só os arquivados — para achar lead de campanha antiga — e "Organizar" abre a
- * lista completa com busca, arrastar, arquivar e "arquivar as campanhas pausadas".
+ * arquivados e passam nos filtros, na ordem que a pessoa escolheu (arrastar muda a ordem).
+ * Botão direito numa pílula arquiva. "Arquivados" troca a linha para só os arquivados — para
+ * achar lead de campanha antiga — e "Funis" abre a lista completa com busca, arrastar,
+ * arquivar e o status de cada campanha.
  */
 export function BarraDeFunis({
   funis,
   arquivados,
+  filtros,
   escolhido,
   todosId,
   podeOrganizar,
   aoEscolher,
   aoReordenar,
   aoArquivar,
+  aoFiltrar,
 }: Props) {
   const t = useT();
+  const rotuloDoStatus = useRotuloDoStatus();
   const sensores = useSensors(useSensor(PointerSensor, SENSOR));
   const [verArquivados, setVerArquivados] = useState(false);
   const [busca, setBusca] = useState("");
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+
+  // O menu do botão direito fecha com Esc, com rolagem e ao clicar fora.
+  useEffect(() => {
+    if (!menu) return;
+    const fechar = () => setMenu(null);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setMenu(null);
+    window.addEventListener("click", fechar);
+    window.addEventListener("scroll", fechar, true);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("click", fechar);
+      window.removeEventListener("scroll", fechar, true);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [menu]);
+
+  const passaNoFiltro = (f: FunilDaBarra) => {
+    if (filtros.status.length > 0) {
+      const chave = f.statusDaCampanha ?? "sem_campanha";
+      if (!filtros.status.includes(chave)) return false;
+    }
+    if (filtros.canais.length > 0) {
+      if (!f.canal || !filtros.canais.includes(f.canal)) return false;
+    }
+    return true;
+  };
+  const filtrando = filtros.status.length + filtros.canais.length;
 
   const ativos = funis.filter((f) => !arquivados.has(f.id));
   const doArquivo = funis.filter((f) => arquivados.has(f.id));
-  const mostrados = verArquivados ? doArquivo : ativos;
-  // O funil aberto fica sempre à vista, mesmo arquivado (senão a tela abriria "sem seleção").
+  const mostrados = (verArquivados ? doArquivo : ativos).filter(passaNoFiltro);
+  // O funil aberto fica sempre à vista, mesmo arquivado ou filtrado (senão a tela abriria "sem seleção").
   const fixado = funis.find((f) => f.id === escolhido && !mostrados.some((m) => m.id === f.id));
   const naLinha = fixado ? [...mostrados, fixado] : mostrados;
 
@@ -192,10 +299,11 @@ export function BarraDeFunis({
   );
 
   const termo = busca.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-  const doGerenciador = funis.filter(
-    (f) =>
-      termo === "" || f.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(termo),
-  );
+  const bate = (f: FunilDaBarra) =>
+    termo === "" || f.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(termo);
+  // Na lista completa os arquivados vão para o fim, marcados.
+  const ativosDaLista = ativos.filter(bate);
+  const arquivadosDaLista = doArquivo.filter(bate);
 
   function terminou(e: DragEndEvent, lista: readonly FunilDaBarra[]) {
     const { active, over } = e;
@@ -209,6 +317,8 @@ export function BarraDeFunis({
     const fora = funis.map((f) => f.id).filter((id) => !ids.includes(id));
     aoReordenar([...novaLista, ...fora]);
   }
+
+  const doMenu = menu ? funis.find((f) => f.id === menu.id) : undefined;
 
   return (
     <div className="flex min-w-0 items-center gap-1.5">
@@ -245,18 +355,90 @@ export function BarraDeFunis({
                 key={f.id}
                 funil={f}
                 ativa={f.id === escolhido}
-                arrastavel={podeOrganizar && !verArquivados}
+                arrastavel={podeOrganizar && !verArquivados && filtrando === 0}
                 aoEscolher={() => aoEscolher(f.id)}
+                aoMenu={(x, y) => podeOrganizar && setMenu({ x, y, id: f.id })}
               />
             ))}
           </SortableContext>
         </DndContext>
         {naLinha.length === 0 ? (
           <span className="px-2 text-xs text-muted-foreground">
-            {verArquivados ? t("Nenhum funil arquivado.") : t("Nenhum funil ainda.")}
+            {verArquivados
+              ? t("Nenhum funil arquivado.")
+              : filtrando > 0
+                ? t("Nenhum funil combina com os filtros.")
+                : t("Nenhum funil ainda.")}
           </span>
         ) : null}
       </div>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap",
+              filtrando > 0
+                ? "border-primary bg-primary/10"
+                : "bg-card text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Funnel size={13} aria-hidden />
+            {t("Filtrar")}
+            {filtrando > 0 ? ` · ${filtrando}` : ""}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-[min(92vw,300px)] p-3">
+          <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("Status da campanha")}
+          </p>
+          <div className="grid gap-0.5">
+            {STATUS.map((s) => (
+              <label
+                key={s}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={filtros.status.includes(s)}
+                  onChange={() => aoFiltrar({ ...filtros, status: alternar(filtros.status, s) })}
+                  className="h-4 w-4 accent-primary"
+                />
+                {rotuloDoStatus(s === "sem_campanha" ? null : s)}
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("Canal")}
+          </p>
+          <div className="grid gap-0.5">
+            {CANAIS_DA_CAMPANHA.map((c: CanalDaCampanha) => (
+              <label
+                key={c}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={filtros.canais.includes(c)}
+                  onChange={() => aoFiltrar({ ...filtros, canais: alternar(filtros.canais, c) })}
+                  className="h-4 w-4 accent-primary"
+                />
+                {rotuloDoCanal(t, c)}
+              </label>
+            ))}
+          </div>
+          {filtrando > 0 ? (
+            <button
+              type="button"
+              onClick={() => aoFiltrar({ status: [], canais: [] })}
+              className="mt-3 h-9 w-full rounded-lg border text-sm font-medium hover:bg-secondary"
+            >
+              {t("Limpar filtros")}
+            </button>
+          ) : null}
+        </PopoverContent>
+      </Popover>
 
       {doArquivo.length > 0 || verArquivados ? (
         <button
@@ -285,7 +467,7 @@ export function BarraDeFunis({
             {t("Funis")}
           </button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(92vw,360px)] p-2">
+        <PopoverContent align="end" className="w-[min(92vw,400px)] p-2">
           <label className="relative block">
             <span className="sr-only">{t("Buscar funil")}</span>
             <MagnifyingGlass
@@ -304,32 +486,51 @@ export function BarraDeFunis({
             <DndContext
               sensors={sensores}
               collisionDetection={closestCenter}
-              onDragEnd={(e) => terminou(e, funis)}
+              onDragEnd={(e) => terminou(e, ativosDaLista)}
             >
               <SortableContext
-                items={doGerenciador.map((f) => f.id)}
+                items={ativosDaLista.map((f) => f.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {doGerenciador.map((f) => (
+                {ativosDaLista.map((f) => (
                   <LinhaDoGerenciador
                     key={f.id}
                     funil={f}
-                    arquivado={arquivados.has(f.id)}
-                    podeOrganizar={podeOrganizar && termo === ""}
+                    arquivado={false}
+                    podeOrganizar={podeOrganizar}
+                    arrastavel={podeOrganizar && termo === ""}
                     aoEscolher={() => aoEscolher(f.id)}
-                    aoArquivar={() => aoArquivar([f.id], !arquivados.has(f.id))}
+                    aoArquivar={() => aoArquivar([f.id], true)}
                   />
                 ))}
               </SortableContext>
             </DndContext>
-            {doGerenciador.length === 0 ? (
+            {arquivadosDaLista.length > 0 ? (
+              <>
+                <p className="mt-2 px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("Arquivados")} · {arquivadosDaLista.length}
+                </p>
+                {arquivadosDaLista.map((f) => (
+                  <LinhaDoGerenciador
+                    key={f.id}
+                    funil={f}
+                    arquivado
+                    podeOrganizar={podeOrganizar}
+                    arrastavel={false}
+                    aoEscolher={() => aoEscolher(f.id)}
+                    aoArquivar={() => aoArquivar([f.id], false)}
+                  />
+                ))}
+              </>
+            ) : null}
+            {ativosDaLista.length + arquivadosDaLista.length === 0 ? (
               <p className="px-2 py-3 text-xs text-muted-foreground">
                 {t("Nenhum funil encontrado.")}
               </p>
             ) : null}
           </div>
           {podeOrganizar ? (
-            <div className="mt-2 flex flex-col gap-1 border-t pt-2">
+            <div className="mt-2 grid gap-1.5 border-t pt-2">
               <button
                 type="button"
                 disabled={pausadas.length === 0}
@@ -339,8 +540,9 @@ export function BarraDeFunis({
                     true,
                   )
                 }
-                className="rounded-md px-2 py-1.5 text-left text-xs hover:bg-secondary disabled:opacity-40"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
               >
+                <Archive size={14} aria-hidden />
                 {t("Arquivar funis de campanhas pausadas ou encerradas")}
                 {pausadas.length > 0 ? ` (${pausadas.length})` : ""}
               </button>
@@ -353,11 +555,11 @@ export function BarraDeFunis({
                     false,
                   )
                 }
-                className="rounded-md px-2 py-1.5 text-left text-xs hover:bg-secondary disabled:opacity-40"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
               >
                 {t("Tirar todos do arquivo")}
               </button>
-              <p className="px-2 text-[11px] text-muted-foreground">
+              <p className="px-1 text-[11px] text-muted-foreground">
                 {t(
                   "Arquivar só tira o funil da linha de cima: os leads continuam em Todos e a busca os encontra.",
                 )}
@@ -366,6 +568,29 @@ export function BarraDeFunis({
           ) : null}
         </PopoverContent>
       </Popover>
+
+      {menu && doMenu ? (
+        <div
+          role="menu"
+          style={{ left: menu.x, top: menu.y }}
+          className="fixed z-50 min-w-48 rounded-xl border bg-popover p-1 shadow-lg"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="max-w-64 truncate px-2 py-1 text-xs text-muted-foreground">{doMenu.nome}</p>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              aoArquivar([doMenu.id], !arquivados.has(doMenu.id));
+              setMenu(null);
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-secondary"
+          >
+            <Archive size={14} aria-hidden />
+            {arquivados.has(doMenu.id) ? t("Tirar do arquivo") : t("Arquivar funil")}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
