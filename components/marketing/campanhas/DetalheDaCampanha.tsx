@@ -34,6 +34,7 @@ import {
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { ApagarCampanhasDialog } from "@/components/marketing/campanhas/ApagarCampanhasDialog";
 import { lerNumero } from "@/lib/marketing/calculadora";
+import { diasParaOrcamento, equivalenciasDoOrcamento } from "@/lib/marketing/orcamento-equivalente";
 import {
   investimentoBaseDasMetas,
   metasRelacionadas,
@@ -542,13 +543,59 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 />
               </Rotulo>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {t("Investimento líquido")}:{" "}
-              <strong className="text-foreground">
-                {liquido === null ? "—" : moedaDoNumero(liquido)}
-              </strong>{" "}
-              {c.tax_pct > 0 ? `(${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%)` : ""}
-            </p>
+            {c.budget !== null && c.budget > 0
+              ? (() => {
+                  const { dias, baseadoNoMes } = diasParaOrcamento(c);
+                  const linhas = equivalenciasDoOrcamento(
+                    c.budget,
+                    c.budget_period,
+                    dias,
+                    c.tax_pct,
+                  );
+                  const rotulos: Record<string, string> = {
+                    total: t("Total da campanha"),
+                    mensal: t("Por mês"),
+                    semanal: t("Por semana"),
+                    diario: t("Por dia"),
+                  };
+                  return (
+                    <div className="grid gap-2">
+                      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                        {linhas.map((l) => (
+                          <div
+                            key={l.periodo}
+                            className={cn(
+                              "rounded-xl border px-3 py-2",
+                              l.periodo === c.budget_period
+                                ? "border-emerald-500/60 bg-emerald-500/10"
+                                : "bg-secondary/40",
+                            )}
+                          >
+                            <p className="text-xs text-muted-foreground">
+                              {rotulos[l.periodo]}
+                              {l.periodo === c.budget_period ? ` · ${t("o que você digitou")}` : ""}
+                            </p>
+                            <p className="text-base font-semibold tabular-nums">
+                              {moedaDoNumero(l.bruto)}
+                            </p>
+                            <p className="text-xs text-muted-foreground tabular-nums">
+                              {t("líquido")} {moedaDoNumero(l.liquido)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {baseadoNoMes
+                          ? t("Campanha contínua (ou sem datas): o total é o do mês, de 30 dias.")
+                          : `${t("Calculado com")} ${dias} ${dias === 1 ? t("dia") : t("dias")} ${t("de campanha")}.`}
+                        {c.tax_pct > 0
+                          ? ` ${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%.`
+                          : ""}
+                      </p>
+                    </div>
+                  );
+                })()
+              : null}
           </Bloco>
 
           <Bloco titulo={t("Produtos e ticket médio esperado")} tom="violet">
