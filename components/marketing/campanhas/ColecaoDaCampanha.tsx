@@ -85,19 +85,46 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   const t = useT();
   const [busca, setBusca] = useState("");
   const [configurando, setConfigurando] = useState(false);
-  const [aba, setAba] = useState<string>(ID_DA_PADRAO);
+  // `null` = a primeira aba da ordem (é a que a tela abre).
+  const [aba, setAba] = useState<string | null>(null);
   const [forcarCartoes, setForcarCartoes] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
   const ultimoMarcado = useRef<string | null>(null);
 
   const padrao = useVisualizacao(tela);
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
-    tela,
-    podeEditar,
-  );
-  const visaoAtiva = aba === ID_DA_PADRAO ? undefined : visoes.find((v) => v.id === aba);
-  const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
+  const {
+    visoes,
+    carregando: carregandoAsVisoes,
+    salvarConfig,
+    criarVisao,
+    editarVisao,
+    apagarVisao,
+  } = useVisoesSalvas(tela, podeEditar);
+  // A ORDEM das abas é da empresa (a `position` de cada visualização); a aba de fábrica guarda
+  // a própria posição nas preferências. A primeira da ordem é a que a tela abre.
+  const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
+  const ordemDasAbas = [
+    { id: ID_DA_PADRAO, posicao: posicaoDaPadrao },
+    ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
+  ].sort((a, b) => a.posicao - b.posicao);
+  const abaValida =
+    aba !== null && (aba === ID_DA_PADRAO || visoes.some((v) => v.id === aba)) ? aba : null;
+  const ativaId = abaValida ?? ordemDasAbas[0]?.id ?? ID_DA_PADRAO;
+  const visaoAtiva = ativaId === ID_DA_PADRAO ? undefined : visoes.find((v) => v.id === ativaId);
+  const indiceDaAba = ordemDasAbas.findIndex((a) => a.id === ativaId);
+  const moverAba = (direcao: -1 | 1) => {
+    const ids = ordemDasAbas.map((a) => a.id);
+    const i = ids.indexOf(ativaId);
+    const j = i + direcao;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    ids.forEach((id, k) => {
+      const posicao = (k + 1) * 1000;
+      if (id === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(id, { position: posicao });
+    });
+  };
   const tipoDaAba: TipoDeVisualizacao = visaoAtiva
     ? visaoAtiva.type
     : padrao.preferencias.visualizacao === "tabela"
@@ -278,16 +305,23 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
     </div>
   );
 
-  const abas = [
-    {
-      id: ID_DA_PADRAO,
-      nome: padrao.preferencias.nome ?? t("Cartões"),
-      tipo: (padrao.preferencias.visualizacao === "tabela"
-        ? "tabela"
-        : "galeria") as TipoDeVisualizacao,
-    },
-    ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
-  ];
+  const abasPorId = new Map([
+    [
+      ID_DA_PADRAO,
+      {
+        id: ID_DA_PADRAO,
+        nome: padrao.preferencias.nome ?? t("Cartões"),
+        tipo: (padrao.preferencias.visualizacao === "tabela"
+          ? "tabela"
+          : "galeria") as TipoDeVisualizacao,
+      },
+    ],
+    ...visoes.map((v) => [v.id, { id: v.id, nome: v.name, tipo: v.type }] as const),
+  ]);
+  const abas = ordemDasAbas.flatMap((a) => {
+    const x = abasPorId.get(a.id);
+    return x ? [x] : [];
+  });
 
   return (
     <div className="grid grid-cols-1 gap-3">
@@ -337,7 +371,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
         </>
       ) : null}
 
-      {carregando ? (
+      {carregando || carregandoAsVisoes ? (
         <div className="h-24 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
       ) : itens.length === 0 ? (
         <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{vazio}</p>
@@ -428,6 +462,11 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
         tipos={TIPOS}
         podeEditar={podeEditar}
         ehPadrao={!visaoAtiva}
+        aoMoverAba={moverAba}
+        podeMoverAba={{
+          esquerda: indiceDaAba > 0,
+          direita: indiceDaAba >= 0 && indiceDaAba < ordemDasAbas.length - 1,
+        }}
         aoRenomear={(nome) =>
           visaoAtiva
             ? void editarVisao(visaoAtiva.id, { name: nome })
@@ -473,7 +512,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
             ? () => {
                 void apagarVisao(visaoAtiva.id);
                 setConfigurando(false);
-                setAba(ID_DA_PADRAO);
+                setAba(null);
               }
             : undefined
         }

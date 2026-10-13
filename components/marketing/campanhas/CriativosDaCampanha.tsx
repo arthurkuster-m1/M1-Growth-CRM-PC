@@ -130,8 +130,9 @@ function Variacoes({
     while (limpa.length > 0 && limpa[limpa.length - 1] === "") limpa.pop();
     if (limpa.join("\u0000") !== chave) aoGravar(limpa);
   };
+  // Sempre começa FECHADO ao abrir a página: são textos longos e ocupam a tela.
   return (
-    <details className="rounded-xl border p-3" open={preenchidos > 0 && preenchidos <= 1}>
+    <details className="rounded-xl border p-3">
       <summary className="cursor-pointer text-sm font-medium">
         {titulo}{" "}
         <span className="text-xs font-normal text-muted-foreground">
