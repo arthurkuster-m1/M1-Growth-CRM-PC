@@ -3,10 +3,13 @@
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
+import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
@@ -17,7 +20,12 @@ import {
   type DadosDaVenda,
 } from "@/components/vendas/DialogoDaVenda";
 import { useT } from "@/hooks/i18n/useT";
+import { useActiveOrg } from "@/hooks/auth/AuthProvider";
+import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
+import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
+import { ROLE_RANK } from "@/lib/auth/types";
+import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import {
@@ -26,7 +34,7 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import { somarMeses } from "@/lib/marketing/campanhas-resumo";
 import { precisaDeConfirmacao } from "@/lib/vendas-recorrentes";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -36,6 +44,8 @@ import {
   STATUS_DA_VENDA,
   fluxoDoMes,
   totaisDeVendas,
+  valorPagoDaVenda,
+  valorPrevistoDaVenda,
   type StatusDaVenda,
   type Venda,
 } from "@/lib/vendas";
@@ -71,8 +81,56 @@ function rotuloDoStatusDaVenda(t: (s: string) => string, s: StatusDaVenda): stri
 export function VendasCRM() {
   const t = useT();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const caminho = usePathname();
+  const parametros = useSearchParams();
+  const org = useActiveOrg();
+  const podeEditarVisoes = ROLE_RANK[org?.role ?? "viewer"] >= ROLE_RANK.agent;
+  const marcarParcela = useMarcarParcela();
+  const [configurando, setConfigurando] = useState(false);
+
+  // As abas salvas de Vendas (da organização, como as de Clientes e Tarefas). "Tabela" é a de fábrica.
   const padrao = useVisualizacao("vendas");
-  const preferencias = padrao.preferencias;
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+    "vendas",
+    podeEditarVisoes,
+  );
+  const ID_DA_PADRAO = "padrao";
+  const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
+  const ordemDasAbas = [
+    { id: ID_DA_PADRAO, posicao: posicaoDaPadrao },
+    ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
+  ].sort((a, b) => a.posicao - b.posicao);
+  const abaPedida = parametros.get("v");
+  const visaoAtiva =
+    abaPedida === ID_DA_PADRAO
+      ? undefined
+      : (visoes.find((v) => v.id === abaPedida) ??
+        (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+  const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
+  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
+    if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
+    else padrao.atualizar(mudar);
+  };
+  const indiceDaAba = ordemDasAbas.findIndex((a) => a.id === ativaId);
+  const moverAba = (direcao: -1 | 1) => {
+    const ids = ordemDasAbas.map((a) => a.id);
+    const i = ids.indexOf(ativaId);
+    const j = i + direcao;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    ids.forEach((id, k) => {
+      const posicao = (k + 1) * 1000;
+      if (id === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(id, { position: posicao });
+    });
+  };
+  function irParaAba(id: string) {
+    const p = new URLSearchParams(parametros.toString());
+    p.set("v", id);
+    router.replace(`${caminho}?${p.toString()}`, { scroll: false });
+  }
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
   const [editando, setEditando] = useState<Venda | "nova" | null>(null);
@@ -167,6 +225,7 @@ export function VendasCRM() {
     cor: COR[s],
   }));
 
+  const texto = (v: string) => <span className="block truncate px-2 text-sm">{v || "—"}</span>;
   const colunas: ColunaDoMotor<Venda>[] = [
     {
       id: "cliente",
@@ -189,11 +248,18 @@ export function VendasCRM() {
       titulo: t("Produto"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 220,
-      celula: (v) => <span className="block truncate px-2 text-sm">{v.product_name || "—"}</span>,
+      celula: (v) => texto(v.product_name),
+    },
+    {
+      id: "funil",
+      titulo: t("Funil"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 200,
+      celula: (v) => texto(v.funil ?? ""),
     },
     {
       id: "valor",
-      titulo: t("Valor"),
+      titulo: t("Valor total"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 140,
       celula: (v) => (
@@ -201,16 +267,36 @@ export function VendasCRM() {
       ),
     },
     {
-      id: "status",
-      titulo: t("Situação"),
+      id: "pago",
+      titulo: t("Valor pago"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 160,
+      largura: 140,
+      celula: (v) => (
+        <span className="block px-2 text-sm tabular-nums text-green-700 dark:text-green-400">
+          {reais(valorPagoDaVenda(v))}
+        </span>
+      ),
+    },
+    {
+      id: "previsto",
+      titulo: t("Previsto"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 140,
+      celula: (v) => (
+        <span className="block px-2 text-sm tabular-nums">{reais(valorPrevistoDaVenda(v))}</span>
+      ),
+    },
+    {
+      id: "status",
+      titulo: t("Status"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
       celula: (v) => (
         <SeletorDeOpcao
           opcoes={opcoesDeStatus}
           valorId={v.status}
           podeEditar
-          rotulo={t("Situação da venda")}
+          rotulo={t("Status da venda")}
           aoEscolher={(id) => {
             // Fechar a venda (comprometida/concluída) pede os detalhes: produtos, valor real,
             // forma de pagamento e parcelas. Interesse e cancelada mudam direto.
@@ -226,8 +312,66 @@ export function VendasCRM() {
       ),
     },
     {
-      id: "prevista",
+      id: "parcelas",
+      titulo: t("Parcelas"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 250,
+      celula: (v) => {
+        const parcelas = (v.parcelas ?? []).filter((p) => p.status !== "cancelada");
+        if (parcelas.length === 0) {
+          return (
+            <div className="flex items-center gap-2 px-2 text-xs">
+              <CirculoDeRecebida
+                marcado={v.status === "concluida"}
+                desabilitado={v.status === "cancelada"}
+                rotulo={`${t("À vista")} ${t("recebido")}`}
+                aoMudar={(ok) =>
+                  mudarStatus.mutate({ id: v.id, status: ok ? "concluida" : "comprometida" })
+                }
+              />
+              <span className="tabular-nums">
+                {t("À vista")} · {reais(v.amount_cents)}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <ul className="grid gap-1 px-2 py-1">
+            {parcelas.map((p) => (
+              <li key={p.number} className="flex items-center gap-2 text-xs whitespace-nowrap">
+                <CirculoDeRecebida
+                  marcado={p.status === "recebida"}
+                  rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
+                  aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
+                />
+                <span className="tabular-nums">
+                  {p.number}/{parcelas.length} · {reais(p.amount_cents)} · {dataBr(p.due_on)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        );
+      },
+    },
+    {
+      id: "etapa",
+      titulo: t("Etapa"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      celula: (v) => texto(v.etapa ?? ""),
+    },
+    {
+      id: "previsao",
       titulo: t("Previsão"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 130,
+      celula: (v) => (
+        <span className="block px-2 text-sm tabular-nums">{dataBr(v.expected_close_date)}</span>
+      ),
+    },
+    {
+      id: "prevista",
+      titulo: t("Compromisso"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 130,
       celula: (v) => (
@@ -235,10 +379,23 @@ export function VendasCRM() {
       ),
     },
     {
+      id: "pagamento",
+      titulo: t("Pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      celula: (v) =>
+        texto(
+          v.payment_method
+            ? `${v.payment_method}${v.installments > 1 ? ` · ${v.installments}x` : ""}`
+            : "",
+        ),
+    },
+    {
       id: "recebida",
       titulo: t("Recebida em"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 130,
+      padrao: false,
       celula: (v) => <span className="block px-2 text-sm tabular-nums">{dataBr(v.paid_on)}</span>,
     },
     {
@@ -246,6 +403,7 @@ export function VendasCRM() {
       titulo: t("Recorrente"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 120,
+      padrao: false,
       celula: (v) => (
         <CelulaDeCaixa
           marcada={v.is_recurring}
@@ -261,22 +419,15 @@ export function VendasCRM() {
       icone: <TextAa size={14} aria-hidden />,
       largura: 180,
       padrao: false,
-      celula: (v) => <span className="block truncate px-2 text-sm">{v.reference || "—"}</span>,
+      celula: (v) => texto(v.reference),
     },
     {
       id: "campanha",
       titulo: t("Campanha"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 220,
-      celula: (v) => <span className="block truncate px-2 text-sm">{v.campanha ?? "—"}</span>,
-    },
-    {
-      id: "funil",
-      titulo: t("Funil"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 200,
       padrao: false,
-      celula: (v) => <span className="block truncate px-2 text-sm">{v.funil ?? "—"}</span>,
+      celula: (v) => texto(v.campanha ?? ""),
     },
     {
       id: "criada",
@@ -300,15 +451,31 @@ export function VendasCRM() {
   > = [
     { id: "cliente", titulo: t("Cliente"), tipo: "texto", valorDe: (v) => v.cliente?.nome ?? "" },
     { id: "produto", titulo: t("Produto"), tipo: "texto", valorDe: (v) => v.product_name },
-    { id: "valor", titulo: t("Valor"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
+    { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (v) => v.funil ?? "" },
+    { id: "valor", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
+    { id: "pago", titulo: t("Valor pago"), tipo: "numero", valorDe: (v) => valorPagoDaVenda(v) / 100 },
+    {
+      id: "previsto",
+      titulo: t("Previsto"),
+      tipo: "numero",
+      valorDe: (v) => valorPrevistoDaVenda(v) / 100,
+    },
     {
       id: "status",
-      titulo: t("Situação"),
+      titulo: t("Status"),
       tipo: "opcao",
       valorDe: (v) => v.status,
       opcoes: opcoesDeStatus,
     },
-    { id: "prevista", titulo: t("Previsão"), tipo: "data", valorDe: (v) => v.expected_on },
+    { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (v) => v.etapa ?? "" },
+    {
+      id: "previsao",
+      titulo: t("Previsão"),
+      tipo: "data",
+      valorDe: (v) => v.expected_close_date,
+    },
+    { id: "prevista", titulo: t("Compromisso"), tipo: "data", valorDe: (v) => v.expected_on },
+    { id: "pagamento", titulo: t("Pagamento"), tipo: "texto", valorDe: (v) => v.payment_method },
     { id: "recebida", titulo: t("Recebida em"), tipo: "data", valorDe: (v) => v.paid_on },
     { id: "recorrente", titulo: t("Recorrente"), tipo: "caixa", valorDe: (v) => v.is_recurring },
     { id: "campanha", titulo: t("Campanha"), tipo: "texto", valorDe: (v) => v.campanha ?? "" },
@@ -337,7 +504,7 @@ export function VendasCRM() {
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
   function mudarConsulta(c: ConsultaDaTabela) {
-    padrao.atualizar((p) => ({
+    atualizar((p) => ({
       ...p,
       filtros: c.filtros?.length ? c.filtros : undefined,
       ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
@@ -472,6 +639,32 @@ export function VendasCRM() {
 
       <PorProduto mes={mes} />
 
+      <AbasDeVisualizacao
+        abas={[ID_DA_PADRAO, ...visoes.map((v) => v.id)]
+          .map((id) => ordemDasAbas.find((a) => a.id === id))
+          .flatMap((a) => (a ? [a] : []))
+          .sort((x, y) => x.posicao - y.posicao)
+          .map((a) =>
+            a.id === ID_DA_PADRAO
+              ? { id: a.id, nome: padrao.preferencias.nome ?? t("Tabela"), tipo: "tabela" as const }
+              : {
+                  id: a.id,
+                  nome: visoes.find((v) => v.id === a.id)?.name ?? t("Tabela"),
+                  tipo: "tabela" as const,
+                },
+          )}
+        ativaId={ativaId}
+        podeEditar={podeEditarVisoes}
+        tipos={["tabela"]}
+        aoEscolher={irParaAba}
+        aoCriar={(nome) =>
+          void criarVisao({ name: nome, type: "tabela", config: preferencias }).then(
+            (v) => v && irParaAba(v.id),
+          )
+        }
+        aoConfigurar={() => setConfigurando(true)}
+      />
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={busca}
@@ -539,7 +732,7 @@ export function VendasCRM() {
           colunas={mostradas}
           grupos={grupos}
           aoMoverColuna={(movido, alvo) =>
-            padrao.atualizar((p) => ({
+            atualizar((p) => ({
               ...p,
               ordem: moverColuna(
                 resolvidas.filter((c) => !c.fixa).map((c) => c.id),
@@ -549,7 +742,7 @@ export function VendasCRM() {
             }))
           }
           aoRedimensionarColuna={(id, largura) =>
-            padrao.atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
+            atualizar((p) => ({ ...p, larguras: { ...p.larguras, [id]: largura } }))
           }
           aoReordenar={() => undefined}
           podeReordenar={false}
@@ -561,6 +754,66 @@ export function VendasCRM() {
           }
         />
       )}
+
+      <ConfigurarVisualizacao
+        aberto={configurando}
+        aoFechar={() => setConfigurando(false)}
+        nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
+        tipo="tabela"
+        tipos={["tabela"]}
+        podeEditar={podeEditarVisoes}
+        ehPadrao={!visaoAtiva}
+        aoRenomear={(nome) =>
+          visaoAtiva
+            ? void editarVisao(visaoAtiva.id, { name: nome })
+            : padrao.atualizar((p) => ({ ...p, nome }))
+        }
+        aoTrocarTipo={() => undefined}
+        aoMoverAba={moverAba}
+        podeMoverAba={{
+          esquerda: indiceDaAba > 0,
+          direita: indiceDaAba >= 0 && indiceDaAba < ordemDasAbas.length - 1,
+        }}
+        propriedades={resolvidas.map((c) => ({
+          id: c.id,
+          titulo: c.titulo,
+          icone: c.icone,
+          visivel: c.visivel,
+          obrigatoria: c.fixa || c.semOcultar,
+        }))}
+        aoMover={(movido, alvo) =>
+          atualizar((p) => ({
+            ...p,
+            ordem: moverColuna(
+              resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+              movido,
+              alvo,
+            ),
+          }))
+        }
+        aoAlternar={(id) => {
+          const atual = resolvidas.find((c) => c.id === id);
+          if (!atual || atual.fixa || atual.semOcultar) return;
+          atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+        }}
+        aoMostrarTodas={(mostrar) =>
+          atualizar((p) => ({
+            ...p,
+            visiveis: Object.fromEntries(
+              resolvidas.filter((c) => !c.fixa && !c.semOcultar).map((c) => [c.id, mostrar]),
+            ),
+          }))
+        }
+        aoApagar={
+          visaoAtiva
+            ? () => {
+                void apagarVisao(visaoAtiva.id);
+                setConfigurando(false);
+                irParaAba(ID_DA_PADRAO);
+              }
+            : undefined
+        }
+      />
 
       {editando ? (
         <DialogoDaVenda

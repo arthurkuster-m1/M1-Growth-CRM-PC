@@ -37,7 +37,6 @@ import {
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
-import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { CHAVE_DE_VENDAS_PENDENTES } from "@/components/vendas/PopupDeVendaPendente";
@@ -250,8 +249,6 @@ export function ClientesCRM() {
 
   const corDaEtapa = (e: Etapa | undefined): CorDaOpcao =>
     !e ? "gray" : e.is_won ? "green" : e.is_lost ? "red" : PALETA[e.position % PALETA.length]!;
-  const rotuloDoStatus = (s: string) =>
-    s === "won" ? t("Ganho") : s === "lost" ? t("Perdido") : t("Aberto");
   const dia = (iso: string | null) =>
     iso
       ? new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -385,22 +382,20 @@ export function ClientesCRM() {
       apiClient.post(`/api/v1/leads/${p.lead_id}/clone`, { pipeline_id: destinoId }),
     );
   };
-  const etapasAbertasDoFunil = (funilId: string) =>
+  /** TODAS as etapas do funil: a etapa diz também se a venda deu certo (ganho) ou não (perdido). */
+  const etapasDoFunil = (funilId: string) =>
     (dados?.etapas ?? [])
-      .filter((e) => e.pipeline_id === funilId && !e.is_won && !e.is_lost)
-      .map((e) => ({ id: e.id, rotulo: e.name, cor: corDaEtapa(e) }));
+      .filter((e) => e.pipeline_id === funilId)
+      .map((e) => ({
+        id: e.id,
+        rotulo: e.is_won ? `${e.name} ✓` : e.is_lost ? `${e.name} ✕` : e.name,
+        cor: corDaEtapa(e),
+      }));
   const opcoesDeFunil = (dados?.funis ?? []).map((f) => ({
     id: f.id,
     rotulo: f.name,
     cor: "gray" as CorDaOpcao,
   }));
-  const opcoesDeSituacao: Array<{ id: string; rotulo: string; cor: CorDaOpcao }> = [
-    { id: "open", rotulo: t("Aberto"), cor: "blue" },
-    { id: "won", rotulo: t("Ganho"), cor: "green" },
-    { id: "lost", rotulo: t("Perdido"), cor: "red" },
-  ];
-  const corDaSituacao = (s: string): CorDaOpcao =>
-    s === "won" ? "green" : s === "lost" ? "red" : "blue";
   const empilhado = (itens: React.ReactNode[]) => (
     <div className="flex min-w-0 flex-col items-stretch gap-0.5 py-0.5">{itens}</div>
   );
@@ -473,59 +468,35 @@ export function ClientesCRM() {
         return empilhado(
           lista.map((p) => {
             const atual = etapasPorId.get(p.etapa_id);
-            const fechado = p.status !== "open";
             const prefixo = lista.length > 1 ? `${funisPorId.get(p.funil_id)?.name ?? "—"} - ` : "";
             return (
               <SeletorDeOpcao
                 key={p.lead_id}
-                opcoes={etapasAbertasDoFunil(p.funil_id)}
+                opcoes={etapasDoFunil(p.funil_id)}
                 valorId={atual?.id}
-                podeEditar={podeEditar && !fechado}
+                podeEditar={podeEditar}
                 rotulo={t("Etapa no funil")}
-                aoEscolher={(id) => void moverEtapa(p, id)}
+                aoEscolher={(id) => {
+                  if (id === atual?.id) return;
+                  // Etapa de perda pede o motivo (o mesmo diálogo de antes).
+                  if (etapasPorId.get(id)?.is_lost) {
+                    setPerdendo({ leadId: p.lead_id, funilId: p.funil_id });
+                    return;
+                  }
+                  // Etapa de ganho: fecha como venda (o banco efetiva a venda e abre o pop-up).
+                  if (etapasPorId.get(id)?.is_won) {
+                    void ganhar(p);
+                    return;
+                  }
+                  void moverEtapa(p, id);
+                }}
               >
                 <Etiqueta ponto cor={corDaEtapa(atual)}>
-                  {`${prefixo}${atual?.name ?? "—"}${fechado ? ` (${rotuloDoStatus(p.status)})` : ""}`}
+                  {`${prefixo}${atual?.name ?? "—"}`}
                 </Etiqueta>
               </SeletorDeOpcao>
             );
           }),
-        );
-      },
-    },
-    {
-      id: "status",
-      titulo: t("Situação"),
-      icone: <Rows size={14} aria-hidden />,
-      largura: 170,
-      celula: (l) => {
-        const lista = partes(l);
-        if (lista.length === 0) return semValor;
-        return empilhado(
-          lista.map((p) => (
-            <SeletorDeOpcao
-              key={p.lead_id}
-              opcoes={opcoesDeSituacao}
-              valorId={p.status}
-              podeEditar={podeEditar}
-              rotulo={t("Situação no funil")}
-              aoEscolher={(id) => {
-                if (id === p.status) return;
-                if (id === "won") void ganhar(p);
-                else if (id === "lost") setPerdendo({ leadId: p.lead_id, funilId: p.funil_id });
-                else {
-                  const primeira = (dados?.etapas ?? []).find(
-                    (e) => e.pipeline_id === p.funil_id && !e.is_won && !e.is_lost,
-                  );
-                  if (primeira) void moverEtapa(p, primeira.id);
-                }
-              }}
-            >
-              <Etiqueta ponto cor={corDaSituacao(p.status)}>
-                {rotuloDoStatus(p.status)}
-              </Etiqueta>
-            </SeletorDeOpcao>
-          )),
         );
       },
     },
@@ -841,17 +812,6 @@ export function ClientesCRM() {
       ordemDoValor: (v) => etapasPorId.get(v)?.position ?? 0,
     },
     {
-      id: "status",
-      titulo: t("Situação"),
-      tipo: "opcao",
-      valorDe: (l) => l.participacao?.status,
-      opcoes: [
-        { id: "open", rotulo: t("Aberto"), cor: "blue" },
-        { id: "won", rotulo: t("Ganho"), cor: "green" },
-        { id: "lost", rotulo: t("Perdido"), cor: "red" },
-      ],
-    },
-    {
       id: "mql",
       titulo: "MQL",
       tipo: "caixa",
@@ -939,14 +899,14 @@ export function ClientesCRM() {
   const abertas = alvos.flatMap((l) =>
     (l.participacao ? [l.participacao] : l.participacoes).filter((p) => p.status === "open"),
   );
-  const ganhas = alvos.flatMap((l) =>
-    (l.participacao ? [l.participacao] : l.participacoes).filter((p) => p.status === "won"),
-  );
-  const perdidas = alvos.flatMap((l) =>
-    (l.participacao ? [l.participacao] : l.participacoes).filter((p) => p.status === "lost"),
-  );
-  const decididas = ganhas.length + perdidas.length;
-  const taxa = decididas > 0 ? Math.round((ganhas.length / decididas) * 100) : 0;
+  // VENDAS = as vendas realizadas (com pagamento recebido), no funil escolhido ou em todos.
+  const vendasDoLead = (l: Linha) =>
+    funilAtual ? (l.vendas_por_funil?.[funilAtual.id] ?? 0) : l.vendas;
+  const totalDeVendas = alvos.reduce((s, l) => s + vendasDoLead(l), 0);
+  // TAXA DE CONVERSÃO = leads com ao menos uma venda paga ÷ total de leads (não é a contagem de
+  // vendas: um lead com três vendas conta uma vez).
+  const leadsComVenda = alvos.filter((l) => vendasDoLead(l) > 0).length;
+  const taxa = alvos.length > 0 ? Math.round((leadsComVenda / alvos.length) * 100) : 0;
   const seteDias = agora - 7 * 86_400_000;
   const semContato = abertas.filter((p) => {
     const u = p.ultima_atividade ?? p.criado_em;
@@ -956,7 +916,7 @@ export function ClientesCRM() {
     [t("Total de leads"), String(alvos.length)],
     [t("Valor em aberto"), moeda(abertas.reduce((s, p) => s + (p.valor_cents ?? 0), 0))],
     [t("Taxa de conversão"), `${taxa}%`],
-    [t("Ganhos"), String(ganhas.length)],
+    [t("Vendas"), String(totalDeVendas)],
     [t("MQL"), String(alvos.filter((l) => l.is_mql).length)],
     [t("Sem contato (+7d)"), String(semContato)],
   ];

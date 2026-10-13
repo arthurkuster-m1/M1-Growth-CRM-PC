@@ -324,3 +324,15 @@ Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · 
   vendas pagas, ações registradas, leads e orçamento (`lib/marketing/dia-a-dia-automatico.ts`).
 - **Venda**: status explícitos (Interesse/Comprometida/Concluída/Cancelada), responsável e campos do
   funil dentro do popup; Vendas da ficha: LTV em interesse, "Previsto", sem rolar a página inteira.
+
+### Sessão 10 (continuação 3) — Etapa = situação, métricas e Vendas com abas
+
+- **Etapa e Situação são a mesma coisa**: a coluna Situação saiu da tabela do CRM; a Etapa lista
+  todas as etapas do funil (em andamento, ganho ✓, perdido ✕) — escolher a de perda pede o motivo, a
+  de ganho fecha como venda. Mesma regra na ficha (Funis) e no popup da venda.
+- **Topo do CRM**: "Ganhos" virou **Vendas** (vendas com pagamento recebido, no funil escolhido) e a
+  **taxa de conversão** = leads com ao menos uma venda paga ÷ total de leads
+  (`GET /api/v1/clientes` devolve `vendas_por_funil`).
+- **Vendas (CRM)**: abas/visualizações salvas (`saved-views` tela `vendas`) e as colunas da tabela
+  da ficha: Produto, Funil, Valor total, Valor pago, Previsto, Status, Parcelas (círculos), Etapa,
+  Previsão, Compromisso, Pagamento (+ extras). `hooks/vendas/useMarcarParcela.ts` é comum às duas.

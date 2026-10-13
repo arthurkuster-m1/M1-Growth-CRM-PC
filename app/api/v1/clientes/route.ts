@@ -57,6 +57,8 @@ export interface ClienteDaLista {
   ltv_previsto_cents: number;
   interesse_cents: number;
   vendas: number;
+  /** Vendas PAGAS (ao menos uma parcela recebida) por funil: funil_id → quantidade. */
+  vendas_por_funil: Record<string, number>;
   ultima_compra: string | null;
   ultima_atividade: string | null;
   campos: Record<string, unknown>;
@@ -173,6 +175,37 @@ export async function GET(req: NextRequest): Promise<Response> {
     porContato.set(n.contact_id, lista);
   }
 
+  // As vendas pagas de cada contato, por funil (uma venda "paga" tem ao menos uma parcela recebida,
+  // ou é concluída sem parcelas). Alimenta "Vendas" e a taxa de conversão do topo do CRM.
+  const idsDosContatos = ((contatos ?? []) as Array<{ id: string }>).map((c) => c.id);
+  const vendasPorContato = new Map<string, Record<string, number>>();
+  for (let i = 0; i < idsDosContatos.length; i += 200) {
+    const { data: vendas } = await supabase
+      .from("crm_sales")
+      .select("id, contact_id, pipeline_id, status, payments:crm_sale_payments(status)")
+      .eq("organization_id", orgId)
+      .in("status", ["comprometida", "concluida"])
+      .in("contact_id", idsDosContatos.slice(i, i + 200))
+      .limit(5000);
+    for (const v of (vendas ?? []) as unknown as Array<{
+      contact_id: string;
+      pipeline_id: string | null;
+      status: string;
+      payments: Array<{ status: string }> | null;
+    }>) {
+      const pagamentos = (v.payments ?? []).filter((p) => p.status !== "cancelada");
+      const paga =
+        pagamentos.length === 0
+          ? v.status === "concluida"
+          : pagamentos.some((p) => p.status === "recebida");
+      if (!paga) continue;
+      const mapa = vendasPorContato.get(v.contact_id) ?? {};
+      const chave = v.pipeline_id ?? "sem_funil";
+      mapa[chave] = (mapa[chave] ?? 0) + 1;
+      vendasPorContato.set(v.contact_id, mapa);
+    }
+  }
+
   const clientes: ClienteDaLista[] = (
     (contatos ?? []) as Array<{
       id: string;
@@ -211,6 +244,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     ltv_previsto_cents: Number(c.ltv_forecast_cents) || 0,
     interesse_cents: Number(c.interest_cents) || 0,
     vendas: c.sales_count ?? 0,
+    vendas_por_funil: vendasPorContato.get(c.id) ?? {},
     ultima_compra: c.last_purchase_on,
     ultima_atividade: c.last_activity_at,
     campos: c.custom_fields ?? {},

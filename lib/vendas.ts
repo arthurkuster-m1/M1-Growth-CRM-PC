@@ -353,3 +353,16 @@ export function ajustarParcelasAoTotal(
     i === ultimaAberta ? { ...p, amount_cents: Math.max(0, p.amount_cents + diferenca) } : p,
   );
 }
+
+/** O que já entrou numa venda: as parcelas recebidas (ou o total, na concluída sem parcelas). */
+export function valorPagoDaVenda(v: Pick<Venda, "status" | "amount_cents" | "parcelas">): number {
+  const p = (v.parcelas ?? []).filter((x) => x.status !== "cancelada");
+  if (p.length === 0) return v.status === "concluida" ? v.amount_cents : 0;
+  return p.filter((x) => x.status === "recebida").reduce((a, x) => a + x.amount_cents, 0);
+}
+
+/** O que está PREVISTO para entrar: o total menos o que já entrou (venda cancelada não deve nada). */
+export function valorPrevistoDaVenda(v: Pick<Venda, "status" | "amount_cents" | "parcelas">): number {
+  if (v.status === "cancelada") return 0;
+  return Math.max(0, v.amount_cents - valorPagoDaVenda(v));
+}

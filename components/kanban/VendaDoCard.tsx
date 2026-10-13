@@ -1,8 +1,10 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { apiClient } from "@/lib/api/client";
 import type { DadosDoLead } from "@/components/leads/FichaDoLead";
@@ -29,6 +31,7 @@ export function VendaDoCard({
   semVenda: () => React.ReactNode;
 }) {
   const queryClient = useQueryClient();
+  const [perdendo, setPerdendo] = useState(false);
   const contactId = lead.contact_id;
   const consulta = useQuery({
     queryKey: ["vendas-do-cliente", contactId],
@@ -85,7 +88,18 @@ export function VendaDoCard({
   }
 
   async function moverEtapa(etapaId: string) {
+    const alvo = etapas.find((e) => e.id === etapaId);
+    // Etapa de perda pede o motivo; a de ganho fecha como venda. A etapa É o resultado.
+    if (alvo?.is_lost) {
+      setPerdendo(true);
+      return;
+    }
     try {
+      if (alvo?.is_won && lead.status === "open") {
+        await apiClient.post(`/api/v1/leads/${lead.id}/win`, {});
+        await recarregar();
+        return;
+      }
       await apiClient.post(`/api/v1/leads/${lead.id}/move`, {
         stage_id: etapaId,
         position_in_stage: Date.now(),
@@ -97,11 +111,23 @@ export function VendaDoCard({
     }
   }
 
-  const abertas = etapas.filter((e) => !e.is_won && !e.is_lost);
-  const atual = etapas.find((e) => e.id === lead.stage_id);
-  const lista = atual && !abertas.some((e) => e.id === atual.id) ? [atual, ...abertas] : abertas;
+  // Todas as etapas: a etapa diz também se a venda deu certo ou não.
+  const lista = etapas;
 
   return (
+    <>
+    {perdendo ? (
+      <LoseLeadDialog
+        open
+        leadId={lead.id}
+        pipelineId={lead.pipeline_id}
+        onOpenChange={(aberta) => {
+          if (aberta) return;
+          setPerdendo(false);
+          void recarregar();
+        }}
+      />
+    ) : null}
     <DialogoDaVenda
       key={venda.id}
       venda={venda}
@@ -111,7 +137,10 @@ export function VendaDoCard({
       aoFechar={aoFechar}
       aoSalvar={salvar}
       negocio={{
-        etapas: lista.map((e) => ({ id: e.id, nome: e.name })),
+        etapas: lista.map((e) => ({
+          id: e.id,
+          nome: e.is_won ? `${e.name} ✓` : e.is_lost ? `${e.name} ✕` : e.name,
+        })),
         etapaId: lead.stage_id,
         aoMoverEtapa: moverEtapa,
         fichaHref: `/app/contacts/${contactId}`,
@@ -132,5 +161,6 @@ export function VendaDoCard({
         },
       }}
     />
+    </>
   );
 }

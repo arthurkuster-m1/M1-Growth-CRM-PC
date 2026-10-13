@@ -126,7 +126,6 @@ function CartaoDoFunil({
   const [editandoVenda, setEditandoVenda] = useState<Venda | null>(null);
 
   const status = n.negocio.status;
-  const aberto = status === "open";
   const etapas = n.negocio.etapas ?? [];
   const etapasAbertas = etapas.filter((e) => !e.ganho && !e.perdido);
   const dia = (iso: string | null | undefined, hora = false) =>
@@ -225,44 +224,54 @@ function CartaoDoFunil({
       {/* ── Situação ── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="grid gap-1">
-          <Label className="text-xs">{t("Etapa")}</Label>
+          <Label className="text-xs">{t("Etapa (diz se a venda deu certo)")}</Label>
           <select
             className={SELECT}
             disabled={!podeEditar}
             value={n.negocio.etapa_id ?? ""}
-            onChange={(e) => e.target.value && void mover(e.target.value)}
-          >
-            {(aberto ? etapasAbertas : etapas).map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nome}
-              </option>
-            ))}
-            {aberto || etapas.some((e) => e.id === n.negocio.etapa_id) ? null : (
-              <option value={n.negocio.etapa_id ?? ""}>{n.negocio.etapa_nome ?? "—"}</option>
-            )}
-          </select>
-        </div>
-        <div className="grid gap-1">
-          <Label className="text-xs">{t("Situação")}</Label>
-          <select
-            className={SELECT}
-            disabled={!podeEditar || !aberto}
-            value={status}
             onChange={(e) => {
-              if (e.target.value === "won")
-                void executar(() => apiClient.post(`/api/v1/leads/${n.lead_id}/win`, {}), t("Marcado como ganho"));
-              if (e.target.value === "lost") setPerdendo(true);
+              const id = e.target.value;
+              if (!id || id === n.negocio.etapa_id) return;
+              const alvo = etapas.find((x) => x.id === id);
+              if (alvo?.perdido) setPerdendo(true);
+              else if (alvo?.ganho)
+                void executar(
+                  () => apiClient.post(`/api/v1/leads/${n.lead_id}/win`, {}),
+                  t("Marcado como ganho"),
+                );
+              else void mover(id);
             }}
           >
-            <option value="open">{t("Em andamento")}</option>
-            <option value="won">{t("Ganho")}</option>
-            <option value="lost">{t("Perdido")}</option>
+            <optgroup label={t("Em andamento")}>
+              {etapasAbertas.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nome}
+                </option>
+              ))}
+            </optgroup>
+            {etapas.some((e) => e.ganho) ? (
+              <optgroup label={t("Deu certo")}>
+                {etapas
+                  .filter((e) => e.ganho)
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome}
+                    </option>
+                  ))}
+              </optgroup>
+            ) : null}
+            {etapas.some((e) => e.perdido) ? (
+              <optgroup label={t("Não deu certo")}>
+                {etapas
+                  .filter((e) => e.perdido)
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome}
+                    </option>
+                  ))}
+              </optgroup>
+            ) : null}
           </select>
-          {!aberto ? (
-            <span className="text-[11px] text-muted-foreground">
-              {t("Para reabrir, mova o lead para uma etapa.")}
-            </span>
-          ) : null}
         </div>
         <div className="grid gap-1">
           <Label className="text-xs">{t("Responsável")}</Label>

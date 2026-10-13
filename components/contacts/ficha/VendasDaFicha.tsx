@@ -13,12 +13,19 @@ import {
 } from "@/lib/motor/consulta";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
+import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { Plus } from "@/lib/ui/icons";
-import { STATUS_DA_VENDA, type StatusDaVenda, type Venda } from "@/lib/vendas";
+import {
+  STATUS_DA_VENDA,
+  valorPagoDaVenda,
+  valorPrevistoDaVenda,
+  type StatusDaVenda,
+  type Venda,
+} from "@/lib/vendas";
 
 const reais = (c: number) => moedaDoNumero(c / 100);
 const dataBr = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "—");
@@ -43,6 +50,7 @@ const COR: Record<StatusDaVenda, "blue" | "yellow" | "green" | "gray"> = {
 export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: string }) {
   const t = useT();
   const queryClient = useQueryClient();
+  const marcarParcela = useMarcarParcela();
   const [editando, setEditando] = useState<Venda | "nova" | null>(null);
   const [busca, setBusca] = useState("");
   const [consultaDaTabela, setConsultaDaTabela] = useState<ConsultaDaTabela>({});
@@ -65,14 +73,9 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
   const vendas = consulta.data ?? [];
   const realizadas = vendas.filter((v) => v.status === "comprometida" || v.status === "concluida");
   /** O que já entrou: as parcelas recebidas (ou o total, na venda concluída sem parcelas). */
-  const recebido = (v: Venda) => {
-    const p = v.parcelas ?? [];
-    if (p.length === 0) return v.status === "concluida" ? v.amount_cents : 0;
-    return p.filter((x) => x.status === "recebida").reduce((a, x) => a + x.amount_cents, 0);
-  };
+  const recebido = valorPagoDaVenda;
   /** O que falta entrar: o total menos o que já entrou (venda cancelada não deve nada). */
-  const faltando = (v: Venda) =>
-    v.status === "cancelada" ? 0 : Math.max(0, v.amount_cents - recebido(v));
+  const faltando = valorPrevistoDaVenda;
   const aReceber = (v: Venda) => {
     const p = v.parcelas ?? [];
     if (p.length === 0) return v.status === "comprometida" ? v.amount_cents : 0;
@@ -172,40 +175,6 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     } catch (e) {
       showApiError(e);
       return false;
-    }
-  }
-  /** Marca (ou desmarca) uma parcela como recebida; o servidor recalcula o resto da venda. */
-  async function marcarParcela(v: Venda, numero: number, recebida: boolean) {
-    const hoje = new Date().toISOString().slice(0, 10);
-    const pagamentos = (v.parcelas ?? []).map((p) => ({
-      number: p.number,
-      due_on: p.due_on,
-      amount_cents: p.amount_cents,
-      status: (p.number === numero ? (recebida ? "recebida" : "prevista") : p.status) as
-        | "prevista"
-        | "recebida"
-        | "cancelada",
-      paid_on:
-        p.number === numero ? (recebida ? hoje : null) : (p.paid_on ?? null),
-    }));
-    // Todas recebidas = venda concluída; desmarcar uma de venda concluída volta a "comprometida".
-    const ativas = pagamentos.filter((p) => p.status !== "cancelada");
-    const todasRecebidas = ativas.length > 0 && ativas.every((p) => p.status === "recebida");
-    const status: StatusDaVenda | undefined = todasRecebidas
-      ? "concluida"
-      : v.status === "concluida"
-        ? "comprometida"
-        : undefined;
-    try {
-      await apiClient.patch(`/api/v1/vendas/${v.id}`, {
-        pagamentos,
-        ...(status && status !== v.status
-          ? { status, paid_on: status === "concluida" ? hoje : null }
-          : {}),
-      });
-      await atualizar();
-    } catch (e) {
-      showApiError(e);
     }
   }
   async function mudarStatus(v: Venda, status: StatusDaVenda) {
