@@ -232,7 +232,7 @@ export function AcoesEmMassaDeClientes({
               <DialogHeader>
                 <DialogTitle>{t("Editar origem")}</DialogTitle>
                 <DialogDescription>
-                  {t("Vale para o negócio mais recente de cada um dos")} {n} {t("selecionados.")}
+                  {t("Vale para o funil mais recente de cada um dos")} {n} {t("selecionados.")}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-3">

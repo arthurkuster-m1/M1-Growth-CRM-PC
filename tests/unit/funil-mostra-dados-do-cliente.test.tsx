@@ -142,7 +142,7 @@ describe("ContatoDoNegocio — as abas do dossiê", () => {
   it("negócio sem contato vinculado avisa, sem consultar nada", () => {
     comQuery(<ContatoDoNegocio contactId={null} pipelineId="p-1" />);
 
-    expect(screen.getByText("Este negócio não tem contato vinculado.")).toBeInTheDocument();
+    expect(screen.getByText("Este lead não tem contato vinculado.")).toBeInTheDocument();
     expect(useContact).not.toHaveBeenCalled();
   });
 

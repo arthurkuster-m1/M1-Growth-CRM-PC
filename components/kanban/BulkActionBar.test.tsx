@@ -20,34 +20,13 @@ vi.mock("@/hooks/kanban/useBulkAction", () => ({
 
 const STAGES = [{ id: "s1", name: "Novo" }] as never;
 
-describe("BulkActionBar — D10, aviso agregado ao excluir em lote", () => {
+describe("BulkActionBar — excluir em lote", () => {
   beforeEach(() => {
     get.mockReset();
-    get.mockResolvedValue({ data: [] });
     bulkMutate.mockReset();
   });
 
-  it("algum dos negocios selecionados tem proposta enviada: avisa na confirmacao", async () => {
-    get.mockImplementation(async (url: string) =>
-      url.includes("lead-1") ? { data: [{ status: "enviada" }] } : { data: [] },
-    );
-    const user = userEvent.setup();
-    render(
-      <BulkActionBar
-        selectedIds={["lead-1", "lead-2"]}
-        stages={STAGES}
-        pipelineId="p-1"
-        tagsExistentes={[]}
-        onClear={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Excluir" }));
-    await waitFor(() => expect(screen.getByText(/continuam disponíveis em Propostas/i)).toBeInTheDocument());
-  });
-
-  it("nenhum negocio selecionado tem proposta enviada: sem aviso extra", async () => {
-    get.mockResolvedValue({ data: [] });
+  it("a confirmação de excluir fala só do que será removido", async () => {
     const user = userEvent.setup();
     render(
       <BulkActionBar
@@ -61,6 +40,6 @@ describe("BulkActionBar — D10, aviso agregado ao excluir em lote", () => {
 
     await user.click(screen.getByRole("button", { name: "Excluir" }));
     await screen.findByText("Esta ação remove o que está selecionado. Não pode ser desfeita.");
-    expect(screen.queryByText(/continuam disponíveis em Propostas/i)).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalled();
   });
 });

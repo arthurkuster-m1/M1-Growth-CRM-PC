@@ -44,10 +44,12 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "redirect para /app/connections?aba=oficial desde o PR #105 — conectar canal passou a ter um lugar só. Conexões é a porta; a aba é navegação interna dela",
   "/app/settings/templates":
     "redirect para /app/connections?aba=oficial&sub=templates — template da Meta só existe por causa do canal oficial, e vive como sub-aba dele",
+  "/app/vendas":
+    "botão \"Vendas\" no topo de Clientes — é a visão do dinheiro daquela lista, não uma porta do menu",
+  "/app/marketing/geracao-de-demanda/resultados":
+    "alcançada pelas abas de Geração de demanda; o hub já lista a tela-mãe",
   "/app/settings/atualizacao":
     "porta é o rodapé de versão (VersionFooter), que aparece justamente quando há versão nova — melhor que um card fixo. Além disso é só do dono do servidor (is_platform_admin), papel que o registro não modela",
-  "/app/proposals/novo":
-    "sub-fluxo de criação de proposta, alcançado pelo botão 'Nova proposta' em /app/proposals",
 };
 
 /** Deriva as rotas estáticas a partir dos arquivos de página que existem. */

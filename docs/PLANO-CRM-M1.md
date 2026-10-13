@@ -240,3 +240,22 @@ prospecção por scraping.
 - **Formulário vence a conversa:** lead nascido da conversa é ATUALIZADO (respostas, UTMs,
   origem) pelo formulário e movido para o funil da campanha; formulário anterior de outra
   campanha cria novo cadastro (a venda segue o último).
+
+### Sessão 8 — Um lead, vários funis, várias vendas (13/10/2026; migration 0614)
+- **Vocabulário:** 1 pessoa = 1 lead = 1 ficha (`contacts`). Em cada funil ela tem uma **passagem**
+  (`crm_leads`: etapa, responsável, campanha de origem, ganho/perdido) — na tela deixou de se
+  chamar "negócio". O **dinheiro** mora só em `crm_sales` (interesse → comprometida → concluída /
+  cancelada), várias por pessoa, cada uma lembrando o funil/campanha de onde veio.
+- **Valor do card = soma das vendas** da passagem (migration 0614). Quem escreve `value_cents`
+  (tela, API, importação, IA) grava na venda de interesse/comprometida; o campo guarda a soma. Lead
+  que nasce com valor gera a venda de interesse. Valor digitado com a venda já concluída cria um novo
+  interesse (não reescreve o que foi pago).
+- **Propostas comerciais saíram do produto:** páginas, menu, seção na ficha, avisos, rotas de API e
+  crons removidos. Ficou dormente (sem uso, tabelas vazias): `lib/propostas/**`, ferramentas MCP
+  `crm_draft_proposal`/`crm_preparar_proposta` (capacidade `propostas`, desligada) e as tabelas
+  `crm_proposals*`/`proposal_templates`. Limpeza física fica para uma etapa própria.
+- **CRM (Clientes):** abas de visualização salvas (Tabela/Quadro), barra de funis com arrastar e
+  arquivar (preferência pessoal), edição das células no lugar (nome, telefone, e-mail, tags, valor,
+  responsável, campanha, origem, etapa, situação e funil). Cards de campanha editam status e metas.
+- **Em aberto:** "Comandas" (`/app/comandas`, tabelas `sales`/`sale_items`, módulo Financeiro) é um
+  terceiro conceito de venda — decidir se vira Vendas.

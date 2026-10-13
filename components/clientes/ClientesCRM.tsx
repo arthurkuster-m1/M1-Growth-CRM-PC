@@ -360,7 +360,7 @@ export function ClientesCRM() {
     if (
       !window.confirm(
         t(
-          "Levar este negócio para o funil “{funil}”? Ele nasce lá na primeira etapa e o atual é encerrado como perdido (“Levado para outro funil”).",
+          "Levar este lead para o funil “{funil}”? Ele entra lá na primeira etapa e a passagem pelo funil atual é encerrada como perdida (“Levado para outro funil”).",
         ).replace("{funil}", destino),
       )
     ) {
@@ -436,7 +436,7 @@ export function ClientesCRM() {
               opcoes={opcoesDeFunil}
               valorId={p.funil_id}
               podeEditar={podeEditar && p.status === "open" && opcoesDeFunil.length > 1}
-              rotulo={t("Funil do negócio")}
+              rotulo={t("Funil")}
               aoEscolher={(id) => {
                 if (id !== p.funil_id) void levarParaFunil(p, id);
               }}
@@ -466,7 +466,7 @@ export function ClientesCRM() {
                 opcoes={etapasAbertasDoFunil(p.funil_id)}
                 valorId={atual?.id}
                 podeEditar={podeEditar && !fechado}
-                rotulo={t("Etapa do negócio")}
+                rotulo={t("Etapa no funil")}
                 aoEscolher={(id) => void moverEtapa(p, id)}
               >
                 <Etiqueta ponto cor={corDaEtapa(atual)}>
@@ -493,7 +493,7 @@ export function ClientesCRM() {
               opcoes={opcoesDeSituacao}
               valorId={p.status}
               podeEditar={podeEditar}
-              rotulo={t("Situação do negócio")}
+              rotulo={t("Situação no funil")}
               aoEscolher={(id) => {
                 if (id === p.status) return;
                 if (id === "won") void ganhar(p);
@@ -581,7 +581,7 @@ export function ClientesCRM() {
           <CelulaDeTexto
             valor={atual > 0 ? String(atual / 100).replace(".", ",") : ""}
             exibir={atual > 0 ? moeda(atual) : "—"}
-            rotulo={t("Valor do negócio")}
+            rotulo={t("Valor")}
             vazioRotulo="—"
             permitirVazio
             inputMode="decimal"
@@ -617,7 +617,7 @@ export function ClientesCRM() {
             membros={membros}
             valorId={alvo.responsavel_id}
             podeEditar={podeEditar}
-            rotulo={t("Responsável pelo negócio")}
+            rotulo={t("Responsável no funil")}
             aoEscolher={(id) =>
               void salvarNegocio(l, alvo, { owner_user_id: id }, { responsavel_id: id })
             }

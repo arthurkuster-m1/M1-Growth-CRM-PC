@@ -596,7 +596,7 @@ const DA_EMPRESA: RecursoOpcional[] = [
     nivel: "organizacao",
     padrao: "desligado",
     quemDecide: "manager",
-    href: "/app/settings/tenant/proposals",
+    href: "/app/settings/tenant",
     modulo: "propostas",
     capacidade: "propostas",
     ler: (f) =>

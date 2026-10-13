@@ -514,7 +514,7 @@ async function tratarNegocioExistente(
       "lead_already_in_funnel",
       { lead_id: leadId },
       ctx.requestId,
-      traduzir("Este contato já tem um negócio aberto neste funil.", ctx.idioma ?? "pt-BR"),
+      traduzir("Este contato já está aberto neste funil.", ctx.idioma ?? "pt-BR"),
     );
   }
 

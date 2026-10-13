@@ -397,15 +397,6 @@ export const NAV_CATALOG = [
     modulo: "crm_b2b",
   },
   {
-    href: "/app/proposals",
-    label: "Propostas",
-    description: "Rascunhe, revise e envie propostas comerciais — do orçamento ao aceite.",
-    icon: "FileText",
-    group: "crm",
-    section: "Fechar a venda",
-    capacidade: "propostas",
-  },
-  {
     // A promessa que o comentário da Agenda fazia desde que ela nasceu. Aqui se
     // decide O QUE se pode marcar, quanto dura e quem atende — e é isto que a
     // tela de marcar e o agente de IA oferecem ao cliente.
@@ -427,32 +418,6 @@ export const NAV_CATALOG = [
     // tem hub, e se chega às telas dele por "Configurações". Eu tinha posto
     // `sidebar: true` e a cerca reprovou dizendo "a tela existe e não tem porta
     // na navegação" — a porta existia, era outra.
-  },
-  {
-    href: "/app/settings/tenant/proposals",
-    label: "Propostas",
-    description: "Configure a validade padrão e condições para propostas comerciais.",
-    icon: "FileText",
-    group: "organizacao",
-    section: "Sua empresa",
-    minRole: "manager",
-    // Doc 79: é aqui que a EMPRESA liga — então a porta depende só da chave da
-    // INSTALAÇÃO (a capacidade da empresa ainda está desligada quando se chega).
-    modulo: "propostas",
-    // SEM `sidebar`: mora atrás de "Configurações", como as demais telas de
-    // settings/tenant que não são de acompanhamento diário.
-  },
-  {
-    href: "/app/settings/tenant/proposals/modelos",
-    label: "Modelos de proposta",
-    description:
-      "Personalize os modelos da plataforma ou crie os da sua empresa, inclusive a partir de uma proposta que você já usa.",
-    icon: "FileText",
-    group: "organizacao",
-    section: "Sua empresa",
-    minRole: "manager",
-    capacidade: "propostas",
-    // SEM `sidebar`, como a tela-mãe de Propostas: chega-se por Configurações.
   },
   {
     // O BALCÃO. Fica em CRM, e não em Configurações, porque é uso diário de quem

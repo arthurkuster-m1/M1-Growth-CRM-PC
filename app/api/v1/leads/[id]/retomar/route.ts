@@ -6,7 +6,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * É a porta que o 409 `reabertura_cria_novo` aponta: num funil
  * `settings.reabertura = "novo_negocio"`, mover um card encerrado para uma
  * etapa aberta não reabre o registro — devolve este código e a tela oferece
- * "Retomar como novo negócio", que chama cá.
+ * "Retomar com nova entrada no funil", que chama cá.
  *
  * A criação é o `retomarLeadHandler` (o MESMO caminho que a tool MCP
  * `crm_retomar_lead` usa): o negócio novo nasce com `source = "retomada"` e

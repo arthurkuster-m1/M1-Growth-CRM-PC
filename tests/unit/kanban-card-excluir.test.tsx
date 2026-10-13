@@ -109,30 +109,6 @@ describe("menu do card — Excluir", () => {
     });
   });
 
-  it("D10: negocio com proposta enviada — a confirmacao avisa antes de excluir", async () => {
-    get.mockResolvedValue({ data: [{ status: "enviada", numero: 2, ano: 2026 }] });
-    const user = userEvent.setup();
-    renderMenu();
-
-    await user.click(screen.getByRole("button", { name: "Ações do lead" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Excluir" }));
-    await screen.findByText('Excluir "Proposta da ACME"?');
-
-    expect(await screen.findByText(/0002\/2026/)).toBeTruthy();
-  });
-
-  it("D10: negocio sem proposta enviada — sem aviso extra na confirmacao", async () => {
-    get.mockResolvedValue({ data: [] });
-    const user = userEvent.setup();
-    renderMenu();
-
-    await user.click(screen.getByRole("button", { name: "Ações do lead" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Excluir" }));
-    await screen.findByText('Excluir "Proposta da ACME"?');
-
-    expect(screen.queryByText(/continua em Propostas/)).toBeNull();
-  });
-
   it("cancelar fecha a confirmação e segue sem excluir", async () => {
     const user = userEvent.setup();
     renderMenu();

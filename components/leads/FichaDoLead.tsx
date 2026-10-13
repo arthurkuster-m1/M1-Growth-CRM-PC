@@ -10,11 +10,8 @@ import { QualificacaoDoLead } from "@/components/leads/QualificacaoDoLead";
 import { SecaoDaFicha } from "@/components/leads/SecaoDaFicha";
 import { FormularioDeLinks, PessoasRelacionadas } from "@/components/kanban/ContatoDoNegocio";
 import { LeadTimeline } from "@/components/kanban/LeadTimeline";
-import { PropostasDoNegocio } from "@/components/kanban/PropostasDoNegocio";
 import { useLeadTimeline } from "@/hooks/leads/useLeadTimeline";
-import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
-import { ROLE_RANK } from "@/lib/auth/types";
 import { VendasDoCliente } from "@/components/vendas/VendasDoCliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,10 +96,6 @@ export function FichaDoLead({
   linhaDoTempo?: LinhaDoTempo;
 }) {
   const t = useT();
-  const user = useUser();
-  const org = useActiveOrg();
-  const podeCriarProposta =
-    user.is_platform_admin || (org && ROLE_RANK[org.role] >= ROLE_RANK.manager) || false;
   const tag = useTagDeIdioma();
   const consulta = useQuery({
     queryKey: chaveDaFicha(leadId),
@@ -157,7 +150,7 @@ export function FichaDoLead({
             pipelineId={d.negocio.pipeline_id}
           />
         ) : (
-          <p className="text-xs text-text-muted">{t("Este negócio não tem contato vinculado.")}</p>
+          <p className="text-xs text-text-muted">{t("Este lead não tem contato vinculado.")}</p>
         )}
       </SecaoDaFicha>
 
@@ -171,7 +164,7 @@ export function FichaDoLead({
 
       <SecaoDaFicha
         id="negocio"
-        titulo={t("Dados do negócio")}
+        titulo={t("Dados no funil")}
         resumo={(d.tags ?? []).length > 0 ? d.tags.join(", ") : undefined}
       >
         <LeadFieldsForm
@@ -261,14 +254,6 @@ export function FichaDoLead({
           <VendasDoCliente contactId={d.contact_id} semTitulo />
         </SecaoDaFicha>
       ) : null}
-
-      <SecaoDaFicha id="propostas" titulo={t("Propostas")} padraoAberta={false}>
-        <PropostasDoNegocio
-          leadId={leadId}
-          pipelineId={d.negocio.pipeline_id}
-          podeCriar={podeCriarProposta}
-        />
-      </SecaoDaFicha>
 
       <SecaoDaFicha id="linha-do-tempo" titulo={t("Linha do tempo")}>
         {linhaDoTempo ? (

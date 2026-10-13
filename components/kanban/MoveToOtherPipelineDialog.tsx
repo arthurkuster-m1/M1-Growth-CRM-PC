@@ -85,7 +85,7 @@ export function MoveToOtherPipelineDialog({
         */}
         {destinos.data?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {t("Este é o único funil. Crie outro funil para poder levar o negócio até ele.")}
+            {t("Este é o único funil. Crie outro funil para poder levar o lead até ele.")}
           </p>
         ) : (
           <Select value={targetPipelineId} onValueChange={setTargetPipelineId}>

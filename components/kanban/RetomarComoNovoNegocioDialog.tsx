@@ -25,7 +25,7 @@ interface RetomarComoNovoNegocioDialogProps {
 }
 
 /**
- * "Retomar como novo negócio" — a TELA que o 409 `reabertura_cria_novo`
+ * "Retomar com nova entrada no funil" — a TELA que o 409 `reabertura_cria_novo`
  * aponta (issue #1538).
  *
  * Num funil `settings.reabertura = "novo_negocio"` o arrasto de um card
@@ -69,10 +69,10 @@ export function RetomarComoNovoNegocioDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("Retomar como novo negócio")}</DialogTitle>
+          <DialogTitle>{t("Retomar com nova entrada no funil")}</DialogTitle>
           <DialogDescription>
             {t(
-              "Este funil não reabre negócios encerrados. Retomar cria um negócio novo com o mesmo contato, copiando campos e tags, e guarda a ligação com este — o negócio original fica intacto, com o motivo dele.",
+              "Este funil não reabre quem já saiu. Retomar cria uma nova entrada do mesmo lead, copiando campos e tags, e guarda a ligação com a anterior — a entrada original fica intacta, com o motivo dela.",
             )}
           </DialogDescription>
         </DialogHeader>

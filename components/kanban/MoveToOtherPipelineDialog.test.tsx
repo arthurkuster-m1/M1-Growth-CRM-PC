@@ -99,7 +99,7 @@ describe("MoveToOtherPipelineDialog", () => {
 
     expect(
       await screen.findByText(
-        "Este é o único funil. Crie outro funil para poder levar o negócio até ele.",
+        "Este é o único funil. Crie outro funil para poder levar o lead até ele.",
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "Funil de destino" })).toBeNull();

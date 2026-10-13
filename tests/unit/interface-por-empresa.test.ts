@@ -194,10 +194,10 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
    * vínculo. É o número que o issue publica (15 itens: atendimento 4, CRM 3,
    * IA 3, canais 2, análise 3), medido aqui pelo módulo que alimenta o menu.
    */
-  it("hoje: 18 itens no menu lateral (14 + as 4 telas de Marketing, 10/10/2026; os grupos nascem fechados, então a dobra a 1280x900 não pesa)", () => {
-    expect(itensNoMenuLateral(INTERFACE_COMPLETA)).toBe(18);
+  it("hoje: 17 itens no menu lateral (as propostas saíram em 13/10/2026; os grupos nascem fechados, então a dobra a 1280x900 não pesa)", () => {
+    expect(itensNoMenuLateral(INTERFACE_COMPLETA)).toBe(17);
     // `undefined` é o caminho de quem não tem escolha nenhuma gravada
-    expect(itensNoMenuLateral(undefined)).toBe(18);
+    expect(itensNoMenuLateral(undefined)).toBe(17);
   });
 
   /**
@@ -205,14 +205,14 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
    * A escolha da empresa é interseção, então o menu só ENCOLHE — a mudança não
    * tem como empurrar o instrumento de tela para o vermelho.
    */
-  it("configuração COMPLETA (ninguém escolheu): 18 itens — igual a hoje", () => {
-    expect(itensNoMenuLateral(combinarInterfaces(completa, completa))).toBe(18);
+  it("configuração COMPLETA (ninguém escolheu): 17 itens — igual a hoje", () => {
+    expect(itensNoMenuLateral(combinarInterfaces(completa, completa))).toBe(17);
   });
 
-  it("configuração SIMPLIFICADA (empresa escolhe o preset): 6 itens, folga 9", () => {
+  it("configuração SIMPLIFICADA (empresa escolhe o preset): 4 itens, folga 11", () => {
     const itens = itensNoMenuLateral(combinarInterfaces(simplificada, completa));
-    expect(itens).toBe(6);
-    expect(15 - itens).toBe(9);
+    expect(itens).toBe(4);
+    expect(15 - itens).toBe(11);
   });
 
   it("configuração MÍNIMA (empresa escolhe 1 porta): 1 item, folga 14", () => {

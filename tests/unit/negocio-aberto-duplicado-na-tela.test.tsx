@@ -132,7 +132,7 @@ describe("Novo Lead — aviso de negócio aberto duplicado, sem bloqueio", () =>
     // O aviso aparece ANTES de qualquer chamada de criação.
     expect(criarLead).not.toHaveBeenCalled();
     expect(
-      await screen.findByText("Este contato já tem um negócio aberto neste funil."),
+      await screen.findByText("Este contato já está aberto neste funil."),
     ).toBeTruthy();
     expect(screen.getByText("Abrir mesmo assim?")).toBeTruthy();
 
