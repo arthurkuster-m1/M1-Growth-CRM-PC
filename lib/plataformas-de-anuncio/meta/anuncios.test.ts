@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { anuncioDoMeta, linkDoAnuncio, variacoesDoAnuncio } from "./anuncios";
+import { anuncioDoMeta, formatoDe, linkDoAnuncio, variacoesDoAnuncio } from "./anuncios";
 
 describe("linkDoAnuncio — onde o Meta guarda a página de destino", () => {
   it("anúncio de link: object_story_spec.link_data.link", () => {
@@ -111,5 +111,44 @@ describe("variacoesDoAnuncio — todos os textos e imagens do anúncio", () => {
     });
     expect(v.imagens).toHaveLength(10);
     expect(v.imagens.every((u) => u.startsWith("https://"))).toBe(true);
+  });
+});
+
+describe("formatoDe — o que é carrossel de verdade", () => {
+  it("SHARE com uma imagem é imagem, não carrossel", () => {
+    expect(
+      formatoDe({ creative: { object_type: "SHARE", image_hash: "abc12345", object_story_spec: { link_data: { link: "https://x.com" } } } }),
+    ).toBe("imagem");
+  });
+  it("com 2 ou mais cartões é carrossel", () => {
+    expect(
+      formatoDe({
+        creative: {
+          object_type: "SHARE",
+          object_story_spec: { link_data: { child_attachments: [{ link: "https://a.com" }, { link: "https://b.com" }] } },
+        },
+      }),
+    ).toBe("carrossel");
+  });
+  it("vídeo continua vídeo", () => {
+    expect(formatoDe({ creative: { object_type: "VIDEO", video_id: "1" } })).toBe("video");
+  });
+});
+
+describe("formato flexível (media_sourcing_spec)", () => {
+  it("lê as 5 variações e as mídias por hash", () => {
+    const v = variacoesDoAnuncio({
+      creative: {
+        image_hash: "06b98bb6fc84761d6eee3d59bfd6e9c0",
+        media_sourcing_spec: {
+          titles: ["T1", "T2", "T3", "T4", "T5"].map((text) => ({ text })),
+          bodies: ["B1", "B2"].map((text) => ({ text })),
+          images: Array.from({ length: 10 }, (_, i) => ({ hash: `aabbccdd${String(i).padStart(2, "0")}` })),
+        },
+      },
+    });
+    expect(v.titulos).toHaveLength(5);
+    expect(v.legendas).toEqual(["B1", "B2"]);
+    expect(v.hashesDeImagem).toHaveLength(10);
   });
 });

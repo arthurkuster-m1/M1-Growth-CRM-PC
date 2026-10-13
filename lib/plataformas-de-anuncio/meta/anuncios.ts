@@ -67,6 +67,13 @@ interface AnuncioCru {
         call_to_action?: { value?: { link?: string } };
       };
     };
+    /** O formato FLEXÍVEL: até 10 mídias e 5 textos de cada tipo, no mesmo anúncio. */
+    media_sourcing_spec?: {
+      titles?: Array<{ text?: string }>;
+      bodies?: Array<{ text?: string }>;
+      descriptions?: Array<{ text?: string }>;
+      images?: Array<{ hash?: string; url?: string }>;
+    };
     asset_feed_spec?: {
       link_urls?: Array<{ website_url?: string }>;
       bodies?: Array<{ text?: string }>;
@@ -102,6 +109,7 @@ export function variacoesDoAnuncio(a: AnuncioCru): Pick<
 > {
   const c = a.creative;
   const feed = c?.asset_feed_spec;
+  const flex = c?.media_sourcing_spec;
   const ld = c?.object_story_spec?.link_data;
   const vd = c?.object_story_spec?.video_data;
   const cartoes = ld?.child_attachments ?? [];
@@ -112,28 +120,46 @@ export function variacoesDoAnuncio(a: AnuncioCru): Pick<
     ld?.picture,
     vd?.image_url,
     ...(feed?.images ?? []).map((i) => i.url),
+    ...(flex?.images ?? []).map((i) => i.url),
     ...cartoes.map((x) => x.picture),
   ]
     .map(url)
     .filter((u): u is string => !!u);
   const hashes = [
     ...(feed?.images ?? []).filter((i) => !i.url).map((i) => i.hash),
+    ...(flex?.images ?? []).filter((i) => !i.url).map((i) => i.hash),
     ...cartoes.filter((x) => !x.picture).map((x) => x.image_hash),
   ].filter((h): h is string => !!h && /^[0-9a-f]{8,64}$/i.test(h));
 
   return {
     titulos: textosUnicos(
-      [...(feed?.titles ?? []).map((x) => x.text), c?.title, ld?.name, vd?.title],
+      [
+        ...(flex?.titles ?? []).map((x) => x.text),
+        ...(feed?.titles ?? []).map((x) => x.text),
+        c?.title,
+        ld?.name,
+        vd?.title,
+      ],
       MAX_VARIACOES_DE_TEXTO,
       300,
     ),
     legendas: textosUnicos(
-      [...(feed?.bodies ?? []).map((x) => x.text), c?.body, ld?.message, vd?.message],
+      [
+        ...(flex?.bodies ?? []).map((x) => x.text),
+        ...(feed?.bodies ?? []).map((x) => x.text),
+        c?.body,
+        ld?.message,
+        vd?.message,
+      ],
       MAX_VARIACOES_DE_TEXTO,
       4000,
     ),
     descricoes: textosUnicos(
-      [...(feed?.descriptions ?? []).map((x) => x.text), ld?.description],
+      [
+        ...(flex?.descriptions ?? []).map((x) => x.text),
+        ...(feed?.descriptions ?? []).map((x) => x.text),
+        ld?.description,
+      ],
       MAX_VARIACOES_DE_TEXTO,
       1000,
     ),
@@ -158,11 +184,15 @@ export interface MetricasDoAnuncio {
   lp_views: number;
 }
 
-function formatoDe(a: AnuncioCru): AnuncioDoMeta["formato"] {
-  const tipo = (a.creative?.object_type ?? "").toUpperCase();
-  if (a.creative?.video_id || tipo === "VIDEO") return "video";
-  if (tipo === "SHARE" || tipo === "MULTI_SHARE") return "carrossel";
-  if (tipo === "PHOTO" || a.creative?.image_url) return "imagem";
+export function formatoDe(a: AnuncioCru): AnuncioDoMeta["formato"] {
+  const c = a.creative;
+  const tipo = (c?.object_type ?? "").toUpperCase();
+  if (c?.video_id || tipo === "VIDEO" || c?.object_story_spec?.video_data) return "video";
+  // Carrossel é o que TEM cartões. `SHARE` é só uma postagem de link (uma imagem + o link) — o
+  // Meta usa esse tipo para quase todo anúncio de imagem, e tratá-lo como carrossel era errado.
+  const cartoes = c?.object_story_spec?.link_data?.child_attachments?.length ?? 0;
+  if (tipo === "MULTI_SHARE" || cartoes >= 2) return "carrossel";
+  if (tipo === "PHOTO" || tipo === "SHARE" || c?.image_url || c?.image_hash) return "imagem";
   return "outro";
 }
 
@@ -220,7 +250,7 @@ export async function lerAnuncios(
     const r = await buscarPaginado<AnuncioCru>(
       montarUrl(`${encodeURIComponent(id)}/ads`, {
         fields:
-          "id,name,effective_status,campaign_id,creative{title,body,thumbnail_url,image_url,image_hash,object_type,video_id,object_url,object_story_spec{link_data{link,message,name,description,picture,image_hash,child_attachments{link,name,description,picture,image_hash}},video_data{message,title,image_url,call_to_action{value{link}}}},asset_feed_spec{link_urls{website_url},bodies,titles,descriptions,images}}",
+          "id,name,effective_status,campaign_id,creative{title,body,thumbnail_url,image_url,image_hash,object_type,video_id,object_url,object_story_spec{link_data{link,message,name,description,picture,image_hash,child_attachments{link,name,description,picture,image_hash}},video_data{message,title,image_url,call_to_action{value{link}}}},media_sourcing_spec{titles,bodies,descriptions,images},asset_feed_spec{link_urls{website_url},bodies,titles,descriptions,images}}",
         limit: "100",
       }),
       token,
@@ -247,17 +277,20 @@ export async function urlsDasImagens(
   const mapa = new Map<string, string>();
   const unicos = [...new Set(hashes)].slice(0, 100);
   if (unicos.length === 0) return mapa;
-  const r = await buscarPaginado<{ hash?: string; url?: string }>(
+  const r = await buscarPaginado<{ hash?: string; url?: string; permalink_url?: string }>(
     montarUrl(`${encodeURIComponent(contaId)}/adimages`, {
       hashes: JSON.stringify(unicos),
-      fields: "hash,url",
+      fields: "hash,url,permalink_url",
       limit: "100",
     }),
     token,
     "imagens-do-anuncio",
   );
   if (!r.ok) return mapa;
-  for (const i of r.dados) if (i.hash && i.url) mapa.set(i.hash, i.url);
+  for (const i of r.dados) {
+    const u = i.url ?? i.permalink_url;
+    if (i.hash && u) mapa.set(i.hash, u);
+  }
   return mapa;
 }
 

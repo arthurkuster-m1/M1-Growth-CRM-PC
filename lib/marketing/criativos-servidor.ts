@@ -144,8 +144,8 @@ async function imagensDoAnuncio(
   ];
   const nomes: string[] = [];
   const vistos = new Set<string>();
-  for (const e of [...new Set(enderecos)].slice(0, 10)) {
-    if (orcamento.restante <= 0) break;
+  for (const e of [...new Set(enderecos)]) {
+    if (nomes.length >= 10 || orcamento.restante <= 0) break;
     orcamento.restante -= 1;
     const nome = await guardarImagem(admin, orgId, e, vistos);
     if (nome) nomes.push(nome);
@@ -171,7 +171,7 @@ export async function importarCriativosDoMeta(
 
   const { data: ja } = await admin
     .from("demand_campaign_creatives")
-    .select("ad_id, link_url, headlines, bodies, descriptions, images")
+    .select("ad_id, link_url, format, headlines, bodies, descriptions, images")
     .eq("organization_id", c.organization_id)
     .eq("campaign_id", c.id)
     .not("ad_id", "is", null);
@@ -190,6 +190,8 @@ export async function importarCriativosDoMeta(
     const vazio = (v: unknown) => !Array.isArray(v) || v.length === 0;
     const patch: Record<string, unknown> = {};
     if (a.link && !(atual.link_url as string | null)) patch.link_url = a.link;
+    // Importado antes como "carrossel" por engano (imagem única do tipo SHARE): corrige.
+    if (atual.format === "carrossel" && a.formato === "imagem") patch.format = "imagem";
     if (vazio(atual.headlines) && a.titulos.length > 0) patch.headlines = a.titulos;
     if (vazio(atual.bodies) && a.legendas.length > 0) patch.bodies = a.legendas;
     if (vazio(atual.descriptions) && a.descricoes.length > 0) patch.descriptions = a.descricoes;
@@ -199,9 +201,23 @@ export async function importarCriativosDoMeta(
     if (curto(atual.headlines, a.titulos)) patch.headlines = a.titulos;
     if (curto(atual.bodies, a.legendas)) patch.bodies = a.legendas;
     if (curto(atual.descriptions, a.descricoes)) patch.descriptions = a.descricoes;
-    if (vazio(atual.images) && (a.imagens.length > 0 || a.hashesDeImagem.length > 0)) {
+    // Sem imagens, ou só com a primeira (importada antes de ler o formato flexível) e o Meta
+    // tem mais: traz o conjunto completo.
+    const imagensAtuais = Array.isArray(atual.images) ? (atual.images as string[]) : [];
+    const totalNoMeta = a.imagens.length + a.hashesDeImagem.length;
+    if (imagensAtuais.length <= 1 && totalNoMeta > Math.max(1, imagensAtuais.length)) {
       const nomes = await imagensDoAnuncio(admin, c.organization_id, a, porHash, orcamento);
-      if (nomes.length > 0) patch.images = nomes;
+      if (nomes.length > Math.max(1, imagensAtuais.length)) {
+        patch.images = nomes;
+        // As antigas saem do bucket (o conjunto novo já as contém).
+        if (imagensAtuais.length > 0) {
+          await admin.storage
+            .from(BUCKET_DE_IMAGENS)
+            .remove(imagensAtuais.map((n) => caminhoDaImagem(c.organization_id, n)));
+        }
+      } else if (nomes.length > 0 && imagensAtuais.length === 0) {
+        patch.images = nomes;
+      }
     }
     if (Object.keys(patch).length === 0) continue;
     await admin
