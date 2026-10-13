@@ -3,6 +3,7 @@
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import Link from "next/link";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -52,6 +53,8 @@ export interface DadosDaVenda {
   /** Previsão de fechamento e descrição: campos da venda (o card do funil). */
   expected_close_date?: string | null;
   description?: string;
+  /** Quem da equipe é o responsável pela venda (só vem quando mudou). */
+  responsavel_id?: string | null;
 }
 
 function rotuloDaForma(t: (s: string) => string, f: FormaDePagamento): string {
@@ -200,7 +203,23 @@ export function DialogoDaVenda({
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
   const [descricao, setDescricao] = useState(venda?.description ?? "");
   const [etapaId, setEtapaId] = useState(negocio?.etapaId ?? "");
-  const [responsavel, setResponsavel] = useState(negocio?.responsavelId ?? "");
+  const responsavelInicial = venda?.responsavel_id ?? negocio?.responsavelId ?? "";
+  const [responsavel, setResponsavel] = useState(responsavelInicial);
+  // A equipe da empresa: quem pode ser o responsável por esta venda.
+  const equipeConsulta = useQuery({
+    queryKey: ["team", "assignable"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: Array<{ user_id: string; full_name: string | null }>;
+        }>("/api/v1/team/assignable")
+      ).data,
+  });
+  const equipe = (equipeConsulta.data ?? []).map((p) => ({
+    id: p.user_id,
+    nome: p.full_name?.trim() || t("Membro da equipe"),
+  }));
   const [camposDoNegocio, setCamposDoNegocio] = useState<Record<string, unknown>>(
     negocio?.camposValores ?? {},
   );
@@ -418,6 +437,7 @@ export function DialogoDaVenda({
       notes: notas.trim(),
       expected_close_date: previsao || null,
       description: descricao.trim(),
+      ...(responsavel !== responsavelInicial ? { responsavel_id: responsavel || null } : {}),
     });
     if (salvou === false) {
       setSalvando(false);
@@ -449,9 +469,6 @@ export function DialogoDaVenda({
     }
     if (negocio?.aoSalvarExtras) {
       await negocio.aoSalvarExtras({
-        ...(responsavel !== (negocio.responsavelId ?? "")
-          ? { owner_user_id: responsavel || null }
-          : {}),
         ...(negocio.camposDoFunil && negocio.camposDoFunil.length > 0
           ? { custom_fields: camposDoNegocio }
           : {}),
@@ -549,23 +566,6 @@ export function DialogoDaVenda({
                 </select>
               </div>
             ) : null}
-            {negocio?.responsaveis ? (
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
-                <select
-                  className={CAMPO}
-                  value={responsavel}
-                  onChange={(e) => setResponsavel(e.target.value)}
-                >
-                  <option value="">{t("Sem responsável")}</option>
-                  {negocio.responsaveis.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
             <div className="grid gap-1">
               <span className="text-xs text-muted-foreground">{t("Status da venda")}</span>
               <Popover>
@@ -609,14 +609,22 @@ export function DialogoDaVenda({
                 className="w-full"
               />
             </div>
-            {venda?.campanha ? (
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Campanha de origem")}</span>
-                <p className="flex h-10 items-center rounded-xl border bg-secondary/40 px-3 text-sm">
-                  {venda.campanha}
-                </p>
-              </div>
-            ) : null}
+            <div className="grid gap-1">
+              <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
+              <select
+                className={CAMPO}
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+                aria-label={t("Responsável pela venda")}
+              >
+                <option value="">{t("Sem responsável")}</option>
+                {equipe.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
             <label className="grid gap-1 sm:col-span-2">
               <span className="text-xs text-muted-foreground">{t("Descrição da venda")}</span>
               <textarea

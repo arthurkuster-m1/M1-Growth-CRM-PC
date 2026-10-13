@@ -34,3 +34,54 @@ export async function completarItensComProduto<
     })),
   };
 }
+
+/**
+ * O RESPONSÁVEL PELA VENDA: o dono do card da venda no funil. `null` tira o responsável. Só
+ * aceita alguém ativo da equipe desta empresa. Devolve `false` se não conseguiu gravar.
+ */
+export async function definirResponsavelDaVenda(
+  supabase: SupabaseClient,
+  organizationId: string,
+  vendaId: string,
+  responsavelId: string | null,
+): Promise<boolean> {
+  const { data: venda } = await supabase
+    .from("crm_sales")
+    .select("lead_id")
+    .eq("id", vendaId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  const leadId = (venda as { lead_id: string | null } | null)?.lead_id;
+  // Venda sem card ainda: não há onde guardar (o card nasce com a venda; raro).
+  if (!leadId) return true;
+
+  if (responsavelId) {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const { isServiceRoleConfigured } = await import("@/lib/audit");
+    if (isServiceRoleConfigured()) {
+      const { data: membro } = await createAdminClient()
+        .from("user_organizations")
+        .select("user_id")
+        .eq("organization_id", organizationId)
+        .eq("user_id", responsavelId)
+        .is("revoked_at", null)
+        .maybeSingle();
+      if (!membro) return false;
+    }
+  }
+  const { error } = await supabase
+    .from("crm_leads")
+    .update(
+      responsavelId
+        ? {
+            owner_user_id: responsavelId,
+            owner_agent_id: null,
+            owner_kind: "user",
+            assigned_at: new Date().toISOString(),
+          }
+        : { owner_user_id: null, owner_agent_id: null, owner_kind: null },
+    )
+    .eq("id", leadId)
+    .eq("organization_id", organizationId);
+  return !error;
+}

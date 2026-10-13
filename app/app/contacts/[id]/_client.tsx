@@ -14,6 +14,10 @@ import { PainelDaVisaoGeral } from "@/components/contacts/ficha/PainelDaVisaoGer
 import { LinhaDoTempoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
 import { VendasDaFicha } from "@/components/contacts/ficha/VendasDaFicha";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AvisoDeNaoSalvoProvider,
+  useSairComAviso,
+} from "@/components/contacts/ficha/AvisoDeNaoSalvo";
 import { Card } from "@/components/ui/card";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +59,14 @@ interface Props {
 }
 
 export function ContactDetailClient({ contactId }: Props) {
+  return (
+    <AvisoDeNaoSalvoProvider>
+      <ContactDetailInner contactId={contactId} />
+    </AvisoDeNaoSalvoProvider>
+  );
+}
+
+function ContactDetailInner({ contactId }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
   const q = useContact(contactId);
@@ -65,6 +77,9 @@ export function ContactDetailClient({ contactId }: Props) {
   const pipelineQuery = useDefaultPipeline(Boolean(activeOrg));
   const [anonOpen, setAnonOpen] = useState(false);
   const [aba, setAba] = useState("overview");
+  // Trocar de aba com algo digitado e não salvo pergunta antes (o que é do Cadastro, por ora).
+  const sairComAviso = useSairComAviso();
+  const irParaAba = (nova: string) => sairComAviso(() => setAba(nova));
   // Desfazer o descadastro é o override da regra W-02 — só admin, e auditado.
   // O hook fica ANTES dos early returns: chamá-lo depois mudaria a ordem dos
   // hooks entre renderizações e o React reprova.
@@ -292,7 +307,7 @@ export function ContactDetailClient({ contactId }: Props) {
         />
       )}
 
-      <Tabs value={aba} onValueChange={setAba} className="min-w-0">
+      <Tabs value={aba} onValueChange={irParaAba} className="min-w-0">
         <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
@@ -305,7 +320,7 @@ export function ContactDetailClient({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <PainelDaVisaoGeral contactId={contactId} aoAbrir={setAba} />
+          <PainelDaVisaoGeral contactId={contactId} aoAbrir={irParaAba} />
           <div className="mt-4">
             <RoteirosDoContato contactId={contactId} />
           </div>

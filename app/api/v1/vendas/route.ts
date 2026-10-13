@@ -10,14 +10,14 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
-import { completarItensComProduto } from "@/lib/vendas-servidor";
+import { completarItensComProduto, definirResponsavelDaVenda } from "@/lib/vendas-servidor";
 import { COLUNAS_DA_VENDA, novaVendaSchema, vendaDaLinha } from "@/lib/vendas";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 const LIMITE = 3000;
 
-const SELECAO = `${COLUNAS_DA_VENDA}, contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), pipeline:crm_pipelines(name), lead:crm_leads(stage_id, status, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`;
+const SELECAO = `${COLUNAS_DA_VENDA}, contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), pipeline:crm_pipelines(name), lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`;
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     .maybeSingle();
   if (!contato) return fail("not_found", "Cliente não encontrado.", 404, { requestId });
 
-  const { itens: itensBrutos, pagamentos, ...campos } = corpo.data;
+  const { itens: itensBrutos, pagamentos, responsavel_id: responsavel, ...campos } = corpo.data;
   const completos = await completarItensComProduto(supabase, authz.org.orgId, itensBrutos ?? []);
   if (!completos.ok) {
     return fail(
@@ -120,6 +120,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       })),
     );
     if (e2) return falha();
+  }
+  if (responsavel !== undefined) {
+    await definirResponsavelDaVenda(supabase, orgId, id, responsavel);
   }
   const { data } = await supabase.from("crm_sales").select(SELECAO).eq("id", id).single();
   return ok(

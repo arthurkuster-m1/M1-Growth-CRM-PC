@@ -84,6 +84,8 @@ export interface Venda {
   etapa?: string | null;
   etapa_id?: string | null;
   lead_status?: "open" | "won" | "lost" | null;
+  /** O responsável pela venda (o dono do card). */
+  responsavel_id?: string | null;
 }
 
 export const COLUNAS_DA_VENDA =
@@ -122,6 +124,8 @@ const camposSchema = z.object({
   installments: z.number().int().min(1).max(120),
   closed_on: dia.nullable(),
   recurrence_active: z.boolean(),
+  /** Quem da equipe é o responsável pela venda (mora no card do funil da venda). */
+  responsavel_id: z.string().uuid().nullable(),
   itens: z.array(itemSchema).max(50),
   pagamentos: z.array(parcelaSchema).max(120),
 });
@@ -138,18 +142,21 @@ export const edicaoDeVendaSchema = camposSchema
   .refine((v) => Object.keys(v).length > 0, { message: "Nada para alterar." });
 
 /** A etapa do card (negócio) a que a venda está atrelada — vem do embed `lead:crm_leads(...)`. */
-function etapaDoCard(embed: unknown): Pick<Venda, "etapa" | "etapa_id" | "lead_status"> {
+function etapaDoCard(
+  embed: unknown,
+): Pick<Venda, "etapa" | "etapa_id" | "lead_status" | "responsavel_id"> {
   const lead = (Array.isArray(embed) ? embed[0] : embed) as
-    | { stage_id?: string | null; status?: string | null; stage?: unknown }
+    | { stage_id?: string | null; status?: string | null; stage?: unknown; owner_user_id?: string | null }
     | null
     | undefined;
-  if (!lead) return { etapa: null, etapa_id: null, lead_status: null };
+  if (!lead) return { etapa: null, etapa_id: null, lead_status: null, responsavel_id: null };
   const e = (Array.isArray(lead.stage) ? lead.stage[0] : lead.stage) as { name?: string } | null;
   const status = lead.status;
   return {
     etapa: e?.name ?? null,
     etapa_id: lead.stage_id ?? null,
     lead_status: status === "open" || status === "won" || status === "lost" ? status : null,
+    responsavel_id: lead.owner_user_id ?? null,
   };
 }
 

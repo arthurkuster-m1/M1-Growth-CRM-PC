@@ -912,10 +912,14 @@ export function ClientesCRM() {
     const u = p.ultima_atividade ?? p.criado_em;
     return new Date(u).getTime() < seteDias;
   }).length;
-  const numeros: Array<[string, string]> = [
+  const numeros: Array<[string, string, string?]> = [
     [t("Total de leads"), String(alvos.length)],
     [t("Valor em aberto"), moeda(abertas.reduce((s, p) => s + (p.valor_cents ?? 0), 0))],
-    [t("Taxa de conversão"), `${taxa}%`],
+    [
+      t("Taxa de conversão"),
+      `${taxa}%`,
+      leadsComVenda === 1 ? t("1 cliente comprou") : `${leadsComVenda} ${t("clientes compraram")}`,
+    ],
     [t("Vendas"), String(totalDeVendas)],
     [t("MQL"), String(alvos.filter((l) => l.is_mql).length)],
     [t("Sem contato (+7d)"), String(semContato)],
@@ -1002,12 +1006,13 @@ export function ClientesCRM() {
         aria-label={t("Resumo")}
         className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-6"
       >
-        {numeros.map(([rotulo, valor]) => (
+        {numeros.map(([rotulo, valor, detalhe]) => (
           <div key={rotulo} className="bg-card px-4 py-3">
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {rotulo}
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums">{valor}</p>
+            {detalhe ? <p className="text-[11px] text-muted-foreground">{detalhe}</p> : null}
           </div>
         ))}
       </section>

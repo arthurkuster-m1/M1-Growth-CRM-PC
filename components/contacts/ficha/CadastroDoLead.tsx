@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoDaFicha, CampoLido } from "@/components/contacts/ficha/BlocoDaFicha";
+import { useAvisarSeNaoSalvo } from "@/components/contacts/ficha/AvisoDeNaoSalvo";
 import { TagsDoLead } from "@/components/contacts/ficha/TagsDoLead";
 import {
   AlertDialog,
@@ -161,6 +162,10 @@ export function CadastroDoLead({
     negocios.dados.flatMap((n) => n.negocio.field_defs).find((d) => d.key === k)?.label ??
     rotuloDaChave(k);
   const sujoCampos = Object.keys(edicao).length > 0 || removidos.size > 0 || novos.length > 0;
+  const linksMudaram = JSON.stringify(links) !== JSON.stringify(lerLinks(contact.custom_fields));
+  useAvisarSeNaoSalvo("cadastro-campos", sujoCampos);
+  useAvisarSeNaoSalvo("cadastro-contato", mudou);
+  useAvisarSeNaoSalvo("cadastro-links", linksMudaram);
 
   function chaveDoNome(nome: string): string {
     const base = nome
@@ -180,11 +185,13 @@ export function CadastroDoLead({
       toast.error(t("Já existe um campo com esse nome."));
       return;
     }
-    setNovos((a) => [...a, { chave, rotulo: nome, valor: novoValor.trim() }]);
+    // Salva na hora: o campo novo não fica esperando um botão lá em cima.
+    const novo = { chave, rotulo: nome, valor: novoValor.trim() };
     setNovoNome("");
     setNovoValor("");
+    void salvarCampos([...novos, novo]);
   }
-  async function salvarCampos() {
+  async function salvarCampos(novosParaSalvar: typeof novos = novos) {
     try {
       const atuais: Record<string, unknown> = { ...(contact.custom_fields ?? {}) };
       const rotulos: Record<string, string> = { ...rotulosGuardados };
@@ -193,7 +200,7 @@ export function CadastroDoLead({
         delete rotulos[k];
       }
       for (const [k, v] of Object.entries(edicao)) if (!removidos.has(k)) atuais[k] = v;
-      for (const n of novos) {
+      for (const n of novosParaSalvar) {
         atuais[n.chave] = n.valor;
         rotulos[n.chave] = n.rotulo;
       }
@@ -388,13 +395,6 @@ export function CadastroDoLead({
       <BlocoDaFicha
         titulo={t("Qualificação")}
         cor="green"
-        acao={
-          podeEditar && sujoCampos ? (
-            <Button size="sm" disabled={atualizar.isPending} onClick={() => void salvarCampos()}>
-              {t("Salvar campos")}
-            </Button>
-          ) : null
-        }
       >
         <QualificacaoDoLead contactId={contact.id} semTitulo semDatas />
 
@@ -477,6 +477,29 @@ export function CadastroDoLead({
               <Button type="button" variant="outline" disabled={!novoNome.trim()} onClick={juntarNovo}>
                 <Plus size={14} weight="bold" aria-hidden className="mr-1" />
                 {t("Adicionar campo")}
+              </Button>
+            </div>
+          ) : null}
+          {podeEditar && sujoCampos ? (
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+              <span className="mr-auto text-xs text-muted-foreground">
+                {t("Você alterou campos e ainda não salvou.")}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={atualizar.isPending}
+                onClick={() => {
+                  setEdicao({});
+                  setRemovidos(new Set());
+                  setNovos([]);
+                }}
+              >
+                {t("Descartar")}
+              </Button>
+              <Button size="sm" disabled={atualizar.isPending} onClick={() => void salvarCampos()}>
+                {t("Salvar campos")}
               </Button>
             </div>
           ) : null}

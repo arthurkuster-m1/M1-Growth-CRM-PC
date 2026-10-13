@@ -7,7 +7,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
-import { completarItensComProduto } from "@/lib/vendas-servidor";
+import { completarItensComProduto, definirResponsavelDaVenda } from "@/lib/vendas-servidor";
 import { COLUNAS_DA_VENDA, edicaoDeVendaSchema, vendaDaLinha } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     return fail("validation_failed", "Dados inválidos.", 422, { requestId });
   }
   const supabase = await createClient();
-  const { itens: itensBrutos, pagamentos, ...campos } = corpo.data;
+  const { itens: itensBrutos, pagamentos, responsavel_id: responsavel, ...campos } = corpo.data;
   let itens:
     | Array<{ product_id: string; product_name: string; quantity: number; amount_cents: number }>
     | undefined;
@@ -43,7 +43,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const orgId = authz.org.orgId;
   const detalhou = itens !== undefined || pagamentos !== undefined;
-  const { data, error } = await supabase
+  // Só o responsável mudou: não há coluna da venda para atualizar (só confirma que ela existe).
+  const soResponsavel = Object.keys(campos).length === 0 && !detalhou;
+  const { data, error } = soResponsavel
+    ? await supabase
+        .from("crm_sales")
+        .select("id")
+        .eq("id", id)
+        .eq("organization_id", orgId)
+        .maybeSingle()
+    : await supabase
     .from("crm_sales")
     .update({
       ...campos,
@@ -59,6 +68,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     .maybeSingle();
   if (error) return fail("internal_error", "Erro ao salvar a venda.", 500, { requestId });
   if (!data) return fail("not_found", "Venda não encontrada.", 404, { requestId });
+  if (responsavel !== undefined) {
+    const ok2 = await definirResponsavelDaVenda(supabase, orgId, id, responsavel);
+    if (!ok2) return fail("internal_error", "Erro ao salvar o responsável.", 500, { requestId });
+  }
 
   // Itens e parcelas SUBSTITUEM os anteriores (a venda é o que a tela mandou).
   if (itens !== undefined) {
@@ -94,7 +107,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { data: venda } = await supabase
     .from("crm_sales")
     .select(
-      `${COLUNAS_DA_VENDA}, lead:crm_leads(stage_id, status, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
+      `${COLUNAS_DA_VENDA}, lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
     )
     .eq("id", id)
     .single();

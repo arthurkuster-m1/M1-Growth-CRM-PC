@@ -49,17 +49,6 @@ export function VendaDoCard({
     queryFn: async () =>
       (await apiClient.get<{ data: DadosDoLead }>(`/api/v1/leads/${lead.id}/origem`)).data,
   });
-  const equipe = useQuery({
-    queryKey: ["team", "assignable"],
-    staleTime: 60_000,
-    queryFn: async () =>
-      (
-        await apiClient.get<{ data: Array<{ user_id: string; name: string | null; email: string | null }> }>(
-          "/api/v1/team/assignable",
-        )
-      ).data,
-  });
-
   if (!contactId || consulta.isError) return <>{semVenda()}</>;
   if (consulta.isLoading || dadosDoNegocio.isLoading) return null;
   const venda = (consulta.data ?? [])
@@ -144,10 +133,6 @@ export function VendaDoCard({
         etapaId: lead.stage_id,
         aoMoverEtapa: moverEtapa,
         fichaHref: `/app/contacts/${contactId}`,
-        responsaveis: (equipe.data ?? []).map((p) => ({
-          id: p.user_id,
-          nome: p.name ?? p.email ?? p.user_id,
-        })),
         responsavelId: dadosDoNegocio.data?.sistema.dono_id ?? null,
         camposDoFunil: dadosDoNegocio.data?.negocio.field_defs ?? [],
         camposValores: dadosDoNegocio.data?.custom_fields ?? {},

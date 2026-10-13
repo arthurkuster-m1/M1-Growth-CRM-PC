@@ -114,7 +114,7 @@ export function FichaDoLead({
   if (consulta.isLoading) {
     return <div className="h-24 animate-pulse rounded-lg bg-secondary" aria-busy="true" />;
   }
-  if (consulta.isError || !d) {
+  if (consulta.isError || !d || !d.negocio || !d.campanhas) {
     return <p className="text-xs text-text-muted">{t("Não consegui carregar a ficha do lead.")}</p>;
   }
   const dia = (iso: string | null) =>

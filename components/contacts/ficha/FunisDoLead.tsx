@@ -67,10 +67,10 @@ export function FunisDoLead({
     staleTime: 60_000,
     queryFn: async () =>
       (
-        await apiClient.get<{ data: Array<{ user_id: string; name: string | null; email: string | null }> }>(
-          "/api/v1/team/assignable",
-        )
-      ).data,
+        await apiClient.get<{
+          data: Array<{ user_id: string; full_name: string | null }>;
+        }>("/api/v1/team/assignable")
+      ).data.map((p) => ({ user_id: p.user_id, name: p.full_name, email: null as string | null })),
   });
 
   if (qual.isLoading || negocios.carregando) {
