@@ -393,7 +393,9 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             <Rotulo texto={t("Nome da campanha")}>
               <TextoGravavel
                 valor={c.name}
-                aoGravar={(name) => name.trim() && grava({ name })}
+                aoGravar={(name) =>
+                  name.trim() && void editar([c.id], { name }).then(() => router.refresh())
+                }
                 desabilitado={bloqueado}
                 rotulo={t("Nome da campanha")}
                 max={160}

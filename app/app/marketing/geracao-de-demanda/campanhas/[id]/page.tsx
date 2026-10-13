@@ -4,11 +4,35 @@ import { notFound } from "next/navigation";
 import { DetalheDaCampanha } from "@/components/marketing/campanhas/DetalheDaCampanha";
 import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { Megaphone, Users } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Campanha" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const nome = UUID.test(id) ? await nomeDaCampanha(id) : null;
+  return { title: nome ?? "Campanha" };
+}
+
+/** O nome da campanha (a RLS e o filtro da empresa garantem que é da empresa de quem olha). */
+async function nomeDaCampanha(id: string): Promise<string | null> {
+  const user = await requireAuth();
+  const org = await resolveActiveOrg(user);
+  if (!org) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("demand_campaigns")
+    .select("name")
+    .eq("id", id)
+    .eq("organization_id", org.orgId)
+    .maybeSingle();
+  return (data?.name as string | undefined)?.trim() || null;
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,13 +44,14 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
   const org = await resolveActiveOrg(user);
   if (!org) notFound();
   const t = (texto: string) => traduzir(texto, user.idioma);
+  const nome = await nomeDaCampanha(id);
 
   return (
     <PaginaDeMarketing
       tom="blue"
       icone={<Megaphone weight="duotone" aria-hidden />}
       superior={t("Campanhas")}
-      titulo={t("Campanha")}
+      titulo={nome ?? t("Campanha")}
       descricao={t("Cadastro, investimento, metas e o diário de bordo desta ação de vendas.")}
       voltar={{
         href: "/app/marketing/geracao-de-demanda",
