@@ -328,7 +328,12 @@ export const ACTIVITY_LABEL_FALLBACK = "Atividade registrada";
  * Nenhum teste pegaria: "stage_changed" não é uuid, então a asserção que caça
  * uuid na tela continuaria verde.
  */
-export function activityLabel(type: string): string {
+export function activityLabel(type: string, payload?: Record<string, unknown> | null): string {
+  // A ação registrada à mão na ficha traz o próprio título ("Follow Up - Ligação"): ele manda no
+  // rótulo genérico "Anotação".
+  if (type === "note" && payload && typeof payload.titulo === "string" && payload.titulo.trim()) {
+    return payload.titulo.trim();
+  }
   return ACTIVITY_LABELS[type as ActivityType] ?? ACTIVITY_LABEL_FALLBACK;
 }
 

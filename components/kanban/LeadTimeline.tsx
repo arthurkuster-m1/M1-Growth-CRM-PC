@@ -67,7 +67,7 @@ function Linha({ item, aoVivo }: { item: TimelineItemView; aoVivo?: boolean }) {
       <Marcador item={item} />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-text">
-          {t(activityLabel(item.type))}
+          {t(activityLabel(item.type, (item as { payload?: Record<string, unknown> | null }).payload))}
           {aoVivo && (
             // O que chegou AGORA fica marcado: sem isto ele entraria na lista
             // idêntico ao resto e a chegada seria indistinguível do histórico.
@@ -76,7 +76,9 @@ function Linha({ item, aoVivo }: { item: TimelineItemView; aoVivo?: boolean }) {
             </span>
           )}
         </p>
-        {item.reason && <p className="mt-0.5 text-xs text-text-muted">{t(item.reason)}</p>}
+        {item.reason && (
+          <p className="mt-0.5 text-xs whitespace-pre-line text-text-muted">{t(item.reason)}</p>
+        )}
         <p className="mt-0.5 text-[11px] text-text-muted">
           {nome} · {quando(item.performed_at, tagDoIdioma)}
         </p>

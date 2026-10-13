@@ -294,3 +294,15 @@ Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · 
 - Visual: barras coloridas nos tópicos e etiquetas com borda (`ChipDeEtiqueta contorno`).
 - Fica para depois: campos próprios do funil (previsão de fechamento, descrição) editáveis no cartão
   do funil — hoje continuam no dossiê do card ("Abrir no funil").
+
+### Sessão 10 (continuação) — Funis editáveis e ações com tag
+
+- **Funis (ficha):** cada cartão edita etapa, situação (ganho/perdido), responsável, previsão de
+  fechamento e descrição; lista e cria vendas do funil (`lead_id`); origem com "Sem campanha",
+  "Base de clientes (funil padrão)" (`source = base_de_clientes`, sem LP/criativo/conjunto) e as
+  campanhas. O link "Abrir no funil" saiu da ficha.
+- **Linha do Tempo:** "Outra ação" exige título; cada ação pode somar uma tag com contador
+  (`No Show` → `No Show: 2x`, `lib/leads/acoes-do-lead.ts`); o título da linha é o da ação
+  (`payload.titulo`) e o resultado/comentário ficam embaixo (vazio se não houver).
+- **Pendente (decisão de modelo):** o card do quadro do funil passar a ser a VENDA atrelada ao lead
+  (e a previsão/descrição morarem na venda) — ver conversa com o Arthur antes de mexer no quadro.

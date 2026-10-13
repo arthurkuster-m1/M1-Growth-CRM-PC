@@ -36,6 +36,7 @@ export interface DadosDoLead {
     fechado_em: string | null;
     motivo_da_perda: string | null;
     responsavel: string | null;
+    dono_id?: string | null;
     responsavel_tipo: string | null;
     id_externo: string | null;
   };
@@ -58,6 +59,8 @@ export interface DadosDoLead {
     pipeline_id: string;
     funil_nome: string | null;
     etapa_nome: string | null;
+    etapa_id?: string | null;
+    etapas?: Array<{ id: string; nome: string; ganho: boolean; perdido: boolean }>;
     field_defs: CustomFieldDef[];
   };
   campanhas: Array<{

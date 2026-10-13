@@ -1,17 +1,44 @@
 import { describe, expect, it } from "vitest";
 
-import { textoDaAcao } from "./acoes-do-lead";
+import { corpoDaAcao, somarTagComContador, tituloDaAcao } from "./acoes-do-lead";
 
-describe("textoDaAcao", () => {
-  it("ligação com resultado e comentário", () => {
-    expect(textoDaAcao("ligacao", "Atendeu — pediu para retornar", "Ligar terça às 10h")).toBe(
-      "Follow-up — Ligação — Resultado: Atendeu — pediu para retornar — Ligar terça às 10h",
+describe("tituloDaAcao", () => {
+  it("usa o título da ação", () => {
+    expect(tituloDaAcao("ligacao")).toBe("Follow Up - Ligação");
+  });
+  it("em 'Outra ação' vale o que a pessoa escreveu", () => {
+    expect(tituloDaAcao("outro", "  Visitou a loja  ")).toBe("Visitou a loja");
+  });
+  it("'Outra ação' sem título cai no rótulo (a rota recusa antes)", () => {
+    expect(tituloDaAcao("outro", "")).toBe("Outra ação");
+  });
+});
+
+describe("corpoDaAcao", () => {
+  it("resultado e comentário, um por linha", () => {
+    expect(corpoDaAcao("Atendeu — pediu para retornar", "Ligar terça")).toBe(
+      "Resultado: Atendeu — pediu para retornar\nLigar terça",
     );
   });
-  it("sem resultado nem comentário, só o rótulo", () => {
-    expect(textoDaAcao("remarcou", undefined, "")).toBe("Lead remarcou");
+  it("sem nada, fica vazio", () => {
+    expect(corpoDaAcao(undefined, "  ")).toBe("");
   });
-  it("corta o texto em 1000 caracteres", () => {
-    expect(textoDaAcao("outro", null, "x".repeat(2000)).length).toBe(1000);
+});
+
+describe("somarTagComContador", () => {
+  it("primeira vez: a tag simples", () => {
+    expect(somarTagComContador(["vip"], "No Show")).toEqual(["vip", "No Show"]);
+  });
+  it("segunda vez: vira 'No Show: 2x'", () => {
+    expect(somarTagComContador(["vip", "No Show"], "No Show")).toEqual(["vip", "No Show: 2x"]);
+  });
+  it("terceira vez: 3x, sem diferenciar maiúsculas", () => {
+    expect(somarTagComContador(["no show: 2x"], "No Show")).toEqual(["No Show: 3x"]);
+  });
+  it("não confunde com outra tag parecida", () => {
+    expect(somarTagComContador(["No Show Total"], "No Show")).toEqual(["No Show Total", "No Show"]);
+  });
+  it("nome com caracteres especiais", () => {
+    expect(somarTagComContador(["R$ (1)"], "R$ (1)")).toEqual(["R$ (1): 2x"]);
   });
 });

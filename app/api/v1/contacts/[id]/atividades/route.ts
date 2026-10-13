@@ -14,15 +14,24 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
-import { IDS_DAS_ACOES, textoDaAcao } from "@/lib/leads/acoes-do-lead";
+import {
+  IDS_DAS_ACOES,
+  corpoDaAcao,
+  somarTagComContador,
+  tituloDaAcao,
+} from "@/lib/leads/acoes-do-lead";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const corpoSchema = z.object({
   acao: z.enum(IDS_DAS_ACOES),
+  /** O título da ação — obrigatório em "Outra ação". */
+  titulo: z.string().trim().max(80).optional(),
   resultado: z.string().trim().max(200).optional(),
   comentario: z.string().trim().max(800).optional(),
+  /** Tag a somar ao contato (a segunda vez vira "Tag: 2x"). */
+  tag: z.string().trim().max(30).optional(),
   lead_id: z.string().uuid().optional(),
 });
 
@@ -41,6 +50,14 @@ export async function POST(
   if (!contactId.success) return fail("not_found", t("Contato não encontrado."), 404, { requestId });
   const corpo = corpoSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success) return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
+  if (corpo.data.acao === "outro" && (corpo.data.titulo ?? "").length < 3) {
+    return fail(
+      "validation_failed",
+      t("Escreva um título dizendo qual foi a ação."),
+      422,
+      { requestId },
+    );
+  }
 
   const supabase = await createClient();
   const orgId = authz.org.orgId;
@@ -78,21 +95,40 @@ export async function POST(
     type: "note",
     sourceModule: "ficha_do_lead",
     actor: { type: "user", id: authz.user.id },
-    reason: textoDaAcao(corpo.data.acao, corpo.data.resultado, corpo.data.comentario),
+    // O texto de baixo (resultado/comentário); o TÍTULO vai no payload e é o que a linha mostra.
+    reason: corpoDaAcao(corpo.data.resultado, corpo.data.comentario),
     payload: {
       acao: corpo.data.acao,
+      titulo: tituloDaAcao(corpo.data.acao, corpo.data.titulo),
       resultado: corpo.data.resultado ?? null,
       comentario: corpo.data.comentario ?? null,
     },
   });
   if (!r.ok) return fail("internal_error", t("Erro ao registrar a ação."), 500, { requestId });
 
-  // A última atividade do cliente passa a ser esta.
+  // A última atividade do cliente passa a ser esta; e, se pedida, a tag da ação (com contador).
+  const atualizacao: Record<string, unknown> = { last_activity_at: new Date().toISOString() };
+  let tagFinal: string | null = null;
+  if (corpo.data.tag) {
+    const { data: atual } = await supabase
+      .from("contacts")
+      .select("tags")
+      .eq("id", contactId.data)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    const tags = somarTagComContador(
+      ((atual as { tags: string[] | null } | null)?.tags ?? []) as string[],
+      corpo.data.tag,
+    );
+    atualizacao.tags = tags;
+    tagFinal =
+      tags.find((x) => x.toLowerCase().startsWith(corpo.data.tag!.toLowerCase())) ?? corpo.data.tag;
+  }
   await supabase
     .from("contacts")
-    .update({ last_activity_at: new Date().toISOString() })
+    .update(atualizacao)
     .eq("id", contactId.data)
     .eq("organization_id", orgId);
 
-  return ok({ registrado: true }, { requestId, status: 201 });
+  return ok({ registrado: true, tag: tagFinal }, { requestId, status: 201 });
 }

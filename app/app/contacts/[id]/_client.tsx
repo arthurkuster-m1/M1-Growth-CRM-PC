@@ -332,6 +332,7 @@ export function ContactDetailClient({ contactId }: Props) {
         <TabsContent value="funis" className="mt-4">
           <FunisDoLead
             contactId={contactId}
+            nomeDoContato={displayName}
             conjuntoDoAnuncio={origem.conjunto}
             podeEditar={podeEditarFicha}
           />

@@ -110,7 +110,7 @@ export function TimelineView({ contactId, types }: Props) {
             <ul className="space-y-2">
               {items.map((it) => {
                 const Icon = ICON_MAP[it.source_module] ?? Gear;
-                const label = t(activityLabel(it.type));
+                const label = t(activityLabel(it.type, it.payload as Record<string, unknown> | null));
                 const reasonTrim = (it.reason ?? "").trim();
                 const corpo = reasonTrim ? t(reasonTrim) : summarizePayload(it.payload);
                 const forma = actorShape(it.actor_kind ?? null);
@@ -163,7 +163,10 @@ export function TimelineView({ contactId, types }: Props) {
                         // truncamento de uma linha só cortava nota sem nenhum
                         // jeito de ler o resto (o valor já vem limitado a 200
                         // caracteres em `summarizePayload`, então nem é raro).
-                        <p className="mt-1 truncate text-sm text-muted-foreground" title={corpo}>
+                        <p
+                          className="mt-1 text-sm break-words whitespace-pre-line text-muted-foreground"
+                          title={corpo}
+                        >
                           {corpo}
                         </p>
                       )}

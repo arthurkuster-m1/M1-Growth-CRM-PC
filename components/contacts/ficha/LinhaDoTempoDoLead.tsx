@@ -34,21 +34,41 @@ export function LinhaDoTempoDoLead({
   const t = useT();
   const qc = useQueryClient();
   const [acao, setAcao] = useState<IdDaAcao | null>(null);
+  const [titulo, setTitulo] = useState("");
   const [resultado, setResultado] = useState("");
   const [comentario, setComentario] = useState("");
+  const [comTag, setComTag] = useState(false);
+  const [tag, setTag] = useState("");
+
+  function escolher(id: IdDaAcao | null) {
+    setAcao(id);
+    const a = ACOES_DO_LEAD.find((x) => x.id === id);
+    const padrao = a && "tagPadrao" in a ? a.tagPadrao : "";
+    setComTag(Boolean(padrao));
+    setTag(padrao);
+    setTitulo("");
+    setResultado("");
+    setComentario("");
+  }
 
   const registrar = useMutation({
     mutationFn: async () =>
-      apiClient.post(`/api/v1/contacts/${contactId}/atividades`, {
+      apiClient.post<{ data: { tag: string | null } }>(`/api/v1/contacts/${contactId}/atividades`, {
         acao,
+        ...(titulo.trim() ? { titulo: titulo.trim() } : {}),
         ...(resultado ? { resultado } : {}),
         ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
+        ...(comTag && tag.trim() ? { tag: tag.trim() } : {}),
       }),
-    onSuccess: () => {
-      toast.success(t("Ação registrada no histórico"));
-      setAcao(null);
-      setResultado("");
-      setComentario("");
+    onSuccess: (r) => {
+      const tagFinal = (r as { data?: { tag?: string | null } } | undefined)?.data?.tag;
+      toast.success(
+        tagFinal
+          ? `${t("Ação registrada. Tag:")} ${tagFinal}`
+          : t("Ação registrada no histórico"),
+      );
+      void qc.invalidateQueries({ queryKey: ["contact", contactId] });
+      escolher(null);
       void qc.invalidateQueries({ queryKey: ["contact-timeline"] });
       void qc.invalidateQueries({ queryKey: ["timeline"] });
       void qc.invalidateQueries();
@@ -56,6 +76,8 @@ export function LinhaDoTempoDoLead({
     onError: showApiError,
   });
   const atual = ACOES_DO_LEAD.find((a) => a.id === acao);
+  const exigeTitulo = Boolean(atual && "exigeTitulo" in atual && atual.exigeTitulo);
+  const podeRegistrar = !exigeTitulo || titulo.trim().length >= 3;
 
   return (
     <div className="grid gap-4">
@@ -66,7 +88,7 @@ export function LinhaDoTempoDoLead({
               <button
                 key={a.id}
                 type="button"
-                onClick={() => setAcao(a.id === acao ? null : a.id)}
+                onClick={() => escolher(a.id === acao ? null : a.id)}
                 className={cn(
                   "rounded-full border-[1.5px] px-3 py-1 text-xs font-medium transition-colors",
                   a.id === acao
@@ -80,6 +102,17 @@ export function LinhaDoTempoDoLead({
           </div>
           {atual ? (
             <div className="mt-3 grid gap-2">
+              {exigeTitulo ? (
+                <div className="grid gap-1">
+                  <label className="text-xs font-medium">{t("O que foi feito? (obrigatório)")}</label>
+                  <Input
+                    value={titulo}
+                    maxLength={80}
+                    placeholder={t("Ex.: Visitou a loja, Enviou contrato…")}
+                    onChange={(e) => setTitulo(e.target.value)}
+                  />
+                </div>
+              ) : null}
               {atual.comResultado ? (
                 <div className="grid gap-1">
                   <label className="text-xs font-medium">{t("Resultado")}</label>
@@ -104,11 +137,39 @@ export function LinhaDoTempoDoLead({
                 placeholder={t("Comentário do atendente (opcional)")}
                 onChange={(e) => setComentario(e.target.value)}
               />
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border p-2.5">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={comTag}
+                    onChange={(e) => setComTag(e.target.checked)}
+                  />
+                  {t("Marcar o lead com uma tag")}
+                </label>
+                {comTag ? (
+                  <Input
+                    value={tag}
+                    maxLength={30}
+                    placeholder={t("Nome da tag (ex.: No Show)")}
+                    onChange={(e) => setTag(e.target.value)}
+                    className="h-8 w-56"
+                  />
+                ) : null}
+                {comTag && tag.trim() ? (
+                  <span className="text-xs text-muted-foreground">
+                    {t("Se o lead já tiver essa tag, ela vira")} “{tag.trim()}: 2x”.
+                  </span>
+                ) : null}
+              </div>
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setAcao(null)}>
+                <Button size="sm" variant="ghost" onClick={() => escolher(null)}>
                   {t("Cancelar")}
                 </Button>
-                <Button size="sm" disabled={registrar.isPending} onClick={() => registrar.mutate()}>
+                <Button
+                  size="sm"
+                  disabled={registrar.isPending || !podeRegistrar}
+                  onClick={() => registrar.mutate()}
+                >
                   {registrar.isPending ? t("Registrando…") : t("Registrar no histórico")}
                 </Button>
               </div>

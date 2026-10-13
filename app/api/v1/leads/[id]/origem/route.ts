@@ -53,13 +53,20 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   const { data: lead, error } = await supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, source, source_metadata, external_id, owner_user_id, owner_kind, lost_reason, created_at, updated_at, assigned_at, last_activity_at, stage_changed_at, closed_at, tags, custom_fields, title, description, value_cents, currency, expected_close_date, status, pipeline_id, demand_campaign_id, demand_creative_id, demand_landing_page_id, crm_pipelines(name, settings), crm_stages!crm_leads_stage_id_fkey(name)",
+      "id, contact_id, stage_id, source, source_metadata, external_id, owner_user_id, owner_kind, lost_reason, created_at, updated_at, assigned_at, last_activity_at, stage_changed_at, closed_at, tags, custom_fields, title, description, value_cents, currency, expected_close_date, status, pipeline_id, demand_campaign_id, demand_creative_id, demand_landing_page_id, crm_pipelines(name, settings), crm_stages!crm_leads_stage_id_fkey(name)",
     )
     .eq("id", id.data)
     .eq("organization_id", orgId)
     .maybeSingle();
   if (error) return fail("internal_error", t("Erro ao carregar o lead."), 500, { requestId });
   if (!lead) return fail("not_found", t("Lead não encontrado."), 404, { requestId });
+
+  const { data: etapasDoFunil } = await supabase
+    .from("crm_stages")
+    .select("id, name, position, is_won, is_lost, is_archived")
+    .eq("organization_id", orgId)
+    .eq("pipeline_id", (lead as { pipeline_id: string }).pipeline_id)
+    .order("position", { ascending: true });
 
   const [campanhas, criativos, paginas] = await Promise.all([
     supabase
@@ -87,6 +94,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   const l = lead as {
     id: string;
     contact_id: string | null;
+    stage_id: string | null;
     source: string | null;
     tags: string[] | null;
     custom_fields: Record<string, unknown> | null;
@@ -129,6 +137,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
         fechado_em: l.closed_at,
         motivo_da_perda: l.lost_reason,
         responsavel: nomeDoDono,
+        dono_id: l.owner_user_id,
         responsavel_tipo: l.owner_kind,
         id_externo: l.external_id,
       },
@@ -144,6 +153,18 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
         pipeline_id: l.pipeline_id,
         funil_nome: nomeDoEmbed(l.crm_pipelines),
         etapa_nome: nomeDoEmbed(l.crm_stages),
+        etapa_id: l.stage_id,
+        etapas: (
+          (etapasDoFunil ?? []) as Array<{
+            id: string;
+            name: string;
+            is_won: boolean;
+            is_lost: boolean;
+            is_archived: boolean;
+          }>
+        )
+          .filter((e) => !e.is_archived)
+          .map((e) => ({ id: e.id, nome: e.name, ganho: e.is_won, perdido: e.is_lost })),
         field_defs: camposDoFunil(settingsDoEmbed(l.crm_pipelines)),
       },
       contact_id: l.contact_id,
