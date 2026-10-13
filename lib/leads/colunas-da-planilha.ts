@@ -41,6 +41,11 @@ export const COLUNAS: Record<string, readonly string[]> = {
   etiquetas: ["tags", "etiquetas", "marcadores"],
   etapa: ["etapa", "fase", "stage", "etapa do funil"],
   funil: ["funil", "pipeline", "funnel", "embudo"],
+  campanha: ["campanha", "campaign", "campaña"],
+  conjunto: ["conjunto", "conjunto de anuncios", "conjunto de anúncios", "adset", "ad set"],
+  anuncio: ["anuncio", "anúncio", "criativo", "ad", "creative", "creativo"],
+  landing_page: ["landing page", "landing", "lp", "pagina de captura", "página de captura", "pagina"],
+  posicionamento: ["posicionamento", "placement", "posicion", "posición"],
   produto: ["produto", "servico", "serviço", "product", "producto"],
   status_da_venda: [
     "status da venda",

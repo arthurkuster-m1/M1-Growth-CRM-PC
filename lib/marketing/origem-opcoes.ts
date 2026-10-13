@@ -17,6 +17,53 @@ export const POSICIONAMENTOS = [
   "Outro",
 ] as const;
 
+/**
+ * As FONTES de origem de fábrica (de onde a pessoa veio, mesmo sem campanha de anúncio). A
+ * organização soma as que já usou (uma extração de leads, um evento…) — ver `fontesDeOrigem`.
+ */
+export const FONTES_DE_FABRICA = [
+  "Meta Ads",
+  "Google Ads",
+  "Instagram",
+  "Facebook",
+  "WhatsApp",
+  "Site",
+  "Indicação",
+  "Base de clientes",
+  "Extração de leads",
+  "Evento",
+  "Prospecção ativa",
+] as const;
+
+/** Valores técnicos de `source` que não são uma fonte que a pessoa escolheria. */
+const FONTES_TECNICAS = new Set([
+  "manual",
+  "webhook",
+  "importacao_planilha",
+  "import_csv",
+  "whatsapp_inbound",
+  "inbound",
+  "api",
+  "mcp",
+  "reativacao",
+]);
+
+/** A lista de fontes: as de fábrica + as que a organização já usou, sem repetir. */
+export function fontesDeOrigem(usadas: ReadonlyArray<string | null | undefined>): string[] {
+  const vistas = new Set<string>();
+  const saida: string[] = [];
+  const somar = (bruta: string) => {
+    const nome = bruta.trim();
+    const chave = nome.toLowerCase();
+    if (!nome || nome.length > 60 || vistas.has(chave) || FONTES_TECNICAS.has(chave)) return;
+    vistas.add(chave);
+    saida.push(nome);
+  };
+  for (const f of FONTES_DE_FABRICA) somar(f);
+  for (const u of usadas) if (typeof u === "string") somar(u);
+  return saida;
+}
+
 export interface PaginaOpcao {
   id: string;
   nome: string;

@@ -14,6 +14,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { camposDoFunil, settingsDoEmbed } from "@/lib/leads/campos-do-funil";
+import { origemDoContato } from "@/lib/leads/origem-do-contato";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
@@ -38,6 +39,9 @@ const corpoSchema = z.object({
   creative_id: z.string().uuid().nullable().optional(),
   landing_page_id: z.string().uuid().nullable().optional(),
   source: z.string().trim().min(1).max(80).optional(),
+  /** O conjunto de anúncios e o posicionamento (nomes) — moram na origem do próprio card. */
+  conjunto: z.string().trim().max(200).nullable().optional(),
+  posicionamento: z.string().trim().max(80).nullable().optional(),
 });
 
 export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
@@ -174,6 +178,8 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
       campaign_id: l.demand_campaign_id,
       creative_id: l.demand_creative_id,
       landing_page_id: l.demand_landing_page_id,
+      conjunto: origemDoContato(l.source_metadata, l.source ?? "").conjunto,
+      posicionamento: origemDoContato(l.source_metadata, l.source ?? "").posicionamento,
       campanhas: ((campanhas.data ?? []) as Array<{ id: string; name: string }>).map((c) => ({
         id: c.id,
         nome: c.name,
@@ -204,7 +210,7 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
 
   const supabase = await createClient();
   const orgId = authz.org.orgId;
-  const { campaign_id, creative_id, landing_page_id, source } = corpo.data;
+  const { campaign_id, creative_id, landing_page_id, source, conjunto, posicionamento } = corpo.data;
 
   const patch: Record<string, unknown> = {};
   if (campaign_id !== undefined) {
@@ -252,6 +258,24 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
     }
   }
   if (source !== undefined) patch.source = source;
+  if (conjunto !== undefined || posicionamento !== undefined) {
+    // Conjunto e posicionamento são texto do próprio card (`origem_manual`); o rastreamento
+    // original (UTMs) continua intacto.
+    const { data: atual } = await supabase
+      .from("crm_leads")
+      .select("source_metadata")
+      .eq("id", id.data)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    const meta = ((atual as { source_metadata: Record<string, unknown> | null } | null)
+      ?.source_metadata ?? {}) as Record<string, unknown>;
+    const manual = {
+      ...((meta.origem_manual as Record<string, unknown> | undefined) ?? {}),
+    };
+    if (conjunto !== undefined) manual.conjunto = conjunto ?? "";
+    if (posicionamento !== undefined) manual.posicionamento = posicionamento ?? "";
+    patch.source_metadata = { ...meta, origem_manual: manual };
+  }
   if (Object.keys(patch).length === 0) {
     return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
   }

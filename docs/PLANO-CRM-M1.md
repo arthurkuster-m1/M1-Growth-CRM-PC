@@ -336,3 +336,14 @@ Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · 
 - **Vendas (CRM)**: abas/visualizações salvas (`saved-views` tela `vendas`) e as colunas da tabela
   da ficha: Produto, Funil, Valor total, Valor pago, Previsto, Status, Parcelas (círculos), Etapa,
   Previsão, Compromisso, Pagamento (+ extras). `hooks/vendas/useMarcarParcela.ts` é comum às duas.
+
+### Sessão 10 (continuação 4) — Origem num só modelo
+
+- **Um componente de origem** (`components/contacts/ficha/OrigemEmCascata.tsx`) usado no cadastro do
+  lead, no Novo lead, na importação (colunas Origem/Campanha/Conjunto/Anúncio/Landing page/
+  Posicionamento) e no card do funil: **fonte** (de fábrica + as que a organização já usou —
+  "Extração de leads", indicação, evento… — ou uma nova digitada) e a cascata campanha → conjunto
+  → anúncio → LP → posicionamento.
+- `GET /api/v1/marketing/origem-opcoes` devolve `fontes`; `PUT /api/v1/leads/[id]/origem` aceita
+  `conjunto` e `posicionamento` (em `source_metadata.origem_manual` do card); a importação grava a
+  origem no contato e liga o card pelos ids.

@@ -48,6 +48,9 @@ export interface DadosDoLead {
   campaign_id: string | null;
   creative_id: string | null;
   landing_page_id: string | null;
+  /** O conjunto de anúncios e o posicionamento da origem do card (texto). */
+  conjunto?: string | null;
+  posicionamento?: string | null;
   negocio: {
     id: string;
     title: string;

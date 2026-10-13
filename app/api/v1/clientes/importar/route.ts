@@ -117,6 +117,27 @@ export async function POST(req: NextRequest): Promise<Response> {
   const etapasAbertas = (funilId: string) =>
     etapas.filter((e) => e.pipeline_id === funilId && !e.is_won && !e.is_lost);
 
+  // A cascata de origem: campanha → anúncio → página, pelo nome (para ligar o card pelos ids).
+  const [{ data: campanhasRows }, { data: criativosRows }, { data: paginasRows }] =
+    await Promise.all([
+      supabase.from("demand_campaigns").select("id, name").eq("organization_id", orgId).limit(500),
+      supabase
+        .from("demand_campaign_creatives")
+        .select("id, name, campaign_id")
+        .eq("organization_id", orgId)
+        .limit(3000),
+      supabase
+        .from("demand_campaign_landing_pages")
+        .select("id, name, campaign_id")
+        .eq("organization_id", orgId)
+        .limit(2000),
+    ]);
+  const campanhaPorNome = new Map(
+    ((campanhasRows ?? []) as Array<{ id: string; name: string }>).map((c) => [semAcento(c.name), c.id]),
+  );
+  const criativos = (criativosRows ?? []) as Array<{ id: string; name: string; campaign_id: string }>;
+  const paginas = (paginasRows ?? []) as Array<{ id: string; name: string; campaign_id: string }>;
+
   // O catálogo de produtos (para casar o nome do produto com o cadastro).
   const { data: catalogo } = await supabase
     .from("marketing_pages")
@@ -174,8 +195,52 @@ export async function POST(req: NextRequest): Promise<Response> {
     return null;
   }
 
+  /** A origem digitada na linha, no modelo do cadastro do lead (nomes + ids por trás). */
+  function origemDaLinha(l: LinhaDeCliente) {
+    const campanhaId = l.campanha ? (campanhaPorNome.get(semAcento(l.campanha)) ?? null) : null;
+    const criativo = l.anuncio
+      ? criativos.find(
+          (c) =>
+            semAcento(c.name) === semAcento(l.anuncio!) &&
+            (!campanhaId || c.campaign_id === campanhaId),
+        )
+      : undefined;
+    const pagina = l.landing_page
+      ? paginas.find(
+          (p) =>
+            semAcento(p.name) === semAcento(l.landing_page!) &&
+            (!campanhaId || p.campaign_id === campanhaId),
+        )
+      : undefined;
+    const manual: Record<string, string> = {};
+    if (l.origem) manual.origem = l.origem;
+    if (l.campanha) manual.campanha = l.campanha;
+    if (l.conjunto) manual.conjunto = l.conjunto;
+    if (l.anuncio) manual.anuncio = l.anuncio;
+    if (l.landing_page) manual.lp = l.landing_page;
+    if (l.posicionamento) manual.posicionamento = l.posicionamento;
+    if (campanhaId) manual.campanha_id = campanhaId;
+    if (criativo) manual.anuncio_id = criativo.id;
+    if (pagina) manual.lp_id = pagina.id;
+    const tagsDeOrigem = [
+      l.campanha ? `Campanha: ${l.campanha}` : "",
+      l.conjunto ? `Conjunto: ${l.conjunto}` : "",
+      l.anuncio ? `Ad: ${l.anuncio}` : "",
+      l.landing_page ? `LP: ${l.landing_page}` : "",
+    ].filter(Boolean);
+    return {
+      manual,
+      campanhaId: campanhaId ?? criativo?.campaign_id ?? pagina?.campaign_id ?? null,
+      criativoId: criativo?.id ?? null,
+      paginaId: pagina?.id ?? null,
+      tagsDeOrigem,
+      temOrigem: Object.keys(manual).length > 0,
+    };
+  }
+
   for (const l of lido.linhas) {
     try {
+      const orig = origemDaLinha(l);
       const chaveDaLinha = l.telefone ?? `email:${(l.email ?? "").toLowerCase()}`;
       let contactId = jaVistos.get(chaveDaLinha) ?? null;
 
@@ -187,7 +252,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         camposDaLinha[k] = v;
         rotulos[k] = rotulo;
       }
-      const tags = normalizarTags(l.etiquetas);
+      const tags = normalizarTags([...l.etiquetas, ...orig.tagsDeOrigem]);
 
       if (!contactId) {
         const existente = await acharContato(l);
@@ -209,6 +274,14 @@ export async function POST(req: NextRequest): Promise<Response> {
             };
           }
           if (l.nascimento && !existente.birthdate) patch.birthdate = l.nascimento;
+          if (orig.temOrigem) {
+            const meta = existente.source_metadata ?? {};
+            const atual =
+              meta.origem_manual && typeof meta.origem_manual === "object"
+                ? (meta.origem_manual as Record<string, unknown>)
+                : {};
+            patch.source_metadata = { ...meta, origem_manual: { ...atual, ...orig.manual } };
+          }
           if (Object.keys(patch).length > 0) {
             await supabase.from("contacts").update(patch).eq("id", contactId).eq("organization_id", orgId);
           }
@@ -228,6 +301,7 @@ export async function POST(req: NextRequest): Promise<Response> {
                 Object.keys(camposDaLinha).length > 0
                   ? { ...camposDaLinha, _rotulos: rotulos }
                   : {},
+              ...(orig.temOrigem ? { source_metadata: { origem_manual: orig.manual } } : {}),
             })
             .select("id")
             .single();
@@ -302,6 +376,32 @@ export async function POST(req: NextRequest): Promise<Response> {
       )) as unknown as { id?: string; lead?: { id: string }; data?: { id: string } };
       const leadId = lead?.id ?? lead?.lead?.id ?? lead?.data?.id ?? null;
       resumo.cards_criados += 1;
+
+      // A origem do card: campanha, anúncio e página pelos ids (o banco cria as tags de origem) e
+      // conjunto e posicionamento no próprio card.
+      if (leadId && orig.temOrigem) {
+        const patchDoCard: Record<string, unknown> = {};
+        if (orig.campanhaId) patchDoCard.demand_campaign_id = orig.campanhaId;
+        if (orig.criativoId) patchDoCard.demand_creative_id = orig.criativoId;
+        if (orig.paginaId) patchDoCard.demand_landing_page_id = orig.paginaId;
+        if (l.origem) patchDoCard.source = l.origem;
+        const { data: cardAtual } = await supabase
+          .from("crm_leads")
+          .select("source_metadata")
+          .eq("id", leadId)
+          .eq("organization_id", orgId)
+          .maybeSingle();
+        const metaDoCard = ((cardAtual as { source_metadata: Record<string, unknown> | null } | null)
+          ?.source_metadata ?? {}) as Record<string, unknown>;
+        patchDoCard.source_metadata = {
+          ...metaDoCard,
+          origem_manual: {
+            ...((metaDoCard.origem_manual as Record<string, unknown> | undefined) ?? {}),
+            ...orig.manual,
+          },
+        };
+        await supabase.from("crm_leads").update(patchDoCard).eq("id", leadId).eq("organization_id", orgId);
+      }
 
       // A venda do card (o banco já criou a de interesse): produto, valor e status da linha.
       if (leadId && (l.produto || l.valor_cents !== null || l.status_da_venda)) {

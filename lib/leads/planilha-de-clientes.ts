@@ -25,6 +25,11 @@ export interface LinhaDeCliente {
   telefone: string | null;
   email: string | null;
   origem: string | null;
+  campanha: string | null;
+  conjunto: string | null;
+  anuncio: string | null;
+  landing_page: string | null;
+  posicionamento: string | null;
   funil: string | null;
   etapa: string | null;
   produto: string | null;
@@ -172,6 +177,11 @@ export function lerLinhasDeClientes(
       telefone,
       email,
       origem: valor("origem") || null,
+      campanha: valor("campanha") || null,
+      conjunto: valor("conjunto") || null,
+      anuncio: valor("anuncio") || null,
+      landing_page: valor("landing_page") || null,
+      posicionamento: valor("posicionamento") || null,
       funil: valor("funil") || null,
       etapa: valor("etapa") || null,
       produto: valor("produto") || null,

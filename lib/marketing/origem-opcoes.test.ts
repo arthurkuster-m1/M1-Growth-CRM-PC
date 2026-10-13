@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { enderecoComparavel, montarOpcoesDeOrigem } from "./origem-opcoes";
+import { enderecoComparavel, fontesDeOrigem, montarOpcoesDeOrigem } from "./origem-opcoes";
 
 describe("enderecoComparavel", () => {
   it("ignora esquema, www, query e barra final", () => {
@@ -43,5 +43,16 @@ describe("montarOpcoesDeOrigem", () => {
   it("campanha com uma única página: ela vale para todos os anúncios", () => {
     const [c] = montarOpcoesDeOrigem({ ...base, paginas: [base.paginas[0]!] });
     expect(c!.anuncios_soltos[0]!.pagina?.nome).toBe("LP BH");
+  });
+});
+
+describe("fontesDeOrigem", () => {
+  it("fábrica + as que a organização já usou, sem repetir e sem as técnicas", () => {
+    const f = fontesDeOrigem(["Extração Cartórios 2026", "instagram", "manual", "importacao_planilha", "  "]);
+    expect(f).toContain("Instagram");
+    expect(f).toContain("Extração Cartórios 2026");
+    expect(f.filter((x) => x.toLowerCase() === "instagram")).toHaveLength(1);
+    expect(f).not.toContain("manual");
+    expect(f).not.toContain("importacao_planilha");
   });
 });

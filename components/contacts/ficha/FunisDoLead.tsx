@@ -8,6 +8,12 @@ import { toast } from "sonner";
 import { BlocoDaFicha, CampoLido, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { useDadosDosNegocios, useQualificacaoDoContato } from "@/components/contacts/ficha/dados-da-ficha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import {
+  OrigemEmCascata,
+  type ValorDaOrigem,
+} from "@/components/contacts/ficha/OrigemEmCascata";
+import { Button } from "@/components/ui/button";
+import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import type { DadosDoLead } from "@/components/leads/FichaDoLead";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
@@ -23,8 +29,6 @@ import type { Venda } from "@/lib/vendas";
 
 const reais = (c: number) => moedaDoNumero(c / 100);
 const SELECT = "h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60";
-const BASE = "__base__";
-const NENHUMA = "__nenhuma__";
 
 const ROTULO_VENDA: Record<string, string> = {
   interesse: "Interesse",
@@ -41,12 +45,10 @@ const ROTULO_VENDA: Record<string, string> = {
 export function FunisDoLead({
   contactId,
   nomeDoContato,
-  conjuntoDoAnuncio,
   podeEditar,
 }: {
   contactId: string;
   nomeDoContato: string;
-  conjuntoDoAnuncio: string | null;
   podeEditar: boolean;
 }) {
   const t = useT();
@@ -89,7 +91,6 @@ export function FunisDoLead({
           n={n}
           contactId={contactId}
           nomeDoContato={nomeDoContato}
-          conjuntoDoAnuncio={conjuntoDoAnuncio}
           podeEditar={podeEditar}
           vendas={(vendasQ.data ?? []).filter(
             (v) => v.lead_id === n.lead_id || (!v.lead_id && v.pipeline_id === n.negocio.pipeline_id),
@@ -105,7 +106,6 @@ function CartaoDoFunil({
   n,
   contactId,
   nomeDoContato,
-  conjuntoDoAnuncio,
   podeEditar,
   vendas,
   equipe,
@@ -113,7 +113,6 @@ function CartaoDoFunil({
   n: DadosDoLead;
   contactId: string;
   nomeDoContato: string;
-  conjuntoDoAnuncio: string | null;
   podeEditar: boolean;
   vendas: Venda[];
   equipe: Array<{ user_id: string; name: string | null; email: string | null }>;
@@ -199,10 +198,43 @@ function CartaoDoFunil({
     }
   }
 
-  // ── Origem deste funil ──
-  const campanha = n.campanhas.find((c) => c.id === n.campaign_id) ?? null;
-  const valorDaOrigem = n.campaign_id ? n.campaign_id : n.source === "base_de_clientes" ? BASE : NENHUMA;
-  const deAnuncio = campanha !== null && (campanha.criativos.length > 0 || campanha.landing_pages.length > 0);
+  // ── Origem deste funil (a fonte + campanha → conjunto → anúncio → página + posicionamento) ──
+  const opcoesDeOrigem = useQuery({
+    queryKey: ["origem-opcoes"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: { campanhas: CampanhaOpcao[]; posicionamentos: string[]; fontes: string[] };
+        }>("/api/v1/marketing/origem-opcoes")
+      ).data,
+  });
+  const campanhaDoCard = n.campanhas.find((c) => c.id === n.campaign_id) ?? null;
+  const origemDoCard: ValorDaOrigem = {
+    origem: n.source === "base_de_clientes" ? "Base de clientes" : (n.source ?? ""),
+    campanha: campanhaDoCard?.nome ?? "",
+    conjunto: n.conjunto ?? "",
+    anuncio: campanhaDoCard?.criativos.find((c) => c.id === n.creative_id)?.nome ?? "",
+    lp: campanhaDoCard?.landing_pages.find((p) => p.id === n.landing_page_id)?.nome ?? "",
+    posicionamento: n.posicionamento ?? "",
+  };
+  const [origemEdit, setOrigemEdit] = useState<ValorDaOrigem>(origemDoCard);
+  const origemMudou = JSON.stringify(origemEdit) !== JSON.stringify(origemDoCard);
+  async function salvarOrigemDoCard() {
+    const arvore = opcoesDeOrigem.data?.campanhas ?? [];
+    const camp = arvore.find((c) => c.nome === origemEdit.campanha);
+    const todos = camp ? [...camp.conjuntos.flatMap((c) => c.anuncios), ...camp.anuncios_soltos] : [];
+    const anuncio = todos.find((a) => a.nome === origemEdit.anuncio);
+    const pagina = camp?.paginas.find((p) => p.nome === origemEdit.lp);
+    await mudarOrigem({
+      campaign_id: camp?.id ?? null,
+      // O anúncio do cadastro de criativos pode não existir (nome digitado): só vale com id.
+      ...(camp ? { creative_id: anuncio?.id ?? null, landing_page_id: pagina?.id ?? null } : {}),
+      ...(origemEdit.origem.trim() ? { source: origemEdit.origem.trim() } : {}),
+      conjunto: origemEdit.conjunto || null,
+      posicionamento: origemEdit.posicionamento || null,
+    });
+  }
 
   const selo =
     status === "won" ? (
@@ -378,83 +410,32 @@ function CartaoDoFunil({
           )}
         </div>
 
-        {/* ── Origem deste funil ── */}
-        <div className="rounded-xl border p-3">
-          <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">
-            {t("Origem neste funil")}
-          </p>
-          <div className="grid gap-2">
-            <div className="grid gap-1">
-              <Label className="text-xs">{t("Campanha")}</Label>
-              <select
-                className={SELECT}
-                disabled={!podeEditar}
-                value={valorDaOrigem}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === BASE) void mudarOrigem({ campaign_id: null, source: "base_de_clientes" });
-                  else if (v === NENHUMA) void mudarOrigem({ campaign_id: null });
-                  else void mudarOrigem({ campaign_id: v });
-                }}
-              >
-                <option value={NENHUMA}>{t("Sem campanha")}</option>
-                <option value={BASE}>{t("Base de clientes (funil padrão)")}</option>
-                {n.campanhas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {valorDaOrigem === BASE ? (
-              <p className="text-xs text-muted-foreground">
-                {t("Cliente que já comprou: o funil nasce da base, sem página, criativo nem conjunto de anúncios.")}
-              </p>
-            ) : null}
-            {campanha && deAnuncio ? (
-              <>
-                <div className="grid gap-1">
-                  <Label className="text-xs">{t("Criativo")}</Label>
-                  <select
-                    className={SELECT}
-                    disabled={!podeEditar}
-                    value={n.creative_id ?? ""}
-                    onChange={(e) => void mudarOrigem({ creative_id: e.target.value || null })}
-                  >
-                    <option value="">{t("Sem criativo")}</option>
-                    {campanha.criativos.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-1">
-                  <Label className="text-xs">{t("Landing page")}</Label>
-                  <select
-                    className={SELECT}
-                    disabled={!podeEditar}
-                    value={n.landing_page_id ?? ""}
-                    onChange={(e) => void mudarOrigem({ landing_page_id: e.target.value || null })}
-                  >
-                    <option value="">{t("Sem landing page")}</option>
-                    {campanha.landing_pages.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <dl>
-                  <CampoLido rotulo={t("Conjunto (anúncio de entrada)")} valor={conjuntoDoAnuncio} />
-                </dl>
-              </>
-            ) : campanha ? (
-              <p className="text-xs text-muted-foreground">
-                {t("Campanha sem criativo nem página: disparo ou prospecção, sem conjunto de anúncios.")}
-              </p>
+        {/* ── Origem deste funil: o mesmo modelo do cadastro (fonte + cascata) ── */}
+        <div className="rounded-xl border p-3 lg:col-span-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase">
+              {t("Origem neste funil")}
+            </p>
+            {podeEditar && origemMudou ? (
+              <Button size="sm" onClick={() => void salvarOrigemDoCard()}>
+                {t("Salvar origem")}
+              </Button>
             ) : null}
           </div>
+          <OrigemEmCascata
+            valor={origemEdit}
+            aoMudar={setOrigemEdit}
+            campanhas={opcoesDeOrigem.data?.campanhas ?? []}
+            posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
+            fontes={opcoesDeOrigem.data?.fontes ?? []}
+            carregando={opcoesDeOrigem.isLoading}
+            desabilitado={!podeEditar}
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t(
+              "Pode ser uma campanha de anúncio ou só uma fonte (extração de leads, indicação, base de clientes…): nesse caso o funil fica sem conjunto, anúncio e página.",
+            )}
+          </p>
         </div>
       </div>
 

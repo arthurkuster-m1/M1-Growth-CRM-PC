@@ -1,10 +1,15 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { CustomFieldsEditor } from "@/components/contacts/CustomFieldsEditor";
+import {
+  ORIGEM_VAZIA,
+  OrigemEmCascata,
+  type ValorDaOrigem,
+} from "@/components/contacts/ficha/OrigemEmCascata";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Button } from "@/components/ui/button";
@@ -16,6 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
+import { apiClient } from "@/lib/api/client";
+import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import { MOEDA_PADRAO, simboloDaMoeda } from "@/lib/money";
 import { Plus, X } from "@/lib/ui/icons";
 import { enviarLeadsParaOCRM, useCamposDosFunis } from "./usarFunisComCampos";
@@ -32,7 +39,6 @@ export interface EtapaDoPopup {
   is_lost: boolean;
 }
 
-const ORIGENS = ["Instagram", "Facebook", "Google", "WhatsApp", "Indicação", "Site", "Evento", "Outro"];
 const SEM_FUNIL = "__sem_funil__";
 
 /** O valor de um campo do funil, no texto que a planilha usa. */
@@ -72,7 +78,18 @@ export function NovoLeadDoCRM({
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
-  const [origem, setOrigem] = useState("");
+  const [origem, setOrigem] = useState<ValorDaOrigem>(ORIGEM_VAZIA);
+  const opcoesDeOrigem = useQuery({
+    queryKey: ["origem-opcoes"],
+    enabled: aberto,
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: { campanhas: CampanhaOpcao[]; posicionamentos: string[]; fontes: string[] };
+        }>("/api/v1/marketing/origem-opcoes")
+      ).data,
+  });
   const [etiquetas, setEtiquetas] = useState("");
   const [nascimento, setNascimento] = useState("");
   // Começa SEM funil; quem quer, escolhe.
@@ -97,7 +114,7 @@ export function NovoLeadDoCRM({
     setNome("");
     setTelefone("");
     setEmail("");
-    setOrigem("");
+    setOrigem(ORIGEM_VAZIA);
     setEtiquetas("");
     setNascimento("");
     setFunilId(SEM_FUNIL);
@@ -124,12 +141,29 @@ export function NovoLeadDoCRM({
     setEnviando(true);
     setProblemas([]);
     try {
-      const cab: string[] = ["Nome", "Telefone", "E-mail", "Origem", "Etiquetas", "Nascimento"];
+      const cab: string[] = [
+        "Nome",
+        "Telefone",
+        "E-mail",
+        "Origem",
+        "Campanha",
+        "Conjunto",
+        "Anúncio",
+        "Landing page",
+        "Posicionamento",
+        "Etiquetas",
+        "Nascimento",
+      ];
       const lin: string[] = [
         nome.trim(),
         telefone.trim(),
         email.trim(),
-        origem.trim(),
+        origem.origem.trim(),
+        origem.campanha,
+        origem.conjunto,
+        origem.anuncio,
+        origem.lp,
+        origem.posicionamento,
         etiquetas.replace(/,/g, ";"),
         nascimento,
       ];
@@ -221,28 +255,26 @@ export function NovoLeadDoCRM({
             </p>
           </section>
 
-          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-orange-500 p-4 sm:grid-cols-2">
-            <h3 className="text-sm font-semibold sm:col-span-2">{t("Origem e etiquetas")}</h3>
+          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-orange-500 p-4">
+            <h3 className="text-sm font-semibold">{t("Origem")}</h3>
+            <OrigemEmCascata
+              valor={origem}
+              aoMudar={setOrigem}
+              campanhas={opcoesDeOrigem.data?.campanhas ?? []}
+              posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
+              fontes={opcoesDeOrigem.data?.fontes ?? []}
+              carregando={opcoesDeOrigem.isLoading}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "A origem pode ser uma campanha de anúncio ou só uma fonte (uma extração de leads, uma indicação, um evento…). Pode deixar em branco.",
+              )}
+            </p>
+          </section>
+
+          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-red-500 p-4 sm:grid-cols-2">
+            <h3 className="text-sm font-semibold sm:col-span-2">{t("Etiquetas e nascimento")}</h3>
             <div className="space-y-1.5">
-              <Label htmlFor="nl-origem">{t("Origem")}</Label>
-              <Input
-                id="nl-origem"
-                list="nl-origens"
-                placeholder={t("Ex.: Instagram, indicação…")}
-                value={origem}
-                onChange={(e) => setOrigem(e.target.value)}
-              />
-              <datalist id="nl-origens">
-                {ORIGENS.map((o) => (
-                  <option key={o} value={o} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("Nascimento")}</Label>
-              <CampoDeData valor={nascimento} aoMudar={setNascimento} rotulo={t("Nascimento")} className="w-full" />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="nl-tags">{t("Etiquetas (separadas por vírgula)")}</Label>
               <Input
                 id="nl-tags"
@@ -250,6 +282,10 @@ export function NovoLeadDoCRM({
                 value={etiquetas}
                 onChange={(e) => setEtiquetas(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("Nascimento")}</Label>
+              <CampoDeData valor={nascimento} aoMudar={setNascimento} rotulo={t("Nascimento")} className="w-full" />
             </div>
           </section>
 

@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { montarOpcoesDeOrigem, POSICIONAMENTOS } from "@/lib/marketing/origem-opcoes";
+import { fontesDeOrigem, montarOpcoesDeOrigem, POSICIONAMENTOS } from "@/lib/marketing/origem-opcoes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -106,5 +106,28 @@ export async function GET(): Promise<Response> {
     }>,
   });
 
-  return ok({ campanhas: arvore, posicionamentos: [...POSICIONAMENTOS] }, { requestId });
+  // As fontes que a organização já usou (no contato e nos cards), além das de fábrica.
+  const [contatosFontes, cardsFontes] = await Promise.all([
+    supabase
+      .from("contacts")
+      .select("source")
+      .eq("organization_id", orgId)
+      .not("source", "is", null)
+      .limit(3000),
+    supabase
+      .from("crm_leads")
+      .select("source")
+      .eq("organization_id", orgId)
+      .not("source", "is", null)
+      .limit(3000),
+  ]);
+  const fontes = fontesDeOrigem([
+    ...((contatosFontes.data ?? []) as Array<{ source: string | null }>).map((c) => c.source),
+    ...((cardsFontes.data ?? []) as Array<{ source: string | null }>).map((c) => c.source),
+  ]);
+
+  return ok(
+    { campanhas: arvore, posicionamentos: [...POSICIONAMENTOS], fontes },
+    { requestId },
+  );
 }

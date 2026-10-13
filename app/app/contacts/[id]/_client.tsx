@@ -334,7 +334,6 @@ export function ContactDetailClient({ contactId }: Props) {
           <FunisDoLead
             contactId={contactId}
             nomeDoContato={displayName}
-            conjuntoDoAnuncio={origem.conjunto}
             podeEditar={podeEditarFicha}
           />
         </TabsContent>
