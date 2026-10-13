@@ -53,7 +53,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
   // A regra guarda IDs; a lista precisa de nomes. Buscar aqui evita que o
   // catálogo genérico no servidor tenha de conhecer equipe e agenda.
   const pessoas = useQuery({
-    queryKey: ["team", "assignable"],
+    queryKey: ["team", "assignable", "pessoas"],
     queryFn: async () => (await apiClient.get<{ data: Pessoa[] }>("/api/v1/team/assignable")).data,
   });
   const servicos = useQuery({

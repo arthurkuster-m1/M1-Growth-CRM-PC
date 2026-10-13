@@ -126,50 +126,60 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     };
   });
 
-  // O FATURAMENTO: o que de fato caiu (parcelas recebidas), por criativo, LP e campanha; e o que
-  // está comprometido (a receber). Quem não vê dinheiro (viewer) recebe zeros — a RLS filtra.
+  // O FATURAMENTO vem da BASE DE VENDAS, pela origem da venda (que pode ou não ser a do lead; a do
+  // lead serve para Leads e CPL). Só conta dinheiro que JÁ ENTROU: uma venda (comprometida ou
+  // concluída) só é "venda" aqui se tem ao menos uma parcela recebida — mesmo um sinal — e o
+  // faturamento é a soma das parcelas recebidas. Com período escolhido, vale o que foi recebido
+  // dentro dele. Quem não vê dinheiro (viewer) recebe zeros — a RLS filtra.
   const faturamento = {
     recebido: 0,
     aReceber: 0,
     vendas: 0,
     porCriativo: {} as Record<string, number>,
     porLandingPage: {} as Record<string, number>,
-    /** Quantas vendas fechadas vieram de cada criativo e de cada landing page. */
+    /** Quantas vendas (com algo pago) vieram de cada criativo e de cada landing page. */
     vendasPorCriativo: {} as Record<string, number>,
     vendasPorLandingPage: {} as Record<string, number>,
   };
-  let consultaDeVendas = a.supabase
+  const { data: vendas } = await a.supabase
     .from("crm_sales")
     .select(
-      "id, status, amount_cents, paid_on, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
+      "id, status, amount_cents, paid_on, closed_on, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents, paid_on)",
     )
     .eq("organization_id", a.orgId)
     .eq("demand_campaign_id", id)
-    .in("status", ["comprometida", "concluida"]);
-  // Com período escolhido, só as vendas fechadas dentro dele.
-  if (personalizado) {
-    consultaDeVendas = consultaDeVendas.gte("closed_on", janela.de).lte("closed_on", janela.ate);
-  }
-  const { data: vendas } = await consultaDeVendas.limit(LIMITE);
+    .in("status", ["comprometida", "concluida"])
+    .limit(LIMITE);
+  const dentroDaJanela = (d: string | null | undefined) => {
+    if (!personalizado) return true;
+    const dia2 = d ? String(d).slice(0, 10) : "";
+    return dia2 !== "" && dia2 >= janela.de && dia2 <= janela.ate;
+  };
   for (const v of (vendas ?? []) as Array<{
     status: string;
     amount_cents: number | string;
+    paid_on: string | null;
+    closed_on: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
-    payments: Array<{ status: string; amount_cents: number | string }> | null;
+    payments: Array<{ status: string; amount_cents: number | string; paid_on: string | null }> | null;
   }>) {
-    const pagas = v.payments ?? [];
+    const parcelas = v.payments ?? [];
     let recebido = 0;
     let previsto = 0;
-    if (pagas.length > 0) {
-      for (const p of pagas) {
-        if (p.status === "recebida") recebido += Number(p.amount_cents);
-        else if (p.status === "prevista") previsto += Number(p.amount_cents);
+    if (parcelas.length > 0) {
+      for (const p of parcelas) {
+        if (p.status === "recebida") {
+          if (dentroDaJanela(p.paid_on)) recebido += Number(p.amount_cents);
+        } else if (p.status === "prevista") previsto += Number(p.amount_cents);
       }
-    } else if (v.status === "concluida") recebido = Number(v.amount_cents);
-    else previsto = Number(v.amount_cents);
-    faturamento.recebido += recebido;
+    } else if (v.status === "concluida") {
+      if (dentroDaJanela(v.paid_on ?? v.closed_on)) recebido = Number(v.amount_cents);
+    } else previsto = Number(v.amount_cents);
     faturamento.aReceber += previsto;
+    // Nada pago (no período): ainda não é venda para a análise.
+    if (recebido <= 0) continue;
+    faturamento.recebido += recebido;
     faturamento.vendas += 1;
     if (v.demand_creative_id) {
       faturamento.porCriativo[v.demand_creative_id] =

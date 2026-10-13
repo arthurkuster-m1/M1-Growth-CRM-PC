@@ -6,7 +6,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoDaFicha, CampoLido, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
-import { useDadosDosNegocios, useQualificacaoDoContato } from "@/components/contacts/ficha/dados-da-ficha";
+import {
+  useDadosDosNegocios,
+  useEquipeDaFicha,
+  useQualificacaoDoContato,
+} from "@/components/contacts/ficha/dados-da-ficha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
   OrigemEmCascata,
@@ -72,17 +76,7 @@ export function FunisDoLead({
       (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`)).data
         .vendas,
   });
-  const equipe = useQuery({
-    queryKey: ["team", "assignable"],
-    staleTime: 60_000,
-    queryFn: async () =>
-      (
-        await apiClient.get<{
-          data: Array<{ user_id: string; full_name: string | null }>;
-        }>("/api/v1/team/assignable")
-      ).data.map((p) => ({ user_id: p.user_id, name: p.full_name, email: null as string | null })),
-  });
-
+  const equipe = useEquipeDaFicha();
   const [busca, setBusca] = useState("");
   const [consulta, setConsulta] = useState<ConsultaDaTabela>({});
 

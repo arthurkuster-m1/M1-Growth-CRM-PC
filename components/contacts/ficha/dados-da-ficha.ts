@@ -49,3 +49,31 @@ export function useDadosDosNegocios(leadIds: readonly string[]) {
     recarregar: () => consultas.forEach((c) => void c.refetch()),
   };
 }
+
+export interface MembroDaEquipe {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+}
+
+/**
+ * A equipe da empresa (quem pode ser responsável). Chave PRÓPRIA da ficha: outras telas guardam a
+ * mesma rota sob `["team","assignable"]` com outro formato, e dividir a chave quebrava a aba
+ * Funis conforme a ordem em que as telas abriam.
+ */
+export function useEquipeDaFicha() {
+  return useQuery({
+    queryKey: ["team", "assignable", "ficha"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<MembroDaEquipe[]> => {
+      const r = await apiClient.get<{
+        data: Array<{ user_id: string; full_name?: string | null }>;
+      }>("/api/v1/team/assignable");
+      return (Array.isArray(r.data) ? r.data : []).map((p) => ({
+        user_id: p.user_id,
+        name: p.full_name ?? null,
+        email: null,
+      }));
+    },
+  });
+}

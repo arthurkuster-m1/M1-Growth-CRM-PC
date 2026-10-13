@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { BlocoDaFicha, CampoLido, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
-import { useDadosDosNegocios, useQualificacaoDoContato } from "@/components/contacts/ficha/dados-da-ficha";
+import {
+  useDadosDosNegocios,
+  useEquipeDaFicha,
+  useQualificacaoDoContato,
+} from "@/components/contacts/ficha/dados-da-ficha";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -42,16 +46,7 @@ export function AtendimentoDoLead({ contactId }: { contactId: string }) {
         )
       ).data.tasks ?? [],
   });
-  const equipe = useQuery({
-    queryKey: ["team", "assignable"],
-    staleTime: 60_000,
-    queryFn: async () =>
-      (
-        await apiClient.get<{ data: Array<{ user_id: string; name: string | null; email: string | null }> }>(
-          "/api/v1/team/assignable",
-        )
-      ).data,
-  });
+  const equipe = useEquipeDaFicha();
   const nome = (id: string | null) => {
     if (!id) return "—";
     const p = (equipe.data ?? []).find((x) => x.user_id === id);

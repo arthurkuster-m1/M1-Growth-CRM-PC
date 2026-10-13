@@ -111,7 +111,7 @@ export function Faturamento({
   // Os nomes de quem atendeu não vêm do relatório: ele devolve o id, e juntar
   // aqui evita que a função no banco precise conhecer a tabela de equipe.
   const equipe = useQuery({
-    queryKey: ["team", "assignable"],
+    queryKey: ["team", "assignable", "pessoas"],
     queryFn: async () => (await apiClient.get<{ data: Pessoa[] }>("/api/v1/team/assignable")).data,
   });
 
