@@ -210,3 +210,10 @@ LTV médio (recebido), LTV/CAC, ticket, vendas por cliente, clientes e ativos (c
 X meses), tempo lead → 1ª compra, MRR/churn/recorrente × avulso, inadimplência, concentração,
 por produto (rateio por item). O tempo de resposta fica no Atendimento (D3). Churn usa a data da
 última alteração como data de encerramento (não há campo próprio ainda).
+
+**D3 publicado (14/10/2026):** Atendimento ao vivo — `GET/PUT /api/v1/dashboards/atendimento`.
+Horário de atendimento da empresa em `organizations.settings.horario_de_atendimento`
+(início, fim, dias; padrão 09:00–18:00 seg–sex; edita manager+). Relógio: mensagem fora do horário
+conta a partir da abertura; prazo = 1 h (`lib/dashboards/atendimento.ts`). Números: conversas
+iniciadas/respondidas, 1ª resposta (média e mediana), SLA, > 24 h e > 7 dias sem resposta (lista
+nominal para agent+), por atendente (IA em linha própria), mapa dia × hora, tempo geral.
