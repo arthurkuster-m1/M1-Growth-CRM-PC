@@ -407,7 +407,7 @@ export function TabelaDoMotor<T>({
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto overscroll-x-contain border-y bg-card sm:mx-0 sm:rounded-2xl sm:border">
+    <div className="-mx-4 overflow-x-auto overscroll-x-contain border-y bg-card [container-type:inline-size] sm:mx-0 sm:rounded-2xl sm:border">
       <div role="table" aria-label={rotuloDaTabela} style={{ minWidth: larguraTotal }}>
         <DndContext
           id={`${idDoMotor}-colunas`}
@@ -517,7 +517,10 @@ export function TabelaDoMotor<T>({
               ))}
             </div>
           ) : linhas.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">{vazio}</div>
+            // Fica sempre no centro do que o usuário está vendo (a tabela larga rola para o lado).
+            <div className="sticky left-0 w-[100cqw] max-w-full px-4 py-10 text-center text-sm text-muted-foreground">
+              {vazio}
+            </div>
           ) : (
             <DndContext
               id={`${idDoMotor}-linhas`}
