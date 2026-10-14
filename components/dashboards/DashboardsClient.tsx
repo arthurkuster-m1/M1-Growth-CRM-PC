@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Atendimento } from "@/components/dashboards/Atendimento";
-import { Business } from "@/components/dashboards/Business";
+import { Business, type DadosDeBusiness } from "@/components/dashboards/Business";
 import { SeletorDeCampanhas } from "@/components/dashboards/SeletorDeCampanhas";
 import { TrafegoPago, type DadosDeTrafego } from "@/components/dashboards/TrafegoPago";
 import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
@@ -27,6 +27,18 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
   const { atalhos, hoje } = useAtalhosDePeriodo();
   const [janela, setJanela] = useState(() => ({ de: `${hoje.slice(0, 7)}-01`, ate: hoje }));
   const [campanhas, setCampanhas] = useState<string[]>([]);
+  const [mesesAtivo, setMesesAtivo] = useState(6);
+  const business = useQuery({
+    queryKey: ["dashboard-business", janela.de, janela.ate, mesesAtivo],
+    enabled: painel === "business",
+    staleTime: 30_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: DadosDeBusiness }>(
+          `/api/v1/dashboards/business?de=${janela.de}&ate=${janela.ate}&ativo=${mesesAtivo}`,
+        )
+      ).data,
+  });
   const trafego = useQuery({
     queryKey: ["dashboard-trafego", janela.de, janela.ate, campanhas.join(",")],
     enabled: painel === "trafego",
@@ -73,16 +85,23 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
         <span
           className={cn(
             "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
-            painel === "trafego"
+            painel === "trafego" || painel === "business"
               ? "border-green-500/50 bg-green-500/10 text-green-800 dark:text-green-300"
               : "border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300",
           )}
         >
           <span
-            className={cn("h-2 w-2 rounded-full", painel === "trafego" ? "bg-green-500" : "bg-amber-500")}
+            className={cn(
+              "h-2 w-2 rounded-full",
+              painel === "trafego" || painel === "business" ? "bg-green-500" : "bg-amber-500",
+            )}
             aria-hidden
           />
-          {painel === "trafego" ? t("Dados reais · Meta Ads + CRM") : t("Protótipo: dados de exemplo")}
+          {painel === "trafego"
+            ? t("Dados reais · Meta Ads + CRM")
+            : painel === "business"
+              ? t("Dados reais · vendas e parcelas")
+              : t("Protótipo: dados de exemplo")}
         </span>
       </header>
 
@@ -151,7 +170,17 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
           <TrafegoPago dados={trafego.data} />
         )
       ) : null}
-      {painel === "business" ? <Business de={janela.de} ate={janela.ate} /> : null}
+      {painel === "business" ? (
+        business.isLoading ? (
+          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+        ) : business.isError || !business.data ? (
+          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+            {t("Não consegui carregar os números do Business agora. Tente de novo em instantes.")}
+          </p>
+        ) : (
+          <Business dados={business.data} aoMudarMeses={setMesesAtivo} />
+        )
+      ) : null}
       {painel === "atendimento" ? <Atendimento /> : null}
       {painel === "prospeccao" ? (
         <div className="grid place-items-center gap-3 rounded-2xl border border-dashed bg-card p-10 text-center">

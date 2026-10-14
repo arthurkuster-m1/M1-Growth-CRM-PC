@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -26,57 +25,85 @@ import {
   pct,
   vezes,
 } from "@/components/dashboards/base";
-import { receitaMensalDeExemplo, trafegoDeExemplo } from "@/components/dashboards/exemplo";
 import { useT } from "@/hooks/i18n/useT";
-import { somarDias } from "@/lib/inicio/datas";
+
+/** O que a rota `/api/v1/dashboards/business` devolve. */
+export interface DadosDeBusiness {
+  de: string;
+  ate: string;
+  mesesAtivo: number;
+  recebido: number;
+  recebidoAnterior: number;
+  saiu: number;
+  saiuAnterior: number;
+  aReceber60: number;
+  vendas: number;
+  vendasAnterior: number;
+  novosClientes: number;
+  novosClientesAnterior: number;
+  clientes: number;
+  ativos: number;
+  ltvMedio: number | null;
+  vendasPorCliente: number | null;
+  diasAte1aCompraMediana: number | null;
+  diasAte1aCompraMedia: number | null;
+  assinaturasAtivas: number;
+  encerradasNoPeriodo: number;
+  mrr: number;
+  recorrenteNoPeriodo: number;
+  avulsoNoPeriodo: number;
+  vencidas: number;
+  concentracaoTop10: number | null;
+  serie: Array<{ mes: string; recebido: number; saiu: number; previsto: number }>;
+  produtos: Array<{ nome: string; vendas: number; recebido: number; aReceber: number }>;
+}
+
+const NOME_DO_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 /**
- * BUSINESS: faturamento e saúde da base — o que entrou, o que saiu, CAC, LTV, clientes, tempo até
- * a primeira compra e, para quem vende por recorrência, MRR e churn. Protótipo (D0): dados de
- * exemplo; o "saiu" é só o investimento em mídia até a gestão financeira existir.
+ * BUSINESS: faturamento e saúde da base — o que entrou, o que saiu (por ora, mídia), CAC, LTV,
+ * clientes, tempo até a 1ª compra e, para quem vende por recorrência, MRR e churn.
  */
-export function Business({ de, ate }: { de: string; ate: string }) {
+export function Business({
+  dados,
+  aoMudarMeses,
+}: {
+  dados: DadosDeBusiness;
+  aoMudarMeses: (meses: number) => void;
+}) {
   const t = useT();
-  const [mesesAtivo, setMesesAtivo] = useState(6);
-  const dias = useMemo(() => trafegoDeExemplo(de, ate, "todas"), [de, ate]);
-  const anterior = useMemo(
-    () => trafegoDeExemplo(somarDias(de, -dias.length), somarDias(de, -1), "todas"),
-    [de, dias.length],
-  );
-  const soma = (l: typeof dias, k: "recebido" | "investimento" | "vendas" | "leads") =>
-    l.reduce((s, d) => s + d[k], 0);
-
-  const recebido = soma(dias, "recebido");
-  const saiu = soma(dias, "investimento");
-  const vendas = soma(dias, "vendas");
-  const recebidoAnt = soma(anterior, "recebido");
-  const saiuAnt = soma(anterior, "investimento");
-  const lucro = recebido - saiu;
-  const lucroAnt = recebidoAnt - saiuAnt;
-
-  // Base (exemplo). "Ativo" = comprou nos últimos N meses (o cliente define).
-  const clientes = 214;
-  const ativos = Math.round(clientes * (mesesAtivo === 3 ? 0.31 : mesesAtivo === 6 ? 0.46 : mesesAtivo === 12 ? 0.63 : 0.78));
-  const novos = Math.max(1, Math.round(vendas * 0.78));
-  const cac = dividir(saiu, novos);
-  const ltvMedio = 4180; // só recebido, por ora
-  const ticket = dividir(recebido, vendas);
-  const mensal = receitaMensalDeExemplo();
+  const lucro = dados.recebido - dados.saiu;
+  const lucroAnt = dados.recebidoAnterior - dados.saiuAnterior;
+  const cac = dividir(dados.saiu, dados.novosClientes);
+  const cacAnt = dividir(dados.saiuAnterior, dados.novosClientesAnterior);
+  const ticket = dividir(dados.recebido, dados.vendas);
+  const ltvCac = dados.ltvMedio !== null && cac !== null && cac > 0 ? dados.ltvMedio / cac : null;
+  const baseDoChurn = dados.assinaturasAtivas + dados.encerradasNoPeriodo;
+  const churn = dividir(dados.encerradasNoPeriodo * 100, baseDoChurn);
+  const recorrentePct = dividir(dados.recorrenteNoPeriodo * 100, dados.recebido);
+  const inadimplencia = dividir(dados.vencidas * 100, dados.vencidas + dados.recebido);
+  const mensal = dados.serie.map((s) => ({
+    ...s,
+    mes: NOME_DO_MES[Number(s.mes.slice(5, 7)) - 1] ?? s.mes,
+  }));
+  const paybackMeses =
+    cac !== null && dados.assinaturasAtivas > 0 && dados.mrr > 0
+      ? cac / (dados.mrr / dados.assinaturasAtivas)
+      : null;
 
   return (
     <div className="grid min-w-0 gap-4">
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           rotulo={t("Entrou (recebido)")}
-          valor={brl(recebido)}
-          variacao={<Variacao atual={recebido} anterior={recebidoAnt} />}
+          valor={brl(dados.recebido)}
+          variacao={<Variacao atual={dados.recebido} anterior={dados.recebidoAnterior} />}
           apoio={t("Parcelas pagas no período")}
-          meta={{ progresso: 64, rotulo: t("Meta do mês: 64% (exemplo)") }}
         />
         <Kpi
           rotulo={t("Saiu (mídia)")}
-          valor={brl(saiu)}
-          variacao={<Variacao atual={saiu} anterior={saiuAnt} menorEMelhor />}
+          valor={brl(dados.saiu)}
+          variacao={<Variacao atual={dados.saiu} anterior={dados.saiuAnterior} menorEMelhor />}
           apoio={t("Por ora só investimento em mídia")}
         />
         <Kpi
@@ -84,34 +111,40 @@ export function Business({ de, ate }: { de: string; ate: string }) {
           valor={brl(lucro)}
           destaque
           variacao={<Variacao atual={lucro} anterior={lucroAnt} />}
-          apoio={`${t("Margem")} ${pct(dividir(lucro * 100, recebido), 1)}`}
+          apoio={`${t("Margem")} ${dados.recebido > 0 ? pct((lucro / dados.recebido) * 100, 1) : "—"}`}
         />
         <Kpi
           rotulo={t("A receber (próx. 60 dias)")}
-          valor={brl(23100)}
+          valor={brl(dados.aReceber60)}
           apoio={t("Parcelas previstas, assinaturas incluídas")}
         />
         <Kpi
           rotulo={t("CAC (só mídia)")}
           valor={brl(cac)}
-          variacao={<Variacao atual={cac} anterior={dividir(saiuAnt, Math.max(1, soma(anterior, "vendas") * 0.78))} menorEMelhor />}
+          variacao={<Variacao atual={cac} anterior={cacAnt} menorEMelhor />}
           apoio={t("Mídia ÷ clientes novos")}
         />
         <Kpi
           rotulo={t("LTV médio (recebido)")}
-          valor={brl(ltvMedio)}
+          valor={brl(dados.ltvMedio)}
           apoio={t("Todo o recebido por cliente")}
         />
         <Kpi
           rotulo={t("LTV / CAC")}
-          valor={vezes(dividir(ltvMedio, cac ?? 0))}
+          valor={vezes(ltvCac)}
           destaque
           apoio={t("Real, com custos, na gestão financeira")}
         />
         <Kpi
           rotulo={t("Ticket médio")}
           valor={brl(ticket)}
-          apoio={`${(vendas / Math.max(1, novos)).toFixed(1).replace(".", ",")} ${t("vendas por cliente")}`}
+          variacao={
+            <Variacao
+              atual={ticket}
+              anterior={dividir(dados.recebidoAnterior, dados.vendasAnterior)}
+            />
+          }
+          apoio={`${dados.vendasPorCliente === null ? "—" : dados.vendasPorCliente.toLocaleString("pt-BR")} ${t("vendas por cliente")}`}
         />
       </section>
 
@@ -121,7 +154,12 @@ export function Business({ de, ate }: { de: string; ate: string }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mensal} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
+                <XAxis
+                  dataKey="mes"
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <YAxis
                   tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                   tickLine={false}
@@ -141,7 +179,13 @@ export function Business({ de, ate }: { de: string; ate: string }) {
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="recebido" name={t("Recebido")} fill={COR_DA_MARCA} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="previsto" name={t("Previsto")} fill={COR_DA_MARCA} fillOpacity={0.35} radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="previsto"
+                  name={t("Previsto")}
+                  fill={COR_DA_MARCA}
+                  fillOpacity={0.35}
+                  radius={[6, 6, 0, 0]}
+                />
                 <Bar dataKey="saiu" name={t("Saiu (mídia)")} fill={COR_DO_APOIO} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -152,18 +196,27 @@ export function Business({ de, ate }: { de: string; ate: string }) {
           <div className="grid gap-3">
             <GradeDeNumeros
               itens={[
-                { rotulo: "MRR", valor: brl(18400), destaque: true },
-                { rotulo: t("Churn do mês"), valor: pct(3.2) },
-                { rotulo: t("Assinaturas ativas"), valor: inteiro(61) },
-                { rotulo: t("Encerradas no mês"), valor: inteiro(2) },
+                { rotulo: "MRR", valor: brl(dados.mrr), destaque: true },
+                { rotulo: t("Churn do período"), valor: churn === null ? "—" : pct(churn) },
+                { rotulo: t("Assinaturas ativas"), valor: inteiro(dados.assinaturasAtivas) },
+                { rotulo: t("Encerradas no período"), valor: inteiro(dados.encerradasNoPeriodo) },
               ]}
             />
             <p className="text-xs text-muted-foreground">
-              {t("Recorrente × avulso")}: <strong className="tabular-nums">63%</strong> /{" "}
-              <strong className="tabular-nums">37%</strong> {t("da receita do mês")}.
+              {t("Recorrente × avulso")}:{" "}
+              <strong className="tabular-nums">
+                {recorrentePct === null ? "—" : pct(recorrentePct, 0)}
+              </strong>{" "}
+              /{" "}
+              <strong className="tabular-nums">
+                {recorrentePct === null ? "—" : pct(100 - recorrentePct, 0)}
+              </strong>{" "}
+              {t("da receita do período")}.
             </p>
             <p className="text-xs text-muted-foreground">
-              {t("Churn = assinaturas encerradas no mês ÷ ativas no início do mês.")}
+              {t(
+                "Churn = assinaturas encerradas no período ÷ (ativas + encerradas). A data do encerramento é a da última alteração da assinatura.",
+              )}
             </p>
           </div>
         </Painel>
@@ -175,13 +228,13 @@ export function Business({ de, ate }: { de: string; ate: string }) {
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             {t("Cliente ativo = comprou nos últimos")}
             <select
-              value={mesesAtivo}
-              onChange={(e) => setMesesAtivo(Number(e.target.value))}
+              value={dados.mesesAtivo}
+              onChange={(e) => aoMudarMeses(Number(e.target.value))}
               className="h-8 rounded-lg border bg-background px-2 text-xs text-foreground"
             >
-              {[3, 6, 12, 24].map((m) => (
+              {[1, 3, 6, 12, 24].map((m) => (
                 <option key={m} value={m}>
-                  {m} {t("meses")}
+                  {m} {m === 1 ? t("mês") : t("meses")}
                 </option>
               ))}
             </select>
@@ -190,41 +243,76 @@ export function Business({ de, ate }: { de: string; ate: string }) {
       >
         <GradeDeNumeros
           itens={[
-            { rotulo: t("Clientes (com compra paga)"), valor: inteiro(clientes), destaque: true },
-            { rotulo: t("Clientes ativos"), valor: inteiro(ativos), destaque: true },
-            { rotulo: t("Inativos"), valor: inteiro(clientes - ativos) },
-            { rotulo: t("Novos no período"), valor: inteiro(novos) },
-            { rotulo: t("Lead → 1ª compra (mediana)"), valor: `18 ${t("dias")}` },
-            { rotulo: t("Lead → 1ª compra (média)"), valor: `27 ${t("dias")}` },
-            { rotulo: t("Tempo médio de resposta"), valor: "11 min" },
-            { rotulo: t("Vendas por cliente"), valor: "1,8" },
+            { rotulo: t("Clientes (com compra paga)"), valor: inteiro(dados.clientes), destaque: true },
+            { rotulo: t("Clientes ativos"), valor: inteiro(dados.ativos), destaque: true },
+            { rotulo: t("Inativos"), valor: inteiro(dados.clientes - dados.ativos) },
+            {
+              rotulo: t("Novos no período"),
+              valor: inteiro(dados.novosClientes),
+            },
+            {
+              rotulo: t("Lead → 1ª compra (mediana)"),
+              valor:
+                dados.diasAte1aCompraMediana === null
+                  ? "—"
+                  : `${Math.round(dados.diasAte1aCompraMediana)} ${t("dias")}`,
+            },
+            {
+              rotulo: t("Lead → 1ª compra (média)"),
+              valor:
+                dados.diasAte1aCompraMedia === null
+                  ? "—"
+                  : `${Math.round(dados.diasAte1aCompraMedia)} ${t("dias")}`,
+            },
+            { rotulo: t("Vendas no período"), valor: inteiro(dados.vendas) },
+            {
+              rotulo: t("Vendas por cliente"),
+              valor:
+                dados.vendasPorCliente === null
+                  ? "—"
+                  : dados.vendasPorCliente.toLocaleString("pt-BR"),
+            },
           ]}
         />
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("O tempo médio de resposta está no dashboard de Atendimento.")}
+        </p>
       </Painel>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Painel titulo={t("Por produto")} nota={t("Vendas e faturamento")}>
-          <TabelaDeDados
-            colunas={[
-              { titulo: t("Produto") },
-              { titulo: t("Vendas") },
-              { titulo: t("Recebido") },
-              { titulo: t("Ticket") },
-            ]}
-            linhas={[
-              ["Assessoria M1: Infraestrutura", "9", brl(21600), brl(2400)],
-              ["Gestão de tráfego pago", "6", brl(8400), brl(1400)],
-              ["Oferta 5", "3", brl(2100), brl(700)],
-            ]}
-          />
+        <Painel titulo={t("Por produto")} nota={t("Vendas e faturamento do período")}>
+          {dados.produtos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("Nenhuma venda de produto no período.")}</p>
+          ) : (
+            <TabelaDeDados
+              colunas={[
+                { titulo: t("Produto") },
+                { titulo: t("Vendas") },
+                { titulo: t("Recebido") },
+                { titulo: t("A receber") },
+              ]}
+              linhas={dados.produtos.map((p) => [
+                p.nome,
+                inteiro(p.vendas),
+                brl(p.recebido),
+                brl(p.aReceber),
+              ])}
+            />
+          )}
         </Painel>
         <Painel titulo={t("Saúde da carteira")} nota={t("Inadimplência e concentração")}>
           <GradeDeNumeros
             itens={[
-              { rotulo: t("Parcelas vencidas"), valor: brl(3200) },
-              { rotulo: t("Inadimplência"), valor: pct(4.8) },
-              { rotulo: t("Top 10 clientes"), valor: pct(38) },
-              { rotulo: t("Payback do CAC"), valor: `2,4 ${t("meses")}` },
+              { rotulo: t("Parcelas vencidas"), valor: brl(dados.vencidas) },
+              { rotulo: t("Inadimplência"), valor: inadimplencia === null ? "—" : pct(inadimplencia) },
+              {
+                rotulo: t("Top 10 clientes"),
+                valor: dados.concentracaoTop10 === null ? "—" : pct(dados.concentracaoTop10, 0),
+              },
+              {
+                rotulo: t("Payback do CAC"),
+                valor: paybackMeses === null ? "—" : `${paybackMeses.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${t("meses")}`,
+              },
             ]}
           />
         </Painel>

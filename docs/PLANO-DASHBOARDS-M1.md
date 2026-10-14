@@ -203,3 +203,10 @@ descreveu como "projeto inicial só visual" — e, em paralelo, destravar o Meta
 (Meta + leads do CRM + vendas e faturamento pagos pela origem da venda; período anterior para as
 variações ▲▼; por campanha, anúncio e landing page). Seletor de campanhas (uma, várias ou todas).
 Business e Atendimento seguem com dados de exemplo (D2 e D3).
+
+**D2 publicado (14/10/2026):** Business ao vivo — `GET /api/v1/dashboards/business`: entrou
+(parcelas recebidas), saiu (mídia), lucro/margem, a receber 60 dias, CAC (mídia ÷ clientes novos),
+LTV médio (recebido), LTV/CAC, ticket, vendas por cliente, clientes e ativos (compra nos últimos
+X meses), tempo lead → 1ª compra, MRR/churn/recorrente × avulso, inadimplência, concentração,
+por produto (rateio por item). O tempo de resposta fica no Atendimento (D3). Churn usa a data da
+última alteração como data de encerramento (não há campo próprio ainda).
