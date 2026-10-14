@@ -1,67 +1,19 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import {
-  AtalhoEmDestaque,
-  OQueVem,
-  PaginaDeMarketing,
-} from "@/components/marketing/PaginaDeMarketing";
-import { requireAuth } from "@/lib/auth/server";
-import { traduzir } from "@/lib/i18n/dicionario";
-import { ChartLineUp, Megaphone, Receipt } from "@/lib/ui/icons";
+import { DashboardsClient } from "@/components/dashboards/DashboardsClient";
+import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dashboards" };
 
-/** Dashboards: tráfego, vendas e faturamento. */
+/**
+ * DASHBOARDS: Tráfego Pago, Prospecção Ativa (em breve), Business e Atendimento. Fase D0:
+ * protótipo visual com dados de exemplo (ver `docs/PLANO-DASHBOARDS-M1.md`).
+ */
 export default async function DashboardsPage() {
   const user = await requireAuth();
-  const t = (texto: string) => traduzir(texto, user.idioma);
-
-  return (
-    <PaginaDeMarketing
-      tom="pink"
-      icone={<ChartLineUp weight="duotone" aria-hidden />}
-      superior={t("Marketing")}
-      titulo={t("Dashboards")}
-      descricao={t("Tráfego, vendas e faturamento, em números.")}
-      estado={t("Em breve")}
-      voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
-    >
-      <section
-        aria-label={t("Telas relacionadas")}
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        <AtalhoEmDestaque
-          href="/app/metrics"
-          titulo={t("Métricas")}
-          descricao={t("Os números do atendimento e das vendas")}
-          icone={<ChartLineUp weight="duotone" aria-hidden />}
-          tom="blue"
-        />
-        <AtalhoEmDestaque
-          href="/app/faturamento"
-          titulo={t("Faturamento")}
-          descricao={t("Compras e receita")}
-          icone={<Receipt weight="duotone" aria-hidden />}
-          tom="green"
-        />
-        <AtalhoEmDestaque
-          href="/app/ads/meta"
-          titulo={t("Meta Ads")}
-          descricao={t("Resultados das campanhas pagas")}
-          icone={<Megaphone weight="duotone" aria-hidden />}
-          tom="purple"
-        />
-      </section>
-
-      <OQueVem
-        titulo={t("O que vem aqui")}
-        itens={[
-          t("Tráfego pago: investimento, cliques, leads e custo por lead."),
-          t("Vendas: do primeiro contato ao fechamento."),
-          t("Faturamento: receita e valor do cliente ao longo do tempo."),
-        ]}
-      />
-    </PaginaDeMarketing>
-  );
+  const org = await resolveActiveOrg(user);
+  if (!org) redirect("/app");
+  return <DashboardsClient empresa={org.name} />;
 }

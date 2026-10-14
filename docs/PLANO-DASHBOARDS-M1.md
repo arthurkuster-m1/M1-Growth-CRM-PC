@@ -1,6 +1,6 @@
 # PLANO DOS DASHBOARDS (frente 1)
 
-Atualizado em 14/10/2026. Três dashboards, uma só base de dados (a do sistema) e um só jeito de
+Atualizado em 14/10/2026 (decisões fechadas e D0 publicado). Três dashboards, uma só base de dados (a do sistema) e um só jeito de
 escolher o período. Este documento é o desenho; a execução vem em fases (seção 8).
 
 ## 1. O que o HTML "ONE" já faz bem (e o que muda ao trazer para o software)
@@ -184,3 +184,17 @@ Legenda: ✅ já existe · 🟡 existe em parte / precisa de ligação · ❌ fa
 
 **Recomendação:** começar pela **D0** (protótipo visual com os três dashboards) — é o que você
 descreveu como "projeto inicial só visual" — e, em paralelo, destravar o Meta para a D1.
+
+## 9. Decisões fechadas (14/10/2026) e estado
+1. **Cliente ativo** = comprou nos últimos **X meses**; o cliente define X (depende do modelo de negócio). No protótipo: seletor 3/6/12/24 meses.
+2. **"Saiu"** = por ora, o **investimento em mídia**; custos reais entram com a gestão financeira.
+3. **LTV/CAC** = LTV só **recebido** ÷ CAC só **mídia**, por ora; real depois, no painel financeiro.
+4. **Atendimento**: o cliente define o **horário de atendimento**; resposta no prazo = até **1 h após o início do horário comercial**.
+5. **Cliente final vê tudo** — o dashboard é para ele.
+6. **Meta primeiro**; Google Ads depois (nenhum cliente roda Google hoje). O Meta já foi destravado.
+7. **Cor de destaque = a da marca de cada empresa** (token `primary`).
+8. **Nomes**: Tráfego Pago · Prospecção Ativa · Business · Atendimento. Começam 3 (Tráfego Pago, Business, Atendimento); Prospecção Ativa fica "Em breve" até o módulo existir.
+9. **Business** inclui **MRR e churn** para quem vende por recorrência.
+
+**D0 publicado:** `/app/marketing/dashboards` — os painéis navegáveis com dados de **exemplo**
+(marcados na tela). Código em `components/dashboards/`. Próximo: D1 (Tráfego Pago ao vivo).
