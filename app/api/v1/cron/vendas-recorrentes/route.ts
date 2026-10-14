@@ -18,6 +18,7 @@ import { logger } from "@/lib/logger";
 import { ehOperante, statusDaOrgEmbutida } from "@/lib/organizacao/operante";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { avisoDaCobranca, somarMesesNaData } from "@/lib/vendas-recorrentes";
+import { acertarTotalDaRecorrente } from "@/lib/vendas-servidor";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -91,6 +92,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       }
       geradas += 1;
     }
+    // O total da assinatura acompanha as parcelas geradas.
+    await acertarTotalDaRecorrente(admin, v.organization_id as string, v.id as string);
   }
 
   // ── 2. Avisar: pagou? houve negociação? ─────────────────────────────────────────────────

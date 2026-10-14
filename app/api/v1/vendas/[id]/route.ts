@@ -7,7 +7,11 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
-import { completarItensComProduto, definirResponsavelDaVenda } from "@/lib/vendas-servidor";
+import {
+  acertarTotalDaRecorrente,
+  completarItensComProduto,
+  definirResponsavelDaVenda,
+} from "@/lib/vendas-servidor";
 import { COLUNAS_DA_VENDA, edicaoDeVendaSchema, vendaDaLinha } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +108,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
       if (e2) return fail("internal_error", "Erro ao salvar as parcelas.", 500, { requestId });
     }
   }
+  await acertarTotalDaRecorrente(supabase, orgId, id);
   const { data: venda } = await supabase
     .from("crm_sales")
     .select(

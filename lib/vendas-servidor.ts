@@ -85,3 +85,38 @@ export async function definirResponsavelDaVenda(
     .eq("organization_id", organizationId);
   return !error;
 }
+
+/**
+ * O TOTAL DA VENDA RECORRENTE é a soma das parcelas (as já recebidas e as previstas, menos as
+ * canceladas): conforme a assinatura gera os meses, o valor total acompanha. Venda comum não muda
+ * (o total vem dos produtos). Sem parcelas, não mexe.
+ */
+export async function acertarTotalDaRecorrente(
+  supabase: SupabaseClient,
+  organizationId: string,
+  vendaId: string,
+): Promise<void> {
+  const { data: venda } = await supabase
+    .from("crm_sales")
+    .select("is_recurring, amount_cents")
+    .eq("id", vendaId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!venda || (venda as { is_recurring: boolean }).is_recurring !== true) return;
+  const { data: parcelas } = await supabase
+    .from("crm_sale_payments")
+    .select("amount_cents, status")
+    .eq("sale_id", vendaId)
+    .eq("organization_id", organizationId);
+  const lista = (parcelas ?? []) as Array<{ amount_cents: number | string; status: string }>;
+  const soma = lista
+    .filter((p) => p.status !== "cancelada")
+    .reduce((s, p) => s + Number(p.amount_cents), 0);
+  if (lista.length === 0 || soma <= 0) return;
+  if (Number((venda as { amount_cents: number | string }).amount_cents) === soma) return;
+  await supabase
+    .from("crm_sales")
+    .update({ amount_cents: soma })
+    .eq("id", vendaId)
+    .eq("organization_id", organizationId);
+}

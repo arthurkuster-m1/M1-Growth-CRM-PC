@@ -10,7 +10,11 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
-import { completarItensComProduto, definirResponsavelDaVenda } from "@/lib/vendas-servidor";
+import {
+  acertarTotalDaRecorrente,
+  completarItensComProduto,
+  definirResponsavelDaVenda,
+} from "@/lib/vendas-servidor";
 import { COLUNAS_DA_VENDA, novaVendaSchema, vendaDaLinha } from "@/lib/vendas";
 import { createClient } from "@/lib/supabase/server";
 
@@ -124,6 +128,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (responsavel !== undefined) {
     await definirResponsavelDaVenda(supabase, orgId, id, responsavel);
   }
+  await acertarTotalDaRecorrente(supabase, orgId, id);
   const { data } = await supabase.from("crm_sales").select(SELECAO).eq("id", id).single();
   return ok(
     { venda: vendaDaLinha(data as unknown as Record<string, unknown>) },

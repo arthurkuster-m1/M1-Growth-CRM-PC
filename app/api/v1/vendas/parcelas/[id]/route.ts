@@ -6,6 +6,7 @@
  *   { acao: "cancelar" }                          — esta parcela não vai acontecer.
  * Receber ou cancelar fecha o aviso da Central.
  */
+import { acertarTotalDaRecorrente } from "@/lib/vendas-servidor";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -72,6 +73,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     .maybeSingle();
   if (error) return fail("internal_error", "Erro ao atualizar a parcela.", 500, { requestId });
   if (!data) return fail("not_found", "Parcela não encontrada.", 404, { requestId });
+
+  // Assinatura: o total da venda acompanha a soma das parcelas.
+  await acertarTotalDaRecorrente(supabase, orgId, data.sale_id as string);
 
   if (c.acao === "receber" || c.acao === "cancelar") {
     // Fecha o aviso da Central deste cliente (a cobrança foi resolvida).

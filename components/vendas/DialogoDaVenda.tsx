@@ -867,7 +867,17 @@ export function DialogoDaVenda({
               {t("Vendeu mais alguma coisa?")}
             </button>
             <p className="text-sm">
-              {t("Total")}: <strong className="tabular-nums">{reais(total)}</strong>
+              {recorrente && parcelas.length > 0
+                ? t("Total (soma das parcelas)")
+                : t("Total")}
+              :{" "}
+              <strong className="tabular-nums">
+                {reais(
+                  recorrente && parcelas.length > 0
+                    ? parcelas.reduce((a2, p) => a2 + centavos(p.valor), 0)
+                    : total,
+                )}
+              </strong>
             </p>
           </div>
         </Fase>
