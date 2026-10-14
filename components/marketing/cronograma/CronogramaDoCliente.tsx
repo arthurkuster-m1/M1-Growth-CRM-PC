@@ -22,7 +22,8 @@ import {
   numeroDaSemana,
   periodoDaSemana,
 } from "@/lib/marketing/cronograma";
-import { CalendarBlank, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
+import { CalendarBlank, CaretDown, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 type Aba = "geral" | "semana" | "historico" | "adiadas";
@@ -35,6 +36,7 @@ export function CronogramaDoCliente() {
   const t = useT();
   const verComoCliente = useVerComoCliente();
   const [aba, setAba] = useState<Aba>("geral");
+  const [menuDeVisoes, setMenuDeVisoes] = useState(false);
   const [editando, setEditando] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
   const [inicio, setInicio] = useState(domingoDeHoje());
@@ -80,10 +82,42 @@ export function CronogramaDoCliente() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        {/* Celular: uma visão por vez; toca e abre a lista com as outras. */}
+        <Popover open={menuDeVisoes} onOpenChange={setMenuDeVisoes}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("Visão do cronograma")}
+              className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border bg-secondary px-4 text-sm font-semibold sm:hidden"
+            >
+              <span className="truncate">{abas.find(([v]) => v === aba)?.[1]}</span>
+              <CaretDown size={14} weight="bold" aria-hidden />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="grid w-[var(--radix-popover-trigger-width)] gap-1 p-1.5 sm:hidden">
+            {abas.map(([valor, rotulo]) => (
+              <button
+                key={valor}
+                type="button"
+                aria-pressed={aba === valor}
+                onClick={() => {
+                  setAba(valor);
+                  setMenuDeVisoes(false);
+                }}
+                className={cn(
+                  "h-11 rounded-lg px-3 text-left text-sm font-medium",
+                  aba === valor ? "bg-primary/10 text-primary" : "hover:bg-secondary",
+                )}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
         <div
           role="group"
           aria-label={t("Visão do cronograma")}
-          className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-xl bg-secondary p-1 sm:inline-flex sm:w-auto sm:max-w-full sm:overflow-x-auto sm:p-0.5"
+          className="hidden sm:inline-flex sm:w-auto sm:max-w-full sm:overflow-x-auto rounded-xl bg-secondary p-0.5"
         >
           {abas.map(([valor, rotulo]) => (
             <button
