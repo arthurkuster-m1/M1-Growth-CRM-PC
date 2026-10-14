@@ -5,7 +5,8 @@ import type { Bloco } from "./blocos";
  *
  * Regras:
  *  - o slide 0 é a CAPA (o título e a descrição da página);
- *  - cada `titulo` de nível 1 abre um slide novo; o que vem depois vai nele;
+ *  - cada `titulo` (nível 1 ou o subtítulo, nível 2) abre um slide novo; o que vem depois vai
+ *    nele — o subtítulo nunca fica no fim de um slide com o texto no seguinte;
  *  - blocos antes do primeiro título formam um slide sem título;
  *  - slide com blocos demais é partido (continuação);
  *  - blocos GRANDES (oferta, tabela, calculadora) ganham um slide só para eles — o que passar da
@@ -16,8 +17,10 @@ import type { Bloco } from "./blocos";
 export interface Slide {
   chave: string;
   tipo: "capa" | "conteudo";
-  /** O título do slide (o `titulo` nível 1 que o abriu), se houver. */
+  /** O título do slide (o `titulo` que o abriu), se houver. */
   titulo: string | null;
+  /** Nível do título: 1 = título da seção, 2 = subtítulo. */
+  nivel?: 1 | 2;
   blocos: Bloco[];
 }
 
@@ -32,17 +35,17 @@ export function slidesDaPagina(blocos: readonly Bloco[]): Slide[] {
   // O slide aberto fica num objeto (e não numa variável solta) porque `abrir` o muda por dentro.
   const aberto: { slide: Slide | null; contador: number } = { slide: null, contador: 0 };
 
-  const abrir = (titulo: string | null): Slide => {
+  const abrir = (titulo: string | null, nivel: 1 | 2 = 1): Slide => {
     aberto.contador += 1;
-    const novo: Slide = { chave: `s${aberto.contador}`, tipo: "conteudo", titulo, blocos: [] };
+    const novo: Slide = { chave: `s${aberto.contador}`, tipo: "conteudo", titulo, nivel, blocos: [] };
     slides.push(novo);
     aberto.slide = novo;
     return novo;
   };
 
   for (const bloco of blocos) {
-    if (bloco.tipo === "titulo" && bloco.nivel === 1) {
-      abrir(bloco.texto || null);
+    if (bloco.tipo === "titulo") {
+      abrir(bloco.texto || null, bloco.nivel === 2 ? 2 : 1);
       continue;
     }
     if (bloco.tipo === "separador") {

@@ -149,6 +149,114 @@ function BotaoDeIcone({
   );
 }
 
+/**
+ * A COR DE CADA TIPO DE BLOCO na edição: a barra da lateral, o fundo suave e a etiqueta. Cores
+ * diferentes por tipo deixam a página inteira legível de relance (texto, destaque, dados, mídia…).
+ */
+const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiqueta: string }> = {
+  titulo: {
+    barra: "border-l-violet-500",
+    fundo: "bg-violet-500/5",
+    etiqueta: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  },
+  texto: {
+    barra: "border-l-blue-500",
+    fundo: "bg-blue-500/5",
+    etiqueta: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  },
+  destaque: {
+    barra: "border-l-amber-500",
+    fundo: "bg-amber-500/5",
+    etiqueta: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  },
+  citacao: {
+    barra: "border-l-amber-500",
+    fundo: "bg-amber-500/5",
+    etiqueta: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  },
+  lista: {
+    barra: "border-l-emerald-500",
+    fundo: "bg-emerald-500/5",
+    etiqueta: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  },
+  cards: {
+    barra: "border-l-emerald-500",
+    fundo: "bg-emerald-500/5",
+    etiqueta: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  },
+  fluxo: {
+    barra: "border-l-emerald-500",
+    fundo: "bg-emerald-500/5",
+    etiqueta: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  },
+  metricas: {
+    barra: "border-l-cyan-500",
+    fundo: "bg-cyan-500/5",
+    etiqueta: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  },
+  tabela: {
+    barra: "border-l-cyan-500",
+    fundo: "bg-cyan-500/5",
+    etiqueta: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  },
+  matriz: {
+    barra: "border-l-cyan-500",
+    fundo: "bg-cyan-500/5",
+    etiqueta: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  },
+  calculadora: {
+    barra: "border-l-cyan-500",
+    fundo: "bg-cyan-500/5",
+    etiqueta: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  },
+  imagem: {
+    barra: "border-l-pink-500",
+    fundo: "bg-pink-500/5",
+    etiqueta: "bg-pink-500/15 text-pink-700 dark:text-pink-300",
+  },
+  "imagem-texto": {
+    barra: "border-l-pink-500",
+    fundo: "bg-pink-500/5",
+    etiqueta: "bg-pink-500/15 text-pink-700 dark:text-pink-300",
+  },
+  paleta: {
+    barra: "border-l-pink-500",
+    fundo: "bg-pink-500/5",
+    etiqueta: "bg-pink-500/15 text-pink-700 dark:text-pink-300",
+  },
+  oferta: {
+    barra: "border-l-orange-500",
+    fundo: "bg-orange-500/5",
+    etiqueta: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  },
+  links: {
+    barra: "border-l-sky-500",
+    fundo: "bg-sky-500/5",
+    etiqueta: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  },
+  ficha: {
+    barra: "border-l-sky-500",
+    fundo: "bg-sky-500/5",
+    etiqueta: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  },
+  "antes-depois": {
+    barra: "border-l-rose-500",
+    fundo: "bg-rose-500/5",
+    etiqueta: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  },
+  piramide: {
+    barra: "border-l-rose-500",
+    fundo: "bg-rose-500/5",
+    etiqueta: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  },
+  separador: {
+    barra: "border-l-slate-400",
+    fundo: "bg-slate-500/5",
+    etiqueta: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  },
+};
+const COR_PADRAO = COR_DO_TIPO.texto!;
+
 export function EditorDeBlocos({
   blocos,
   aoMudar,
@@ -193,10 +301,19 @@ export function EditorDeBlocos({
         <section
           key={b.id}
           aria-label={`${nomeDoTipo(b.tipo)} ${i + 1}`}
-          className="rounded-2xl border bg-card p-4 shadow-sm"
+          className={cn(
+            "rounded-2xl border border-l-4 p-4 shadow-sm",
+            (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).barra,
+            (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).fundo,
+          )}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span
+              className={cn(
+                "rounded-md px-2.5 py-0.5 text-xs font-semibold",
+                (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).etiqueta,
+              )}
+            >
               {nomeDoTipo(b.tipo)}
             </span>
             <div className="flex items-center">
@@ -236,7 +353,7 @@ export function EditorDeBlocos({
           type="button"
           aria-expanded={menuAberto}
           onClick={() => setMenuAberto((a) => !a)}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 text-sm font-medium text-primary transition-colors hover:border-primary hover:bg-primary/10"
         >
           <Plus size={16} weight="bold" aria-hidden />
           {t("Adicionar bloco")}

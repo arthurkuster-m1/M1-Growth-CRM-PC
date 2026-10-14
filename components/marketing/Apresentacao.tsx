@@ -130,7 +130,12 @@ export function Apresentacao({
               blocos={
                 slide.titulo
                   ? [
-                      { id: `${slide.chave}-t`, tipo: "titulo", nivel: 1, texto: slide.titulo },
+                      {
+                        id: `${slide.chave}-t`,
+                        tipo: "titulo",
+                        nivel: slide.nivel ?? 1,
+                        texto: slide.titulo,
+                      },
                       ...slide.blocos,
                     ]
                   : slide.blocos

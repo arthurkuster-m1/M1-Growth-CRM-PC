@@ -90,9 +90,9 @@ export function QuadroKanban({
       onDragEnd={aoSoltar}
       // Rolagem automática devagar: dá para ver as colunas uma a uma e soltar com calma.
       autoScroll={{
-        acceleration: 1.5,
-        interval: 30,
-        threshold: { x: 0.12, y: 0.15 },
+        acceleration: 3,
+        interval: 20,
+        threshold: { x: 0.14, y: 0.15 },
       }}
     >
       <div

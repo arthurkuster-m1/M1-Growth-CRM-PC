@@ -31,6 +31,8 @@ export function CelulaDeCliente({ contactId, nome, organizacao, podeEditar, aoEs
 
   return (
     <Popover
+      // Modal: a lista rola com o mouse e a tela de trás fica travada (no celular também).
+      modal
       open={aberto}
       onOpenChange={(a) => {
         if (a && !podeEditar) return;
@@ -52,7 +54,7 @@ export function CelulaDeCliente({ contactId, nome, organizacao, podeEditar, aoEs
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="grid w-72 gap-2 p-2">
+      <PopoverContent align="start" className="grid w-72 max-w-[92vw] gap-2 p-2">
         <EscolherLead
           interno={interno}
           aoEscolher={(c) => {
@@ -103,7 +105,7 @@ function EscolherLead({
       >
         <span className="truncate">{interno}</span>
       </button>
-      <ul className="grid max-h-56 gap-0.5 overflow-y-auto">
+      <ul className="grid max-h-56 gap-0.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
         {achados.map((c) => (
           <li key={c.id}>
             <button

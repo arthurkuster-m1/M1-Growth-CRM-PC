@@ -60,10 +60,13 @@ export function PainelDaVisaoGeral({
   contactId,
   aoAbrir,
   podeEditar = false,
+  aoAbrirTarefa,
 }: {
   contactId: string;
   aoAbrir: (aba: string) => void;
   podeEditar?: boolean;
+  /** Abrir uma tarefa para editar (a ficha leva para a aba Atendimento e Tarefas). */
+  aoAbrirTarefa?: (id: string) => void;
 }) {
   const t = useT();
   const locale = useLocaleDeData();
@@ -201,17 +204,28 @@ export function PainelDaVisaoGeral({
               {tarefas.map((x) => {
                 const atrasada = x.due_date !== null && x.due_date.slice(0, 10) < hoje;
                 return (
-                  <li key={x.id} className="flex items-center justify-between gap-3 rounded-xl border p-2.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{x.title}</p>
-                      <p className={atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"}>
-                        {x.due_date ? dia(x.due_date, true) : t("Sem prazo")}
-                        {atrasada ? ` · ${t("atrasada")}` : ""}
-                      </p>
-                    </div>
-                    <SeloDaFicha cor={COR_PRIORIDADE[x.priority] ?? "blue"}>
-                      {t(ROTULO_PRIORIDADE[x.priority] ?? "Média")}
-                    </SeloDaFicha>
+                  <li key={x.id}>
+                    <button
+                      type="button"
+                      title={t("Abrir e editar a tarefa")}
+                      onClick={() => (aoAbrirTarefa ? aoAbrirTarefa(x.id) : aoAbrir("atendimento"))}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-secondary/60"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{x.title}</p>
+                        <p
+                          className={
+                            atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"
+                          }
+                        >
+                          {x.due_date ? dia(x.due_date, true) : t("Sem prazo")}
+                          {atrasada ? ` · ${t("atrasada")}` : ""}
+                        </p>
+                      </div>
+                      <SeloDaFicha cor={COR_PRIORIDADE[x.priority] ?? "blue"}>
+                        {t(ROTULO_PRIORIDADE[x.priority] ?? "Média")}
+                      </SeloDaFicha>
+                    </button>
                   </li>
                 );
               })}

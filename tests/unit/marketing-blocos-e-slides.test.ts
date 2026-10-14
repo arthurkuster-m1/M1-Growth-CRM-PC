@@ -70,7 +70,7 @@ describe("slidesDaPagina", () => {
     expect(slidesDaPagina([]).map((s) => s.tipo)).toEqual(["capa"]);
   });
 
-  it("cada título de nível 1 abre um slide; o nível 2 fica dentro", () => {
+  it("cada título e cada subtítulo (nível 2) abre o seu slide", () => {
     const slides = slidesDaPagina([
       t("1", 1, "Persona"),
       tx("2"),
@@ -79,8 +79,10 @@ describe("slidesDaPagina", () => {
       t("5", 1, "Concorrência"),
       tx("6"),
     ]);
-    expect(slides.map((s) => s.titulo)).toEqual([null, "Persona", "Concorrência"]);
-    expect(slides[1]!.blocos.map((b) => b.id)).toEqual(["2", "3", "4"]);
+    expect(slides.map((s) => s.titulo)).toEqual([null, "Persona", "Dores", "Concorrência"]);
+    expect(slides[1]!.blocos.map((b) => b.id)).toEqual(["2"]);
+    expect(slides[2]!.nivel).toBe(2);
+    expect(slides[2]!.blocos.map((b) => b.id)).toEqual(["4"]);
   });
 
   it("blocos antes do primeiro título formam um slide sem título", () => {

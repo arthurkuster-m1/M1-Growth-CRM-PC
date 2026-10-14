@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AlternarTemaPublico } from "@/components/marketing/AlternarTemaPublico";
+
 /** O topo das páginas públicas: a marca do cliente (logo ou nome) e o aviso de "somente leitura". */
 export function CabecalhoPublico({
   nome,
@@ -34,7 +36,8 @@ export function CabecalhoPublico({
             <div className="flex min-w-0 items-center gap-3">{marca}</div>
           );
         })()}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <AlternarTemaPublico />
           <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
             {somenteLeitura}
           </span>

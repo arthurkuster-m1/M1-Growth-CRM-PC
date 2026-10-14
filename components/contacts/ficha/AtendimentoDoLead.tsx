@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { BlocoDaFicha, CampoLido, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
+import { TarefasDoLead } from "@/components/contacts/ficha/TarefasDoLead";
 import {
   useDadosDosNegocios,
   useEquipeDaFicha,
@@ -30,7 +31,16 @@ const SITUACAO: Record<string, { rotulo: string; cor: "gray" | "blue" | "green" 
 };
 
 /** ATENDIMENTO E TAREFAS: quem cuida do lead e o que está pendente com ele. */
-export function AtendimentoDoLead({ contactId }: { contactId: string }) {
+export function AtendimentoDoLead({
+  contactId,
+  nomeDoContato = "",
+  abrirTarefaId = null,
+}: {
+  contactId: string;
+  nomeDoContato?: string;
+  /** Abre esta tarefa no painel (vindo da Visão geral). */
+  abrirTarefaId?: string | null;
+}) {
   const t = useT();
   const locale = useLocaleDeData();
   const qual = useQualificacaoDoContato(contactId);
@@ -101,57 +111,8 @@ export function AtendimentoDoLead({ contactId }: { contactId: string }) {
         ) : null}
       </BlocoDaFicha>
 
-      <BlocoDaFicha
-        titulo={t("Tarefas pendentes")}
-        cor="orange"
-        acao={
-          <Link href="/app/tarefas" className="text-xs font-medium text-primary hover:underline">
-            {t("Abrir Tarefas")}
-          </Link>
-        }
-      >
-        {tarefas.isLoading ? (
-          <div className="h-16 animate-pulse rounded-lg bg-secondary" />
-        ) : lista.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente com este lead.")}</p>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-max text-sm">
-              <thead className="bg-secondary/60 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">{t("Tarefa")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Prazo")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Prioridade")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Situação")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Responsável")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lista.map((x) => {
-                  const atrasada = x.due_date !== null && new Date(x.due_date).getTime() < agora;
-                  const p = PRIORIDADE[x.priority] ?? PRIORIDADE.medium!;
-                  const s = SITUACAO[x.status] ?? SITUACAO.pending!;
-                  return (
-                    <tr key={x.id} className="border-t">
-                      <td className="px-3 py-2 font-medium">{x.title}</td>
-                      <td className={atrasada ? "px-3 py-2 tabular-nums text-error-fg" : "px-3 py-2 tabular-nums"}>
-                        {dia(x.due_date, true)}
-                        {atrasada ? ` · ${t("atrasada")}` : ""}
-                      </td>
-                      <td className="px-3 py-2">
-                        <SeloDaFicha cor={p.cor}>{t(p.rotulo)}</SeloDaFicha>
-                      </td>
-                      <td className="px-3 py-2">
-                        <SeloDaFicha cor={s.cor}>{t(s.rotulo)}</SeloDaFicha>
-                      </td>
-                      <td className="px-3 py-2">{nome(x.assigned_to)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <BlocoDaFicha titulo={t("Tarefas")} cor="orange">
+        <TarefasDoLead contactId={contactId} nome={nomeDoContato} abrirInicial={abrirTarefaId} />
       </BlocoDaFicha>
     </div>
   );

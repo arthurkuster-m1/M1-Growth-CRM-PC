@@ -7,7 +7,7 @@ import { useState } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
-import { CaretLeft } from "@/lib/ui/icons";
+import { CaretLeft, Trash } from "@/lib/ui/icons";
 
 /**
  * O topo de uma SUBPÁGINA: voltar para o módulo, o tipo, o título (a agência renomeia — é o
@@ -53,13 +53,25 @@ export function CabecalhoDaSubpagina({
 
   return (
     <header className="flex flex-col gap-3">
-      <Link
-        href={voltar.href}
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <CaretLeft size={14} aria-hidden />
-        {voltar.rotulo}
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link
+          href={voltar.href}
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <CaretLeft size={14} aria-hidden />
+          {voltar.rotulo}
+        </Link>
+        {podeEditar && !confirmando ? (
+          <button
+            type="button"
+            onClick={() => setConfirmando(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-500/10 px-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-500/20 dark:text-red-300"
+          >
+            <Trash size={15} aria-hidden />
+            {t("Apagar subpágina")}
+          </button>
+        ) : null}
+      </div>
       <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
         {tipo}
       </span>
@@ -78,34 +90,24 @@ export function CabecalhoDaSubpagina({
       ) : (
         <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">{titulo}</h1>
       )}
-      {podeEditar ? (
-        confirmando ? (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span>{t("Apagar esta subpágina e o histórico dela?")}</span>
-            <button
-              type="button"
-              onClick={() => void apagar()}
-              className="h-8 rounded-lg bg-error px-3 text-sm font-medium text-white"
-            >
-              {t("Apagar")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmando(false)}
-              className="h-8 rounded-lg border px-3 text-sm hover:bg-secondary"
-            >
-              {t("Cancelar")}
-            </button>
-          </div>
-        ) : (
+      {podeEditar && confirmando ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm">
+          <span>{t("Apagar esta subpágina e o histórico dela?")}</span>
           <button
             type="button"
-            onClick={() => setConfirmando(true)}
-            className="w-fit text-xs text-muted-foreground hover:text-error-fg"
+            onClick={() => void apagar()}
+            className="h-8 rounded-lg bg-red-600 px-3 text-sm font-medium text-white hover:bg-red-700"
           >
-            {t("Apagar subpágina")}
+            {t("Apagar")}
           </button>
-        )
+          <button
+            type="button"
+            onClick={() => setConfirmando(false)}
+            className="h-8 rounded-lg border bg-background px-3 text-sm hover:bg-secondary"
+          >
+            {t("Cancelar")}
+          </button>
+        </div>
       ) : null}
     </header>
   );

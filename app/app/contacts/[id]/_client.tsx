@@ -78,6 +78,8 @@ function ContactDetailInner({ contactId }: Props) {
   const pipelineQuery = useDefaultPipeline(Boolean(activeOrg));
   const [anonOpen, setAnonOpen] = useState(false);
   const [aba, setAba] = useState("overview");
+  /** A tarefa que a Visão geral mandou abrir na aba Atendimento e Tarefas. */
+  const [tarefaParaAbrir, setTarefaParaAbrir] = useState<string | null>(null);
   // Trocar de aba com algo digitado e não salvo pergunta antes (o que é do Cadastro, por ora).
   const sairComAviso = useSairComAviso();
   const irParaAba = (nova: string) => sairComAviso(() => setAba(nova));
@@ -328,7 +330,15 @@ function ContactDetailInner({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <PainelDaVisaoGeral contactId={contactId} aoAbrir={irParaAba} podeEditar={podeEditarFicha} />
+          <PainelDaVisaoGeral
+            contactId={contactId}
+            aoAbrir={irParaAba}
+            podeEditar={podeEditarFicha}
+            aoAbrirTarefa={(id) => {
+              setTarefaParaAbrir(id);
+              irParaAba("atendimento");
+            }}
+          />
           <div className="mt-4">
             <RoteirosDoContato contactId={contactId} />
           </div>
@@ -346,7 +356,11 @@ function ContactDetailInner({ contactId }: Props) {
         </TabsContent>
 
         <TabsContent value="atendimento" className="mt-4">
-          <AtendimentoDoLead contactId={contactId} />
+          <AtendimentoDoLead
+            contactId={contactId}
+            nomeDoContato={displayName}
+            abrirTarefaId={tarefaParaAbrir}
+          />
         </TabsContent>
 
         <TabsContent value="vendas" className="mt-4">

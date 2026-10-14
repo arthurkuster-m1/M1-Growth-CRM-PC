@@ -132,6 +132,13 @@ interface Props {
   agoraIso: string;
   /** O nome da organização: é o "cliente" das tarefas internas ("Interno · Nome"). */
   nomeDaOrganizacao?: string;
+  /**
+   * Embutida na ficha de um lead: só as tarefas dele (as novas já nascem com ele), sem o título
+   * da página e com o layout próprio ("tarefas-do-lead").
+   */
+  contatoFixo?: { id: string; nome: string };
+  /** Abre esta tarefa no painel ao montar (vindo da Visão geral da ficha). */
+  abrirInicial?: string | null;
 }
 
 /**
@@ -148,6 +155,8 @@ export function TarefasMotorClient({
   podeConfigurar,
   agoraIso,
   nomeDaOrganizacao = "",
+  contatoFixo,
+  abrirInicial = null,
 }: Props) {
   void usuarioId;
   const t = useT();
@@ -155,16 +164,28 @@ export function TarefasMotorClient({
   const agora = useMemo(() => new Date(agoraIso), [agoraIso]);
 
   const {
-    tarefas,
+    tarefas: todasAsTarefas,
     carregando,
     falhou,
     editarTarefa,
     reordenar,
-    criarTarefa,
+    criarTarefa: criarTarefaBase,
     apagarTarefa,
     editarVarias,
     apagarVarias,
   } = useTarefasDoMotor();
+  // Na ficha do lead: só as tarefas dele; as novas já nascem com ele como cliente.
+  const tarefas = useMemo(
+    () =>
+      contatoFixo
+        ? todasAsTarefas.filter((x) => x.contact_id === contatoFixo.id)
+        : todasAsTarefas,
+    [todasAsTarefas, contatoFixo],
+  );
+  const criarTarefa: typeof criarTarefaBase = (entrada) =>
+    criarTarefaBase(
+      contatoFixo ? { ...entrada, contact_id: contatoFixo.id } : entrada,
+    );
   const { modelos, criarModelo, editarModelo, apagarModelo } = useModelosDeTarefa();
   const { opcoes, criarOpcao, editarOpcao, apagarOpcao } = useOpcoesDeStatus();
   const { propriedades, criarPropriedade, editarPropriedade, apagarPropriedade } =
@@ -178,7 +199,7 @@ export function TarefasMotorClient({
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const aoAbrirDoInicio = useSearchParams().get("abrir");
   // `?abrir=<id>` (o link da tela Início) abre a tarefa direto no painel.
-  const [abertaId, setAbertaId] = useState<string | null>(aoAbrirDoInicio);
+  const [abertaId, setAbertaId] = useState<string | null>(abrirInicial ?? aoAbrirDoInicio);
   const [configurando, setConfigurando] = useState(false);
   const [modelosAberto, setModelosAberto] = useState(false);
   const [modeloNovo, setModeloNovo] = useState(false);
@@ -497,12 +518,16 @@ export function TarefasMotorClient({
       />
     ),
   }));
-  const colunas = [...colunasDeFabrica, ...colunasPersonalizadas];
+  const colunas = [
+    ...colunasDeFabrica.filter((c) => !(contatoFixo && c.id === "cliente")),
+    ...colunasPersonalizadas,
+  ];
 
   // O layout (ordem, largura, visibilidade) é da PESSOA e mora na conta dela.
-  const padrao = useVisualizacao("tarefas");
+  const chaveDaTela = contatoFixo ? "tarefas-do-lead" : "tarefas";
+  const padrao = useVisualizacao(chaveDaTela);
   const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
-    "tarefas",
+    chaveDaTela,
     podeEditar,
   );
   const router = useRouter();
@@ -797,11 +822,21 @@ export function TarefasMotorClient({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] min-w-0 flex-col gap-4 p-4 sm:p-6">
+    <div
+      className={
+        contatoFixo
+          ? "flex w-full min-w-0 flex-col gap-4"
+          : "mx-auto flex w-full max-w-[1400px] min-w-0 flex-col gap-4 p-4 sm:p-6"
+      }
+    >
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
+            {contatoFixo ? (
+              <h2 className="text-base font-semibold">{t("Tarefas deste lead")}</h2>
+            ) : (
+              <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
+            )}
             <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
               {t("Clique para editar. Arraste pelo ícone para reordenar.")}
             </p>
