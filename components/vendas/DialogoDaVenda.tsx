@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
+import { somarMesesNaData } from "@/lib/vendas-recorrentes";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { lerNumero } from "@/lib/marketing/calculadora";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
@@ -373,6 +374,8 @@ export function DialogoDaVenda({
       k === i ? { ...x, recebida, paid_on: recebida ? (x.paid_on ?? hoje()) : null } : x,
     );
     setParcelas(proximas);
+    // Assinatura em andamento nunca "conclui": sempre vem a parcela do mês seguinte.
+    if (recorrente && recorrenciaAtiva) return;
     if (proximas.length > 0 && proximas.every((x) => x.recebida)) {
       if (situacao === "comprometida") setSituacao("concluida");
     } else if (situacao === "concluida") {
@@ -380,8 +383,36 @@ export function DialogoDaVenda({
     }
   }
 
+  /** O valor da última parcela (é o que a próxima copia), no formato do campo. */
+  const valorMensal = parcelas.length > 0 ? parcelas[parcelas.length - 1]!.valor : "";
+  /** Reajuste: o novo valor vale para as parcelas ainda não recebidas (e, depois, para as próximas). */
+  function reajustarValorMensal(texto: string) {
+    const n = lerNumero(texto);
+    if (n === null || n < 0) return;
+    const novo = textoDe(Math.round(n * 100));
+    setParcelas((l) => {
+      // Sem parcela aberta (a do mês seguinte ainda não nasceu), cria a próxima já com o novo valor.
+      if (l.length > 0 && l.every((x) => x.recebida)) {
+        const ultima = l[l.length - 1]!;
+        return [
+          ...l,
+          {
+            number: ultima.number + 1,
+            due_on: somarMesesNaData(ultima.due_on, 1),
+            valor: novo,
+            recebida: false,
+            paid_on: null,
+          },
+        ];
+      }
+      return l.map((x) => (x.recebida ? x : { ...x, valor: novo }));
+    });
+  }
+
   /** Enter (ou sair do campo) no valor de uma parcela: as seguintes abertas absorvem a diferença. */
   function aplicarValorDaParcela(i: number) {
+    // Recorrente: cada mês é uma parcela própria; mudar uma não redistribui nas outras.
+    if (recorrente) return;
     const base = parcelas.map((x) => ({
       number: x.number,
       due_on: x.due_on,
@@ -423,6 +454,9 @@ export function DialogoDaVenda({
    */
   function parcelasAjustadas(): typeof parcelas {
     if (!fechadaSit || total <= 0) return parcelas;
+    // Venda recorrente: as parcelas (uma por mês, já pagas ou previstas) são o histórico e não
+    // se ajustam ao valor da venda.
+    if (recorrente) return parcelas;
     return ajustarParcelasAoTotal(
       parcelas.map((p) => ({
         number: p.number,
@@ -456,7 +490,7 @@ export function DialogoDaVenda({
       // Faltou uma parcela? Não é "concluída": é comprometida. E tudo pago fecha como concluída.
       status:
         fechadaSit && base.length > 0
-          ? todasRecebidas
+          ? todasRecebidas && !(recorrente && recorrenciaAtiva)
             ? "concluida"
             : "comprometida"
           : situacao,
@@ -847,7 +881,12 @@ export function DialogoDaVenda({
               <button
                 type="button"
                 onClick={gerar}
-                disabled={total <= 0}
+                disabled={total <= 0 || (recorrente && parcelas.some((p) => p.recebida))}
+                title={
+                  recorrente && parcelas.some((p) => p.recebida)
+                    ? t("Venda recorrente com parcelas recebidas: o histórico não é refeito.")
+                    : undefined
+                }
                 className="h-9 rounded-lg border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
               >
                 {parcelas.length > 0 ? t("Refazer as parcelas") : t("Gerar as parcelas")}
@@ -862,22 +901,65 @@ export function DialogoDaVenda({
               </label>
             </div>
             {recorrente ? (
-              <label className="flex items-start gap-2 rounded-lg bg-secondary/60 px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={recorrenciaAtiva}
-                  onChange={(e) => setRecorrenciaAtiva(e.target.checked)}
-                />
-                <span>
-                  {t("Recorrência ativa")}
-                  <span className="block text-xs text-muted-foreground">
-                    {t(
-                      "Todo mês o sistema cria a próxima parcela como prevista e avisa na véspera, no dia e no dia seguinte para você confirmar se o lead pagou e se o valor mudou. Nada é dado como pago sozinho.",
-                    )}
+              <div
+                className={`grid gap-2 rounded-xl border border-l-4 px-3 py-3 text-sm ${
+                  recorrenciaAtiva
+                    ? "border-l-emerald-500 bg-emerald-500/5"
+                    : "border-l-slate-400 bg-secondary/50"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {recorrenciaAtiva ? t("Recorrência ativa") : t("Recorrência encerrada")}
                   </span>
-                </span>
-              </label>
+                  {recorrenciaAtiva ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Encerra: o histórico recebido fica; as parcelas ainda previstas saem.
+                        setRecorrenciaAtiva(false);
+                        setParcelas((l) => l.filter((p) => p.recebida));
+                      }}
+                      className="h-8 rounded-lg border border-red-500/50 bg-red-500/10 px-3 text-xs font-medium text-red-700 hover:bg-red-500/20 dark:text-red-300"
+                    >
+                      {t("Encerrar recorrência")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setRecorrenciaAtiva(true)}
+                      className="h-8 rounded-lg border px-3 text-xs font-medium hover:bg-secondary"
+                    >
+                      {t("Reativar recorrência")}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {recorrenciaAtiva
+                    ? t(
+                        "Todo mês o sistema cria a próxima parcela como prevista e avisa na véspera, no dia e no dia seguinte para você confirmar se o lead pagou e se o valor mudou. Nada é dado como pago sozinho.",
+                      )
+                    : t(
+                        "Encerrada: a venda e as parcelas já recebidas ficam no histórico (e no LTV). Nenhuma parcela nova é criada nem cobrada.",
+                      )}
+                </p>
+                {recorrenciaAtiva ? (
+                  <label className="grid gap-1 sm:max-w-xs">
+                    <span className="text-xs text-muted-foreground">
+                      {t("Valor mensal (a próxima parcela copia este valor)")}
+                    </span>
+                    <input
+                      key={valorMensal}
+                      defaultValue={valorMensal}
+                      inputMode="decimal"
+                      aria-label={t("Valor mensal")}
+                      onBlur={(e) => reajustarValorMensal(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                      className={CAMPO}
+                    />
+                  </label>
+                ) : null}
+              </div>
             ) : null}
 
             {parcelas.length > 0 ? (
