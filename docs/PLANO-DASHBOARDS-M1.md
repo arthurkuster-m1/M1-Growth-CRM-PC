@@ -198,3 +198,8 @@ descreveu como "projeto inicial só visual" — e, em paralelo, destravar o Meta
 
 **D0 publicado:** `/app/marketing/dashboards` — os painéis navegáveis com dados de **exemplo**
 (marcados na tela). Código em `components/dashboards/`. Próximo: D1 (Tráfego Pago ao vivo).
+
+**D1 publicado (14/10/2026):** Tráfego Pago ao vivo — `GET /api/v1/dashboards/trafego`
+(Meta + leads do CRM + vendas e faturamento pagos pela origem da venda; período anterior para as
+variações ▲▼; por campanha, anúncio e landing page). Seletor de campanhas (uma, várias ou todas).
+Business e Atendimento seguem com dados de exemplo (D2 e D3).

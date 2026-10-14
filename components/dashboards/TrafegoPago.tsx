@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   FunilEmDegraus,
@@ -17,35 +17,39 @@ import {
   vezes,
 } from "@/components/dashboards/base";
 import { GraficoComparativo } from "@/components/dashboards/GraficoComparativo";
-import {
-  CAMPANHAS_DE_EXEMPLO,
-  CRIATIVOS_DE_EXEMPLO,
-  trafegoDeExemplo,
-  type DiaDeTrafego,
-} from "@/components/dashboards/exemplo";
+import type { DiaDeTrafego } from "@/lib/dashboards/trafego";
 import { useT } from "@/hooks/i18n/useT";
-import { somarDias } from "@/lib/inicio/datas";
+
+/** O que a rota `/api/v1/dashboards/trafego` devolve. */
+export interface DadosDeTrafego {
+  de: string;
+  ate: string;
+  dias: DiaDeTrafego[];
+  totais: Omit<DiaDeTrafego, "data">;
+  totaisAnterior: Omit<DiaDeTrafego, "data">;
+  campanhas: Array<{
+    id: string;
+    nome: string;
+    canal: string;
+    investido: number;
+    impressoes: number;
+    cliques: number;
+    viewsLP: number;
+    leads: number;
+    vendas: number;
+    recebido: number;
+  }>;
+  anuncios: Array<{ id: string; nome: string; leads: number; vendas: number; recebido: number }>;
+  paginas: Array<{ id: string; nome: string; leads: number; vendas: number; recebido: number }>;
+  catalogo: Array<{ id: string; nome: string }>;
+}
 
 type Visao = "geral" | "campanhas" | "anuncios" | "paginas" | "canais";
 
-function totais(dias: DiaDeTrafego[]) {
-  const soma = (k: keyof Omit<DiaDeTrafego, "data">) => dias.reduce((s, d) => s + d[k], 0);
-  const investimento = soma("investimento");
-  const leads = soma("leads");
-  const vendas = soma("vendas");
-  const recebido = soma("recebido");
-  const cliques = soma("cliques");
-  const impressoes = soma("impressoes");
-  const viewsLP = soma("viewsLP");
+function derivar(soma: Omit<DiaDeTrafego, "data">) {
+  const { investimento, leads, vendas, recebido, cliques, impressoes, viewsLP } = soma;
   return {
-    impressoes,
-    alcance: soma("alcance"),
-    cliques,
-    viewsLP,
-    leads,
-    vendas,
-    recebido,
-    investimento,
+    ...soma,
     cpl: dividir(investimento, leads),
     cac: dividir(investimento, vendas),
     cpm: dividir(investimento * 1000, impressoes),
@@ -59,16 +63,12 @@ function totais(dias: DiaDeTrafego[]) {
 }
 
 /** TRÁFEGO PAGO: o dashboard do ONE, com leads do CRM, vendas e faturamento pago. */
-export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; campanha: string }) {
+export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
   const t = useT();
   const [visao, setVisao] = useState<Visao>("geral");
-  const dias = useMemo(() => trafegoDeExemplo(de, ate, campanha), [de, ate, campanha]);
-  const anterior = useMemo(() => {
-    const n = dias.length;
-    return trafegoDeExemplo(somarDias(de, -n), somarDias(de, -1), campanha);
-  }, [dias.length, de, campanha]);
-  const a = totais(dias);
-  const p = totais(anterior);
+  const dias = dados.dias;
+  const a = derivar(dados.totais);
+  const p = derivar(dados.totaisAnterior);
 
   const metricas = [
     { id: "leads", rotulo: t("Leads"), formato: inteiro },
@@ -107,7 +107,6 @@ export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; ca
           valor={inteiro(a.leads)}
           variacao={<Variacao atual={a.leads} anterior={p.leads} />}
           apoio={`${t("Média")}: ${inteiro(a.leads / Math.max(1, dias.length))} ${t("leads/dia")}`}
-          meta={{ progresso: 72, rotulo: t("Meta do mês: 72% (exemplo)") }}
         />
         <Kpi
           rotulo={t("CPL")}
@@ -166,7 +165,7 @@ export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; ca
                 { rotulo: t("CPM"), valor: brl(a.cpm) },
                 { rotulo: t("CTR"), valor: pct(a.ctr, 2) },
                 { rotulo: t("Connect rate"), valor: pct(a.connect, 2) },
-                { rotulo: t("Frequência"), valor: (a.impressoes / Math.max(1, a.alcance)).toFixed(2) },
+                { rotulo: t("Frequência"), valor: a.alcance > 0 ? (a.impressoes / a.alcance).toFixed(2).replace(".", ",") : "—" },
               ]}
             />
           </Painel>
@@ -250,7 +249,7 @@ export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; ca
               { titulo: t("Lucro") },
               { titulo: t("ROAS") },
             ]}
-            linhas={CAMPANHAS_DE_EXEMPLO.map((c) => [
+            linhas={dados.campanhas.map((c) => [
               c.nome,
               c.canal,
               brl(c.investido),
@@ -271,16 +270,12 @@ export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; ca
           <TabelaDeDados
             colunas={[
               { titulo: t("Anúncio") },
-              { titulo: t("CTR") },
-              { titulo: t("CPL") },
               { titulo: t("Leads") },
               { titulo: t("Vendas") },
               { titulo: t("Recebido") },
             ]}
-            linhas={CRIATIVOS_DE_EXEMPLO.map((c) => [
+            linhas={dados.anuncios.map((c) => [
               c.nome,
-              pct(c.ctr, 1),
-              brl(c.cpl),
               inteiro(c.leads),
               inteiro(c.vendas),
               brl(c.recebido),
@@ -294,17 +289,16 @@ export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; ca
           <TabelaDeDados
             colunas={[
               { titulo: t("Página") },
-              { titulo: t("Visitas") },
               { titulo: t("Leads") },
-              { titulo: t("Conversão") },
               { titulo: t("Vendas") },
               { titulo: t("Recebido") },
             ]}
-            linhas={[
-              ["LP Seletiva — Versão A", "2.140", "148", pct(6.9), "6", brl(14800)],
-              ["LP Seletiva — Versão B", "1.020", "52", pct(5.1), "2", brl(4200)],
-              ["LP Oferta Relâmpago", "780", "17", pct(2.2), "0", brl(0)],
-            ]}
+            linhas={dados.paginas.map((c) => [
+              c.nome,
+              inteiro(c.leads),
+              inteiro(c.vendas),
+              brl(c.recebido),
+            ])}
           />
         </Painel>
       ) : null}
@@ -322,9 +316,6 @@ export function TrafegoPago({ de, ate, campanha }: { de: string; ate: string; ca
             linhas={[
               ["Meta Ads", brl(a.investimento), inteiro(a.leads), inteiro(a.vendas), brl(a.recebido)],
               [`Google Ads (${t("não conectado")})`, "—", "—", "—", "—"],
-              [t("Extração de leads"), "—", "34", "3", brl(5400)],
-              [t("Indicação"), "—", "12", "4", brl(7200)],
-              [t("Base de clientes"), "—", "9", "2", brl(3000)],
             ]}
           />
         </Painel>

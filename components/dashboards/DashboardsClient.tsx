@@ -1,13 +1,16 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Atendimento } from "@/components/dashboards/Atendimento";
 import { Business } from "@/components/dashboards/Business";
-import { TrafegoPago } from "@/components/dashboards/TrafegoPago";
+import { SeletorDeCampanhas } from "@/components/dashboards/SeletorDeCampanhas";
+import { TrafegoPago, type DadosDeTrafego } from "@/components/dashboards/TrafegoPago";
 import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
 import { useAtalhosDePeriodo } from "@/components/motor/atalhos-de-periodo";
 import { useT } from "@/hooks/i18n/useT";
+import { apiClient } from "@/lib/api/client";
 import { ChartLineUp, Megaphone, Receipt, UsersThree } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +26,20 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
   const [painel, setPainel] = useState<Painel>("trafego");
   const { atalhos, hoje } = useAtalhosDePeriodo();
   const [janela, setJanela] = useState(() => ({ de: `${hoje.slice(0, 7)}-01`, ate: hoje }));
-  const [campanha, setCampanha] = useState("todas");
+  const [campanhas, setCampanhas] = useState<string[]>([]);
+  const trafego = useQuery({
+    queryKey: ["dashboard-trafego", janela.de, janela.ate, campanhas.join(",")],
+    enabled: painel === "trafego",
+    staleTime: 30_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: DadosDeTrafego }>(
+          `/api/v1/dashboards/trafego?de=${janela.de}&ate=${janela.ate}${
+            campanhas.length > 0 ? `&campanhas=${campanhas.join(",")}` : ""
+          }`,
+        )
+      ).data,
+  });
 
   const abas: Array<{ id: Painel; rotulo: string; icone: React.ReactNode; breve?: boolean }> = [
     { id: "trafego", rotulo: t("Tráfego Pago"), icone: <Megaphone size={16} weight="duotone" aria-hidden /> },
@@ -54,9 +70,19 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
-          <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
-          {t("Protótipo: dados de exemplo")}
+        <span
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
+            painel === "trafego"
+              ? "border-green-500/50 bg-green-500/10 text-green-800 dark:text-green-300"
+              : "border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+          )}
+        >
+          <span
+            className={cn("h-2 w-2 rounded-full", painel === "trafego" ? "bg-green-500" : "bg-amber-500")}
+            aria-hidden
+          />
+          {painel === "trafego" ? t("Dados reais · Meta Ads + CRM") : t("Protótipo: dados de exemplo")}
         </span>
       </header>
 
@@ -98,18 +124,11 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
             aoMudar={setJanela}
           />
           {painel === "trafego" ? (
-            <label className="flex items-center gap-2 rounded-xl border bg-background px-3 text-sm">
-              <span className="text-xs text-muted-foreground">{t("Campanha")}</span>
-              <select
-                value={campanha}
-                onChange={(e) => setCampanha(e.target.value)}
-                className="h-10 bg-transparent text-sm outline-hidden"
-              >
-                <option value="todas">{t("Todas as campanhas")}</option>
-                <option value="seletiva">[06] Seletiva OUT/26 — BH</option>
-                <option value="remarketing">[02] Remarketing</option>
-              </select>
-            </label>
+            <SeletorDeCampanhas
+              catalogo={trafego.data?.catalogo ?? []}
+              escolhidas={campanhas}
+              aoMudar={setCampanhas}
+            />
           ) : null}
           <span className="ml-auto text-xs text-muted-foreground">
             {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
@@ -118,7 +137,19 @@ export function DashboardsClient({ empresa }: { empresa: string }) {
       ) : null}
 
       {painel === "trafego" ? (
-        <TrafegoPago de={janela.de} ate={janela.ate} campanha={campanha} />
+        trafego.isLoading ? (
+          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+        ) : trafego.isError || !trafego.data ? (
+          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+            {t("Não consegui carregar os números de tráfego agora. Tente de novo em instantes.")}
+          </p>
+        ) : trafego.data.catalogo.length === 0 ? (
+          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+            {t("Nenhuma campanha de tráfego pago cadastrada. Crie uma em Campanhas para ver os números aqui.")}
+          </p>
+        ) : (
+          <TrafegoPago dados={trafego.data} />
+        )
       ) : null}
       {painel === "business" ? <Business de={janela.de} ate={janela.ate} /> : null}
       {painel === "atendimento" ? <Atendimento /> : null}
