@@ -60,6 +60,8 @@ export interface DadosDaVenda {
   description?: string;
   /** O nome dado à venda (vazio = os produtos juntados). */
   name?: string;
+  /** Assinatura: quantos meses de parcelas previstas o sistema mantém à frente (1 a 12). */
+  recurrence_ahead?: number;
   /** Quem da equipe é o responsável pela venda (só vem quando mudou). */
   responsavel_id?: string | null;
 }
@@ -206,6 +208,7 @@ export function DialogoDaVenda({
   const [forma, setForma] = useState<string>(venda?.payment_method ?? "pix");
   const [recorrente, setRecorrente] = useState(venda?.is_recurring ?? false);
   const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(venda?.recurrence_active ?? true);
+  const [mesesAFrente, setMesesAFrente] = useState(venda?.recurrence_ahead ?? 1);
   const [referencia, setReferencia] = useState(venda?.reference ?? "");
   const [notas, setNotas] = useState(venda?.notes ?? "");
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
@@ -409,6 +412,28 @@ export function DialogoDaVenda({
     });
   }
 
+  /** Completa as parcelas previstas até `n` meses à frente (já aparecem na tela e no previsto). */
+  function garantirMesesAFrente(n: number) {
+    setMesesAFrente(n);
+    setParcelas((l) => {
+      const abertas = l.filter((x) => !x.recebida).length;
+      if (l.length === 0 || abertas >= n) return l;
+      const copia = [...l];
+      let ultima = copia[copia.length - 1]!;
+      for (let k = abertas; k < n; k += 1) {
+        ultima = {
+          number: ultima.number + 1,
+          due_on: somarMesesNaData(ultima.due_on, 1),
+          valor: ultima.valor,
+          recebida: false,
+          paid_on: null,
+        };
+        copia.push(ultima);
+      }
+      return copia;
+    });
+  }
+
   /** Enter (ou sair do campo) no valor de uma parcela: as seguintes abertas absorvem a diferença. */
   function aplicarValorDaParcela(i: number) {
     // Recorrente: cada mês é uma parcela própria; mudar uma não redistribui nas outras.
@@ -509,6 +534,7 @@ export function DialogoDaVenda({
       payment_method: fechadaSit ? forma : "",
       is_recurring: recorrente,
       recurrence_active: recorrente && recorrenciaAtiva,
+      recurrence_ahead: mesesAFrente,
       reference: referencia.trim(),
       notes: notas.trim(),
       expected_close_date: previsao || null,
@@ -943,6 +969,25 @@ export function DialogoDaVenda({
                         "Encerrada: a venda e as parcelas já recebidas ficam no histórico (e no LTV). Nenhuma parcela nova é criada nem cobrada.",
                       )}
                 </p>
+                {recorrenciaAtiva ? (
+                  <label className="grid gap-1 sm:max-w-xs">
+                    <span className="text-xs text-muted-foreground">
+                      {t("Manter quantos meses de previsão à frente")}
+                    </span>
+                    <select
+                      value={mesesAFrente}
+                      aria-label={t("Meses à frente")}
+                      onChange={(e) => garantirMesesAFrente(Number(e.target.value))}
+                      className={CAMPO}
+                    >
+                      {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 {recorrenciaAtiva ? (
                   <label className="grid gap-1 sm:max-w-xs">
                     <span className="text-xs text-muted-foreground">

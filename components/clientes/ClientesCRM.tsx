@@ -315,7 +315,10 @@ export function ClientesCRM() {
       else {
         // Venda recorrente: as parcelas pagas podem passar do valor da venda (uma por mês).
         pago += v.pago_cents;
-        comprometido += Math.max(v.valor_cents, v.pago_cents);
+        // Assinatura: o comprometido é o já pago mais as parcelas previstas dos meses à frente.
+        comprometido += v.recorrente
+          ? v.pago_cents + v.previsto_cents
+          : Math.max(v.valor_cents, v.pago_cents);
       }
     }
     return { pago, comprometido, aReceber: Math.max(0, comprometido - pago), interesse };

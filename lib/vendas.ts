@@ -75,6 +75,8 @@ export interface Venda {
   needs_details: boolean;
   /** Assinatura em andamento: a parcela do próximo mês é gerada sozinha (e cobrada). */
   recurrence_active: boolean;
+  /** Assinatura: quantos meses de parcelas previstas o sistema mantém à frente (1 a 12). */
+  recurrence_ahead: number;
   created_at: string;
   itens?: ItemDaVenda[];
   parcelas?: ParcelaDaVenda[];
@@ -94,7 +96,7 @@ export interface Venda {
 }
 
 export const COLUNAS_DA_VENDA =
-  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, created_at";
+  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, recurrence_ahead, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -130,6 +132,7 @@ const camposSchema = z.object({
   installments: z.number().int().min(1).max(120),
   closed_on: dia.nullable(),
   recurrence_active: z.boolean(),
+  recurrence_ahead: z.number().int().min(1).max(12),
   /** Quem da equipe é o responsável pela venda (mora no card do funil da venda). */
   responsavel_id: z.string().uuid().nullable(),
   itens: z.array(itemSchema).max(50),
@@ -377,8 +380,16 @@ export function valorPagoDaVenda(v: Pick<Venda, "status" | "amount_cents" | "par
 }
 
 /** O que está PREVISTO para entrar: o total menos o que já entrou (venda cancelada não deve nada). */
-export function valorPrevistoDaVenda(v: Pick<Venda, "status" | "amount_cents" | "parcelas">): number {
+export function valorPrevistoDaVenda(
+  v: Pick<Venda, "status" | "amount_cents" | "parcelas"> & { is_recurring?: boolean },
+): number {
   if (v.status === "cancelada") return 0;
+  // Assinatura: o previsto são as parcelas dos meses à frente (o valor da venda não cresce).
+  if (v.is_recurring && (v.parcelas ?? []).length > 0) {
+    return v.parcelas!
+      .filter((x) => x.status === "prevista")
+      .reduce((a, x) => a + x.amount_cents, 0);
+  }
   return Math.max(0, v.amount_cents - valorPagoDaVenda(v));
 }
 

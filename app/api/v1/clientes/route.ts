@@ -55,6 +55,9 @@ export interface VendaAtivaDoCliente {
   campanha_id: string | null;
   anuncio_id: string | null;
   lp_id: string | null;
+  /** Assinatura: o valor recorrente previsto (parcelas previstas) e a marca de recorrente. */
+  recorrente: boolean;
+  previsto_cents: number;
 }
 
 export interface ClienteDaLista {
@@ -216,7 +219,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     const { data: vendas } = await supabase
       .from("crm_sales")
       .select(
-        "id, contact_id, lead_id, pipeline_id, status, name, product_name, amount_cents, demand_campaign_id, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
+        "id, contact_id, lead_id, pipeline_id, status, name, product_name, amount_cents, is_recurring, demand_campaign_id, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
       )
       .eq("organization_id", orgId)
       .in("status", ["interesse", "comprometida", "concluida"])
@@ -226,6 +229,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       id: string;
       contact_id: string;
       lead_id: string | null;
+      is_recurring: boolean | null;
       pipeline_id: string | null;
       demand_campaign_id: string | null;
       status: "interesse" | "comprometida" | "concluida";
@@ -258,6 +262,10 @@ export async function GET(req: NextRequest): Promise<Response> {
         campanha_id: v.demand_campaign_id,
         anuncio_id: v.demand_creative_id,
         lp_id: v.demand_landing_page_id,
+        recorrente: v.is_recurring === true,
+        previsto_cents: pagamentos
+          .filter((p) => p.status === "prevista")
+          .reduce((s2, p) => s2 + Number(p.amount_cents), 0),
       });
       ativasPorContato.set(v.contact_id, lista);
       juntar(idsDeAnuncio, v.contact_id, v.demand_creative_id);

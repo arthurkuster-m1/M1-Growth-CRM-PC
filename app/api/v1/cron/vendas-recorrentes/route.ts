@@ -2,8 +2,8 @@
  * GET /api/v1/cron/vendas-recorrentes
  *
  * Duas tarefas, uma vez por dia:
- *  1. GERA a parcela do próximo mês de toda recorrência ativa que não tem parcela prevista (nasce
- *     "prevista" — nunca paga sozinha);
+ *  1. GERA as parcelas dos próximos meses de toda recorrência ativa, mantendo `recurrence_ahead`
+ *     (padrão 1) previstas à frente (nascem "prevista" — nunca pagas sozinhas);
  *  2. AVISA na Central (um dia antes/no dia, e um dia depois) cada parcela prevista: "esse lead
  *     pagou? houve negociação do valor?". Cada parcela gera no máximo dois avisos.
  *
@@ -42,7 +42,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   let geradas = 0;
   const { data: vendas } = await admin
     .from("crm_sales")
-    .select("id, organization_id, amount_cents, closed_on, organizations!inner(status)")
+    .select(
+      "id, organization_id, amount_cents, closed_on, recurrence_ahead, organizations!inner(status)",
+    )
     .eq("recurrence_active", true)
     .in("status", ["comprometida", "concluida"])
     .limit(LIMITE);
@@ -59,20 +61,34 @@ export async function GET(req: NextRequest): Promise<Response> {
       amount_cents: number;
       status: string;
     }>;
-    if (lista.some((p) => p.status === "prevista")) continue; // já existe a próxima
-    const ultima = lista.find((p) => p.status !== "cancelada");
-    const base = ultima?.due_on ?? (v.closed_on as string | null) ?? hoje;
-    const { error } = await admin.from("crm_sale_payments").insert({
-      organization_id: v.organization_id,
-      sale_id: v.id,
-      number: (ultima?.number ?? 0) + 1,
-      due_on: somarMesesNaData(base, 1),
-      amount_cents: ultima?.amount_cents ?? Number(v.amount_cents) ?? 0,
-      status: "prevista",
-    });
-    if (error) {
-      logger.warn("[vendas-recorrentes] parcela não gerada", { sale: v.id, error: error.message });
-    } else {
+    // Mantém N parcelas previstas à frente (padrão 1): completa só o que falta.
+    const alvo = Math.min(12, Math.max(1, Number(v.recurrence_ahead) || 1));
+    const abertas = lista.filter((p) => p.status === "prevista").length;
+    const faltam = alvo - abertas;
+    if (faltam <= 0) continue;
+    const validas = lista.filter((p) => p.status !== "cancelada");
+    const ultima = validas[0]; // a lista vem da mais recente para a mais antiga
+    let numero = ultima?.number ?? 0;
+    let base = ultima?.due_on ?? (v.closed_on as string | null) ?? hoje;
+    const valor = ultima?.amount_cents ?? Number(v.amount_cents) ?? 0;
+    for (let k = 0; k < faltam; k += 1) {
+      numero += 1;
+      base = somarMesesNaData(base, 1);
+      const { error } = await admin.from("crm_sale_payments").insert({
+        organization_id: v.organization_id,
+        sale_id: v.id,
+        number: numero,
+        due_on: base,
+        amount_cents: valor,
+        status: "prevista",
+      });
+      if (error) {
+        logger.warn("[vendas-recorrentes] parcela não gerada", {
+          sale: v.id,
+          error: error.message,
+        });
+        break;
+      }
       geradas += 1;
     }
   }
