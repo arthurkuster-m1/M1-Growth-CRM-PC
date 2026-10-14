@@ -16,6 +16,9 @@ export const PERIODOS = [
   "semana",
   "mes",
   "mes_passado",
+  "trimestre",
+  "semestre",
+  "ano",
 ] as const;
 export type Periodo = (typeof PERIODOS)[number];
 
@@ -64,6 +67,24 @@ export function janelaDoPeriodo(periodo: Periodo, hoje: string): JanelaDePeriodo
       ate = `${hoje.slice(0, 7)}-${String(new Date(Date.UTC(a, m, 0)).getUTCDate()).padStart(2, "0")}`;
       break;
     }
+    case "trimestre":
+    case "semestre": {
+      const [a, m] = hoje.split("-").map(Number) as [number, number];
+      const tamanho = periodo === "trimestre" ? 3 : 6;
+      const primeiro = Math.floor((m - 1) / tamanho) * tamanho; // índice 0-based do 1º mês
+      de = `${a}-${String(primeiro + 1).padStart(2, "0")}-01`;
+      const ultimo = primeiro + tamanho; // mês seguinte ao último (1-based = ultimo)
+      ate = `${a}-${String(ultimo).padStart(2, "0")}-${String(
+        new Date(Date.UTC(a, ultimo, 0)).getUTCDate(),
+      ).padStart(2, "0")}`;
+      break;
+    }
+    case "ano": {
+      const a = hoje.slice(0, 4);
+      de = `${a}-01-01`;
+      ate = `${a}-12-31`;
+      break;
+    }
     case "mes_passado": {
       const [a, m] = hoje.split("-").map(Number) as [number, number];
       const d = new Date(Date.UTC(a, m - 2, 1));
@@ -82,4 +103,9 @@ export function diasDecorridos(j: JanelaDePeriodo, hoje: string): number {
   if (hoje >= j.ate) return j.dias;
   if (hoje < j.de) return 1;
   return contar(j.de, hoje);
+}
+
+/** A janela de um período escolhido à mão (datas `AAAA-MM-DD`, inclusive os dois dias). */
+export function janelaPersonalizada(de: string, ate: string): JanelaDePeriodo {
+  return { de, ate, dias: contar(de, ate) };
 }

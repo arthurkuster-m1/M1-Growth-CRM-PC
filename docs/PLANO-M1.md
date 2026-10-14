@@ -1,6 +1,6 @@
 # PLANO DO M1 GROWTH CRM
 
-Atualizado em 13/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
+Atualizado em 14/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
 
@@ -70,6 +70,21 @@ Detalhe sessão a sessão em `docs/PLANO-CRM-M1.md`.
   em interesse, taxa de conversão; vendas e faturamento por anúncio e LP só com valor já pago.
 - **Campanhas**: criativos do Meta com todas as variações de texto e mídia (imagens comprimidas),
   dia a dia automático, seletor de período nas telas.
+
+### Tarefas, Cronograma e Marketing (13 e 14/10/2026)
+- **Tarefas**: propriedade **Cliente** (lead do CRM ou "Interno · empresa"), filtro por cliente,
+  caixa de texto grande (tipo Notion) para título, descrição e texto, quadro mais fluido e sem
+  arrastar ao selecionar texto, seletor de cliente que rola e trava a tela no celular.
+- **Ficha do lead**: tarefas do lead com o motor completo (propriedades, ordem, filtros, status,
+  prazos) em Atendimento e Tarefas; clicar numa tarefa da Visão geral abre para editar.
+- **Cronograma**: lado "cliente" com o nome da empresa; CPL com leitura invertida (menor é
+  melhor); incluir tarefa existente na semana escolhendo início e prazo; aba **Adiadas** (quantas
+  vezes e por quê, por período, só agência); ações-chave por data (seletor de período, semana
+  calculada; fim no domingo conta a semana seguinte); reordenar fases e ações; edição colorida;
+  prazo das metas (diário a anual e datas personalizadas, migration 0628) e vendas das metas só
+  com algo pago.
+- **Marketing**: edição de blocos colorida por tipo, subtítulo em slide próprio na apresentação,
+  "Apagar subpágina" em vermelho no topo e modo claro/escuro no link público.
 
 ## 2. PEQUENOS AJUSTES PENDENTES
 

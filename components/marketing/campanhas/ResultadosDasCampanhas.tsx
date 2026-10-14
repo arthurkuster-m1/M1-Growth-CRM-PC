@@ -69,6 +69,12 @@ function rotuloDoPeriodo(t: (s: string) => string, p: Periodo): string {
       return t("Este mês");
     case "mes_passado":
       return t("Mês passado");
+    case "trimestre":
+      return t("Este trimestre");
+    case "semestre":
+      return t("Este semestre");
+    case "ano":
+      return t("Este ano");
   }
 }
 

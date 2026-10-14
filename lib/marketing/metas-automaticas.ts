@@ -4,7 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { chaveDoDia } from "@/lib/inicio/datas";
 import { FUSO_DO_CRONOGRAMA, type MetaDoCronograma } from "@/lib/marketing/cronograma";
-import { diasDecorridos, janelaDoPeriodo, type Periodo } from "@/lib/marketing/periodos";
+import {
+  diasDecorridos,
+  janelaDoPeriodo,
+  janelaPersonalizada,
+  type JanelaDePeriodo,
+} from "@/lib/marketing/periodos";
 
 /**
  * AS METAS AUTOMÁTICAS do cronograma: o "onde estamos hoje" lido dos números reais do CRM em vez
@@ -24,9 +29,17 @@ export async function aplicarMetasAutomaticas<T extends MetaDoCronograma>(
   if (automaticas.length === 0) return [...metas];
   const hoje = chaveDoDia(agora, FUSO_DO_CRONOGRAMA);
 
-  const porPeriodo = new Map<Periodo, Awaited<ReturnType<typeof ler>>>();
-  async function ler(periodo: Periodo) {
-    const j = janelaDoPeriodo(periodo, hoje);
+  // A chave junta o período nomeado e, no personalizado, as datas escolhidas.
+  const chaveDoPeriodo = (m: MetaDoCronograma) =>
+    m.periodo === "personalizado" ? `personalizado:${m.periodo_de}:${m.periodo_ate}` : m.periodo;
+  const janelaDaMeta = (m: MetaDoCronograma) =>
+    m.periodo === "personalizado"
+      ? m.periodo_de && m.periodo_ate && m.periodo_ate >= m.periodo_de
+        ? janelaPersonalizada(m.periodo_de, m.periodo_ate)
+        : null
+      : janelaDoPeriodo(m.periodo, hoje);
+  const porPeriodo = new Map<string, Awaited<ReturnType<typeof ler>>>();
+  async function ler(j: JanelaDePeriodo) {
     const { data } = await db.rpc("fn_metricas_do_crm", {
       p_org: organizationId,
       p_from: j.de,
@@ -53,8 +66,10 @@ export async function aplicarMetasAutomaticas<T extends MetaDoCronograma>(
   }
 
   try {
-    for (const p of new Set(automaticas.map((m) => m.periodo))) {
-      porPeriodo.set(p, await ler(p));
+    for (const m of automaticas) {
+      const k = chaveDoPeriodo(m);
+      const j = janelaDaMeta(m);
+      if (j && !porPeriodo.has(k)) porPeriodo.set(k, await ler(j));
     }
   } catch {
     return [...metas];
@@ -62,7 +77,7 @@ export async function aplicarMetasAutomaticas<T extends MetaDoCronograma>(
 
   return metas.map((m) => {
     if (m.fonte === "manual") return m;
-    const n = porPeriodo.get(m.periodo);
+    const n = porPeriodo.get(chaveDoPeriodo(m));
     if (!n) return m;
     let valor: number | null;
     switch (m.fonte) {

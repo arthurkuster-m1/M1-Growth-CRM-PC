@@ -69,7 +69,11 @@ export interface MetaDoCronograma {
   ordem: number;
   /** `manual` = digitado; senão o valor atual é calculado do CRM (ver `metas-automaticas`). */
   fonte: FonteDaMeta;
-  periodo: Periodo;
+  /** O prazo da meta: um período nomeado ou `personalizado` (com as datas abaixo). */
+  periodo: Periodo | "personalizado";
+  /** Só com `periodo = personalizado`: as datas escolhidas (`YYYY-MM-DD`, inclusive). */
+  periodo_de: string | null;
+  periodo_ate: string | null;
   calculo: CalculoDaMeta;
 }
 
@@ -83,11 +87,13 @@ export type DadosDaMeta = Pick<
   | "descricao"
   | "fonte"
   | "periodo"
+  | "periodo_de"
+  | "periodo_ate"
   | "calculo"
 >;
 
 export const COLUNAS_DA_META =
-  "id, titulo, tipo, unidade, valor_alvo, valor_atual, descricao, ordem, source, period, aggregation";
+  "id, titulo, tipo, unidade, valor_alvo, valor_atual, descricao, ordem, source, period, period_from, period_to, aggregation";
 
 const comoNumero = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -111,20 +117,27 @@ export function metaDaLinha(linha: Record<string, unknown>): MetaDoCronograma {
     fonte: (FONTES_DA_META as readonly string[]).includes(String(linha.source))
       ? (linha.source as FonteDaMeta)
       : "manual",
-    periodo: (PERIODOS as readonly string[]).includes(String(linha.period))
-      ? (linha.period as Periodo)
-      : "mes",
+    periodo:
+      linha.period === "personalizado"
+        ? "personalizado"
+        : (PERIODOS as readonly string[]).includes(String(linha.period))
+          ? (linha.period as Periodo)
+          : "mes",
+    periodo_de: typeof linha.period_from === "string" ? linha.period_from.slice(0, 10) : null,
+    periodo_ate: typeof linha.period_to === "string" ? linha.period_to.slice(0, 10) : null,
     calculo: linha.aggregation === "media_diaria" ? "media_diaria" : "soma",
   };
 }
 
 /** Os campos da meta como colunas do banco (`fonte`→`source`, `periodo`→`period`, `calculo`→`aggregation`). */
 export function colunasDaMeta(d: Record<string, unknown>): Record<string, unknown> {
-  const { fonte, periodo, calculo, ...resto } = d;
+  const { fonte, periodo, periodo_de, periodo_ate, calculo, ...resto } = d;
   return {
     ...resto,
     ...(fonte !== undefined ? { source: fonte } : {}),
     ...(periodo !== undefined ? { period: periodo } : {}),
+    ...(periodo_de !== undefined ? { period_from: periodo_de } : {}),
+    ...(periodo_ate !== undefined ? { period_to: periodo_ate } : {}),
     ...(calculo !== undefined ? { aggregation: calculo } : {}),
   };
 }
@@ -193,7 +206,9 @@ export const metaSchema = z.object({
   valor_atual: valorDeMeta.default(null),
   descricao: z.string().trim().max(200).default(""),
   fonte: z.enum(FONTES_DA_META).default("manual"),
-  periodo: z.enum(PERIODOS).default("mes"),
+  periodo: z.enum([...PERIODOS, "personalizado"] as const).default("mes"),
+  periodo_de: chaveDeData.nullable().default(null),
+  periodo_ate: chaveDeData.nullable().default(null),
   calculo: z.enum(CALCULOS_DA_META).default("soma"),
 });
 
@@ -208,7 +223,9 @@ export const edicaoDeMetaSchema = z
     valor_atual: valorDeMeta,
     descricao: z.string().trim().max(200),
     fonte: z.enum(FONTES_DA_META),
-    periodo: z.enum(PERIODOS),
+    periodo: z.enum([...PERIODOS, "personalizado"] as const),
+    periodo_de: chaveDeData.nullable(),
+    periodo_ate: chaveDeData.nullable(),
     calculo: z.enum(CALCULOS_DA_META),
   })
   .partial();

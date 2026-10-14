@@ -5,10 +5,11 @@ import { useState } from "react";
 import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
 import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
-import { somarDias } from "@/lib/inicio/datas";
+import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
 import { useT } from "@/hooks/i18n/useT";
 import { formatarMoeda, lerNumero } from "@/lib/marketing/calculadora";
 import {
+  FUSO_DO_CRONOGRAMA,
   MAXIMO_DA_JANELA,
   MAXIMO_DE_SEMANAS,
   STATUS_DO_ITEM,
@@ -247,22 +248,55 @@ function LinhaDeMeta({
         </Rotulo>
         {meta.fonte !== "manual" ? (
           <>
-            <Rotulo texto={t("Período")}>
+            <Rotulo texto={t("Prazo da meta")}>
               <select
                 value={meta.periodo}
-                aria-label={t("Período")}
-                onChange={(e) => void aoEditar({ periodo: e.target.value as Periodo })}
+                aria-label={t("Prazo da meta")}
+                onChange={(e) => {
+                  const periodo = e.target.value as Periodo | "personalizado";
+                  if (periodo === "personalizado") {
+                    // Já nasce com o mês atual escolhido; a pessoa ajusta no seletor.
+                    const hoje = chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA);
+                    void aoEditar({
+                      periodo,
+                      periodo_de: meta.periodo_de ?? `${hoje.slice(0, 7)}-01`,
+                      periodo_ate: meta.periodo_ate ?? hoje,
+                    });
+                  } else {
+                    void aoEditar({ periodo, periodo_de: null, periodo_ate: null });
+                  }
+                }}
                 className={CAMPO}
               >
-                <option value="hoje">{t("Hoje")}</option>
-                <option value="ontem">{t("Ontem")}</option>
-                <option value="ultimos_5_dias">{t("Últimos 5 dias")}</option>
-                <option value="ultimos_7_dias">{t("Últimos 7 dias")}</option>
-                <option value="ultimos_30_dias">{t("Últimos 30 dias")}</option>
-                <option value="semana">{t("Esta semana")}</option>
-                <option value="mes">{t("Este mês")}</option>
-                <option value="mes_passado">{t("Mês passado")}</option>
+                <optgroup label={t("Fixos")}>
+                  <option value="hoje">{t("Diário (hoje)")}</option>
+                  <option value="semana">{t("Semanal (esta semana)")}</option>
+                  <option value="mes">{t("Mensal (este mês)")}</option>
+                  <option value="trimestre">{t("Trimestral (este trimestre)")}</option>
+                  <option value="semestre">{t("Semestral (este semestre)")}</option>
+                  <option value="ano">{t("Anual (este ano)")}</option>
+                </optgroup>
+                <optgroup label={t("Janelas móveis")}>
+                  <option value="ontem">{t("Ontem")}</option>
+                  <option value="ultimos_5_dias">{t("Últimos 5 dias")}</option>
+                  <option value="ultimos_7_dias">{t("Últimos 7 dias")}</option>
+                  <option value="ultimos_30_dias">{t("Últimos 30 dias")}</option>
+                  <option value="mes_passado">{t("Mês passado")}</option>
+                </optgroup>
+                <option value="personalizado">{t("Datas personalizadas…")}</option>
               </select>
+              {meta.periodo === "personalizado" ? (
+                <div className="mt-2">
+                  <SeletorDePeriodo
+                    de={meta.periodo_de ?? chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA)}
+                    ate={meta.periodo_ate ?? chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA)}
+                    rotulo={t("Datas da meta")}
+                    aoMudar={(p) =>
+                      void aoEditar({ periodo: "personalizado", periodo_de: p.de, periodo_ate: p.ate })
+                    }
+                  />
+                </div>
+              ) : null}
             </Rotulo>
             {meta.fonte !== "cpl" && meta.fonte !== "roas" ? (
               <Rotulo texto={t("Cálculo")}>
@@ -392,6 +426,8 @@ function NovaMeta({ aoCriar }: { aoCriar: (m: DadosDaMeta) => Promise<unknown> }
               valor_atual: null,
               fonte: "manual" as const,
               periodo: "mes" as const,
+              periodo_de: null,
+              periodo_ate: null,
               calculo: "soma" as const,
               descricao: "",
             });
