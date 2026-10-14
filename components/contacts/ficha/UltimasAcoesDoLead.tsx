@@ -53,7 +53,7 @@ export function UltimasAcoesDoLead({
       ) : itens.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("Nenhuma atividade registrada ainda.")}</p>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
           {itens.map((it) => {
             const corpo = corpoDe(it);
             const quem = actorName(
@@ -62,9 +62,9 @@ export function UltimasAcoesDoLead({
               t,
             );
             return (
-              <li key={it.id} className="rounded-xl border p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-medium">
+              <li key={it.id} className="min-w-0 rounded-xl border p-3">
+                <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                  <span className="min-w-0 max-w-full truncate text-sm font-medium">
                     {t(activityLabel(it.type, it.payload as Record<string, unknown> | null))}
                     {quem ? (
                       <span className="ml-1.5 text-xs font-normal text-muted-foreground">· {quem}</span>
@@ -75,7 +75,7 @@ export function UltimasAcoesDoLead({
                   </span>
                 </div>
                 {corpo ? (
-                  <p className="mt-1 line-clamp-2 text-sm break-words text-muted-foreground" title={corpo}>
+                  <p className="mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] text-muted-foreground" title={corpo}>
                     {corpo}
                   </p>
                 ) : null}

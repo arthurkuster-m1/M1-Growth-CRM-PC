@@ -134,7 +134,7 @@ export function PainelDaVisaoGeral({
   ];
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cartoes.map(([rotulo, valor, barra]) => (
           <div key={rotulo} className={`rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${barra}`}>
@@ -146,7 +146,7 @@ export function PainelDaVisaoGeral({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <BlocoDaFicha
           titulo={t("Vendas mais urgentes")}
           cor="green"
@@ -161,12 +161,12 @@ export function PainelDaVisaoGeral({
           ) : urgentesVendas.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Nada a receber ou em negociação.")}</p>
           ) : (
-            <ul className="grid gap-2">
+            <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
               {urgentesVendas.map(({ v, falta, vence }) => {
                 const atrasada = vence !== null && vence < hoje && falta > 0;
                 return (
-                  <li key={v.id} className="flex items-center justify-between gap-3 rounded-xl border p-2.5">
-                    <div className="min-w-0">
+                  <li key={v.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{nomeDaVenda(v) || t("Sem produto")}</p>
                       <p className={atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"}>
                         {vence ? `${t("Vence")} ${diaBr(vence)}` : t("Sem data")}
@@ -200,16 +200,16 @@ export function PainelDaVisaoGeral({
           {tarefas.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente.")}</p>
           ) : (
-            <ul className="grid gap-2">
+            <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
               {tarefas.map((x) => {
                 const atrasada = x.due_date !== null && x.due_date.slice(0, 10) < hoje;
                 return (
-                  <li key={x.id}>
+                  <li key={x.id} className="min-w-0">
                     <button
                       type="button"
                       title={t("Abrir e editar a tarefa")}
                       onClick={() => (aoAbrirTarefa ? aoAbrirTarefa(x.id) : aoAbrir("atendimento"))}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-secondary/60"
+                      className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-secondary/60"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{x.title}</p>
@@ -251,9 +251,9 @@ export function PainelDaVisaoGeral({
             {t("Nenhuma anotação. Fixe a estrela nas importantes para elas aparecerem aqui.")}
           </p>
         ) : (
-          <ul className="grid gap-2 md:grid-cols-2">
+          <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 md:grid-cols-2">
             {notas.map((n) => (
-              <li key={n.id} className="rounded-xl border p-3">
+              <li key={n.id} className="min-w-0 rounded-xl border p-3">
                 <div className="flex items-start gap-2">
                   {n.fixada ? (
                     <Star size={14} weight="fill" className="mt-0.5 shrink-0 text-yellow-500" aria-label={t("Importante")} />
