@@ -5,6 +5,7 @@ import {
   itemSchema,
   numeroDaSemana,
   periodoDaSemana,
+  corDaBarraDaMeta,
   leituraDaMeta,
   semanaDaData,
   menorEhMelhor,
@@ -204,5 +205,16 @@ describe("semana pela data", () => {
   it("antes do início conta como a semana 1 e sem início devolve nulo", () => {
     expect(semanaDaData(cfg, "2026-09-01")).toBe(1);
     expect(semanaDaData({ data_inicio: null }, "2026-10-10")).toBeNull();
+  });
+});
+
+describe("cor da barra da meta", () => {
+  it("vermelha abaixo de 40%, amarela de 40 a 69% e verde de 70% para cima", () => {
+    expect(corDaBarraDaMeta(0)).toBe("vermelha");
+    expect(corDaBarraDaMeta(39)).toBe("vermelha");
+    expect(corDaBarraDaMeta(40)).toBe("amarela");
+    expect(corDaBarraDaMeta(69)).toBe("amarela");
+    expect(corDaBarraDaMeta(70)).toBe("verde");
+    expect(corDaBarraDaMeta(100)).toBe("verde");
   });
 });

@@ -131,6 +131,9 @@
 .progressoBarraRuim {
   background: var(--c-atraso);
 }
+.progressoBarraAmarela {
+  background: var(--c-atencao);
+}
 .pctBom {
   color: var(--c-feito-fg);
 }

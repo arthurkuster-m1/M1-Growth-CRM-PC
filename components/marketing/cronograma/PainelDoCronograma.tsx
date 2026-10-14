@@ -11,6 +11,7 @@ import {
   domingoDaSemana,
   formatarValorDaMeta,
   periodoDaSemana,
+  corDaBarraDaMeta,
   leituraDaMeta,
   situacaoDaTarefa,
   type ConfigDoCronograma,
@@ -78,10 +79,6 @@ const ETIQUETA_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
   atrasada: css.etiquetaAtraso!,
   cancelada: "",
 };
-
-/** Vermelho (0–40%), amarelo (40–70%) e verde (70–100%) da barra de progresso das metas. */
-const GRADIENTE_DO_PROGRESSO =
-  "linear-gradient(to right, var(--c-atraso) 0%, var(--c-atraso) 35%, var(--c-atencao) 48%, var(--c-atencao) 62%, var(--c-feito) 72%, var(--c-feito) 100%)";
 
 export function PainelDoCronograma({
   vista,
@@ -271,17 +268,14 @@ export function PainelDoCronograma({
                           aria-label={m.titulo}
                         >
                           <div
-                            className={css.progressoBarra}
-                            // Gradiente vermelho → amarelo → verde sobre a trilha toda: a barra
-                            // mostra só o trecho até o progresso (vermelho 0–40%, amarelo 40–70%,
-                            // verde 70–100%).
-                            style={{
-                              width: `${p}%`,
-                              backgroundImage: GRADIENTE_DO_PROGRESSO,
-                              backgroundSize: `${p > 0 ? 10000 / p : 100}% 100%`,
-                              backgroundRepeat: "no-repeat",
-                              backgroundPosition: "left center",
-                            }}
+                            className={`${css.progressoBarra} ${
+                              corDaBarraDaMeta(p) === "vermelha"
+                                ? css.progressoBarraRuim
+                                : corDaBarraDaMeta(p) === "amarela"
+                                  ? css.progressoBarraAmarela
+                                  : css.progressoBarraCheia
+                            }`}
+                            style={{ width: `${p}%` }}
                           />
                         </div>
                         <span

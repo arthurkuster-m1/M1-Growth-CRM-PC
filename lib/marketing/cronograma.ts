@@ -418,6 +418,16 @@ export function menorEhMelhor(m: Pick<MetaDoCronograma, "fonte" | "titulo">): bo
   return m.fonte === "cpl" || /\bcpl\b|custo por (lead|clique|venda|aquisi)/i.test(m.titulo);
 }
 
+/**
+ * A cor (sólida) da barra de progresso de uma meta: vermelha abaixo de 40%, amarela de 40% a
+ * menos de 70% e verde de 70% para cima. Uma cor só na barra inteira.
+ */
+export function corDaBarraDaMeta(progresso: number): "vermelha" | "amarela" | "verde" {
+  if (progresso < 40) return "vermelha";
+  if (progresso < 70) return "amarela";
+  return "verde";
+}
+
 export interface LeituraDaMeta {
   /** Quanto da barra enche (0–100). */
   barra: number;

@@ -17,6 +17,7 @@ import {
   TIPOS_DE_META,
   domingoDaSemana,
   domingoDe,
+  corDaBarraDaMeta,
   formatarValorDaMeta,
   leituraDaMeta,
   domingoDeHoje,
@@ -207,14 +208,15 @@ function LinhaDeMeta({
           <span className="flex w-28 shrink-0 items-center gap-2">
             <span className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
               <span
-                className="block h-full rounded-full"
-                style={{
-                  width: `${leitura.barra}%`,
-                  backgroundImage:
-                    "linear-gradient(to right, #dc2626 0%, #dc2626 35%, #f59e0b 48%, #f59e0b 62%, #16a34a 72%, #16a34a 100%)",
-                  backgroundSize: `${leitura.barra > 0 ? 10000 / leitura.barra : 100}% 100%`,
-                  backgroundRepeat: "no-repeat",
-                }}
+                className={cn(
+                  "block h-full rounded-full",
+                  corDaBarraDaMeta(leitura.barra) === "vermelha"
+                    ? "bg-red-500"
+                    : corDaBarraDaMeta(leitura.barra) === "amarela"
+                      ? "bg-amber-500"
+                      : "bg-green-600",
+                )}
+                style={{ width: `${leitura.barra}%` }}
               />
             </span>
             <span className="w-9 text-right text-xs font-semibold tabular-nums">
