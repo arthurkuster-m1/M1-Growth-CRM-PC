@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
 import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
+import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
 import { useT } from "@/hooks/i18n/useT";
 import { formatarMoeda, lerNumero } from "@/lib/marketing/calculadora";
@@ -16,6 +17,8 @@ import {
   TIPOS_DE_META,
   domingoDaSemana,
   domingoDe,
+  formatarValorDaMeta,
+  leituraDaMeta,
   domingoDeHoje,
   semanaDaData,
   type CalculoDaMeta,
@@ -28,7 +31,7 @@ import {
   type TipoDeMeta,
 } from "@/lib/marketing/cronograma";
 import type { Periodo } from "@/lib/marketing/periodos";
-import { ArrowDown, ArrowUp, Archive, Plus, Trash } from "@/lib/ui/icons";
+import { ArrowDown, ArrowUp, Archive, CaretDown, CaretRight, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
@@ -170,6 +173,9 @@ function LinhaDeMeta({
   aoApagar: () => Promise<unknown>;
 }) {
   const t = useT();
+  const tag = useTagDeIdioma();
+  const [aberta, setAberta] = useState(false);
+  const leitura = leituraDaMeta(meta);
   const [alvo, setAlvo] = useState(textoDoValor(meta.valor_alvo, meta.tipo));
   const [atual, setAtual] = useState(textoDoValor(meta.valor_atual, meta.tipo));
   const rotuloDoTipo = (tipo: TipoDeMeta) =>
@@ -181,6 +187,46 @@ function LinhaDeMeta({
 
   return (
     <div className="grid gap-2 rounded-xl border border-l-4 border-l-violet-500 bg-violet-500/5 p-3">
+      <button
+        type="button"
+        aria-expanded={aberta}
+        onClick={() => setAberta((a) => !a)}
+        className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-left"
+      >
+        {aberta ? (
+          <CaretDown size={14} weight="bold" aria-hidden className="shrink-0" />
+        ) : (
+          <CaretRight size={14} weight="bold" aria-hidden className="shrink-0" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{meta.titulo}</span>
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+          {t("Alvo")} {formatarValorDaMeta(meta.valor_alvo, meta.tipo, meta.unidade, tag)} ·{" "}
+          {t("Hoje")} {formatarValorDaMeta(meta.valor_atual, meta.tipo, meta.unidade, tag)}
+        </span>
+        {leitura ? (
+          <span className="flex w-28 shrink-0 items-center gap-2">
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+              <span
+                className="block h-full rounded-full"
+                style={{
+                  width: `${leitura.barra}%`,
+                  backgroundImage:
+                    "linear-gradient(to right, #dc2626 0%, #dc2626 35%, #f59e0b 48%, #f59e0b 62%, #16a34a 72%, #16a34a 100%)",
+                  backgroundSize: `${leitura.barra > 0 ? 10000 / leitura.barra : 100}% 100%`,
+                  backgroundRepeat: "no-repeat",
+                }}
+              />
+            </span>
+            <span className="w-9 text-right text-xs font-semibold tabular-nums">
+              {leitura.menorEMelhor && leitura.variacao !== null
+                ? `${leitura.variacao > 0 ? "+" : ""}${leitura.variacao}%`
+                : `${leitura.barra}%`}
+            </span>
+          </span>
+        ) : null}
+      </button>
+      {aberta ? (
+        <>
       <div className="grid gap-2 sm:grid-cols-[1.6fr_1fr_1fr_auto]">
         <input
           defaultValue={meta.titulo}
@@ -348,6 +394,8 @@ function LinhaDeMeta({
           )}
         </Rotulo>
       </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -466,6 +514,7 @@ function LinhaDeAcao({
         BARRA_DO_STATUS[item.status],
       )}
     >
+      <div className="grid gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,2.6fr)]">
       <input
         defaultValue={item.acao}
         aria-label={t("Ação")}
@@ -486,7 +535,7 @@ function LinhaDeAcao({
           void acoes.aoEditarItem(item.id, { semana_inicio: s.inicio, semana_fim: s.fim })
         }
       />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_1.2fr_auto_auto_auto_auto_auto]">
+      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto_auto] md:col-span-2 xl:col-span-1">
         <select
           value={item.status}
           aria-label={t("Situação")}
@@ -567,6 +616,7 @@ function LinhaDeAcao({
           <Trash size={16} aria-hidden />
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -594,8 +644,9 @@ function PeriodoDaAcao({
   const de = config.data_inicio ? domingoDaSemana(config.data_inicio, inicio) : hoje;
   const ate = somarDias(config.data_inicio ? domingoDaSemana(config.data_inicio, fim) : hoje, 6);
   return (
-    <div className="grid gap-1">
+    <div className="flex min-w-0 items-center gap-2">
       <SeletorDePeriodo
+        className="min-w-0 flex-1"
         de={de}
         ate={ate}
         rotulo={t("Período da ação")}
@@ -611,13 +662,18 @@ function PeriodoDaAcao({
           aoMudar({ inicio: a, fim: b });
         }}
       />
-      <p className="text-xs text-muted-foreground">
+      <span
+        className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground"
+        title={
+          config.data_inicio ? undefined : t("A primeira data escolhida define a semana 1 do projeto.")
+        }
+      >
         {config.data_inicio
           ? inicio === fim
-            ? `${t("Semana")} ${inicio}`
-            : `${t("Semanas")} ${inicio} ${t("a")} ${fim}`
-          : t("A primeira data escolhida define a semana 1 do projeto.")}
-      </p>
+            ? `S${inicio}`
+            : `S${inicio}–${fim}`
+          : t("1ª data = S1")}
+      </span>
     </div>
   );
 }
@@ -708,12 +764,30 @@ function CartaoDeFase({
   aoMoverItem: (id: string, direcao: -1 | 1) => void;
 }) {
   const t = useT();
+  // A fase fecha para a visão e abre para editar as ações-chave (o cronograma é longo: anos).
+  const [aberta, setAberta] = useState(itens.length === 0);
   const concluidas = itens.filter((i) => i.status === "concluido");
   const sugerida = itens.length ? Math.max(...itens.map((i) => i.semana_fim)) : 1;
+  const primeira = itens.length ? Math.min(...itens.map((i) => i.semana_inicio)) : null;
+  const ultima = itens.length ? Math.max(...itens.map((i) => i.semana_fim)) : null;
+  const emAndamento = itens.filter((i) => i.status === "andamento").length;
   return (
     <div className={cn("grid gap-3 rounded-2xl border border-l-4 p-3", cor)}>
       <div className="flex flex-wrap items-center gap-2">
-        {nome ? (
+        <button
+          type="button"
+          aria-expanded={aberta}
+          aria-label={aberta ? t("Fechar a fase") : t("Abrir a fase")}
+          onClick={() => setAberta((a) => !a)}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg hover:bg-background/60"
+        >
+          {aberta ? (
+            <CaretDown size={16} weight="bold" aria-hidden />
+          ) : (
+            <CaretRight size={16} weight="bold" aria-hidden />
+          )}
+        </button>
+        {nome && aberta ? (
           <input
             defaultValue={nome}
             aria-label={t("Nome da fase")}
@@ -726,7 +800,13 @@ function CartaoDeFase({
             className={cn(CAMPO, "max-w-xs font-semibold")}
           />
         ) : (
-          <span className="px-1 text-sm font-semibold">{t("Sem fase")}</span>
+          <button
+            type="button"
+            onClick={() => setAberta((a) => !a)}
+            className="min-w-0 px-1 text-left text-sm font-semibold"
+          >
+            {nome || t("Sem fase")}
+          </button>
         )}
         {aoMoverFase ? (
           <span className="inline-flex items-center">
@@ -754,6 +834,10 @@ function CartaoDeFase({
         ) : null}
         <span className="text-xs text-muted-foreground">
           {concluidas.length}/{itens.length} {t("concluídas")}
+          {emAndamento > 0 ? ` · ${emAndamento} ${t("em andamento")}` : ""}
+          {primeira !== null && ultima !== null
+            ? ` · ${primeira === ultima ? `S${primeira}` : `S${primeira}–${ultima}`}`
+            : ""}
         </span>
         {concluidas.length > 0 ? (
           <button
@@ -768,7 +852,8 @@ function CartaoDeFase({
           </button>
         ) : null}
       </div>
-      {itens.map((i, k) => (
+      {aberta
+        ? itens.map((i, k) => (
         <LinhaDeAcao
           key={i.id}
           item={i}
@@ -779,14 +864,17 @@ function CartaoDeFase({
             descer: k < itens.length - 1 ? () => aoMoverItem(i.id, 1) : undefined,
           }}
         />
-      ))}
-      <NovaAcao
-        fase={nome}
-        semanaSugerida={sugerida}
-        aoCriar={acoes.aoCriarItem}
-        config={acoes.config}
-        aoSalvarConfig={acoes.aoSalvarConfig}
-      />
+      ))
+        : null}
+      {aberta ? (
+        <NovaAcao
+          fase={nome}
+          semanaSugerida={sugerida}
+          aoCriar={acoes.aoCriarItem}
+          config={acoes.config}
+          aoSalvarConfig={acoes.aoSalvarConfig}
+        />
+      ) : null}
     </div>
   );
 }
