@@ -18,7 +18,7 @@ import {
   type Bloco,
   type TipoDeBloco,
 } from "@/lib/marketing/blocos";
-import { CaretDown, CaretUp, Copy, Plus, Trash, X } from "@/lib/ui/icons";
+import { CaretDown, CaretRight, CaretUp, Copy, Plus, Trash, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -257,6 +257,36 @@ const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiqueta: stri
 };
 const COR_PADRAO = COR_DO_TIPO.texto!;
 
+/** Uma linha de texto do bloco, para identificá-lo quando está fechado (só o título/começo). */
+function resumoDoBloco(b: Bloco): string {
+  const x = b as unknown as Record<string, unknown>;
+  const curto = (v: string) => {
+    const limpo = v.replace(/\s+/g, " ").trim();
+    return limpo.length > 110 ? `${limpo.slice(0, 107)}…` : limpo;
+  };
+  for (const campo of ["texto", "titulo", "legenda", "nome", "autor"]) {
+    const v = x[campo];
+    if (typeof v === "string" && v.trim() !== "") return curto(v);
+  }
+  for (const campo of ["itens", "cores", "celulas"]) {
+    const lista = x[campo];
+    if (Array.isArray(lista) && lista.length > 0) {
+      const primeiro = lista[0] as unknown;
+      const nome =
+        typeof primeiro === "string"
+          ? primeiro
+          : ((primeiro as Record<string, unknown> | null)?.titulo ??
+            (primeiro as Record<string, unknown> | null)?.rotulo ??
+            (primeiro as Record<string, unknown> | null)?.nome ??
+            (primeiro as Record<string, unknown> | null)?.texto ??
+            "");
+      const base = typeof nome === "string" ? curto(nome) : "";
+      return base ? `${base}${lista.length > 1 ? ` (+${lista.length - 1})` : ""}` : `${lista.length}`;
+    }
+  }
+  return "";
+}
+
 export function EditorDeBlocos({
   blocos,
   aoMudar,
@@ -275,6 +305,15 @@ export function EditorDeBlocos({
   const t = useT();
   const nomeDoTipo = useNomesDosTipos();
   const [menuAberto, setMenuAberto] = useState(false);
+  // Os blocos abrem para editar e fecham para a visão geral (só o título). Começam fechados.
+  const [abertos, setAbertos] = useState<ReadonlySet<string>>(new Set());
+  const alternar = (id: string) =>
+    setAbertos((a) => {
+      const novo = new Set(a);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
 
   const trocar = (i: number, novo: Bloco) => aoMudar(blocos.map((b, k) => (k === i ? novo : b)));
   const mover = (i: number, d: -1 | 1) => {
@@ -291,12 +330,35 @@ export function EditorDeBlocos({
   };
   const remover = (i: number) => aoMudar(blocos.filter((_, k) => k !== i));
   const adicionar = (tipo: TipoDeBloco) => {
-    aoMudar([...blocos, blocoEmBranco(tipo, novoId())]);
+    const novo = blocoEmBranco(tipo, novoId());
+    aoMudar([...blocos, novo]);
+    setAbertos((a) => new Set(a).add(novo.id));
     setMenuAberto(false);
   };
 
   return (
     <div className="flex flex-col gap-3">
+      {blocos.length > 1 ? (
+        <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+          <span className="mr-auto text-muted-foreground">
+            {abertos.size}/{blocos.length} {t("abertos")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setAbertos(new Set(blocos.map((b) => b.id)))}
+            className="h-8 rounded-lg border px-3 font-medium hover:bg-secondary"
+          >
+            {t("Abrir todos")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbertos(new Set())}
+            className="h-8 rounded-lg border px-3 font-medium hover:bg-secondary"
+          >
+            {t("Fechar todos")}
+          </button>
+        </div>
+      ) : null}
       {blocos.map((b, i) => (
         <section
           key={b.id}
@@ -307,15 +369,32 @@ export function EditorDeBlocos({
             (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).fundo,
           )}
         >
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "rounded-md px-2.5 py-0.5 text-xs font-semibold",
-                (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).etiqueta,
-              )}
+          <div className={cn("flex items-center justify-between gap-2", abertos.has(b.id) && "mb-3")}>
+            <button
+              type="button"
+              aria-expanded={abertos.has(b.id)}
+              onClick={() => alternar(b.id)}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left"
             >
-              {nomeDoTipo(b.tipo)}
-            </span>
+              {abertos.has(b.id) ? (
+                <CaretDown size={14} weight="bold" aria-hidden className="shrink-0" />
+              ) : (
+                <CaretRight size={14} weight="bold" aria-hidden className="shrink-0" />
+              )}
+              <span
+                className={cn(
+                  "shrink-0 rounded-md px-2.5 py-0.5 text-xs font-semibold",
+                  (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).etiqueta,
+                )}
+              >
+                {nomeDoTipo(b.tipo)}
+              </span>
+              {!abertos.has(b.id) ? (
+                <span className="min-w-0 truncate text-sm text-muted-foreground">
+                  {resumoDoBloco(b)}
+                </span>
+              ) : null}
+            </button>
             <div className="flex items-center">
               <BotaoDeIcone
                 rotulo={t("Mover para cima")}
@@ -339,12 +418,14 @@ export function EditorDeBlocos({
               </BotaoDeIcone>
             </div>
           </div>
-          <FormularioDoBloco
-            bloco={b}
-            aoMudar={(novo) => trocar(i, novo)}
-            tituloDaPagina={tituloDaPagina}
-            chaveDaPagina={chaveDaPagina}
-          />
+          {abertos.has(b.id) ? (
+            <FormularioDoBloco
+              bloco={b}
+              aoMudar={(novo) => trocar(i, novo)}
+              tituloDaPagina={tituloDaPagina}
+              chaveDaPagina={chaveDaPagina}
+            />
+          ) : null}
         </section>
       ))}
 

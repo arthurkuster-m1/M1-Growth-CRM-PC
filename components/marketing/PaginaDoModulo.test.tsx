@@ -124,6 +124,8 @@ describe("página do módulo — a agência (edita)", () => {
     montar();
     // Página publicada abre em "Ver página": a agência clica em Editar para mexer.
     await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+    // Os blocos começam fechados (só o título): abre o bloco para editar.
+    await userEvent.click(await screen.findByRole("button", { name: /Ana, 34 anos/ }));
     const campo = await screen.findByDisplayValue("Ana, 34 anos, dona de clínica.");
     await userEvent.clear(campo);
     await userEvent.type(campo, "Nova ideia");
