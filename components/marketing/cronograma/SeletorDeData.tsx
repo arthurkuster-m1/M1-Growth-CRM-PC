@@ -113,7 +113,11 @@ export function SeletorDeData({
           <span className="truncate">{texto}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[17.5rem] rounded-2xl p-3">
+      <PopoverContent
+        align="start"
+        collisionPadding={8}
+        className="max-h-[var(--radix-popover-content-available-height)] w-[17.5rem] max-w-[94vw] overflow-y-auto overscroll-contain rounded-2xl p-3"
+      >
         <div className="mb-2 rounded-lg border bg-background px-3 py-2 text-sm">{texto}</div>
         <div className="mb-1 flex items-center justify-between px-1">
           <span className="text-sm font-semibold capitalize">{nomeDoMes}</span>

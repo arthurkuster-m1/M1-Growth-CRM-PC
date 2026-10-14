@@ -229,7 +229,11 @@ export function CampoDeData({
       >
         {valor ? formatarDiaBr(valor) : (placeholder ?? t("Escolher data"))}
       </Gatilho>
-      <PopoverContent align="start" className="w-[300px] p-3">
+      <PopoverContent
+        align="start"
+        collisionPadding={8}
+        className="max-h-[var(--radix-popover-content-available-height)] w-[300px] max-w-[94vw] overflow-y-auto overscroll-contain p-3"
+      >
         <input
           inputMode="numeric"
           aria-label={rotulo}
@@ -361,11 +365,16 @@ export function SeletorDePeriodo({
       <Gatilho vazio={!de || !ate} className={className} rotulo={rotulo}>
         {de && ate ? `${formatarDiaBr(de)} → ${formatarDiaBr(ate)}` : t("Escolher período")}
       </Gatilho>
-      <PopoverContent align="start" className="w-[min(94vw,520px)] p-3">
+      <PopoverContent
+        align="start"
+        collisionPadding={8}
+        // Cabe sempre na tela: se o espaço é pouco, rola por dentro em vez de ser cortado.
+        className="max-h-[var(--radix-popover-content-available-height)] w-[min(94vw,520px)] overflow-y-auto overscroll-contain p-3"
+      >
         <div className="grid gap-3 sm:grid-cols-[150px_1fr]">
-          <div className="grid content-start gap-0.5">
+          <div className="grid grid-cols-2 content-start gap-0.5 sm:grid-cols-1">
             {atalhos.length === 0 ? null : (
-              <p className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              <p className="col-span-full px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {t("Atalhos")}
               </p>
             )}
