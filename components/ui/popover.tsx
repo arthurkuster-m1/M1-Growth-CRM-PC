@@ -5,7 +5,30 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "@/lib/utils";
 
-const Popover = PopoverPrimitive.Root;
+/**
+ * No celular o popover é MODAL: a tela de trás não rola nem recebe toque enquanto ele está
+ * aberto (o foco é o popover). No computador continua leve, sem travar a página.
+ */
+function usaTelaPequena(): boolean {
+  const [pequena, setPequena] = React.useState(false);
+  React.useEffect(() => {
+    const m = window.matchMedia("(max-width: 639px)");
+    const atualizar = () => setPequena(m.matches);
+    atualizar();
+    m.addEventListener("change", atualizar);
+    return () => m.removeEventListener("change", atualizar);
+  }, []);
+  return pequena;
+}
+
+const Popover = ({
+  modal,
+  ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Root>) => {
+  const pequena = usaTelaPequena();
+  return <PopoverPrimitive.Root modal={modal ?? pequena} {...props} />;
+};
+Popover.displayName = "Popover";
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 

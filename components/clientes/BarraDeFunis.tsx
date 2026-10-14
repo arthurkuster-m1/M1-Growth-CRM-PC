@@ -321,11 +321,12 @@ export function BarraDeFunis({
   const doMenu = menu ? funis.find((f) => f.id === menu.id) : undefined;
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       <div
         role="tablist"
         aria-label={t("Funis")}
-        className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-1 overflow-x-auto px-1 py-0.5 [&::-webkit-scrollbar]:hidden"
+        // No celular as campanhas ocupam a linha toda; Filtrar, Arquivados e Funis descem.
+        className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-1 overflow-x-auto px-1 py-0.5 max-sm:w-[calc(100%+0.5rem)] [&::-webkit-scrollbar]:hidden"
       >
         <button
           type="button"
@@ -482,7 +483,7 @@ export function BarraDeFunis({
               className="h-8 w-full rounded-lg border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
             />
           </label>
-          <div className="mt-2 max-h-72 overflow-y-auto">
+          <div className="mt-2 max-h-72 overflow-y-auto overscroll-contain">
             <DndContext
               sensors={sensores}
               collisionDetection={closestCenter}
