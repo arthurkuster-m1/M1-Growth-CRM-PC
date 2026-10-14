@@ -6,8 +6,9 @@ import { ArrowDown, ArrowUp } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /** Formatadores comuns dos dashboards (pt-BR). */
+/** `null` (conta sem base, ex.: CPL sem leads) mostra "—", nunca "R$ 0,00". */
 export const brl = (v: number | null | undefined) =>
-  (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  v === null ? "—" : (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export const inteiro = (v: number | null | undefined) =>
   Math.round(v ?? 0).toLocaleString("pt-BR");
 export const pct = (v: number | null | undefined, casas = 1) =>

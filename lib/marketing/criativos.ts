@@ -43,6 +43,9 @@ export interface Criativo {
   metrics_synced_at: string | null;
   position: number;
   created_at: string;
+  /** Da base por anúncio do Meta: a campanha e o conjunto em que o anúncio roda (nomes iguais se distinguem por eles). */
+  meta_campanha?: string;
+  meta_conjunto?: string;
 }
 
 export const COLUNAS_DO_CRIATIVO =

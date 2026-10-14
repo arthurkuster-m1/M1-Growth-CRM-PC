@@ -39,12 +39,35 @@ export interface DadosDeTrafego {
     vendas: number;
     recebido: number;
   }>;
-  anuncios: Array<{ id: string; nome: string; leads: number; vendas: number; recebido: number }>;
+  anuncios: Array<{
+    id: string;
+    nome: string;
+    campanha: string;
+    conjunto: string;
+    investido: number;
+    impressoes: number;
+    cliques: number;
+    leads: number;
+    vendas: number;
+    recebido: number;
+  }>;
+  conjuntos: Array<{
+    id: string;
+    nome: string;
+    campanha: string;
+    anuncios: number;
+    investido: number;
+    impressoes: number;
+    cliques: number;
+    leads: number;
+    vendas: number;
+    recebido: number;
+  }>;
   paginas: Array<{ id: string; nome: string; leads: number; vendas: number; recebido: number }>;
   catalogo: Array<{ id: string; nome: string }>;
 }
 
-type Visao = "geral" | "campanhas" | "anuncios" | "paginas" | "canais";
+type Visao = "geral" | "campanhas" | "conjuntos" | "anuncios" | "paginas" | "canais";
 
 function derivar(soma: Omit<DiaDeTrafego, "data">) {
   const { investimento, leads, vendas, recebido, cliques, impressoes, viewsLP } = soma;
@@ -89,6 +112,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
         opcoes={[
           { id: "geral", rotulo: t("Visão geral") },
           { id: "campanhas", rotulo: t("Por campanha") },
+          { id: "conjuntos", rotulo: t("Por conjunto") },
           { id: "anuncios", rotulo: t("Por anúncio") },
           { id: "paginas", rotulo: t("Por landing page") },
           { id: "canais", rotulo: t("Por canal") },
@@ -265,18 +289,70 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
         </Painel>
       ) : null}
 
+      {visao === "conjuntos" ? (
+        <Painel titulo={t("Por conjunto de anúncios")} nota={t("Campanha, entrega e resultado")}>
+          <TabelaDeDados
+            colunas={[
+              { titulo: t("Conjunto") },
+              { titulo: t("Campanha"), alinhar: "left" },
+              { titulo: t("Anúncios") },
+              { titulo: t("Investido") },
+              { titulo: t("Impressões") },
+              { titulo: t("Cliques") },
+              { titulo: t("CTR") },
+              { titulo: t("Leads") },
+              { titulo: t("CPL") },
+              { titulo: t("Vendas") },
+              { titulo: t("Recebido") },
+            ]}
+            linhas={dados.conjuntos.map((c) => [
+              c.nome,
+              c.campanha,
+              inteiro(c.anuncios),
+              brl(c.investido),
+              inteiro(c.impressoes),
+              inteiro(c.cliques),
+              pct(dividir(c.cliques * 100, c.impressoes), 2),
+              inteiro(c.leads),
+              brl(dividir(c.investido, c.leads)),
+              inteiro(c.vendas),
+              brl(c.recebido),
+            ])}
+          />
+        </Painel>
+      ) : null}
+
       {visao === "anuncios" ? (
-        <Painel titulo={t("Por anúncio (criativo)")} nota={t("Quem traz lead e quem traz venda")}>
+        <Painel
+          titulo={t("Por anúncio")}
+          nota={t("Mesmo nome em conjuntos diferentes aparece separado: veja campanha e conjunto")}
+        >
           <TabelaDeDados
             colunas={[
               { titulo: t("Anúncio") },
+              { titulo: t("Campanha"), alinhar: "left" },
+              { titulo: t("Conjunto"), alinhar: "left" },
+              { titulo: t("Investido") },
+              { titulo: t("Impressões") },
+              { titulo: t("Cliques") },
+              { titulo: t("CTR") },
+              { titulo: t("CPC") },
               { titulo: t("Leads") },
+              { titulo: t("CPL") },
               { titulo: t("Vendas") },
               { titulo: t("Recebido") },
             ]}
             linhas={dados.anuncios.map((c) => [
               c.nome,
+              c.campanha || "—",
+              c.conjunto || "—",
+              brl(c.investido),
+              inteiro(c.impressoes),
+              inteiro(c.cliques),
+              pct(dividir(c.cliques * 100, c.impressoes), 2),
+              brl(dividir(c.investido, c.cliques)),
               inteiro(c.leads),
+              brl(dividir(c.investido, c.leads)),
               inteiro(c.vendas),
               brl(c.recebido),
             ])}

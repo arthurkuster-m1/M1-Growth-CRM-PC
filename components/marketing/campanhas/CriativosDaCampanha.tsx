@@ -567,6 +567,18 @@ export function CriativosDaCampanha({
   const campos: CampoDaColecao<LinhaDoCriativo>[] = [
     { id: "nome", titulo: t("Criativo"), tipo: "texto", valorDe: (l) => l.c.name },
     {
+      id: "campanha_meta",
+      titulo: t("Campanha (Meta)"),
+      tipo: "texto",
+      valorDe: (l) => l.c.meta_campanha ?? "",
+    },
+    {
+      id: "conjunto_meta",
+      titulo: t("Conjunto de anúncios"),
+      tipo: "texto",
+      valorDe: (l) => l.c.meta_conjunto ?? "",
+    },
+    {
       id: "status",
       titulo: t("Status"),
       tipo: "opcao",
@@ -640,6 +652,26 @@ export function CriativosDaCampanha({
             {rotuloDoStatusDoCriativo(t, l.c.status)}
           </Etiqueta>
         </SeletorDeOpcao>
+      ),
+    },
+    {
+      id: "campanha_meta",
+      titulo: t("Campanha (Meta)"),
+      largura: 240,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm" title={l.c.meta_campanha ?? ""}>
+          {l.c.meta_campanha || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "conjunto_meta",
+      titulo: t("Conjunto de anúncios"),
+      largura: 240,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm" title={l.c.meta_conjunto ?? ""}>
+          {l.c.meta_conjunto || "—"}
+        </span>
       ),
     },
     {

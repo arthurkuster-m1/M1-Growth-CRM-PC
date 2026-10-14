@@ -36,10 +36,37 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       requestId: a.requestId,
     });
   }
-  return ok(
-    { criativos: (data ?? []).map((l) => criativoDaLinha(l as Record<string, unknown>)) },
-    { requestId: a.requestId },
-  );
+  const criativos = (data ?? []).map((l) => criativoDaLinha(l as Record<string, unknown>));
+  // Muitos anúncios têm o mesmo nome: o que os distingue é a campanha e o conjunto do Meta.
+  const adIds = [...new Set(criativos.map((c) => c.ad_id).filter((x): x is string => Boolean(x)))];
+  if (adIds.length > 0) {
+    const { data: linhas } = await a.supabase
+      .from("ad_insights_daily")
+      .select("ad_id, campaign_name, adset_name, day")
+      .eq("organization_id", a.orgId)
+      .eq("platform", "meta_ads")
+      .in("ad_id", adIds)
+      .order("day", { ascending: false })
+      .limit(5000);
+    const porAd = new Map<string, { campanha: string; conjunto: string }>();
+    for (const l of (linhas ?? []) as Array<Record<string, unknown>>) {
+      const id = String(l.ad_id);
+      if (!porAd.has(id)) {
+        porAd.set(id, {
+          campanha: String(l.campaign_name ?? ""),
+          conjunto: String(l.adset_name ?? ""),
+        });
+      }
+    }
+    for (const c of criativos) {
+      const o = c.ad_id ? porAd.get(c.ad_id) : undefined;
+      if (o) {
+        c.meta_campanha = o.campanha;
+        c.meta_conjunto = o.conjunto;
+      }
+    }
+  }
+  return ok({ criativos }, { requestId: a.requestId });
 }
 
 export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {

@@ -48,7 +48,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   // As campanhas de tráfego pago da empresa (o catálogo do filtro) e as escolhidas.
   const { data: catalogoBruto, error: erroCatalogo } = await a.supabase
     .from("demand_campaigns")
-    .select("id, name, channel, pipeline_id")
+    .select("id, name, channel, pipeline_id, platform_campaigns")
     .eq("organization_id", a.orgId)
     .eq("channel", "trafego_pago")
     .order("position", { ascending: true })
@@ -63,6 +63,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     name: string;
     channel: string;
     pipeline_id: string | null;
+    platform_campaigns: Array<{ id: string | null }> | null;
   }>;
   const escolhidas = catalogo.filter((c) => pedidas.length === 0 || pedidas.includes(c.id));
   const ids = escolhidas.map((c) => c.id);
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         totaisAnterior: somarDias_([]),
         campanhas: [],
         anuncios: [],
+        conjuntos: [],
         paginas: [],
         catalogo: catalogo.map((c) => ({ id: c.id, nome: c.name })),
       },
@@ -130,13 +132,14 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Vendas e dinheiro recebido, pela origem da venda.
   const { data: vendasBrutas } = await a.supabase
     .from("crm_sales")
-    .select("id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
+    .select("id, lead_id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
     .eq("organization_id", a.orgId)
     .in("demand_campaign_id", ids)
     .in("status", ["comprometida", "concluida"])
     .limit(5000);
   const vendas = (vendasBrutas ?? []) as Array<{
     id: string;
+    lead_id: string | null;
     demand_campaign_id: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
@@ -262,6 +265,165 @@ export async function GET(req: NextRequest): Promise<Response> {
     ((paginas ?? []) as Array<{ id: string; name: string | null }>).map((c) => [c.id, c.name ?? "—"]),
   );
 
+  // ── Por anúncio e por conjunto (base diária por anúncio do Meta) ──────────────────────────────
+  // Muitos anúncios têm o mesmo nome: o id do anúncio os separa, e a tela mostra campanha e
+  // conjunto junto do nome.
+  const idsDoMeta = [
+    ...new Set(
+      escolhidas.flatMap((c) =>
+        (c.platform_campaigns ?? []).map((p) => p.id).filter((x): x is string => Boolean(x)),
+      ),
+    ),
+  ];
+  interface LinhaDoAnuncio {
+    id: string;
+    nome: string;
+    campanha: string;
+    conjuntoId: string;
+    conjunto: string;
+    investido: number;
+    impressoes: number;
+    cliques: number;
+    viewsLP: number;
+    leads: number;
+    vendas: number;
+    recebido: number;
+  }
+  const porAnuncio = new Map<string, LinhaDoAnuncio>();
+  if (idsDoMeta.length > 0) {
+    const { data: linhasAd } = await a.supabase
+      .from("ad_insights_daily")
+      .select(
+        "ad_id, ad_name, adset_id, adset_name, campaign_name, spend, impressions, link_clicks, lp_views",
+      )
+      .eq("organization_id", a.orgId)
+      .eq("platform", "meta_ads")
+      .in("campaign_id", idsDoMeta)
+      .gte("day", de.data)
+      .lte("day", ate.data)
+      .limit(20000);
+    for (const l of (linhasAd ?? []) as Array<Record<string, unknown>>) {
+      const id = String(l.ad_id);
+      const x = porAnuncio.get(id) ?? {
+        id,
+        nome: String(l.ad_name ?? "—"),
+        campanha: String(l.campaign_name ?? ""),
+        conjuntoId: String(l.adset_id ?? ""),
+        conjunto: String(l.adset_name ?? ""),
+        investido: 0,
+        impressoes: 0,
+        cliques: 0,
+        viewsLP: 0,
+        leads: 0,
+        vendas: 0,
+        recebido: 0,
+      };
+      x.investido += n(l.spend);
+      x.impressoes += n(l.impressions);
+      x.cliques += n(l.link_clicks);
+      x.viewsLP += n(l.lp_views);
+      porAnuncio.set(id, x);
+    }
+  }
+  if (porAnuncio.size > 0) {
+    const idsDeAnuncio = [...porAnuncio.keys()];
+    // Leads: quem entrou por aquele anúncio (id do anúncio gravado na origem do lead).
+    for (let i = 0; i < idsDeAnuncio.length; i += 100) {
+      const { data } = await a.supabase
+        .from("crm_leads")
+        .select("id, contact_id, source_metadata")
+        .eq("organization_id", a.orgId)
+        .in("source_metadata->>ad_id", idsDeAnuncio.slice(i, i + 100))
+        .gte("created_at", `${de.data}T00:00:00-03:00`)
+        .lt("created_at", `${ate.data}T23:59:59-03:00`)
+        .limit(5000);
+      const vistos = new Map<string, Set<string>>();
+      for (const l of (data ?? []) as Array<{
+        id: string;
+        contact_id: string | null;
+        source_metadata: Record<string, unknown> | null;
+      }>) {
+        const ad = String(l.source_metadata?.ad_id ?? "");
+        if (!porAnuncio.has(ad)) continue;
+        const set = vistos.get(ad) ?? new Set<string>();
+        set.add(String(l.contact_id ?? l.id));
+        vistos.set(ad, set);
+      }
+      for (const [ad, set] of vistos) porAnuncio.get(ad)!.leads += set.size;
+    }
+    // Vendas e dinheiro: o anúncio do lead da venda.
+    const idsDeLeadDasVendas = [...new Set(vendas.map((v) => v.lead_id).filter((x): x is string => Boolean(x)))];
+    const anuncioDoLead = new Map<string, string>();
+    for (let i = 0; i < idsDeLeadDasVendas.length; i += 100) {
+      const { data } = await a.supabase
+        .from("crm_leads")
+        .select("id, source_metadata")
+        .eq("organization_id", a.orgId)
+        .in("id", idsDeLeadDasVendas.slice(i, i + 100));
+      for (const l of (data ?? []) as Array<{
+        id: string;
+        source_metadata: Record<string, unknown> | null;
+      }>) {
+        const ad = String(l.source_metadata?.ad_id ?? "");
+        if (ad) anuncioDoLead.set(l.id, ad);
+      }
+    }
+    const vendasPorAnuncio = new Map<string, Set<string>>();
+    for (const p of pagAtual) {
+      const venda = porVenda.get(p.sale_id);
+      const ad = venda?.lead_id ? anuncioDoLead.get(venda.lead_id) : undefined;
+      const x = ad ? porAnuncio.get(ad) : undefined;
+      if (!x || !ad) continue;
+      x.recebido += p.amount;
+      const set = vendasPorAnuncio.get(ad) ?? new Set<string>();
+      set.add(p.sale_id);
+      vendasPorAnuncio.set(ad, set);
+    }
+    for (const [ad, set] of vendasPorAnuncio) porAnuncio.get(ad)!.vendas = set.size;
+  }
+  const arredonda = (v: number) => Math.round(v * 100) / 100;
+  const anunciosDoMeta = [...porAnuncio.values()]
+    .map((x) => ({ ...x, investido: arredonda(x.investido), recebido: arredonda(x.recebido) }))
+    .sort((x, y) => y.investido - x.investido);
+  const conjuntos = new Map<
+    string,
+    {
+      id: string;
+      nome: string;
+      campanha: string;
+      anuncios: number;
+      investido: number;
+      impressoes: number;
+      cliques: number;
+      leads: number;
+      vendas: number;
+      recebido: number;
+    }
+  >();
+  for (const x of anunciosDoMeta) {
+    const chave = x.conjuntoId || x.conjunto;
+    const c = conjuntos.get(chave) ?? {
+      id: chave,
+      nome: x.conjunto || "—",
+      campanha: x.campanha,
+      anuncios: 0,
+      investido: 0,
+      impressoes: 0,
+      cliques: 0,
+      leads: 0,
+      vendas: 0,
+      recebido: 0,
+    };
+    c.anuncios += 1;
+    c.investido += x.investido;
+    c.impressoes += x.impressoes;
+    c.cliques += x.cliques;
+    c.leads += x.leads;
+    c.vendas += x.vendas;
+    c.recebido += x.recebido;
+    conjuntos.set(chave, c);
+  }
+
   return ok(
     {
       de: de.data,
@@ -271,7 +433,27 @@ export async function GET(req: NextRequest): Promise<Response> {
       totais: somarDias_(dias),
       totaisAnterior: somarDias_(diasAnteriores),
       campanhas,
-      anuncios: agrupar("demand_creative_id", nomesDeCriativo),
+      // Do Meta por anúncio (com campanha e conjunto); sem base do Meta, cai nos criativos.
+      anuncios:
+        anunciosDoMeta.length > 0
+          ? anunciosDoMeta
+          : agrupar("demand_creative_id", nomesDeCriativo).map((c) => ({
+              id: c.id,
+              nome: c.nome,
+              campanha: "",
+              conjuntoId: "",
+              conjunto: "",
+              investido: 0,
+              impressoes: 0,
+              cliques: 0,
+              viewsLP: 0,
+              leads: c.leads,
+              vendas: c.vendas,
+              recebido: c.recebido,
+            })),
+      conjuntos: [...conjuntos.values()]
+        .map((c) => ({ ...c, investido: arredonda(c.investido), recebido: arredonda(c.recebido) }))
+        .sort((x, y) => y.investido - x.investido),
       paginas: agrupar("demand_landing_page_id", nomesDePagina),
       catalogo: catalogo.map((c) => ({ id: c.id, nome: c.name })),
     },
