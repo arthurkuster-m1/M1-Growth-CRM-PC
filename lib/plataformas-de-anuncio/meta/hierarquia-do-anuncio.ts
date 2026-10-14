@@ -104,7 +104,7 @@ export async function lerHierarquiaDoAnuncio(
     } catch {
       // Corpo não-JSON num erro é gateway/WAF no meio. Fica o texto cru.
     }
-    const falha = classificarErroGraph(resposta.status, codigo);
+    const falha = classificarErroGraph(resposta.status, codigo, mensagem);
     // O id do anúncio entra no log; o token, nunca — nem a `url`, que carrega o
     // id e nada mais, mas cujo hábito de registrar é o que vaza o token no dia
     // em que alguém mover o segredo para a query.

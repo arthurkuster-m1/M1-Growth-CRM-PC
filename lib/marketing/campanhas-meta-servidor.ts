@@ -31,6 +31,7 @@ export type MotivoDaFalhaDeSync =
   | "conta_nao_liberada"
   | "token_invalido"
   | "permissao_insuficiente"
+  | "app_bloqueado"
   | "limite_de_chamadas"
   | "campo_invalido"
   | "transitorio"

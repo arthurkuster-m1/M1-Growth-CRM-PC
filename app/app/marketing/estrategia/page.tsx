@@ -15,7 +15,7 @@ import { Binoculars, Compass, MapTrifold, Package, UsersThree } from "@/lib/ui/i
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Estratégia" };
 
-/** Estratégia: as duas primeiras fases do método (Diagnóstico e Mercado e Oferta). */
+/** Estratégia: as três fases do método (Diagnóstico, Mercado e Oferta e Geração de Demanda). */
 export default async function EstrategiaPage() {
   const user = await requireAuth();
   const t = (texto: string) => traduzir(texto, user.idioma);
@@ -31,7 +31,7 @@ export default async function EstrategiaPage() {
       superior={t("Marketing")}
       titulo={t("Estratégia")}
       descricao={t(
-        "O diagnóstico do negócio e a construção do produto e da oferta, etapa por etapa.",
+        "O diagnóstico do negócio, a construção do produto e da oferta e a geração de demanda, etapa por etapa.",
       )}
       estado={publicados.size > 0 ? undefined : emBreve}
       voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
@@ -62,7 +62,7 @@ export default async function EstrategiaPage() {
         />
       </section>
 
-      {(["diagnostico", "produto-e-oferta"] as const).map((fase) => (
+      {(["diagnostico", "produto-e-oferta", "geracao-de-demanda"] as const).map((fase) => (
         <section key={fase} className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-muted-foreground">{nomeDaFase(t, fase)}</h2>
           <div className={classeDaGaleria(modulosDaFase(fase).length)}>

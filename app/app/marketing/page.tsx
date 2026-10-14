@@ -104,7 +104,7 @@ export default async function MarketingPage() {
             {t("As etapas que a agência percorre com cada cliente.")}
           </p>
         </div>
-        {FASES_DA_ESTRATEGIA.map((fase) => (
+        {FASES_DA_ESTRATEGIA.filter((fase) => fase !== "geracao-de-demanda").map((fase) => (
           <div key={fase} className="flex flex-col gap-3">
             <h3 className="text-sm font-semibold text-muted-foreground">{nomeDaFase(t, fase)}</h3>
             <div className={classeDaGaleria(modulosDaFase(fase).length)}>

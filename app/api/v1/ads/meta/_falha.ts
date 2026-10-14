@@ -46,6 +46,15 @@ export function respostaDeFalha(
         { requestId, details: detalhe },
       );
 
+    case "app_bloqueado":
+      // Nem token novo nem escopo resolvem: a Meta bloqueou o acesso à API do APLICATIVO.
+      return fail(
+        "ads_app_bloqueado",
+        "A Meta bloqueou o acesso à API deste aplicativo (“API access blocked”). Não é o token: abra o app no Meta for Developers (Painel › Alertas / Restrições) e resolva a pendência, ou conecte outro app.",
+        422,
+        { requestId, details: detalhe },
+      );
+
     case "limite_de_chamadas":
       // ⚠️ 422, e NÃO o 429 que a semântica pediria. A razão é local e concreta:
       // `RETRYABLE_STATUSES` em `lib/api/client.ts` é `{429, 503}`, e o retry

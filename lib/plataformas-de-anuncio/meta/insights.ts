@@ -203,10 +203,21 @@ const CODIGOS_DE_PERMISSAO = new Set([10, 200, 272, 294]);
  */
 const CODIGOS_DE_COTA = new Set([4, 17, 32, 613, 80000, 80001, 80002, 80003, 80004]);
 
+/**
+ * "API access blocked" (código 200 até em `/me`): a Meta bloqueou o ACESSO À API DO APLICATIVO —
+ * restrição, revisão pendente ou app suspenso. Não é o token nem o escopo: gerar token novo ou
+ * marcar `ads_read` não resolve. Fica separado de `permissao_insuficiente` para a tela mandar
+ * quem opera olhar o painel do app, e não refazer o token em vão.
+ */
+const PADRAO_DE_APP_BLOQUEADO =
+  /api access blocked|application (has been|is) (restricted|disabled|deleted)|app is (restricted|disabled)|temporarily restricted/i;
+
 export function classificarErroGraph(
   status: number,
   codigo: number | null,
+  mensagem?: string,
 ): FalhaDeLeitura {
+  if (mensagem && PADRAO_DE_APP_BLOQUEADO.test(mensagem)) return "app_bloqueado";
   if (codigo !== null) {
     if (CODIGOS_DE_TOKEN.has(codigo)) return "token_invalido";
     if (CODIGOS_DE_PERMISSAO.has(codigo)) return "permissao_insuficiente";
@@ -280,7 +291,7 @@ export async function buscarPaginado<T>(
       } catch {
         // Corpo não-JSON num erro é gateway/WAF no meio. Fica o texto cru.
       }
-      const falha = classificarErroGraph(resposta.status, codigo);
+      const falha = classificarErroGraph(resposta.status, codigo, mensagem);
       // A mensagem da plataforma entra no log; o token, nunca — nem o `url`,
       // que a partir da segunda página o carrega na query.
       logger.warn("[ads.meta.insights] leitura recusada", {

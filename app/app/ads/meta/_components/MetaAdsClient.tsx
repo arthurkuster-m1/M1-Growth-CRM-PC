@@ -43,6 +43,8 @@ const MENSAGEM_POR_CODIGO: Record<string, string> = {
     "A plataforma recusou o token de acesso — ele expirou ou foi revogado. Gere um novo em Configurações › Meta Ads.",
   ads_permissao_insuficiente:
     "O token não tem permissão de leitura de anúncios (ads_read), ou não alcança esta conta. Refaça o token no Meta for Developers marcando essa permissão.",
+  ads_app_bloqueado:
+    "A Meta bloqueou o acesso à API deste aplicativo (“API access blocked”). Não é o token: abra o app no Meta for Developers (Painel › Alertas / Restrições) e resolva a pendência, ou conecte outro app.",
   ads_limite_de_chamadas:
     "A plataforma limitou as chamadas por excesso de consultas. Espere alguns minutos antes de atualizar de novo.",
   ads_campo_invalido:

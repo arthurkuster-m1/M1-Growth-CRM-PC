@@ -471,6 +471,10 @@ function textoDaFalha(t: (s: string) => string, motivo: string): string {
       return t(
         "O token não tem permissão de leitura de anúncios (ads_read) ou não alcança esta conta.",
       );
+    case "app_bloqueado":
+      return t(
+        "A Meta bloqueou o acesso à API do aplicativo (API access blocked). Resolva a restrição no painel do app no Meta for Developers.",
+      );
     case "limite_de_chamadas":
       return t("O Meta limitou as chamadas. Tente de novo em alguns minutos.");
     default:

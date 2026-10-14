@@ -94,7 +94,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: "marketing",
     label: "Marketing",
-    hub: { href: "/app/marketing", label: "Ver tudo em Marketing" },
+    // Sem "Ver tudo em Marketing": todas as telas já estão no menu e na página Estratégia.
   },
   { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },

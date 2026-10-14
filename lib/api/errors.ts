@@ -146,6 +146,7 @@ export const ApiErrorCodes = {
   ads_sem_conexao: "ads_sem_conexao",
   ads_token_invalido: "ads_token_invalido",
   ads_permissao_insuficiente: "ads_permissao_insuficiente",
+  ads_app_bloqueado: "ads_app_bloqueado",
   ads_limite_de_chamadas: "ads_limite_de_chamadas",
   ads_campo_invalido: "ads_campo_invalido",
   ads_cifra_indisponivel: "ads_cifra_indisponivel",
