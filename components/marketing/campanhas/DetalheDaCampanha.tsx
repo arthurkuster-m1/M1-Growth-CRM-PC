@@ -59,7 +59,7 @@ import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha"
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
 import { periodoPadraoDaCampanha } from "@/lib/marketing/periodo-da-campanha";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import { ArrowSquareOut, Plus, Trash, X } from "@/lib/ui/icons";
+import { ArrowSquareOut, CaretDown, CaretRight, Plus, Trash, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
@@ -193,6 +193,8 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   const c = campanhas.find((x) => x.id === id);
   const dias = useDiasDaCampanha(id);
   const [apagando, setApagando] = useState(false);
+  // A tabela dos dias é longa: começa fechada para chegar logo no diário de bordo.
+  const [diaAberto, setDiaAberto] = useState(false);
   const { produtos } = useCatalogoDeProdutos();
   const pathname = usePathname();
   const parametros = useSearchParams();
@@ -302,13 +304,33 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
       {aba === "dia" ? (
         <>
-          <DiaADiaDaCampanha
-            canal={c.channel}
-            campanha={c}
-            dias={dias.dias}
-            funilDefinido={dias.funilDefinido}
-            automatico={dias.automatico}
-          />
+          <section className="grid min-w-0 grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
+            <button
+              type="button"
+              aria-expanded={diaAberto}
+              onClick={() => setDiaAberto((v) => !v)}
+              className="flex w-full items-center gap-2 text-left"
+            >
+              {diaAberto ? (
+                <CaretDown size={14} weight="bold" aria-hidden />
+              ) : (
+                <CaretRight size={14} weight="bold" aria-hidden />
+              )}
+              <span className="text-sm font-semibold">{t("Dia a dia")}</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {diaAberto ? t("Fechar a tabela") : t("Abrir a tabela dos dias")}
+              </span>
+            </button>
+            {diaAberto ? (
+              <DiaADiaDaCampanha
+                canal={c.channel}
+                campanha={c}
+                dias={dias.dias}
+                funilDefinido={dias.funilDefinido}
+                automatico={dias.automatico}
+              />
+            ) : null}
+          </section>
           <DiarioDeBordo campanhaId={c.id} podeEditar={podeEditar} />
         </>
       ) : null}

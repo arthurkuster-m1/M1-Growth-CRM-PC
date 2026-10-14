@@ -12,6 +12,7 @@ import { apiClient } from "@/lib/api/client";
 import { CANAIS_DA_CAMPANHA, type CanalDaCampanha } from "@/lib/marketing/campanhas";
 import { PERIODOS, janelaDoPeriodo, type Periodo } from "@/lib/marketing/periodos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
+import { ArrowDown, ArrowUp } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Linha {
@@ -36,8 +37,21 @@ interface CampanhaDoFiltro {
   channel: string;
 }
 
-type Metrica = "investido" | "leads" | "cpl" | "vendas" | "cac" | "recebido" | "a_receber" | "roas";
+type Metrica =
+  | "canal"
+  | "investido"
+  | "leads"
+  | "cpl"
+  | "vendas"
+  | "cac"
+  | "recebido"
+  | "a_receber"
+  | "lucro"
+  | "roas"
+  | "ltv_cac";
+/** As propriedades na ordem de fábrica (a pessoa reordena e a ordem fica salva na visualização). */
 const METRICAS: readonly Metrica[] = [
+  "canal",
   "investido",
   "leads",
   "cpl",
@@ -45,8 +59,12 @@ const METRICAS: readonly Metrica[] = [
   "cac",
   "recebido",
   "a_receber",
+  "lucro",
   "roas",
+  "ltv_cac",
 ];
+/** Os que também viram cartão de total no topo (o canal só existe na tabela). */
+const COM_TOTAL: ReadonlySet<Metrica> = new Set(METRICAS.filter((m) => m !== "canal"));
 
 const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
@@ -150,6 +168,22 @@ export function ResultadosDasCampanhas() {
   const propriedades = useVisualizacao("campanhas-resultados");
   const visiveis = propriedades.preferencias.visiveis ?? {};
   const mostra = (m: Metrica) => visiveis[m] !== false;
+  // A ordem das propriedades (setas no menu "Propriedades"): o que não foi ordenado vai ao fim.
+  const ordemSalva = (propriedades.preferencias.ordem ?? []).filter((id): id is Metrica =>
+    (METRICAS as readonly string[]).includes(id),
+  );
+  const metricasNaOrdem: Metrica[] = [
+    ...ordemSalva,
+    ...METRICAS.filter((m) => !ordemSalva.includes(m)),
+  ];
+  function moverPropriedade(m: Metrica, direcao: -1 | 1) {
+    const lista = [...metricasNaOrdem];
+    const i = lista.indexOf(m);
+    const j = i + direcao;
+    if (i < 0 || j < 0 || j >= lista.length) return;
+    [lista[i], lista[j]] = [lista[j]!, lista[i]!];
+    propriedades.atualizar((p) => ({ ...p, ordem: lista }));
+  }
 
   const hojeLocal = new Intl.DateTimeFormat("en-CA").format(new Date());
   const atalhosDePeriodo: AtalhoDePeriodo[] = PERIODOS.map((p) => ({
@@ -157,6 +191,10 @@ export function ResultadosDasCampanhas() {
     rotulo: rotuloDoPeriodo(t, p),
     ...janelaDoPeriodo(p, hojeLocal),
   }));
+  const janelaAtual =
+    periodo === "personalizado" && de !== "" && ate !== ""
+      ? { de, ate }
+      : janelaDoPeriodo(periodo === "personalizado" ? "mes" : periodo, hojeLocal);
   const intervaloValido = de !== "" && ate !== "" && de <= ate;
   const pronto = periodo !== "personalizado" || intervaloValido;
   const filtros = new URLSearchParams();
@@ -208,6 +246,9 @@ export function ResultadosDasCampanhas() {
     n === null ? "—" : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x`;
 
   const nomeDaMetrica: Record<Metrica, string> = {
+    canal: t("Canal"),
+    lucro: t("Lucro"),
+    ltv_cac: t("LTV/CAC"),
     investido: t("Investido"),
     leads: t("Leads"),
     cpl: t("CPL"),
@@ -217,7 +258,14 @@ export function ResultadosDasCampanhas() {
     a_receber: t("A receber"),
     roas: t("ROAS"),
   };
+  const lucro = (rec: number, inv: number) => rec - inv;
+  // LTV/CAC da campanha: o que cada cliente gera (recebido + a receber) ÷ o que custou trazê-lo.
+  const ltvCac = (rec: number, aRec: number, inv: number) =>
+    inv > 0 && rec + aRec > 0 ? (rec + aRec) / inv : null;
   const valorTotal: Record<Metrica, string> = {
+    canal: "",
+    lucro: moedaDoNumero(lucro(total.recebido, total.investido)),
+    ltv_cac: x(ltvCac(total.recebido, total.a_receber, total.investido)),
     investido: moedaDoNumero(total.investido),
     leads: inteiro(leadsUnicos),
     cpl: reais(cpl(total.investido, leadsUnicos)),
@@ -227,7 +275,8 @@ export function ResultadosDasCampanhas() {
     a_receber: moedaDoNumero(total.a_receber),
     roas: x(roas(total.investido, total.recebido)),
   };
-  const metricasVisiveis = METRICAS.filter(mostra);
+  const metricasVisiveis = metricasNaOrdem.filter(mostra);
+  const metricasDeTotal = metricasVisiveis.filter((m) => COM_TOTAL.has(m));
 
   const catalogo = consulta.data?.catalogo ?? [];
   const termo = buscaCampanha.trim().toLowerCase();
@@ -251,33 +300,22 @@ export function ResultadosDasCampanhas() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            {t("Período")}
-            <select
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value as Periodo | "personalizado")}
-              className="h-10 rounded-xl border bg-background px-3 text-sm text-foreground"
-            >
-              {PERIODOS.map((p) => (
-                <option key={p} value={p}>
-                  {rotuloDoPeriodo(t, p)}
-                </option>
-              ))}
-              <option value="personalizado">{t("Personalizado")}</option>
-            </select>
-          </label>
-          {periodo === "personalizado" ? (
-            <SeletorDePeriodo
-              de={de}
-              ate={ate}
-              rotulo={t("Período personalizado")}
-              atalhos={atalhosDePeriodo}
-              aoMudar={(p) => {
+          <SeletorDePeriodo
+            de={janelaAtual.de}
+            ate={janelaAtual.ate}
+            rotulo={t("Período")}
+            atalhos={atalhosDePeriodo}
+            aoMudar={(p) => {
+              const atalho = atalhosDePeriodo.find((a2) => a2.de === p.de && a2.ate === p.ate);
+              if (atalho) {
+                setPeriodo(atalho.id as Periodo);
+              } else {
+                setPeriodo("personalizado");
                 setDe(p.de);
                 setAte(p.ate);
-              }}
-            />
-          ) : null}
+              }
+            }}
+          />
         </div>
       </div>
 
@@ -329,19 +367,40 @@ export function ResultadosDasCampanhas() {
         </FiltroDeLista>
 
         <FiltroDeLista rotulo={t("Propriedades")} contagem={0}>
-          {METRICAS.map((m) => (
-            <Caixinha
-              key={m}
-              marcada={mostra(m)}
-              aoMudar={() =>
-                propriedades.atualizar((p) => ({
-                  ...p,
-                  visiveis: { ...p.visiveis, [m]: !mostra(m) },
-                }))
-              }
-            >
-              {nomeDaMetrica[m]}
-            </Caixinha>
+          {metricasNaOrdem.map((m, i) => (
+            <div key={m} className="flex items-center gap-1">
+              <div className="min-w-0 flex-1">
+                <Caixinha
+                  marcada={mostra(m)}
+                  aoMudar={() =>
+                    propriedades.atualizar((p) => ({
+                      ...p,
+                      visiveis: { ...p.visiveis, [m]: !mostra(m) },
+                    }))
+                  }
+                >
+                  {nomeDaMetrica[m]}
+                </Caixinha>
+              </div>
+              <button
+                type="button"
+                aria-label={t("Subir propriedade")}
+                disabled={i === 0}
+                onClick={() => moverPropriedade(m, -1)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-30"
+              >
+                <ArrowUp size={14} aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-label={t("Descer propriedade")}
+                disabled={i === metricasNaOrdem.length - 1}
+                onClick={() => moverPropriedade(m, 1)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-30"
+              >
+                <ArrowDown size={14} aria-hidden />
+              </button>
+            </div>
           ))}
         </FiltroDeLista>
 
@@ -365,9 +424,9 @@ export function ResultadosDasCampanhas() {
         </p>
       ) : (
         <>
-          {metricasVisiveis.length > 0 ? (
+          {metricasDeTotal.length > 0 ? (
             <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-4">
-              {metricasVisiveis.map((m) => (
+              {metricasDeTotal.map((m) => (
                 <div key={m} className="bg-card px-4 py-3">
                   <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                     {m === "leads" ? t("Leads únicos") : nomeDaMetrica[m]}
@@ -393,7 +452,13 @@ export function ResultadosDasCampanhas() {
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">{t("Campanha")}</th>
                     {metricasVisiveis.map((m) => (
-                      <th key={m} className="px-3 py-2 text-right font-medium">
+                      <th
+                        key={m}
+                        className={cn(
+                          "px-3 py-2 font-medium",
+                          m === "canal" ? "text-left" : "text-right",
+                        )}
+                      >
                         {nomeDaMetrica[m]}
                       </th>
                     ))}
@@ -404,7 +469,25 @@ export function ResultadosDasCampanhas() {
                     .sort((a, b) => b.recebido - a.recebido || b.leads - a.leads)
                     .map((l) => {
                       const c = cpl(l.investido, l.leads);
+                      const lucroDaLinha = lucro(l.recebido, l.investido);
                       const celulas: Record<Metrica, ReactNode> = {
+                        canal: (
+                          <span className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium">
+                            {rotuloDoCanal(t, l.channel as CanalDaCampanha)}
+                          </span>
+                        ),
+                        lucro: (
+                          <span
+                            className={cn(
+                              "font-medium",
+                              lucroDaLinha > 0 && "text-success-fg",
+                              lucroDaLinha < 0 && "text-error-fg",
+                            )}
+                          >
+                            {moedaDoNumero(lucroDaLinha)}
+                          </span>
+                        ),
+                        ltv_cac: x(ltvCac(l.recebido, l.a_receber, l.investido)),
                         investido: moedaDoNumero(l.investido),
                         leads: inteiro(l.leads),
                         cpl: (
@@ -428,7 +511,13 @@ export function ResultadosDasCampanhas() {
                         <tr key={l.id} className="border-t">
                           <td className="max-w-72 truncate px-3 py-2 font-medium">{l.name}</td>
                           {metricasVisiveis.map((m) => (
-                            <td key={m} className="px-3 py-2 text-right tabular-nums">
+                            <td
+                              key={m}
+                              className={cn(
+                                "px-3 py-2 tabular-nums",
+                                m === "canal" ? "text-left" : "text-right",
+                              )}
+                            >
                               {celulas[m]}
                             </td>
                           ))}
@@ -443,7 +532,7 @@ export function ResultadosDasCampanhas() {
       )}
       <p className="text-xs text-muted-foreground">
         {t(
-          "Leads são pessoas únicas trabalhadas no período (entraram em um funil da campanha ou foram atendidas nele); quem está em mais de uma campanha conta uma vez no total. Vendas vêm do CRM; investido, do Meta. O faturamento conta só o que de fato caiu no período (parcelas recebidas); “a receber” é o que está comprometido com vencimento no período.",
+          "Leads são pessoas únicas trabalhadas no período (entraram em um funil da campanha ou foram atendidas nele); quem está em mais de uma campanha conta uma vez no total. Vendas vêm do CRM; investido, do Meta. O faturamento conta só o que de fato caiu no período (parcelas recebidas); “a receber” é o que está comprometido com vencimento no período. Lucro = recebido − investido. LTV/CAC = (recebido + a receber) ÷ investido: quanto cada real investido devolve em receita (a receber inclui as parcelas previstas das assinaturas).",
         )}
       </p>
     </div>
