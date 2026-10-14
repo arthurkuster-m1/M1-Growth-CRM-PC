@@ -313,8 +313,9 @@ export function ClientesCRM() {
       if (funilAtual && v.funil_id !== funilAtual.id) continue;
       if (v.status === "interesse") interesse += v.valor_cents;
       else {
-        pago += Math.min(v.pago_cents, v.valor_cents);
-        comprometido += v.valor_cents;
+        // Venda recorrente: as parcelas pagas podem passar do valor da venda (uma por mês).
+        pago += v.pago_cents;
+        comprometido += Math.max(v.valor_cents, v.pago_cents);
       }
     }
     return { pago, comprometido, aReceber: Math.max(0, comprometido - pago), interesse };
