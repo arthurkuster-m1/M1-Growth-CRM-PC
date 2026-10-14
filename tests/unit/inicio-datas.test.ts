@@ -142,13 +142,30 @@ describe("tarefasDoDia — tarefas com início", () => {
     expect(r.hoje.map((t) => t.id).sort()).toEqual(["adiante", "so-inicio"]);
   });
 
-  it("a tarefa no MEIO de um intervalo longo não lota o Início", () => {
+  it("a tarefa que JÁ COMEÇOU e ainda está no prazo aparece (em aberto = no Início)", () => {
     const r = tarefasDoDia(
       [
         tarefa({
           id: "projeto",
           start_date: "2026-07-01T03:00:00Z",
           due_date: "2026-08-30T03:00:00Z",
+        }),
+        tarefa({ id: "so-comecou", start_date: "2026-07-10T03:00:00Z", due_date: null }),
+      ],
+      hoje,
+      SP,
+    );
+    expect(r.hoje.map((t) => t.id).sort()).toEqual(["projeto", "so-comecou"]);
+    expect(r.atrasadas).toEqual([]);
+  });
+
+  it("ainda não começou nem venceu: fica de fora", () => {
+    const r = tarefasDoDia(
+      [
+        tarefa({
+          id: "futura",
+          start_date: "2026-08-05T03:00:00Z",
+          due_date: "2026-08-20T03:00:00Z",
         }),
       ],
       hoje,
