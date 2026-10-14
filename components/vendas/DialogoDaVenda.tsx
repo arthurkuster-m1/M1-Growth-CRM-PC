@@ -209,6 +209,9 @@ export function DialogoDaVenda({
   const [recorrente, setRecorrente] = useState(venda?.is_recurring ?? false);
   const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(venda?.recurrence_active ?? true);
   const [mesesAFrente, setMesesAFrente] = useState(venda?.recurrence_ahead ?? 1);
+  // Rascunho da recorrência: só vale (e gera as parcelas) quando clicar em "Aplicar".
+  const [mesesRascunho, setMesesRascunho] = useState(venda?.recurrence_ahead ?? 1);
+  const [valorRascunho, setValorRascunho] = useState<string | null>(null);
   const [referencia, setReferencia] = useState(venda?.reference ?? "");
   const [notas, setNotas] = useState(venda?.notes ?? "");
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
@@ -388,51 +391,55 @@ export function DialogoDaVenda({
 
   /** O valor da última parcela (é o que a próxima copia), no formato do campo. */
   const valorMensal = parcelas.length > 0 ? parcelas[parcelas.length - 1]!.valor : "";
-  /** Reajuste: o novo valor vale para as parcelas ainda não recebidas (e, depois, para as próximas). */
-  function reajustarValorMensal(texto: string) {
-    const n = lerNumero(texto);
-    if (n === null || n < 0) return;
-    const novo = textoDe(Math.round(n * 100));
-    setParcelas((l) => {
-      // Sem parcela aberta (a do mês seguinte ainda não nasceu), cria a próxima já com o novo valor.
-      if (l.length > 0 && l.every((x) => x.recebida)) {
-        const ultima = l[l.length - 1]!;
-        return [
-          ...l,
-          {
-            number: ultima.number + 1,
-            due_on: somarMesesNaData(ultima.due_on, 1),
-            valor: novo,
-            recebida: false,
-            paid_on: null,
-          },
-        ];
-      }
-      return l.map((x) => (x.recebida ? x : { ...x, valor: novo }));
-    });
-  }
-
-  /** Completa as parcelas previstas até `n` meses à frente (já aparecem na tela e no previsto). */
-  function garantirMesesAFrente(n: number) {
+  /**
+   * APLICAR a recorrência: o valor mensal vale para todas as parcelas ainda não recebidas e as
+   * parcelas previstas são geradas (ou aparadas) até `meses` à frente, na hora — a previsão e o
+   * LTV previsto já aparecem abaixo, antes de salvar.
+   */
+  function aplicarRecorrencia() {
+    const n = Math.min(12, Math.max(1, mesesRascunho));
+    const lido = lerNumero(valorRascunho ?? valorMensal);
+    const base = lido !== null && lido >= 0 ? Math.round(lido * 100) : centavos(valorMensal);
+    const novo = textoDe(base);
     setMesesAFrente(n);
+    setValorRascunho(null);
     setParcelas((l) => {
-      const abertas = l.filter((x) => !x.recebida).length;
-      if (l.length === 0 || abertas >= n) return l;
-      const copia = [...l];
-      let ultima = copia[copia.length - 1]!;
-      for (let k = abertas; k < n; k += 1) {
-        ultima = {
-          number: ultima.number + 1,
-          due_on: somarMesesNaData(ultima.due_on, 1),
-          valor: ultima.valor,
+      const recebidas = l.filter((x) => x.recebida);
+      const abertas = l.filter((x) => !x.recebida);
+      const manter = abertas.slice(0, n).map((x) => ({ ...x, valor: novo }));
+      let ultima =
+        manter[manter.length - 1] ??
+        recebidas[recebidas.length - 1] ?? {
+          number: 0,
+          due_on: "",
+          valor: novo,
           recebida: false,
           paid_on: null,
         };
-        copia.push(ultima);
+      const novas = [...manter];
+      for (let k = manter.length; k < n; k += 1) {
+        ultima = {
+          number: (recebidas.length + novas.length) + 1,
+          // Sem nenhuma parcela ainda, a primeira vence na data de início escolhida.
+          due_on: ultima.due_on === "" ? primeiro || hoje() : somarMesesNaData(ultima.due_on, 1),
+          valor: novo,
+          recebida: false,
+          paid_on: null,
+        };
+        novas.push(ultima);
       }
-      return copia;
+      return [...recebidas, ...novas].map((x, i) => ({ ...x, number: i + 1 }));
     });
   }
+
+  /** O previsto das parcelas abertas e o que já entrou (para o resumo da recorrência). */
+  const recebidoCents = parcelas
+    .filter((p) => p.recebida)
+    .reduce((a2, p) => a2 + centavos(p.valor), 0);
+  const previstoCents = parcelas
+    .filter((p) => !p.recebida)
+    .reduce((a2, p) => a2 + centavos(p.valor), 0);
+  const abertasCont = parcelas.filter((p) => !p.recebida).length;
 
   /** Enter (ou sair do campo) no valor de uma parcela: as seguintes abertas absorvem a diferença. */
   function aplicarValorDaParcela(i: number) {
@@ -534,7 +541,8 @@ export function DialogoDaVenda({
       payment_method: fechadaSit ? forma : "",
       is_recurring: recorrente,
       recurrence_active: recorrente && recorrenciaAtiva,
-      recurrence_ahead: mesesAFrente,
+      // Escolheu os meses e não clicou em Aplicar? Vale a escolha (a rotina diária completa).
+      recurrence_ahead: recorrente ? mesesRascunho : mesesAFrente,
       reference: referencia.trim(),
       notes: notas.trim(),
       expected_close_date: previsao || null,
@@ -970,39 +978,59 @@ export function DialogoDaVenda({
                       )}
                 </p>
                 {recorrenciaAtiva ? (
-                  <label className="grid gap-1 sm:max-w-xs">
-                    <span className="text-xs text-muted-foreground">
-                      {t("Manter quantos meses de previsão à frente")}
-                    </span>
-                    <select
-                      value={mesesAFrente}
-                      aria-label={t("Meses à frente")}
-                      onChange={(e) => garantirMesesAFrente(Number(e.target.value))}
-                      className={CAMPO}
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          {t("Manter quantos meses de previsão à frente")}
+                        </span>
+                        <select
+                          value={mesesRascunho}
+                          aria-label={t("Meses à frente")}
+                          onChange={(e) => setMesesRascunho(Number(e.target.value))}
+                          className={CAMPO}
+                        >
+                          {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
+                            <option key={n} value={n}>
+                              {n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          {t("Valor mensal")}
+                        </span>
+                        <input
+                          value={valorRascunho ?? valorMensal}
+                          inputMode="decimal"
+                          aria-label={t("Valor mensal")}
+                          onChange={(e) => setValorRascunho(e.target.value.replace(/[^\d.,]/g, ""))}
+                          onKeyDown={(e) => e.key === "Enter" && aplicarRecorrencia()}
+                          className={CAMPO}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={aplicarRecorrencia}
+                      className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-fit"
                     >
-                      {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
-                        <option key={n} value={n}>
-                          {n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-                {recorrenciaAtiva ? (
-                  <label className="grid gap-1 sm:max-w-xs">
-                    <span className="text-xs text-muted-foreground">
-                      {t("Valor mensal (a próxima parcela copia este valor)")}
-                    </span>
-                    <input
-                      key={valorMensal}
-                      defaultValue={valorMensal}
-                      inputMode="decimal"
-                      aria-label={t("Valor mensal")}
-                      onBlur={(e) => reajustarValorMensal(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                      className={CAMPO}
-                    />
-                  </label>
+                      {t("Aplicar e gerar as parcelas")}
+                    </button>
+                    {mesesRascunho !== mesesAFrente || valorRascunho !== null ? (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {t("Mudou os meses ou o valor? Clique em Aplicar para ver as parcelas e a previsão.")}
+                      </p>
+                    ) : null}
+                    <p className="rounded-lg bg-background/70 px-3 py-2 text-xs">
+                      <strong className="tabular-nums">{reais(previstoCents)}</strong>{" "}
+                      {t("previstos")} ({abertasCont}{" "}
+                      {abertasCont === 1 ? t("parcela") : t("parcelas")}) ·{" "}
+                      {t("LTV previsto")}{" "}
+                      <strong className="tabular-nums">{reais(recebidoCents + previstoCents)}</strong>
+                    </p>
+                  </>
                 ) : null}
               </div>
             ) : null}
