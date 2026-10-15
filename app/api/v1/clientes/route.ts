@@ -64,6 +64,9 @@ export interface ParticipacaoDoCliente {
   primeiro_pagamento: string | null;
   ultimo_pagamento: string | null;
   proximo_pagamento: string | null;
+  /** Tentativas de ligação registradas nesta oportunidade e a data da última. */
+  tentativas: number;
+  ultima_tentativa: string | null;
 }
 
 /** Uma venda ativa (não cancelada) do cliente, para a coluna "Vendas" do CRM. */
@@ -259,6 +262,32 @@ export async function GET(req: NextRequest): Promise<Response> {
     return fail("internal_error", t("Erro ao carregar os clientes."), 500, { requestId });
   }
 
+  // Tentativas de ligação (ações "Follow Up - Ligação" e "Não atendeu") por oportunidade.
+  const tentativasPorLead = new Map<string, { n: number; ultima: string | null }>();
+  {
+    const ids = linhasDeNegocio.map((n) => n.id);
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: atividades } = await supabase
+        .from("crm_lead_activities")
+        .select("lead_id, performed_at, payload")
+        .eq("organization_id", orgId)
+        .eq("type", "note")
+        .in("lead_id", ids.slice(i, i + 200))
+        .limit(10000);
+      for (const a of (atividades ?? []) as Array<{
+        lead_id: string;
+        performed_at: string;
+        payload: { acao?: string } | null;
+      }>) {
+        if (a.payload?.acao !== "ligacao" && a.payload?.acao !== "nao_atendeu") continue;
+        const atual = tentativasPorLead.get(a.lead_id) ?? { n: 0, ultima: null };
+        atual.n += 1;
+        if (!atual.ultima || a.performed_at > atual.ultima) atual.ultima = a.performed_at;
+        tentativasPorLead.set(a.lead_id, atual);
+      }
+    }
+  }
+
   const porContato = new Map<string, ParticipacaoDoCliente[]>();
   for (const n of linhasDeNegocio) {
     const lista = porContato.get(n.contact_id) ?? [];
@@ -294,6 +323,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       primeiro_pagamento: null,
       ultimo_pagamento: null,
       proximo_pagamento: null,
+      tentativas: tentativasPorLead.get(n.id)?.n ?? 0,
+      ultima_tentativa: tentativasPorLead.get(n.id)?.ultima ?? null,
     });
     porContato.set(n.contact_id, lista);
   }

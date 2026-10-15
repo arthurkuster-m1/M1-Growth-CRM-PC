@@ -15,6 +15,8 @@ import { QuadroDeOportunidades, type GrupoDoQuadro } from "@/components/clientes
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
+import { ResultadoRapidoDaLigacao } from "@/components/clientes/ResultadoRapidoDaLigacao";
+import { prioridadeDaFila } from "@/lib/leads/resultados-rapidos";
 import { QuadroDoCiclo } from "@/components/clientes/QuadroDoCiclo";
 import {
   QuadroDeEtapas,
@@ -172,6 +174,8 @@ const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "ultimo-pagamento",
   "proximo-pagamento",
   "posicionamento",
+  "resultado-rapido",
+  "tentativas",
 ]);
 /** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
 const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
@@ -245,7 +249,7 @@ export function ClientesCRM({
   const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const [destaque, setDestaque] = useState<
-    null | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
+    null | "ligarhoje" | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
   /** O status do ciclo de vida que filtra a lista (clique de novo para soltar). */
@@ -981,6 +985,47 @@ export function ClientesCRM({
       },
     },
     {
+      id: "resultado-rapido",
+      titulo: t("Resultado da ligação"),
+      icone: <Phone size={14} aria-hidden />,
+      largura: 440,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p) return semValor;
+        return (
+          <ResultadoRapidoDaLigacao
+            leadId={p.lead_id}
+            contactId={l.contact_id}
+            aberta={p.status === "open"}
+            podeEditar={podeEditar}
+            aoPerder={() => setPerdendo({ leadId: p.lead_id, funilId: p.funil_id })}
+          />
+        );
+      },
+    },
+    {
+      id: "tentativas",
+      titulo: t("Tentativas"),
+      icone: <Phone size={14} aria-hidden />,
+      largura: 200,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p || p.tentativas === 0) return semValor;
+        const dias = p.ultima_tentativa
+          ? Math.floor((agora - new Date(p.ultima_tentativa).getTime()) / 86_400_000)
+          : null;
+        const quando = dias === null ? "" : dias <= 0 ? t("hoje") : `${t("há")} ${dias} ${dias === 1 ? t("dia") : t("dias")}`;
+        return (
+          <span className="block truncate px-2 text-sm">
+            {p.tentativas} {p.tentativas === 1 ? t("tentativa") : t("tentativas")}
+            {quando ? ` · ${t("última")} ${quando}` : ""}
+          </span>
+        );
+      },
+    },
+    {
       id: "ligar",
       titulo: t("Ligar"),
       icone: <Phone size={14} aria-hidden />,
@@ -1703,6 +1748,12 @@ export function ClientesCRM({
       valorDe: (l) => l.participacao?.comentarios ?? "",
     },
     {
+      id: "tentativas",
+      titulo: t("Tentativas"),
+      tipo: "numero",
+      valorDe: (l) => l.participacao?.tentativas ?? 0,
+    },
+    {
       id: "entrou-no-funil",
       titulo: t("Entrou no Funil em"),
       tipo: "data",
@@ -2029,6 +2080,10 @@ export function ClientesCRM({
         return vendasDoLead(l) > 0;
       case "mql":
         return l.is_mql;
+      case "ligarhoje":
+        return l.participacao
+          ? prioridadeDaFila(l.participacao, hojeIso, agora) !== null
+          : false;
       case "abertas":
         return emAbertoDeVerdade(l);
       case "semcontato":
@@ -2047,6 +2102,15 @@ export function ClientesCRM({
       (!cicloFiltro || l.ciclo_de_vida === cicloFiltro) &&
       (!etapasFiltro || etapasFiltro.includes(l.participacao?.etapa_id ?? "")),
   );
+  // Fila do dia: do mais atrasado ao menos (sem a pessoa ter escolhido outra ordem).
+  if (destaque === "ligarhoje" && !preferencias.ordenacao?.length) {
+    const peso = (l: Linha) =>
+      l.participacao ? (prioridadeDaFila(l.participacao, hojeIso, agora) ?? Infinity) : Infinity;
+    visiveis.sort((x, y) => peso(x) - peso(y));
+  }
+  const filaDoDia = alvos.filter(
+    (l) => l.participacao && prioridadeDaFila(l.participacao, hojeIso, agora) !== null,
+  ).length;
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
     hoje: new Date(agora).toISOString().slice(0, 10),
@@ -2426,6 +2490,24 @@ export function ClientesCRM({
         })}
       </section>
 
+      {ehOportunidades ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={destaque === "ligarhoje"}
+            title={t("Próxima ação vencida ou de hoje, e sem resposta há mais de 24h")}
+            onClick={() => setDestaque(destaque === "ligarhoje" ? null : "ligarhoje")}
+            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary ${
+              destaque === "ligarhoje" ? "border-primary bg-primary/10" : "bg-card"
+            }`}
+          >
+            <Phone size={14} aria-hidden />
+            {t("Ligar hoje")}
+            <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">{filaDoDia}</span>
+          </button>
+        </div>
+      ) : null}
+
       {ehOportunidades ? null : (
         <section
           aria-label={t("Ciclo de vida")}
@@ -2528,7 +2610,11 @@ export function ClientesCRM({
         <p className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span>
             {t("Mostrando só quem compõe")}{" "}
-            <strong>{[...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}</strong> · {visiveis.length}{" "}
+            <strong>
+              {destaque === "ligarhoje"
+                ? t("Ligar hoje")
+                : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}
+            </strong> · {visiveis.length}{" "}
             {visiveis.length === 1 ? t("lead") : t("leads")}
           </span>
           <button
