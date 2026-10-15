@@ -249,7 +249,6 @@ export async function GET(req: NextRequest): Promise<Response> {
     .eq("organization_id", orgId)
     .eq("kind", "person")
     .eq("is_personal", false)
-    .eq("is_anonymized", false)
     .is("is_merged_into", null)
     .order("created_at", { ascending: false })
     .limit(LIMITE);
