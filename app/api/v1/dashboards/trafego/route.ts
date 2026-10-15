@@ -204,7 +204,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Por anúncio e por landing page: leads (CRM) e vendas/dinheiro (origem da venda).
   const { data: leadsDeOrigem } = await a.supabase
     .from("crm_leads")
-    .select("demand_creative_id, demand_landing_page_id, contact_id, id")
+    .select(
+      "demand_creative_id, demand_landing_page_id, contact_id, id, stage:crm_stages!crm_leads_stage_id_fkey(tipo)",
+    )
     .eq("organization_id", a.orgId)
     .in("demand_campaign_id", ids)
     .gte("created_at", `${de.data}T00:00:00-03:00`)
@@ -214,18 +216,35 @@ export async function GET(req: NextRequest): Promise<Response> {
     campo: "demand_creative_id" | "demand_landing_page_id",
     nomes: Map<string, string>,
   ) => {
-    const linhas = new Map<string, { id: string; nome: string; leads: Set<string>; vendas: Set<string>; recebido: number }>();
+    const linhas = new Map<
+      string,
+      { id: string; nome: string; leads: Set<string>; desq: Set<string>; vendas: Set<string>; recebido: number }
+    >();
     const pegar = (id: string) => {
       let l = linhas.get(id);
       if (!l) {
-        l = { id, nome: nomes.get(id) ?? "—", leads: new Set(), vendas: new Set(), recebido: 0 };
+        l = {
+          id,
+          nome: nomes.get(id) ?? "—",
+          leads: new Set(),
+          desq: new Set(),
+          vendas: new Set(),
+          recebido: 0,
+        };
         linhas.set(id, l);
       }
       return l;
     };
-    for (const l of (leadsDeOrigem ?? []) as Array<Record<string, string | null>>) {
+    for (const l of (leadsDeOrigem ?? []) as unknown as Array<
+      Record<string, string | null> & { stage: { tipo: string | null } | { tipo: string | null }[] | null }
+    >) {
       const id = l[campo];
-      if (id) pegar(id).leads.add(String(l.contact_id ?? l.id));
+      if (!id) continue;
+      const linha = pegar(id);
+      const pessoa = String(l.contact_id ?? l.id);
+      linha.leads.add(pessoa);
+      const etapa = Array.isArray(l.stage) ? l.stage[0] : l.stage;
+      if (etapa?.tipo === "desqualificado") linha.desq.add(pessoa);
     }
     for (const p of pagAtual) {
       const id = porVenda.get(p.sale_id)?.[campo];
@@ -239,6 +258,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         id: l.id,
         nome: l.nome,
         leads: l.leads.size,
+        desqualificados: l.desq.size,
         vendas: l.vendas.size,
         recebido: Math.round(l.recebido * 100) / 100,
       }))
@@ -286,6 +306,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     cliques: number;
     viewsLP: number;
     leads: number;
+    desqualificados: number;
     vendas: number;
     recebido: number;
   }
@@ -315,6 +336,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         cliques: 0,
         viewsLP: 0,
         leads: 0,
+        desqualificados: 0,
         vendas: 0,
         recebido: 0,
       };
@@ -331,25 +353,37 @@ export async function GET(req: NextRequest): Promise<Response> {
     for (let i = 0; i < idsDeAnuncio.length; i += 100) {
       const { data } = await a.supabase
         .from("crm_leads")
-        .select("id, contact_id, source_metadata")
+        .select(
+          "id, contact_id, source_metadata, stage:crm_stages!crm_leads_stage_id_fkey(tipo)",
+        )
         .eq("organization_id", a.orgId)
         .in("source_metadata->>ad_id", idsDeAnuncio.slice(i, i + 100))
         .gte("created_at", `${de.data}T00:00:00-03:00`)
         .lt("created_at", `${ate.data}T23:59:59-03:00`)
         .limit(5000);
       const vistos = new Map<string, Set<string>>();
-      for (const l of (data ?? []) as Array<{
+      const desqualificados = new Map<string, Set<string>>();
+      for (const l of (data ?? []) as unknown as Array<{
         id: string;
         contact_id: string | null;
         source_metadata: Record<string, unknown> | null;
+        stage: { tipo: string | null } | { tipo: string | null }[] | null;
       }>) {
         const ad = String(l.source_metadata?.ad_id ?? "");
         if (!porAnuncio.has(ad)) continue;
+        const pessoa = String(l.contact_id ?? l.id);
         const set = vistos.get(ad) ?? new Set<string>();
-        set.add(String(l.contact_id ?? l.id));
+        set.add(pessoa);
         vistos.set(ad, set);
+        const etapa = Array.isArray(l.stage) ? l.stage[0] : l.stage;
+        if (etapa?.tipo === "desqualificado") {
+          const d = desqualificados.get(ad) ?? new Set<string>();
+          d.add(pessoa);
+          desqualificados.set(ad, d);
+        }
       }
       for (const [ad, set] of vistos) porAnuncio.get(ad)!.leads += set.size;
+      for (const [ad, set] of desqualificados) porAnuncio.get(ad)!.desqualificados += set.size;
     }
     // Vendas e dinheiro: o anúncio do lead da venda.
     const idsDeLeadDasVendas = [...new Set(vendas.map((v) => v.lead_id).filter((x): x is string => Boolean(x)))];
@@ -396,6 +430,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       impressoes: number;
       cliques: number;
       leads: number;
+      desqualificados: number;
       vendas: number;
       recebido: number;
     }
@@ -411,6 +446,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       impressoes: 0,
       cliques: 0,
       leads: 0,
+      desqualificados: 0,
       vendas: 0,
       recebido: 0,
     };
@@ -419,6 +455,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     c.impressoes += x.impressoes;
     c.cliques += x.cliques;
     c.leads += x.leads;
+    c.desqualificados += x.desqualificados;
     c.vendas += x.vendas;
     c.recebido += x.recebido;
     conjuntos.set(chave, c);
@@ -448,6 +485,7 @@ export async function GET(req: NextRequest): Promise<Response> {
               cliques: 0,
               viewsLP: 0,
               leads: c.leads,
+              desqualificados: c.desqualificados,
               vendas: c.vendas,
               recebido: c.recebido,
             })),

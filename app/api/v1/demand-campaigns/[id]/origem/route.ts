@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { data: leads, error } = await a.supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, demand_creative_id, demand_landing_page_id, source_metadata, created_at",
+      "id, contact_id, demand_creative_id, demand_landing_page_id, source_metadata, created_at, stage:crm_stages!crm_leads_stage_id_fkey(tipo), contact:contacts(is_mql)",
     )
     .eq("organization_id", a.orgId)
     .or(filtro)
@@ -83,6 +83,8 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     demand_landing_page_id: string | null;
     source_metadata: Record<string, unknown> | null;
     created_at: string;
+    stage: { tipo: string | null } | { tipo: string | null }[] | null;
+    contact: { is_mql: boolean } | { is_mql: boolean }[] | null;
   }>;
   const dentro = lista.filter((l) => {
     const dia = new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date(l.created_at));
@@ -117,7 +119,11 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
       typeof meta.utm_term === "string" && meta.utm_term !== "" ? meta.utm_term : null;
     const adId = typeof meta.ad_id === "string" ? meta.ad_id : null;
     const h = adId ? cache.get(adId) : undefined;
+    const etapa = Array.isArray(l.stage) ? l.stage[0] : l.stage;
+    const pessoa = Array.isArray(l.contact) ? l.contact[0] : l.contact;
     return {
+      desqualificado: etapa?.tipo === "desqualificado",
+      mql: etapa?.tipo === "qualificada" || pessoa?.is_mql === true,
       contato: l.contact_id ?? l.id,
       criativoId: l.demand_creative_id,
       landingPageId: l.demand_landing_page_id,

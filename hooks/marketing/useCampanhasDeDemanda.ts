@@ -485,7 +485,12 @@ export interface OrigemDosLeads {
   total: number;
   porCriativo: Record<string, number>;
   porLandingPage: Record<string, number>;
-  porConjunto: Array<{ id: string; nome: string | null; leads: number }>;
+  porConjunto: Array<{ id: string; nome: string | null; leads: number; desqualificados?: number }>;
+  /** Pessoas desqualificadas e MQL por criativo e por landing page (contagem). */
+  desqualificadosPorCriativo?: Record<string, number>;
+  desqualificadosPorLandingPage?: Record<string, number>;
+  mqlPorCriativo?: Record<string, number>;
+  mqlPorLandingPage?: Record<string, number>;
   semCriativo: number;
   semLandingPage: number;
   semConjunto: number;

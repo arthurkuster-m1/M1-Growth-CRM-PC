@@ -48,6 +48,7 @@ export interface DadosDeTrafego {
     impressoes: number;
     cliques: number;
     leads: number;
+    desqualificados?: number;
     vendas: number;
     recebido: number;
   }>;
@@ -60,10 +61,18 @@ export interface DadosDeTrafego {
     impressoes: number;
     cliques: number;
     leads: number;
+    desqualificados?: number;
     vendas: number;
     recebido: number;
   }>;
-  paginas: Array<{ id: string; nome: string; leads: number; vendas: number; recebido: number }>;
+  paginas: Array<{
+    id: string;
+    nome: string;
+    leads: number;
+    desqualificados?: number;
+    vendas: number;
+    recebido: number;
+  }>;
   catalogo: Array<{ id: string; nome: string }>;
 }
 
@@ -302,6 +311,8 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
               { titulo: t("CTR") },
               { titulo: t("Leads") },
               { titulo: t("CPL") },
+              { titulo: t("Desqualif.") },
+              { titulo: t("Taxa desq.") },
               { titulo: t("Vendas") },
               { titulo: t("Recebido") },
             ]}
@@ -315,6 +326,8 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
               pct(dividir(c.cliques * 100, c.impressoes), 2),
               inteiro(c.leads),
               brl(dividir(c.investido, c.leads)),
+              inteiro(c.desqualificados ?? 0),
+              c.leads > 0 ? pct(dividir((c.desqualificados ?? 0) * 100, c.leads), 0) : "—",
               inteiro(c.vendas),
               brl(c.recebido),
             ])}
@@ -339,6 +352,8 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
               { titulo: t("CPC") },
               { titulo: t("Leads") },
               { titulo: t("CPL") },
+              { titulo: t("Desqualif.") },
+              { titulo: t("Taxa desq.") },
               { titulo: t("Vendas") },
               { titulo: t("Recebido") },
             ]}
@@ -353,6 +368,8 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
               brl(dividir(c.investido, c.cliques)),
               inteiro(c.leads),
               brl(dividir(c.investido, c.leads)),
+              inteiro(c.desqualificados ?? 0),
+              c.leads > 0 ? pct(dividir((c.desqualificados ?? 0) * 100, c.leads), 0) : "—",
               inteiro(c.vendas),
               brl(c.recebido),
             ])}
@@ -366,12 +383,16 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
             colunas={[
               { titulo: t("Página") },
               { titulo: t("Leads") },
+              { titulo: t("Desqualif.") },
+              { titulo: t("Taxa desq.") },
               { titulo: t("Vendas") },
               { titulo: t("Recebido") },
             ]}
             linhas={dados.paginas.map((c) => [
               c.nome,
               inteiro(c.leads),
+              inteiro(c.desqualificados ?? 0),
+              c.leads > 0 ? pct(dividir((c.desqualificados ?? 0) * 100, c.leads), 0) : "—",
               inteiro(c.vendas),
               brl(c.recebido),
             ])}

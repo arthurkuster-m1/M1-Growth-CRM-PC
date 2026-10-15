@@ -491,6 +491,11 @@ interface LinhaDoCriativo {
   x: ReturnType<typeof taxasDoCriativo>;
   cpl: number | null;
   roas: number | null;
+  /** Desqualificados do criativo e a taxa sobre os leads (0 a 1; nulo sem leads). */
+  desqualificados: number;
+  taxaDeDesqualificacao: number | null;
+  mql: number;
+  custoPorMql: number | null;
 }
 
 /**
@@ -542,7 +547,13 @@ export function CriativosDaCampanha({
   const linhas: LinhaDoCriativo[] = criativos.map((c) => {
     const leads = origem?.porCriativo[c.id] ?? 0;
     const faturamento = (origem?.faturamento?.porCriativo[c.id] ?? 0) / 100;
+    const desqualificados = origem?.desqualificadosPorCriativo?.[c.id] ?? 0;
+    const mql = origem?.mqlPorCriativo?.[c.id] ?? 0;
     return {
+      desqualificados,
+      taxaDeDesqualificacao: leads > 0 ? desqualificados / leads : null,
+      mql,
+      custoPorMql: !semDeliveryNoPeriodo && mql > 0 && c.spend > 0 ? c.spend / mql : null,
       id: c.id,
       position: c.position,
       c,
@@ -612,6 +623,20 @@ export function CriativosDaCampanha({
     },
     { id: "leads", titulo: t("Leads (CRM)"), tipo: "numero", valorDe: (l) => l.leads },
     { id: "cpl", titulo: t("CPL real"), tipo: "numero", valorDe: (l) => l.cpl },
+    { id: "mql", titulo: t("MQL"), tipo: "numero", valorDe: (l) => l.mql },
+    { id: "custo_mql", titulo: t("Custo por MQL"), tipo: "numero", valorDe: (l) => l.custoPorMql },
+    {
+      id: "desqualificados",
+      titulo: t("Desqualificados"),
+      tipo: "numero",
+      valorDe: (l) => l.desqualificados,
+    },
+    {
+      id: "taxa_desq",
+      titulo: t("Taxa de desqualificação"),
+      tipo: "numero",
+      valorDe: (l) => (l.taxaDeDesqualificacao === null ? null : l.taxaDeDesqualificacao * 100),
+    },
     { id: "faturamento", titulo: t("Faturamento"), tipo: "numero", valorDe: (l) => l.faturamento },
     { id: "roas", titulo: t("ROAS"), tipo: "numero", valorDe: (l) => l.roas },
   ];
@@ -738,6 +763,42 @@ export function CriativosDaCampanha({
       celula: (l) => numero(inteiro(l.leads)),
     },
     { id: "cpl", titulo: t("CPL real"), largura: 110, celula: (l) => numero(reais(l.cpl)) },
+    { id: "mql", titulo: t("MQL"), largura: 90, celula: (l) => numero(inteiro(l.mql)) },
+    {
+      id: "custo_mql",
+      titulo: t("Custo por MQL"),
+      largura: 130,
+      celula: (l) => numero(reais(l.custoPorMql)),
+    },
+    {
+      id: "desqualificados",
+      titulo: t("Desqualificados"),
+      largura: 130,
+      celula: (l) => numero(inteiro(l.desqualificados)),
+    },
+    {
+      // Barato e fora do perfil: CPL baixo com taxa alta é o criativo que atrai a pessoa errada.
+      id: "taxa_desq",
+      titulo: t("Taxa de desqualificação"),
+      largura: 170,
+      celula: (l) =>
+        l.taxaDeDesqualificacao === null ? (
+          numero("—")
+        ) : (
+          <span
+            title={`${l.desqualificados} ${t("de")} ${l.leads}`}
+            className={`block truncate px-2 text-sm font-medium tabular-nums ${
+              l.taxaDeDesqualificacao >= 0.5
+                ? "text-error-fg"
+                : l.taxaDeDesqualificacao >= 0.3
+                  ? "text-warning-fg"
+                  : ""
+            }`}
+          >
+            {`${Math.round(l.taxaDeDesqualificacao * 100)}%`}
+          </span>
+        ),
+    },
     {
       id: "faturamento",
       titulo: t("Faturamento"),
