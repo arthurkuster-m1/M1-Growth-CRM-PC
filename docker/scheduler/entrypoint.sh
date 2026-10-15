@@ -87,6 +87,8 @@ CRONS="
 # confirmado, futuro e ainda não avisado.
 */5 * * * *|45|api/v1/cron/agenda-reminder
 */15 * * * *|45|api/v1/cron/agenda-expira-pendentes
+# O compromisso que se aproxima sem o cliente ter respondido ao lembrete vira tarefa (ligar).
+*/10 * * * *|45|api/v1/cron/agenda-sem-confirmacao
 # AS TAREFAS REPETIDAS. A cada 5 minutos: a tarefa "toda segunda às 7h" nasce até 5 min
 # depois da hora marcada. Rodada vazia (quase todas) não grava nada: só consulta os
 # modelos que repetem e já venceram.

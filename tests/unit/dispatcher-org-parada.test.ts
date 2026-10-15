@@ -41,6 +41,8 @@ import { followupReactivityHandler } from "@/lib/followup/reactivity.handler";
 import { avisoDeEtapaHandler } from "@/lib/leads/aviso-de-etapa.handler";
 import { comandaDoGanhoHandler } from "@/lib/financeiro/comanda-do-ganho.handler";
 import { webPushInboundHandler } from "@/lib/notifications/push.handler";
+import { agendaRespostaDeConfirmacaoHandler } from "@/lib/agenda/confirmacao.handler";
+import { conversaoDeMensalidadeHandler } from "@/lib/conversoes/mensalidade.handler";
 import { avisoDePropostaNoWhatsAppHandler } from "@/lib/propostas/aviso-no-whatsapp.handler";
 import { aiHandoffFromSentimentHandler } from "@/workers/ai-handoff-from-sentiment.handler";
 import { aiResponseHandler } from "@/workers/ai-response-worker.handler";
@@ -53,6 +55,7 @@ import { ragIndexerHandler } from "@/workers/rag-indexer.handler";
 
 const RODA: EventHandler[] = [
   followupReactivityHandler,
+  agendaRespostaDeConfirmacaoHandler,
   campanhaRespostaHandler,
   avisoDeEtapaHandler,
   casoNaCentralHandler,
@@ -78,6 +81,7 @@ const PULA: EventHandler[] = [
   avisoDeCasoAoSuporteHandler,
   avisoDePropostaNoWhatsAppHandler,
   conversaoDeVendaHandler,
+  conversaoDeMensalidadeHandler,
   conversaoDeQualificacaoHandler,
   conversaoDeEtapaMetaHandler,
   pinoReintentoHandler,

@@ -131,11 +131,24 @@ export async function importarEventoDoDestino(
   const temVideo = Boolean(e.hangoutLink);
   const fuso = e.start?.timeZone || args.fusoDoCalendario;
 
+  // O tipo do compromisso importado: o "Reunião" da empresa (ou o primeiro tipo ativo). É ele que
+  // liga os lembretes e entra nas análises; trocar depois é só editar o compromisso.
+  const { data: tipos } = await db
+    .from("calendar_event_types")
+    .select("id, name, position")
+    .eq("organization_id", args.org)
+    .eq("is_active", true)
+    .order("position", { ascending: true })
+    .limit(50);
+  const listaDeTipos = (tipos ?? []) as Array<{ id: string; name: string }>;
+  const tipoPadrao =
+    listaDeTipos.find((x) => /reuni/i.test(x.name)) ?? listaDeTipos[0] ?? null;
+
   const { data: criado, error } = await db
     .from("calendar_appointments")
     .insert({
       organization_id: args.org,
-      event_type_id: null,
+      event_type_id: tipoPadrao?.id ?? null,
       title: titulo,
       description: (e.description ?? "").trim().slice(0, 2000) || null,
       starts_at: new Date(e.start!.dateTime!).toISOString(),
@@ -209,7 +222,7 @@ export async function importarEventoDoDestino(
           contactId: contato?.contactId ?? null,
           transicao: "confirmed",
           fuso,
-          nomeDoTipo: "Google Agenda",
+          nomeDoTipo: tipoPadrao?.name ?? "Google Agenda",
           compromisso: {
             starts_at: criado.starts_at,
             ends_at: criado.ends_at,
