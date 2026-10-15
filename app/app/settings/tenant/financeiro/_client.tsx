@@ -6,6 +6,7 @@
  * pagamento aponta para uma conta, e conferir isso pulando entre abas é como o
  * erro passa — "Pix cai no Caixa" só se percebe vendo os dois lado a lado.
  */
+import { TaxasDePagamento } from "./_taxas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -207,6 +208,8 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
           aoRemover={(id) => inativar.mutate({ tipo: "formas_de_pagamento", id })}
         />
       </section>
+
+      <TaxasDePagamento podeEditar={podeEditar} />
 
       {/* ─── plano de contas ────────────────────────────────────────── */}
       <section className="space-y-3 rounded-xl border p-4">

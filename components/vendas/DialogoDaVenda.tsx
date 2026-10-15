@@ -16,11 +16,12 @@ import { useT } from "@/hooks/i18n/useT";
 import { somarMesesNaData } from "@/lib/vendas-recorrentes";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { lerNumero } from "@/lib/marketing/calculadora";
+import { SeletorDaFormaDePagamento } from "@/components/vendas/SeletorDaFormaDePagamento";
+import { useTaxasDePagamento } from "@/hooks/financeiro/useTaxasDePagamento";
+import { taxaDoRecebimento } from "@/lib/financeiro/taxas";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { Plus, Trash } from "@/lib/ui/icons";
 import {
-  FORMAS_DE_PAGAMENTO,
-  rotuloDaForma,
   ajustarParcelasAoTotal,
   gerarParcelas,
   redistribuirAposEditar,
@@ -296,6 +297,17 @@ export function DialogoDaVenda({
   }, [venda?.id, venda?.contact_id]);
 
   const total = itens.reduce((s, i) => s + centavos(i.valor), 0);
+  const taxasDePagamento = useTaxasDePagamento();
+  // O que a taxa da forma escolhida custa nesta venda, e quanto sobra líquido.
+  const resumoDaTaxa = (() => {
+    const cfg = (taxasDePagamento.data ?? []).find((x) => x.forma === forma);
+    if (!cfg || total <= 0) return null;
+    const r = taxaDoRecebimento(cfg, total, Number(qtd) || 1);
+    if (r.taxa_cents <= 0) return null;
+    return cfg.payer === "client"
+      ? `${t("Taxa de")} ${reais(r.taxa_cents)} ${t("paga pelo cliente final")}`
+      : `${t("Taxa de")} ${reais(r.taxa_cents)} · ${t("líquido")} ${reais(r.liquido_cents)}`;
+  })();
   const somaParcelas = parcelas.reduce((s, p) => s + centavos(p.valor), 0);
   const diferenca = parcelas.length > 0 ? total - somaParcelas : 0;
   const termo = busca.trim().toLowerCase();
@@ -792,20 +804,10 @@ export function DialogoDaVenda({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Forma de pagamento")}</span>
-                <select
-                  value={forma}
-                  onChange={(e) => {
-                    setForma(e.target.value);
-                    if (e.target.value === "recorrencia") setRecorrente(true);
-                  }}
-                  className={CAMPO}
-                >
-                  {FORMAS_DE_PAGAMENTO.map((f) => (
-                    <option key={f} value={f}>
-                      {rotuloDaForma(t, f)}
-                    </option>
-                  ))}
-                </select>
+                <SeletorDaFormaDePagamento valor={forma} aoEscolher={setForma} />
+                {resumoDaTaxa ? (
+                  <span className="text-xs text-muted-foreground">{resumoDaTaxa}</span>
+                ) : null}
               </label>
               <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Número de parcelas")}</span>

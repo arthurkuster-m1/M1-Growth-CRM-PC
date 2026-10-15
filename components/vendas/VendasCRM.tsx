@@ -20,6 +20,8 @@ import {
   type ClienteOpcao,
   type DadosDaVenda,
 } from "@/components/vendas/DialogoDaVenda";
+import { SeletorDaFormaDePagamento } from "@/components/vendas/SeletorDaFormaDePagamento";
+import { useRotuloDaForma } from "@/hooks/financeiro/useTaxasDePagamento";
 import { useT } from "@/hooks/i18n/useT";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
@@ -47,8 +49,6 @@ import { cn } from "@/lib/utils";
 import {
   STATUS_DA_VENDA,
   fluxoDoMes,
-  FORMAS_DE_PAGAMENTO,
-  rotuloDaForma,
   totaisDeVendas,
   nomeDaVenda,
   valorPagoDaVenda,
@@ -93,6 +93,7 @@ function rotuloDoStatusDaVenda(t: (s: string) => string, s: StatusDaVenda): stri
  */
 export function VendasCRM() {
   const t = useT();
+  const rotuloDaFormaDe = useRotuloDaForma();
   const queryClient = useQueryClient();
   const router = useRouter();
   const caminho = usePathname();
@@ -371,10 +372,10 @@ export function VendasCRM() {
     },
     {
       id: "pagamento",
-      titulo: t("Tipo de pagamento"),
+      titulo: t("Forma de pagamento"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 160,
-      celula: (v) => texto(v.payment_method ? rotuloDaForma(t, v.payment_method) : ""),
+      celula: (v) => texto(v.payment_method ? rotuloDaFormaDe(v.payment_method) : ""),
     },
     {
       id: "parcelas",
@@ -550,7 +551,7 @@ export function VendasCRM() {
     },
     {
       id: "pagamento",
-      titulo: t("Tipo de pagamento"),
+      titulo: t("Forma de pagamento"),
       tipo: "texto",
       valorDe: (v) => v.payment_method,
     },
@@ -1077,19 +1078,9 @@ function CobrancaParaConfirmar({
             className="h-9 w-28 rounded-lg border bg-background px-2 text-right text-sm tabular-nums"
           />
         </label>
-        <select
-          value={forma}
-          onChange={(e) => setForma(e.target.value)}
-          aria-label={t("Forma de pagamento")}
-          className="h-9 rounded-lg border bg-background px-2 text-sm"
-        >
-          <option value="">{t("Forma…")}</option>
-          {FORMAS_DE_PAGAMENTO.map((f) => (
-            <option key={f} value={f}>
-              {rotuloDaForma(t, f)}
-            </option>
-          ))}
-        </select>
+        <div className="w-48">
+          <SeletorDaFormaDePagamento valor={forma} aoEscolher={setForma} className="h-9 rounded-lg" />
+        </div>
         <button
           type="button"
           onClick={() => aoReceber(valorEmCentavos, forma)}

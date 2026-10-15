@@ -19,13 +19,13 @@ import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { resumoDaVenda } from "@/lib/vendas-tabela";
+import { useRotuloDaForma } from "@/hooks/financeiro/useTaxasDePagamento";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import {
   STATUS_DA_VENDA,
-  rotuloDaForma,
   nomeDaVenda,
   valorPagoDaVenda,
   valorPrevistoDaVenda,
@@ -67,6 +67,7 @@ const COR: Record<StatusDaVenda, "blue" | "yellow" | "green" | "gray"> = {
  */
 export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: string }) {
   const t = useT();
+  const rotuloDaFormaDe = useRotuloDaForma();
   const queryClient = useQueryClient();
   const marcarParcela = useMarcarParcela();
   const [abertaId, setAbertaId] = useState<string | null>(null);
@@ -279,7 +280,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                   <th className="px-3 py-2 text-left font-medium">{t("Funil")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Produto(s)")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Tipo de pagamento")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Forma de pagamento")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Parcelas")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("Valor pago")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("Valor previsto")}</th>
@@ -344,7 +345,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                             </SeletorDeOpcao>
                           </td>
                           <td className="px-3 py-2">
-                            {v.payment_method ? rotuloDaForma(t, v.payment_method) : "—"}
+                            {v.payment_method ? rotuloDaFormaDe(v.payment_method) : "—"}
                           </td>
                           <td className="px-3 py-2">
                             {r.parcelas.length === 0 ? (

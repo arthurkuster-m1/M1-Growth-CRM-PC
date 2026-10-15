@@ -36,6 +36,9 @@ export interface DadosDeBusiness {
   recebidoAnterior: number;
   saiu: number;
   saiuAnterior: number;
+  taxas: number;
+  taxasAnterior: number;
+  liquido: number;
   aReceber60: number;
   vendas: number;
   vendasAnterior: number;
@@ -56,7 +59,7 @@ export interface DadosDeBusiness {
   avulsoNoPeriodo: number;
   vencidas: number;
   concentracaoTop10: number | null;
-  serie: Array<{ mes: string; recebido: number; saiu: number; previsto: number }>;
+  serie: Array<{ mes: string; recebido: number; saiu: number; previsto: number; taxas: number }>;
   produtos: Array<{ nome: string; vendas: number; recebido: number; aReceber: number }>;
 }
 
@@ -74,8 +77,8 @@ export function Business({
   aoMudarMeses: (meses: number) => void;
 }) {
   const t = useT();
-  const lucro = dados.recebido - dados.saiu;
-  const lucroAnt = dados.recebidoAnterior - dados.saiuAnterior;
+  const lucro = dados.recebido - dados.saiu - dados.taxas;
+  const lucroAnt = dados.recebidoAnterior - dados.saiuAnterior - dados.taxasAnterior;
   const cac = dividir(dados.saiu, dados.novosClientes);
   const cacAnt = dividir(dados.saiuAnterior, dados.novosClientesAnterior);
   const ticket = dividir(dados.recebido, dados.vendas);
@@ -106,7 +109,13 @@ export function Business({
           rotulo={t("Saiu (mídia)")}
           valor={brl(dados.saiu)}
           variacao={<Variacao atual={dados.saiu} anterior={dados.saiuAnterior} menorEMelhor />}
-          apoio={t("Por ora só investimento em mídia")}
+          apoio={t("Investimento em mídia")}
+        />
+        <Kpi
+          rotulo={t("Taxas de pagamento (custo variável)")}
+          valor={brl(dados.taxas)}
+          variacao={<Variacao atual={dados.taxas} anterior={dados.taxasAnterior} menorEMelhor />}
+          apoio={`${t("Líquido recebido")} ${brl(dados.liquido)}`}
         />
         <Kpi
           rotulo={t("Lucro")}
@@ -189,6 +198,7 @@ export function Business({
                   radius={[6, 6, 0, 0]}
                 />
                 <Bar dataKey="saiu" name={t("Saiu (mídia)")} fill={COR_DO_APOIO} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="taxas" name={t("Taxas de pagamento")} fill="var(--warning-fg, #b45309)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

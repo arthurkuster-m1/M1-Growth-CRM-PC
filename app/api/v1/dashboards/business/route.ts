@@ -21,6 +21,7 @@ import {
   somarDias,
   ultimosMeses,
 } from "@/lib/dashboards/business";
+import { taxaDoRecebimento, type TaxaDaForma } from "@/lib/financeiro/taxas";
 import { periodoAnterior } from "@/lib/dashboards/trafego";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 
@@ -38,6 +39,8 @@ interface Parcela {
   due_on: string | null;
   contact_id: string | null;
   recorrente: boolean;
+  /** Taxa da forma de pagamento paga pela empresa (custo variável). */
+  taxa?: number;
 }
 
 export async function GET(req: NextRequest): Promise<Response> {
@@ -60,13 +63,24 @@ export async function GET(req: NextRequest): Promise<Response> {
   const fuso = (org?.timezone as string | null) || "America/Sao_Paulo";
   const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date());
 
+  // As taxas de cada forma de pagamento (custo variável quando a empresa paga).
+  const { data: taxasBrutas } = await a.supabase
+    .from("payment_fee_settings")
+    .select("forma, name, is_custom, payer, percent_bps, fixed_cents, installment_bps")
+    .eq("organization_id", a.orgId)
+    .eq("is_active", true)
+    .limit(200);
+  const taxasPorForma = new Map<string, TaxaDaForma>(
+    ((taxasBrutas ?? []) as unknown as TaxaDaForma[]).map((x) => [x.forma, x]),
+  );
+
   // O que foi RECEBIDO: do mais antigo entre (período anterior, 6 meses atrás) até o fim.
   const seisMeses = ultimosMeses(ate.data, 6)[0]!;
   const inicioDaSerie = `${seisMeses}-01`;
   const desde = inicioDaSerie < ant.de ? inicioDaSerie : ant.de;
   const { data: recebidasBrutas } = await a.supabase
     .from("crm_sale_payments")
-    .select("lead_id, amount_cents, paid_on, crm_leads!inner(contact_id, status, is_recurring)")
+    .select("lead_id, amount_cents, paid_on, forma, crm_leads!inner(contact_id, status, is_recurring, payment_method, installments)")
     .eq("organization_id", a.orgId)
     .eq("status", "recebida")
     .gte("paid_on", desde)
@@ -75,8 +89,19 @@ export async function GET(req: NextRequest): Promise<Response> {
   const recebidas: Parcela[] = ((recebidasBrutas ?? []) as unknown as Array<Record<string, unknown>>).map(
     (p) => {
       const s = (Array.isArray(p.crm_leads) ? p.crm_leads[0] : p.crm_leads) as
-        | { contact_id?: string | null; is_recurring?: boolean }
+        | {
+            contact_id?: string | null;
+            is_recurring?: boolean;
+            payment_method?: string | null;
+            installments?: number | null;
+          }
         | null;
+      const forma = String(p.forma ?? "") || String(s?.payment_method ?? "");
+      const taxa = taxaDoRecebimento(
+        taxasPorForma.get(forma),
+        Math.round(n(p.amount_cents)),
+        n(s?.installments) || 1,
+      );
       return {
         sale_id: String(p.lead_id),
         amount: reais(p.amount_cents),
@@ -84,6 +109,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         due_on: null,
         contact_id: s?.contact_id ?? null,
         recorrente: s?.is_recurring === true,
+        taxa: reais(taxa.custo_cents),
       };
     },
   );
@@ -132,6 +158,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const noPeriodo = (p: Parcela) => (p.paid_on ?? "") >= de.data && (p.paid_on ?? "") <= ate.data;
   const noAnterior = (p: Parcela) => (p.paid_on ?? "") >= ant.de && (p.paid_on ?? "") <= ant.ate;
   const somar = (l: Parcela[]) => arred(l.reduce((s, p) => s + p.amount, 0));
+  const somarTaxas = (l: Parcela[]) => arred(l.reduce((s, p) => s + (p.taxa ?? 0), 0));
   const doPeriodo = recebidas.filter(noPeriodo);
   const doAnterior = recebidas.filter(noAnterior);
 
@@ -236,6 +263,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       [...gastoPorDia].filter(([d]) => mesDe(d) === m).reduce((s, [, v]) => s + v, 0),
     ),
     previsto: somar(previstas.filter((p) => p.due_on && mesDe(p.due_on) === m && p.due_on >= hoje)),
+    taxas: somarTaxas(recebidas.filter((p) => p.paid_on && mesDe(p.paid_on) === m)),
   }));
   const ultimoMes = meses[meses.length - 1]!;
   for (const k of [1, 2]) {
@@ -244,6 +272,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       mes: m,
       recebido: 0,
       saiu: 0,
+      taxas: 0,
       previsto: somar(previstas.filter((p) => p.due_on && mesDe(p.due_on) === m)),
     });
   }
@@ -268,6 +297,8 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const recebido = somar(doPeriodo);
   const recebidoAnt = somar(doAnterior);
+  const taxas = somarTaxas(doPeriodo);
+  const taxasAnt = somarTaxas(doAnterior);
   const saiu = gastoNo(de.data, ate.data);
   const saiuAnt = gastoNo(ant.de, ant.ate);
   const vendas = contaVendas(de.data, ate.data);
@@ -283,6 +314,9 @@ export async function GET(req: NextRequest): Promise<Response> {
       recebidoAnterior: recebidoAnt,
       saiu,
       saiuAnterior: saiuAnt,
+      taxas,
+      taxasAnterior: taxasAnt,
+      liquido: arred(recebido - taxas),
       aReceber60,
       vendas,
       vendasAnterior: vendasAnt,
