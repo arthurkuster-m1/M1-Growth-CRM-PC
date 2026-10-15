@@ -148,6 +148,8 @@ export function ClientesCRM({
     null | "faturamento" | "abertos" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
+  /** O status do ciclo de vida que filtra a lista (clique de novo para soltar). */
+  const [cicloFiltro, setCicloFiltro] = useState<(typeof CICLOS_DE_VIDA)[number] | null>(null);
 
   const chaveDaConsulta = ["clientes", funilEscolhido] as const;
   const consulta = useQuery({
@@ -1308,7 +1310,10 @@ export function ClientesCRM({
   };
   const comVendaNoFiltro = (l: Linha) => statusDasVendas.size === 0 || vendasVisiveis(l).length > 0;
   const visiveis = buscadas.filter(
-    (l) => comVendaNoFiltro(l) && (!destaque || passaNoDestaque(l)),
+    (l) =>
+      comVendaNoFiltro(l) &&
+      (!destaque || passaNoDestaque(l)) &&
+      (!cicloFiltro || l.ciclo_de_vida === cicloFiltro),
   );
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
@@ -1407,7 +1412,7 @@ export function ClientesCRM({
   numerosDaBase.sort((x, y) => ordemDaBase.indexOf(x.id) - ordemDaBase.indexOf(y.id));
   const contagemDoCiclo = CICLOS_DE_VIDA.map((c) => ({
     ciclo: c,
-    n: alvos.filter((l) => l.ciclo_de_vida === c).length,
+    n: linhas.filter((l) => l.ciclo_de_vida === c).length,
   }));
 
   const abasPorId = new Map([
@@ -1487,7 +1492,7 @@ export function ClientesCRM({
       <section
         aria-label={t("Resumo")}
         className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
-          ehOportunidades ? "xl:grid-cols-5" : "xl:grid-cols-6"
+          "xl:grid-cols-5"
         }`}
       >
         {(ehOportunidades ? numeros : numerosDaBase).map((n) => {
@@ -1519,30 +1524,70 @@ export function ClientesCRM({
             </button>
           );
         })}
-        {ehOportunidades ? null : (
-          <div className="col-span-2 bg-card px-4 py-3 sm:col-span-3 xl:col-span-1">
+      </section>
+
+      {ehOportunidades ? null : (
+        <section
+          aria-label={t("Ciclo de vida")}
+          className="rounded-2xl border bg-card px-4 py-3"
+        >
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {t("Ciclo de vida")}
             </p>
-            <ul className="mt-1.5 grid gap-0.5">
-              {contagemDoCiclo.map(({ ciclo, n }) => (
-                <li key={ciclo} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span
-                      aria-hidden
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: BASE_DA_COR[COR_DO_CICLO[ciclo]] }}
-                    />
-                    {t(ROTULO_DO_CICLO[ciclo])}
-                  </span>
-                  <span className="font-semibold tabular-nums">{n}</span>
-                </li>
-              ))}
-            </ul>
+            {cicloFiltro ? (
+              <button
+                type="button"
+                onClick={() => setCicloFiltro(null)}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {t("Mostrar todos")}
+              </button>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">
+                {t("Clique numa etapa para filtrar a lista")}
+              </span>
+            )}
           </div>
-        )}
-      </section>
+          <ol className="flex w-full items-stretch overflow-x-auto pb-1">
+            {contagemDoCiclo.map(({ ciclo, n }, i) => {
+              const cor = BASE_DA_COR[COR_DO_CICLO[ciclo]];
+              const ativo = cicloFiltro === ciclo;
+              const apagado = cicloFiltro !== null && !ativo;
+              return (
+                <li key={ciclo} className="min-w-[8.5rem] flex-1" style={{ marginLeft: i === 0 ? 0 : -10 }}>
+                  <button
+                    type="button"
+                    aria-pressed={ativo}
+                    title={t("Filtrar a lista por esta etapa")}
+                    onClick={() => setCicloFiltro(ativo ? null : ciclo)}
+                    className="relative flex h-16 w-full flex-col justify-center text-left transition-opacity hover:opacity-90"
+                    style={{
+                      // A seta que encaixa na próxima etapa: ponta à direita, recorte à esquerda.
+                      clipPath:
+                        i === 0
+                          ? "polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%)"
+                          : "polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%)",
+                      backgroundColor: `color-mix(in srgb, ${cor} ${ativo ? 38 : 20}%, transparent)`,
+                      borderLeft: `4px solid ${cor}`,
+                      opacity: apagado ? 0.5 : 1,
+                      paddingLeft: i === 0 ? 12 : 22,
+                      paddingRight: 18,
+                    }}
+                  >
+                    <span className="truncate text-[11px] font-semibold tracking-wide uppercase">
+                      {t(ROTULO_DO_CICLO[ciclo])}
+                    </span>
+                    <span className="text-xl leading-tight font-semibold tabular-nums">{n}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
 
+      {ehOportunidades ? (
       <div className="flex flex-wrap items-center gap-1.5">
         {ehOportunidades ? (
           <>
@@ -1588,8 +1633,8 @@ export function ClientesCRM({
         ) : null}
           </>
         ) : null}
-        <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />
       </div>
+      ) : null}
 
       {vendaAberta ? (
         <DialogoDaVenda
@@ -1664,6 +1709,7 @@ export function ClientesCRM({
         </p>
       ) : (
         <>
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
           <AbasDeVisualizacao
             abas={abas}
             ativaId={ativaId}
@@ -1677,6 +1723,10 @@ export function ClientesCRM({
             }
             aoConfigurar={() => setConfigurando(true)}
           />
+          {ehOportunidades ? null : (
+            <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />
+          )}
+          </div>
 
           {vista === "quadro" && !ehOportunidades ? (
             <QuadroDoCiclo clientes={resultado.linhas} />
