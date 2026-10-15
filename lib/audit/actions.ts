@@ -554,6 +554,8 @@ export const AUDIT_ACTIONS = [
   "ai.budget_enforcement_armed",
   "ai.budget_enforcement_disarmed",
   "contact.deleted",
+  // Cliente devolvido da lixeira (7 dias) com tudo que saiu junto.
+  "contact.restored",
 
   // A poda do histórico (issue #261). UMA linha por rodada que de fato
   // apagou algo — rodada que não apagou nada não é mutação e não ocupa

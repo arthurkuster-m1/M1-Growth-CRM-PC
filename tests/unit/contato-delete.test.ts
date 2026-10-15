@@ -14,7 +14,7 @@ const CONTATO = "c05e7a00-0000-4000-8000-0000000000c1";
 const USUARIO = "c05e7a00-0000-4000-8000-0000000000a1";
 
 /** A função da transação única (migration 0488) — a ÚNICA escrita da rota. */
-const FUNCAO = "fn_apagar_contato_com_historico";
+const FUNCAO = "fn_excluir_cliente_para_lixeira";
 
 const chamadas: Array<{ tabela: string; op: string }> = [];
 const contagens: Array<{ tabela: string; filtros: Array<[string, unknown]> }> = [];
@@ -127,17 +127,8 @@ describe("deleteContactHandler", () => {
       { nome: FUNCAO, args: { p_contact_id: CONTATO, p_organization_id: ORG } },
     ]);
 
-    // A pré-checagem da #752 continua contando com os DOIS filtros (contato +
-    // organização): sem o de organização, contato de outra org bloquearia.
-    expect(contagens).toEqual([
-      {
-        tabela: "calendar_appointments",
-        filtros: [
-          ["contact_id", CONTATO],
-          ["organization_id", ORG],
-        ],
-      },
-    ]);
+    // Nada barra mais a exclusão: compromisso e conversa saem junto, para a lixeira (7 dias).
+    expect(contagens).toEqual([]);
     expect(ultimaAuditoria()).toMatchObject({
       action: "contact.deleted",
       resourceId: CONTATO,
@@ -145,30 +136,12 @@ describe("deleteContactHandler", () => {
     });
   });
 
-  it("contato com compromisso na agenda: 409 e a função nem é chamada (issue #752)", async () => {
+  it("contato com compromisso na agenda também é excluído (vai para a lixeira, com tudo)", async () => {
     const { deleteContactHandler } = await import("@/app/api/v1/contacts/_handler");
-    await expect(
-      deleteContactHandler(clienteFalso({ vinculos: 1 }) as never, ctxFalso(), CONTATO),
-    ).rejects.toMatchObject({
-      status: 409,
-      code: "state_conflict",
-      // #1925: o 409 entrega o QUE barrou em `details.vinculos`, para a tela
-      // montar a frase e o link para a Agenda em vez do texto genérico fixo.
-      details: {
-        vinculos: ["1 compromisso(s) na agenda"],
-        por_tabela: { calendar_appointments: 1 },
-      },
-    });
-    // O ponto da issue: nada foi apagado antes de saber que a ficha não sai.
-    expect(chamadas).toEqual([]);
-    expect(rpcs.some((r) => r.nome === FUNCAO)).toBe(false);
-    expect(auditSpy).not.toHaveBeenCalledWith(expect.objectContaining({ action: "contact.deleted" }));
-    expect(ultimaAuditoria()).toMatchObject({
-      action: "contact.delete_blocked",
-      resourceId: CONTATO,
-      organizationId: ORG,
-      metadata: { motivo: "vinculo_restrict", vinculos: ["1 compromisso(s) na agenda"], apagados: [] },
-    });
+    const out = await deleteContactHandler(clienteFalso({ vinculos: 1 }) as never, ctxFalso(), CONTATO);
+    expect(out).toEqual({ id: CONTATO });
+    expect(rpcs.some((r) => r.nome === FUNCAO)).toBe(true);
+    expect(ultimaAuditoria()).toMatchObject({ action: "contact.deleted", resourceId: CONTATO });
   });
 
   it("a função falha: audita apagados VAZIO e propaga o 409 (nada saiu pela metade)", async () => {
@@ -200,19 +173,6 @@ describe("deleteContactHandler", () => {
       ),
     ).rejects.toMatchObject({ status: 500, code: "internal_error" });
     expect(chamadas).toEqual([]);
-  });
-
-  it("falha ao contar o vínculo não segue apagando o histórico", async () => {
-    const { deleteContactHandler } = await import("@/app/api/v1/contacts/_handler");
-    await expect(
-      deleteContactHandler(
-        clienteFalso({ erroContagem: { message: "contagem fora do ar" } }) as never,
-        ctxFalso(),
-        CONTATO,
-      ),
-    ).rejects.toMatchObject({ status: 500, code: "internal_error" });
-    expect(chamadas).toEqual([]);
-    expect(rpcs.some((r) => r.nome === FUNCAO)).toBe(false);
   });
 
   it("a função devolve false (ficha inacessível): 404 sem auditar exclusão", async () => {

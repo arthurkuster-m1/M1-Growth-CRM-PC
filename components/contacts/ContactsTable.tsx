@@ -322,7 +322,7 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
           <AlertDialogTitle>{t("Excluir contato?")}</AlertDialogTitle>
           <AlertDialogDescription>
             {alvo
-              ? `${t("Isso remove")} ${displayName(alvo, t)} ${t("e a conversa associada, se houver. Esta ação não pode ser desfeita.")}`
+              ? `${t("Isso remove")} ${displayName(alvo, t)} ${t("com tudo que depende dele (oportunidades, vendas, conversas e compromissos). Fica 7 dias na Lixeira do CRM e pode ser restaurado nesse prazo.")}`
               : null}
             {/*
               O aviso ANTES do clique (issue #1925): a recusa já nomeava o

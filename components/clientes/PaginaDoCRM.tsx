@@ -5,13 +5,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { ClientesCRM } from "@/components/clientes/ClientesCRM";
+import { LixeiraDoCRM } from "@/components/clientes/LixeiraDoCRM";
 import { VendasCRM } from "@/components/vendas/VendasCRM";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
-const VISOES = ["clientes", "oportunidades", "vendas"] as const;
+const VISOES = ["clientes", "oportunidades", "vendas", "lixeira"] as const;
 type Visao = (typeof VISOES)[number];
 
 /**
@@ -19,6 +20,7 @@ type Visao = (typeof VISOES)[number];
  *  - Clientes: as pessoas (o lead é o cliente), com o ciclo de vida.
  *  - Oportunidades: os negócios de cada funil/campanha, em quadro ou lista.
  *  - Vendas: os pagamentos e as parcelas.
+ *  - Lixeira: os clientes excluídos nos últimos 7 dias (restaurar ou apagar de vez).
  * Cada visão tem as próprias visualizações salvas, filtros e colunas (o motor das Tarefas).
  */
 export function PaginaDoCRM() {
@@ -31,12 +33,14 @@ export function PaginaDoCRM() {
 
   const pedida = parametros.get("visao");
   const visao: Visao =
-    VISOES.find((v) => v === pedida && (v !== "vendas" || podeVerVendas)) ?? "clientes";
+    VISOES.find((v) => v === pedida && ((v !== "vendas" && v !== "lixeira") || podeVerVendas)) ??
+    "clientes";
 
   const abas: Array<{ id: Visao; rotulo: string }> = [
     { id: "clientes", rotulo: t("Clientes") },
     { id: "oportunidades", rotulo: t("Oportunidades") },
     ...(podeVerVendas ? [{ id: "vendas" as const, rotulo: t("Vendas") }] : []),
+    ...(podeVerVendas ? [{ id: "lixeira" as const, rotulo: t("Lixeira") }] : []),
   ];
 
   return (
@@ -74,6 +78,7 @@ export function PaginaDoCRM() {
         {visao === "clientes" ? <ClientesCRM key="clientes" modo="clientes" /> : null}
         {visao === "oportunidades" ? <ClientesCRM key="oportunidades" modo="oportunidades" /> : null}
         {visao === "vendas" ? <VendasCRM key="vendas" /> : null}
+        {visao === "lixeira" ? <LixeiraDoCRM key="lixeira" /> : null}
       </Suspense>
     </div>
   );

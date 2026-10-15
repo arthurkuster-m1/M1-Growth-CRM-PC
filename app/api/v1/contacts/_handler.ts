@@ -817,9 +817,9 @@ function throwOnDbError(
  * teste que acompanha este handler (`tests/unit/contato-delete.test.ts`)
  * exercita a contagem com filtro de organização.
  */
-const VINCULOS_RESTRICT_NAO_APAGADOS: ReadonlyArray<{ tabela: string; rotulo: string }> = [
-  { tabela: "calendar_appointments", rotulo: "compromisso(s) na agenda" },
-];
+// A exclusão vai para a LIXEIRA (7 dias) e leva junto tudo que depende do cliente (oportunidades,
+// vendas, conversas e compromissos): nada mais barra a exclusão.
+const VINCULOS_RESTRICT_NAO_APAGADOS: ReadonlyArray<{ tabela: string; rotulo: string }> = [];
 
 /**
  * A ficha precisa existir DENTRO da organização de quem chama — o mesmo 404 da
@@ -951,14 +951,14 @@ export async function deleteContactHandler(
   // gravadas — a ficha ficava na base SEM histórico, e a auditoria do erro saía
   // com `apagados: ["messages","conversations"]` como rastro do estrago.
   //
-  // Agora a rota chama `fn_apagar_contato_com_historico` (migration 0488), que
+  // Agora a rota chama `fn_excluir_cliente_para_lixeira` (migration 0639), que guarda uma cópia na lixeira (7 dias) e depois
   // apaga as três na ordem certa do RESTRICT dentro de uma transação só: ou sai
   // tudo, ou não sai nada. É `security invoker` — a RLS de quem chama continua
   // valendo, e o filtro de `organization_id` é do banco (argumento + where), não
   // do chamador. Nenhum service role entra aqui.
   let apagou = false;
   try {
-    const { data, error: rpcErr } = await supabase.rpc("fn_apagar_contato_com_historico", {
+    const { data, error: rpcErr } = await supabase.rpc("fn_excluir_cliente_para_lixeira", {
       p_contact_id: contactId,
       p_organization_id: ctx.organization_id,
     });

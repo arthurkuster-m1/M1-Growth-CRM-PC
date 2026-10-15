@@ -176,5 +176,10 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { data: recalculados } = await admin.rpc("fn_ciclo_recalcula_todos" as never, {} as never);
   if (typeof recalculados === "number") ciclos = recalculados;
 
-  return ok({ geradas, avisos, ciclos }, { requestId });
+  // ── 4. Lixeira: o que passou de 7 dias é apagado de vez ────────────────────────────────
+  let lixeira = 0;
+  const { data: esvaziados } = await admin.rpc("fn_lixeira_esvaziar" as never, {} as never);
+  if (typeof esvaziados === "number") lixeira = esvaziados;
+
+  return ok({ geradas, avisos, ciclos, lixeira }, { requestId });
 }
