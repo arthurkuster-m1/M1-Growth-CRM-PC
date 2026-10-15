@@ -22,6 +22,7 @@ import { taxaDoRecebimento } from "@/lib/financeiro/taxas";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { Bell, Plus, Trash } from "@/lib/ui/icons";
 import { ConfirmarDataDaProximaAcao } from "@/components/clientes/ConfirmarDataDaProximaAcao";
+import { CompromissosDoLead } from "@/components/agenda/CompromissosDoLead";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
@@ -1025,6 +1026,12 @@ export function DialogoDaVenda({
             ) : null}
           </div>
         </Fase>
+
+        {venda?.lead_id ? (
+          <Fase titulo={t("Compromissos")} cor="blue">
+            <CompromissosDoLead contactId={venda.contact_id} leadId={venda.lead_id} />
+          </Fase>
+        ) : null}
 
         <Fase titulo={t("Produtos e serviços")} cor="orange">
           {itens.map((it, i) => (

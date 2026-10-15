@@ -71,6 +71,12 @@ export interface MarcarInput {
   starts_at: string;
   owner_user_id?: string;
   contact_id?: string;
+  /**
+   * A OPORTUNIDADE do compromisso (`crm_leads.id`). Com ela o compromisso pertence a essa
+   * oportunidade (e, por ela, à campanha e às métricas). Sem ela, o negócio ativo do contato é
+   * usado quando é único; compromisso de atendimento ao cliente fica só no contato.
+   */
+  lead_id?: string;
   conversation_id?: string;
   title?: string;
   notes?: string;
@@ -314,6 +320,33 @@ async function executarCriacaoDeAgendamento(
     throw new ApiError(422, "agenda_tipo_desativado", undefined, ctx.requestId, `"${tipo.name}" está desativado.`);
   }
 
+  // A oportunidade informada precisa ser desta empresa e, havendo contato, ser DELE: compromisso
+  // marcado na oportunidade de outra pessoa contaria nas métricas erradas.
+  let leadDoCompromisso: string | null = null;
+  if (input.lead_id) {
+    const { data: lead } = await supabase
+      .from("crm_leads")
+      .select("id, contact_id")
+      .eq("organization_id", ctx.organization_id)
+      .eq("id", input.lead_id)
+      .maybeSingle();
+    if (!lead) {
+      throw new ApiError(404, "not_found", undefined, ctx.requestId, "Oportunidade não encontrada.");
+    }
+    const contatoDoLead = (lead as { contact_id: string | null }).contact_id;
+    if (input.contact_id && contatoDoLead && contatoDoLead !== input.contact_id) {
+      throw new ApiError(
+        422,
+        "validation_failed",
+        undefined,
+        ctx.requestId,
+        "Esta oportunidade é de outro cliente.",
+      );
+    }
+    if (!input.contact_id && contatoDoLead) input = { ...input, contact_id: contatoDoLead };
+    leadDoCompromisso = input.lead_id ?? null;
+  }
+
   const donoId = input.owner_user_id ?? tipo.default_owner_user_id;
   if (!donoId) {
     throw new ApiError(
@@ -439,6 +472,7 @@ async function executarCriacaoDeAgendamento(
   await fecharOLaco(supabase, ctx, {
     appointmentId: criado.id,
     contactId: input.contact_id ?? null,
+    leadId: leadDoCompromisso,
     atividade: atividadeDaTransicao(null, transicao),
     gatilho: gatilhoDaTransicao(null, transicao),
     transicao,
@@ -973,6 +1007,8 @@ async function fecharOLaco(
   args: {
     appointmentId: string;
     contactId: string | null;
+    /** A oportunidade escolhida (marcação). Ausente: a já vinculada, ou o negócio ativo do contato. */
+    leadId?: string | null;
     atividade: string | null;
     /** Gatilho de automação, ou `null` quando a transição não é notícia para uma regra. */
     gatilho: string | null;
@@ -1009,7 +1045,10 @@ async function fecharOLaco(
   // O NEGÓCIO do contato LIDO ANTES do emit — é o mesmo que a timeline vai
   // ancorar logo abaixo, e `lead_ids` no corpo do aviso quer exatamente ele.
   // Ler a mesma pergunta duas vezes seria uma pergunta a mais por evento.
-  const leadId = args.contactId ? await leadAtivoDoContato(supabase, ctx, args.contactId) : null;
+  const leadId =
+    args.leadId ??
+    (await leadJaVinculado(supabase, ctx, args.appointmentId)) ??
+    (args.contactId ? await leadAtivoDoContato(supabase, ctx, args.contactId) : null);
 
   if (args.gatilho) {
     // As linhas que o corpo do aviso carrega (#1612): o horário, a situação, o
@@ -1193,7 +1232,29 @@ async function fecharOLaco(
    return todos.filter((id, i) => todos.indexOf(id) === i);
  }
 
- /** O negócio ativo do contato — pela MESMA régua do resto do produto.
+ /**
+ * A oportunidade a que o compromisso JÁ pertence (vínculo gravado na marcação). Nas transições
+ * seguintes (confirmar, remarcar, cancelar, desfecho) vale ela, e não "o negócio ativo" de agora:
+ * com várias oportunidades por pessoa o ativo pode ter mudado.
+ */
+async function leadJaVinculado(
+  supabase: SB,
+  ctx: HandlerCtx,
+  appointmentId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("crm_lead_links")
+    .select("lead_id")
+    .eq("organization_id", ctx.organization_id)
+    .eq("target_kind", ALVO_DE_VINCULO_DO_AGENDAMENTO)
+    .eq("target_id", appointmentId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data as { lead_id?: string } | null)?.lead_id ?? null;
+}
+
+/** O negócio ativo do contato — pela MESMA régua do resto do produto.
  *
  * `resolveActiveLeadForContact` distingue três desfechos que um `limit(2)` não
  * distingue: roteou, `no_open_lead` e `ambiguous_open_leads`. Os dois últimos

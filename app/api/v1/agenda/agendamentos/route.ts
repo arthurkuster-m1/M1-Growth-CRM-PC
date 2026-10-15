@@ -85,6 +85,8 @@ const marcarSchema = z.object({
   starts_at: z.string().datetime({ offset: true }),
   owner_user_id: z.string().uuid().optional(),
   contact_id: z.string().uuid().optional(),
+  /** A oportunidade do compromisso (vale também para o contato dela). */
+  lead_id: z.string().uuid().optional(),
   conversation_id: z.string().uuid().optional(),
   title: z.string().min(1).max(200).optional(),
   notes: z.string().max(2000).optional(),

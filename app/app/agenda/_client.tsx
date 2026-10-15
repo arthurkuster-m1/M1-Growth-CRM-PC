@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { EntradaDaAgenda } from "@/components/agenda/EntradaDaAgenda";
+import { OportunidadeDaMarcacao } from "@/components/agenda/OportunidadeDaMarcacao";
 import { EnderecoDaMarcacao } from "@/components/agenda/EnderecoDaMarcacao";
 import { VinculoDaMarcacao } from "@/components/agenda/VinculoDaMarcacao";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
@@ -152,6 +153,8 @@ export function AgendaClient({
   } = useVinculoDaMarcacao();
   const contactId = vinculo.contact;
   const conversationId = vinculo.conversation;
+  /** A oportunidade do compromisso: a da rota (`?lead=`) ou a escolhida no painel. */
+  const [leadId, setLeadId] = React.useState("");
   const onContext = React.useCallback(
     (contact: string, conversation: string) => {
       // Só abre sozinho quando a rota TROUXE um cliente: a chamada sem cliente
@@ -472,7 +475,7 @@ export function AgendaClient({
       */}
       <React.Suspense fallback={null}>
         <AvisoDaConexaoGoogle />
-        <EntradaDaAgenda onContext={onContext} />
+        <EntradaDaAgenda onContext={onContext} onLead={setLeadId} />
       </React.Suspense>
 
       <CartaoDaConexaoGoogle
@@ -751,8 +754,18 @@ export function AgendaClient({
                 <VinculoDaMarcacao
                   contactId={contactId}
                   conversationId={conversationId}
-                  onChange={(contact, conversation) => escolherVinculo({ contact, conversation })}
+                  onChange={(contact, conversation) => {
+                    setLeadId("");
+                    escolherVinculo({ contact, conversation });
+                  }}
                 />
+                <div className="mt-3">
+                  <OportunidadeDaMarcacao
+                    contactId={contactId}
+                    leadId={leadId}
+                    aoMudar={setLeadId}
+                  />
+                </div>
               </div>
             ) : null}
             {tiposIniciais.length > 1 && (
@@ -952,6 +965,7 @@ export function AgendaClient({
                     .mutateAsync({
                       event_type_id: tipo.id,
                       contact_id: contactId || undefined,
+                      lead_id: leadId || undefined,
                       conversation_id: conversationId || undefined,
                       starts_at: instante,
                       guest_email: convidado,

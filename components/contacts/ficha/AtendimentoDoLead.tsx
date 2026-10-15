@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 
+import { CompromissosDoLead } from "@/components/agenda/CompromissosDoLead";
 import { BlocoDaFicha, CampoLido, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { TarefasDoLead } from "@/components/contacts/ficha/TarefasDoLead";
 import {
@@ -109,6 +110,10 @@ export function AtendimentoDoLead({
             </table>
           </div>
         ) : null}
+      </BlocoDaFicha>
+
+      <BlocoDaFicha titulo={t("Compromissos")} cor="blue">
+        <CompromissosDoLead contactId={contactId} />
       </BlocoDaFicha>
 
       <BlocoDaFicha titulo={t("Tarefas")} cor="orange">

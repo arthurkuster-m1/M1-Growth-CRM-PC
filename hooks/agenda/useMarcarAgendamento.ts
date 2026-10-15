@@ -13,6 +13,8 @@ export interface NovoAgendamento {
   starts_at: string;
   owner_user_id?: string;
   contact_id?: string;
+  /** A oportunidade do compromisso (ausente: atendimento ao cliente, só no contato). */
+  lead_id?: string;
   conversation_id?: string;
   title?: string;
   notes?: string;

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useState } from "react";
 
+import { CompromissosDoLead } from "@/components/agenda/CompromissosDoLead";
 import { BlocoDaFicha, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { RegistrarAcaoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
 import { UltimasAcoesDoLead } from "@/components/contacts/ficha/UltimasAcoesDoLead";
@@ -233,6 +234,10 @@ export function PainelDaVisaoGeral({
           )}
         </BlocoDaFicha>
       </div>
+
+      <BlocoDaFicha titulo={t("Compromissos")} cor="blue">
+        <CompromissosDoLead contactId={contactId} />
+      </BlocoDaFicha>
 
       <RegistrarAcaoDoLead contactId={contactId} podeEditar={podeEditar} />
       <UltimasAcoesDoLead contactId={contactId} aoVerTodas={() => aoAbrir("timeline")} />

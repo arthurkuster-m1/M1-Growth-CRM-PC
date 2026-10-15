@@ -5,14 +5,18 @@ import { useEffect } from "react";
 import { DetalheDoCompromisso } from "./DetalheDoCompromisso";
 export function EntradaDaAgenda({
   onContext,
+  onLead,
 }: {
   onContext: (contact: string, conversation: string) => void;
+  /** A oportunidade que a rota carrega (`?lead=`), quando o link veio dela. */
+  onLead?: (lead: string) => void;
 }) {
   const podeEditar = usePermission("inbox.reply");
   const params = useSearchParams();
   const router = useRouter();
   const contact = params.get("contato");
   const conversation = params.get("conversa");
+  const lead = params.get("lead");
   // ⚠️ SEMPRE avisa, inclusive quando a rota NÃO traz contexto.
   //
   // Era `if (contact) onContext(...)`, e a guarda era o defeito: quem abria
@@ -25,6 +29,9 @@ export function EntradaDaAgenda({
   useEffect(() => {
     onContext(contact ?? "", conversation ?? "");
   }, [contact, conversation, onContext]);
+  useEffect(() => {
+    onLead?.(lead ?? "");
+  }, [lead, onLead]);
   return (
     <DetalheDoCompromisso
       key={params.get("compromisso")}
