@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { ROTULO_DA_CONFIRMACAO } from "@/lib/agenda/confirmacao";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { Plus } from "@/lib/ui/icons";
@@ -14,6 +15,7 @@ interface Compromisso {
   iniciaEm: string;
   terminaEm: string;
   situacao: string;
+  confirmacaoDoCliente?: "confirmed" | "reschedule" | "cancel" | null;
   contatoNome: string | null;
 }
 
@@ -79,8 +81,22 @@ export function CompromissosDoLead({
         <span className="min-w-0 truncate">
           <span className="tabular-nums">{quando(c.iniciaEm)}</span> · {c.titulo}
         </span>
-        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", COR[c.situacao])}>
-          {t(ROTULO[c.situacao] ?? c.situacao)}
+        <span className="flex shrink-0 items-center gap-1">
+          {c.confirmacaoDoCliente ? (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                c.confirmacaoDoCliente === "confirmed"
+                  ? "bg-green-500/15 text-green-700 dark:text-green-300"
+                  : "bg-yellow-500/15 text-yellow-800 dark:text-yellow-300",
+              )}
+            >
+              {t(ROTULO_DA_CONFIRMACAO[c.confirmacaoDoCliente])}
+            </span>
+          ) : null}
+          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", COR[c.situacao])}>
+            {t(ROTULO[c.situacao] ?? c.situacao)}
+          </span>
         </span>
       </Link>
     </li>

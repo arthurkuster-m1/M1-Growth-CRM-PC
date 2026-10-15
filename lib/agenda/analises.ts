@@ -20,6 +20,8 @@ export interface CompromissoParaAnalise {
   campaign_id: string | null;
   /** A oportunidade deste compromisso já vendeu. */
   vendeu: boolean;
+  /** A resposta do cliente ao lembrete, quando respondeu. */
+  confirmacao?: "confirmed" | "reschedule" | "cancel" | null;
 }
 
 export interface TotaisDaAgenda {
@@ -29,6 +31,8 @@ export interface TotaisDaAgenda {
   cancelados: number;
   semDesfecho: number;
   proximos: number;
+  /** Clientes que responderam o lembrete confirmando presença. */
+  confirmaram: number;
   comOportunidade: number;
   /** Compareceram que têm oportunidade e vendeu. */
   convertidos: number;
@@ -52,12 +56,14 @@ function totaisDe(lista: readonly CompromissoParaAnalise[], agora: number): Tota
     cancelados: 0,
     semDesfecho: 0,
     proximos: 0,
+    confirmaram: 0,
     comOportunidade: 0,
     convertidos: 0,
   };
   let compareceramComOportunidade = 0;
   for (const c of lista) {
     if (c.lead_id) t.comOportunidade += 1;
+    if (c.confirmacao === "confirmed") t.confirmaram += 1;
     if (c.status === "completed") {
       t.compareceram += 1;
       if (c.lead_id) {

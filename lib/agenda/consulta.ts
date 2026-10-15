@@ -495,6 +495,8 @@ export interface AgendamentoListado {
   terminaEm: string;
   fuso: string;
   situacao: string;
+  /** A resposta do CLIENTE ao lembrete: confirmou, pediu para remarcar ou para cancelar. */
+  confirmacaoDoCliente?: "confirmed" | "reschedule" | "cancel" | null;
   donoId: string | null;
   contatoId: string | null;
   contatoNome: string | null;
@@ -838,7 +840,7 @@ export async function listaAgendamentos(
   let q = supabase
     .from("calendar_appointments")
     .select(
-      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, location_kind, location_details, calendar_event_types(id, name, slug), contacts(name, display_name)",
+      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, location_kind, location_details, client_confirmation, calendar_event_types(id, name, slug), contacts(name, display_name)",
     )
     .eq("organization_id", organizationId)
     .order("starts_at", { ascending: true })
@@ -983,6 +985,9 @@ export async function listaAgendamentos(
         // produto lê, e a MESMA decisão de nome — `lib/contacts/rotulo-do-contato.ts`,
         // não um precedente copiado de outro arquivo.
         contatoNome: contatoDoEmbed(l.contacts),
+        confirmacaoDoCliente:
+          ((l as { client_confirmation?: "confirmed" | "reschedule" | "cancel" | null })
+            .client_confirmation ?? null),
         tipo: tipo ? { slug: texto(tipo.slug) ?? "", nome: texto(tipo.name) ?? "" } : null,
         local: { tipo: texto(l.location_kind), descricao: texto(l.location_details) },
         leadIds: vinculosPorAlvo?.get(String(l.id)) ?? [],

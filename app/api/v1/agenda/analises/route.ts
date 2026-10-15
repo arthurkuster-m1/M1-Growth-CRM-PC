@@ -43,7 +43,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const { data: compromissos, error } = await supabase
     .from("calendar_appointments")
-    .select("id, status, starts_at, ends_at, owner_user_id, event_type_id")
+    .select("id, status, starts_at, ends_at, owner_user_id, event_type_id, client_confirmation")
     .eq("organization_id", orgId)
     .gte("starts_at", inicio.toISOString())
     .lte("starts_at", fim.toISOString())
@@ -57,6 +57,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     ends_at: string;
     owner_user_id: string | null;
     event_type_id: string | null;
+    client_confirmation: "confirmed" | "reschedule" | "cancel" | null;
   }>;
   const ids = lista.map((c) => c.id);
 
@@ -112,7 +113,13 @@ export async function GET(req: NextRequest): Promise<Response> {
   const paraAnalise: CompromissoParaAnalise[] = lista.map((c) => {
     const lead = leadDoCompromisso.get(c.id) ?? null;
     return {
-      ...c,
+      id: c.id,
+      status: c.status,
+      starts_at: c.starts_at,
+      ends_at: c.ends_at,
+      owner_user_id: c.owner_user_id,
+      event_type_id: c.event_type_id,
+      confirmacao: c.client_confirmation,
       lead_id: lead,
       campaign_id: lead ? (campanhaDoLead.get(lead) ?? null) : null,
       vendeu: lead ? vendeu.has(lead) : false,

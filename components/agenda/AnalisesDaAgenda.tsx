@@ -177,6 +177,11 @@ export function AnalisesDaAgenda() {
             {cartao(t("Cancelados"), String(d.totais.cancelados))}
             {cartao(t("Remarcados"), String(d.remarcados), t("Remarcações feitas no período"))}
             {cartao(t("Sem desfecho"), String(d.totais.semDesfecho), t("Já passaram e ninguém declarou"))}
+            {cartao(
+              t("Confirmaram"),
+              String(d.totais.confirmaram),
+              t("Responderam ao lembrete confirmando"),
+            )}
             {cartao(t("Próximos"), String(d.totais.proximos))}
             {cartao(t("Com oportunidade"), String(d.totais.comOportunidade))}
           </section>
