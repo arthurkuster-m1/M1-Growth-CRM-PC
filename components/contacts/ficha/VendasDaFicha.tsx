@@ -12,15 +12,17 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
-import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
-import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
+import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { Etiqueta } from "@/components/motor/Etiqueta";
+import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
+import { resumoDaVenda } from "@/lib/vendas-tabela";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import { Plus } from "@/lib/ui/icons";
+import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import {
   STATUS_DA_VENDA,
+  rotuloDaForma,
   nomeDaVenda,
   valorPagoDaVenda,
   valorPrevistoDaVenda,
@@ -37,6 +39,12 @@ const ROTULO: Record<StatusDaVenda, string> = {
   concluida: "Pago",
   cancelada: "Cancelado",
 };
+const COR_DA_OPCAO: Record<StatusDaVenda, CorDaOpcao> = {
+  interesse: "blue",
+  comprometida: "yellow",
+  concluida: "green",
+  cancelada: "gray",
+};
 const COR: Record<StatusDaVenda, "blue" | "yellow" | "green" | "gray"> = {
   interesse: "blue",
   comprometida: "yellow",
@@ -51,8 +59,7 @@ const COR: Record<StatusDaVenda, "blue" | "yellow" | "green" | "gray"> = {
 export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: string }) {
   const t = useT();
   const queryClient = useQueryClient();
-  const marcarParcela = useMarcarParcela();
-  const [editando, setEditando] = useState<Venda | "nova" | null>(null);
+  const [abertaId, setAbertaId] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
   const [consultaDaTabela, setConsultaDaTabela] = useState<ConsultaDaTabela>({});
 
@@ -167,18 +174,6 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     await queryClient.invalidateQueries({ queryKey: ["vendas"] });
     await queryClient.invalidateQueries({ queryKey: ["clientes"] });
   }
-  async function salvar(v: DadosDaVenda): Promise<boolean> {
-    try {
-      const { id, contact_id, ...resto } = v;
-      if (id) await apiClient.patch(`/api/v1/vendas/${id}`, resto);
-      else await apiClient.post("/api/v1/vendas", { contact_id, currency: "BRL", ...resto });
-      await atualizar();
-      return true;
-    } catch (e) {
-      showApiError(e);
-      return false;
-    }
-  }
   async function mudarStatus(v: Venda, status: StatusDaVenda) {
     try {
       await apiClient.patch(`/api/v1/vendas/${v.id}`, { status });
@@ -217,16 +212,6 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
       <BlocoDaFicha
         titulo={t("Vendas e interesses")}
         cor="green"
-        acao={
-          <button
-            type="button"
-            onClick={() => setEditando("nova")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-medium text-primary-foreground"
-          >
-            <Plus size={12} weight="bold" aria-hidden />
-            {t("Nova venda")}
-          </button>
-        }
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <label className="relative min-w-0 flex-1 basis-56">
@@ -271,17 +256,23 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
             <table className="w-full min-w-max text-sm">
               <thead className="bg-secondary/60 text-xs text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">{t("Produto")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Oportunidade")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Funil")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("Valor total")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("Valor pago")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("Previsto")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Produto(s)")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Tipo de pagamento")}</th>
                   <th className="px-3 py-2 text-left font-medium">{t("Parcelas")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Etapa")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Previsão")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Compromisso")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Pagamento")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("Valor pago")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("Valor previsto")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("Valor total")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Primeiro pagamento")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Último pagamento")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Próximo pagamento")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Origem")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Campanha")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Anúncio")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Landing page")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("Posicionamento")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -289,13 +280,13 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                   <Fragment key={g.chave}>
                     {grupos ? (
                       <tr className="bg-secondary/40">
-                        <td colSpan={11} className="px-3 py-1.5 text-xs font-semibold">
+                        <td colSpan={17} className="px-3 py-1.5 text-xs font-semibold">
                           {g.rotulo} <span className="font-normal text-muted-foreground">({g.linhas.length})</span>
                         </td>
                       </tr>
                     ) : null}
                     {g.linhas.map((v) => {
-                      const parcelas = (v.parcelas ?? []).filter((p) => p.status !== "cancelada");
+                      const r = resumoDaVenda(v);
                       return (
                         <tr key={v.id} className="border-t align-top hover:bg-secondary/40">
                           <td className="max-w-[18rem] px-3 py-2">
@@ -303,70 +294,53 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                               type="button"
                               title={nomeDaVenda(v)}
                               className="block max-w-full truncate text-left font-medium hover:underline"
-                              onClick={() => setEditando(v)}
+                              onClick={() => setAbertaId(v.id)}
                             >
                               {nomeDaVenda(v) || t("Sem produto")}
                             </button>
                           </td>
                           <td className="px-3 py-2">{v.funil ?? "—"}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{reais(v.amount_cents)}</td>
+                          <td className="max-w-[16rem] truncate px-3 py-2" title={r.produtos}>
+                            {r.produtos || "—"}
+                          </td>
+                          <td className="px-3 py-2">
+                            <SeletorDeOpcao
+                              opcoes={STATUS_DA_VENDA.map((s) => ({
+                                id: s,
+                                rotulo: t(ROTULO[s]),
+                                cor: COR_DA_OPCAO[s],
+                              }))}
+                              valorId={v.status}
+                              podeEditar
+                              rotulo={t("Status da venda")}
+                              aoEscolher={(id) => void mudarStatus(v, id as StatusDaVenda)}
+                            >
+                              <Etiqueta ponto cor={COR_DA_OPCAO[v.status]}>
+                                {t(ROTULO[v.status])}
+                              </Etiqueta>
+                            </SeletorDeOpcao>
+                          </td>
+                          <td className="px-3 py-2">
+                            {v.payment_method ? rotuloDaForma(t, v.payment_method) : "—"}
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {r.parcelas.length > 0 ? `${r.parcelasPagas}/${r.parcelas.length}` : "—"}
+                          </td>
                           <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                            {reais(recebido(v))}
+                            {reais(r.pagoCents)}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums">{reais(faltando(v))}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <SeloDaFicha cor={COR[v.status]}>{t(ROTULO[v.status])}</SeloDaFicha>
-                              <select
-                                aria-label={t("Mudar status")}
-                                value={v.status}
-                                onChange={(e) => void mudarStatus(v, e.target.value as StatusDaVenda)}
-                                className="h-7 rounded-lg border bg-background px-1 text-xs"
-                              >
-                                {STATUS_DA_VENDA.map((s) => (
-                                  <option key={s} value={s}>
-                                    {t(ROTULO[s])}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                          <td className="px-3 py-2 text-right tabular-nums">{reais(r.previstoCents)}</td>
+                          <td className="px-3 py-2 text-right font-medium tabular-nums">
+                            {reais(v.amount_cents)}
                           </td>
-                          <td className="px-3 py-2">
-                            {parcelas.length === 0 ? (
-                              <div className="flex items-center gap-2 text-xs">
-                                <CirculoDeRecebida
-                                  marcado={v.status === "concluida"}
-                                  desabilitado={v.status === "cancelada"}
-                                  rotulo={`${t("À vista")} ${t("recebido")}`}
-                                  aoMudar={(ok) => void mudarStatus(v, ok ? "concluida" : "comprometida")}
-                                />
-                                <span className="tabular-nums">
-                                  {t("À vista")} · {reais(v.amount_cents)} · {t("recebido")}
-                                </span>
-                              </div>
-                            ) : (
-                              <ul className="grid gap-1">
-                                {parcelas.map((p) => (
-                                  <li key={p.number}>
-                                    <div className="flex items-center gap-2 text-xs whitespace-nowrap">
-                                      <CirculoDeRecebida
-                                        marcado={p.status === "recebida"}
-                                        rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
-                                        aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
-                                      />
-                                      <span className="tabular-nums">
-                                        {p.number}/{parcelas.length} · {reais(p.amount_cents)} · {dataBr(p.due_on)}
-                                      </span>
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">{v.etapa ?? "—"}</td>
-                          <td className="px-3 py-2 tabular-nums">{dataBr(v.expected_close_date)}</td>
-                          <td className="px-3 py-2 tabular-nums">{dataBr(v.expected_on)}</td>
-                          <td className="px-3 py-2">{v.payment_method ? v.payment_method : "—"}</td>
+                          <td className="px-3 py-2 tabular-nums">{dataBr(r.primeiroPagamento)}</td>
+                          <td className="px-3 py-2 tabular-nums">{dataBr(r.ultimoPagamento)}</td>
+                          <td className="px-3 py-2 tabular-nums">{dataBr(r.proximoPagamento)}</td>
+                          <td className="px-3 py-2">{v.origem ?? "—"}</td>
+                          <td className="px-3 py-2">{v.campanha ?? "—"}</td>
+                          <td className="px-3 py-2">{v.anuncio ?? "—"}</td>
+                          <td className="px-3 py-2">{v.lp ?? "—"}</td>
+                          <td className="px-3 py-2">{v.posicionamento ?? "—"}</td>
                         </tr>
                       );
                     })}
@@ -378,28 +352,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
         )}
       </BlocoDaFicha>
 
-      {editando ? (
-        <DialogoDaVenda
-          key={editando === "nova" ? "nova" : editando.id}
-          venda={editando === "nova" ? null : editando}
-          contatoInicial={{ contact_id: contactId, nome }}
-          clientes={[]}
-          aoFechar={() => setEditando(null)}
-          aoSalvar={salvar}
-          aoApagar={
-            editando !== "nova"
-              ? async () => {
-                  try {
-                    await apiClient.delete(`/api/v1/vendas/${editando.id}`);
-                    await atualizar();
-                  } catch (e) {
-                    showApiError(e);
-                  }
-                }
-              : undefined
-          }
-        />
-      ) : null}
+      {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
     </div>
   );
 }

@@ -218,7 +218,7 @@ export function OportunidadesDoLead({
 }
 
 /** Abre o card da oportunidade (o popup do quadro), com as etapas do funil dela. */
-function CardDaOportunidade({ leadId, aoFechar }: { leadId: string; aoFechar: () => void }) {
+export function CardDaOportunidade({ leadId, aoFechar }: { leadId: string; aoFechar: () => void }) {
   const dados = useQuery({
     queryKey: chaveDaFicha(leadId),
     staleTime: 5_000,

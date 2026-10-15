@@ -26,7 +26,8 @@ import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
+import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { recebeuNoMes, recorteDoMes, resumoDaVenda } from "@/lib/vendas-tabela";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import {
@@ -191,7 +192,7 @@ export function VendasCRM() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
   const [soComRecebimento, setSoComRecebimento] = useState(false);
-  const [editando, setEditando] = useState<Venda | "nova" | null>(null);
+  const [abertaId, setAbertaId] = useState<string | null>(null);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
 
   const consulta = useQuery({
@@ -199,19 +200,6 @@ export function VendasCRM() {
     queryFn: async () =>
       (await apiClient.get<{ data: { vendas: Venda[] } }>("/api/v1/vendas")).data.vendas,
     staleTime: 10_000,
-  });
-  const clientes = useQuery({
-    queryKey: ["vendas-clientes"],
-    enabled: editando === "nova",
-    staleTime: 60_000,
-    queryFn: async () =>
-      (
-        await apiClient.get<{ data: { clientes: ClienteOpcao[] } }>("/api/v1/clientes?funil=todos")
-      ).data.clientes.map((c) => ({
-        contact_id: c.contact_id,
-        nome: c.nome,
-        telefone: c.telefone,
-      })),
   });
 
   const recarregar = () => queryClient.invalidateQueries({ queryKey: ["vendas"] });
@@ -273,30 +261,6 @@ export function VendasCRM() {
   const canceladas = vendas.flatMap((v) =>
     (v.parcelas ?? []).filter((p) => p.status === "cancelada").map((p) => ({ venda: v, parcela: p })),
   );
-  // Parcelas por mês: o que ENTROU na conta (paid_on) e o que vence (due_on) no mês escolhido —
-  // vale também para venda comprometida que já recebeu um sinal.
-  const recebidoNoMes = (v: Venda) => {
-    const p = (v.parcelas ?? []).filter((x) => x.status === "recebida");
-    if (p.length === 0) {
-      return v.status === "concluida" && v.paid_on?.slice(0, 7) === mes ? v.amount_cents : 0;
-    }
-    return p
-      .filter((x) => x.paid_on?.slice(0, 7) === mes)
-      .reduce((s, x) => s + x.amount_cents, 0);
-  };
-  const aReceberNoMes = (v: Venda) =>
-    (v.parcelas ?? [])
-      .filter((x) => x.status === "prevista" && x.due_on.slice(0, 7) === mes)
-      .reduce((s, x) => s + x.amount_cents, 0);
-  const parcelasPagas = (v: Venda) =>
-    (v.parcelas ?? []).filter((x) => x.status === "recebida").length;
-  const ultimoPagamento = (v: Venda) => {
-    const datas = (v.parcelas ?? [])
-      .filter((x) => x.status === "recebida" && x.paid_on)
-      .map((x) => x.paid_on!.slice(0, 10))
-      .sort();
-    return datas.length > 0 ? datas[datas.length - 1]! : v.status === "concluida" ? v.paid_on : null;
-  };
   const termo = busca.trim().toLowerCase();
   const filtradas = useMemo(
     () =>
@@ -304,7 +268,7 @@ export function VendasCRM() {
         (v) =>
           (funilEscolhido === "todos" || v.pipeline_id === funilEscolhido) &&
           (filtroStatus === null || v.status === filtroStatus) &&
-          (!soComRecebimento || recebidoNoMes(v) > 0) &&
+          (!soComRecebimento || recebeuNoMes(v, mes)) &&
           (termo === "" ||
             `${v.cliente?.nome ?? ""} ${nomeDaVenda(v)} ${v.product_name} ${v.reference} ${v.campanha ?? ""}`
               .toLowerCase()
@@ -314,6 +278,11 @@ export function VendasCRM() {
     [vendas, filtroStatus, termo, soComRecebimento, mes, funilEscolhido],
   );
   const totais = totaisDeVendas(filtradas);
+  // "Recebido no mês" ligado: a venda fica, mas só com as parcelas e os valores pagos nesse mês.
+  const exibidas = useMemo(
+    () => (soComRecebimento ? filtradas.map((v) => recorteDoMes(v, mes)) : filtradas),
+    [filtradas, soComRecebimento, mes],
+  );
 
   const opcoesDeStatus = STATUS_DA_VENDA.map((s) => ({
     id: s,
@@ -322,36 +291,35 @@ export function VendasCRM() {
   }));
 
   const texto = (v: string) => <span className="block truncate px-2 text-sm">{v || "—"}</span>;
+  const dataCelula = (iso: string | null) => (
+    <span className="block px-2 text-sm tabular-nums">{iso ? dataBr(iso) : "—"}</span>
+  );
+  const dinheiro = (cents: number, classe = "") => (
+    <span className={`block px-2 text-sm tabular-nums ${classe}`}>{reais(cents)}</span>
+  );
+  // Origem da oportunidade: só leitura aqui (muda na página da oportunidade).
   const colunas: ColunaDoMotor<Venda>[] = [
     {
-      id: "cliente",
-      titulo: t("Cliente"),
+      id: "oportunidade",
+      titulo: t("Oportunidade"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 240,
+      largura: 280,
       semOcultar: true,
       celula: (v) => (
         <button
           type="button"
-          onClick={() => setEditando(v)}
-          className="block w-full truncate px-2 text-left text-sm font-medium hover:underline"
+          onClick={() => setAbertaId(v.id)}
+          title={t("Abrir a oportunidade")}
+          className="block w-full min-w-0 px-2 text-left hover:underline"
         >
-          {v.cliente?.nome ?? "—"}
+          <span className="block truncate text-sm font-medium">
+            {nomeDaVenda(v) || t("Sem produto")}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {v.cliente?.nome ?? "—"}
+          </span>
         </button>
       ),
-    },
-    {
-      id: "nome",
-      titulo: t("Nome"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 220,
-      celula: (v) => texto(nomeDaVenda(v)),
-    },
-    {
-      id: "produto",
-      titulo: t("Produto"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 220,
-      celula: (v) => texto(v.product_name),
     },
     {
       id: "funil",
@@ -361,47 +329,11 @@ export function VendasCRM() {
       celula: (v) => texto(v.funil ?? ""),
     },
     {
-      id: "anuncio",
-      titulo: t("Anúncio"),
+      id: "produtos",
+      titulo: t("Produto(s)"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 220,
-      celula: (v) => texto(v.anuncio ?? ""),
-    },
-    {
-      id: "lp",
-      titulo: t("Landing page"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 220,
-      celula: (v) => texto(v.lp ?? ""),
-    },
-    {
-      id: "valor",
-      titulo: t("Valor total"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      celula: (v) => (
-        <span className="block px-2 text-sm font-medium tabular-nums">{reais(v.amount_cents)}</span>
-      ),
-    },
-    {
-      id: "pago",
-      titulo: t("Valor pago"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums text-green-700 dark:text-green-400">
-          {reais(valorPagoDaVenda(v))}
-        </span>
-      ),
-    },
-    {
-      id: "previsto",
-      titulo: t("Previsto"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums">{reais(valorPrevistoDaVenda(v))}</span>
-      ),
+      largura: 240,
+      celula: (v) => texto(resumoDaVenda(v).produtos),
     },
     {
       id: "status",
@@ -414,12 +346,7 @@ export function VendasCRM() {
           valorId={v.status}
           podeEditar
           rotulo={t("Status da venda")}
-          aoEscolher={(id) => {
-            // Fechar a venda (comprometida/concluída) pede os detalhes: produtos, valor real,
-            // forma de pagamento e parcelas. Interesse e cancelada mudam direto.
-            if (id === "concluida" || id === "comprometida") setEditando({ ...v, status: id });
-            else mudarStatus.mutate({ id: v.id, status: id as StatusDaVenda });
-          }}
+          aoEscolher={(id) => mudarStatus.mutate({ id: v.id, status: id as StatusDaVenda })}
         >
           <Etiqueta ponto cor={COR[v.status]}>
             {rotuloDoStatusDaVenda(t, v.status)}
@@ -428,172 +355,103 @@ export function VendasCRM() {
       ),
     },
     {
+      id: "pagamento",
+      titulo: t("Tipo de pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      celula: (v) => texto(v.payment_method ? rotuloDaForma(t, v.payment_method) : ""),
+    },
+    {
       id: "parcelas",
       titulo: t("Parcelas"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 250,
+      largura: 110,
       celula: (v) => {
-        const parcelas = (v.parcelas ?? []).filter((p) => p.status !== "cancelada");
-        if (parcelas.length === 0) {
-          return (
-            <div className="flex items-center gap-2 px-2 text-xs">
-              <CirculoDeRecebida
-                marcado={v.status === "concluida"}
-                desabilitado={v.status === "cancelada"}
-                rotulo={`${t("À vista")} ${t("recebido")}`}
-                aoMudar={(ok) =>
-                  mudarStatus.mutate({ id: v.id, status: ok ? "concluida" : "comprometida" })
-                }
-              />
-              <span className="tabular-nums">
-                {t("À vista")} · {reais(v.amount_cents)}
-              </span>
-            </div>
-          );
-        }
+        const r = resumoDaVenda(v);
         return (
-          <ul className="grid gap-1 px-2 py-1">
-            {parcelas.map((p) => (
-              <li key={p.number} className="flex items-center gap-2 text-xs whitespace-nowrap">
-                <CirculoDeRecebida
-                  marcado={p.status === "recebida"}
-                  rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
-                  aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
-                />
-                <span className="tabular-nums">
-                  {p.number}/{parcelas.length} · {reais(p.amount_cents)} · {dataBr(p.due_on)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <span className="block px-2 text-sm tabular-nums">
+            {r.parcelas.length > 0 ? `${r.parcelasPagas}/${r.parcelas.length}` : "—"}
+          </span>
         );
       },
     },
     {
-      id: "recebido_no_mes",
-      titulo: t("Recebido no mês"),
+      id: "pago",
+      titulo: t("Valor pago"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 150,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums text-green-700 dark:text-green-400">
-          {reais(recebidoNoMes(v))}
-        </span>
-      ),
+      largura: 140,
+      celula: (v) =>
+        dinheiro(resumoDaVenda(v).pagoCents, "text-green-700 dark:text-green-400"),
     },
     {
-      id: "a_receber_no_mes",
-      titulo: t("A receber no mês"),
+      id: "previsto",
+      titulo: t("Valor previsto"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 150,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums">{reais(aReceberNoMes(v))}</span>
-      ),
+      largura: 140,
+      celula: (v) => dinheiro(resumoDaVenda(v).previstoCents),
     },
     {
-      id: "parcelas_pagas",
-      titulo: t("Parcelas pagas"),
+      id: "valor",
+      titulo: t("Valor total"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 130,
-      padrao: false,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums">
-          {parcelasPagas(v)}/{(v.parcelas ?? []).filter((x) => x.status !== "cancelada").length}
-        </span>
-      ),
+      largura: 140,
+      celula: (v) => dinheiro(v.amount_cents, "font-medium"),
+    },
+    {
+      id: "primeiro_pagamento",
+      titulo: t("Primeiro pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      celula: (v) => dataCelula(resumoDaVenda(v).primeiroPagamento),
     },
     {
       id: "ultimo_pagamento",
       titulo: t("Último pagamento"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 150,
-      padrao: false,
-      celula: (v) => <span className="block px-2 text-sm tabular-nums">{dataBr(ultimoPagamento(v))}</span>,
+      largura: 160,
+      celula: (v) => dataCelula(resumoDaVenda(v).ultimoPagamento),
     },
     {
-      id: "etapa",
-      titulo: t("Etapa"),
+      id: "proximo_pagamento",
+      titulo: t("Próximo pagamento"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 170,
-      celula: (v) => texto(v.etapa ?? ""),
+      celula: (v) => dataCelula(resumoDaVenda(v).proximoPagamento),
     },
     {
-      id: "previsao",
-      titulo: t("Previsão"),
+      id: "origem",
+      titulo: t("Origem"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 130,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums">{dataBr(v.expected_close_date)}</span>
-      ),
-    },
-    {
-      id: "prevista",
-      titulo: t("Compromisso"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 130,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums">{dataBr(v.expected_on)}</span>
-      ),
-    },
-    {
-      id: "pagamento",
-      titulo: t("Pagamento"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 150,
-      celula: (v) =>
-        texto(
-          v.payment_method
-            ? `${v.payment_method}${v.installments > 1 ? ` · ${v.installments}x` : ""}`
-            : "",
-        ),
-    },
-    {
-      id: "recebida",
-      titulo: t("Recebida em"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 130,
-      padrao: false,
-      celula: (v) => <span className="block px-2 text-sm tabular-nums">{dataBr(v.paid_on)}</span>,
-    },
-    {
-      id: "recorrente",
-      titulo: t("Recorrente"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 120,
-      padrao: false,
-      celula: (v) => (
-        <CelulaDeCaixa
-          marcada={v.is_recurring}
-          podeEditar
-          rotulo={t("Venda recorrente")}
-          aoMudar={(m) => mudarRecorrente.mutate({ id: v.id, is_recurring: m })}
-        />
-      ),
-    },
-    {
-      id: "referencia",
-      titulo: t("Referência"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 180,
-      padrao: false,
-      celula: (v) => texto(v.reference),
+      largura: 170,
+      celula: (v) => texto(v.origem ?? ""),
     },
     {
       id: "campanha",
       titulo: t("Campanha"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 220,
-      padrao: false,
+      largura: 240,
       celula: (v) => texto(v.campanha ?? ""),
     },
     {
-      id: "criada",
-      titulo: t("Registrada em"),
+      id: "anuncio",
+      titulo: t("Anúncio"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 140,
-      padrao: false,
-      celula: (v) => (
-        <span className="block px-2 text-sm tabular-nums">{dataBr(v.created_at.slice(0, 10))}</span>
-      ),
+      largura: 200,
+      celula: (v) => texto(v.anuncio ?? ""),
+    },
+    {
+      id: "lp",
+      titulo: t("Landing page"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 200,
+      celula: (v) => texto(v.lp ?? ""),
+    },
+    {
+      id: "posicionamento",
+      titulo: t("Posicionamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      celula: (v) => texto(v.posicionamento ?? ""),
     },
   ];
   const resolvidas = resolverColunas(colunas, preferencias);
@@ -605,19 +463,14 @@ export function VendasCRM() {
       opcoes?: { id: string; rotulo: string; cor?: CorDaOpcao }[];
     }
   > = [
+    { id: "oportunidade", titulo: t("Oportunidade"), tipo: "texto", valorDe: (v) => nomeDaVenda(v) },
     { id: "cliente", titulo: t("Cliente"), tipo: "texto", valorDe: (v) => v.cliente?.nome ?? "" },
-    { id: "nome", titulo: t("Nome"), tipo: "texto", valorDe: (v) => nomeDaVenda(v) },
-    { id: "produto", titulo: t("Produto"), tipo: "texto", valorDe: (v) => v.product_name },
     { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (v) => v.funil ?? "" },
-    { id: "anuncio", titulo: t("Anúncio"), tipo: "texto", valorDe: (v) => v.anuncio ?? "" },
-    { id: "lp", titulo: t("Landing page"), tipo: "texto", valorDe: (v) => v.lp ?? "" },
-    { id: "valor", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
-    { id: "pago", titulo: t("Valor pago"), tipo: "numero", valorDe: (v) => valorPagoDaVenda(v) / 100 },
     {
-      id: "previsto",
-      titulo: t("Previsto"),
-      tipo: "numero",
-      valorDe: (v) => valorPrevistoDaVenda(v) / 100,
+      id: "produtos",
+      titulo: t("Produto(s)"),
+      tipo: "texto",
+      valorDe: (v) => resumoDaVenda(v).produtos,
     },
     {
       id: "status",
@@ -627,41 +480,58 @@ export function VendasCRM() {
       opcoes: opcoesDeStatus,
     },
     {
-      id: "recebido_no_mes",
-      titulo: t("Recebido no mês"),
-      tipo: "numero",
-      valorDe: (v) => recebidoNoMes(v) / 100,
+      id: "pagamento",
+      titulo: t("Tipo de pagamento"),
+      tipo: "texto",
+      valorDe: (v) => v.payment_method,
     },
     {
-      id: "a_receber_no_mes",
-      titulo: t("A receber no mês"),
-      tipo: "numero",
-      valorDe: (v) => aReceberNoMes(v) / 100,
-    },
-    {
-      id: "parcelas_pagas",
+      id: "parcelas",
       titulo: t("Parcelas pagas"),
       tipo: "numero",
-      valorDe: (v) => parcelasPagas(v),
+      valorDe: (v) => resumoDaVenda(v).parcelasPagas,
+    },
+    {
+      id: "pago",
+      titulo: t("Valor pago"),
+      tipo: "numero",
+      valorDe: (v) => resumoDaVenda(v).pagoCents / 100,
+    },
+    {
+      id: "previsto",
+      titulo: t("Valor previsto"),
+      tipo: "numero",
+      valorDe: (v) => resumoDaVenda(v).previstoCents / 100,
+    },
+    { id: "valor", titulo: t("Valor total"), tipo: "numero", valorDe: (v) => v.amount_cents / 100 },
+    {
+      id: "primeiro_pagamento",
+      titulo: t("Primeiro pagamento"),
+      tipo: "data",
+      valorDe: (v) => resumoDaVenda(v).primeiroPagamento,
     },
     {
       id: "ultimo_pagamento",
       titulo: t("Último pagamento"),
       tipo: "data",
-      valorDe: (v) => ultimoPagamento(v),
+      valorDe: (v) => resumoDaVenda(v).ultimoPagamento,
     },
-    { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (v) => v.etapa ?? "" },
     {
-      id: "previsao",
-      titulo: t("Previsão"),
+      id: "proximo_pagamento",
+      titulo: t("Próximo pagamento"),
       tipo: "data",
-      valorDe: (v) => v.expected_close_date,
+      valorDe: (v) => resumoDaVenda(v).proximoPagamento,
     },
-    { id: "prevista", titulo: t("Compromisso"), tipo: "data", valorDe: (v) => v.expected_on },
-    { id: "pagamento", titulo: t("Pagamento"), tipo: "texto", valorDe: (v) => v.payment_method },
-    { id: "recebida", titulo: t("Recebida em"), tipo: "data", valorDe: (v) => v.paid_on },
-    { id: "recorrente", titulo: t("Recorrente"), tipo: "caixa", valorDe: (v) => v.is_recurring },
+    { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (v) => v.origem ?? "" },
     { id: "campanha", titulo: t("Campanha"), tipo: "texto", valorDe: (v) => v.campanha ?? "" },
+    { id: "anuncio", titulo: t("Anúncio"), tipo: "texto", valorDe: (v) => v.anuncio ?? "" },
+    { id: "lp", titulo: t("Landing page"), tipo: "texto", valorDe: (v) => v.lp ?? "" },
+    {
+      id: "posicionamento",
+      titulo: t("Posicionamento"),
+      tipo: "texto",
+      valorDe: (v) => v.posicionamento ?? "",
+    },
   ];
   const camposDaBarra: CampoDaBarra[] = campos.map((c) => ({
     id: c.id,
@@ -671,12 +541,12 @@ export function VendasCRM() {
   }));
   const resultado = useMemo(
     () =>
-      aplicarConsulta(filtradas, campos, preferencias, {
+      aplicarConsulta(exibidas, campos, preferencias, {
         hoje: new Date().toISOString().slice(0, 10),
       }),
     // `campos` é recriado a cada render; as entradas reais são estas.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filtradas, preferencias],
+    [exibidas, preferencias],
   );
   const grupos = resultado.grupos?.map((g) => {
     const campo = campos.find((c) => c.id === preferencias.agrupar);
@@ -724,14 +594,6 @@ export function VendasCRM() {
             <ArrowRight size={14} className="rotate-180" aria-hidden />
             {t("Clientes")}
           </Link>
-          <button
-            type="button"
-            onClick={() => setEditando("nova")}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
-          >
-            <Plus size={14} weight="bold" aria-hidden />
-            {t("Nova venda")}
-          </button>
         </div>
       </header>
 
@@ -1005,7 +867,7 @@ export function VendasCRM() {
           rotuloDaTabela={t("Vendas")}
           vazio={
             <p className="p-6 text-center text-sm text-muted-foreground">
-              {t("Nenhuma venda com esses filtros. Registre a primeira em “Nova venda”.")}
+              {t("Nenhuma venda com esses filtros. Toda venda nasce de uma oportunidade.")}
             </p>
           }
         />
@@ -1076,34 +938,7 @@ export function VendasCRM() {
         }
       />
 
-      {editando ? (
-        <DialogoDaVenda
-          key={editando === "nova" ? "nova" : editando.id}
-          venda={editando === "nova" ? null : editando}
-          clientes={clientes.data ?? []}
-          titulo={
-            editando !== "nova" && editando.status !== "interesse"
-              ? t("Finalizar venda")
-              : undefined
-          }
-          aoFechar={() => setEditando(null)}
-          aoSalvar={async (v) => {
-            try {
-              await salvar.mutateAsync(v);
-              return true;
-            } catch {
-              return false;
-            }
-          }}
-          aoApagar={
-            editando !== "nova"
-              ? async () => {
-                  await apagar.mutateAsync(editando.id).catch(() => undefined);
-                }
-              : undefined
-          }
-        />
-      ) : null}
+      {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
     </div>
   );
 }

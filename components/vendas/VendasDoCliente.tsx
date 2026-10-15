@@ -118,14 +118,6 @@ export function VendasDoCliente({
             {t("Vendas")}
           </h3>
         )}
-        <button
-          type="button"
-          onClick={() => setEditando("nova")}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
-        >
-          <Plus size={12} weight="bold" aria-hidden />
-          {t("Nova venda")}
-        </button>
       </div>
 
       {realizadas.length > 0 || interesse.length > 0 ? (

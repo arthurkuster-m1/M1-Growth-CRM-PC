@@ -113,6 +113,9 @@ export interface Venda {
   /** O anúncio (criativo) e a landing page de origem da venda. */
   anuncio?: string | null;
   lp?: string | null;
+  /** A fonte e o posicionamento da origem da oportunidade (só leitura na tabela de vendas). */
+  origem?: string | null;
+  posicionamento?: string | null;
   funil?: string | null;
   /** A etapa do card desta venda no funil (a venda anda de etapa). */
   etapa?: string | null;
@@ -263,7 +266,7 @@ export function statusDaOportunidade(
 
 /** As colunas da oportunidade que a venda lê (com as junções que as telas pedem). */
 export const SELECAO_DA_OPORTUNIDADE =
-  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, " +
+  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, source, source_metadata, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, " +
   "contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), pipeline:crm_pipelines(name), stage:crm_stages!crm_leads_stage_id_fkey(name), " +
   "items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status, forma, origem_do_pagamento, id_externo)";
 
@@ -292,7 +295,7 @@ export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
     l.status as string | null,
     parcelas.map((p) => ({ status: String(p.status) })),
   );
-  return vendaDaLinha({
+  const venda = vendaDaLinha({
     id: l.id,
     contact_id: l.contact_id,
     lead_id: l.id,
@@ -332,6 +335,27 @@ export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
       stage: l.stage,
     },
   });
+  return { ...venda, ...origemDaOportunidade(l) };
+}
+
+/** A fonte e o posicionamento da origem da oportunidade (o que foi corrigido à mão vale mais). */
+function origemDaOportunidade(l: Record<string, unknown>): {
+  origem: string | null;
+  posicionamento: string | null;
+} {
+  const meta =
+    l.source_metadata && typeof l.source_metadata === "object"
+      ? (l.source_metadata as Record<string, unknown>)
+      : {};
+  const manual =
+    meta.origem_manual && typeof meta.origem_manual === "object"
+      ? (meta.origem_manual as Record<string, unknown>)
+      : {};
+  const txt = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
+  return {
+    origem: txt(manual.origem) ?? txt(meta.utm_source) ?? txt(l.source),
+    posicionamento: txt(manual.posicionamento) ?? txt(meta.utm_placement),
+  };
 }
 
 export interface TotaisDeVendas {
