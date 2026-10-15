@@ -11,6 +11,7 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 
 import { addDays, format, startOfDay, startOfMonth, startOfWeek } from "date-fns";
+import Link from "next/link";
 import * as React from "react";
 
 import { AvisoDaConexaoGoogle } from "./_components/AvisoDaConexaoGoogle";
@@ -488,6 +489,15 @@ export function AgendaClient({
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
+          <nav className="mb-1 flex gap-1 text-sm" aria-label={t("Agenda")}>
+            <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">{t("Agenda")}</span>
+            <Link
+              href="/app/agenda/analises"
+              className="rounded-lg px-2.5 py-1 text-muted-foreground hover:bg-secondary"
+            >
+              {t("Análises")}
+            </Link>
+          </nav>
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
