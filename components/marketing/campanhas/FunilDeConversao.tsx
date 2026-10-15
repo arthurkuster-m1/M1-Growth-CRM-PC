@@ -1,5 +1,7 @@
 "use client";
 
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
+import { GerenciarModelosDeFunil } from "@/components/marketing/campanhas/GerenciarModelosDeFunil";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -96,6 +98,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   const [semAcesso, setSemAcesso] = useState(false);
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [modeloEscolhido, setModeloEscolhido] = useState("");
+  const [gerenciando, setGerenciando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const router = useRouter();
 
@@ -231,19 +234,23 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                 </p>
               ) : (
                 <>
-                  <select
-                    className={CAMPO}
-                    value={modeloEscolhido}
-                    aria-label={t("Modelo de funil")}
-                    onChange={(e) => setModeloEscolhido(e.target.value)}
+                  <SeletorEmPopup
+                    rotulo={t("Modelo de funil")}
+                    valor={modeloEscolhido}
+                    placeholder={t("Escolha um modelo")}
+                    opcoes={modelos.map((m) => ({
+                      id: m.id,
+                      rotulo: `${m.name} (${m.stages.length} ${t("etapas")})`,
+                    }))}
+                    aoEscolher={setModeloEscolhido}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setGerenciando(true)}
+                    className="w-fit text-xs font-medium text-primary hover:underline"
                   >
-                    <option value="">{t("Escolha um modelo")}</option>
-                    {modelos.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.stages.length} {t("etapas")})
-                      </option>
-                    ))}
-                  </select>
+                    {t("Editar ou excluir modelos")}
+                  </button>
                   <button
                     type="button"
                     disabled={criando || modeloEscolhido === ""}
@@ -259,6 +266,16 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
               )}
             </div>
           </div>
+        ) : null}
+        {gerenciando ? (
+          <GerenciarModelosDeFunil
+            modelos={modelos}
+            aoFechar={() => setGerenciando(false)}
+            aoMudar={async () => {
+              setModeloEscolhido("");
+              await carregarModelos();
+            }}
+          />
         ) : null}
       </section>
     );

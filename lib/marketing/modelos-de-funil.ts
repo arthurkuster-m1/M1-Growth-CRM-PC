@@ -29,7 +29,13 @@ export const novoModeloSchema = z.object({
   from_pipeline_id: z.string().uuid(),
 });
 
-export const renomearModeloSchema = z.object({ name: z.string().trim().min(1).max(80) });
+export const renomearModeloSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    /** Reescreve as etapas do modelo (a ordem do array é a ordem do funil). */
+    stages: z.array(etapaDoModeloSchema).min(1).max(30).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.stages !== undefined, { message: "Nada para alterar." });
 
 export const criarFunilDaCampanhaSchema = z.object({
   template_id: z.string().uuid().nullable().optional(),

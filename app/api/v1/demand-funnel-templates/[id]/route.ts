@@ -22,7 +22,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const { data, error } = await a.supabase
     .from("demand_funnel_templates")
-    .update({ name: corpo.data.name })
+    .update({
+      ...(corpo.data.name !== undefined ? { name: corpo.data.name } : {}),
+      ...(corpo.data.stages !== undefined ? { stages: corpo.data.stages } : {}),
+    })
     .eq("id", id)
     .eq("organization_id", a.orgId)
     .select("id")
