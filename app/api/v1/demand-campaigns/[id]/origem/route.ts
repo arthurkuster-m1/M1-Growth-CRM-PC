@@ -9,6 +9,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
 import { janelaDoPeriodo } from "@/lib/marketing/periodos";
+import { campanhaDaOportunidade, type CampanhaDoFunil } from "@/lib/marketing/atribuicao";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 import { contarOrigemDosLeads, type LeadDaOrigem } from "@/lib/marketing/origem-dos-leads";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -60,10 +61,17 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   const filtro = c.pipeline_id
     ? `demand_campaign_id.eq.${id},pipeline_id.eq.${c.pipeline_id}`
     : `demand_campaign_id.eq.${id}`;
+  // Todas as campanhas do funil: o lead e o dinheiro são da campanha DONA do funil da oportunidade.
+  const { data: todasAsCampanhas } = await a.supabase
+    .from("demand_campaigns")
+    .select("id, pipeline_id")
+    .eq("organization_id", a.orgId)
+    .limit(1000);
+  const campanhasDoFunil = (todasAsCampanhas ?? []) as CampanhaDoFunil[];
   const { data: leads, error } = await a.supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, demand_creative_id, demand_landing_page_id, source_metadata, created_at, stage:crm_stages!crm_leads_stage_id_fkey(tipo), contact:contacts(is_mql)",
+      "id, contact_id, pipeline_id, demand_campaign_id, demand_creative_id, demand_landing_page_id, source_metadata, created_at, stage:crm_stages!crm_leads_stage_id_fkey(tipo), contact:contacts(is_mql)",
     )
     .eq("organization_id", a.orgId)
     .or(filtro)
@@ -76,8 +84,10 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
 
   // Nome e conjunto de cada anúncio, pelo cache (tabela só do servidor: leitura com o admin).
-  const lista = (leads ?? []) as Array<{
+  const lista = ((leads ?? []) as Array<{
     id: string;
+    pipeline_id: string | null;
+    demand_campaign_id: string | null;
     contact_id: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
@@ -85,7 +95,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     created_at: string;
     stage: { tipo: string | null } | { tipo: string | null }[] | null;
     contact: { is_mql: boolean } | { is_mql: boolean }[] | null;
-  }>;
+  }>).filter((l) => campanhaDaOportunidade(l, campanhasDoFunil) === id);
   const dentro = lista.filter((l) => {
     const dia = new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date(l.created_at));
     return dia >= janela.de && dia <= janela.ate;
@@ -151,10 +161,14 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { data: vendas } = await a.supabase
     .from("crm_leads")
     .select(
-      "id, status, value_cents, paid_on, closed_at, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents, paid_on)",
+      "id, status, value_cents, paid_on, closed_at, pipeline_id, demand_campaign_id, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents, paid_on)",
     )
     .eq("organization_id", a.orgId)
-    .eq("demand_campaign_id", id)
+    .or(
+      c.pipeline_id
+        ? `pipeline_id.eq.${c.pipeline_id},demand_campaign_id.eq.${id}`
+        : `demand_campaign_id.eq.${id}`,
+    )
     .neq("status", "lost")
     .limit(LIMITE);
   const dentroDaJanela = (d: string | null | undefined) => {
@@ -162,11 +176,16 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     const dia2 = d ? String(d).slice(0, 10) : "";
     return dia2 !== "" && dia2 >= janela.de && dia2 <= janela.ate;
   };
-  for (const v of (vendas ?? []) as unknown as Array<{
+  for (const v of ((vendas ?? []) as unknown as Array<{
+    pipeline_id: string | null;
+    demand_campaign_id: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
     payments: Array<{ status: string; amount_cents: number | string; paid_on: string | null }> | null;
-  }>) {
+  }>).filter((v) => campanhaDaOportunidade(v, campanhasDoFunil) === id)) {
+    // Anúncio e página só recebem o que fechou no funil de origem deles: o lead reaproveitado
+    // aqui (origem em outra campanha) soma na campanha, não no anúncio antigo.
+    const deOrigemPropria = v.demand_campaign_id === null || v.demand_campaign_id === id;
     let recebido = 0;
     let previsto = 0;
     for (const p of v.payments ?? []) {
@@ -179,13 +198,13 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (recebido <= 0) continue;
     faturamento.recebido += recebido;
     faturamento.vendas += 1;
-    if (v.demand_creative_id) {
+    if (v.demand_creative_id && deOrigemPropria) {
       faturamento.porCriativo[v.demand_creative_id] =
         (faturamento.porCriativo[v.demand_creative_id] ?? 0) + recebido;
       faturamento.vendasPorCriativo[v.demand_creative_id] =
         (faturamento.vendasPorCriativo[v.demand_creative_id] ?? 0) + 1;
     }
-    if (v.demand_landing_page_id) {
+    if (v.demand_landing_page_id && deOrigemPropria) {
       faturamento.porLandingPage[v.demand_landing_page_id] =
         (faturamento.porLandingPage[v.demand_landing_page_id] ?? 0) + recebido;
       faturamento.vendasPorLandingPage[v.demand_landing_page_id] =

@@ -12,6 +12,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +99,36 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
 
   const novos = contatos.filter((c) => !jaNoFunil.has(c.id));
+
+  // O lead reaproveitado MANTÉM a origem pela qual entrou (campanha, anúncio e página da 1ª
+  // oportunidade dele): a campanha nova é dona do funil e do faturamento, mas a origem do cliente
+  // continua sendo a de tráfego que o trouxe.
+  const origemDoCliente = new Map<
+    string,
+    { demand_campaign_id: string | null; demand_creative_id: string | null; demand_landing_page_id: string | null }
+  >();
+  for (let i = 0; i < novos.length; i += 200) {
+    const { data } = await a.supabase
+      .from("crm_leads")
+      .select("contact_id, demand_campaign_id, demand_creative_id, demand_landing_page_id, created_at")
+      .eq("organization_id", a.orgId)
+      .in("contact_id", novos.slice(i, i + 200).map((c) => c.id))
+      .order("created_at", { ascending: true })
+      .limit(5000);
+    for (const l of (data ?? []) as Array<{
+      contact_id: string;
+      demand_campaign_id: string | null;
+      demand_creative_id: string | null;
+      demand_landing_page_id: string | null;
+    }>) {
+      if (!l.demand_campaign_id || origemDoCliente.has(l.contact_id)) continue;
+      origemDoCliente.set(l.contact_id, {
+        demand_campaign_id: l.demand_campaign_id,
+        demand_creative_id: l.demand_creative_id,
+        demand_landing_page_id: l.demand_landing_page_id,
+      });
+    }
+  }
   let adicionados = 0;
   for (let i = 0; i < novos.length; i += 100) {
     const lote = novos.slice(i, i + 100).map((c, k) => ({
@@ -108,11 +139,29 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       title: (c.name ?? c.display_name ?? c.phone_number ?? "Lead").slice(0, 200),
       status: "open",
       source: "reativacao",
-      demand_campaign_id: id,
+      demand_campaign_id: origemDoCliente.get(c.id)?.demand_campaign_id ?? id,
+      demand_creative_id: origemDoCliente.get(c.id)?.demand_creative_id ?? null,
+      demand_landing_page_id: origemDoCliente.get(c.id)?.demand_landing_page_id ?? null,
       position_in_stage: (i + k + 1) * 1000,
       created_by_user_id: a.userId,
     }));
-    const { error } = await a.supabase.from("crm_leads").insert(lote);
+    const { data: criados, error } = await a.supabase
+      .from("crm_leads")
+      .insert(lote)
+      .select("id, contact_id");
+    // A participação entra na linha do tempo: "entrou no funil X", com o nome da campanha.
+    for (const l of (criados ?? []) as Array<{ id: string; contact_id: string }>) {
+      void emitLeadActivity(a.supabase, {
+        organizationId: a.orgId,
+        leadId: l.id,
+        contactId: l.contact_id,
+        type: "lead_created",
+        sourceModule: "campanhas",
+        actor: { type: "user", id: a.userId },
+        reason: `Entrou no funil da campanha ${campanha.name as string}`,
+        payload: { campanha_id: id, reaproveitado: true },
+      });
+    }
     if (error) {
       return fail("internal_error", a.t("Erro ao colocar os leads no funil."), 500, {
         requestId: a.requestId,

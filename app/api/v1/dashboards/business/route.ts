@@ -170,6 +170,32 @@ export async function GET(req: NextRequest): Promise<Response> {
     .filter((c) => c.created_at && c.first_purchase_on)
     .map((c) => Math.max(0, diasEntreDatas(String(c.created_at), String(c.first_purchase_on))));
 
+  // Quantos funis foi preciso para o lead comprar: os funis distintos em que ele teve oportunidade
+  // até o dia da 1ª compra (quem entrou em vários lançamentos, workshops ou campanhas).
+  const compradoresDoPeriodo = novosNoPeriodo.map((c) => String(c.id));
+  const funisAteComprar: number[] = [];
+  for (let i = 0; i < compradoresDoPeriodo.length; i += 200) {
+    const { data: oportunidadesDeCompradores } = await a.supabase
+      .from("crm_leads")
+      .select("contact_id, pipeline_id, created_at")
+      .eq("organization_id", a.orgId)
+      .in("contact_id", compradoresDoPeriodo.slice(i, i + 200))
+      .limit(20000);
+    const porContato = new Map<string, Set<string>>();
+    for (const o of (oportunidadesDeCompradores ?? []) as Array<{
+      contact_id: string;
+      pipeline_id: string;
+      created_at: string;
+    }>) {
+      const compra = clientes.find((c) => String(c.id) === o.contact_id)?.first_purchase_on;
+      if (!compra || String(o.created_at).slice(0, 10) > String(compra).slice(0, 10)) continue;
+      const set = porContato.get(o.contact_id) ?? new Set<string>();
+      set.add(o.pipeline_id);
+      porContato.set(o.contact_id, set);
+    }
+    for (const set of porContato.values()) funisAteComprar.push(set.size);
+  }
+
   // Recorrência (assinaturas).
   const { data: assinaturas } = await a.supabase
     .from("crm_leads")
@@ -268,6 +294,9 @@ export async function GET(req: NextRequest): Promise<Response> {
       ativos: ativos.length,
       ltvMedio: clientes.length > 0 ? arred(ltvTotal / clientes.length) : null,
       vendasPorCliente: clientes.length > 0 ? arred(vendasDeTodos / clientes.length) : null,
+      funisAteComprarMedia:
+        media(funisAteComprar) === null ? null : arred(media(funisAteComprar)!),
+      funisAteComprarMediana: mediana(funisAteComprar),
       diasAte1aCompraMediana: mediana(diasAte1aCompra),
       diasAte1aCompraMedia: media(diasAte1aCompra) === null ? null : arred(media(diasAte1aCompra)!),
       assinaturasAtivas: ativas.length,

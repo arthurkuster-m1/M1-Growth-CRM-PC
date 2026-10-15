@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { campanhaDaOportunidade, type CampanhaDoFunil } from "@/lib/marketing/atribuicao";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 import {
   CONTAGEM_VAZIA,
@@ -106,13 +107,32 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
 
     // Vendas: a primeira parcela recebida conta a venda; o dinheiro entra no dia em que caiu.
     // A venda é a oportunidade (card) da campanha.
+    // Do funil da campanha (ou, sem funil dono, as que têm a campanha como origem).
+    const { data: todasAsCampanhas } = await a.supabase
+      .from("demand_campaigns")
+      .select("id, pipeline_id")
+      .eq("organization_id", a.orgId)
+      .limit(1000);
+    const campanhasDoFunil = (todasAsCampanhas ?? []) as CampanhaDoFunil[];
     const { data: oportunidades } = await a.supabase
       .from("crm_leads")
-      .select("id")
+      .select("id, pipeline_id, demand_campaign_id")
       .eq("organization_id", a.orgId)
-      .eq("demand_campaign_id", id)
+      .or(
+        campanha.pipeline_id
+          ? `pipeline_id.eq.${campanha.pipeline_id as string},demand_campaign_id.eq.${id}`
+          : `demand_campaign_id.eq.${id}`,
+      )
       .limit(5000);
-    const idsDeVendas = ((oportunidades ?? []) as Array<{ id: string }>).map((v) => v.id);
+    const idsDeVendas = (
+      (oportunidades ?? []) as Array<{
+        id: string;
+        pipeline_id: string | null;
+        demand_campaign_id: string | null;
+      }>
+    )
+      .filter((o) => campanhaDaOportunidade(o, campanhasDoFunil) === id)
+      .map((v) => v.id);
     const pagamentos: Array<{ sale_id: string; paid_on: string; amount_cents: number }> = [];
     for (let i = 0; i < idsDeVendas.length; i += 200) {
       const { data } = await a.supabase

@@ -131,6 +131,8 @@ const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
   "oportunidades-abertas",
   "origem-campanha",
   "origem-posicionamento",
+  "funis-ate-comprar",
+  "dias-ate-comprar",
 ]);
 const TIPOS_DO_CRM = ["tabela", "kanban"] as const;
 
@@ -1099,6 +1101,48 @@ export function ClientesCRM({
         ),
     },
     {
+      id: "funis-ate-comprar",
+      titulo: t("Funis até a 1ª compra"),
+      icone: <Kanban size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (l) => {
+        const compra = l.primeira_compra;
+        const funis = new Set(
+          l.participacoes
+            .filter((p) => !compra || p.criado_em.slice(0, 10) <= compra.slice(0, 10))
+            .map((p) => p.funil_id),
+        );
+        return (
+          <span
+            className="block px-2 text-sm tabular-nums"
+            title={t("Quantos funis diferentes o lead percorreu até comprar")}
+          >
+            {compra ? funis.size : "—"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "dias-ate-comprar",
+      titulo: t("Dias até a 1ª compra"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (l) => {
+        if (!l.primeira_compra) return <span className="block px-2 text-sm">—</span>;
+        const dias = Math.max(
+          0,
+          Math.round(
+            (new Date(l.primeira_compra.slice(0, 10)).getTime() -
+              new Date(l.entrou_em.slice(0, 10)).getTime()) /
+              86_400_000,
+          ),
+        );
+        return <span className="block px-2 text-sm tabular-nums">{dias}</span>;
+      },
+    },
+    {
       id: "origem-campanha",
       titulo: t("Campanha"),
       icone: <TextAa size={14} aria-hidden />,
@@ -1273,6 +1317,35 @@ export function ClientesCRM({
       titulo: t("Oportunidades abertas"),
       tipo: "numero",
       valorDe: (l) => l.oportunidades_abertas,
+    },
+    {
+      id: "funis-ate-comprar",
+      titulo: t("Funis até a 1ª compra"),
+      tipo: "numero",
+      valorDe: (l) => {
+        if (!l.primeira_compra) return null;
+        return new Set(
+          l.participacoes
+            .filter((p) => p.criado_em.slice(0, 10) <= l.primeira_compra!.slice(0, 10))
+            .map((p) => p.funil_id),
+        ).size;
+      },
+    },
+    {
+      id: "dias-ate-comprar",
+      titulo: t("Dias até a 1ª compra"),
+      tipo: "numero",
+      valorDe: (l) =>
+        l.primeira_compra
+          ? Math.max(
+              0,
+              Math.round(
+                (new Date(l.primeira_compra.slice(0, 10)).getTime() -
+                  new Date(l.entrou_em.slice(0, 10)).getTime()) /
+                  86_400_000,
+              ),
+            )
+          : null,
     },
     {
       id: "origem-campanha",

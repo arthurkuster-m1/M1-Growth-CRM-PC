@@ -17,6 +17,7 @@ import {
   type LinhaDoMeta,
   type PagamentoRecebido,
 } from "@/lib/dashboards/trafego";
+import { campanhaDaOportunidade, type CampanhaDoFunil } from "@/lib/marketing/atribuicao";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 
 export const dynamic = "force-dynamic";
@@ -129,21 +130,49 @@ export async function GET(req: NextRequest): Promise<Response> {
     }),
   );
 
-  // Vendas e dinheiro recebido, pela origem da venda.
+  // De quem é cada oportunidade: da campanha dona do funil em que ela está (a campanha de origem
+  // só vale quando o funil não é de nenhuma campanha). Lead e dinheiro seguem essa regra.
+  const { data: todasAsCampanhas } = await a.supabase
+    .from("demand_campaigns")
+    .select("id, pipeline_id")
+    .eq("organization_id", a.orgId)
+    .limit(1000);
+  const campanhasDoFunil = (todasAsCampanhas ?? []) as CampanhaDoFunil[];
+  const funisDasEscolhidas = campanhasDoFunil
+    .filter((c) => ids.includes(c.id) && c.pipeline_id)
+    .map((c) => c.pipeline_id as string);
+  const filtroDeDonas = [
+    ...(funisDasEscolhidas.length > 0 ? [`pipeline_id.in.(${funisDasEscolhidas.join(",")})`] : []),
+    `demand_campaign_id.in.(${ids.join(",")})`,
+  ].join(",");
+  const donaDa = (o: { pipeline_id: string | null; demand_campaign_id: string | null }) =>
+    campanhaDaOportunidade(o, campanhasDoFunil);
+
+  // Vendas e dinheiro recebido, pela campanha dona do funil.
   const { data: vendasBrutas } = await a.supabase
     .from("crm_leads")
-    .select("id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
+    .select("id, pipeline_id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
     .eq("organization_id", a.orgId)
-    .in("demand_campaign_id", ids)
+    .or(filtroDeDonas)
     .neq("status", "lost")
     .limit(5000);
   // A venda é a oportunidade: o id da venda é o do card.
   const vendas = ((vendasBrutas ?? []) as Array<{
     id: string;
+    pipeline_id: string | null;
     demand_campaign_id: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
-  }>).map((o) => ({ ...o, lead_id: o.id as string | null }));
+  }>)
+    .map((o) => {
+      const dona = donaDa(o);
+      // Anúncio e página só recebem o que fechou no PRÓPRIO funil de origem: o lead reaproveitado
+      // em outra campanha mantém a origem, mas o dinheiro dele não é do anúncio antigo.
+      const propria = o.demand_campaign_id === null || o.demand_campaign_id === dona;
+      return { ...o, demand_campaign_id: dona, origem_propria: propria };
+    })
+    .filter((o) => o.demand_campaign_id !== null && ids.includes(o.demand_campaign_id))
+    .map((o) => ({ ...o, lead_id: o.id as string | null }));
   const porVenda = new Map(vendas.map((v) => [v.id, v]));
   const pagamentos: PagamentoRecebido[] = [];
   const idsDeVendas = vendas.map((v) => v.id);
@@ -205,10 +234,10 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { data: leadsDeOrigem } = await a.supabase
     .from("crm_leads")
     .select(
-      "demand_creative_id, demand_landing_page_id, contact_id, id, stage:crm_stages!crm_leads_stage_id_fkey(tipo)",
+      "demand_creative_id, demand_landing_page_id, contact_id, id, pipeline_id, demand_campaign_id, stage:crm_stages!crm_leads_stage_id_fkey(tipo)",
     )
     .eq("organization_id", a.orgId)
-    .in("demand_campaign_id", ids)
+    .or(filtroDeDonas)
     .gte("created_at", `${de.data}T00:00:00-03:00`)
     .lt("created_at", `${ate.data}T23:59:59-03:00`)
     .limit(5000);
@@ -235,7 +264,17 @@ export async function GET(req: NextRequest): Promise<Response> {
       }
       return l;
     };
-    for (const l of (leadsDeOrigem ?? []) as unknown as Array<
+    for (const l of ((leadsDeOrigem ?? []) as unknown as Array<{
+      pipeline_id: string | null;
+      demand_campaign_id: string | null;
+    }>).filter((o) => {
+      const dona = donaDa(o);
+      return (
+        dona !== null &&
+        ids.includes(dona) &&
+        (o.demand_campaign_id === null || o.demand_campaign_id === dona)
+      );
+    }) as unknown as Array<
       Record<string, string | null> & { stage: { tipo: string | null } | { tipo: string | null }[] | null }
     >) {
       const id = l[campo];
@@ -247,7 +286,9 @@ export async function GET(req: NextRequest): Promise<Response> {
       if (etapa?.tipo === "desqualificado") linha.desq.add(pessoa);
     }
     for (const p of pagAtual) {
-      const id = porVenda.get(p.sale_id)?.[campo];
+      const venda = porVenda.get(p.sale_id);
+      if (!venda?.origem_propria) continue;
+      const id = venda[campo];
       if (!id) continue;
       const linha = pegar(id);
       linha.vendas.add(p.sale_id);
@@ -386,7 +427,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       for (const [ad, set] of desqualificados) porAnuncio.get(ad)!.desqualificados += set.size;
     }
     // Vendas e dinheiro: o anúncio do lead da venda.
-    const idsDeLeadDasVendas = [...new Set(vendas.map((v) => v.lead_id).filter((x): x is string => Boolean(x)))];
+    const idsDeLeadDasVendas = [
+      ...new Set(
+        vendas.filter((v) => v.origem_propria).map((v) => v.lead_id).filter((x): x is string => Boolean(x)),
+      ),
+    ];
     const anuncioDoLead = new Map<string, string>();
     for (let i = 0; i < idsDeLeadDasVendas.length; i += 100) {
       const { data } = await a.supabase

@@ -45,6 +45,8 @@ export interface DadosDeBusiness {
   ativos: number;
   ltvMedio: number | null;
   vendasPorCliente: number | null;
+  funisAteComprarMedia: number | null;
+  funisAteComprarMediana: number | null;
   diasAte1aCompraMediana: number | null;
   diasAte1aCompraMedia: number | null;
   assinaturasAtivas: number;
@@ -263,6 +265,13 @@ export function Business({
                 dados.diasAte1aCompraMedia === null
                   ? "—"
                   : `${Math.round(dados.diasAte1aCompraMedia)} ${t("dias")}`,
+            },
+            {
+              rotulo: t("Funis até comprar (média)"),
+              valor:
+                dados.funisAteComprarMedia === null
+                  ? "—"
+                  : dados.funisAteComprarMedia.toLocaleString("pt-BR"),
             },
             { rotulo: t("Vendas no período"), valor: inteiro(dados.vendas) },
             {
