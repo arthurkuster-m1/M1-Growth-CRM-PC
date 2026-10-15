@@ -88,7 +88,7 @@ export function AnalisesDaAgenda() {
     </div>
   );
 
-  function Tabela({ titulo, grupos, nome }: { titulo: string; grupos: GrupoDaAgenda[]; nome: (id: string) => string }) {
+  const tabela = (titulo: string, grupos: GrupoDaAgenda[], nome: (id: string) => string) => {
     return (
       <section className="rounded-2xl border bg-card p-4">
         <h2 className="mb-2 text-sm font-semibold">{titulo}</h2>
@@ -128,7 +128,7 @@ export function AnalisesDaAgenda() {
         )}
       </section>
     );
-  }
+  };
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -181,9 +181,9 @@ export function AnalisesDaAgenda() {
             {cartao(t("Com oportunidade"), String(d.totais.comOportunidade))}
           </section>
 
-          <Tabela titulo={t("Por atendente")} grupos={d.porAtendente} nome={nomeDoAtendente} />
-          <Tabela titulo={t("Por tipo de agendamento")} grupos={d.porTipo} nome={nomeDoTipo} />
-          <Tabela titulo={t("Por campanha")} grupos={d.porCampanha} nome={nomeDaCampanha} />
+          {tabela(t("Por atendente"), d.porAtendente, nomeDoAtendente)}
+          {tabela(t("Por tipo de agendamento"), d.porTipo, nomeDoTipo)}
+          {tabela(t("Por campanha"), d.porCampanha, nomeDaCampanha)}
 
           <section className="rounded-2xl border bg-card p-4">
             <h2 className="mb-2 text-sm font-semibold">{t("Dia a dia")}</h2>
