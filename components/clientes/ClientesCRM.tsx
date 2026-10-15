@@ -45,6 +45,8 @@ import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { AcoesEmMassaDeClientes } from "@/components/clientes/AcoesEmMassaDeClientes";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
+import { useRotuloDaForma } from "@/hooks/financeiro/useTaxasDePagamento";
+import { ComentariosEmMassaDialog } from "@/components/clientes/ComentariosEmMassaDialog";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
@@ -158,6 +160,18 @@ const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "inbox",
   "acao",
   "comentarios",
+  "cliente",
+  "entrou-no-funil",
+  "produtos",
+  "status-venda",
+  "forma-de-pagamento",
+  "parcelas",
+  "pago",
+  "previsto",
+  "primeiro-pagamento",
+  "ultimo-pagamento",
+  "proximo-pagamento",
+  "posicionamento",
 ]);
 /** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
 const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
@@ -168,6 +182,18 @@ const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
   "origem-posicionamento",
   "funis-ate-comprar",
   "dias-ate-comprar",
+  "ciclo",
+  "mql",
+  "entrou",
+  "primeira-compra",
+  "abordagem",
+  "ltv",
+  "ltv-previsto",
+  "interesse",
+  "vendas",
+  "vendas-ativas",
+  "tags",
+  "atividade",
 ]);
 const TIPOS_DO_CRM = ["tabela", "kanban"] as const;
 
@@ -194,6 +220,7 @@ export function ClientesCRM({
   const org = useActiveOrg();
   const role = org?.role ?? "viewer";
 
+  const rotuloDaFormaDe = useRotuloDaForma();
   const ehOportunidades = modo === "oportunidades";
   const tela = ehOportunidades ? "oportunidades" : "clientes";
   const funilEscolhido = parametros.get("funil") ?? TODOS;
@@ -206,6 +233,8 @@ export function ClientesCRM({
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   const [novaOportunidade, setNovaOportunidade] = useState(false);
+  /** Editar os comentários das oportunidades selecionadas (texto inicial = o que foi colado). */
+  const [comentariosEmMassa, setComentariosEmMassa] = useState<string | null>(null);
   /** O lead em que se registra uma ação rápida (ligação, mensagem…) direto da tabela. */
   const [acaoDoContato, setAcaoDoContato] = useState<string | null>(null);
   /** Etapas (ids) que filtram a lista de oportunidades; null = todas. */
@@ -646,11 +675,36 @@ export function ClientesCRM({
   const colunas: ColunaDoMotor<Linha>[] = [
     {
       id: "nome",
-      titulo: t("Nome"),
+      titulo: ehOportunidades ? t("Oportunidade") : t("Nome"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 300,
       semOcultar: true,
-      celula: (l) => (
+      celula: (l) =>
+        ehOportunidades && l.participacao ? (
+          <div className="flex min-w-0 items-center gap-1">
+            <div className="min-w-0 flex-1">
+              <CelulaDeTexto
+                valor={l.participacao.titulo || l.nome}
+                rotulo={t("Título da oportunidade")}
+                podeEditar={podeEditar}
+                aoSalvar={(nome) => {
+                  const p = l.participacao!;
+                  const novo = nome.trim();
+                  if (!novo || novo === p.titulo) return;
+                  otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, titulo: novo }));
+                  void executar(() => apiClient.patch(`/api/v1/vendas/${p.lead_id}`, { name: novo }));
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void abrirVenda(l, l.participacao!.lead_id)}
+              className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
+            >
+              {t("Abrir")}
+            </button>
+          </div>
+        ) : (
         <div className="flex min-w-0 items-center gap-1">
           <div className="min-w-0 flex-1">
             <CelulaDeTexto
@@ -667,6 +721,21 @@ export function ClientesCRM({
             {t("Abrir")}
           </Link>
         </div>
+        ),
+    },
+    {
+      id: "cliente",
+      titulo: t("Cliente"),
+      icone: <Users size={14} aria-hidden />,
+      largura: 200,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <Link
+          href={`/app/contacts/${l.contact_id}`}
+          className="block min-w-0 truncate px-2 text-sm hover:underline"
+        >
+          {l.nome}
+        </Link>
       ),
     },
     {
@@ -1082,24 +1151,162 @@ export function ClientesCRM({
         if (!p) return semValor;
         const atrasada = p.status === "open" && p.proxima_acao_em && p.proxima_acao_em < hojeIso;
         return (
-          <input
-            type="date"
-            aria-label={t("Próxima ação em")}
-            disabled={!podeEditar || p.status !== "open"}
-            value={p.proxima_acao_em ?? ""}
-            onChange={(e) => {
-              const v = e.target.value || null;
-              otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, proxima_acao_em: v }));
-              void executar(() =>
-                apiClient.put(`/api/v1/leads/${p.lead_id}/proxima-acao`, { proxima_acao_em: v }),
-              );
-            }}
-            className={`mx-2 h-8 rounded-md border bg-background px-1.5 text-sm ${
-              atrasada ? "border-error text-error-fg" : ""
-            }`}
-          />
+          <div className={atrasada ? "text-error-fg" : undefined}>
+            <CelulaDeDia
+              valor={p.proxima_acao_em}
+              tag={tag}
+              podeEditar={podeEditar && p.status === "open"}
+              rotulo={t("Próxima ação em")}
+              aoSalvar={(v) => {
+                otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, proxima_acao_em: v }));
+                void executar(() =>
+                  apiClient.put(`/api/v1/leads/${p.lead_id}/proxima-acao`, { proxima_acao_em: v }),
+                );
+              }}
+            />
+          </div>
         );
       },
+    },
+    {
+      id: "entrou-no-funil",
+      titulo: t("Entrou no Funil em"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {l.participacao ? dia(l.participacao.criado_em) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "produtos",
+      titulo: t("Produto(s)"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 240,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm" title={l.participacao?.produtos}>
+          {l.participacao?.produtos || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "status-venda",
+      titulo: t("Status"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 180,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const st = l.participacao?.status_da_venda;
+        return st ? (
+          <span className="block px-2">
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${COR_DA_VENDA[st] ?? ""}`}
+            >
+              {t(ROTULO_DA_VENDA[st] ?? st)}
+            </span>
+          </span>
+        ) : (
+          semValor
+        );
+      },
+    },
+    {
+      id: "forma-de-pagamento",
+      titulo: t("Forma de pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {l.participacao?.forma_de_pagamento
+            ? rotuloDaFormaDe(l.participacao.forma_de_pagamento)
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "parcelas",
+      titulo: t("Parcelas"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 120,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        return (
+          <span className="block px-2 text-sm tabular-nums">
+            {p && p.parcelas_total > 0 ? `${p.parcelas_pagas}/${p.parcelas_total}` : "—"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "pago",
+      titulo: t("Valor pago"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 140,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <span className="block px-2 text-sm text-green-700 tabular-nums dark:text-green-400">
+          {l.participacao && l.participacao.pago_cents > 0 ? moeda(l.participacao.pago_cents) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "previsto",
+      titulo: t("Valor previsto"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 140,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <span className="block px-2 text-sm tabular-nums">
+          {l.participacao && l.participacao.previsto_cents > 0
+            ? moeda(l.participacao.previsto_cents)
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "primeiro-pagamento",
+      titulo: t("Primeiro pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      padrao: false,
+      celula: (l) => (
+        <span className="block px-2 text-sm">{dia(l.participacao?.primeiro_pagamento ?? null) || "—"}</span>
+      ),
+    },
+    {
+      id: "ultimo-pagamento",
+      titulo: t("Último pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      padrao: false,
+      celula: (l) => (
+        <span className="block px-2 text-sm">{dia(l.participacao?.ultimo_pagamento ?? null) || "—"}</span>
+      ),
+    },
+    {
+      id: "proximo-pagamento",
+      titulo: t("Próximo pagamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      padrao: false,
+      celula: (l) => (
+        <span className="block px-2 text-sm">{dia(l.participacao?.proximo_pagamento ?? null) || "—"}</span>
+      ),
+    },
+    {
+      id: "posicionamento",
+      titulo: t("Posicionamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">{l.participacao?.posicionamento ?? "—"}</span>
+      ),
     },
     {
       id: "telefone",
@@ -1412,7 +1619,8 @@ export function ClientesCRM({
         if (lista.length === 0) return semValor;
         return empilhado(
           lista.map(({ venda, p }, i) => {
-            const nome = venda?.anuncio_id ? dados?.anuncios_por_id?.[venda.anuncio_id] : null;
+            const idDoAnuncio = p.anuncio_id ?? venda?.anuncio_id ?? null;
+            const nome = idDoAnuncio ? dados?.anuncios_por_id?.[idDoAnuncio] : null;
             return (
               <span
                 key={venda?.id ?? `${p.lead_id}-${i}`}
@@ -1441,7 +1649,8 @@ export function ClientesCRM({
         if (lista.length === 0) return semValor;
         return empilhado(
           lista.map(({ venda, p }, i) => {
-            const nome = venda?.lp_id ? dados?.lps_por_id?.[venda.lp_id] : null;
+            const idDaLp = p.lp_id ?? venda?.lp_id ?? null;
+            const nome = idDaLp ? dados?.lps_por_id?.[idDaLp] : null;
             return (
               <span
                 key={venda?.id ?? `${p.lead_id}-${i}`}
@@ -1492,6 +1701,49 @@ export function ClientesCRM({
       titulo: t("Comentários"),
       tipo: "texto",
       valorDe: (l) => l.participacao?.comentarios ?? "",
+    },
+    {
+      id: "entrou-no-funil",
+      titulo: t("Entrou no Funil em"),
+      tipo: "data",
+      valorDe: (l) => l.participacao?.criado_em.slice(0, 10) ?? null,
+    },
+    {
+      id: "produtos",
+      titulo: t("Produto(s)"),
+      tipo: "texto",
+      valorDe: (l) => l.participacao?.produtos ?? "",
+    },
+    {
+      id: "status-venda",
+      titulo: t("Status"),
+      tipo: "opcao",
+      valorDe: (l) => l.participacao?.status_da_venda ?? undefined,
+      opcoes: Object.entries(ROTULO_DA_VENDA).map(([id, rotulo]) => ({ id, rotulo: t(rotulo) })),
+    },
+    {
+      id: "forma-de-pagamento",
+      titulo: t("Forma de pagamento"),
+      tipo: "texto",
+      valorDe: (l) => l.participacao?.forma_de_pagamento ?? "",
+    },
+    {
+      id: "pago",
+      titulo: t("Valor pago"),
+      tipo: "numero",
+      valorDe: (l) => (l.participacao?.pago_cents ?? 0) / 100,
+    },
+    {
+      id: "previsto",
+      titulo: t("Valor previsto"),
+      tipo: "numero",
+      valorDe: (l) => (l.participacao?.previsto_cents ?? 0) / 100,
+    },
+    {
+      id: "posicionamento",
+      titulo: t("Posicionamento"),
+      tipo: "texto",
+      valorDe: (l) => l.participacao?.posicionamento ?? "",
     },
     {
       id: "funis",
@@ -1987,6 +2239,51 @@ export function ClientesCRM({
     return aba ? [aba] : [];
   });
 
+  /** As oportunidades selecionadas, na ordem em que aparecem na lista. */
+  const selecionadasNaOrdem = resultado.linhas.filter(
+    (l) => selecionadas.has(l.chave) && l.participacao,
+  );
+  async function aplicarComentarios(texto: string, modo: "mesmo" | "linhas" | "acrescentar") {
+    const linhasDoTexto = texto.split(/\r?\n/).filter((x) => x.trim() !== "");
+    const itens = selecionadasNaOrdem.map((l, i) => {
+      const atual = l.participacao!.comentarios;
+      const novo =
+        modo === "linhas"
+          ? (linhasDoTexto[i] ?? "")
+          : modo === "acrescentar"
+            ? [atual, texto.trim()].filter(Boolean).join("\n")
+            : texto.trim();
+      return { lead_id: l.participacao!.lead_id, comentarios: novo };
+    });
+    try {
+      await apiClient.post("/api/v1/leads/comentarios-em-lote", { itens });
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+  // Ctrl+V com oportunidades selecionadas (e sem estar digitando): cola nos comentários, como na
+  // planilha. Várias linhas na quantidade certa vão uma para cada oportunidade.
+  useEffect(() => {
+    if (!ehOportunidades || !podeEditar) return;
+    const aoColar = (e: ClipboardEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      if (
+        alvo &&
+        (alvo.closest("input, textarea, select, [contenteditable='true'], [role='dialog']") ||
+          alvo.isContentEditable)
+      ) {
+        return;
+      }
+      const texto = e.clipboardData?.getData("text/plain") ?? "";
+      if (texto.trim() === "" || selecionadas.size === 0) return;
+      e.preventDefault();
+      setComentariosEmMassa(texto);
+    };
+    document.addEventListener("paste", aoColar);
+    return () => document.removeEventListener("paste", aoColar);
+  }, [ehOportunidades, podeEditar, selecionadas]);
+
   function salvarFunis(
     mudar: (
       atual: NonNullable<PreferenciasDaTabela["funis"]>,
@@ -2158,6 +2455,15 @@ export function ClientesCRM({
           </ol>
         </section>
       )}
+
+      {comentariosEmMassa !== null && selecionadasNaOrdem.length > 0 ? (
+        <ComentariosEmMassaDialog
+          quantidade={selecionadasNaOrdem.length}
+          textoInicial={comentariosEmMassa}
+          aoFechar={() => setComentariosEmMassa(null)}
+          aoAplicar={aplicarComentarios}
+        />
+      ) : null}
 
       {acaoDoContato ? (
         <RegistrarAcaoEmMassaDialog
@@ -2430,6 +2736,15 @@ export function ClientesCRM({
                   }
                 />
               )}
+              {podeEditar && ehOportunidades && selecionadas.size > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setComentariosEmMassa("")}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+                >
+                  {t("Editar comentários")}
+                </button>
+              ) : null}
               {podeEditar ? (
                 <AcoesEmMassaDeClientes
                   contatoIds={[

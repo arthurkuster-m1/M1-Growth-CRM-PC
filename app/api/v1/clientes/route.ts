@@ -17,6 +17,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { statusDaOportunidade } from "@/lib/vendas";
 import { origemDoContato } from "@/lib/leads/origem-do-contato";
+import { origemDaOportunidade } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,23 @@ export interface ParticipacaoDoCliente {
   proxima_acao_em: string | null;
   /** Os comentários da oportunidade (anotação rápida de quem trabalha a lista). */
   comentarios: string;
+  /** O título da oportunidade ("Nome do Cliente | Produto" quando ninguém deu nome). */
+  titulo: string;
+  /** Anúncio, landing page e posicionamento DESTA oportunidade. */
+  anuncio_id: string | null;
+  lp_id: string | null;
+  posicionamento: string | null;
+  /** A venda da oportunidade (a antiga tabela de vendas). */
+  produtos: string;
+  status_da_venda: VendaAtivaDoCliente["status"] | null;
+  forma_de_pagamento: string;
+  parcelas_total: number;
+  parcelas_pagas: number;
+  pago_cents: number;
+  previsto_cents: number;
+  primeiro_pagamento: string | null;
+  ultimo_pagamento: string | null;
+  proximo_pagamento: string | null;
 }
 
 /** Uma venda ativa (não cancelada) do cliente, para a coluna "Vendas" do CRM. */
@@ -178,7 +196,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeNegocios = supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em, notes",
+      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em, notes, nome_da_venda, title, source_metadata, payment_method, installments",
     )
     .eq("organization_id", orgId)
     .not("contact_id", "is", null)
@@ -212,6 +230,11 @@ export async function GET(req: NextRequest): Promise<Response> {
     proxima_acao: string | null;
     proxima_acao_em: string | null;
     notes: string | null;
+    nome_da_venda: string | null;
+    title: string | null;
+    source_metadata: Record<string, unknown> | null;
+    payment_method: string | null;
+    installments: number | null;
   }>;
 
   // Quem aparece: no funil escolhido, os contatos dele; em "todos", todos os contatos.
@@ -257,6 +280,20 @@ export async function GET(req: NextRequest): Promise<Response> {
       proxima_acao: n.proxima_acao ?? "",
       proxima_acao_em: n.proxima_acao_em,
       comentarios: n.notes ?? "",
+      titulo: (n.nome_da_venda ?? "").trim() || (n.title ?? "").trim(),
+      anuncio_id: n.demand_creative_id,
+      lp_id: n.demand_landing_page_id,
+      posicionamento: origemDaOportunidade({ source: n.source, source_metadata: n.source_metadata }).posicionamento,
+      produtos: "",
+      status_da_venda: null,
+      forma_de_pagamento: n.payment_method ?? "",
+      parcelas_total: 0,
+      parcelas_pagas: 0,
+      pago_cents: 0,
+      previsto_cents: 0,
+      primeiro_pagamento: null,
+      ultimo_pagamento: null,
+      proximo_pagamento: null,
     });
     porContato.set(n.contact_id, lista);
   }
@@ -283,6 +320,20 @@ export async function GET(req: NextRequest): Promise<Response> {
   // ou é concluída sem parcelas). Alimenta "Vendas" e a taxa de conversão do topo do CRM.
   const idsDosContatos = ((contatos ?? []) as Array<{ id: string }>).map((c) => c.id);
   const etapaDoCard = new Map(linhasDeNegocio.map((n) => [n.id, n.stage_id] as const));
+  const detalheDaOportunidade = new Map<
+    string,
+    {
+      produtos: string;
+      status: VendaAtivaDoCliente["status"];
+      parcelas_total: number;
+      parcelas_pagas: number;
+      pago_cents: number;
+      previsto_cents: number;
+      primeiro: string | null;
+      ultimo: string | null;
+      proximo: string | null;
+    }
+  >();
   const vendasPorContato = new Map<string, Record<string, number>>();
   const ativasPorContato = new Map<string, VendaAtivaDoCliente[]>();
   const idsDeAnuncio = new Map<string, Set<string>>();
@@ -298,7 +349,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     const { data: oportunidades } = await supabase
       .from("crm_leads")
       .select(
-        "id, contact_id, pipeline_id, status, title, nome_da_venda, value_cents, is_recurring, recurrence_active, demand_campaign_id, demand_creative_id, demand_landing_page_id, items:crm_sale_items(product_name, position), payments:crm_sale_payments(status, amount_cents)",
+        "id, contact_id, pipeline_id, status, title, nome_da_venda, value_cents, is_recurring, recurrence_active, demand_campaign_id, demand_creative_id, demand_landing_page_id, is_recurring, payment_method, items:crm_sale_items(product_name, position), payments:crm_sale_payments(status, amount_cents, due_on, paid_on)",
       )
       .eq("organization_id", orgId)
       .in("contact_id", idsDosContatos.slice(i, i + 200))
@@ -317,9 +368,40 @@ export async function GET(req: NextRequest): Promise<Response> {
       demand_creative_id: string | null;
       demand_landing_page_id: string | null;
       items: Array<{ product_name: string; position: number }> | null;
-      payments: Array<{ status: string; amount_cents: number | string }> | null;
+      payments: Array<{
+        status: string;
+        amount_cents: number | string;
+        due_on: string | null;
+        paid_on: string | null;
+      }> | null;
     }>) {
       const pagamentosTodos = o.payments ?? [];
+      {
+        const vivas = pagamentosTodos.filter((p) => p.status !== "cancelada");
+        const pagas = vivas.filter((p) => p.status === "recebida");
+        const abertas = vivas.filter((p) => p.status === "prevista");
+        const datas = (l: Array<string | null>) => l.filter((d): d is string => Boolean(d)).sort();
+        const pagas_em = datas(pagas.map((p) => p.paid_on));
+        const venc = datas(abertas.map((p) => p.due_on));
+        detalheDaOportunidade.set(o.id, {
+          produtos: [...(o.items ?? [])]
+            .sort((x, y) => (x.position ?? 0) - (y.position ?? 0))
+            .map((x) => x.product_name)
+            .filter(Boolean)
+            .join(" + "),
+          status: statusDaOportunidade(o.status, pagamentosTodos, {
+            is_recurring: o.is_recurring,
+            recurrence_active: o.recurrence_active,
+          }) as VendaAtivaDoCliente["status"],
+          parcelas_total: vivas.length,
+          parcelas_pagas: pagas.length,
+          pago_cents: pagas.reduce((s2, p) => s2 + Number(p.amount_cents), 0),
+          previsto_cents: abertas.reduce((s2, p) => s2 + Number(p.amount_cents), 0),
+          primeiro: pagas_em[0] ?? null,
+          ultimo: pagas_em[pagas_em.length - 1] ?? null,
+          proximo: venc[0] ?? null,
+        });
+      }
       // Oportunidade perdida só entra se já recebeu algo: o sinal não volta e conta no LTV.
       if (o.status === "lost" && !pagamentosTodos.some((p) => p.status === "recebida")) continue;
       const nomesDosProdutos = [...(o.items ?? [])]
@@ -390,8 +472,18 @@ export async function GET(req: NextRequest): Promise<Response> {
     }
     void lista;
   }
-  const todosAnuncios = [...new Set([...idsDeAnuncio.values()].flatMap((s2) => [...s2]))];
-  const todasLps = [...new Set([...idsDeLp.values()].flatMap((s2) => [...s2]))];
+  const todosAnuncios = [
+    ...new Set([
+      ...[...idsDeAnuncio.values()].flatMap((s2) => [...s2]),
+      ...linhasDeNegocio.map((n) => n.demand_creative_id).filter((x): x is string => Boolean(x)),
+    ]),
+  ];
+  const todasLps = [
+    ...new Set([
+      ...[...idsDeLp.values()].flatMap((s2) => [...s2]),
+      ...linhasDeNegocio.map((n) => n.demand_landing_page_id).filter((x): x is string => Boolean(x)),
+    ]),
+  ];
   const nomeDoAnuncio = new Map<string, string>();
   const nomeDaLp = new Map<string, string>();
   if (todosAnuncios.length > 0) {
@@ -475,7 +567,30 @@ export async function GET(req: NextRequest): Promise<Response> {
     ultima_atividade: c.last_activity_at,
     conversa_id: conversaPorContato.get(c.id) ?? null,
     campos: c.custom_fields ?? {},
-    participacoes: porContato.get(c.id) ?? [],
+    participacoes: (porContato.get(c.id) ?? []).map((p) => {
+      const d = detalheDaOportunidade.get(p.lead_id);
+      const cliente = c.display_name?.trim() || c.name?.trim() || c.phone_number || "";
+      const produtos = d?.produtos ?? "";
+      return {
+        ...p,
+        // Sem nome dado: "Nome do Cliente | Produto".
+        titulo:
+          p.titulo && p.titulo !== cliente
+            ? p.titulo
+            : produtos
+              ? `${cliente} | ${produtos}`
+              : p.titulo || cliente,
+        produtos,
+        status_da_venda: d?.status ?? null,
+        parcelas_total: d?.parcelas_total ?? 0,
+        parcelas_pagas: d?.parcelas_pagas ?? 0,
+        pago_cents: d?.pago_cents ?? 0,
+        previsto_cents: d?.previsto_cents ?? 0,
+        primeiro_pagamento: d?.primeiro ?? null,
+        ultimo_pagamento: d?.ultimo ?? null,
+        proximo_pagamento: d?.proximo ?? null,
+      };
+    }),
   }));
 
   return ok(

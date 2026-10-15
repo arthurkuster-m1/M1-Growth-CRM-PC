@@ -370,7 +370,7 @@ export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
 }
 
 /** A fonte e o posicionamento da origem da oportunidade (o que foi corrigido à mão vale mais). */
-function origemDaOportunidade(l: Record<string, unknown>): {
+export function origemDaOportunidade(l: Record<string, unknown>): {
   origem: string | null;
   posicionamento: string | null;
 } {
