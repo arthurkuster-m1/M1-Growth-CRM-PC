@@ -620,6 +620,22 @@ export function DialogoDaVenda({
     }));
   }
 
+  /**
+   * Apagar a oportunidade, de qualquer porta de entrada (tabela, ficha, quadro): o mesmo painel,
+   * o mesmo botão. Com pagamento recebido o servidor recusa e o aviso explica.
+   */
+  async function apagarOportunidade() {
+    if (!venda) return;
+    try {
+      if (aoApagar) await aoApagar();
+      else await apiClient.delete(`/api/v1/vendas/${venda.id}`);
+      await queryClient.invalidateQueries();
+      aoFechar();
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+
   async function salvar() {
     setSalvando(true);
     setErro(null);
@@ -1405,14 +1421,14 @@ export function DialogoDaVenda({
         ) : null}
 
         <div className="flex flex-wrap justify-between gap-2 pt-1">
-          {aoApagar && venda ? (
+          {venda ? (
             <button
               type="button"
               onClick={() => {
                 if (
                   window.confirm(t("Apagar esta oportunidade? Os totais do cliente serão recalculados."))
                 ) {
-                  void aoApagar().then(aoFechar);
+                  void apagarOportunidade();
                 }
               }}
               className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium text-error-fg hover:bg-error-bg"
