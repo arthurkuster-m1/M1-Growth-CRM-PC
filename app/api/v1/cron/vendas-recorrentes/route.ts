@@ -165,5 +165,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     avisos += 1;
   }
 
-  return ok({ geradas, avisos }, { requestId });
+  // ── 3. Ciclo de vida: quem saiu da janela de "ativo" hoje vira ex-cliente ────────────────
+  let ciclos = 0;
+  const { data: recalculados } = await admin.rpc("fn_ciclo_recalcula_todos" as never, {} as never);
+  if (typeof recalculados === "number") ciclos = recalculados;
+
+  return ok({ geradas, avisos, ciclos }, { requestId });
 }

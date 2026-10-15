@@ -76,6 +76,12 @@ export interface ClienteDaLista {
   ltv_previsto_cents: number;
   interesse_cents: number;
   vendas: number;
+  /** Ciclo de vida calculado no banco (migration 0631) e o porquê. */
+  ciclo_de_vida: string | null;
+  ciclo_motivo: string | null;
+  oportunidades_abertas: number;
+  valor_em_aberto_cents: number;
+  proximo_vencimento: string | null;
   /** Vendas PAGAS (ao menos uma parcela recebida) por funil: funil_id → quantidade. */
   vendas_por_funil: Record<string, number>;
   /** As vendas ativas (interesse, comprometida, concluída) com o status de cada uma. */
@@ -161,7 +167,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeContatos = supabase
     .from("contacts")
     .select(
-      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on",
+      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on, ciclo_de_vida, ciclo_motivo, oportunidades_abertas, valor_em_aberto_cents, proximo_vencimento",
     )
     .eq("organization_id", orgId)
     .eq("kind", "person")
@@ -327,6 +333,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       ltv_forecast_cents: number | string | null;
       interest_cents: number | string | null;
       sales_count: number | null;
+      ciclo_de_vida: string | null;
+      ciclo_motivo: string | null;
+      oportunidades_abertas: number | null;
+      valor_em_aberto_cents: number | string | null;
+      proximo_vencimento: string | null;
       last_purchase_on: string | null;
       last_activity_at: string | null;
       custom_fields: Record<string, unknown> | null;
@@ -347,6 +358,11 @@ export async function GET(req: NextRequest): Promise<Response> {
     ltv_previsto_cents: Number(c.ltv_forecast_cents) || 0,
     interesse_cents: Number(c.interest_cents) || 0,
     vendas: c.sales_count ?? 0,
+    ciclo_de_vida: c.ciclo_de_vida,
+    ciclo_motivo: c.ciclo_motivo,
+    oportunidades_abertas: c.oportunidades_abertas ?? 0,
+    valor_em_aberto_cents: Number(c.valor_em_aberto_cents) || 0,
+    proximo_vencimento: c.proximo_vencimento,
     vendas_por_funil: vendasPorContato.get(c.id) ?? {},
     vendas_ativas: ativasPorContato.get(c.id) ?? [],
     anuncios: nomesDe(idsDeAnuncio, nomeDoAnuncio, c.id),

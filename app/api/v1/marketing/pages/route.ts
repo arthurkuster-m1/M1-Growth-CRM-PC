@@ -47,7 +47,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("marketing_pages")
-    .select("id, module_key, title, published_blocks")
+    .select("id, module_key, title, published_blocks, janela_ativo_meses")
     .eq("organization_id", authz.org.orgId)
     .like("module_key", `${modulo}--%`)
     .order("sort_order", { ascending: true })
@@ -63,6 +63,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     module_key: string;
     title: string;
     published_blocks: unknown;
+    janela_ativo_meses: number | null;
   }>;
   // A escada de valor lê a oferta de cada página: a agência vê o rascunho; o cliente, o publicado.
   const rascunhos = new Map<string, unknown>();
@@ -97,6 +98,7 @@ export async function GET(req: NextRequest): Promise<Response> {
           tipoDePreco: o.preco.tipo,
           valor: precoEmCentavos(o) / 100,
           resumo: o.resumo.slice(0, 200),
+          janelaAtivoMeses: l.janela_ativo_meses ?? null,
         };
       }
     }

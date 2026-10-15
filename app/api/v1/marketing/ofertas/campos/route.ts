@@ -45,6 +45,8 @@ const mudancasSchema = z
     tipoDePreco: z.enum(TIPOS_DE_PRECO),
     /** O preço em reais; `null` limpa. */
     preco: z.number().finite().min(0).max(1e9).nullable(),
+    /** Meses em que um pagamento deste produto mantém a pessoa como cliente ativa; `null` = padrão da empresa. */
+    janelaAtivoMeses: z.number().int().min(1).max(60).nullable(),
   })
   .partial()
   .refine((m) => Object.keys(m).length > 0, "Nada para alterar.");
@@ -137,8 +139,17 @@ export async function PATCH(req: NextRequest): Promise<Response> {
         .eq("organization_id", orgId);
       if (e) continue;
     }
+    if (mudancas.janelaAtivoMeses !== undefined) {
+      const { error: e } = await supabase
+        .from("marketing_pages")
+        .update({ janela_ativo_meses: mudancas.janelaAtivoMeses })
+        .eq("id", l.id)
+        .eq("organization_id", orgId);
+      if (e) continue;
+    }
     const semCampos = { ...mudancas };
     delete semCampos.title;
+    delete semCampos.janelaAtivoMeses;
     if (Object.keys(semCampos).length > 0) {
       const novoRascunho = aplicar(blocosDoRascunho.get(l.id), semCampos);
       if (novoRascunho) {

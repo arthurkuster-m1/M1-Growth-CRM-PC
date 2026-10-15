@@ -10,6 +10,7 @@ import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDa
 import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
 import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
+import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
 import { CelulaDeEtiquetas } from "@/components/clientes/CelulaDeEtiquetas";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
@@ -20,6 +21,7 @@ import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { COR_DO_CICLO, CICLOS_DE_VIDA, ehCicloDeVida, ROTULO_DO_CICLO } from "@/lib/ciclo-de-vida";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { AcoesEmMassaDeClientes } from "@/components/clientes/AcoesEmMassaDeClientes";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -640,6 +642,29 @@ export function ClientesCRM() {
       },
     },
     {
+      id: "ciclo",
+      titulo: t("Ciclo de vida"),
+      icone: <Users size={14} aria-hidden />,
+      largura: 190,
+      celula: (l) =>
+        ehCicloDeVida(l.ciclo_de_vida) ? (
+          <span className="block px-2" title={l.ciclo_motivo ?? undefined}>
+            <Etiqueta ponto cor={COR_DO_CICLO[l.ciclo_de_vida]}>
+              {t(ROTULO_DO_CICLO[l.ciclo_de_vida])}
+            </Etiqueta>
+            {l.oportunidades_abertas > 0 && l.ciclo_de_vida !== "em_negociacao" ? (
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                {l.oportunidades_abertas === 1
+                  ? t("1 oportunidade aberta")
+                  : `${l.oportunidades_abertas} ${t("oportunidades abertas")}`}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          semValor
+        ),
+    },
+    {
       id: "mql",
       titulo: "MQL",
       icone: <Users size={14} aria-hidden />,
@@ -968,6 +993,18 @@ export function ClientesCRM() {
       opcoes: opcoesDeEtapa,
       rotuloDoValor: (v) => etapasPorId.get(v)?.name ?? v,
       ordemDoValor: (v) => etapasPorId.get(v)?.position ?? 0,
+    },
+    {
+      id: "ciclo",
+      titulo: t("Ciclo de vida"),
+      tipo: "opcao",
+      valorDe: (l) => l.ciclo_de_vida,
+      opcoes: CICLOS_DE_VIDA.map((c) => ({
+        id: c,
+        rotulo: t(ROTULO_DO_CICLO[c]),
+        cor: COR_DO_CICLO[c],
+      })),
+      rotuloDoValor: (v) => (ehCicloDeVida(v) ? t(ROTULO_DO_CICLO[v]) : v),
     },
     {
       id: "mql",
@@ -1320,6 +1357,7 @@ export function ClientesCRM() {
             {t("Mostrar todas")}
           </button>
         ) : null}
+        <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />
       </div>
 
       {vendaAberta ? (

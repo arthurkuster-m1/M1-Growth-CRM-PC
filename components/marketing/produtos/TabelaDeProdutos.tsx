@@ -46,6 +46,7 @@ type Mudancas = Partial<{
   carroChefe: boolean;
   tipoDePreco: (typeof TIPOS_DE_PRECO)[number];
   preco: number | null;
+  janelaAtivoMeses: number | null;
 }>;
 interface DadosDoCache {
   subpaginas: Produto[];
@@ -129,6 +130,8 @@ export function TabelaDeProdutos({
               nivel: m.nivel ?? p.oferta.nivel,
               carroChefe: m.carroChefe ?? p.oferta.carroChefe,
               tipoDePreco: m.tipoDePreco ?? p.oferta.tipoDePreco,
+              janelaAtivoMeses:
+                m.janelaAtivoMeses !== undefined ? m.janelaAtivoMeses : p.oferta.janelaAtivoMeses,
               valor: m.preco !== undefined ? (m.preco ?? 0) : p.oferta.valor,
               preco:
                 m.preco !== undefined
@@ -281,6 +284,30 @@ export function TabelaDeProdutos({
               const n = texto.trim() === "" ? null : lerNumero(texto);
               if (texto.trim() !== "" && n === null) return;
               void editar([p.key], { preco: n });
+            }}
+          />
+        ) : null,
+    },
+    {
+      id: "janela-ativo",
+      titulo: t("Cliente ativo (meses)"),
+      icone: <Package size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (p) =>
+        p.oferta ? (
+          <CelulaDeTexto
+            valor={p.oferta.janelaAtivoMeses ? String(p.oferta.janelaAtivoMeses) : ""}
+            exibir={p.oferta.janelaAtivoMeses ? `${p.oferta.janelaAtivoMeses}` : ""}
+            rotulo={t("Meses em que o pagamento deste produto mantém o cliente ativo")}
+            vazioRotulo={t("Padrão da empresa")}
+            permitirVazio
+            inputMode="numeric"
+            podeEditar={podeEditar}
+            aoSalvar={(texto) => {
+              const n = texto.trim() === "" ? null : Math.round(Number(texto));
+              if (n !== null && (!Number.isFinite(n) || n < 1 || n > 60)) return;
+              void editar([p.key], { janelaAtivoMeses: n });
             }}
           />
         ) : null,

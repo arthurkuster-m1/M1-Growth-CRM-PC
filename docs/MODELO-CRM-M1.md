@@ -225,3 +225,8 @@ Cada passo: migration com manifest, ensaio em rollback, só aplicar com "pode ap
 - **Tag "Reativado"**: aplicada automaticamente quando um Ex-cliente em reativação volta a ser Cliente ativo (fica no histórico da pessoa).
 - **Janela padrão da empresa** (quando o produto não define a própria): configurada na página CRM, aba Clientes.
 - **Visualizações**: cada pessoa cria e edita as **suas**; pode **arquivar para si** a visão de outra pessoa; **não altera** o que outra pessoa criou.
+
+## 14. Andamento
+
+- **Passo 1 (0630) aplicado em 15/10/2026:** `crm_historico_de_estados`, `crm_stages.tipo` e `fixa`, etapa "Desqualificado" em cada funil.
+- **Passo 2 (0631):** `contacts.ciclo_de_vida` (+ `ciclo_motivo`, `oportunidades_abertas`, `valor_em_aberto_cents`, `proximo_vencimento`, `dono_user_id`), janela por produto em `marketing_pages.janela_ativo_meses` (o produto é uma página de marketing), padrão da empresa em `organizations.settings.janela_ativo_meses` (6), tag "Reativado", recálculo por trigger e pela rotina diária. Na tela: coluna e filtro "Ciclo de vida" na lista, janela padrão no topo da lista, coluna "Cliente ativo (meses)" na tabela de produtos.

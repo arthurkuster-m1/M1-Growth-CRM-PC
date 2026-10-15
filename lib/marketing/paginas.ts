@@ -43,6 +43,8 @@ export interface ResumoDeSubpagina {
     /** O preço em reais (0 = sem preço definido). */
     valor: number;
     resumo: string;
+    /** Janela de cliente ativo deste produto, em meses; nulo = padrão da empresa. */
+    janelaAtivoMeses: number | null;
   };
 }
 
