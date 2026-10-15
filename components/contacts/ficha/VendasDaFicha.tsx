@@ -190,7 +190,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
 
   const cartoes: Array<[string, string, "green" | "blue" | "purple" | "orange" | "yellow"]> = [
     [t("LTV atual"), reais(ltv), "green"],
-    [t("LTV previsto"), reais(ltv + previsto), "blue"],
+    [t("A receber"), reais(previsto), "blue"],
     [t("LTV em interesse"), reais(emInteresse), "yellow"],
     [t("Vendas"), String(pagas.length), "purple"],
     [t("Ticket médio"), reais(ticket), "orange"],

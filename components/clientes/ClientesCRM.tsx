@@ -975,11 +975,11 @@ export function ClientesCRM({
     },
     {
       id: "ltv-previsto",
-      titulo: t("LTV previsto (comprometido)"),
+      titulo: t("A receber"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 190,
+      largura: 150,
       celula: (l) => {
-        const v = valoresDoLead(l).comprometido;
+        const v = valoresDoLead(l).aReceber;
         return (
           <span className="block truncate px-2 text-sm tabular-nums">{v > 0 ? moeda(v) : "—"}</span>
         );
@@ -1200,9 +1200,9 @@ export function ClientesCRM({
     },
     {
       id: "ltv-previsto",
-      titulo: t("LTV previsto (comprometido)"),
+      titulo: t("A receber"),
       tipo: "numero",
-      valorDe: (l) => valoresDoLead(l).comprometido / 100,
+      valorDe: (l) => valoresDoLead(l).aReceber / 100,
     },
     {
       id: "interesse",

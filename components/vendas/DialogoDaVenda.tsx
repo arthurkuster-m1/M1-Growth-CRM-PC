@@ -940,10 +940,10 @@ export function DialogoDaVenda({
                     ) : null}
                     <p className="rounded-lg bg-background/70 px-3 py-2 text-xs">
                       <strong className="tabular-nums">{reais(previstoCents)}</strong>{" "}
-                      {t("previstos")} ({abertasCont}{" "}
+                      {t("a receber")} ({abertasCont}{" "}
                       {abertasCont === 1 ? t("parcela") : t("parcelas")}) ·{" "}
-                      {t("LTV previsto")}{" "}
-                      <strong className="tabular-nums">{reais(recebidoCents + previstoCents)}</strong>
+                      {t("já recebido")}{" "}
+                      <strong className="tabular-nums">{reais(recebidoCents)}</strong>
                     </p>
                   </>
                 ) : null}

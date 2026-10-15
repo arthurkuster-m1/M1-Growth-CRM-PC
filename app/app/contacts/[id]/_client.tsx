@@ -4,13 +4,16 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import { useT } from "@/hooks/i18n/useT";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useDeleteContact } from "@/hooks/contacts/useDeleteContact";
 import { format } from "date-fns";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, LockOpen } from "@/lib/ui/icons";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
-import { FunisDoLead } from "@/components/contacts/ficha/FunisDoLead";
+import { OportunidadesDoLead } from "@/components/contacts/ficha/OportunidadesDoLead";
 import { PainelDaVisaoGeral } from "@/components/contacts/ficha/PainelDaVisaoGeral";
 import { LinhaDoTempoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
 import { VendasDaFicha } from "@/components/contacts/ficha/VendasDaFicha";
@@ -91,6 +94,9 @@ function ContactDetailInner({ contactId }: Props) {
   // mesmo motivo do `desbloquear` acima.
   const marcarPessoal = useMarkPersonalContact(contactId);
   const desmarcarPessoal = useUnmarkPersonalContact(contactId);
+  // Excluir o lead: vai para a Lixeira do CRM (7 dias) com tudo que depende dele.
+  const excluir = useDeleteContact();
+  const router = useRouter();
 
   /*
     Pede o nome da campanha SÓ quando há um anúncio e ainda não há nome.
@@ -298,6 +304,47 @@ function ContactDetailInner({ contactId }: Props) {
                 </span>
               </Button>
             )}
+            {podeEditarFicha && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={excluir.isPending}
+                    className="shrink-0 text-error-fg hover:text-error-fg"
+                    data-testid="excluir-lead"
+                  >
+                    <span>{t("Excluir lead")}</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("Excluir")} {displayName}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t(
+                        "O lead sai do CRM com todas as oportunidades, vendas (mesmo as pagas), conversas e compromissos dele. Fica 7 dias na Lixeira do CRM e pode ser restaurado nesse prazo; depois some de vez.",
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        excluir.mutate(contactId, {
+                          onSuccess: () => {
+                            toast.success(t("Lead movido para a Lixeira"));
+                            router.push("/app/clientes");
+                          },
+                        })
+                      }
+                    >
+                      {t("Excluir lead")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <DialButton contactId={contactId} hasPhone={!!contact.phone_number} />
           </div>
         )}
@@ -322,8 +369,8 @@ function ContactDetailInner({ contactId }: Props) {
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
           <TabsTrigger value="atendimento">{t("Atendimento e Tarefas")}</TabsTrigger>
+          <TabsTrigger value="oportunidades">{t("Oportunidades")}</TabsTrigger>
           <TabsTrigger value="vendas">{t("Vendas")}</TabsTrigger>
-          <TabsTrigger value="funis">{t("Funis")}</TabsTrigger>
           <TabsTrigger value="anotacoes">{t("Anotações")}</TabsTrigger>
           <TabsTrigger value="timeline">{t("Linha do Tempo")}</TabsTrigger>
           {isAdmin && <TabsTrigger value="lgpd">LGPD</TabsTrigger>}
@@ -363,16 +410,12 @@ function ContactDetailInner({ contactId }: Props) {
           />
         </TabsContent>
 
-        <TabsContent value="vendas" className="mt-4">
-          <VendasDaFicha contactId={contactId} nome={displayName} />
+        <TabsContent value="oportunidades" className="mt-4">
+          <OportunidadesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
         </TabsContent>
 
-        <TabsContent value="funis" className="mt-4">
-          <FunisDoLead
-            contactId={contactId}
-            nomeDoContato={displayName}
-            podeEditar={podeEditarFicha}
-          />
+        <TabsContent value="vendas" className="mt-4">
+          <VendasDaFicha contactId={contactId} nome={displayName} />
         </TabsContent>
 
         <TabsContent value="anotacoes" className="mt-4">

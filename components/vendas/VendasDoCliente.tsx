@@ -135,8 +135,8 @@ export function VendasDoCliente({
             <p className="font-semibold tabular-nums">{reais(ltv)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("LTV previsto")}</p>
-            <p className="font-semibold tabular-nums">{reais(ltv + previsto)}</p>
+            <p className="text-xs text-muted-foreground">{t("A receber")}</p>
+            <p className="font-semibold tabular-nums">{reais(previsto)}</p>
           </div>
         </div>
       ) : null}
