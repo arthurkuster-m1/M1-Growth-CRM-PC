@@ -11,6 +11,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { CANAIS_DA_CAMPANHA } from "@/lib/marketing/campanhas";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 import { PERIODOS, janelaDoPeriodo } from "@/lib/marketing/periodos";
+import { crmDaCampanhaPorDia } from "@/lib/marketing/crm-por-dia";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { data: campanhas } = await a.supabase
     .from("demand_campaigns")
     .select(
-      "id, name, channel, status, goal_leads, goal_sales, goal_revenue, goal_cpl, goal_period",
+      "id, name, channel, status, goal_leads, goal_sales, goal_revenue, goal_cpl, goal_period, pipeline_id",
     )
     .eq("organization_id", a.orgId)
     .limit(500);
@@ -115,6 +116,92 @@ export async function GET(req: NextRequest): Promise<Response> {
       (canaisPedidos.size === 0 || canaisPedidos.has(l.channel)),
   );
 
+  // Os números de anúncio e os do CRM que não vêm da função do banco: impressões, cliques, visitas,
+  // faturamento (vendas fechadas) e reuniões — para as colunas escolhidas na tela.
+  const campanhasDoFunil = (campanhas ?? []).map((c) => ({
+    id: c.id as string,
+    pipeline_id: (c.pipeline_id as string | null) ?? null,
+  }));
+  const extras = new Map<
+    string,
+    {
+      impressoes: number;
+      cliques: number;
+      visitas: number;
+      faturamento: number;
+      agendamentos: number;
+      reunioes: number;
+    }
+  >();
+  if (linhas.length > 0) {
+    const { data: dias } = await a.supabase
+      .from("demand_campaign_days")
+      .select("campaign_id, impressions, link_clicks, lp_views")
+      .eq("organization_id", a.orgId)
+      .in("campaign_id", linhas.map((l) => l.id))
+      .gte("day", janela.de)
+      .lte("day", janela.ate)
+      .limit(20000);
+    for (const d of (dias ?? []) as Array<{
+      campaign_id: string;
+      impressions: number;
+      link_clicks: number;
+      lp_views: number;
+    }>) {
+      const e = extras.get(d.campaign_id) ?? {
+        impressoes: 0,
+        cliques: 0,
+        visitas: 0,
+        faturamento: 0,
+        agendamentos: 0,
+        reunioes: 0,
+      };
+      e.impressoes += Number(d.impressions) || 0;
+      e.cliques += Number(d.link_clicks) || 0;
+      e.visitas += Number(d.lp_views) || 0;
+      extras.set(d.campaign_id, e);
+    }
+    for (let i = 0; i < linhas.length; i += 5) {
+      await Promise.all(
+        linhas.slice(i, i + 5).map(async (l) => {
+          const pipeline = campanhasDoFunil.find((c) => c.id === l.id)?.pipeline_id ?? null;
+          const porDia = await crmDaCampanhaPorDia(
+            a.supabase,
+            a.orgId,
+            l.id,
+            pipeline,
+            campanhasDoFunil,
+            fuso,
+          );
+          const e = extras.get(l.id) ?? {
+            impressoes: 0,
+            cliques: 0,
+            visitas: 0,
+            faturamento: 0,
+            agendamentos: 0,
+            reunioes: 0,
+          };
+          for (const [dia, v] of porDia) {
+            if (dia < janela.de || dia > janela.ate) continue;
+            e.faturamento += v.faturamento;
+            e.agendamentos += v.agendamentos;
+            e.reunioes += v.reunioes;
+          }
+          extras.set(l.id, e);
+        }),
+      );
+    }
+  }
+  const linhasCompletas = linhas.map((l) => ({
+    ...l,
+    impressoes: extras.get(l.id)?.impressoes ?? 0,
+    cliques: extras.get(l.id)?.cliques ?? 0,
+    visitas: extras.get(l.id)?.visitas ?? 0,
+    faturamento: extras.get(l.id)?.faturamento ?? 0,
+    agendamentos: extras.get(l.id)?.agendamentos ?? 0,
+    reunioes: extras.get(l.id)?.reunioes ?? 0,
+  }));
+
   // Cada pessoa conta UMA vez no total, mesmo que esteja em mais de uma campanha.
   let leadsUnicos = 0;
   if (linhas.length > 0) {
@@ -128,7 +215,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     leadsUnicos = Number(unicos) || 0;
   }
   return ok(
-    { de: janela.de, ate: janela.ate, linhas, catalogo, leads_unicos: leadsUnicos },
+    { de: janela.de, ate: janela.ate, linhas: linhasCompletas, catalogo, leads_unicos: leadsUnicos },
     { requestId: a.requestId },
   );
 }

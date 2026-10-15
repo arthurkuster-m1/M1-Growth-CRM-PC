@@ -300,7 +300,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
               </button>
             ) : null}
             <Link
-              href={`/app/clientes?funil=${c.pipeline_id}`}
+              href={`/app/clientes?visao=oportunidades&funil=${c.pipeline_id}`}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
             >
               {t("Ver no CRM")}

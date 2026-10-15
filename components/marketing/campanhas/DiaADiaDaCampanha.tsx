@@ -1,13 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useState } from "react";
 
 import {
   FiltroDePeriodoDaCampanha,
   usePeriodoDaCampanha,
 } from "@/components/marketing/campanhas/FiltroDePeriodoDaCampanha";
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
+import {
+  COLUNAS_DE_RESULTADO,
+  agregadoDoDia,
+  formatarResultado,
+  ordemDasColunas,
+  somarAgregados,
+  type Agregado,
+  type FormatoDaColuna,
+} from "@/lib/marketing/colunas-de-resultado";
 import {
   METRICAS_DO_CANAL,
   hojeIso,
@@ -16,54 +41,105 @@ import {
 } from "@/lib/marketing/campanhas-resumo";
 import type { CampanhaDeDemanda, CanalDaCampanha } from "@/lib/marketing/campanhas";
 import { periodoPadraoDaCampanha } from "@/lib/marketing/periodo-da-campanha";
+import { ArrowDown, ArrowUp, DotsSixVertical } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
-/** Uma coluna da tabela: o nome, onde o valor mora e se é dinheiro. */
+/** Uma coluna da tabela: o valor de um dia e o do total do período. */
 interface Coluna {
-  chave: string;
+  id: string;
   rotulo: string;
-  dinheiro: boolean;
-  ler: (d: DiaDaCampanha) => number;
+  formato: FormatoDaColuna;
+  padrao: boolean;
+  doDia: (d: DiaDaCampanha) => number | null;
+  doTotal: (dias: readonly DiaDaCampanha[]) => number | null;
 }
 
-function colunasDoCanal(
+function colunasDisponiveis(
   t: (s: string) => string,
   canal: CanalDaCampanha,
   automatico: { chaves: string[]; investimento: boolean },
 ): Coluna[] {
-  const fixa = (
-    chave: string,
-    rotulo: string,
-    campo: "impressions" | "reach" | "link_clicks" | "lp_views" | "leads" | "spend",
-  ): Coluna => ({
-    chave,
-    rotulo,
-    dinheiro: campo === "spend",
-    ler: (d) => d[campo],
+  const doCatalogo = COLUNAS_DE_RESULTADO.map((c): Coluna => ({
+    id: c.id,
+    rotulo: t(c.rotulo),
+    formato: c.formato,
+    // Fora do tráfego pago, os números de anúncio não existem: de fábrica fica só o que o canal tem.
+    padrao: canal === "trafego_pago" ? c.padrao : ["leads", "vendas", "recebido"].includes(c.id) || (c.id === "investido" && automatico.investimento),
+    doDia: (d) => c.valor(agregadoDoDia(d)),
+    doTotal: (dias) => c.valor(somarAgregados(dias.map(agregadoDoDia))),
+  }));
+  const extras =
+    canal === "trafego_pago"
+      ? []
+      : METRICAS_DO_CANAL[canal]
+          .filter((m) => automatico.chaves.includes(m.chave) && m.chave !== "vendas" && m.chave !== "valor_total")
+          .map((m): Coluna => ({
+            id: `x:${m.chave}`,
+            rotulo: rotuloDaMetrica(t, m.chave),
+            formato: m.tipo === "moeda" ? "moeda" : "inteiro",
+            padrao: true,
+            doDia: (d) => d.extras[m.chave] ?? 0,
+            doTotal: (dias) => dias.reduce((s, d) => s + (d.extras[m.chave] ?? 0), 0),
+          }));
+  // Quem não é anúncio não tem impressões/cliques/visitas: some da lista de escolha.
+  const semAnuncio = new Set(["impressoes", "cliques", "visitas", "cpm", "ctr", "cpc", "cpv", "conversao_lp"]);
+  return [...doCatalogo.filter((c) => canal === "trafego_pago" || !semAnuncio.has(c.id)), ...extras];
+}
+
+function chaveSalva(canal: string) {
+  return `m1.diaadia.colunas.v1.${canal}`;
+}
+
+function CabecalhoOrdenavel({
+  coluna,
+  ordenacao,
+  aoOrdenar,
+}: {
+  coluna: Coluna;
+  ordenacao: { id: string; dir: "asc" | "desc" } | null;
+  aoOrdenar: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: coluna.id,
   });
-  if (canal === "trafego_pago") {
-    return [
-      fixa("impressions", t("Impressões"), "impressions"),
-      fixa("reach", t("Alcance"), "reach"),
-      fixa("link_clicks", t("Cliques no link"), "link_clicks"),
-      fixa("lp_views", t("Visitas à LP"), "lp_views"),
-      fixa("leads", t("Leads (CRM)"), "leads"),
-      fixa("spend", t("Investido"), "spend"),
-    ];
-  }
-  // Só as colunas que o sistema calcula sozinho.
-  return [
-    fixa("leads", t("Leads (CRM)"), "leads"),
-    ...(automatico.investimento ? [fixa("spend", t("Investido"), "spend")] : []),
-    ...METRICAS_DO_CANAL[canal]
-      .filter((m) => automatico.chaves.includes(m.chave))
-      .map((m): Coluna => ({
-        chave: m.chave,
-        rotulo: rotuloDaMetrica(t, m.chave),
-        dinheiro: m.tipo === "moeda",
-        ler: (d) => d.extras[m.chave] ?? 0,
-      })),
-  ];
+  const ativa = ordenacao?.id === coluna.id;
+  return (
+    <th
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        "px-2 py-2 text-right font-medium whitespace-nowrap",
+        isDragging && "relative z-20 bg-card shadow-md",
+      )}
+      aria-sort={ativa ? (ordenacao!.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <span className="inline-flex items-center gap-1">
+        <button
+          type="button"
+          aria-label={coluna.rotulo}
+          className="cursor-grab touch-none text-muted-foreground/60 hover:text-foreground active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <DotsSixVertical size={12} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => aoOrdenar(coluna.id)}
+          className="inline-flex items-center gap-1 hover:text-foreground"
+        >
+          {coluna.rotulo}
+          {ativa ? (
+            ordenacao!.dir === "asc" ? (
+              <ArrowUp size={12} aria-hidden />
+            ) : (
+              <ArrowDown size={12} aria-hidden />
+            )
+          ) : null}
+        </button>
+      </span>
+    </th>
+  );
 }
 
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
@@ -88,11 +164,74 @@ export function DiaADiaDaCampanha({
   automatico: { chaves: string[]; investimento: boolean };
 }) {
   const t = useT();
-  const colunas = colunasDoCanal(t, canal, automatico);
+  const disponiveis = colunasDisponiveis(t, canal, automatico);
   const [soComDados, setSoComDados] = useState(false);
   const hoje = hojeIso();
   const periodo = usePeriodoDaCampanha(periodoPadraoDaCampanha(campanha, hoje));
-  const ordenados = linhasDoPeriodo(dias, periodo.janela.de, periodo.janela.ate, soComDados);
+  const [ordenacao, setOrdenacao] = useState<{ id: string; dir: "asc" | "desc" } | null>(null);
+  // Colunas escolhidas e a ordem delas: guardadas neste navegador, por canal.
+  const [escolha, setEscolha] = useState<{ visiveis: string[] | null; ordem: string[] }>({
+    visiveis: null,
+    ordem: [],
+  });
+  useEffect(() => {
+    try {
+      const bruto = window.localStorage.getItem(chaveSalva(canal));
+      if (bruto) setEscolha(JSON.parse(bruto) as typeof escolha);
+    } catch {
+      /* sem armazenamento: segue com o padrão */
+    }
+  }, [canal]);
+  function mudarEscolha(nova: typeof escolha) {
+    setEscolha(nova);
+    try {
+      window.localStorage.setItem(chaveSalva(canal), JSON.stringify(nova));
+    } catch {
+      /* o navegador pode bloquear: vale só nesta sessão */
+    }
+  }
+  const ids = disponiveis.map((c) => c.id);
+  const ordemIds = ordemDasColunas(escolha.ordem, ids);
+  const visiveisIds = escolha.visiveis ?? disponiveis.filter((c) => c.padrao).map((c) => c.id);
+  const colunas = ordemIds
+    .filter((id) => visiveisIds.includes(id))
+    .map((id) => disponiveis.find((c) => c.id === id)!)
+    .filter(Boolean);
+
+  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  function aoSoltar(e: DragEndEvent) {
+    const de = e.active.id as string;
+    const para = e.over?.id as string | undefined;
+    if (!para || de === para) return;
+    const visiveis = colunas.map((c) => c.id);
+    const nova = arrayMove(visiveis, visiveis.indexOf(de), visiveis.indexOf(para));
+    // As escondidas ficam no fim, na ordem que tinham.
+    mudarEscolha({
+      visiveis: escolha.visiveis,
+      ordem: [...nova, ...ordemIds.filter((id) => !nova.includes(id))],
+    });
+  }
+  function ordenarPor(id: string) {
+    setOrdenacao((o) =>
+      o?.id !== id ? { id, dir: "desc" } : o.dir === "desc" ? { id, dir: "asc" } : null,
+    );
+  }
+
+  const doPeriodo = linhasDoPeriodo(dias, periodo.janela.de, periodo.janela.ate, soComDados);
+  const ordenados = (() => {
+    if (!ordenacao) return doPeriodo;
+    const c = disponiveis.find((x) => x.id === ordenacao.id);
+    if (!c) return doPeriodo;
+    const f = ordenacao.dir === "asc" ? 1 : -1;
+    return [...doPeriodo].sort((x, y) => {
+      const vx = c.doDia(x);
+      const vy = c.doDia(y);
+      if (vx === null && vy === null) return 0;
+      if (vx === null) return 1;
+      if (vy === null) return -1;
+      return (vx - vy) * f;
+    });
+  })();
 
   return (
     <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
@@ -110,6 +249,52 @@ export function DiaADiaDaCampanha({
           />
           {t("Só os dias com dados")}
         </label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+            >
+              {t("Colunas")} · {colunas.length}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 p-2">
+            <div className="max-h-72 overflow-y-auto">
+              {ordemIds.map((id) => {
+                const c = disponiveis.find((x) => x.id === id);
+                if (!c) return null;
+                const marcada = visiveisIds.includes(id);
+                return (
+                  <label
+                    key={id}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcada}
+                      onChange={() =>
+                        mudarEscolha({
+                          visiveis: marcada
+                            ? visiveisIds.filter((v) => v !== id)
+                            : [...visiveisIds, id],
+                          ordem: ordemIds,
+                        })
+                      }
+                    />
+                    {c.rotulo}
+                  </label>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => mudarEscolha({ visiveis: null, ordem: [] })}
+              className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary"
+            >
+              {t("Voltar ao padrão")}
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
       <p className="text-xs text-muted-foreground">
         {funilDefinido
@@ -134,44 +319,60 @@ export function DiaADiaDaCampanha({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-max text-sm">
-            <thead className="bg-secondary/60 text-xs text-muted-foreground">
-              <tr>
-                <th className="sticky left-0 z-10 bg-secondary px-3 py-2 text-left font-medium">
-                  {t("Dia")}
-                </th>
-                {colunas.map((c) => (
-                  <th key={c.chave} className="px-2 py-2 text-right font-medium whitespace-nowrap">
-                    {c.rotulo}
+          <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
+            <table className="w-full min-w-max text-sm">
+              <thead className="bg-secondary/60 text-xs text-muted-foreground">
+                <tr>
+                  <th className="sticky left-0 z-10 bg-secondary px-3 py-2 text-left font-medium">
+                    {t("Dia")}
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ordenados.map((d) => (
-                <tr
-                  key={d.day}
-                  className={cn("border-t", d.day === hoje && "bg-primary/5")}
-                  aria-current={d.day === hoje ? "date" : undefined}
-                >
-                  <td
-                    className={cn(
-                      "sticky left-0 z-10 bg-card px-3 py-1 text-left whitespace-nowrap tabular-nums",
-                    )}
+                  <SortableContext
+                    items={colunas.map((c) => c.id)}
+                    strategy={horizontalListSortingStrategy}
                   >
-                    {dataBr(d.day)}
+                    {colunas.map((c) => (
+                      <CabecalhoOrdenavel
+                        key={c.id}
+                        coluna={c}
+                        ordenacao={ordenacao}
+                        aoOrdenar={ordenarPor}
+                      />
+                    ))}
+                  </SortableContext>
+                </tr>
+              </thead>
+              <tbody>
+                {ordenados.map((d) => (
+                  <tr
+                    key={d.day}
+                    className={cn("border-t", d.day === hoje && "bg-primary/5")}
+                    aria-current={d.day === hoje ? "date" : undefined}
+                  >
+                    <td className="sticky left-0 z-10 bg-card px-3 py-1 text-left whitespace-nowrap tabular-nums">
+                      {dataBr(d.day)}
+                    </td>
+                    {colunas.map((c) => (
+                      <td key={c.id} className="px-2 py-1.5 text-right tabular-nums">
+                        {formatarResultado(c.formato, c.doDia(d))}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 bg-secondary/40 font-semibold">
+                <tr>
+                  <td className="sticky left-0 z-10 bg-secondary px-3 py-2 text-left whitespace-nowrap">
+                    {t("Total do período")}
                   </td>
                   {colunas.map((c) => (
-                    <td key={c.chave} className="px-2 py-1.5 text-right tabular-nums">
-                      {c.dinheiro
-                        ? c.ler(d).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                        : c.ler(d)}
+                    <td key={c.id} className="px-2 py-2 text-right tabular-nums">
+                      {formatarResultado(c.formato, c.doTotal(doPeriodo))}
                     </td>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </tfoot>
+            </table>
+          </DndContext>
         </div>
       )}
     </section>

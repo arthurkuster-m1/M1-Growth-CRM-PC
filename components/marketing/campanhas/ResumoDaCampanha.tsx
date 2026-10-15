@@ -13,6 +13,7 @@ import {
   type DiaDaCampanha,
 } from "@/lib/marketing/campanhas-resumo";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
+import { agregadoDoDia, somarAgregados } from "@/lib/marketing/colunas-de-resultado";
 import { cn } from "@/lib/utils";
 
 const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
@@ -178,6 +179,9 @@ export function ResumoDaCampanha({
 }) {
   const t = useT();
   const r = resumoDaCampanha(c, dias, hoje);
+  // O que o CRM sabe do período inteiro (vendas, total, reuniões): os blocos de Venda e Reunião.
+  const totalCrm = somarAgregados(dias.map(agregadoDoDia));
+  const comReunioes = totalCrm.agendamentos > 0 || totalCrm.reunioes > 0;
   const dinheiro = (n: number | null) => (n === null ? null : moedaDoNumero(n));
   const trafego = c.channel === "trafego_pago";
   const progresso = r.periodo ? (r.periodo.passados / r.periodo.totais) * 100 : null;
@@ -376,7 +380,7 @@ export function ResumoDaCampanha({
       {trafego ? (
         <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-rose-500 bg-card p-4 shadow-sm">
           <h3 className="text-sm font-semibold">{t("Funil completo")}</h3>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             <div className="grid content-start gap-2 rounded-xl bg-blue-500/8 p-3">
               <p className="text-xs font-semibold tracking-wide text-blue-600 uppercase dark:text-blue-300">
                 {t("Anúncio")}
@@ -415,6 +419,38 @@ export function ResumoDaCampanha({
                 valor={r.funil.conversaoDaLp === null ? null : pct(r.funil.conversaoDaLp)}
               />
             </div>
+            <div className="grid content-start gap-2 rounded-xl bg-rose-500/8 p-3">
+              <p className="text-xs font-semibold tracking-wide text-rose-700 uppercase dark:text-rose-300">
+                {t("Venda")}
+              </p>
+              <Numero rotulo={t("Vendas")} valor={inteiro(totalCrm.vendas)} />
+              <Numero rotulo={t("Total de vendas")} valor={moedaDoNumero(totalCrm.faturamento)} />
+              <Numero
+                rotulo={t("CAC")}
+                valor={totalCrm.vendas > 0 && totalCrm.investido > 0 ? moedaDoNumero(totalCrm.investido / totalCrm.vendas) : null}
+              />
+              <Numero
+                rotulo={t("Conversão dos leads em venda")}
+                valor={totalCrm.leads > 0 ? pct((totalCrm.vendas / totalCrm.leads) * 100) : null}
+              />
+            </div>
+            {comReunioes ? (
+              <div className="grid content-start gap-2 rounded-xl bg-cyan-500/8 p-3">
+                <p className="text-xs font-semibold tracking-wide text-cyan-700 uppercase dark:text-cyan-300">
+                  {t("Reunião")}
+                </p>
+                <Numero rotulo={t("Agendamentos")} valor={inteiro(totalCrm.agendamentos)} />
+                <Numero rotulo={t("Reuniões feitas")} valor={inteiro(totalCrm.reunioes)} />
+                <Numero
+                  rotulo={t("Custo por reunião")}
+                  valor={totalCrm.reunioes > 0 && totalCrm.investido > 0 ? moedaDoNumero(totalCrm.investido / totalCrm.reunioes) : null}
+                />
+                <Numero
+                  rotulo={t("Taxa de comparecimento")}
+                  valor={totalCrm.agendamentos > 0 ? pct((totalCrm.reunioes / totalCrm.agendamentos) * 100) : null}
+                />
+              </div>
+            ) : null}
           </div>
         </section>
       ) : (

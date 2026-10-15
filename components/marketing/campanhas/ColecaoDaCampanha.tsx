@@ -45,7 +45,11 @@ interface Props<T extends { id: string; position: number }> {
   /** O texto em que a busca procura. */
   textoDaBusca: (item: T) => string;
   /** O item como cartão (a edição completa). */
-  cartao: (item: T) => ReactNode;
+  /**
+   * O item como cartão. `propriedades` são as propriedades que a visualização escolheu mostrar
+   * (as colunas visíveis), já prontas para ir dentro do cartão.
+   */
+  cartao: (item: T, propriedades: ReactNode) => ReactNode;
   /** Classe da grade de cartões. */
   gradeDosCartoes?: string;
   /** Muda a posição de um item (a ordem manual). */
@@ -186,6 +190,23 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   );
   const resolvidas = resolverColunas(colunasComAbrir, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
+  /** As propriedades visíveis da visualização, como grade de rótulo e valor dentro do cartão. */
+  const propriedadesDoCartao = (item: T): ReactNode => {
+    const lista = mostradas.filter((c) => !c.semOcultar && c.id !== "nome");
+    if (lista.length === 0) return null;
+    return (
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-3">
+        {lista.map((c) => (
+          <div key={c.id} className="min-w-0">
+            <p className="truncate text-[11px] tracking-wide text-muted-foreground uppercase">
+              {c.titulo}
+            </p>
+            <div className="-mx-1 min-w-0">{c.celula(item)}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   function mudarConsulta(c: ConsultaDaTabela) {
     atualizar((p) => ({
@@ -299,7 +320,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
                 </button>
               </div>
             ) : null}
-            {cartao(item)}
+            {cartao(item, propriedadesDoCartao(item))}
           </div>
         );
       })}
@@ -451,7 +472,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
           <DialogDescription className="sr-only">
             {t("Edite os campos deste item.")}
           </DialogDescription>
-          {itemAberto ? cartao(itemAberto) : null}
+          {itemAberto ? cartao(itemAberto, propriedadesDoCartao(itemAberto)) : null}
         </DialogContent>
       </Dialog>
 

@@ -12,7 +12,29 @@ import { apiClient } from "@/lib/api/client";
 import { CANAIS_DA_CAMPANHA, type CanalDaCampanha } from "@/lib/marketing/campanhas";
 import { PERIODOS, janelaDoPeriodo, type Periodo } from "@/lib/marketing/periodos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import { ArrowDown, ArrowUp } from "@/lib/ui/icons";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+import {
+  COLUNAS_DE_RESULTADO,
+  formatarResultado,
+  somarAgregados,
+  type Agregado,
+} from "@/lib/marketing/colunas-de-resultado";
+import { ArrowDown, ArrowUp, DotsSixVertical } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Linha {
@@ -29,6 +51,12 @@ interface Linha {
   vendas: number;
   recebido: number;
   a_receber: number;
+  impressoes: number;
+  cliques: number;
+  visitas: number;
+  faturamento: number;
+  agendamentos: number;
+  reunioes: number;
 }
 
 interface CampanhaDoFiltro {
@@ -37,20 +65,12 @@ interface CampanhaDoFiltro {
   channel: string;
 }
 
-type Metrica =
-  | "canal"
-  | "investido"
-  | "leads"
-  | "cpl"
-  | "vendas"
-  | "cac"
-  | "recebido"
-  | "a_receber"
-  | "lucro"
-  | "roas"
-  | "ltv_cac";
+type Metrica = string;
 /** As propriedades na ordem de fábrica (a pessoa reordena e a ordem fica salva na visualização). */
-const METRICAS: readonly Metrica[] = [
+const IDS_DO_CATALOGO = COLUNAS_DE_RESULTADO.map((c) => c.id);
+const METRICAS: readonly Metrica[] = ["canal", ...IDS_DO_CATALOGO, "ltv_cac"];
+/** O que aparece de fábrica; o resto a pessoa liga em "Propriedades". */
+const VISIVEIS_DE_FABRICA: ReadonlySet<Metrica> = new Set([
   "canal",
   "investido",
   "leads",
@@ -62,7 +82,7 @@ const METRICAS: readonly Metrica[] = [
   "lucro",
   "roas",
   "ltv_cac",
-];
+]);
 /** Os que também viram cartão de total no topo (o canal só existe na tabela). */
 const COM_TOTAL: ReadonlySet<Metrica> = new Set(METRICAS.filter((m) => m !== "canal"));
 
@@ -149,6 +169,62 @@ function Caixinha({
   );
 }
 
+/** O cabeçalho de uma coluna: clicar ordena, arrastar pela alça troca de lugar. */
+function CabecalhoDeMetrica({
+  id,
+  rotulo,
+  alinhaEsquerda,
+  ordenacao,
+  aoOrdenar,
+}: {
+  id: string;
+  rotulo: string;
+  alinhaEsquerda: boolean;
+  ordenacao: { id: string; dir: "asc" | "desc" } | null;
+  aoOrdenar: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const ativa = ordenacao?.id === id;
+  return (
+    <th
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        "px-3 py-2 font-medium whitespace-nowrap",
+        alinhaEsquerda ? "text-left" : "text-right",
+        isDragging && "relative z-20 bg-card shadow-md",
+      )}
+      aria-sort={ativa ? (ordenacao!.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <span className="inline-flex items-center gap-1">
+        <button
+          type="button"
+          aria-label={rotulo}
+          className="cursor-grab touch-none text-muted-foreground/60 hover:text-foreground active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <DotsSixVertical size={12} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => aoOrdenar(id)}
+          className="inline-flex items-center gap-1 hover:text-foreground"
+        >
+          {rotulo}
+          {ativa ? (
+            ordenacao!.dir === "asc" ? (
+              <ArrowUp size={12} aria-hidden />
+            ) : (
+              <ArrowDown size={12} aria-hidden />
+            )
+          ) : null}
+        </button>
+      </span>
+    </th>
+  );
+}
+
 /**
  * OS RESULTADOS das campanhas num período: investido, leads, CPL, vendas, CAC, faturamento
  * recebido, a receber e ROAS — os mesmos números das metas automáticas.
@@ -167,7 +243,8 @@ export function ResultadosDasCampanhas() {
   const [buscaCampanha, setBuscaCampanha] = useState("");
   const propriedades = useVisualizacao("campanhas-resultados");
   const visiveis = propriedades.preferencias.visiveis ?? {};
-  const mostra = (m: Metrica) => visiveis[m] !== false;
+  const mostra = (m: Metrica) => visiveis[m] ?? VISIVEIS_DE_FABRICA.has(m);
+  const [ordenacao, setOrdenacao] = useState<{ id: string; dir: "asc" | "desc" } | null>(null);
   // A ordem das propriedades (setas no menu "Propriedades"): o que não foi ordenado vai ao fim.
   const ordemSalva = (propriedades.preferencias.ordem ?? []).filter((id): id is Metrica =>
     (METRICAS as readonly string[]).includes(id),
@@ -227,15 +304,6 @@ export function ResultadosDasCampanhas() {
   const linhas = (consulta.data?.linhas ?? []).filter(
     (l) => l.investido > 0 || l.leads > 0 || l.vendas > 0 || l.recebido > 0 || l.a_receber > 0,
   );
-  const total = linhas.reduce(
-    (s, l) => ({
-      investido: s.investido + l.investido,
-      vendas: s.vendas + l.vendas,
-      recebido: s.recebido + l.recebido,
-      a_receber: s.a_receber + l.a_receber,
-    }),
-    { investido: 0, vendas: 0, recebido: 0, a_receber: 0 },
-  );
   // Leads do total: pessoas únicas (não a soma das linhas).
   const leadsUnicos = consulta.data?.leads_unicos ?? 0;
   const cpl = (inv: number, leads: number) => (leads > 0 && inv > 0 ? inv / leads : null);
@@ -247,34 +315,43 @@ export function ResultadosDasCampanhas() {
 
   const nomeDaMetrica: Record<Metrica, string> = {
     canal: t("Canal"),
-    lucro: t("Lucro"),
     ltv_cac: t("LTV/CAC"),
-    investido: t("Investido"),
-    leads: t("Leads"),
-    cpl: t("CPL"),
-    vendas: t("Vendas"),
-    cac: t("CAC"),
-    recebido: t("Recebido"),
-    a_receber: t("A receber"),
-    roas: t("ROAS"),
+    ...Object.fromEntries(COLUNAS_DE_RESULTADO.map((c) => [c.id, t(c.rotulo)])),
   };
-  const lucro = (rec: number, inv: number) => rec - inv;
+  const agregadoDaLinha = (l: Linha): Agregado => ({
+    impressoes: l.impressoes,
+    cliques: l.cliques,
+    visitas: l.visitas,
+    leads: l.leads,
+    investido: l.investido,
+    agendamentos: l.agendamentos,
+    reunioes: l.reunioes,
+    vendas: l.vendas,
+    faturamento: l.faturamento,
+    recebido: l.recebido,
+    aReceber: l.a_receber,
+  });
   // LTV/CAC da campanha: o que cada cliente gera (recebido + a receber) ÷ o que custou trazê-lo.
   const ltvCac = (rec: number, aRec: number, inv: number) =>
     inv > 0 && rec + aRec > 0 ? (rec + aRec) / inv : null;
-  const valorTotal: Record<Metrica, string> = {
-    canal: "",
-    lucro: moedaDoNumero(lucro(total.recebido, total.investido)),
-    ltv_cac: x(ltvCac(total.recebido, total.a_receber, total.investido)),
-    investido: moedaDoNumero(total.investido),
-    leads: inteiro(leadsUnicos),
-    cpl: reais(cpl(total.investido, leadsUnicos)),
-    vendas: inteiro(total.vendas),
-    cac: reais(cac(total.investido, total.vendas)),
-    recebido: moedaDoNumero(total.recebido),
-    a_receber: moedaDoNumero(total.a_receber),
-    roas: x(roas(total.investido, total.recebido)),
+  const formatoDe = (m: Metrica) => COLUNAS_DE_RESULTADO.find((c) => c.id === m)?.formato ?? "x";
+  /** O número cru de uma métrica numa linha (para ordenar) ou no total. */
+  const numeroDe = (m: Metrica, ag: Agregado): number | null => {
+    if (m === "canal") return null;
+    if (m === "ltv_cac") return ltvCac(ag.recebido, ag.aReceber, ag.investido);
+    return COLUNAS_DE_RESULTADO.find((c) => c.id === m)?.valor(ag) ?? null;
   };
+  const agregadoTotal: Agregado = {
+    ...somarAgregados(linhas.map(agregadoDaLinha)),
+    // Leads do total: pessoas únicas (não a soma das linhas).
+    leads: leadsUnicos,
+  };
+  const valorTotal: Record<Metrica, string> = Object.fromEntries(
+    METRICAS.map((m) => [
+      m,
+      m === "canal" ? "" : formatarResultado(formatoDe(m), numeroDe(m, agregadoTotal)),
+    ]),
+  );
   const metricasVisiveis = metricasNaOrdem.filter(mostra);
   const metricasDeTotal = metricasVisiveis.filter((m) => COM_TOTAL.has(m));
 
@@ -287,6 +364,36 @@ export function ResultadosDasCampanhas() {
   );
   const alternar = <T,>(lista: T[], item: T) =>
     lista.includes(item) ? lista.filter((v) => v !== item) : [...lista, item];
+
+  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  function aoSoltarColuna(e: DragEndEvent) {
+    const de = e.active.id as Metrica;
+    const para = e.over?.id as Metrica | undefined;
+    if (!para || de === para) return;
+    const visiveisIds = metricasVisiveis;
+    const nova = arrayMove(visiveisIds, visiveisIds.indexOf(de), visiveisIds.indexOf(para));
+    // As escondidas ficam no fim, na ordem que tinham.
+    const resto = metricasNaOrdem.filter((m) => !nova.includes(m));
+    propriedades.atualizar((p) => ({ ...p, ordem: [...nova, ...resto] }));
+  }
+  function ordenarPor(id: string) {
+    setOrdenacao((o) =>
+      o?.id !== id ? { id, dir: "desc" } : o.dir === "desc" ? { id, dir: "asc" } : null,
+    );
+  }
+  const linhasOrdenadas = [...linhas].sort((a, b) => {
+    if (ordenacao) {
+      const f = ordenacao.dir === "asc" ? 1 : -1;
+      if (ordenacao.id === "canal") return a.channel.localeCompare(b.channel) * f;
+      const va = numeroDe(ordenacao.id, agregadoDaLinha(a));
+      const vb = numeroDe(ordenacao.id, agregadoDaLinha(b));
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      return (va - vb) * f;
+    }
+    return b.recebido - a.recebido || b.leads - a.leads;
+  });
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -447,65 +554,59 @@ export function ResultadosDasCampanhas() {
             </p>
           ) : (
             <div className="overflow-x-auto rounded-2xl border bg-card">
-              <table className="w-full min-w-max text-sm">
-                <thead className="bg-secondary/60 text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">{t("Campanha")}</th>
-                    {metricasVisiveis.map((m) => (
-                      <th
-                        key={m}
-                        className={cn(
-                          "px-3 py-2 font-medium",
-                          m === "canal" ? "text-left" : "text-right",
-                        )}
-                      >
-                        {nomeDaMetrica[m]}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...linhas]
-                    .sort((a, b) => b.recebido - a.recebido || b.leads - a.leads)
-                    .map((l) => {
-                      const c = cpl(l.investido, l.leads);
-                      const lucroDaLinha = lucro(l.recebido, l.investido);
-                      const celulas: Record<Metrica, ReactNode> = {
-                        canal: (
-                          <span className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium">
-                            {rotuloDoCanal(t, l.channel as CanalDaCampanha)}
-                          </span>
-                        ),
-                        lucro: (
-                          <span
-                            className={cn(
-                              "font-medium",
-                              lucroDaLinha > 0 && "text-success-fg",
-                              lucroDaLinha < 0 && "text-error-fg",
-                            )}
-                          >
-                            {moedaDoNumero(lucroDaLinha)}
-                          </span>
-                        ),
-                        ltv_cac: x(ltvCac(l.recebido, l.a_receber, l.investido)),
-                        investido: moedaDoNumero(l.investido),
-                        leads: inteiro(l.leads),
-                        cpl: (
-                          <span
-                            className={cn(
-                              c !== null &&
-                                l.goal_cpl !== null &&
-                                (c <= l.goal_cpl ? "text-success-fg" : "text-error-fg"),
-                            )}
-                          >
-                            {reais(c)}
-                          </span>
-                        ),
-                        vendas: inteiro(l.vendas),
-                        cac: reais(cac(l.investido, l.vendas)),
-                        recebido: <span className="font-medium">{moedaDoNumero(l.recebido)}</span>,
-                        a_receber: moedaDoNumero(l.a_receber),
-                        roas: x(roas(l.investido, l.recebido)),
+              <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={aoSoltarColuna}>
+                <table className="w-full min-w-max text-sm">
+                  <thead className="bg-secondary/60 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">{t("Campanha")}</th>
+                      <SortableContext items={metricasVisiveis} strategy={horizontalListSortingStrategy}>
+                        {metricasVisiveis.map((m) => (
+                          <CabecalhoDeMetrica
+                            key={m}
+                            id={m}
+                            rotulo={nomeDaMetrica[m] ?? m}
+                            alinhaEsquerda={m === "canal"}
+                            ordenacao={ordenacao}
+                            aoOrdenar={ordenarPor}
+                          />
+                        ))}
+                      </SortableContext>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasOrdenadas.map((l) => {
+                      const ag = agregadoDaLinha(l);
+                      const celula = (m: Metrica): ReactNode => {
+                        if (m === "canal") {
+                          return (
+                            <span className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium">
+                              {rotuloDoCanal(t, l.channel as CanalDaCampanha)}
+                            </span>
+                          );
+                        }
+                        const n = numeroDe(m, ag);
+                        const texto = formatarResultado(formatoDe(m), n);
+                        if (m === "lucro" && n !== null) {
+                          return (
+                            <span
+                              className={cn(
+                                "font-medium",
+                                n > 0 && "text-success-fg",
+                                n < 0 && "text-error-fg",
+                              )}
+                            >
+                              {texto}
+                            </span>
+                          );
+                        }
+                        if (m === "cpl" && n !== null && l.goal_cpl !== null) {
+                          return (
+                            <span className={n <= l.goal_cpl ? "text-success-fg" : "text-error-fg"}>
+                              {texto}
+                            </span>
+                          );
+                        }
+                        return texto;
                       };
                       return (
                         <tr key={l.id} className="border-t">
@@ -518,14 +619,31 @@ export function ResultadosDasCampanhas() {
                                 m === "canal" ? "text-left" : "text-right",
                               )}
                             >
-                              {celulas[m]}
+                              {celula(m)}
                             </td>
                           ))}
                         </tr>
                       );
                     })}
-                </tbody>
-              </table>
+                  </tbody>
+                  <tfoot className="border-t-2 bg-secondary/40 font-semibold">
+                    <tr>
+                      <td className="px-3 py-2 text-left">{t("Total do período")}</td>
+                      {metricasVisiveis.map((m) => (
+                        <td
+                          key={m}
+                          className={cn(
+                            "px-3 py-2 tabular-nums",
+                            m === "canal" ? "text-left" : "text-right",
+                          )}
+                        >
+                          {valorTotal[m]}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                </table>
+              </DndContext>
             </div>
           )}
         </>

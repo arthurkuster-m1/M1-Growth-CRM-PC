@@ -380,8 +380,9 @@ export function LandingPagesDaCampanha({
             }}
           />
         )}
-        cartao={(l) => (
+        cartao={(l, propriedades) => (
           <CartaoDaLp
+            propriedades={propriedades}
             lp={l.lp}
             m={l.m}
             leads={l.leads}
@@ -412,7 +413,10 @@ function CartaoDaLp({
   podeEditar,
   editar,
   apagar,
+  propriedades,
 }: {
+  /** As propriedades escolhidas na visualização (no lugar das métricas de fábrica). */
+  propriedades?: React.ReactNode;
   conversao: number | null;
   cplReal: number | null;
   lp: LandingPage;
@@ -499,6 +503,7 @@ function CartaoDaLp({
         rotulo={t("Observações")}
         max={2000}
       />
+      {propriedades ?? (
       <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-5">
         <Metrica rotulo={t("Investido")} valor={moedaDoNumero(m.spend)} />
         <Metrica rotulo={t("Impressões")} valor={inteiro(m.impressions)} />
@@ -515,6 +520,7 @@ function CartaoDaLp({
           valor={faturamento > 0 ? moedaDoNumero(faturamento) : "—"}
         />
       </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {lp.url ? (
           <>

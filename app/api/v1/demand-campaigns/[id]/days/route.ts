@@ -10,6 +10,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { campanhaDaOportunidade, type CampanhaDoFunil } from "@/lib/marketing/atribuicao";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
+import { crmDaCampanhaPorDia, extrasDoCrm } from "@/lib/marketing/crm-por-dia";
 import {
   CONTAGEM_VAZIA,
   chavesAutomaticas,
@@ -242,6 +243,46 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       }
     }
     resultado = [...base.values()].sort((x, y) => x.day.localeCompare(y.day));
+  }
+
+  // O que o CRM sabe da campanha, dia a dia, para QUALQUER canal: vendas, faturamento, recebido,
+  // a receber, agendamentos e reuniões (as colunas do Dia a dia e o Funil completo leem daqui).
+  if (campanha) {
+    const { data: org2 } = await a.supabase
+      .from("organizations")
+      .select("timezone")
+      .eq("id", a.orgId)
+      .maybeSingle();
+    const fuso2 = (org2?.timezone as string | null) || "America/Sao_Paulo";
+    const { data: todas } = await a.supabase
+      .from("demand_campaigns")
+      .select("id, pipeline_id")
+      .eq("organization_id", a.orgId)
+      .limit(1000);
+    const crm = await crmDaCampanhaPorDia(
+      a.supabase,
+      a.orgId,
+      id,
+      (campanha.pipeline_id as string | null) ?? null,
+      (todas ?? []) as CampanhaDoFunil[],
+      fuso2,
+    );
+    const porDia = new Map(resultado.map((d) => [d.day, d]));
+    for (const [d, v] of crm) {
+      const linha = porDia.get(d) ?? {
+        day: d,
+        impressions: 0,
+        reach: 0,
+        link_clicks: 0,
+        lp_views: 0,
+        leads: 0,
+        spend: 0,
+        extras: {},
+        source: "crm" as const,
+      };
+      porDia.set(d, { ...linha, extras: { ...linha.extras, ...extrasDoCrm(v) } });
+    }
+    resultado = [...porDia.values()].sort((x, y) => x.day.localeCompare(y.day));
   }
 
   return ok(

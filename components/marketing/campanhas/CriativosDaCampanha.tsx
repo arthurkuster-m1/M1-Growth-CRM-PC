@@ -281,8 +281,11 @@ function CartaoDoCriativo({
   editar,
   duplicar,
   apagar,
+  propriedades,
 }: {
   c: Criativo;
+  /** As propriedades escolhidas na visualização (no lugar das métricas de fábrica). */
+  propriedades?: React.ReactNode;
   /** Leads do CRM que vieram deste criativo. */
   leads: number;
   podeEditar: boolean;
@@ -420,6 +423,7 @@ function CartaoDoCriativo({
         />
       </div>
 
+      {propriedades ?? (
       <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3">
         <Metrica rotulo={t("Investido")} valor={moedaDoNumero(c.spend)} />
         <Metrica rotulo={t("Impressões")} valor={inteiro(c.impressions)} />
@@ -432,7 +436,8 @@ function CartaoDoCriativo({
           rotulo={t("CPL real")}
           valor={leads > 0 && c.spend > 0 ? moedaDoNumero(c.spend / leads) : "—"}
         />
-      </div>
+        </div>
+      )}
 
       {podeEditar ? (
         <div className="flex justify-end gap-1">
@@ -917,8 +922,9 @@ export function CriativosDaCampanha({
             }}
           />
         )}
-        cartao={(l) => (
+        cartao={(l, propriedades) => (
           <CartaoDoCriativo
+            propriedades={propriedades}
             c={l.c}
             leads={l.leads}
             podeEditar={podeEditar}
