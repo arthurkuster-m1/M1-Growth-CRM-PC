@@ -32,6 +32,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (!authz.ok) return authz.response;
   const parametros = new URL(req.url).searchParams;
   const contato = parametros.get("contato");
+  const lead = parametros.get("lead");
   // "Pendentes de detalhe" acabou: a oportunidade só vira Comprou com o pagamento registrado.
   if (parametros.get("pendentes") === "1") return ok({ vendas: [] }, { requestId });
   if (contato && !z.string().uuid().safeParse(contato).success) {
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .order("created_at", { ascending: false })
     .limit(LIMITE);
   if (contato) q = q.eq("contact_id", contato);
+  if (lead && z.string().uuid().safeParse(lead).success) q = q.eq("id", lead);
   const { data, error } = await q;
   if (error) return fail("internal_error", "Erro ao carregar as vendas.", 500, { requestId });
   return ok(

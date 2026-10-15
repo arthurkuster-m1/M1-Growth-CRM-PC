@@ -40,6 +40,9 @@ export interface ParticipacaoDoCliente {
   origem: string | null;
   /** A campanha de demanda de onde o negócio veio (anúncio, LP, formulário ou o funil dela). */
   campanha_id: string | null;
+  /** O próximo passo combinado da oportunidade e para quando. */
+  proxima_acao: string;
+  proxima_acao_em: string | null;
 }
 
 /** Uma venda ativa (não cancelada) do cliente, para a coluna "Vendas" do CRM. */
@@ -81,6 +84,10 @@ export interface ClienteDaLista {
   ciclo_de_vida: string | null;
   ciclo_motivo: string | null;
   oportunidades_abertas: number;
+  /** Quem cuida do relacionamento com a pessoa (diferente do dono da oportunidade). */
+  dono_user_id: string | null;
+  /** Quando deixa de contar como cliente ativo se não pagar de novo (fim da janela). */
+  ativo_ate: string | null;
   valor_em_aberto_cents: number;
   proximo_vencimento: string | null;
   /** Vendas PAGAS (ao menos uma parcela recebida) por funil: funil_id → quantidade. */
@@ -116,7 +123,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       .order("position", { ascending: true }),
     supabase
       .from("crm_stages")
-      .select("id, pipeline_id, name, color, position, is_won, is_lost, qualification")
+      .select("id, pipeline_id, name, color, position, is_won, is_lost, qualification, win_probability")
       .eq("organization_id", orgId)
       .eq("is_archived", false)
       .order("position", { ascending: true }),
@@ -131,7 +138,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeNegocios = supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id",
+      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em",
     )
     .eq("organization_id", orgId)
     .not("contact_id", "is", null)
@@ -162,13 +169,15 @@ export async function GET(req: NextRequest): Promise<Response> {
     demand_campaign_id: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
+    proxima_acao: string | null;
+    proxima_acao_em: string | null;
   }>;
 
   // Quem aparece: no funil escolhido, os contatos dele; em "todos", todos os contatos.
   let consultaDeContatos = supabase
     .from("contacts")
     .select(
-      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on, ciclo_de_vida, ciclo_motivo, oportunidades_abertas, valor_em_aberto_cents, proximo_vencimento",
+      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on, ciclo_de_vida, ciclo_motivo, oportunidades_abertas, valor_em_aberto_cents, proximo_vencimento, dono_user_id, ativo_ate",
     )
     .eq("organization_id", orgId)
     .eq("kind", "person")
@@ -204,6 +213,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       previsao_de_fechamento: n.expected_close_date,
       origem: n.source,
       campanha_id: n.demand_campaign_id,
+      proxima_acao: n.proxima_acao ?? "",
+      proxima_acao_em: n.proxima_acao_em,
     });
     porContato.set(n.contact_id, lista);
   }
@@ -361,6 +372,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       ciclo_de_vida: string | null;
       ciclo_motivo: string | null;
       oportunidades_abertas: number | null;
+      dono_user_id: string | null;
+      ativo_ate: string | null;
       valor_em_aberto_cents: number | string | null;
       proximo_vencimento: string | null;
       last_purchase_on: string | null;
@@ -386,6 +399,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     ciclo_de_vida: c.ciclo_de_vida,
     ciclo_motivo: c.ciclo_motivo,
     oportunidades_abertas: c.oportunidades_abertas ?? 0,
+    dono_user_id: c.dono_user_id,
+    ativo_ate: c.ativo_ate,
     valor_em_aberto_cents: Number(c.valor_em_aberto_cents) || 0,
     proximo_vencimento: c.proximo_vencimento,
     vendas_por_funil: vendasPorContato.get(c.id) ?? {},

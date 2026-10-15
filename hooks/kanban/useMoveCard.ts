@@ -1,4 +1,5 @@
 "use client";
+import { ehComprouSemPagamento, pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { liberarEcoLocal, marcarEcoLocal } from "@/lib/kanban/local-echo";
@@ -130,6 +131,11 @@ export function useMoveCard(pipelineId: string, opcoes: OpcoesDeMove = {}) {
           opcoes.onCamposFaltando({ args, faltando });
           return;
         }
+      }
+      // Comprou sem pagamento: o servidor recusa e a tela pede o pagamento (abre a venda).
+      if (ehComprouSemPagamento(err)) {
+        pedirPagamentoDaOportunidade(args.leadId);
+        return;
       }
       showApiError(err);
     },

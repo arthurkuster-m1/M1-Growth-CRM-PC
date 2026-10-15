@@ -11,6 +11,7 @@ import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFu
 import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
+import { QuadroDoCiclo } from "@/components/clientes/QuadroDoCiclo";
 import { CelulaDeEtiquetas } from "@/components/clientes/CelulaDeEtiquetas";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
@@ -22,6 +23,7 @@ import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { COR_DO_CICLO, CICLOS_DE_VIDA, ehCicloDeVida, ROTULO_DO_CICLO } from "@/lib/ciclo-de-vida";
+import { BASE_DA_COR } from "@/lib/motor/cores";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { AcoesEmMassaDeClientes } from "@/components/clientes/AcoesEmMassaDeClientes";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -62,6 +64,7 @@ interface Etapa {
   is_won: boolean;
   is_lost: boolean;
   qualification?: "mql" | "disqualified" | null;
+  win_probability?: number | null;
 }
 interface Dados {
   funis: Funil[];
@@ -131,6 +134,7 @@ export function ClientesCRM({
   const [busca, setBusca] = useState("");
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
+  const hojeIso = new Date(agora).toISOString().slice(0, 10);
   const [configurando, setConfigurando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
@@ -141,7 +145,7 @@ export function ClientesCRM({
   const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const [destaque, setDestaque] = useState<
-    null | "faturamento" | "abertos" | "compraram" | "vendas" | "mql" | "semcontato"
+    null | "faturamento" | "abertos" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
 
@@ -207,8 +211,9 @@ export function ClientesCRM({
   };
   /** Os status de venda que a tabela mostra (vazio = todos): ficam salvos na visualização. */
   const statusDasVendas = useMemo<ReadonlySet<string>>(
-    () => new Set(preferencias.statusDasVendas ?? []),
-    [preferencias.statusDasVendas],
+    // Clientes não filtra por venda (isso é da aba Oportunidades).
+    () => new Set(ehOportunidades ? (preferencias.statusDasVendas ?? []) : []),
+    [preferencias.statusDasVendas, ehOportunidades],
   );
   const setStatusDasVendas = (
     novo: ReadonlySet<string> | ((atual: ReadonlySet<string>) => ReadonlySet<string>),
@@ -755,6 +760,98 @@ export function ClientesCRM({
       },
     },
     {
+      id: "dono",
+      titulo: t("Dono do relacionamento"),
+      icone: <Users size={14} aria-hidden />,
+      largura: 210,
+      padrao: !ehOportunidades,
+      celula: (l) => (
+        <CelulaDePessoa
+          membros={membros}
+          valorId={l.dono_user_id}
+          podeEditar={podeEditar}
+          rotulo={t("Dono do relacionamento")}
+          aoEscolher={(id) => {
+            otimista((c) => ({ ...c, dono_user_id: id }), l.contact_id);
+            void executar(() =>
+              apiClient.post("/api/v1/clientes/lote", {
+                action: "dono",
+                contact_ids: [l.contact_id],
+                user_id: id,
+              }),
+            );
+          }}
+        />
+      ),
+    },
+    {
+      id: "ativo-ate",
+      titulo: t("Ativo até (próxima recompra)"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 190,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">{l.ativo_ate ? dia(l.ativo_ate) : "—"}</span>
+      ),
+    },
+    {
+      id: "proxima-acao",
+      titulo: t("Próxima ação"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 260,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p) return semValor;
+        return (
+          <CelulaDeTexto
+            valor={p.proxima_acao}
+            rotulo={t("Próxima ação")}
+            vazioRotulo={p.status === "open" ? t("Sem próxima ação") : "—"}
+            podeEditar={podeEditar && p.status === "open"}
+            aoSalvar={(texto) => {
+              const nova = texto.trim();
+              if (nova === p.proxima_acao) return;
+              otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, proxima_acao: nova }));
+              void executar(() =>
+                apiClient.put(`/api/v1/leads/${p.lead_id}/proxima-acao`, { proxima_acao: nova }),
+              );
+            }}
+          />
+        );
+      },
+    },
+    {
+      id: "proxima-acao-em",
+      titulo: t("Próxima ação em"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p) return semValor;
+        const atrasada = p.status === "open" && p.proxima_acao_em && p.proxima_acao_em < hojeIso;
+        return (
+          <input
+            type="date"
+            aria-label={t("Próxima ação em")}
+            disabled={!podeEditar || p.status !== "open"}
+            value={p.proxima_acao_em ?? ""}
+            onChange={(e) => {
+              const v = e.target.value || null;
+              otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, proxima_acao_em: v }));
+              void executar(() =>
+                apiClient.put(`/api/v1/leads/${p.lead_id}/proxima-acao`, { proxima_acao_em: v }),
+              );
+            }}
+            className={`mx-2 h-8 rounded-md border bg-background px-1.5 text-sm ${
+              atrasada ? "border-error text-error-fg" : ""
+            }`}
+          />
+        );
+      },
+    },
+    {
       id: "telefone",
       titulo: t("Telefone"),
       icone: <TextAa size={14} aria-hidden />,
@@ -1060,6 +1157,21 @@ export function ClientesCRM({
       valorDe: (l) => l.is_mql,
       rotuloDoValor: (v) => (v === "1" ? t("Sim") : t("Não")),
     },
+    {
+      id: "dono",
+      titulo: t("Dono do relacionamento"),
+      tipo: "opcao",
+      valorDe: (l) => l.dono_user_id,
+      opcoes: membros.map((m) => ({ id: m.id, rotulo: m.nome, cor: "gray" as CorDaOpcao })),
+      rotuloDoValor: (v) => nomeDoMembro(v) ?? v,
+    },
+    { id: "ativo-ate", titulo: t("Ativo até"), tipo: "data", valorDe: (l) => l.ativo_ate },
+    {
+      id: "proxima-acao-em",
+      titulo: t("Próxima ação em"),
+      tipo: "data",
+      valorDe: (l) => l.participacao?.proxima_acao_em ?? null,
+    },
     { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (l) => l.origem },
     { id: "tags", titulo: t("Tags"), tipo: "multi", valorDe: (l) => l.tags },
     {
@@ -1188,6 +1300,8 @@ export function ClientesCRM({
         return l.is_mql;
       case "semcontato":
         return estaSemContato(l);
+      case "sempasso":
+        return emAberto.some((p) => !p.proxima_acao.trim() && !p.proxima_acao_em);
       default:
         return true;
     }
@@ -1224,8 +1338,20 @@ export function ClientesCRM({
   const totalAReceber = alvos.reduce((s2, l) => s2 + valoresDoLead(l).aReceber, 0);
   const totalInteresse = alvos.reduce((s2, l) => s2 + valoresDoLead(l).interesse, 0);
   const totalEmAberto = totalAReceber + totalInteresse;
+  const previsaoPonderada = alvos.reduce((soma, l) => {
+    const abertas = (l.participacao ? [l.participacao] : l.participacoes).filter(
+      (p) => p.status === "open",
+    );
+    return (
+      soma +
+      abertas.reduce((s2, p) => {
+        const prob = etapasPorId.get(p.etapa_id)?.win_probability ?? 0;
+        return s2 + ((p.valor_cents ?? 0) * prob) / 100;
+      }, 0)
+    );
+  }, 0);
   const numeros: Array<{
-    id: "todos" | NonNullable<typeof destaque>;
+    id: "todos" | "ponderada" | NonNullable<typeof destaque>;
     rotulo: string;
     valor: string;
     detalhe?: string;
@@ -1253,7 +1379,36 @@ export function ClientesCRM({
     { id: "vendas", rotulo: t("Vendas"), valor: String(totalDeVendas) },
     { id: "mql", rotulo: t("MQL"), valor: String(alvos.filter((l) => l.is_mql).length) },
     { id: "semcontato", rotulo: t("Sem contato (+7d)"), valor: String(semContato) },
+    {
+      id: "sempasso",
+      rotulo: t("Sem próxima ação"),
+      valor: String(
+        alvos.filter((l) =>
+          (l.participacao ? [l.participacao] : l.participacoes).some(
+            (p) => p.status === "open" && !p.proxima_acao.trim() && !p.proxima_acao_em,
+          ),
+        ).length,
+      ),
+      detalhe: t("Oportunidade aberta sem próximo passo"),
+    },
+    {
+      id: "ponderada",
+      rotulo: t("Previsão ponderada"),
+      valor: moeda(previsaoPonderada),
+      detalhe: t("Valor aberto × probabilidade da etapa"),
+    },
   ];
+
+  // Aba Clientes: os números são da BASE de clientes (o resto é da aba Oportunidades).
+  const numerosDaBase = numeros.filter((n) =>
+    ["todos", "mql", "faturamento", "abertos", "compraram"].includes(n.id),
+  );
+  const ordemDaBase = ["todos", "mql", "faturamento", "abertos", "compraram"];
+  numerosDaBase.sort((x, y) => ordemDaBase.indexOf(x.id) - ordemDaBase.indexOf(y.id));
+  const contagemDoCiclo = CICLOS_DE_VIDA.map((c) => ({
+    ciclo: c,
+    n: alvos.filter((l) => l.ciclo_de_vida === c).length,
+  }));
 
   const abasPorId = new Map([
     [
@@ -1331,10 +1486,12 @@ export function ClientesCRM({
 
       <section
         aria-label={t("Resumo")}
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-7"
+        className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
+          ehOportunidades ? "xl:grid-cols-5" : "xl:grid-cols-6"
+        }`}
       >
-        {numeros.map((n) => {
-          const clicavel = n.id !== "todos";
+        {(ehOportunidades ? numeros : numerosDaBase).map((n) => {
+          const clicavel = n.id !== "todos" && n.id !== "ponderada";
           const ativo = clicavel && destaque === n.id;
           return (
             <button
@@ -1345,7 +1502,11 @@ export function ClientesCRM({
               title={
                 clicavel ? t("Clique para ver quem compõe este número") : t("Mostrar todos os leads")
               }
-              onClick={() => setDestaque(n.id === "todos" || destaque === n.id ? null : n.id)}
+              onClick={() =>
+                setDestaque(
+                  n.id === "todos" || n.id === "ponderada" || destaque === n.id ? null : n.id,
+                )
+              }
               className={`bg-card px-4 py-3 text-left transition-colors hover:bg-secondary/60 ${
                 ativo ? "ring-2 ring-inset ring-primary" : ""
               }`}
@@ -1358,9 +1519,33 @@ export function ClientesCRM({
             </button>
           );
         })}
+        {ehOportunidades ? null : (
+          <div className="col-span-2 bg-card px-4 py-3 sm:col-span-3 xl:col-span-1">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              {t("Ciclo de vida")}
+            </p>
+            <ul className="mt-1.5 grid gap-0.5">
+              {contagemDoCiclo.map(({ ciclo, n }) => (
+                <li key={ciclo} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="flex items-center gap-1.5 truncate">
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: BASE_DA_COR[COR_DO_CICLO[ciclo]] }}
+                    />
+                    {t(ROTULO_DO_CICLO[ciclo])}
+                  </span>
+                  <span className="font-semibold tabular-nums">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <div className="flex flex-wrap items-center gap-1.5">
+        {ehOportunidades ? (
+          <>
         <span className="mr-1 text-xs font-medium text-muted-foreground">{t("Vendas:")}</span>
         {Object.entries(ROTULO_DA_VENDA).map(([id, rotulo]) => {
           const ativo = statusDasVendas.has(id);
@@ -1400,6 +1585,8 @@ export function ClientesCRM({
           >
             {t("Mostrar todas")}
           </button>
+        ) : null}
+          </>
         ) : null}
         <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />
       </div>
@@ -1441,6 +1628,7 @@ export function ClientesCRM({
         </p>
       ) : null}
 
+      {ehOportunidades ? (
       <BarraDeFunis
         funis={funisNaOrdem}
         arquivados={arquivados}
@@ -1468,6 +1656,7 @@ export function ClientesCRM({
           })
         }
       />
+      ) : null}
 
       {!funilValido && !consulta.isLoading ? (
         <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
@@ -1489,7 +1678,9 @@ export function ClientesCRM({
             aoConfigurar={() => setConfigurando(true)}
           />
 
-          {vista === "quadro" ? (
+          {vista === "quadro" && !ehOportunidades ? (
+            <QuadroDoCiclo clientes={resultado.linhas} />
+          ) : vista === "quadro" ? (
             funilAtual ? (
               <PipelinePageClient
                 key={funilAtual.id}
@@ -1608,6 +1799,7 @@ export function ClientesCRM({
                     ),
                   ]}
                   podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
+                  tagsExistentes={todasAsTags}
                   aoLimpar={() => setSelecionadas(new Set())}
                 />
               ) : null}

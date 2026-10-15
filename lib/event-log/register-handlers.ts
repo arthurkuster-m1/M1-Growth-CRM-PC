@@ -27,6 +27,7 @@ import { webPushInboundHandler } from "@/lib/notifications/push.handler";
 import { conversaoDeQualificacaoHandler } from "@/lib/conversoes/qualificacao.handler";
 import { conversaoDeEtapaMetaHandler } from "@/lib/conversoes/etapa-meta.handler";
 import { conversaoDeVendaHandler } from "@/lib/conversoes/envio.handler";
+import { conversaoDeMensalidadeHandler } from "@/lib/conversoes/mensalidade.handler";
 import { avisoDeEtapaHandler } from "@/lib/leads/aviso-de-etapa.handler";
 import { comandaDoGanhoHandler } from "@/lib/financeiro/comanda-do-ganho.handler";
 import { avisoDeCasoAoSuporteHandler } from "@/lib/escalacao/aviso-ao-suporte.handler";
@@ -88,6 +89,8 @@ export function ensureHandlersRegistered(): void {
   // fechamento — depende de rede de terceiro e não pode atrasar quem escreve
   // no banco. Falha dele nunca segura os handlers acima.
   registerHandler(conversaoDeVendaHandler);
+  // Cada mensalidade recebida de uma assinatura é uma compra própria para a plataforma de anúncio.
+  registerHandler(conversaoDeMensalidadeHandler);
   registerHandler(conversaoDeQualificacaoHandler);
   registerHandler(conversaoDeEtapaMetaHandler);
   _registered = true;

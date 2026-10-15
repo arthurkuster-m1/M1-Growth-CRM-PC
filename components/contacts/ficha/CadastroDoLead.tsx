@@ -1,5 +1,6 @@
 "use client";
 
+import { CicloDeVidaDoLead } from "@/components/contacts/ficha/CicloDeVidaDoLead";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -610,6 +611,8 @@ export function CadastroDoLead({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CicloDeVidaDoLead contactId={contact.id} podeEditar={podeEditar} />
 
       <BlocoDaFicha titulo={t("Datas")} cor="yellow">
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

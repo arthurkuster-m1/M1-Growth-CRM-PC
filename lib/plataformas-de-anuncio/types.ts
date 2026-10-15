@@ -57,7 +57,9 @@ export type NomeDoEvento =
   | "Purchase"
   | "QualifiedLead"
   | `Etapa:${string}`
-  | `MetaEtapa:${string}`;
+  | `MetaEtapa:${string}`
+  /** Uma mensalidade (parcela) recebida de uma assinatura: um Purchase por parcela. */
+  | `Mensalidade:${string}`;
 
 /**
  * Uma conversão pronta para sair — no formato da CASA, não no da plataforma.

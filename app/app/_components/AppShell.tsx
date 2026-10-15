@@ -1,4 +1,5 @@
 "use client";
+import { PagamentoPedidoDaOportunidade } from "@/components/vendas/PagamentoPedidoDaOportunidade";
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
@@ -119,6 +120,8 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
         lateral aparece, logo acima.
       */}
       <BarraInferior />
+      {/* Comprou sem pagamento, de qualquer tela: abre a venda para registrar o sinal. */}
+      {podeAtender ? <PagamentoPedidoDaOportunidade /> : null}
     </div>
   );
 }

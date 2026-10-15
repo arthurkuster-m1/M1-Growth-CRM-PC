@@ -5,11 +5,17 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  *  - { action: "tags", contact_ids, add: [...] }  → soma tags ao contato
  *  - { action: "origem", contact_ids, campaign_id, creative_id?, landing_page_id?, source? }
  *    → corrige a origem do negócio mais recente de cada contato
+ *  - { action: "dono", contact_ids, user_id } → define (ou tira, com null) o dono da PESSOA: quem
+ *    cuida do relacionamento. É diferente do dono da oportunidade (quem fecha a venda).
+ *  - { action: "excluir", contact_ids } → exclui os contatos (o que tem vínculo que barra fica e
+ *    volta em `falhas`)
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { deleteContactHandler } from "@/app/api/v1/contacts/_handler";
+import { ApiError } from "@/lib/api/types";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
@@ -25,6 +31,12 @@ const corpoSchema = z.discriminatedUnion("action", [
     action: z.literal("tags"),
     contact_ids: contatos,
     add: z.array(z.string().trim().min(1).max(60)).min(1).max(20),
+  }),
+  z.object({ action: z.literal("excluir"), contact_ids: contatos }),
+  z.object({
+    action: z.literal("dono"),
+    contact_ids: contatos,
+    user_id: z.string().uuid().nullable(),
   }),
   z.object({
     action: z.literal("origem"),
@@ -48,6 +60,55 @@ export async function POST(req: NextRequest): Promise<Response> {
   const supabase = await createClient();
   const orgId = authz.org.orgId;
   const ids = [...new Set(corpo.data.contact_ids)];
+
+  if (corpo.data.action === "dono") {
+    const userId = corpo.data.user_id;
+    if (userId) {
+      const { data: membro } = await supabase
+        .from("user_organizations")
+        .select("user_id")
+        .eq("organization_id", orgId)
+        .eq("user_id", userId)
+        .is("revoked_at", null)
+        .maybeSingle();
+      if (!membro) {
+        return fail("validation_failed", t("Essa pessoa não é da equipe."), 422, { requestId });
+      }
+    }
+    const { error } = await supabase
+      .from("contacts")
+      .update({ dono_user_id: userId })
+      .eq("organization_id", orgId)
+      .in("id", ids);
+    if (error) return fail("internal_error", t("Erro ao salvar."), 500, { requestId });
+    return ok({ atualizados: ids.length }, { requestId });
+  }
+
+  if (corpo.data.action === "excluir") {
+    let excluidos = 0;
+    const falhas: Array<{ contact_id: string; motivo: string }> = [];
+    for (const id of ids) {
+      try {
+        await deleteContactHandler(
+          supabase,
+          {
+            organization_id: orgId,
+            actor: { type: "user", id: authz.user.id },
+            requestId,
+            idioma: authz.user.idioma,
+          },
+          id,
+        );
+        excluidos += 1;
+      } catch (err) {
+        falhas.push({
+          contact_id: id,
+          motivo: err instanceof ApiError ? err.message : t("Erro ao excluir."),
+        });
+      }
+    }
+    return ok({ excluidos, falhas }, { requestId });
+  }
 
   if (corpo.data.action === "tags") {
     const novas = normalizarTags(corpo.data.add);

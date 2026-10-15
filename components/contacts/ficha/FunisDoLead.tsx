@@ -1,5 +1,6 @@
 "use client";
 
+import { ehComprouSemPagamento, pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -411,10 +412,18 @@ function CartaoDoFunil({
               const alvo = etapas.find((x) => x.id === id);
               if (alvo?.perdido) setPerdendo(true);
               else if (alvo?.ganho)
-                void executar(
-                  () => apiClient.post(`/api/v1/leads/${n.lead_id}/win`, {}),
-                  t("Marcado como ganho"),
-                );
+                void executar(async () => {
+                  try {
+                    await apiClient.post(`/api/v1/leads/${n.lead_id}/win`, {});
+                  } catch (err) {
+                    // Comprou só vale com pagamento: abre a venda para registrar o sinal.
+                    if (ehComprouSemPagamento(err)) {
+                      pedirPagamentoDaOportunidade(n.lead_id);
+                      return;
+                    }
+                    throw err;
+                  }
+                }, t("Marcado como ganho"));
               else void mover(id);
             }}
           >

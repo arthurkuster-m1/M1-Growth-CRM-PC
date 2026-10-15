@@ -17,25 +17,29 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SeletorDeTagsEmMassa } from "@/components/clientes/SeletorDeTagsEmMassa";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 
-type Dialogo = "tag" | "origem" | "reativacao" | "campanha" | null;
+type Dialogo = "tag" | "campanha" | "excluir" | null;
 
 const classeDoSelect = "h-9 w-full rounded-lg border bg-background px-2 text-sm";
+const NOVA = "__nova";
 
 /**
- * A barra de AÇÕES EM MASSA da página Clientes: aparece quando há leads selecionados.
- * Editar tags e origem de todos de uma vez e, o principal, transformar a seleção numa campanha
- * de Prospecção com objetivo de Reativação de Base — a campanha já nasce com o funil e os
- * leads dentro dele.
+ * A barra de AÇÕES EM MASSA da página CRM: aparece quando há leads selecionados.
+ * Adicionar tags (no jeito da ficha do lead), colocar a seleção numa campanha (uma que já existe ou
+ * uma nova de Reativação de base, que nasce com o funil e os leads dentro) e excluir.
  */
 export function AcoesEmMassaDeClientes({
   contatoIds,
   podeGerir,
   aoLimpar,
+  tagsExistentes = [],
 }: {
   contatoIds: string[];
+  /** As tags que já existem na base (para escolher em vez de digitar). */
+  tagsExistentes?: readonly string[];
   /** Criar campanha e mexer em campanha é manager+. */
   podeGerir: boolean;
   aoLimpar: () => void;
@@ -45,9 +49,8 @@ export function AcoesEmMassaDeClientes({
   const queryClient = useQueryClient();
   const [dialogo, setDialogo] = useState<Dialogo>(null);
   const [trabalhando, setTrabalhando] = useState(false);
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [campanhaId, setCampanhaId] = useState("");
-  const [origemTexto, setOrigemTexto] = useState("");
   const [nome, setNome] = useState(
     () => `Reativação de base - ${new Date().toLocaleDateString("pt-BR")}`,
   );
@@ -65,7 +68,7 @@ export function AcoesEmMassaDeClientes({
   });
   const modelos = useQuery({
     queryKey: ["demand-funnel-templates"],
-    enabled: dialogo === "reativacao" && podeGerir,
+    enabled: dialogo === "campanha" && podeGerir && campanhaId === NOVA,
     queryFn: async () =>
       (
         await apiClient.get<{ data: { modelos: Array<{ id: string; name: string }> } }>(
@@ -89,10 +92,7 @@ export function AcoesEmMassaDeClientes({
   }
 
   async function aplicarTags() {
-    const add = tags
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
+    const add = tags;
     if (add.length === 0) return;
     await executar(async () => {
       await apiClient.post("/api/v1/clientes/lote", {
@@ -103,21 +103,7 @@ export function AcoesEmMassaDeClientes({
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
       toast.success(t("Tags aplicadas"));
       setDialogo(null);
-      setTags("");
-      aoLimpar();
-    });
-  }
-
-  async function aplicarOrigem() {
-    const corpo: Record<string, unknown> = { action: "origem", contact_ids: contatoIds };
-    if (campanhaId) corpo.campaign_id = campanhaId === "__nenhuma" ? null : campanhaId;
-    if (origemTexto.trim()) corpo.source = origemTexto.trim();
-    if (Object.keys(corpo).length === 2) return;
-    await executar(async () => {
-      await apiClient.post("/api/v1/clientes/lote", corpo);
-      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
-      toast.success(t("Origem atualizada"));
-      setDialogo(null);
+      setTags([]);
       aoLimpar();
     });
   }
@@ -166,6 +152,24 @@ export function AcoesEmMassaDeClientes({
     });
   }
 
+  async function excluirSelecionados() {
+    await executar(async () => {
+      const r = await apiClient.post<{
+        data: { excluidos: number; falhas: Array<{ contact_id: string; motivo: string }> };
+      }>("/api/v1/clientes/lote", { action: "excluir", contact_ids: contatoIds });
+      await queryClient.invalidateQueries();
+      const { excluidos, falhas } = r.data;
+      if (excluidos > 0) toast.success(`${excluidos} ${t("leads excluídos")}`);
+      if (falhas.length > 0) {
+        toast.error(
+          `${falhas.length} ${t("não puderam ser excluídos")}: ${falhas[0]!.motivo}`,
+        );
+      }
+      setDialogo(null);
+      aoLimpar();
+    });
+  }
+
   const lista = campanhas.data ?? [];
   return (
     <>
@@ -179,19 +183,19 @@ export function AcoesEmMassaDeClientes({
         <Button size="sm" variant="outline" onClick={() => setDialogo("tag")}>
           {t("Adicionar tag")}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => setDialogo("origem")}>
-          {t("Editar origem")}
-        </Button>
         {podeGerir ? (
-          <>
-            <Button size="sm" onClick={() => setDialogo("reativacao")}>
-              {t("Criar campanha de reativação")}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setDialogo("campanha")}>
-              {t("Colocar em campanha")}
-            </Button>
-          </>
+          <Button size="sm" onClick={() => setDialogo("campanha")}>
+            {t("Adicionar em uma nova campanha")}
+          </Button>
         ) : null}
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-error-fg hover:text-error-fg"
+          onClick={() => setDialogo("excluir")}
+        >
+          {t("Excluir")}
+        </Button>
         <Button size="sm" variant="ghost" onClick={aoLimpar}>
           {t("Limpar")}
         </Button>
@@ -208,114 +212,17 @@ export function AcoesEmMassaDeClientes({
                   {t("contatos selecionados, sem tirar as que já têm.")}
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-1">
-                <Label>{t("Tags (separadas por vírgula)")}</Label>
-                <Input
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="reativacao, vip"
-                />
-              </div>
+              <SeletorDeTagsEmMassa
+                existentes={tagsExistentes}
+                escolhidas={tags}
+                aoMudar={setTags}
+              />
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setDialogo(null)}>
                   {t("Cancelar")}
                 </Button>
-                <Button disabled={trabalhando || !tags.trim()} onClick={() => void aplicarTags()}>
+                <Button disabled={trabalhando || tags.length === 0} onClick={() => void aplicarTags()}>
                   {t("Aplicar")}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-
-          {dialogo === "origem" ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{t("Editar origem")}</DialogTitle>
-                <DialogDescription>
-                  {t("Vale para o funil mais recente de cada um dos")} {n} {t("selecionados.")}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-3">
-                <div className="grid gap-1">
-                  <Label>{t("Campanha")}</Label>
-                  <select
-                    className={classeDoSelect}
-                    value={campanhaId}
-                    onChange={(e) => setCampanhaId(e.target.value)}
-                  >
-                    <option value="">{t("Não mexer")}</option>
-                    <option value="__nenhuma">{t("Sem campanha")}</option>
-                    {lista.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-1">
-                  <Label>{t("Origem em texto")}</Label>
-                  <Input
-                    value={origemTexto}
-                    onChange={(e) => setOrigemTexto(e.target.value)}
-                    placeholder={t("deixe vazio para não mexer")}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setDialogo(null)}>
-                  {t("Cancelar")}
-                </Button>
-                <Button
-                  disabled={trabalhando || (!campanhaId && !origemTexto.trim())}
-                  onClick={() => void aplicarOrigem()}
-                >
-                  {t("Aplicar")}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-
-          {dialogo === "reativacao" ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{t("Criar campanha de reativação")}</DialogTitle>
-                <DialogDescription>
-                  {t(
-                    "Nasce uma campanha de Prospecção com objetivo Reativação de base, com o funil e os",
-                  )}{" "}
-                  {n} {t("leads selecionados já dentro dele.")}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-3">
-                <div className="grid gap-1">
-                  <Label>{t("Nome da campanha")}</Label>
-                  <Input value={nome} onChange={(e) => setNome(e.target.value)} />
-                </div>
-                <div className="grid gap-1">
-                  <Label>{t("Modelo de funil")}</Label>
-                  <select
-                    className={classeDoSelect}
-                    value={modelo}
-                    onChange={(e) => setModelo(e.target.value)}
-                  >
-                    <option value="">{t("Etapas iniciais padrão")}</option>
-                    {(modelos.data ?? []).map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setDialogo(null)}>
-                  {t("Cancelar")}
-                </Button>
-                <Button
-                  disabled={trabalhando || !nome.trim()}
-                  onClick={() => void criarReativacao()}
-                >
-                  {trabalhando ? t("Criando…") : t("Criar campanha")}
                 </Button>
               </DialogFooter>
             </>
@@ -324,37 +231,106 @@ export function AcoesEmMassaDeClientes({
           {dialogo === "campanha" ? (
             <>
               <DialogHeader>
-                <DialogTitle>{t("Colocar em campanha")}</DialogTitle>
+                <DialogTitle>{t("Adicionar em uma nova campanha")}</DialogTitle>
                 <DialogDescription>
                   {t("Os")} {n} {t("selecionados entram na primeira etapa do funil da campanha.")}
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-1">
-                <Label>{t("Campanha")}</Label>
-                <select
-                  className={classeDoSelect}
-                  value={campanhaId}
-                  onChange={(e) => setCampanhaId(e.target.value)}
+              <div className="grid max-h-80 gap-1.5 overflow-y-auto pr-1">
+                <button
+                  type="button"
+                  onClick={() => setCampanhaId(NOVA)}
+                  className={`rounded-xl border-[1.5px] px-3 py-2.5 text-left text-sm font-medium ${
+                    campanhaId === NOVA ? "border-primary bg-primary/10" : "hover:bg-secondary"
+                  }`}
                 >
-                  <option value="">{t("Escolha…")}</option>
-                  {lista
-                    .filter((c) => c.pipeline_id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
+                  + {t("Criar uma nova campanha de reativação")}
+                </button>
+                {lista
+                  .filter((c) => c.pipeline_id)
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCampanhaId(c.id)}
+                      className={`truncate rounded-xl border-[1.5px] px-3 py-2.5 text-left text-sm ${
+                        campanhaId === c.id ? "border-primary bg-primary/10" : "hover:bg-secondary"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                {campanhas.isLoading ? (
+                  <p className="px-1 text-sm text-muted-foreground">{t("Carregando campanhas…")}</p>
+                ) : null}
               </div>
+              {campanhaId === NOVA ? (
+                <div className="grid gap-3 rounded-xl bg-secondary/50 p-3">
+                  <div className="grid gap-1">
+                    <Label>{t("Nome da campanha")}</Label>
+                    <Input value={nome} onChange={(e) => setNome(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>{t("Modelo de funil")}</Label>
+                    <select
+                      className={classeDoSelect}
+                      value={modelo}
+                      onChange={(e) => setModelo(e.target.value)}
+                    >
+                      <option value="">{t("Etapas iniciais padrão")}</option>
+                      {(modelos.data ?? []).map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : null}
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setDialogo(null)}>
                   {t("Cancelar")}
                 </Button>
                 <Button
-                  disabled={trabalhando || !campanhaId}
-                  onClick={() => void colocarEmCampanha()}
+                  disabled={
+                    trabalhando || !campanhaId || (campanhaId === NOVA && !nome.trim())
+                  }
+                  onClick={() =>
+                    void (campanhaId === NOVA ? criarReativacao() : colocarEmCampanha())
+                  }
                 >
-                  {t("Colocar")}
+                  {trabalhando
+                    ? t("Adicionando…")
+                    : campanhaId === NOVA
+                      ? t("Criar campanha e adicionar")
+                      : t("Adicionar")}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+
+          {dialogo === "excluir" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t("Excluir")} {n} {n === 1 ? t("lead") : t("leads")}?
+                </DialogTitle>
+                <DialogDescription>
+                  {t(
+                    "Isso não pode ser desfeito. Leads com registros vinculados que impedem a exclusão ficam na lista e são avisados.",
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDialogo(null)}>
+                  {t("Cancelar")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={trabalhando}
+                  onClick={() => void excluirSelecionados()}
+                >
+                  {trabalhando ? t("Excluindo…") : t("Excluir")}
                 </Button>
               </DialogFooter>
             </>

@@ -1,4 +1,5 @@
 "use client";
+import { ehComprouSemPagamento, pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { liberarEcoLocal, marcarEcoLocal } from "@/lib/kanban/local-echo";
@@ -57,7 +58,11 @@ export function useWinLead(pipelineId: string) {
     onSuccess: (res, { leadId }) => {
       gravaLeadNoQuadro(qc, queryKey, leadId, res?.data);
     },
-    onError: showApiError,
+    onError: (err, { leadId }) => {
+      // Comprou sem pagamento: abre a venda para registrar ao menos o sinal.
+      if (ehComprouSemPagamento(err)) pedirPagamentoDaOportunidade(leadId);
+      else showApiError(err);
+    },
     onSettled: (_data, _err, { leadId }) => {
       liberarEcoLocal(leadId);
       qc.invalidateQueries({ queryKey });

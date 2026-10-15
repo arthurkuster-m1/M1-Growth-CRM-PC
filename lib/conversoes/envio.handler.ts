@@ -99,7 +99,7 @@ export async function processarConversao(
   // ⚠️ Filtro de organização junto do id: o client é service-role e bypassa RLS.
   const { data, error } = await admin
     .from("crm_leads")
-    .select("id, status, value_cents, currency, closed_at, contact_id")
+    .select("id, status, value_cents, currency, closed_at, contact_id, is_recurring")
     .eq("id", row.entity_id)
     .eq("organization_id", row.organization_id)
     .maybeSingle();
@@ -123,6 +123,7 @@ export async function processarConversao(
     currency: string | null;
     closed_at: string | null;
     contact_id: string | null;
+    is_recurring?: boolean | null;
   };
 
   // O filtro que faz `lead.stage_changed` valer a pena escutar: a grande maioria
@@ -160,6 +161,22 @@ export async function processarConversao(
   let valorDaVenda: number | null =
     lead.value_cents !== null && lead.value_cents > 0 ? lead.value_cents : null;
   let moedaDaVenda: string | null = lead.currency;
+  // Assinatura: a compra é a PRIMEIRA mensalidade (o valor da venda é a soma de vários meses, e
+  // cada mensalidade seguinte sai como uma compra própria, em `mensalidade.handler.ts`).
+  if (!qualificacao && lead.is_recurring === true) {
+    const { data: primeira } = await admin
+      .from("crm_sale_payments")
+      .select("amount_cents")
+      .eq("organization_id", row.organization_id)
+      .eq("lead_id", lead.id)
+      .eq("status", "recebida")
+      .order("paid_on", { ascending: true })
+      .order("number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const v = Number((primeira as { amount_cents: number | string } | null)?.amount_cents);
+    if (Number.isFinite(v) && v > 0) valorDaVenda = v;
+  }
   /** De onde veio o valor (ou por que faltou), quando ele foi lido da conversa. */
   let detalheDoValor: string | null = null;
 

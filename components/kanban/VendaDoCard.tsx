@@ -93,6 +93,7 @@ export function VendaDoCard({
       });
       await recarregar();
     } catch (e) {
+      // Comprou sem pagamento: a venda já está aberta; o aviso diz o que falta.
       showApiError(e);
     }
   }
