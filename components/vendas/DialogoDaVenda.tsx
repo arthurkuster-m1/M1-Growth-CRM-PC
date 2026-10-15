@@ -212,6 +212,7 @@ export function DialogoDaVenda({
   const [valorRascunho, setValorRascunho] = useState<string | null>(null);
   const [referencia, setReferencia] = useState(venda?.reference ?? "");
   const [notas, setNotas] = useState(venda?.notes ?? "");
+  const [proximoPasso, setProximoPasso] = useState(venda?.proxima_acao ?? "");
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
   const [descricao, setDescricao] = useState(venda?.description ?? "");
   const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
@@ -698,6 +699,15 @@ export function DialogoDaVenda({
         return;
       }
     }
+    if (venda?.lead_id && proximoPasso.trim() !== (venda.proxima_acao ?? "")) {
+      try {
+        await apiClient.put(`/api/v1/leads/${venda.lead_id}/proxima-acao`, {
+          proxima_acao: proximoPasso.trim(),
+        });
+      } catch (e) {
+        showApiError(e);
+      }
+    }
     if (negocio?.aoSalvarExtras) {
       await negocio.aoSalvarExtras({
         ...(negocio.camposDoFunil && negocio.camposDoFunil.length > 0
@@ -824,6 +834,26 @@ export function DialogoDaVenda({
                 aoEscolher={setResponsavel}
               />
             </div>
+            <label className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Próximos passos")}</span>
+              <input
+                value={proximoPasso}
+                maxLength={300}
+                onChange={(e) => setProximoPasso(e.target.value)}
+                placeholder={t("Ex.: Ligar na terça com a proposta")}
+                className={CAMPO}
+              />
+            </label>
+            <label className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Comentários")}</span>
+              <textarea
+                rows={3}
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                placeholder={t("Anotações rápidas sobre esta oportunidade…")}
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
             <label className="grid gap-1 sm:col-span-2">
               <span className="text-xs text-muted-foreground">{t("Descrição da oportunidade")}</span>
               <textarea
@@ -1304,15 +1334,6 @@ export function DialogoDaVenda({
                 value={referencia}
                 onChange={(e) => setReferencia(e.target.value)}
                 className={CAMPO}
-              />
-            </label>
-            <label className="grid grid-cols-1 gap-1">
-              <span className="text-xs text-muted-foreground">{t("Observações")}</span>
-              <textarea
-                rows={2}
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm"
               />
             </label>
             {venda ? (

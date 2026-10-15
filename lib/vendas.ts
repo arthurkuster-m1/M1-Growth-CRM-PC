@@ -132,6 +132,9 @@ export interface Venda {
   lead_status?: "open" | "won" | "lost" | null;
   /** O responsável pela venda (o dono do card). */
   responsavel_id?: string | null;
+  /** O próximo passo combinado e para quando. */
+  proxima_acao?: string;
+  proxima_acao_em?: string | null;
 }
 
 export const COLUNAS_DA_VENDA =
@@ -288,7 +291,7 @@ export function statusDaOportunidade(
 
 /** As colunas da oportunidade que a venda lê (com as junções que as telas pedem). */
 export const SELECAO_DA_OPORTUNIDADE =
-  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, source, source_metadata, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, " +
+  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, source, source_metadata, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, proxima_acao, proxima_acao_em, " +
   "contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), pipeline:crm_pipelines(name), stage:crm_stages!crm_leads_stage_id_fkey(name), " +
   "items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status, forma, origem_do_pagamento, id_externo)";
 
@@ -358,7 +361,12 @@ export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
       stage: l.stage,
     },
   });
-  return { ...venda, ...origemDaOportunidade(l) };
+  return {
+    ...venda,
+    ...origemDaOportunidade(l),
+    proxima_acao: String(l.proxima_acao ?? ""),
+    proxima_acao_em: typeof l.proxima_acao_em === "string" ? l.proxima_acao_em : null,
+  };
 }
 
 /** A fonte e o posicionamento da origem da oportunidade (o que foi corrigido à mão vale mais). */

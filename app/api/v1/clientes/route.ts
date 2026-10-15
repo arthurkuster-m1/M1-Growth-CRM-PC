@@ -44,6 +44,8 @@ export interface ParticipacaoDoCliente {
   /** O próximo passo combinado da oportunidade e para quando. */
   proxima_acao: string;
   proxima_acao_em: string | null;
+  /** Os comentários da oportunidade (anotação rápida de quem trabalha a lista). */
+  comentarios: string;
 }
 
 /** Uma venda ativa (não cancelada) do cliente, para a coluna "Vendas" do CRM. */
@@ -109,6 +111,8 @@ export interface ClienteDaLista {
   lps: string[];
   ultima_compra: string | null;
   ultima_atividade: string | null;
+  /** A conversa mais recente do contato (o atalho para o Inbox). */
+  conversa_id: string | null;
   campos: Record<string, unknown>;
   participacoes: ParticipacaoDoCliente[];
 }
@@ -174,7 +178,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeNegocios = supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em",
+      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em, notes",
     )
     .eq("organization_id", orgId)
     .not("contact_id", "is", null)
@@ -207,6 +211,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     demand_landing_page_id: string | null;
     proxima_acao: string | null;
     proxima_acao_em: string | null;
+    notes: string | null;
   }>;
 
   // Quem aparece: no funil escolhido, os contatos dele; em "todos", todos os contatos.
@@ -251,8 +256,27 @@ export async function GET(req: NextRequest): Promise<Response> {
       campanha_id: n.demand_campaign_id,
       proxima_acao: n.proxima_acao ?? "",
       proxima_acao_em: n.proxima_acao_em,
+      comentarios: n.notes ?? "",
     });
     porContato.set(n.contact_id, lista);
+  }
+
+  // A conversa mais recente de cada contato: o atalho para o Inbox.
+  const conversaPorContato = new Map<string, string>();
+  {
+    const ids = ((contatos ?? []) as Array<{ id: string }>).map((c) => c.id);
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: conversas } = await supabase
+        .from("conversations")
+        .select("id, contact_id, last_message_at")
+        .eq("organization_id", orgId)
+        .in("contact_id", ids.slice(i, i + 200))
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(5000);
+      for (const c of (conversas ?? []) as Array<{ id: string; contact_id: string }>) {
+        if (!conversaPorContato.has(c.contact_id)) conversaPorContato.set(c.contact_id, c.id);
+      }
+    }
   }
 
   // As vendas pagas de cada contato, por funil (uma venda "paga" tem ao menos uma parcela recebida,
@@ -449,6 +473,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     lps: nomesDe(idsDeLp, nomeDaLp, c.id),
     ultima_compra: c.last_purchase_on,
     ultima_atividade: c.last_activity_at,
+    conversa_id: conversaPorContato.get(c.id) ?? null,
     campos: c.custom_fields ?? {},
     participacoes: porContato.get(c.id) ?? [],
   }));

@@ -11,6 +11,10 @@ import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFu
 import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
+import { QuadroDeOportunidades, type GrupoDoQuadro } from "@/components/clientes/QuadroDeOportunidades";
+import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
+import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
+import { coolingLabel } from "@/lib/kanban/card-state";
 import { QuadroDoCiclo } from "@/components/clientes/QuadroDoCiclo";
 import {
   QuadroDeEtapas,
@@ -40,7 +44,6 @@ import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { AcoesEmMassaDeClientes } from "@/components/clientes/AcoesEmMassaDeClientes";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
-import { PipelinePageClient } from "@/app/app/pipelines/[id]/_client";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
@@ -57,7 +60,20 @@ import {
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users, UploadSimple, Plus } from "@/lib/ui/icons";
+import {
+  ArrowRight,
+  ChatCircle,
+  InstagramLogo,
+  MagnifyingGlass,
+  Phone,
+  Rows,
+  Kanban,
+  TextAa,
+  Users,
+  UploadSimple,
+  Plus,
+  WhatsappLogo,
+} from "@/lib/ui/icons";
 import type {
   ClienteDaLista,
   ParticipacaoDoCliente,
@@ -135,6 +151,13 @@ const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "vendas-ativas",
   "valor",
   "previsao",
+  "sem-resposta",
+  "ligar",
+  "whatsapp",
+  "instagram",
+  "inbox",
+  "acao",
+  "comentarios",
 ]);
 /** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
 const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
@@ -183,6 +206,8 @@ export function ClientesCRM({
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   const [novaOportunidade, setNovaOportunidade] = useState(false);
+  /** O lead em que se registra uma ação rápida (ligação, mensagem…) direto da tabela. */
+  const [acaoDoContato, setAcaoDoContato] = useState<string | null>(null);
   /** Etapas (ids) que filtram a lista de oportunidades; null = todas. */
   const [etapasFiltro, setEtapasFiltro] = useState<string[] | null>(null);
   /** Status de venda que a tabela mostra (vazio = todos): "só abertas", "só concluídas"… */
@@ -561,6 +586,25 @@ export function ClientesCRM({
       showApiError(e);
     }
   };
+  /** Muda a etapa de uma oportunidade (tabela ou quadro) respeitando perda, desqualificação e ganho. */
+  const escolherEtapa = (l: Linha, p: ParticipacaoDoCliente, id: string) => {
+    // Etapa de perda pede o motivo (o mesmo diálogo de antes).
+    if (etapasPorId.get(id)?.is_lost) {
+      setPerdendo({ leadId: p.lead_id, funilId: p.funil_id });
+      return;
+    }
+    // Desqualificado também encerra, e também pede o motivo.
+    if (etapasPorId.get(id)?.qualification === "disqualified") {
+      setPerdendo({ leadId: p.lead_id, funilId: p.funil_id, etapaId: id });
+      return;
+    }
+    // Etapa de ganho: fecha como venda (o banco efetiva a venda e abre o pop-up).
+    if (etapasPorId.get(id)?.is_won) {
+      void ganhar(l, p);
+      return;
+    }
+    void moverEtapa(p, id);
+  };
   const levarParaFunil = (p: ParticipacaoDoCliente, destinoId: string) => {
     const destino = funisPorId.get(destinoId)?.name ?? "";
     if (
@@ -672,22 +716,7 @@ export function ClientesCRM({
                 rotulo={t("Etapa no funil")}
                 aoEscolher={(id) => {
                   if (id === atual?.id) return;
-                  // Etapa de perda pede o motivo (o mesmo diálogo de antes).
-                  if (etapasPorId.get(id)?.is_lost) {
-                    setPerdendo({ leadId: p.lead_id, funilId: p.funil_id });
-                    return;
-                  }
-                  // Desqualificado também encerra, e também pede o motivo.
-                  if (etapasPorId.get(id)?.qualification === "disqualified") {
-                    setPerdendo({ leadId: p.lead_id, funilId: p.funil_id, etapaId: id });
-                    return;
-                  }
-                  // Etapa de ganho: fecha como venda (o banco efetiva a venda e abre o pop-up).
-                  if (etapasPorId.get(id)?.is_won) {
-                    void ganhar(l, p);
-                    return;
-                  }
-                  void moverEtapa(p, id);
+                  escolherEtapa(l, p, id);
                 }}
               >
                 <Etiqueta ponto cor={corDaEtapa(atual)}>
@@ -864,6 +893,158 @@ export function ClientesCRM({
       ),
     },
     {
+      id: "sem-resposta",
+      titulo: t("Sem resposta há"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p || p.status !== "open") return semValor;
+        const horas = (agora - new Date(p.ultima_atividade ?? p.criado_em).getTime()) / 3_600_000;
+        return (
+          <span
+            className={`block truncate px-2 text-sm ${horas >= 24 ? "text-warning-fg" : "text-muted-foreground"}`}
+          >
+            {coolingLabel(horas, t)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "ligar",
+      titulo: t("Ligar"),
+      icone: <Phone size={14} aria-hidden />,
+      largura: 90,
+      padrao: ehOportunidades,
+      celula: (l) =>
+        l.telefone ? (
+          <a
+            href={`tel:${l.telefone}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+          >
+            <Phone size={14} aria-hidden />
+            {t("Ligar")}
+          </a>
+        ) : (
+          semValor
+        ),
+    },
+    {
+      id: "whatsapp",
+      titulo: "WhatsApp",
+      icone: <WhatsappLogo size={14} aria-hidden />,
+      largura: 120,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const digitos = (l.telefone ?? "").replace(/\D/g, "");
+        return digitos ? (
+          <a
+            href={`https://wa.me/${digitos}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+          >
+            <WhatsappLogo size={14} aria-hidden />
+            WhatsApp
+          </a>
+        ) : (
+          semValor
+        );
+      },
+    },
+    {
+      id: "instagram",
+      titulo: "Instagram",
+      icone: <InstagramLogo size={14} aria-hidden />,
+      largura: 120,
+      padrao: false,
+      celula: (l) => {
+        const link = typeof l.campos.link_instagram === "string" ? l.campos.link_instagram : "";
+        return /^https?:\/\//i.test(link) ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+          >
+            <InstagramLogo size={14} aria-hidden />
+            Instagram
+          </a>
+        ) : (
+          semValor
+        );
+      },
+    },
+    {
+      id: "inbox",
+      titulo: t("Inbox"),
+      icone: <ChatCircle size={14} aria-hidden />,
+      largura: 130,
+      padrao: ehOportunidades,
+      celula: (l) =>
+        l.conversa_id ? (
+          <Link
+            href={`/app/inbox?id=${l.conversa_id}`}
+            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+          >
+            <ChatCircle size={14} aria-hidden />
+            {t("Abrir no Inbox")}
+          </Link>
+        ) : l.telefone ? (
+          <span className="mx-2 inline-flex">
+            <AbrirConversaDoLead contactId={l.contact_id} phone={l.telefone} />
+          </span>
+        ) : (
+          semValor
+        ),
+    },
+    {
+      id: "acao",
+      titulo: t("Adicionar ação"),
+      icone: <Plus size={14} aria-hidden />,
+      largura: 150,
+      padrao: ehOportunidades,
+      celula: (l) => (
+        <button
+          type="button"
+          disabled={!podeEditar}
+          onClick={() => setAcaoDoContato(l.contact_id)}
+          className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+        >
+          <Plus size={14} aria-hidden />
+          {t("Adicionar ação")}
+        </button>
+      ),
+    },
+    {
+      id: "comentarios",
+      titulo: t("Comentários"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 280,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p) return semValor;
+        return (
+          <CelulaDeTexto
+            valor={p.comentarios}
+            rotulo={t("Comentários")}
+            vazioRotulo={t("Escrever um comentário…")}
+            podeEditar={podeEditar}
+            aoSalvar={(texto) => {
+              const novo = texto.trim();
+              if (novo === p.comentarios) return;
+              otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, comentarios: novo }));
+              void executar(() => apiClient.patch(`/api/v1/vendas/${p.lead_id}`, { notes: novo }));
+            }}
+          />
+        );
+      },
+    },
+    {
       id: "proxima-acao",
       titulo: t("Próxima ação"),
       icone: <TextAa size={14} aria-hidden />,
@@ -926,18 +1107,34 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 180,
       celula: (l) => (
-        <CelulaDeTexto
-          valor={l.telefone ?? ""}
-          rotulo={t("Telefone")}
-          vazioRotulo="—"
-          inputMode="numeric"
-          podeEditar={podeEditar}
-          aoSalvar={(texto) => {
-            const fone = telefoneE164(texto);
-            if (!fone || fone === l.telefone) return;
-            void salvarContato(l, { phone_number: fone }, { telefone: fone });
-          }}
-        />
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <CelulaDeTexto
+              valor={l.telefone ?? ""}
+              rotulo={t("Telefone")}
+              vazioRotulo="—"
+              inputMode="numeric"
+              podeEditar={podeEditar}
+              aoSalvar={(texto) => {
+                const fone = telefoneE164(texto);
+                if (!fone || fone === l.telefone) return;
+                void salvarContato(l, { phone_number: fone }, { telefone: fone });
+              }}
+            />
+          </div>
+          {l.telefone ? (
+            <a
+              href={`tel:${l.telefone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t("Ligar para o lead")}
+              aria-label={t("Ligar para o lead")}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <Phone size={14} aria-hidden />
+            </a>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -1277,6 +1474,25 @@ export function ClientesCRM({
   > = [
     { id: "nome", titulo: t("Nome"), tipo: "texto", valorDe: (l) => l.nome },
     { id: "telefone", titulo: t("Telefone"), tipo: "texto", valorDe: (l) => l.telefone },
+    {
+      id: "sem-resposta",
+      titulo: t("Sem resposta há (horas)"),
+      tipo: "numero",
+      valorDe: (l) => {
+        const p = l.participacao;
+        if (!p || p.status !== "open") return null;
+        return Math.max(
+          0,
+          Math.floor((agora - new Date(p.ultima_atividade ?? p.criado_em).getTime()) / 3_600_000),
+        );
+      },
+    },
+    {
+      id: "comentarios",
+      titulo: t("Comentários"),
+      tipo: "texto",
+      valorDe: (l) => l.participacao?.comentarios ?? "",
+    },
     {
       id: "funis",
       titulo: t("Funis"),
@@ -1721,12 +1937,16 @@ export function ClientesCRM({
             cor: corDaEtapa(e),
             n: 0,
             ids: [],
+            porFunil: {},
           })),
         };
         mapa.set(assinatura, g);
       }
       g.funis.push(f.nome);
-      es.forEach((e, i) => g!.etapas[i]!.ids.push(e.id));
+      es.forEach((e, i) => {
+        g!.etapas[i]!.ids.push(e.id);
+        g!.etapas[i]!.porFunil![f.id] = e.id;
+      });
     }
     return [...mapa.entries()].map(([chave, g]) => ({
       chave,
@@ -1737,6 +1957,17 @@ export function ClientesCRM({
       })),
     }));
   })();
+  const gruposDoQuadro: GrupoDoQuadro[] = gruposDeEtapas.map((g) => ({
+    chave: g.chave,
+    titulo: funilAtual ? null : g.funis.join(" · "),
+    colunas: g.etapas.map((e) => ({
+      chave: e.chave,
+      nome: e.nome,
+      cor: e.cor,
+      porFunil: e.porFunil ?? {},
+    })),
+  }));
+  const ehQuadroDeOportunidades = ehOportunidades && vista === "quadro";
   const ordemDaBase = ["todos", "mql", "faturamento", "abertos", "compraram"];
   numerosDaBase.sort((x, y) => ordemDaBase.indexOf(x.id) - ordemDaBase.indexOf(y.id));
   const contagemDoCiclo = CICLOS_DE_VIDA.map((c) => ({
@@ -1928,6 +2159,15 @@ export function ClientesCRM({
         </section>
       )}
 
+      {acaoDoContato ? (
+        <RegistrarAcaoEmMassaDialog
+          aberto
+          contatoIds={[acaoDoContato]}
+          aoFechar={() => setAcaoDoContato(null)}
+          aoConcluir={() => void queryClient.invalidateQueries({ queryKey: ["clientes"] })}
+        />
+      ) : null}
+
       {vendaAberta ? (
         <DialogoDaVenda
           key={vendaAberta.venda.id}
@@ -1998,7 +2238,7 @@ export function ClientesCRM({
       />
       ) : null}
 
-      {ehOportunidades && vista !== "quadro" ? (
+      {ehOportunidades ? (
         <QuadroDeEtapas
           grupos={gruposDeEtapas}
           escolhidas={etapasFiltro ? new Set(etapasFiltro) : null}
@@ -2061,31 +2301,6 @@ export function ClientesCRM({
 
           {vista === "quadro" && !ehOportunidades ? (
             <QuadroDoCiclo clientes={resultado.linhas} />
-          ) : vista === "quadro" ? (
-            funilAtual ? (
-              <PipelinePageClient
-                key={funilAtual.id}
-                pipelineId={funilAtual.id}
-                initialName={funilAtual.name}
-                role={role}
-              />
-            ) : (
-              <div className="grid gap-8">
-                {funisNaOrdem
-                  .filter((f) => !arquivados.has(f.id))
-                  .map((f) => (
-                    <section key={f.id} aria-label={f.nome} className="grid gap-2">
-                      <h2 className="text-sm font-semibold">{f.nome}</h2>
-                      <PipelinePageClient
-                        key={f.id}
-                        pipelineId={f.id}
-                        initialName={f.nome}
-                        role={role}
-                      />
-                    </section>
-                  ))}
-              </div>
-            )
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">
@@ -2135,6 +2350,27 @@ export function ClientesCRM({
                     </p>
                   ) : null}
                 </div>
+              ) : ehQuadroDeOportunidades ? (
+                <QuadroDeOportunidades
+                  grupos={gruposDoQuadro}
+                  linhas={resultado.linhas}
+                  idDe={(l) => l.chave}
+                  etapaDe={(l) => l.participacao?.etapa_id}
+                  funilDe={(l) => l.participacao?.funil_id}
+                  tituloDe={(l) => l.nome}
+                  colunas={mostradas.filter((c) => c.id !== "nome" && c.id !== "etapa")}
+                  podeEditar={podeEditar}
+                  aoMover={(l, etapaId) => {
+                    if (l.participacao) escolherEtapa(l, l.participacao, etapaId);
+                  }}
+                  aoAbrir={(l) => {
+                    if (l.participacao) void abrirVenda(l, l.participacao.lead_id);
+                  }}
+                  totalDe={(itens) => {
+                    const soma = itens.reduce((s2, l) => s2 + (l.participacao?.valor_cents ?? 0), 0);
+                    return soma > 0 ? moeda(soma) : null;
+                  }}
+                />
               ) : (
                 <TabelaDoMotor
                   aoOrdenarPor={(coluna) =>

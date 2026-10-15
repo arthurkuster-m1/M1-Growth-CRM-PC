@@ -15,6 +15,8 @@ export interface EtapaDoQuadro {
   n: number;
   /** As etapas (ids) dos funis do grupo que esta posição representa. */
   ids: string[];
+  /** A etapa de cada funil do grupo nesta posição (funil → etapa). */
+  porFunil?: Record<string, string>;
 }
 
 export interface GrupoDeEtapas {
