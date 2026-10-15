@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { doEventoDoGoogle, type EventoDoGoogle } from "./evento";
 import { ehEventoNosso } from "./escrita";
+import { importarEventoDoDestino } from "./importar";
 import { classificarErroDoGoogle } from "./erros";
 import { googleTransport, GoogleHttpError, type GoogleFetch } from "./transport";
 import { calendarSnapshotSchema, googleRpc, type CalendarFence } from "./sync-store";
@@ -70,6 +71,24 @@ export async function syncCalendar(
       if (error || !organization?.timezone) throw new Error("Fuso da organização indisponível.");
       timeZone = organization.timezone;
     }
+    // O calendário DESTINO traz compromissos de verdade: o que se marca direto no Google entra no
+    // app como compromisso. Os outros calendários só ocupam horário.
+    const { data: linhaDoCalendario } = await db
+      .from("calendar_connection_calendars")
+      .select("is_destination")
+      .eq("organization_id", org)
+      .eq("id", calendarId)
+      .maybeSingle();
+    const { data: dono } = await db
+      .from("calendar_connections")
+      .select("user_id, account_email")
+      .eq("organization_id", org)
+      .eq("id", c.connection_id)
+      .maybeSingle();
+    const importar = Boolean(
+      (linhaDoCalendario as { is_destination?: boolean } | null)?.is_destination &&
+        (dono as { user_id?: string } | null)?.user_id,
+    );
     const page = await googleTransport(token, transport).page(
       c.external_calendar_id,
       c.sync_cursor,
@@ -103,6 +122,22 @@ export async function syncCalendar(
       const read = doEventoDoGoogle(event, { fusoDoCalendario: timeZone! });
       if (read.tipo === "recusado")
         throw new Error("Evento inválido. A leitura não foi concluída.");
+      if (importar && read.tipo !== "cancelado") {
+        const idDoCompromisso = await importarEventoDoDestino(db, {
+          org,
+          connectionId: c.connection_id,
+          externalCalendarId: c.external_calendar_id,
+          ownerUserId: (dono as { user_id: string }).user_id,
+          donoEmail: (dono as { account_email?: string | null }).account_email ?? null,
+          fusoDoCalendario: timeZone!,
+          evento: event,
+        });
+        if (idDoCompromisso) {
+          // Já é compromisso: o cache de ocupação só marca o evento como visto (sem bloco duplicado).
+          await call("item", { item: { external_event_id: event.id } });
+          continue;
+        }
+      }
       await call("item", {
         item:
           read.tipo === "cancelado"
