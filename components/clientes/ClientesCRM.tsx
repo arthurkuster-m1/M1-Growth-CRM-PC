@@ -12,6 +12,11 @@ import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
 import { QuadroDoCiclo } from "@/components/clientes/QuadroDoCiclo";
+import {
+  QuadroDeEtapas,
+  type EtapaDoQuadro,
+  type GrupoDeEtapas,
+} from "@/components/clientes/QuadroDeEtapas";
 import { CelulaDeEtiquetas } from "@/components/clientes/CelulaDeEtiquetas";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
@@ -177,13 +182,16 @@ export function ClientesCRM({
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
+  const [novaOportunidade, setNovaOportunidade] = useState(false);
+  /** Etapas (ids) que filtram a lista de oportunidades; null = todas. */
+  const [etapasFiltro, setEtapasFiltro] = useState<string[] | null>(null);
   /** Status de venda que a tabela mostra (vazio = todos): "só abertas", "só concluídas"… */
   // (guardado na visualização: ver `statusDasVendas` logo depois de `preferencias`)
   /** A venda aberta no popup (carregada inteira ao clicar). */
   const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const [destaque, setDestaque] = useState<
-    null | "faturamento" | "abertos" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
+    null | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
   /** O status do ciclo de vida que filtra a lista (clique de novo para soltar). */
@@ -199,13 +207,6 @@ export function ClientesCRM({
   const dados = consulta.data;
   const funilAtual = dados?.funis.find((f) => f.id === funilEscolhido) ?? null;
   const primeiroFunilId = dados?.funis[0]?.id ?? null;
-  // Oportunidades sempre olham UM funil: sem funil na URL, abre o primeiro.
-  useEffect(() => {
-    if (!ehOportunidades || funilEscolhido !== TODOS || !primeiroFunilId) return;
-    const p = new URLSearchParams(parametros.toString());
-    p.set("funil", primeiroFunilId);
-    router.replace(`${caminho}?${p.toString()}`, { scroll: false });
-  }, [ehOportunidades, funilEscolhido, primeiroFunilId, parametros, router, caminho]);
   const funilValido = funilEscolhido === TODOS || funilAtual !== null;
 
   const membrosDaEquipe = useAssignableMembers(true);
@@ -252,7 +253,7 @@ export function ClientesCRM({
   /** Os status de venda que a tabela mostra (vazio = todos): ficam salvos na visualização. */
   const statusDasVendas = useMemo<ReadonlySet<string>>(
     // Clientes não filtra por venda (isso é da aba Oportunidades).
-    () => new Set(ehOportunidades ? (preferencias.statusDasVendas ?? []) : []),
+    () => new Set<string>(),
     [preferencias.statusDasVendas, ehOportunidades],
   );
   const setStatusDasVendas = (
@@ -1536,7 +1537,7 @@ export function ClientesCRM({
   // vendas: um lead com três vendas conta uma vez).
   const leadsComVenda = alvos.filter((l) => vendasDoLead(l) > 0).length;
   const taxa = alvos.length > 0 ? Math.round((leadsComVenda / alvos.length) * 100) : 0;
-  const seteDias = agora - 7 * 86_400_000;
+  const seteDias = agora - (ehOportunidades ? 3 : 7) * 86_400_000;
   /** Lead com negócio aberto e sem atividade há mais de 7 dias. */
   const estaSemContato = (l: Linha) =>
     (l.participacao ? [l.participacao] : l.participacoes).some(
@@ -1560,6 +1561,8 @@ export function ClientesCRM({
         return vendasDoLead(l) > 0;
       case "mql":
         return l.is_mql;
+      case "abertas":
+        return emAbertoDeVerdade(l);
       case "semcontato":
         return estaSemContato(l);
       case "sempasso":
@@ -1573,7 +1576,8 @@ export function ClientesCRM({
     (l) =>
       comVendaNoFiltro(l) &&
       (!destaque || passaNoDestaque(l)) &&
-      (!cicloFiltro || l.ciclo_de_vida === cicloFiltro),
+      (!cicloFiltro || l.ciclo_de_vida === cicloFiltro) &&
+      (!etapasFiltro || etapasFiltro.includes(l.participacao?.etapa_id ?? "")),
   );
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
@@ -1668,6 +1672,71 @@ export function ClientesCRM({
   const numerosDaBase = numeros.filter((n) =>
     ["todos", "mql", "faturamento", "abertos", "compraram"].includes(n.id),
   );
+  const emAbertoDeVerdade = (l: Linha) =>
+    (l.participacao ? [l.participacao] : l.participacoes).some((p) => {
+      const e = etapasPorId.get(p.etapa_id);
+      return p.status === "open" && !e?.is_won && !e?.is_lost;
+    });
+  // Aba Oportunidades: os quatro números do topo.
+  const numerosDeOportunidades: typeof numeros = [
+    { id: "todos", rotulo: t("Total de oportunidades"), valor: String(alvos.length) },
+    {
+      id: "abertas",
+      rotulo: t("Oportunidades abertas"),
+      valor: String(alvos.filter(emAbertoDeVerdade).length),
+      detalhe: t("Fora de Comprou, Não comprou e Desqualificado"),
+    },
+    {
+      id: "abertos",
+      rotulo: t("Valor em aberto"),
+      valor: moeda(totalEmAberto),
+      detalhe: `${moeda(totalAReceber)} ${t("comprometido")} · ${moeda(totalInteresse)} ${t("em interesse")}`,
+    },
+    {
+      id: "semcontato",
+      rotulo: t("Leads sem contato (+3 dias)"),
+      valor: String(semContato),
+    },
+  ];
+
+  // As etapas do funil como filtro: funis com as mesmas etapas dividem um desenho.
+  const funisDasEtapas = funilAtual
+    ? [{ id: funilAtual.id, nome: funilAtual.name }]
+    : funisNaOrdem.filter((f) => !arquivados.has(f.id)).map((f) => ({ id: f.id, nome: f.nome }));
+  const gruposDeEtapas: GrupoDeEtapas[] = (() => {
+    const mapa = new Map<string, { funis: string[]; etapas: EtapaDoQuadro[] }>();
+    for (const f of funisDasEtapas) {
+      const es = (dados?.etapas ?? [])
+        .filter((e) => e.pipeline_id === f.id)
+        .sort((a, b) => a.position - b.position);
+      if (es.length === 0) continue;
+      const assinatura = es.map((e) => e.name.trim().toLowerCase()).join("|");
+      let g = mapa.get(assinatura);
+      if (!g) {
+        g = {
+          funis: [],
+          etapas: es.map((e, i) => ({
+            chave: String(i),
+            nome: e.name,
+            cor: corDaEtapa(e),
+            n: 0,
+            ids: [],
+          })),
+        };
+        mapa.set(assinatura, g);
+      }
+      g.funis.push(f.nome);
+      es.forEach((e, i) => g!.etapas[i]!.ids.push(e.id));
+    }
+    return [...mapa.entries()].map(([chave, g]) => ({
+      chave,
+      funis: g.funis,
+      etapas: g.etapas.map((e) => ({
+        ...e,
+        n: alvos.filter((l) => e.ids.includes(l.participacao?.etapa_id ?? "")).length,
+      })),
+    }));
+  })();
   const ordemDaBase = ["todos", "mql", "faturamento", "abertos", "compraram"];
   numerosDaBase.sort((x, y) => ordemDaBase.indexOf(x.id) - ordemDaBase.indexOf(y.id));
   const contagemDoCiclo = CICLOS_DE_VIDA.map((c) => ({
@@ -1710,22 +1779,35 @@ export function ClientesCRM({
         </div>
         {dados?.pode_editar ? (
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setNovoLeadAberto(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
-            >
-              <Plus size={14} weight="bold" aria-hidden />
-              {t("Novo lead")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setImportarAberto(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
-            >
-              <UploadSimple size={14} weight="bold" aria-hidden />
-              {t("Importar leads")}
-            </button>
+            {ehOportunidades ? (
+              <button
+                type="button"
+                onClick={() => setNovaOportunidade(true)}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+              >
+                <Plus size={14} weight="bold" aria-hidden />
+                {t("Nova oportunidade")}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setNovoLeadAberto(true)}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+                >
+                  <Plus size={14} weight="bold" aria-hidden />
+                  {t("Novo lead")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportarAberto(true)}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+                >
+                  <UploadSimple size={14} weight="bold" aria-hidden />
+                  {t("Importar leads")}
+                </button>
+              </>
+            )}
           </div>
         ) : null}
       </header>
@@ -1752,10 +1834,10 @@ export function ClientesCRM({
       <section
         aria-label={t("Resumo")}
         className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
-          "xl:grid-cols-5"
+          ehOportunidades ? "xl:grid-cols-4" : "xl:grid-cols-5"
         }`}
       >
-        {(ehOportunidades ? numeros : numerosDaBase).map((n) => {
+        {(ehOportunidades ? numerosDeOportunidades : numerosDaBase).map((n) => {
           const clicavel = n.id !== "todos" && n.id !== "ponderada";
           const ativo = clicavel && destaque === n.id;
           return (
@@ -1846,55 +1928,6 @@ export function ClientesCRM({
         </section>
       )}
 
-      {ehOportunidades ? (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {ehOportunidades ? (
-          <>
-        <span className="mr-1 text-xs font-medium text-muted-foreground">{t("Vendas:")}</span>
-        {Object.entries(ROTULO_DA_VENDA).map(([id, rotulo]) => {
-          const ativo = statusDasVendas.has(id);
-          return (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={ativo}
-              onClick={() =>
-                setStatusDasVendas((atual) => {
-                  const novo = new Set(atual);
-                  if (novo.has(id)) novo.delete(id);
-                  else novo.add(id);
-                  return novo;
-                })
-              }
-              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                ativo ? COR_DA_VENDA[id] : "border-border text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              {t(rotulo)}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setStatusDasVendas(new Set(["interesse", "comprometida"]))}
-          className="rounded-full border border-dashed px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
-        >
-          {t("Só abertas")}
-        </button>
-        {statusDasVendas.size > 0 ? (
-          <button
-            type="button"
-            onClick={() => setStatusDasVendas(new Set())}
-            className="text-xs font-medium text-primary hover:underline"
-          >
-            {t("Mostrar todas")}
-          </button>
-        ) : null}
-          </>
-        ) : null}
-      </div>
-      ) : null}
-
       {vendaAberta ? (
         <DialogoDaVenda
           key={vendaAberta.venda.id}
@@ -1919,7 +1952,7 @@ export function ClientesCRM({
         <p className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span>
             {t("Mostrando só quem compõe")}{" "}
-            <strong>{numeros.find((n) => n.id === destaque)?.rotulo}</strong> · {visiveis.length}{" "}
+            <strong>{[...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}</strong> · {visiveis.length}{" "}
             {visiveis.length === 1 ? t("lead") : t("leads")}
           </span>
           <button
@@ -1945,9 +1978,12 @@ export function ClientesCRM({
         }
         escolhido={funilEscolhido}
         todosId={TODOS}
-        semTodos={ehOportunidades}
+        rotuloTodos={ehOportunidades ? t("Todas") : undefined}
         podeOrganizar
-        aoEscolher={(id) => ir({ funil: id })}
+        aoEscolher={(id) => {
+          setEtapasFiltro(null);
+          ir({ funil: id });
+        }}
         aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
         aoArquivar={(ids, arquivar) =>
           salvarFunis((f) => {
@@ -1960,6 +1996,42 @@ export function ClientesCRM({
           })
         }
       />
+      ) : null}
+
+      {ehOportunidades && vista !== "quadro" ? (
+        <QuadroDeEtapas
+          grupos={gruposDeEtapas}
+          escolhidas={etapasFiltro ? new Set(etapasFiltro) : null}
+          aoEscolher={setEtapasFiltro}
+          emToggle={!funilAtual && gruposDeEtapas.length > 1}
+        />
+      ) : null}
+
+      {novaOportunidade ? (
+        <DialogoDaVenda
+          venda={null}
+          titulo={t("Nova oportunidade")}
+          clientes={(dados?.clientes ?? []).map((c) => ({
+            contact_id: c.contact_id,
+            nome: c.nome,
+            telefone: c.telefone,
+          }))}
+          funis={(dados?.funis ?? []).map((f) => ({ id: f.id, nome: f.name }))}
+          funilInicial={funilAtual?.id ?? null}
+          aoFechar={() => setNovaOportunidade(false)}
+          aoSalvar={async (v: DadosDaVenda) => {
+            try {
+              const { id: _id, ...corpo } = v;
+              await apiClient.post("/api/v1/vendas", corpo);
+              await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+              await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+              return true;
+            } catch (e) {
+              showApiError(e);
+              return false;
+            }
+          }}
+        />
       ) : null}
 
       {!funilValido && !consulta.isLoading ? (
@@ -1998,9 +2070,21 @@ export function ClientesCRM({
                 role={role}
               />
             ) : (
-              <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
-                {t("Escolha um funil na linha de cima para ver o quadro.")}
-              </p>
+              <div className="grid gap-8">
+                {funisNaOrdem
+                  .filter((f) => !arquivados.has(f.id))
+                  .map((f) => (
+                    <section key={f.id} aria-label={f.nome} className="grid gap-2">
+                      <h2 className="text-sm font-semibold">{f.nome}</h2>
+                      <PipelinePageClient
+                        key={f.id}
+                        pipelineId={f.id}
+                        initialName={f.nome}
+                        role={role}
+                      />
+                    </section>
+                  ))}
+              </div>
             )
           ) : (
             <>

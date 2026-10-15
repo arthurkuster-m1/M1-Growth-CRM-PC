@@ -54,6 +54,8 @@ interface Props {
   todosId: string;
   /** Esconde o "Todos" (a tela só faz sentido com UM funil). */
   semTodos?: boolean;
+  /** O rótulo do "Todos" (Oportunidades usa "Todas"). */
+  rotuloTodos?: string;
   podeOrganizar: boolean;
   aoEscolher: (id: string) => void;
   aoReordenar: (ids: string[]) => void;
@@ -248,6 +250,7 @@ export function BarraDeFunis({
   escolhido,
   todosId,
   semTodos = false,
+  rotuloTodos,
   podeOrganizar,
   aoEscolher,
   aoReordenar,
@@ -344,7 +347,7 @@ export function BarraDeFunis({
                 : "bg-card text-muted-foreground hover:text-foreground",
             )}
           >
-            {t("Todos")}
+            {rotuloTodos ?? t("Todos")}
           </button>
         )}
         <DndContext

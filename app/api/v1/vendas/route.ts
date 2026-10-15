@@ -144,7 +144,12 @@ export async function POST(req: NextRequest): Promise<Response> {
       if (error) return fail("internal_error", "Erro ao registrar a venda.", 500, { requestId });
     }
   } else {
-    const destino = await destinoDeUmaOportunidadeNova(supabase, orgId, corpo.data.contact_id);
+    const destino = await destinoDeUmaOportunidadeNova(
+      supabase,
+      orgId,
+      corpo.data.contact_id,
+      corpo.data.pipeline_id ?? null,
+    );
     if (!destino) {
       return fail("validation_failed", "A empresa ainda não tem um funil com etapa inicial.", 422, {
         requestId,

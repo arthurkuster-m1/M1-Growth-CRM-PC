@@ -181,7 +181,12 @@ const camposSchema = z.object({
 /** Criar: o cliente basta; valor sai dos itens (ou de `amount_cents`). */
 export const novaVendaSchema = camposSchema
   .partial()
-  .extend({ contact_id: z.string().uuid(), lead_id: z.string().uuid().nullable().optional() });
+  .extend({
+    contact_id: z.string().uuid(),
+    lead_id: z.string().uuid().nullable().optional(),
+    /** O funil em que a oportunidade nova entra (sem ele: o último do cliente ou o padrão). */
+    pipeline_id: z.string().uuid().nullable().optional(),
+  });
 
 /** Editar: ausente = não mexe (sem `.default()` de propósito). `itens`/`pagamentos` SUBSTITUEM. */
 export const edicaoDeVendaSchema = camposSchema

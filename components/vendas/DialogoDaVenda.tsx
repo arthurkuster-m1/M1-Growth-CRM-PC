@@ -84,6 +84,8 @@ export interface DadosDaVenda {
   recurrence_ahead?: number;
   /** Quem da equipe é o responsável pela venda (só vem quando mudou). */
   responsavel_id?: string | null;
+  /** Oportunidade nova: o funil em que ela entra. */
+  pipeline_id?: string;
 }
 
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -155,7 +157,12 @@ export function DialogoDaVenda({
   aoSalvar,
   aoApagar,
   negocio: negocioProp,
+  funis,
+  funilInicial,
 }: {
+  /** Oportunidade nova: os funis para escolher onde ela entra. */
+  funis?: Array<{ id: string; nome: string }>;
+  funilInicial?: string | null;
   /** Quando a venda é o card de um funil: a etapa (editável) e o atalho para a ficha do lead. */
   negocio?: {
     etapas: Array<{ id: string; nome: string; cor?: CorDaOpcao }>;
@@ -183,6 +190,7 @@ export function DialogoDaVenda({
 }) {
   const t = useT();
   const [busca, setBusca] = useState("");
+  const [funilNovo, setFunilNovo] = useState(funilInicial ?? funis?.[0]?.id ?? "");
   const [contato, setContato] = useState(venda?.contact_id ?? contatoInicial?.contact_id ?? "");
   // O dinheiro mora nas PARCELAS (comprometido, pago, cancelado); a oportunidade só tem a etapa
   // do funil. O pagamento aparece sempre: a primeira parcela recebida leva a etapa a Comprou.
@@ -647,6 +655,7 @@ export function DialogoDaVenda({
       description: descricao.trim(),
       name: nomeDaVendaTexto.trim(),
       ...(responsavel !== responsavelInicial ? { responsavel_id: responsavel || null } : {}),
+      ...(!venda && funilNovo ? { pipeline_id: funilNovo } : {}),
     });
     if (salvou === false) {
       setSalvando(false);
@@ -897,6 +906,17 @@ export function DialogoDaVenda({
 
 
           <div className="grid grid-cols-1 gap-3">
+            {!venda && funis && funis.length > 0 ? (
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Funil")}</span>
+                <SeletorEmPopup
+                  rotulo={t("Funil")}
+                  valor={funilNovo}
+                  opcoes={funis.map((f) => ({ id: f.id, rotulo: f.nome }))}
+                  aoEscolher={setFunilNovo}
+                />
+              </div>
+            ) : null}
             {venda?.funil ? (
               <div className="grid gap-1">
                 <span className="text-xs text-muted-foreground">{t("Funil")}</span>
