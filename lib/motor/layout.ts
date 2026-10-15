@@ -88,7 +88,11 @@ export interface DefinicaoDeColuna {
   semOcultar?: boolean;
 }
 
-export type ColunaResolvida<T extends DefinicaoDeColuna> = T & { visivel: boolean };
+export type ColunaResolvida<T extends DefinicaoDeColuna> = T & {
+  visivel: boolean;
+  /** A pessoa escolheu esta largura (arrastando a alça): vale até no celular. */
+  larguraPersonalizada?: boolean;
+};
 
 export function limitarLargura(largura: number): number {
   if (!Number.isFinite(largura)) return LARGURA_MINIMA;
@@ -118,6 +122,7 @@ export function resolverColunas<T extends DefinicaoDeColuna>(
   return [...fixas, ...escolhidas, ...novas].map((d) => ({
     ...d,
     largura: limitarLargura(prefs.larguras?.[d.id] ?? d.largura),
+    larguraPersonalizada: prefs.larguras?.[d.id] !== undefined,
     visivel: d.fixa || d.semOcultar ? true : (prefs.visiveis?.[d.id] ?? d.padrao !== false),
   }));
 }

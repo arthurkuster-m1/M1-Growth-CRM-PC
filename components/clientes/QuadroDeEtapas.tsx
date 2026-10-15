@@ -91,7 +91,7 @@ export function QuadroDeEtapas({ grupos, escolhidas, aoEscolher, emToggle }: Pro
   const [abertos, setAbertos] = useState<ReadonlySet<string>>(new Set());
   if (grupos.length === 0) return null;
   return (
-    <section aria-label={t("Etapas do funil")} className="rounded-2xl border bg-card px-4 py-3">
+    <section aria-label={t("Etapas do funil")} className="min-w-0 max-w-full rounded-2xl border bg-card px-4 py-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
           {t("Etapas do funil")}
@@ -110,7 +110,7 @@ export function QuadroDeEtapas({ grupos, escolhidas, aoEscolher, emToggle }: Pro
           </span>
         )}
       </div>
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         {grupos.map((g) => {
           if (!emToggle) {
             return (
@@ -120,7 +120,7 @@ export function QuadroDeEtapas({ grupos, escolhidas, aoEscolher, emToggle }: Pro
           const aberto = abertos.has(g.chave);
           const total = g.etapas.reduce((s, e) => s + e.n, 0);
           return (
-            <div key={g.chave} className="rounded-xl border">
+            <div key={g.chave} className="min-w-0 rounded-xl border">
               <button
                 type="button"
                 aria-expanded={aberto}

@@ -61,9 +61,9 @@ export function QuadroDeOportunidades<T>(props: Props<T>) {
     return <p className="px-1 text-sm text-muted-foreground">{t("Nenhuma etapa para mostrar.")}</p>;
   }
   return (
-    <div className="grid gap-8">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8">
       {props.grupos.map((g) => (
-        <section key={g.chave} className="grid gap-2">
+        <section key={g.chave} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
           {g.titulo ? <h2 className="text-sm font-semibold">{g.titulo}</h2> : null}
           <Quadro {...props} grupo={g} />
         </section>

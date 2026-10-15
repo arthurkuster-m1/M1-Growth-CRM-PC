@@ -222,7 +222,10 @@ function AlcaDeLargura({
   rotulo,
   aoArrastar,
   aoConfirmar,
+  larga = false,
 }: {
+  /** No celular a alça é mais larga (alvo de toque). */
+  larga?: boolean;
   largura: number;
   rotulo: string;
   aoArrastar: (largura: number | null) => void;
@@ -269,7 +272,10 @@ function AlcaDeLargura({
         e.preventDefault();
         aoConfirmar(limitarLargura(largura + (e.key === "ArrowRight" ? 10 : -10)));
       }}
-      className="absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize touch-none select-none after:absolute after:top-1/4 after:right-0.5 after:h-1/2 after:w-px after:bg-border hover:after:bg-primary focus-visible:after:bg-primary"
+      className={cn(
+        "absolute top-0 right-0 z-10 h-full cursor-col-resize touch-none select-none after:absolute after:top-1/4 after:right-0.5 after:h-1/2 after:w-px after:bg-border hover:after:bg-primary focus-visible:after:bg-primary",
+        larga ? "w-6 after:w-0.5 after:bg-muted-foreground/50" : "w-2",
+      )}
     />
   );
 }
@@ -353,7 +359,7 @@ export function TabelaDoMotor<T>({
 
   // Celular: colunas mais estreitas (cabem mais na tela). A tabela inteira desliza junto,
   // título inclusive — nada fica preso à esquerda, como no Notion.
-  const LARGURA_MAXIMA_NO_CELULAR = 156;
+  const LARGURA_MAXIMA_NO_CELULAR = 176;
   const LARGURA_DO_TITULO_NO_CELULAR = 184;
   const larguraDe = (c: ColunaDoMotor<T>) =>
     aoVivo?.id === c.id
@@ -361,7 +367,10 @@ export function TabelaDoMotor<T>({
       : celular
         ? c.fixa || c.semOcultar
           ? LARGURA_DO_TITULO_NO_CELULAR
-          : Math.min(c.largura, LARGURA_MAXIMA_NO_CELULAR)
+          : // Largura escolhida pela pessoa (arrastando a alça) vale no celular; sem escolha, o teto.
+            (c as { larguraPersonalizada?: boolean }).larguraPersonalizada
+            ? c.largura
+            : Math.min(c.largura, LARGURA_MAXIMA_NO_CELULAR)
         : c.largura;
   const comAcoes = Boolean(acoesDaLinha);
   const comFim = Boolean(fimDoCabecalho);
@@ -489,8 +498,9 @@ export function TabelaDoMotor<T>({
                     <div className="min-w-0 flex-1">
                       {menuDaColuna ? menuDaColuna(c, titulo) : titulo}
                     </div>
-                    {aoRedimensionarColuna && !celular ? (
+                    {aoRedimensionarColuna ? (
                       <AlcaDeLargura
+                        larga={celular}
                         largura={larguraDe(c)}
                         rotulo={`${t("Largura da coluna")}: ${c.titulo}`}
                         aoArrastar={(largura) =>
