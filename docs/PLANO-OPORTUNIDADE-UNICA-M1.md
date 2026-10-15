@@ -118,3 +118,14 @@ Sugestão: **A e B numa sessão só, C numa semana depois**, com a Hotmart esper
 ## 9. Fora deste passo
 
 Hotmart (entra depois da Fase B), contas a receber/pagar e dashboard financeiro (D5), e as automações de reativação por próxima recompra prevista.
+
+## 10. Decisões fechadas (15/10/2026)
+
+1. **Liberar** mais de uma oportunidade por pessoa, inclusive no mesmo funil. Todas as oportunidades de todos os leads aparecem na visão **Oportunidades** do CRM (uma linha por oportunidade), filtradas pelas visualizações e pelas campanhas.
+2. **Bloqueio duro do Comprou:** o card só entra em Comprou depois de algum pagamento (mesmo só o sinal), inclusive em venda lançada à mão depois do fato.
+3. **Tabelas:** manter `crm_leads` por baixo; "Oportunidade" só na tela.
+4. **Status da venda digitado some:** os status (possível venda, comprometido, pago, cancelado) são das **parcelas**; a oportunidade só tem as etapas do funil.
+
+## 11. Andamento
+
+- **Fase A (0635):** ensaiada em rollback com os dados reais: divergências 0, total pago intacto (R$ 10.500,00), 13 → 14 cards (o card com 2 vendas virou 2 oportunidades; a paga foi para Comprou) e 14 vendas.
