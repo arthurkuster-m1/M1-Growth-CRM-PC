@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -63,8 +64,10 @@ export function LixeiraDoCRM() {
   });
 
   const itens = consulta.data ?? [];
+  // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
+  const [agora] = useState(() => Date.now());
   const diasPara = (iso: string) =>
-    Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
+    Math.max(0, Math.ceil((new Date(iso).getTime() - agora) / 86_400_000));
 
   return (
     <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-6">
@@ -72,7 +75,7 @@ export function LixeiraDoCRM() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("Lixeira")}</h1>
         <p className="text-sm text-muted-foreground">
           {t(
-            "Clientes excluídos ficam aqui por 7 dias, com as oportunidades, vendas e conversas deles. Depois somem de vez.",
+            "Clientes excluídos ficam aqui por 7 dias, com as oportunidades, vendas e conversas deles, para o caso de uma exclusão por engano. Passado esse prazo, são excluídos permanentemente. Se o lead já voltou a falar, ao restaurar o histórico antigo é mesclado ao cadastro novo.",
           )}
         </p>
       </header>
@@ -101,10 +104,10 @@ export function LixeiraDoCRM() {
                     {t("Excluído em")} {new Date(i.excluido_em).toLocaleDateString("pt-BR")} ·{" "}
                     <span className={dias <= 1 ? "font-medium text-error-fg" : ""}>
                       {dias <= 0
-                        ? t("some hoje")
+                        ? t("Será excluído permanentemente hoje")
                         : dias === 1
-                          ? t("some em 1 dia")
-                          : `${t("some em")} ${dias} ${t("dias")}`}
+                          ? t("Será excluído permanentemente em 1 dia")
+                          : `${t("Será excluído permanentemente em")} ${dias} ${t("dias")}`}
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
