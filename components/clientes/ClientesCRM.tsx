@@ -2284,6 +2284,36 @@ export function ClientesCRM({
     return () => document.removeEventListener("paste", aoColar);
   }, [ehOportunidades, podeEditar, selecionadas]);
 
+  /** Excluir só a oportunidade (o cliente fica). Com pagamento recebido o servidor recusa. */
+  async function excluirOportunidades() {
+    const alvos = selecionadasNaOrdem;
+    if (alvos.length === 0) return;
+    const aviso =
+      alvos.length === 1
+        ? t("Excluir esta oportunidade? O cliente continua cadastrado.")
+        : t("Excluir as {n} oportunidades selecionadas? Os clientes continuam cadastrados.").replace(
+            "{n}",
+            String(alvos.length),
+          );
+    if (!window.confirm(aviso)) return;
+    let recusadas = 0;
+    for (const l of alvos) {
+      try {
+        await apiClient.delete(`/api/v1/vendas/${l.participacao!.lead_id}`);
+      } catch {
+        recusadas += 1;
+      }
+    }
+    await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    setSelecionadas(new Set());
+    if (recusadas > 0) {
+      window.alert(
+        `${recusadas} ${t("oportunidade(s) não foram excluídas: já receberam pagamento. Cancele-as em vez de apagar.")}`,
+      );
+    }
+  }
+
   function salvarFunis(
     mudar: (
       atual: NonNullable<PreferenciasDaTabela["funis"]>,
@@ -2754,6 +2784,8 @@ export function ClientesCRM({
                   ]}
                   podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
                   tagsExistentes={todasAsTags}
+                  aoExcluir={ehOportunidades ? () => void excluirOportunidades() : undefined}
+                  rotuloExcluir={ehOportunidades ? t("Excluir oportunidade") : undefined}
                   aoLimpar={() => setSelecionadas(new Set())}
                 />
               ) : null}

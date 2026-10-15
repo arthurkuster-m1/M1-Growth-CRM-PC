@@ -37,7 +37,12 @@ export function AcoesEmMassaDeClientes({
   podeGerir,
   aoLimpar,
   tagsExistentes = [],
+  aoExcluir,
+  rotuloExcluir,
 }: {
+  /** Quando passado, "Excluir" chama isto (ex.: só a oportunidade) em vez de excluir o cliente. */
+  aoExcluir?: () => void;
+  rotuloExcluir?: string;
   contatoIds: string[];
   /** As tags que já existem na base (para escolher em vez de digitar). */
   tagsExistentes?: readonly string[];
@@ -196,9 +201,9 @@ export function AcoesEmMassaDeClientes({
           size="sm"
           variant="outline"
           className="text-error-fg hover:text-error-fg"
-          onClick={() => setDialogo("excluir")}
+          onClick={() => (aoExcluir ? aoExcluir() : setDialogo("excluir"))}
         >
-          {t("Excluir")}
+          {rotuloExcluir ?? t("Excluir")}
         </Button>
         <Button size="sm" variant="ghost" onClick={aoLimpar}>
           {t("Limpar")}
