@@ -33,6 +33,7 @@ export const RESULTADOS_RAPIDOS = [
     resultado: "Atendeu — conversa positiva",
     proximo: "Seguir o combinado na conversa",
     diasUteis: 1,
+    exigeComentario: true,
   },
   {
     id: "retornar",
@@ -40,12 +41,14 @@ export const RESULTADOS_RAPIDOS = [
     resultado: "Atendeu — pediu para retornar",
     proximo: "Retornar a ligação",
     pedeData: true,
+    exigeComentario: true,
   },
   {
     id: "sem_interesse",
     rotulo: "Sem interesse",
     resultado: "Atendeu — sem interesse",
     perde: true,
+    exigeComentario: true,
   },
 ] as const;
 
@@ -69,24 +72,46 @@ export function somarDiasUteis(dia: string, n: number): string {
  * A FILA DO DIA: oportunidade aberta cuja próxima ação venceu (ou é hoje) ou, sem próxima ação
  * marcada, sem resposta há 24h ou mais. `prioridade` menor = mais urgente (mais atrasada primeiro).
  */
+export interface CriteriosDaFila {
+  /** Próxima ação vencida ou de hoje. */
+  vencidas: boolean;
+  /** Sem data marcada e sem resposta há `horasSemResposta` ou mais. */
+  semResposta: boolean;
+  horasSemResposta: number;
+  /** Oportunidade aberta sem nenhum próximo passo escrito. */
+  semProximaAcao: boolean;
+}
+
+export const CRITERIOS_PADRAO_DA_FILA: CriteriosDaFila = {
+  vencidas: true,
+  semResposta: true,
+  horasSemResposta: 24,
+  semProximaAcao: false,
+};
+
 export function prioridadeDaFila(
   p: {
     status: string;
     proxima_acao_em: string | null;
     ultima_atividade: string | null;
     criado_em: string;
+    proxima_acao?: string;
   },
   hoje: string,
   agoraMs: number,
+  criterios: CriteriosDaFila = CRITERIOS_PADRAO_DA_FILA,
 ): number | null {
   if (p.status !== "open") return null;
   if (p.proxima_acao_em) {
-    if (p.proxima_acao_em > hoje) return null;
+    if (!criterios.vencidas || p.proxima_acao_em > hoje) return null;
     // Vencidas antes: quanto mais antiga a data, menor o número.
     return Date.parse(`${p.proxima_acao_em}T00:00:00Z`) / 86_400_000;
   }
   const horas = (agoraMs - new Date(p.ultima_atividade ?? p.criado_em).getTime()) / 3_600_000;
-  if (horas < 24) return null;
-  // Sem data marcada vem depois das vencidas, e a mais parada primeiro.
-  return 1_000_000 - horas;
+  if (criterios.semResposta && horas >= criterios.horasSemResposta) {
+    // Sem data marcada vem depois das vencidas, e a mais parada primeiro.
+    return 1_000_000 - horas;
+  }
+  if (criterios.semProximaAcao && (p.proxima_acao ?? "").trim() === "") return 2_000_000 - horas;
+  return null;
 }

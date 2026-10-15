@@ -19,7 +19,13 @@ import { ResultadoRapidoDaLigacao } from "@/components/clientes/ResultadoRapidoD
 import { prioridadeDaFila } from "@/lib/leads/resultados-rapidos";
 import { BotaoWhatsApp } from "@/components/clientes/BotaoWhatsApp";
 import { ConfirmarDataDaProximaAcao } from "@/components/clientes/ConfirmarDataDaProximaAcao";
+import { ConfigDaProspeccaoDialog } from "@/components/clientes/ConfigDaProspeccaoDialog";
 import { ModoProspeccao, type LeadDaProspeccao } from "@/components/clientes/ModoProspeccao";
+import {
+  carregarConfigDaProspeccao,
+  salvarConfigDaProspeccao,
+  type ConfigDaProspeccao,
+} from "@/lib/leads/config-de-prospeccao";
 import { QuadroDoCiclo } from "@/components/clientes/QuadroDoCiclo";
 import {
   QuadroDeEtapas,
@@ -72,6 +78,7 @@ import {
   ChatCircle,
   InstagramLogo,
   MagnifyingGlass,
+  Gear,
   Phone,
   Rows,
   Kanban,
@@ -241,6 +248,10 @@ export function ClientesCRM({
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   const [novaOportunidade, setNovaOportunidade] = useState(false);
   const [prospectando, setProspectando] = useState(false);
+  const [configProspeccao, setConfigProspeccao] = useState(false);
+  const [configDaProspeccao, setConfigDaProspeccao] = useState<ConfigDaProspeccao>(() =>
+    carregarConfigDaProspeccao(),
+  );
   /** A próxima ação foi escrita: pede a confirmação da data (a atual já vem escolhida). */
   const [confirmandoAcao, setConfirmandoAcao] = useState<{
     leadId: string;
@@ -2093,7 +2104,7 @@ export function ClientesCRM({
         return l.is_mql;
       case "ligarhoje":
         return l.participacao
-          ? prioridadeDaFila(l.participacao, hojeIso, agora) !== null
+          ? prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null
           : false;
       case "abertas":
         return emAbertoDeVerdade(l);
@@ -2116,11 +2127,11 @@ export function ClientesCRM({
   // Fila do dia: do mais atrasado ao menos (sem a pessoa ter escolhido outra ordem).
   if (destaque === "ligarhoje" && !preferencias.ordenacao?.length) {
     const peso = (l: Linha) =>
-      l.participacao ? (prioridadeDaFila(l.participacao, hojeIso, agora) ?? Infinity) : Infinity;
+      l.participacao ? (prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) ?? Infinity) : Infinity;
     visiveis.sort((x, y) => peso(x) - peso(y));
   }
   const filaDoDia = alvos.filter(
-    (l) => l.participacao && prioridadeDaFila(l.participacao, hojeIso, agora) !== null,
+    (l) => l.participacao && prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null,
   ).length;
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
@@ -2325,6 +2336,10 @@ export function ClientesCRM({
         leadId: p.lead_id,
         contactId: l.contact_id,
         funilId: p.funil_id,
+        funilNome: funisPorId.get(p.funil_id)?.name ?? "",
+        etapaId: p.etapa_id,
+        campanhaId: p.campanha_id,
+        conversaId: l.conversa_id,
         nome: l.nome,
         titulo: p.titulo || l.nome,
         telefone: l.telefone,
@@ -2340,6 +2355,12 @@ export function ClientesCRM({
       },
     ];
   });
+
+  // A sessão pode ter um número fixo de leads (configuração); 0 = a lista toda.
+  const itensDaSessao =
+    configDaProspeccao.quantidade > 0
+      ? itensDaProspeccao.slice(0, configDaProspeccao.quantidade)
+      : itensDaProspeccao;
 
   /** As oportunidades selecionadas, na ordem em que aparecem na lista. */
   const selecionadasNaOrdem = resultado.linhas.filter(
@@ -2439,16 +2460,6 @@ export function ClientesCRM({
         </div>
         {dados?.pode_editar ? (
           <div className="flex flex-wrap items-center gap-2">
-            {ehOportunidades ? (
-              <button
-                type="button"
-                onClick={() => setProspectando(true)}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
-              >
-                <Phone size={14} aria-hidden />
-                {t("Modo prospecção")}
-              </button>
-            ) : null}
             {ehOportunidades ? (
               <button
                 type="button"
@@ -2553,6 +2564,24 @@ export function ClientesCRM({
             {t("Ligar hoje")}
             <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">{filaDoDia}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setProspectando(true)}
+            title={t("Trabalha a lista que está filtrada, um lead de cada vez")}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"
+          >
+            <Phone size={14} aria-hidden />
+            {t("Modo prospecção")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfigProspeccao(true)}
+            aria-label={t("Configurar a prospecção")}
+            title={t("Configurar a prospecção")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-card transition-colors hover:bg-secondary"
+          >
+            <Gear size={16} aria-hidden />
+          </button>
         </div>
       ) : null}
 
@@ -2639,9 +2668,32 @@ export function ClientesCRM({
         />
       ) : null}
 
+      {configProspeccao ? (
+        <ConfigDaProspeccaoDialog
+          config={configDaProspeccao}
+          campanhaIds={[
+            ...new Set(
+              alvos.map((l) => l.participacao?.campanha_id).filter((x): x is string => Boolean(x)),
+            ),
+          ]}
+          nomeDaCampanha={(id) => campanhasPorId.get(id) ?? ""}
+          aoSalvar={(c) => {
+            setConfigDaProspeccao(c);
+            salvarConfigDaProspeccao(c);
+          }}
+          aoFechar={() => setConfigProspeccao(false)}
+        />
+      ) : null}
+
       {prospectando ? (
         <ModoProspeccao
-          itens={itensDaProspeccao}
+          itens={itensDaSessao}
+          config={configDaProspeccao}
+          etapasDe={(funilId) => etapasDoFunil(funilId)}
+          aoMoverEtapa={(item, etapaId) => {
+            const linha = resultado.linhas.find((x) => x.participacao?.lead_id === item.leadId);
+            if (linha?.participacao) escolherEtapa(linha, linha.participacao, etapaId);
+          }}
           aoFechar={() => setProspectando(false)}
           aoPerder={(i) => {
             setProspectando(false);

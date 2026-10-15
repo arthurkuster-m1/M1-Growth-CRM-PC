@@ -9,11 +9,14 @@ export async function aplicarResultadoRapido(args: {
   contactId: string;
   resultado: string;
   proximo?: { texto: string; em: string };
+  /** O que foi conversado (obrigatório quando o lead atendeu). */
+  comentario?: string;
 }): Promise<void> {
   await apiClient.post(`/api/v1/contacts/${args.contactId}/atividades`, {
     acao: "ligacao",
     resultado: args.resultado,
     lead_id: args.leadId,
+    ...(args.comentario?.trim() ? { comentario: args.comentario.trim() } : {}),
   });
   if (args.proximo) {
     await apiClient.put(`/api/v1/leads/${args.leadId}/proxima-acao`, {
