@@ -423,7 +423,6 @@ export function VendasCRM() {
         >
           <Etiqueta ponto cor={COR[v.status]}>
             {rotuloDoStatusDaVenda(t, v.status)}
-            {v.needs_details ? ` · ${t("detalhar")}` : ""}
           </Etiqueta>
         </SeletorDeOpcao>
       ),
@@ -698,7 +697,6 @@ export function VendasCRM() {
   }
 
   const fluxo = fluxoDoMes(vendas, mes);
-  const detalhar = vendas.filter((v) => v.needs_details).length;
   const numeros: Array<[string, string]> = [
     [t("Recebido no mês"), reais(fluxo.recebido)],
     [t("A receber no mês"), reais(fluxo.aReceber)],
@@ -736,18 +734,6 @@ export function VendasCRM() {
           </button>
         </div>
       </header>
-
-      {detalhar > 0 ? (
-        <p
-          role="status"
-          className="rounded-xl border border-warning/40 bg-warning-bg px-4 py-3 text-sm text-warning-fg"
-        >
-          {detalhar}{" "}
-          {t(
-            "venda(s) de lead ganho ainda precisam dos produtos, do valor real e das parcelas. Abra a venda e finalize.",
-          )}
-        </p>
-      ) : null}
 
       {cobrancas.length > 0 ? (
         <section
@@ -1096,7 +1082,7 @@ export function VendasCRM() {
           venda={editando === "nova" ? null : editando}
           clientes={clientes.data ?? []}
           titulo={
-            editando !== "nova" && (editando.needs_details || editando.status !== "interesse")
+            editando !== "nova" && editando.status !== "interesse"
               ? t("Finalizar venda")
               : undefined
           }

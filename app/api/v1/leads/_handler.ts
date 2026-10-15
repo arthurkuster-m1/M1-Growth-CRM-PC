@@ -490,8 +490,7 @@ async function negocioAbertoDoContatoNoFunil(
     .eq("contact_id", contactId)
     .eq("pipeline_id", pipelineId)
     .eq("status", "open")
-    // O card principal vem antes das vendas adicionais no mesmo funil.
-    .order("venda_adicional", { ascending: true })
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw new ApiError(500, "internal_error", undefined, ctx.requestId, error.message);

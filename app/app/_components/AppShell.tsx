@@ -1,5 +1,4 @@
 "use client";
-import { PopupDeVendaPendente } from "@/components/vendas/PopupDeVendaPendente";
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
@@ -54,7 +53,6 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
     */
     <div className="flex min-h-dvh w-full bg-background">
       <BarraDeProgressoNavegacao />
-      {podeAtender ? <PopupDeVendaPendente /> : null}
       <div className="hidden md:block">
         <Sidebar collapsed={sidebarCollapsed} />
       </div>

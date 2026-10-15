@@ -3,7 +3,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * POST /api/v1/leads/[id]/venda-adicional — uma venda a mais do MESMO contato no MESMO funil.
  *
  * A venda é o card: duas vendas no mesmo funil são dois cards, cada um na sua etapa. Esta rota
- * cria o segundo card (marcado `venda_adicional`, fora do índice de lead único), na primeira etapa
+ * cria a segunda oportunidade, na primeira etapa
  * aberta, herdando a origem e o responsável do card de onde partiu. A venda do card nasce por
  * gatilho do banco; quem chama a preenche depois (`PATCH /api/v1/vendas/[id]`).
  */
@@ -106,7 +106,6 @@ export async function POST(
       demand_creative_id: o.demand_creative_id,
       demand_landing_page_id: o.demand_landing_page_id,
       ...(o.currency ? { currency: o.currency } : {}),
-      venda_adicional: true,
       position_in_stage: Date.now(),
       created_by_user_id: authz.user.id,
     })
@@ -125,7 +124,7 @@ export async function POST(
     sourceModule: "ficha_do_lead",
     actor: { type: "user", id: authz.user.id },
     reason: "Nova venda no mesmo funil",
-    payload: { venda_adicional: true, de_lead_id: o.id },
+    payload: { nova_oportunidade: true, de_lead_id: o.id },
   });
   void audit({
     organizationId: orgId,
@@ -134,7 +133,7 @@ export async function POST(
     resourceType: "crm_leads",
     resourceId: novoId,
     requestId,
-    metadata: { venda_adicional: true, de_lead_id: o.id },
+    metadata: { nova_oportunidade: true, de_lead_id: o.id },
   });
 
   return ok(

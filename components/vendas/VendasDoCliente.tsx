@@ -86,7 +86,6 @@ export function VendasDoCliente({
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">
               {nomeDaVenda(v) || t("Venda")}
-              {v.needs_details ? ` · ${t("detalhar")}` : ""}
             </span>
             <span className="block truncate text-xs text-muted-foreground">
               {v.status === "interesse"

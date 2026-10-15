@@ -100,8 +100,6 @@ export interface Venda {
   payment_method: string;
   installments: number;
   closed_on: string | null;
-  /** Venda efetivada automaticamente (lead ganho) que ainda precisa dos detalhes. */
-  needs_details: boolean;
   /** Assinatura em andamento: a parcela do próximo mês é gerada sozinha (e cobrada). */
   recurrence_active: boolean;
   /** Assinatura: quantos meses de parcelas previstas o sistema mantém à frente (1 a 12). */
@@ -125,7 +123,7 @@ export interface Venda {
 }
 
 export const COLUNAS_DA_VENDA =
-  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, needs_details, recurrence_active, recurrence_ahead, created_at";
+  "id, contact_id, lead_id, pipeline_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, product_name, name, description, amount_cents, currency, status, expected_on, expected_close_date, paid_on, is_recurring, reference, notes, payment_method, installments, closed_on, recurrence_active, recurrence_ahead, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -176,7 +174,6 @@ export const novaVendaSchema = camposSchema
 /** Editar: ausente = não mexe (sem `.default()` de propósito). `itens`/`pagamentos` SUBSTITUEM. */
 export const edicaoDeVendaSchema = camposSchema
   .partial()
-  .extend({ needs_details: z.boolean().optional() })
   .refine((v) => Object.keys(v).length > 0, { message: "Nada para alterar." });
 
 /** A etapa do card (negócio) a que a venda está atrelada — vem do embed `lead:crm_leads(...)`. */
@@ -266,7 +263,7 @@ export function statusDaOportunidade(
 
 /** As colunas da oportunidade que a venda lê (com as junções que as telas pedem). */
 export const SELECAO_DA_OPORTUNIDADE =
-  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, venda_adicional, " +
+  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, " +
   "contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), pipeline:crm_pipelines(name), stage:crm_stages!crm_leads_stage_id_fkey(name), " +
   "items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status, forma, origem_do_pagamento, id_externo)";
 
@@ -318,7 +315,6 @@ export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
     payment_method: String(l.payment_method ?? ""),
     installments: Number(l.installments) || 1,
     closed_on: fechado ?? (l.paid_on as string | null) ?? null,
-    needs_details: false,
     recurrence_active: l.recurrence_active === true,
     recurrence_ahead: Number(l.recurrence_ahead) || 1,
     created_at: l.created_at,

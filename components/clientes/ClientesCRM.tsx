@@ -42,7 +42,6 @@ import {
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { CHAVE_DE_VENDAS_PENDENTES } from "@/components/vendas/PopupDeVendaPendente";
 import { ArrowRight, MagnifyingGlass, Rows, Kanban, TextAa, Users, UploadSimple, Plus } from "@/lib/ui/icons";
 import type {
   ClienteDaLista,
@@ -405,10 +404,6 @@ export function ClientesCRM({
         expected_updated_at: p.atualizado_em,
       });
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
-      // Lead ganho: o banco efetiva a venda e o pop-up global (casca do app) a abre na hora.
-      if (dados?.etapas.find((e) => e.id === etapaId)?.is_won) {
-        await queryClient.invalidateQueries({ queryKey: CHAVE_DE_VENDAS_PENDENTES });
-      }
     } catch (e) {
       showApiError(e);
     }
@@ -507,12 +502,19 @@ export function ClientesCRM({
     }));
     return executar(() => apiClient.put(`/api/v1/leads/${p.lead_id}/origem`, corpo));
   };
-  const ganhar = (p: ParticipacaoDoCliente) =>
-    executar(async () => {
+  // Comprou só vale com pagamento: sem ele, abre a venda para registrar ao menos o sinal.
+  const ganhar = async (l: Linha, p: ParticipacaoDoCliente) => {
+    try {
       await apiClient.post(`/api/v1/leads/${p.lead_id}/win`, {});
-      // O banco efetiva a venda e o pop-up global (casca do app) a abre na hora.
-      await queryClient.invalidateQueries({ queryKey: CHAVE_DE_VENDAS_PENDENTES });
-    });
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    } catch (e) {
+      if ((e as { code?: string }).code === "comprou_exige_pagamento") {
+        await abrirVenda(l, p.lead_id);
+        return;
+      }
+      showApiError(e);
+    }
+  };
   const levarParaFunil = (p: ParticipacaoDoCliente, destinoId: string) => {
     const destino = funisPorId.get(destinoId)?.name ?? "";
     if (
@@ -636,7 +638,7 @@ export function ClientesCRM({
                   }
                   // Etapa de ganho: fecha como venda (o banco efetiva a venda e abre o pop-up).
                   if (etapasPorId.get(id)?.is_won) {
-                    void ganhar(p);
+                    void ganhar(l, p);
                     return;
                   }
                   void moverEtapa(p, id);
