@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { useT } from "@/hooks/i18n/useT";
 import { useCelular } from "@/hooks/motor/useCelular";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
-import { CaretDown, CaretUp, Copy, DotsSixVertical, Trash } from "@/lib/ui/icons";
+import { Archive, CaretDown, CaretUp, Copy, DotsSixVertical, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 export interface PropriedadeDaConfiguracao {
@@ -56,6 +56,8 @@ interface Props {
   aoMostrarTodas: (mostrar: boolean) => void;
   aoDuplicar?: () => void;
   aoApagar?: () => void;
+  /** Visualização de outra pessoa: não se edita, mas se arquiva só para quem arquiva. */
+  aoArquivar?: () => void;
   /**
    * Muda a posição da aba entre as outras (a primeira é a que a página abre). Sem isso, os
    * botões de posição não aparecem.
@@ -146,6 +148,7 @@ function Corpo({
   aoMostrarTodas,
   aoDuplicar,
   aoApagar,
+  aoArquivar,
   aoMoverAba,
   podeMoverAba,
   tipos = TIPOS,
@@ -290,6 +293,25 @@ function Corpo({
           {t("Esta visualização usa as datas da tarefa; não há propriedades para escolher.")}
         </p>
       )}
+
+      {aoArquivar && !ehPadrao ? (
+        <div className="divide-y rounded-2xl bg-secondary/60">
+          <p className="px-4 py-3 text-xs text-muted-foreground">
+            {t("Esta visualização é de outra pessoa: você pode usá-la, mas não editá-la.")}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              aoArquivar();
+              aoFechar();
+            }}
+            className="flex min-h-12 w-full items-center gap-2 px-4 text-left text-sm hover:bg-secondary"
+          >
+            <Archive size={14} aria-hidden />
+            {t("Arquivar só para mim")}
+          </button>
+        </div>
+      ) : null}
 
       {podeEditar && !ehPadrao && (aoDuplicar || aoApagar) ? (
         <div className="divide-y rounded-2xl bg-secondary/60">

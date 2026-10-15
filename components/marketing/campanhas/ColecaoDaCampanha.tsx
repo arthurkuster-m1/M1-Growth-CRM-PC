@@ -100,6 +100,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
     criarVisao,
     editarVisao,
     apagarVisao,
+    arquivarVisao,
   } = useVisoesSalvas(tela, podeEditar);
   // A ORDEM das abas é da empresa (a `position` de cada visualização); a aba de fábrica guarda
   // a própria posição nas preferências. A primeira da ordem é a que a tela abre.
@@ -460,8 +461,13 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
         nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Cartões")}
         tipo={tipoDaAba}
         tipos={TIPOS}
-        podeEditar={podeEditar}
+        podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
+        aoArquivar={
+          visaoAtiva && visaoAtiva.editavel === false
+            ? () => void arquivarVisao(visaoAtiva.id)
+            : undefined
+        }
         aoMoverAba={moverAba}
         podeMoverAba={{
           esquerda: indiceDaAba > 0,

@@ -16,6 +16,7 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import {
   MAXIMO_DE_VISUALIZACOES,
@@ -26,7 +27,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const COLUNAS = "id, organization_id, screen_key, name, type, config, position";
+const COLUNAS = "id, organization_id, screen_key, name, type, config, position, created_by";
 
 const consultaSchema = z.object({ screen: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,79}$/) });
 
@@ -54,7 +55,26 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (error) {
     return fail("internal_error", t("Erro ao listar as visualizações."), 500, { requestId });
   }
-  return ok({ views: (data ?? []).map(visaoDaLinha) }, { requestId });
+
+  // O que EU arquivei para mim some da minha lista (para os outros continua).
+  const { data: arquivadas } = await supabase
+    .from("crm_saved_view_arquivadas")
+    .select("view_id")
+    .eq("organization_id", authz.org.orgId)
+    .eq("user_id", authz.user.id);
+  const minhas = new Set(((arquivadas ?? []) as Array<{ view_id: string }>).map((a) => a.view_id));
+  const ehGerente = roleAtLeast(authz.org.role, "manager");
+  const views = (data ?? [])
+    .filter((l) => !minhas.has((l as { id: string }).id))
+    .map((l) => {
+      const dono = (l as { created_by: string | null }).created_by;
+      return {
+        ...visaoDaLinha(l),
+        created_by: dono,
+        editavel: dono === null ? ehGerente : dono === authz.user.id,
+      };
+    });
+  return ok({ views }, { requestId });
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -100,7 +120,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("internal_error", t("Erro ao salvar a visualização."), 500, { requestId });
   }
 
-  const visao = visaoDaLinha(data);
+  const visao = { ...visaoDaLinha(data), created_by: authz.user.id, editavel: true };
 
   await audit({
     organizationId: authz.org.orgId,

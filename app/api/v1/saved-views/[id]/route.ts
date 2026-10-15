@@ -14,6 +14,7 @@ import { type NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { edicaoDeVisaoSchema, visaoDaLinha } from "@/lib/motor/visualizacoes";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,26 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const COLUNAS = "id, organization_id, screen_key, name, type, config, position";
+
+/** A visualização é de quem a criou; a antiga, sem dono, é de manager+. Os outros só leem. */
+async function podeMexer(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  id: string,
+  userId: string,
+  role: Parameters<typeof roleAtLeast>[0],
+): Promise<"sim" | "nao" | "inexistente"> {
+  const { data } = await supabase
+    .from("crm_saved_views")
+    .select("created_by")
+    .eq("id", id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!data) return "inexistente";
+  const dono = (data as { created_by: string | null }).created_by;
+  if (dono === null) return roleAtLeast(role, "manager") ? "sim" : "nao";
+  return dono === userId ? "sim" : "nao";
+}
 
 interface Contexto {
   params: Promise<{ id: string }>;
@@ -46,6 +67,18 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
   }
 
   const supabase = await createClient();
+  const pode = await podeMexer(supabase, authz.org.orgId, id, authz.user.id, authz.org.role);
+  if (pode === "inexistente") {
+    return fail("not_found", t("Visualização não encontrada."), 404, { requestId });
+  }
+  if (pode === "nao") {
+    return fail(
+      "forbidden",
+      t("Esta visualização é de outra pessoa. Você pode arquivá-la só para você."),
+      403,
+      { requestId },
+    );
+  }
   const { data, error } = await supabase
     .from("crm_saved_views")
     .update(parsed.data)
@@ -61,7 +94,7 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
     return fail("internal_error", t("Erro ao salvar a visualização."), 500, { requestId });
   }
 
-  const visao = visaoDaLinha(data);
+  const visao = { ...visaoDaLinha(data), editavel: true };
 
   if (parsed.data.name !== undefined || parsed.data.type !== undefined) {
     await audit({
@@ -90,6 +123,18 @@ export async function DELETE(_req: NextRequest, ctx: Contexto): Promise<Response
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
   const supabase = await createClient();
+  const pode = await podeMexer(supabase, authz.org.orgId, id, authz.user.id, authz.org.role);
+  if (pode === "inexistente") {
+    return fail("not_found", t("Visualização não encontrada."), 404, { requestId });
+  }
+  if (pode === "nao") {
+    return fail(
+      "forbidden",
+      t("Esta visualização é de outra pessoa. Você pode arquivá-la só para você."),
+      403,
+      { requestId },
+    );
+  }
   const { data, error } = await supabase
     .from("crm_saved_views")
     .delete()

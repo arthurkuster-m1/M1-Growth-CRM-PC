@@ -165,7 +165,7 @@ export function TabelaDeProdutos({
   };
 
   const padrao = useVisualizacao("produtos");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
     "produtos",
     podeEditar,
   );
@@ -701,8 +701,13 @@ export function TabelaDeProdutos({
         nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
         tipo="tabela"
         tipos={SO_TABELA}
-        podeEditar={podeEditar}
+        podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
+        aoArquivar={
+          visaoAtiva && visaoAtiva.editavel === false
+            ? () => void arquivarVisao(visaoAtiva.id)
+            : undefined
+        }
         aoRenomear={(nome) =>
           visaoAtiva
             ? void editarVisao(visaoAtiva.id, { name: nome })

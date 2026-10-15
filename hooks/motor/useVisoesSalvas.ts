@@ -66,6 +66,9 @@ export function useVisoesSalvas(tela: string, podeEditar: boolean) {
         (lista ?? []).map((v) => (v.id === id ? { ...v, config } : v)),
       );
       if (!podeEditar) return;
+      // A visualização de outra pessoa não se grava: a mudança vale só nesta tela.
+      const visao = queryClient.getQueryData<VisaoSalva[]>(chave)?.find((v) => v.id === id);
+      if (visao && visao.editavel === false) return;
       pendentes.current.set(id, config);
       if (temporizador.current) clearTimeout(temporizador.current);
       temporizador.current = setTimeout(() => {
@@ -136,8 +139,29 @@ export function useVisoesSalvas(tela: string, podeEditar: boolean) {
     },
   });
 
+  const arquivar = useMutation({
+    mutationFn: ({ id, arquivar: valor }: { id: string; arquivar: boolean }) =>
+      apiClient.post(`${BASE}/${id}/arquivar`, { arquivar: valor }),
+    onMutate: async ({ id, arquivar: valor }) => {
+      await queryClient.cancelQueries({ queryKey: chave });
+      const antes = queryClient.getQueryData<VisaoSalva[]>(chave);
+      if (valor) {
+        pendentes.current.delete(id);
+        queryClient.setQueryData<VisaoSalva[]>(chave, (lista) =>
+          (lista ?? []).filter((v) => v.id !== id),
+        );
+      }
+      return { antes };
+    },
+    onError: (erro, _vars, contexto) => {
+      if (contexto?.antes) queryClient.setQueryData(chave, contexto.antes);
+      showApiError(erro);
+    },
+  });
+
   return {
     visoes,
+    arquivarVisao: (id: string) => arquivar.mutateAsync({ id, arquivar: true }).catch(() => undefined),
     carregando: query.isLoading,
     salvarConfig,
     criarVisao: (entrada: {

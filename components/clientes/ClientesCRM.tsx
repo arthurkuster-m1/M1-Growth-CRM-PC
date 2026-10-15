@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
@@ -109,7 +109,12 @@ const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLo
  * Quadro), filtros, ordem, agrupamento e colunas que se escondem e reordenam. As células da
  * tabela se editam no lugar, como no Notion.
  */
-export function ClientesCRM() {
+export function ClientesCRM({
+  modo = "clientes",
+}: {
+  /** `oportunidades`: os negócios por funil (quadro por padrão), com as próprias visualizações. */
+  modo?: "clientes" | "oportunidades";
+} = {}) {
   const t = useT();
   const tag = useTagDeIdioma();
   const router = useRouter();
@@ -119,6 +124,8 @@ export function ClientesCRM() {
   const org = useActiveOrg();
   const role = org?.role ?? "viewer";
 
+  const ehOportunidades = modo === "oportunidades";
+  const tela = ehOportunidades ? "oportunidades" : "clientes";
   const funilEscolhido = parametros.get("funil") ?? TODOS;
   const [busca, setBusca] = useState("");
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
@@ -146,6 +153,14 @@ export function ClientesCRM() {
   });
   const dados = consulta.data;
   const funilAtual = dados?.funis.find((f) => f.id === funilEscolhido) ?? null;
+  const primeiroFunilId = dados?.funis[0]?.id ?? null;
+  // Oportunidades sempre olham UM funil: sem funil na URL, abre o primeiro.
+  useEffect(() => {
+    if (!ehOportunidades || funilEscolhido !== TODOS || !primeiroFunilId) return;
+    const p = new URLSearchParams(parametros.toString());
+    p.set("funil", primeiroFunilId);
+    router.replace(`${caminho}?${p.toString()}`, { scroll: false });
+  }, [ehOportunidades, funilEscolhido, primeiroFunilId, parametros, router, caminho]);
   const funilValido = funilEscolhido === TODOS || funilAtual !== null;
 
   const membrosDaEquipe = useAssignableMembers(true);
@@ -159,9 +174,9 @@ export function ClientesCRM() {
 
   // As abas salvas do CRM (da organização, como as de Tarefas): cada uma é Tabela ou Quadro,
   // com os próprios filtros, ordem e colunas. "Tabela" é a aba de fábrica.
-  const padrao = useVisualizacao("clientes");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
-    "clientes",
+  const padrao = useVisualizacao(tela);
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
+    tela,
     podeEditar,
   );
   const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
@@ -176,7 +191,14 @@ export function ClientesCRM() {
       : (visoes.find((v) => v.id === abaPedida) ??
         (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
-  const vista = visaoAtiva?.type === "kanban" ? "quadro" : "tabela";
+  // Em Oportunidades o quadro do funil é a visão de abertura; "Tabela" continua a um clique.
+  const vista = visaoAtiva
+    ? visaoAtiva.type === "kanban"
+      ? "quadro"
+      : "tabela"
+    : ehOportunidades && abaPedida !== ID_DA_PADRAO
+      ? "quadro"
+      : "tabela";
   const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
@@ -1238,20 +1260,17 @@ export function ClientesCRM() {
     <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Clientes")}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {ehOportunidades ? t("Oportunidades") : t("Clientes")}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            {t("Todos os seus leads, em cada funil, num só lugar.")}
+            {ehOportunidades
+              ? t("Os negócios de cada funil, em quadro ou lista.")
+              : t("Todos os seus leads, em cada funil, num só lugar.")}
           </p>
         </div>
         {dados?.pode_editar ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/app/vendas"
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
-            >
-              {t("Vendas")}
-              <ArrowRight size={14} weight="bold" aria-hidden />
-            </Link>
             <button
               type="button"
               onClick={() => setNovoLeadAberto(true)}
@@ -1415,6 +1434,7 @@ export function ClientesCRM() {
         }
         escolhido={funilEscolhido}
         todosId={TODOS}
+        semTodos={ehOportunidades}
         podeOrganizar
         aoEscolher={(id) => ir({ funil: id })}
         aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
@@ -1577,8 +1597,13 @@ export function ClientesCRM() {
             nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
             tipo={visaoAtiva?.type ?? "tabela"}
             tipos={TIPOS_DO_CRM}
-            podeEditar={podeEditar}
+            podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
             ehPadrao={!visaoAtiva}
+            aoArquivar={
+          visaoAtiva && visaoAtiva.editavel === false
+            ? () => void arquivarVisao(visaoAtiva.id)
+            : undefined
+        }
             aoRenomear={(nome) =>
               visaoAtiva
                 ? void editarVisao(visaoAtiva.id, { name: nome })

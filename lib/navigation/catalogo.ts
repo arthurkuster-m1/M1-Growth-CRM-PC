@@ -274,8 +274,8 @@ export const NAV_CATALOG = [
     // abre o quadro de cada um. "Pipeline" é palavra de quem construiu o
     // sistema; "funil de vendas" é palavra de quem vende.
     href: "/app/clientes",
-    label: "Clientes",
-    description: "O CRM: todos os leads, por funil, em tabela ou quadro.",
+    label: "CRM",
+    description: "Clientes, oportunidades por funil e vendas (pagamentos), num só lugar.",
     icon: "Users",
     group: "crm",
     section: "O dia a dia da venda",

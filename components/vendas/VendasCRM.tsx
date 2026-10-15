@@ -95,7 +95,7 @@ export function VendasCRM() {
 
   // As abas salvas de Vendas (da organização, como as de Clientes e Tarefas). "Tabela" é a de fábrica.
   const padrao = useVisualizacao("vendas");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
     "vendas",
     podeEditarVisoes,
   );
@@ -1031,8 +1031,13 @@ export function VendasCRM() {
         nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
         tipo="tabela"
         tipos={["tabela"]}
-        podeEditar={podeEditarVisoes}
+        podeEditar={podeEditarVisoes && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
+        aoArquivar={
+          visaoAtiva && visaoAtiva.editavel === false
+            ? () => void arquivarVisao(visaoAtiva.id)
+            : undefined
+        }
         aoRenomear={(nome) =>
           visaoAtiva
             ? void editarVisao(visaoAtiva.id, { name: nome })

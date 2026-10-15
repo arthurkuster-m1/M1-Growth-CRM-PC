@@ -45,7 +45,7 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/settings/templates":
     "redirect para /app/connections?aba=oficial&sub=templates — template da Meta só existe por causa do canal oficial, e vive como sub-aba dele",
   "/app/vendas":
-    "botão \"Vendas\" no topo de Clientes — é a visão do dinheiro daquela lista, não uma porta do menu",
+    "redirect para /app/clientes?visao=vendas: Vendas virou uma visão da página CRM",
   "/app/marketing/geracao-de-demanda/resultados":
     "alcançada pelas abas de Campanhas; o hub já lista a tela-mãe",
   "/app/settings/atualizacao":

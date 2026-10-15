@@ -75,7 +75,7 @@ export function CampanhasDeDemanda() {
   const [apagando, setApagando] = useState<string[]>([]);
 
   const padrao = useVisualizacao("campanhas");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
     "campanhas",
     podeEditar,
   );
@@ -865,8 +865,13 @@ export function CampanhasDeDemanda() {
         nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Todas")}
         tipo={visaoAtiva?.type ?? "tabela"}
         tipos={TIPOS_DAS_CAMPANHAS}
-        podeEditar={podeEditar}
+        podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
+        aoArquivar={
+          visaoAtiva && visaoAtiva.editavel === false
+            ? () => void arquivarVisao(visaoAtiva.id)
+            : undefined
+        }
         aoRenomear={(nome) =>
           visaoAtiva
             ? void editarVisao(visaoAtiva.id, { name: nome })

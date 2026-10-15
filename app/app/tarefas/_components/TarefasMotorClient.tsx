@@ -526,7 +526,7 @@ export function TarefasMotorClient({
   // O layout (ordem, largura, visibilidade) é da PESSOA e mora na conta dela.
   const chaveDaTela = contatoFixo ? "tarefas-do-lead" : "tarefas";
   const padrao = useVisualizacao(chaveDaTela);
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
     chaveDaTela,
     podeEditar,
   );
@@ -1161,8 +1161,13 @@ export function TarefasMotorClient({
         aoFechar={() => setConfigurando(false)}
         nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
         tipo={visualizacao}
-        podeEditar={podeEditar}
+        podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
+        aoArquivar={
+          visaoAtiva && visaoAtiva.editavel === false
+            ? () => void arquivarVisao(visaoAtiva.id)
+            : undefined
+        }
         aoRenomear={(nome) =>
           visaoAtiva
             ? void editarVisao(visaoAtiva.id, { name: nome })

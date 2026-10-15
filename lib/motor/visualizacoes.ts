@@ -33,6 +33,10 @@ export interface VisaoSalva {
   type: TipoDeVisualizacao;
   config: PreferenciasDaTabela;
   position: number;
+  /** Quem criou (nulo = visualização antiga, sem dono). */
+  created_by?: string | null;
+  /** Eu posso editar/apagar: sou a autora (ou é antiga e sou manager+). */
+  editavel?: boolean;
 }
 
 const nomeSchema = z.string().trim().min(1).max(60);

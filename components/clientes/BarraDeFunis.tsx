@@ -52,6 +52,8 @@ interface Props {
   filtros: FiltrosDaBarra;
   escolhido: string;
   todosId: string;
+  /** Esconde o "Todos" (a tela só faz sentido com UM funil). */
+  semTodos?: boolean;
   podeOrganizar: boolean;
   aoEscolher: (id: string) => void;
   aoReordenar: (ids: string[]) => void;
@@ -245,6 +247,7 @@ export function BarraDeFunis({
   filtros,
   escolhido,
   todosId,
+  semTodos = false,
   podeOrganizar,
   aoEscolher,
   aoReordenar,
@@ -328,20 +331,22 @@ export function BarraDeFunis({
         // No celular as campanhas ocupam a linha toda; Filtrar, Arquivados e Funis descem.
         className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-1 overflow-x-auto px-1 py-0.5 max-sm:w-[calc(100%+0.5rem)] [&::-webkit-scrollbar]:hidden"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={escolhido === todosId}
-          onClick={() => aoEscolher(todosId)}
-          className={cn(
-            "h-8 shrink-0 rounded-lg border px-3 text-sm font-medium whitespace-nowrap transition-colors",
-            escolhido === todosId
-              ? "border-primary bg-primary/10 text-foreground"
-              : "bg-card text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {t("Todos")}
-        </button>
+        {semTodos ? null : (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={escolhido === todosId}
+            onClick={() => aoEscolher(todosId)}
+            className={cn(
+              "h-8 shrink-0 rounded-lg border px-3 text-sm font-medium whitespace-nowrap transition-colors",
+              escolhido === todosId
+                ? "border-primary bg-primary/10 text-foreground"
+                : "bg-card text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t("Todos")}
+          </button>
+        )}
         <DndContext
           sensors={sensores}
           collisionDetection={closestCenter}

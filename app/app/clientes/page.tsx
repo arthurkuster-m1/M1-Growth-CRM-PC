@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ClientesCRM } from "@/components/clientes/ClientesCRM";
+import { PaginaDoCRM } from "@/components/clientes/PaginaDoCRM";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Clientes" };
+export const metadata: Metadata = { title: "CRM" };
 
-/** Clientes: o CRM final — leads, funis, tabela e Kanban (sessão 2 do plano do CRM). */
-export default function ClientesPage() {
+/** CRM: clientes, oportunidades (por funil) e vendas (pagamentos e parcelas) numa página só. */
+export default function CrmPage() {
   return (
     <Suspense fallback={null}>
-      <ClientesCRM />
+      <PaginaDoCRM />
     </Suspense>
   );
 }
