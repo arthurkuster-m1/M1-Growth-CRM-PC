@@ -290,25 +290,6 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
   if (error) return fail("internal_error", t("Erro ao salvar."), 500, { requestId });
   if (!data) return fail("not_found", t("Lead não encontrado."), 404, { requestId });
 
-  // A venda é o card: campanha, anúncio e página das vendas dele (o que a análise de LP e de
-  // criativos soma) acompanham a origem do card.
-  if (campaign_id !== undefined || creative_id !== undefined || landing_page_id !== undefined) {
-    const d = data as {
-      demand_campaign_id: string | null;
-      demand_creative_id: string | null;
-      demand_landing_page_id: string | null;
-    };
-    await supabase
-      .from("crm_sales")
-      .update({
-        demand_campaign_id: d.demand_campaign_id,
-        demand_creative_id: d.demand_creative_id,
-        demand_landing_page_id: d.demand_landing_page_id,
-      })
-      .eq("lead_id", id.data)
-      .eq("organization_id", orgId);
-  }
-
   await audit({
     organizationId: orgId,
     actorUserId: authz.user.id,

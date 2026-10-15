@@ -36,25 +36,15 @@ export async function completarItensComProduto<
 }
 
 /**
- * O RESPONSÁVEL PELA VENDA: o dono do card da venda no funil. `null` tira o responsável. Só
- * aceita alguém ativo da equipe desta empresa. Devolve `false` se não conseguiu gravar.
+ * O RESPONSÁVEL PELA OPORTUNIDADE (o dono do card no funil). `null` tira o responsável. Só aceita
+ * alguém ativo da equipe desta empresa. Devolve `false` se não conseguiu gravar.
  */
 export async function definirResponsavelDaVenda(
   supabase: SupabaseClient,
   organizationId: string,
-  vendaId: string,
+  leadId: string,
   responsavelId: string | null,
 ): Promise<boolean> {
-  const { data: venda } = await supabase
-    .from("crm_sales")
-    .select("lead_id")
-    .eq("id", vendaId)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-  const leadId = (venda as { lead_id: string | null } | null)?.lead_id;
-  // Venda sem card ainda: não há onde guardar (o card nasce com a venda; raro).
-  if (!leadId) return true;
-
   if (responsavelId) {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const { isServiceRoleConfigured } = await import("@/lib/audit");
@@ -86,37 +76,191 @@ export async function definirResponsavelDaVenda(
   return !error;
 }
 
+interface ItemParaGravar {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  amount_cents: number;
+}
+interface ParcelaParaGravar {
+  number: number;
+  due_on: string;
+  paid_on?: string | null;
+  amount_cents: number;
+  status: "prevista" | "recebida" | "cancelada";
+}
+
 /**
- * O TOTAL DA VENDA RECORRENTE é a soma das parcelas (as já recebidas e as previstas, menos as
- * canceladas): conforme a assinatura gera os meses, o valor total acompanha. Venda comum não muda
- * (o total vem dos produtos). Sem parcelas, não mexe.
+ * Grava os produtos e as parcelas de uma OPORTUNIDADE. Os itens substituem os anteriores; as
+ * parcelas são atualizadas pelo número (e só se cria/apaga o que mudou), assim forma, origem, id
+ * externo, quem confirmou e os avisos de cada parcela não se perdem. Parcela cancelada fica.
+ * Devolve `false` se algum passo falhou.
  */
-export async function acertarTotalDaRecorrente(
+export async function gravarItensEParcelas(
   supabase: SupabaseClient,
   organizationId: string,
-  vendaId: string,
-): Promise<void> {
-  const { data: venda } = await supabase
-    .from("crm_sales")
-    .select("is_recurring, amount_cents")
-    .eq("id", vendaId)
+  leadId: string,
+  itens: readonly ItemParaGravar[] | undefined,
+  pagamentos: readonly ParcelaParaGravar[] | undefined,
+): Promise<boolean> {
+  if (itens !== undefined) {
+    await supabase
+      .from("crm_sale_items")
+      .delete()
+      .eq("lead_id", leadId)
+      .eq("organization_id", organizationId);
+    if (itens.length > 0) {
+      const { error } = await supabase.from("crm_sale_items").insert(
+        itens.map((i, k) => ({
+          product_id: i.product_id,
+          product_name: i.product_name,
+          quantity: i.quantity,
+          amount_cents: i.amount_cents,
+          organization_id: organizationId,
+          lead_id: leadId,
+          position: k,
+        })),
+      );
+      if (error) return false;
+    }
+  }
+  if (pagamentos !== undefined) {
+    const { data: existentes } = await supabase
+      .from("crm_sale_payments")
+      .select("id, number, status")
+      .eq("lead_id", leadId)
+      .eq("organization_id", organizationId);
+    const vivas = ((existentes ?? []) as Array<{ id: string; number: number; status: string }>)
+      .filter((p) => p.status !== "cancelada")
+      .sort((a, b) => a.number - b.number);
+    const usadas = new Set<string>();
+    const novas: ParcelaParaGravar[] = [];
+    for (const p of pagamentos) {
+      const alvo = vivas.find((e) => e.number === p.number && !usadas.has(e.id));
+      if (!alvo) {
+        novas.push(p);
+        continue;
+      }
+      usadas.add(alvo.id);
+      const { error } = await supabase
+        .from("crm_sale_payments")
+        .update({
+          due_on: p.due_on,
+          paid_on: p.paid_on ?? null,
+          amount_cents: p.amount_cents,
+          status: p.status,
+        })
+        .eq("id", alvo.id)
+        .eq("organization_id", organizationId);
+      if (error) return false;
+    }
+    const sobrando = vivas.filter((e) => !usadas.has(e.id)).map((e) => e.id);
+    if (sobrando.length > 0) {
+      await supabase
+        .from("crm_sale_payments")
+        .delete()
+        .in("id", sobrando)
+        .eq("organization_id", organizationId);
+    }
+    if (novas.length > 0) {
+      const { error } = await supabase.from("crm_sale_payments").insert(
+        novas.map((p) => ({
+          number: p.number,
+          due_on: p.due_on,
+          paid_on: p.paid_on ?? null,
+          amount_cents: p.amount_cents,
+          status: p.status,
+          organization_id: organizationId,
+          lead_id: leadId,
+        })),
+      );
+      if (error) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Onde nasce uma oportunidade nova de um contato: o funil do cadastro mais recente dele (ou o
+ * funil padrão da empresa) e a primeira etapa aberta desse funil.
+ */
+export async function destinoDeUmaOportunidadeNova(
+  supabase: SupabaseClient,
+  organizationId: string,
+  contactId: string,
+  pipelineId?: string | null,
+): Promise<{ pipeline_id: string; stage_id: string } | null> {
+  let funil = pipelineId ?? null;
+  if (!funil) {
+    const { data: ultimo } = await supabase
+      .from("crm_leads")
+      .select("pipeline_id")
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    funil = (ultimo as { pipeline_id: string } | null)?.pipeline_id ?? null;
+  }
+  if (!funil) {
+    const { data: padrao } = await supabase
+      .from("crm_pipelines")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("is_archived", false)
+      .order("is_default", { ascending: false })
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    funil = (padrao as { id: string } | null)?.id ?? null;
+  }
+  if (!funil) return null;
+  const { data: etapa } = await supabase
+    .from("crm_stages")
+    .select("id")
     .eq("organization_id", organizationId)
+    .eq("pipeline_id", funil)
+    .eq("is_won", false)
+    .eq("is_lost", false)
+    .is("qualification", null)
+    .eq("is_archived", false)
+    .order("position", { ascending: true })
+    .limit(1)
     .maybeSingle();
-  if (!venda || (venda as { is_recurring: boolean }).is_recurring !== true) return;
-  const { data: parcelas } = await supabase
-    .from("crm_sale_payments")
-    .select("amount_cents, status")
-    .eq("sale_id", vendaId)
-    .eq("organization_id", organizationId);
-  const lista = (parcelas ?? []) as Array<{ amount_cents: number | string; status: string }>;
-  const soma = lista
-    .filter((p) => p.status !== "cancelada")
-    .reduce((s, p) => s + Number(p.amount_cents), 0);
-  if (lista.length === 0 || soma <= 0) return;
-  if (Number((venda as { amount_cents: number | string }).amount_cents) === soma) return;
-  await supabase
-    .from("crm_sales")
-    .update({ amount_cents: soma })
-    .eq("id", vendaId)
-    .eq("organization_id", organizationId);
+  const stageId = (etapa as { id: string } | null)?.id;
+  return stageId ? { pipeline_id: funil, stage_id: stageId } : null;
+}
+
+/**
+ * Os campos da venda que moram na oportunidade (`crm_leads`). O que é derivado (status, datas de
+ * pagamento) não se grava: vem das parcelas e da etapa.
+ */
+export function camposDaOportunidade(c: {
+  name?: string;
+  description?: string;
+  currency?: string;
+  expected_close_date?: string | null;
+  is_recurring?: boolean;
+  recurrence_active?: boolean;
+  recurrence_ahead?: number;
+  payment_method?: string;
+  installments?: number;
+  reference?: string;
+  notes?: string;
+  demand_campaign_id?: string | null;
+}): Record<string, unknown> {
+  const o: Record<string, unknown> = {};
+  if (c.name !== undefined) o.nome_da_venda = c.name;
+  if (c.description !== undefined) o.description = c.description === "" ? null : c.description;
+  if (c.currency !== undefined) o.currency = c.currency;
+  if (c.expected_close_date !== undefined) o.expected_close_date = c.expected_close_date;
+  if (c.is_recurring !== undefined) o.is_recurring = c.is_recurring;
+  if (c.recurrence_active !== undefined) o.recurrence_active = c.recurrence_active;
+  if (c.recurrence_ahead !== undefined) o.recurrence_ahead = c.recurrence_ahead;
+  if (c.payment_method !== undefined) o.payment_method = c.payment_method;
+  if (c.installments !== undefined) o.installments = c.installments;
+  if (c.reference !== undefined) o.reference = c.reference;
+  if (c.notes !== undefined) o.notes = c.notes;
+  if (c.demand_campaign_id !== undefined) o.demand_campaign_id = c.demand_campaign_id;
+  return o;
 }

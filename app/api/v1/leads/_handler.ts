@@ -702,11 +702,12 @@ export async function createLeadHandler(
 
   if (input.contact_id) await contatoDaOrgOrThrow(supabase, ctx, input.contact_id);
 
-  // Lead único: o contato já tem negócio aberto NESTE funil? (a mesma pessoa em outros funis
-  // é permitido; duas vezes no mesmo, não.)
-  const quandoJaExiste =
-    opcoes.quandoJaExiste ?? (ctx.actor.type === "user" ? "recusar" : "reaproveitar");
-  if (input.contact_id) {
+  // Várias oportunidades por pessoa, inclusive no mesmo funil (decisão do modelo CRM): quem cria
+  // à mão cria outra. Só as entradas automáticas (IA, webhook, automação) reaproveitam a aberta,
+  // para uma mensagem nova não virar oportunidade duplicada.
+  const quandoJaExiste = opcoes.quandoJaExiste ?? "reaproveitar";
+  const criaOutra = ctx.actor.type === "user" && opcoes.quandoJaExiste === undefined;
+  if (input.contact_id && !criaOutra) {
     const existente = await negocioAbertoDoContatoNoFunil(
       supabase,
       ctx,

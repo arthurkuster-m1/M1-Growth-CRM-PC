@@ -18,7 +18,6 @@ import { logger } from "@/lib/logger";
 import { ehOperante, statusDaOrgEmbutida } from "@/lib/organizacao/operante";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { avisoDaCobranca, somarMesesNaData } from "@/lib/vendas-recorrentes";
-import { acertarTotalDaRecorrente } from "@/lib/vendas-servidor";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -42,19 +41,19 @@ export async function GET(req: NextRequest): Promise<Response> {
   // ── 1. Gerar a parcela do próximo mês ────────────────────────────────────────────────────
   let geradas = 0;
   const { data: vendas } = await admin
-    .from("crm_sales")
+    .from("crm_leads")
     .select(
-      "id, organization_id, amount_cents, closed_on, recurrence_ahead, organizations!inner(status)",
+      "id, organization_id, value_cents, closed_at, recurrence_ahead, organizations!inner(status)",
     )
     .eq("recurrence_active", true)
-    .in("status", ["comprometida", "concluida"])
+    .in("status", ["open", "won"])
     .limit(LIMITE);
   for (const v of vendas ?? []) {
     if (!ehOperante(statusDaOrgEmbutida(v.organizations as never))) continue;
     const { data: parcelas } = await admin
       .from("crm_sale_payments")
       .select("number, due_on, amount_cents, status")
-      .eq("sale_id", v.id as string)
+      .eq("lead_id", v.id as string)
       .order("due_on", { ascending: false });
     const lista = (parcelas ?? []) as Array<{
       number: number;
@@ -68,16 +67,18 @@ export async function GET(req: NextRequest): Promise<Response> {
     const faltam = alvo - abertas;
     if (faltam <= 0) continue;
     const validas = lista.filter((p) => p.status !== "cancelada");
-    const ultima = validas[0]; // a lista vem da mais recente para a mais antiga
-    let numero = ultima?.number ?? 0;
-    let base = ultima?.due_on ?? (v.closed_on as string | null) ?? hoje;
-    const valor = ultima?.amount_cents ?? Number(v.amount_cents) ?? 0;
+    // Só gera para assinatura que já tem parcela (compromisso ou pagamento): interesse não cobra.
+    if (validas.length === 0) continue;
+    const ultima = validas[0]!; // a lista vem da mais recente para a mais antiga
+    let numero = ultima.number;
+    let base = ultima.due_on ?? hoje;
+    const valor = Number(ultima.amount_cents) || Number(v.value_cents) || 0;
     for (let k = 0; k < faltam; k += 1) {
       numero += 1;
       base = somarMesesNaData(base, 1);
       const { error } = await admin.from("crm_sale_payments").insert({
         organization_id: v.organization_id,
-        sale_id: v.id,
+        lead_id: v.id,
         number: numero,
         due_on: base,
         amount_cents: valor,
@@ -92,8 +93,6 @@ export async function GET(req: NextRequest): Promise<Response> {
       }
       geradas += 1;
     }
-    // O total da assinatura acompanha as parcelas geradas.
-    await acertarTotalDaRecorrente(admin, v.organization_id as string, v.id as string);
   }
 
   // ── 2. Avisar: pagou? houve negociação? ─────────────────────────────────────────────────
@@ -101,7 +100,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { data: previstas } = await admin
     .from("crm_sale_payments")
     .select(
-      "id, organization_id, sale_id, due_on, amount_cents, reminded_before_on, reminded_after_on, crm_sales!inner(lead_id, contact_id, product_name, status, contacts(name, display_name, phone_number))",
+      "id, organization_id, lead_id, due_on, amount_cents, reminded_before_on, reminded_after_on, crm_leads!inner(id, contact_id, title, nome_da_venda, status, contacts(name, display_name, phone_number))",
     )
     .eq("status", "prevista")
     .lte(
@@ -119,13 +118,20 @@ export async function GET(req: NextRequest): Promise<Response> {
       hoje,
     );
     if (!momento) continue;
-    const venda = p.crm_sales as unknown as {
-      lead_id: string | null;
+    const oportunidade = p.crm_leads as unknown as {
+      id: string;
       status: string;
-      product_name: string;
+      title: string;
+      nome_da_venda: string;
       contacts: { name?: string; display_name?: string; phone_number?: string } | null;
     };
-    if (venda.status === "cancelada") continue;
+    const venda = {
+      lead_id: oportunidade.id as string | null,
+      status: oportunidade.status,
+      product_name: oportunidade.nome_da_venda || oportunidade.title,
+      contacts: oportunidade.contacts,
+    };
+    if (venda.status === "lost") continue;
     const cliente =
       venda.contacts?.display_name ||
       venda.contacts?.name ||

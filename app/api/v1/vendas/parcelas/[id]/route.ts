@@ -6,7 +6,6 @@
  *   { acao: "cancelar" }                          — esta parcela não vai acontecer.
  * Receber ou cancelar fecha o aviso da Central.
  */
-import { acertarTotalDaRecorrente } from "@/lib/vendas-servidor";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -75,29 +74,21 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     .update(patch)
     .eq("id", id)
     .eq("organization_id", orgId)
-    .select("id, sale_id")
+    .select("id, lead_id")
     .maybeSingle();
   if (error) return fail("internal_error", "Erro ao atualizar a parcela.", 500, { requestId });
   if (!data) return fail("not_found", "Parcela não encontrada.", 404, { requestId });
 
-  // Assinatura: o total da venda acompanha a soma das parcelas.
-  await acertarTotalDaRecorrente(supabase, orgId, data.sale_id as string);
-
   if (c.acao === "receber" || c.acao === "cancelar") {
     // Fecha o aviso da Central deste cliente (a cobrança foi resolvida).
-    const { data: venda } = await supabase
-      .from("crm_sales")
-      .select("lead_id")
-      .eq("id", data.sale_id as string)
-      .eq("organization_id", orgId)
-      .maybeSingle();
-    if (venda?.lead_id) {
+    const leadId = (data as { lead_id: string | null }).lead_id;
+    if (leadId) {
       await createAdminClient()
         .from("agent_inbox_items")
         .update({ status: "resolved" })
         .eq("organization_id", orgId)
         .eq("ref_kind", "lead")
-        .eq("ref_id", venda.lead_id as string)
+        .eq("ref_id", leadId)
         .eq("status", "open")
         .like("title", "Cobrança:%");
     }
@@ -126,12 +117,11 @@ export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .eq("status", "cancelada")
-    .select("id, sale_id")
+    .select("id")
     .maybeSingle();
   if (error) return fail("internal_error", "Erro ao excluir a parcela.", 500, { requestId });
   if (!data) {
     return fail("not_found", "Só uma parcela cancelada pode ser excluída.", 404, { requestId });
   }
-  await acertarTotalDaRecorrente(supabase, authz.org.orgId, data.sale_id as string);
   return ok({ id }, { requestId });
 }

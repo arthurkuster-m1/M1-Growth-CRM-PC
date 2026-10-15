@@ -147,41 +147,33 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     vendasPorCriativo: {} as Record<string, number>,
     vendasPorLandingPage: {} as Record<string, number>,
   };
+  // A venda é a oportunidade (card) da campanha; o dinheiro vem das parcelas dela.
   const { data: vendas } = await a.supabase
-    .from("crm_sales")
+    .from("crm_leads")
     .select(
-      "id, status, amount_cents, paid_on, closed_on, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents, paid_on)",
+      "id, status, value_cents, paid_on, closed_at, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents, paid_on)",
     )
     .eq("organization_id", a.orgId)
     .eq("demand_campaign_id", id)
-    .in("status", ["comprometida", "concluida"])
+    .neq("status", "lost")
     .limit(LIMITE);
   const dentroDaJanela = (d: string | null | undefined) => {
     if (!personalizado) return true;
     const dia2 = d ? String(d).slice(0, 10) : "";
     return dia2 !== "" && dia2 >= janela.de && dia2 <= janela.ate;
   };
-  for (const v of (vendas ?? []) as Array<{
-    status: string;
-    amount_cents: number | string;
-    paid_on: string | null;
-    closed_on: string | null;
+  for (const v of (vendas ?? []) as unknown as Array<{
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
     payments: Array<{ status: string; amount_cents: number | string; paid_on: string | null }> | null;
   }>) {
-    const parcelas = v.payments ?? [];
     let recebido = 0;
     let previsto = 0;
-    if (parcelas.length > 0) {
-      for (const p of parcelas) {
-        if (p.status === "recebida") {
-          if (dentroDaJanela(p.paid_on)) recebido += Number(p.amount_cents);
-        } else if (p.status === "prevista") previsto += Number(p.amount_cents);
-      }
-    } else if (v.status === "concluida") {
-      if (dentroDaJanela(v.paid_on ?? v.closed_on)) recebido = Number(v.amount_cents);
-    } else previsto = Number(v.amount_cents);
+    for (const p of v.payments ?? []) {
+      if (p.status === "recebida") {
+        if (dentroDaJanela(p.paid_on)) recebido += Number(p.amount_cents);
+      } else if (p.status === "prevista") previsto += Number(p.amount_cents);
+    }
     faturamento.aReceber += previsto;
     // Nada pago (no período): ainda não é venda para a análise.
     if (recebido <= 0) continue;

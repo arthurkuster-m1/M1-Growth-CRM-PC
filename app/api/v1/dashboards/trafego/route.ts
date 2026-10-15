@@ -131,40 +131,40 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   // Vendas e dinheiro recebido, pela origem da venda.
   const { data: vendasBrutas } = await a.supabase
-    .from("crm_sales")
-    .select("id, lead_id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
+    .from("crm_leads")
+    .select("id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
     .eq("organization_id", a.orgId)
     .in("demand_campaign_id", ids)
-    .in("status", ["comprometida", "concluida"])
+    .neq("status", "lost")
     .limit(5000);
-  const vendas = (vendasBrutas ?? []) as Array<{
+  // A venda é a oportunidade: o id da venda é o do card.
+  const vendas = ((vendasBrutas ?? []) as Array<{
     id: string;
-    lead_id: string | null;
     demand_campaign_id: string | null;
     demand_creative_id: string | null;
     demand_landing_page_id: string | null;
-  }>;
+  }>).map((o) => ({ ...o, lead_id: o.id as string | null }));
   const porVenda = new Map(vendas.map((v) => [v.id, v]));
   const pagamentos: PagamentoRecebido[] = [];
   const idsDeVendas = vendas.map((v) => v.id);
   for (let i = 0; i < idsDeVendas.length; i += 200) {
     const { data } = await a.supabase
       .from("crm_sale_payments")
-      .select("sale_id, paid_on, amount_cents")
+      .select("lead_id, paid_on, amount_cents")
       .eq("organization_id", a.orgId)
       .eq("status", "recebida")
       .gte("paid_on", anterior.de)
       .lte("paid_on", ate.data)
-      .in("sale_id", idsDeVendas.slice(i, i + 200));
+      .in("lead_id", idsDeVendas.slice(i, i + 200));
     for (const p of (data ?? []) as Array<{
-      sale_id: string;
+      lead_id: string;
       paid_on: string | null;
       amount_cents: number | string;
     }>) {
       if (!p.paid_on) continue;
       pagamentos.push({
-        sale_id: p.sale_id,
-        campaign_id: porVenda.get(p.sale_id)?.demand_campaign_id ?? null,
+        sale_id: p.lead_id,
+        campaign_id: porVenda.get(p.lead_id)?.demand_campaign_id ?? null,
         paid_on: String(p.paid_on).slice(0, 10),
         amount: n(p.amount_cents) / 100,
       });

@@ -66,20 +66,20 @@ export async function GET(req: NextRequest): Promise<Response> {
   const desde = inicioDaSerie < ant.de ? inicioDaSerie : ant.de;
   const { data: recebidasBrutas } = await a.supabase
     .from("crm_sale_payments")
-    .select("sale_id, amount_cents, paid_on, crm_sales!inner(contact_id, status, is_recurring)")
+    .select("lead_id, amount_cents, paid_on, crm_leads!inner(contact_id, status, is_recurring)")
     .eq("organization_id", a.orgId)
     .eq("status", "recebida")
     .gte("paid_on", desde)
     .lte("paid_on", ate.data)
-    .neq("crm_sales.status", "cancelada")
+    .neq("crm_leads.status", "lost")
     .limit(30000);
   const recebidas: Parcela[] = ((recebidasBrutas ?? []) as unknown as Array<Record<string, unknown>>).map(
     (p) => {
-      const s = (Array.isArray(p.crm_sales) ? p.crm_sales[0] : p.crm_sales) as
+      const s = (Array.isArray(p.crm_leads) ? p.crm_leads[0] : p.crm_leads) as
         | { contact_id?: string | null; is_recurring?: boolean }
         | null;
       return {
-        sale_id: String(p.sale_id),
+        sale_id: String(p.lead_id),
         amount: reais(p.amount_cents),
         paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
         due_on: null,
@@ -92,19 +92,19 @@ export async function GET(req: NextRequest): Promise<Response> {
   // O que está PREVISTO (próximos 75 dias e vencidas).
   const { data: previstasBrutas } = await a.supabase
     .from("crm_sale_payments")
-    .select("sale_id, amount_cents, due_on, crm_sales!inner(contact_id, status, is_recurring)")
+    .select("lead_id, amount_cents, due_on, crm_leads!inner(contact_id, status, is_recurring)")
     .eq("organization_id", a.orgId)
     .eq("status", "prevista")
     .lte("due_on", somarDias(hoje, 75))
-    .neq("crm_sales.status", "cancelada")
+    .neq("crm_leads.status", "lost")
     .limit(30000);
   const previstas: Parcela[] = ((previstasBrutas ?? []) as unknown as Array<Record<string, unknown>>).map(
     (p) => {
-      const s = (Array.isArray(p.crm_sales) ? p.crm_sales[0] : p.crm_sales) as
+      const s = (Array.isArray(p.crm_leads) ? p.crm_leads[0] : p.crm_leads) as
         | { contact_id?: string | null; is_recurring?: boolean }
         | null;
       return {
-        sale_id: String(p.sale_id),
+        sale_id: String(p.lead_id),
         amount: reais(p.amount_cents),
         paid_on: null,
         due_on: p.due_on ? String(p.due_on).slice(0, 10) : null,
@@ -172,18 +172,18 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   // Recorrência (assinaturas).
   const { data: assinaturas } = await a.supabase
-    .from("crm_sales")
-    .select("id, recurrence_active, updated_at, status, amount_cents")
+    .from("crm_leads")
+    .select("id, recurrence_active, updated_at, status, value_cents")
     .eq("organization_id", a.orgId)
     .eq("is_recurring", true)
-    .neq("status", "cancelada")
+    .neq("status", "lost")
     .limit(5000);
   const lista = (assinaturas ?? []) as Array<{
     id: string;
     recurrence_active: boolean;
     updated_at: string;
     status: string;
-    amount_cents: number | string;
+    value_cents: number | string | null;
   }>;
   const ativas = lista.filter((s) => s.recurrence_active);
   const encerradasNoPeriodo = lista.filter(

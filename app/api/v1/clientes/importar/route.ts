@@ -403,40 +403,42 @@ export async function POST(req: NextRequest): Promise<Response> {
         await supabase.from("crm_leads").update(patchDoCard).eq("id", leadId).eq("organization_id", orgId);
       }
 
-      // A venda do card (o banco já criou a de interesse): produto, valor e status da linha.
+      // A oportunidade (o card): produto, valor e situação da linha. O dinheiro vira parcela:
+      // "concluída" = recebida hoje; "comprometida" = prevista para hoje (o time ajusta a data).
       if (leadId && (l.produto || l.valor_cents !== null || l.status_da_venda)) {
-        const { data: venda } = await supabase
-          .from("crm_sales")
-          .select("id")
-          .eq("organization_id", orgId)
-          .eq("lead_id", leadId)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (venda) {
-          const vendaId = (venda as { id: string }).id;
-          const produto = l.produto ? produtoPorNome.get(semAcento(l.produto)) : undefined;
-          const patch: Record<string, unknown> = {};
-          if (l.produto) patch.product_name = (produto?.title ?? l.produto).slice(0, 200);
-          if (l.valor_cents !== null) patch.amount_cents = l.valor_cents;
-          if (l.status_da_venda) patch.status = l.status_da_venda;
-          if (l.status_da_venda === "comprometida" || l.status_da_venda === "concluida") {
-            patch.needs_details = true;
-          }
-          if (Object.keys(patch).length > 0) {
-            await supabase.from("crm_sales").update(patch).eq("id", vendaId).eq("organization_id", orgId);
-          }
-          if (produto && l.valor_cents !== null) {
-            await supabase.from("crm_sale_items").insert({
-              organization_id: orgId,
-              sale_id: vendaId,
-              product_id: produto.id,
-              product_name: produto.title.slice(0, 200),
-              quantity: 1,
-              amount_cents: l.valor_cents,
-              position: 0,
-            });
-          }
+        const produto = l.produto ? produtoPorNome.get(semAcento(l.produto)) : undefined;
+        if (l.valor_cents !== null) {
+          await supabase
+            .from("crm_leads")
+            .update({ value_cents: l.valor_cents > 0 ? l.valor_cents : null })
+            .eq("id", leadId)
+            .eq("organization_id", orgId);
+        }
+        if (produto && l.valor_cents !== null) {
+          await supabase.from("crm_sale_items").insert({
+            organization_id: orgId,
+            lead_id: leadId,
+            product_id: produto.id,
+            product_name: produto.title.slice(0, 200),
+            quantity: 1,
+            amount_cents: l.valor_cents,
+            position: 0,
+          });
+        }
+        if (
+          (l.status_da_venda === "comprometida" || l.status_da_venda === "concluida") &&
+          (l.valor_cents ?? 0) > 0
+        ) {
+          const hoje = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+          await supabase.from("crm_sale_payments").insert({
+            organization_id: orgId,
+            lead_id: leadId,
+            number: 1,
+            due_on: hoje,
+            paid_on: l.status_da_venda === "concluida" ? hoje : null,
+            amount_cents: l.valor_cents,
+            status: l.status_da_venda === "concluida" ? "recebida" : "prevista",
+          });
         }
       }
     } catch (err) {

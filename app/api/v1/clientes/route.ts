@@ -15,6 +15,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
+import { statusDaOportunidade } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
 
@@ -222,39 +223,63 @@ export async function GET(req: NextRequest): Promise<Response> {
     m.set(contato, s2);
   };
   for (let i = 0; i < idsDosContatos.length; i += 200) {
-    const { data: vendas } = await supabase
-      .from("crm_sales")
+    // A venda É a oportunidade (card): as que não terminaram em "Não comprou".
+    const { data: oportunidades } = await supabase
+      .from("crm_leads")
       .select(
-        "id, contact_id, lead_id, pipeline_id, status, name, product_name, amount_cents, is_recurring, demand_campaign_id, demand_creative_id, demand_landing_page_id, payments:crm_sale_payments(status, amount_cents)",
+        "id, contact_id, pipeline_id, status, title, nome_da_venda, value_cents, is_recurring, demand_campaign_id, demand_creative_id, demand_landing_page_id, items:crm_sale_items(product_name, position), payments:crm_sale_payments(status, amount_cents)",
       )
       .eq("organization_id", orgId)
-      .in("status", ["interesse", "comprometida", "concluida"])
+      .neq("status", "lost")
       .in("contact_id", idsDosContatos.slice(i, i + 200))
       .limit(5000);
-    for (const v of (vendas ?? []) as unknown as Array<{
+    for (const o of (oportunidades ?? []) as unknown as Array<{
       id: string;
       contact_id: string;
-      lead_id: string | null;
-      is_recurring: boolean | null;
       pipeline_id: string | null;
+      status: string;
+      title: string | null;
+      nome_da_venda: string | null;
+      value_cents: number | string | null;
+      is_recurring: boolean | null;
       demand_campaign_id: string | null;
-      status: "interesse" | "comprometida" | "concluida";
-      name: string | null;
-      product_name: string | null;
-      amount_cents: number | string;
       demand_creative_id: string | null;
       demand_landing_page_id: string | null;
+      items: Array<{ product_name: string; position: number }> | null;
       payments: Array<{ status: string; amount_cents: number | string }> | null;
     }>) {
-      const pagamentos = (v.payments ?? []).filter((p) => p.status !== "cancelada");
-      const pago =
-        pagamentos.length === 0
-          ? v.status === "concluida"
-            ? Number(v.amount_cents)
-            : 0
-          : pagamentos
-              .filter((p) => p.status === "recebida")
-              .reduce((s2, p) => s2 + Number(p.amount_cents), 0);
+      const pagamentosTodos = o.payments ?? [];
+      const nomesDosProdutos = [...(o.items ?? [])]
+        .sort((x, y) => (x.position ?? 0) - (y.position ?? 0))
+        .map((x) => x.product_name)
+        .filter(Boolean)
+        .join(" + ");
+      const vivasDaVenda = pagamentosTodos.filter((p) => p.status !== "cancelada");
+      const v = {
+        id: o.id,
+        contact_id: o.contact_id,
+        lead_id: o.id as string | null,
+        is_recurring: o.is_recurring,
+        pipeline_id: o.pipeline_id,
+        demand_campaign_id: o.demand_campaign_id,
+        status: statusDaOportunidade(o.status, pagamentosTodos) as
+          | "interesse"
+          | "comprometida"
+          | "concluida",
+        name: o.nome_da_venda,
+        product_name: nomesDosProdutos || o.title,
+        amount_cents:
+          o.is_recurring === true && vivasDaVenda.length > 0
+            ? vivasDaVenda.reduce((s2, p) => s2 + Number(p.amount_cents), 0)
+            : Number(o.value_cents) || 0,
+        demand_creative_id: o.demand_creative_id,
+        demand_landing_page_id: o.demand_landing_page_id,
+        payments: pagamentosTodos,
+      };
+      const pagamentos = vivasDaVenda;
+      const pago = pagamentos
+        .filter((p) => p.status === "recebida")
+        .reduce((s2, p) => s2 + Number(p.amount_cents), 0);
       const lista = ativasPorContato.get(v.contact_id) ?? [];
       lista.push({
         id: v.id,

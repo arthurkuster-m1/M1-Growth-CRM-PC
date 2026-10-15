@@ -1,4 +1,7 @@
-/** PATCH/DELETE /api/v1/vendas/[id] — edita ou apaga uma venda (agent+); apagar a última venda de um card apaga o card. */
+/**
+ * PATCH/DELETE /api/v1/vendas/[id] — edita ou apaga uma venda (agent+). O id é o da oportunidade
+ * (card do funil). Apagar a venda apaga a oportunidade, e só se ainda não recebeu pagamento.
+ */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -6,13 +9,15 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { encerraDemanda } from "@/lib/leads/encerramento";
 import { createClient } from "@/lib/supabase/server";
 import {
-  acertarTotalDaRecorrente,
+  camposDaOportunidade,
   completarItensComProduto,
   definirResponsavelDaVenda,
+  gravarItensEParcelas,
 } from "@/lib/vendas-servidor";
-import { COLUNAS_DA_VENDA, edicaoDeVendaSchema, vendaDaLinha } from "@/lib/vendas";
+import { SELECAO_DA_OPORTUNIDADE, edicaoDeVendaSchema, vendaDaOportunidade } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -21,7 +26,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const negado = await requireSupportWrite();
   if (negado) return negado;
   const requestId = randomUUID();
-  const authz = await requireRole("agent", { requestId, resource: "crm_sales" });
+  const authz = await requireRole("agent", { requestId, resource: "crm_leads" });
   if (!authz.ok) return authz.response;
   const { id } = await ctx.params;
   const corpo = edicaoDeVendaSchema.safeParse(await req.json().catch(() => null));
@@ -29,12 +34,28 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     return fail("validation_failed", "Dados inválidos.", 422, { requestId });
   }
   const supabase = await createClient();
-  const { itens: itensBrutos, pagamentos, responsavel_id: responsavel, ...campos } = corpo.data;
+  const orgId = authz.org.orgId;
+  const {
+    itens: itensBrutos,
+    pagamentos,
+    responsavel_id: responsavel,
+    status,
+    ...campos
+  } = corpo.data;
+
+  const { data: existe } = await supabase
+    .from("crm_leads")
+    .select("id, status")
+    .eq("id", id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!existe) return fail("not_found", "Venda não encontrada.", 404, { requestId });
+
   let itens:
     | Array<{ product_id: string; product_name: string; quantity: number; amount_cents: number }>
     | undefined;
   if (itensBrutos !== undefined) {
-    const completos = await completarItensComProduto(supabase, authz.org.orgId, itensBrutos);
+    const completos = await completarItensComProduto(supabase, orgId, itensBrutos);
     if (!completos.ok) {
       return fail(
         "validation_failed",
@@ -45,116 +66,116 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     }
     itens = completos.itens;
   }
-  const orgId = authz.org.orgId;
-  const detalhou = itens !== undefined || pagamentos !== undefined;
-  // Só o responsável mudou: não há coluna da venda para atualizar (só confirma que ela existe).
-  const soResponsavel = Object.keys(campos).length === 0 && !detalhou;
-  const { data, error } = soResponsavel
-    ? await supabase
-        .from("crm_sales")
-        .select("id")
-        .eq("id", id)
-        .eq("organization_id", orgId)
-        .maybeSingle()
-    : await supabase
-    .from("crm_sales")
-    .update({
-      ...campos,
-      ...(itens && itens.length > 0
-        ? { amount_cents: itens.reduce((s, i) => s + i.amount_cents, 0) }
-        : {}),
-      ...(pagamentos && pagamentos.length > 0 ? { installments: pagamentos.length } : {}),
-      ...(detalhou && campos.needs_details === undefined ? { needs_details: false } : {}),
-    })
-    .eq("id", id)
-    .eq("organization_id", orgId)
-    .select("id")
-    .maybeSingle();
-  if (error) return fail("internal_error", "Erro ao salvar a venda.", 500, { requestId });
-  if (!data) return fail("not_found", "Venda não encontrada.", 404, { requestId });
+
+  const patch: Record<string, unknown> = {
+    ...camposDaOportunidade(campos),
+    ...((itens === undefined || itens.length === 0) && campos.amount_cents !== undefined
+      ? { value_cents: campos.amount_cents > 0 ? campos.amount_cents : null }
+      : {}),
+    ...(pagamentos && pagamentos.length > 0 ? { installments: pagamentos.length } : {}),
+  };
+  if (Object.keys(patch).length > 0) {
+    const { error } = await supabase
+      .from("crm_leads")
+      .update(patch)
+      .eq("id", id)
+      .eq("organization_id", orgId);
+    if (error) return fail("internal_error", "Erro ao salvar a venda.", 500, { requestId });
+  }
   if (responsavel !== undefined) {
     const ok2 = await definirResponsavelDaVenda(supabase, orgId, id, responsavel);
     if (!ok2) return fail("internal_error", "Erro ao salvar o responsável.", 500, { requestId });
   }
+  if (itens !== undefined || pagamentos !== undefined) {
+    const gravou = await gravarItensEParcelas(supabase, orgId, id, itens, pagamentos);
+    if (!gravou) {
+      return fail("internal_error", "Erro ao salvar os itens ou as parcelas.", 500, { requestId });
+    }
+  }
 
-  // Itens e parcelas SUBSTITUEM os anteriores (a venda é o que a tela mandou).
-  if (itens !== undefined) {
-    await supabase.from("crm_sale_items").delete().eq("sale_id", id).eq("organization_id", orgId);
-    if (itens.length > 0) {
-      const { error: e1 } = await supabase
-        .from("crm_sale_items")
-        .insert(itens.map((i, k) => ({ ...i, organization_id: orgId, sale_id: id, position: k })));
-      if (e1) return fail("internal_error", "Erro ao salvar os itens.", 500, { requestId });
-    }
-  }
-  if (pagamentos !== undefined) {
-    // A tela manda a lista inteira; o servidor ATUALIZA a parcela de mesmo número e só cria/apaga o
-    // que mudou — assim forma, origem, id externo, quem confirmou e os avisos da parcela não se
-    // perdem a cada gravação. Parcela cancelada fica (ela reabre o interesse e se exclui à parte).
-    const { data: existentes } = await supabase
+  // O dinheiro mora nas parcelas: "Pago" sem parcela cria a parcela recebida hoje; "Comprometido"
+  // sem parcela cria a prevista para hoje; desmarcar o "à vista" recebido volta a parcela a prevista.
+  if (status === "concluida" || status === "comprometida") {
+    const { data: parc } = await supabase
       .from("crm_sale_payments")
-      .select("id, number, status")
-      .eq("sale_id", id)
-      .eq("organization_id", orgId);
-    const vivas = ((existentes ?? []) as Array<{ id: string; number: number; status: string }>)
-      .filter((p) => p.status !== "cancelada")
-      .sort((a, b) => a.number - b.number);
-    const usadas = new Set<string>();
-    const novas: typeof pagamentos = [];
-    for (const p of pagamentos) {
-      const alvo = vivas.find((e) => e.number === p.number && !usadas.has(e.id));
-      if (!alvo) {
-        novas.push(p);
-        continue;
-      }
-      usadas.add(alvo.id);
-      const { error: eu } = await supabase
+      .select("id, status")
+      .eq("lead_id", id)
+      .eq("organization_id", orgId)
+      .neq("status", "cancelada");
+    const vivas = (parc ?? []) as Array<{ id: string; status: string }>;
+    const { data: valorRow } = await supabase
+      .from("crm_leads")
+      .select("value_cents")
+      .eq("id", id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    const valor = Number((valorRow as { value_cents: number | string | null } | null)?.value_cents) || 0;
+    const hoje = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+    if (vivas.length === 0 && valor > 0) {
+      await supabase.from("crm_sale_payments").insert({
+        organization_id: orgId,
+        lead_id: id,
+        number: 1,
+        due_on: hoje,
+        paid_on: status === "concluida" ? hoje : null,
+        amount_cents: valor,
+        status: status === "concluida" ? "recebida" : "prevista",
+      });
+    } else if (vivas.length === 1 && vivas[0]!.status === "recebida" && status === "comprometida") {
+      await supabase
         .from("crm_sale_payments")
-        .update({
-          due_on: p.due_on,
-          paid_on: p.paid_on ?? null,
-          amount_cents: p.amount_cents,
-          status: p.status,
-        })
-        .eq("id", alvo.id)
+        .update({ status: "prevista" })
+        .eq("id", vivas[0]!.id)
         .eq("organization_id", orgId);
-      if (eu) return fail("internal_error", "Erro ao salvar as parcelas.", 500, { requestId });
-    }
-    const sobrando = vivas.filter((e) => !usadas.has(e.id)).map((e) => e.id);
-    if (sobrando.length > 0) {
-      await supabase.from("crm_sale_payments").delete().in("id", sobrando).eq("organization_id", orgId);
-    }
-    if (novas.length > 0) {
-      const { error: e2 } = await supabase.from("crm_sale_payments").insert(
-        novas.map((p) => ({
-          number: p.number,
-          due_on: p.due_on,
-          paid_on: p.paid_on ?? null,
-          amount_cents: p.amount_cents,
-          status: p.status,
-          organization_id: orgId,
-          sale_id: id,
-        })),
-      );
-      if (e2) return fail("internal_error", "Erro ao salvar as parcelas.", 500, { requestId });
+    } else if (vivas.length === 1 && vivas[0]!.status === "prevista" && status === "concluida") {
+      await supabase
+        .from("crm_sale_payments")
+        .update({ status: "recebida", paid_on: hoje })
+        .eq("id", vivas[0]!.id)
+        .eq("organization_id", orgId);
     }
   }
-  await acertarTotalDaRecorrente(supabase, orgId, id);
+
+  // "Cancelada": a oportunidade termina como Não comprou e as parcelas abertas saem.
+  if (status === "cancelada" && (existe as { status: string }).status !== "lost") {
+    await supabase
+      .from("crm_sale_payments")
+      .update({ status: "cancelada" })
+      .eq("lead_id", id)
+      .eq("organization_id", orgId)
+      .eq("status", "prevista");
+    try {
+      await encerraDemanda(
+        supabase,
+        {
+          organization_id: orgId,
+          actor: { type: "user", id: authz.user.id },
+          requestId,
+          idioma: authz.user.idioma,
+        },
+        { leadId: id, desfecho: "lost", motivo: "cancelled_by_customer" },
+      );
+    } catch {
+      return fail("internal_error", "Erro ao cancelar a venda.", 500, { requestId });
+    }
+  }
+
   const { data: venda } = await supabase
-    .from("crm_sales")
-    .select(
-      `${COLUNAS_DA_VENDA}, creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status, forma, origem_do_pagamento, id_externo)`,
-    )
+    .from("crm_leads")
+    .select(SELECAO_DA_OPORTUNIDADE)
     .eq("id", id)
     .single();
-  return ok({ venda: vendaDaLinha(venda as unknown as Record<string, unknown>) }, { requestId });
+  return ok(
+    { venda: vendaDaOportunidade(venda as unknown as Record<string, unknown>) },
+    { requestId },
+  );
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
   const negado = await requireSupportWrite();
   if (negado) return negado;
   const requestId = randomUUID();
-  const authz = await requireRole("agent", { requestId, resource: "crm_sales" });
+  const authz = await requireRole("agent", { requestId, resource: "crm_leads" });
   if (!authz.ok) return authz.response;
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) {
@@ -162,29 +183,25 @@ export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const supabase = await createClient();
   const orgId = authz.org.orgId;
-  const { data: antes } = await supabase
-    .from("crm_sales")
-    .select("lead_id")
-    .eq("id", id)
+  const { count: recebidas } = await supabase
+    .from("crm_sale_payments")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", id)
     .eq("organization_id", orgId)
-    .maybeSingle();
-  const leadId = (antes as { lead_id: string | null } | null)?.lead_id ?? null;
+    .eq("status", "recebida");
+  if ((recebidas ?? 0) > 0) {
+    return fail(
+      "conflict",
+      "Esta venda já recebeu pagamento. Cancele as parcelas recebidas antes de apagar.",
+      409,
+      { requestId },
+    );
+  }
   const { error } = await supabase
-    .from("crm_sales")
+    .from("crm_leads")
     .delete()
     .eq("id", id)
     .eq("organization_id", orgId);
   if (error) return fail("internal_error", "Erro ao apagar a venda.", 500, { requestId });
-  // A venda é o card do funil: sem venda, não há card. O card some junto com a última venda dele.
-  if (leadId) {
-    const { count } = await supabase
-      .from("crm_sales")
-      .select("id", { count: "exact", head: true })
-      .eq("lead_id", leadId)
-      .eq("organization_id", orgId);
-    if ((count ?? 0) === 0) {
-      await supabase.from("crm_leads").delete().eq("id", leadId).eq("organization_id", orgId);
-    }
-  }
   return ok({ apagado: true }, { requestId });
 }

@@ -84,6 +84,8 @@ interface Dados {
 /** Uma linha da tabela: o lead (contato) e, num funil escolhido, a participação dele nele. */
 interface Linha extends ClienteDaLista {
   participacao: ParticipacaoDoCliente | null;
+  /** Identifica a linha: o contato (Clientes) ou a oportunidade (Oportunidades). */
+  chave: string;
 }
 
 const PALETA: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
@@ -292,6 +294,21 @@ export function ClientesCRM({
 
   const linhas: Linha[] = useMemo(() => {
     const base = dados?.clientes ?? [];
+    // Oportunidades: UMA LINHA POR OPORTUNIDADE (todas as de todos os leads; o funil e a campanha
+    // filtram), cada uma com a venda dela.
+    if (ehOportunidades) {
+      return base.flatMap((c) =>
+        c.participacoes
+          .filter((p) => !funilAtual || p.funil_id === funilAtual.id)
+          .map((p) => ({
+            ...c,
+            participacao: p,
+            participacoes: [p],
+            vendas_ativas: c.vendas_ativas.filter((v) => v.lead_id === p.lead_id),
+            chave: p.lead_id,
+          })),
+      );
+    }
     return base.map((c) => {
       const doFunil =
         funilAtual === null
@@ -299,9 +316,9 @@ export function ClientesCRM({
           : (c.participacoes.find((p) => p.funil_id === funilAtual.id && p.status === "open") ??
             c.participacoes.find((p) => p.funil_id === funilAtual.id) ??
             null);
-      return { ...c, participacao: doFunil };
+      return { ...c, participacao: doFunil, chave: c.contact_id };
     });
-  }, [dados, funilAtual]);
+  }, [dados, funilAtual, ehOportunidades]);
 
   /** Uma participação por funil, na mesma ordem nas colunas Funis e Etapa (uma linha por funil). */
   const porFunil = (l: Linha): ParticipacaoDoCliente[] => {
@@ -1535,7 +1552,7 @@ export function ClientesCRM({
               ) : (
                 <TabelaDoMotor
                   linhas={resultado.linhas}
-                  idDe={(l) => l.contact_id}
+                  idDe={(l) => l.chave}
                   colunas={mostradas}
                   grupos={grupos}
                   carregando={consulta.isLoading}
@@ -1559,7 +1576,7 @@ export function ClientesCRM({
                   aoSelecionar={(id, { faixa }) =>
                     setSelecionadas((atual) => {
                       const proximo = new Set(atual);
-                      const ids = resultado.linhas.map((l) => l.contact_id);
+                      const ids = resultado.linhas.map((l) => l.chave);
                       if (faixa && atual.size > 0) {
                         const ultimo = ids.findLastIndex((x) => atual.has(x));
                         const alvo = ids.indexOf(id);
@@ -1576,14 +1593,18 @@ export function ClientesCRM({
                   }
                   aoSelecionarTodas={(marcar) =>
                     setSelecionadas(
-                      marcar ? new Set(resultado.linhas.map((l) => l.contact_id)) : new Set(),
+                      marcar ? new Set(resultado.linhas.map((l) => l.chave)) : new Set(),
                     )
                   }
                 />
               )}
               {podeEditar ? (
                 <AcoesEmMassaDeClientes
-                  contatoIds={[...selecionadas]}
+                  contatoIds={[
+                    ...new Set(
+                      resultado.linhas.filter((l) => selecionadas.has(l.chave)).map((l) => l.contact_id),
+                    ),
+                  ]}
                   podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
                   aoLimpar={() => setSelecionadas(new Set())}
                 />

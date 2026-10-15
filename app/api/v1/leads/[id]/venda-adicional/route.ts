@@ -117,15 +117,6 @@ export async function POST(
   }
   const novoId = (criado as { id: string }).id;
 
-  const { data: venda } = await supabase
-    .from("crm_sales")
-    .select("id")
-    .eq("organization_id", orgId)
-    .eq("lead_id", novoId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
   void emitLeadActivity(supabase, {
     organizationId: orgId,
     leadId: novoId,
@@ -147,7 +138,7 @@ export async function POST(
   });
 
   return ok(
-    { lead_id: novoId, sale_id: (venda as { id: string } | null)?.id ?? null },
+    { lead_id: novoId, sale_id: novoId },
     { requestId, status: 201 },
   );
 }

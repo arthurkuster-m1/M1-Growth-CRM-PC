@@ -11,14 +11,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import { somarMesesNaData } from "@/lib/vendas-recorrentes";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { lerNumero } from "@/lib/marketing/calculadora";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
-import { CaretDown, Plus, Trash } from "@/lib/ui/icons";
+import { Plus, Trash } from "@/lib/ui/icons";
 import {
   FORMAS_DE_PAGAMENTO,
   rotuloDaForma,
@@ -73,28 +72,6 @@ const textoDe = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const reais = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-
-const STATUS_DA_VENDA_TAG: Record<
-  "interesse" | "comprometida" | "concluida" | "cancelada",
-  { rotulo: string; classe: string }
-> = {
-  interesse: {
-    rotulo: "Interesse",
-    classe: "border-blue-500/60 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  },
-  comprometida: {
-    rotulo: "Comprometida",
-    classe: "border-yellow-500/70 bg-yellow-500/10 text-yellow-800 dark:text-yellow-300",
-  },
-  concluida: {
-    rotulo: "Concluída",
-    classe: "border-green-500/60 bg-green-500/10 text-green-700 dark:text-green-300",
-  },
-  cancelada: {
-    rotulo: "Cancelada",
-    classe: "border-gray-400/70 bg-gray-500/10 text-muted-foreground",
-  },
-};
 
 const BARRAS = {
   blue: "border-l-blue-500",
@@ -168,14 +145,10 @@ export function DialogoDaVenda({
   aoApagar?: () => Promise<void>;
 }) {
   const t = useT();
-  const fechada = venda ? venda.status === "comprometida" || venda.status === "concluida" : true;
   const [busca, setBusca] = useState("");
   const [contato, setContato] = useState(venda?.contact_id ?? contatoInicial?.contact_id ?? "");
-  const [situacao, setSituacao] = useState<
-    "interesse" | "comprometida" | "concluida" | "cancelada"
-  >(venda ? venda.status : "comprometida");
-  // Comprometida e concluída pedem os produtos, o valor e as parcelas.
-  const fechadaSit = situacao === "comprometida" || situacao === "concluida";
+  // O dinheiro mora nas PARCELAS (comprometido, pago, cancelado); a oportunidade só tem a etapa
+  // do funil. O pagamento aparece sempre: a primeira parcela recebida leva a etapa a Comprou.
   const { produtos } = useCatalogoDeProdutos();
   const [itens, setItens] = useState<Array<{ produtoId: string; valor: string }>>(() => {
     if (venda?.itens && venda.itens.length > 0) {
@@ -341,32 +314,12 @@ export function DialogoDaVenda({
       ? { ...contatoInicial, telefone: null }
       : null);
 
-  /**
-   * Trocar o status pela tag. "Concluída" marca todas as parcelas como recebidas (a tela mostra o
-   * que vai ser gravado); as outras não mexem nas parcelas.
-   */
-  function escolherSituacao(v: "interesse" | "comprometida" | "concluida" | "cancelada") {
-    setSituacao(v);
-    if (v === "concluida") {
-      setParcelas((l) =>
-        l.map((x) => ({ ...x, recebida: true, paid_on: x.paid_on ?? hoje() })),
-      );
-    }
-  }
-
-  /** Marcar ou desmarcar uma parcela também acerta o status: tudo pago = concluída; faltou uma = comprometida. */
+  /** Marcar ou desmarcar uma parcela como recebida. */
   function marcarParcelaNoFormulario(i: number, recebida: boolean) {
     const proximas = parcelas.map((x, k) =>
       k === i ? { ...x, recebida, paid_on: recebida ? (x.paid_on ?? hoje()) : null } : x,
     );
     setParcelas(proximas);
-    // Assinatura em andamento nunca "conclui": sempre vem a parcela do mês seguinte.
-    if (recorrente && recorrenciaAtiva) return;
-    if (proximas.length > 0 && proximas.every((x) => x.recebida)) {
-      if (situacao === "comprometida") setSituacao("concluida");
-    } else if (situacao === "concluida") {
-      setSituacao("comprometida");
-    }
   }
 
   /** O valor da última parcela (é o que a próxima copia), no formato do campo. */
@@ -455,8 +408,8 @@ export function DialogoDaVenda({
   const itensValidos = itens.filter((i) => i.produtoId !== "");
   const valido =
     contato !== "" &&
-    (situacao === "cancelada" || itensValidos.length > 0) &&
-    (!fechadaSit || total > 0) &&
+    itensValidos.length > 0 &&
+    (parcelas.length === 0 || total > 0) &&
     (!lembreteAtivo || lembreteDia !== "");
 
   /**
@@ -465,7 +418,8 @@ export function DialogoDaVenda({
    * número; com alguma recebida, a diferença vai para a última ainda aberta.
    */
   function parcelasAjustadas(): typeof parcelas {
-    if (!fechadaSit || total <= 0) return parcelas;
+    // Sem parcelas ainda é só uma oportunidade: o sistema não inventa compromisso.
+    if (parcelas.length === 0 || total <= 0) return parcelas;
     // Venda recorrente: as parcelas (uma por mês, já pagas ou previstas) são o histórico e não
     // se ajustam ao valor da venda.
     if (recorrente) return parcelas;
@@ -492,20 +446,19 @@ export function DialogoDaVenda({
   async function salvar() {
     setSalvando(true);
     setErro(null);
-    // As parcelas vão como estão na tela (o status "concluída" já marcou todas como recebidas).
+    // As parcelas vão como estão na tela; o status da venda é derivado delas no servidor.
     const base = parcelasAjustadas();
     const todasRecebidas = base.length > 0 && base.every((p) => p.recebida);
-    const pagos = fechadaSit ? base : [];
+    const pagos = base;
     const salvou = await aoSalvar({
       ...(venda ? { id: venda.id } : {}),
       contact_id: contato,
-      // Faltou uma parcela? Não é "concluída": é comprometida. E tudo pago fecha como concluída.
       status:
-        fechadaSit && base.length > 0
-          ? todasRecebidas && !(recorrente && recorrenciaAtiva)
+        base.length === 0
+          ? "interesse"
+          : todasRecebidas && !(recorrente && recorrenciaAtiva)
             ? "concluida"
-            : "comprometida"
-          : situacao,
+            : "comprometida",
       itens: itensValidos.map((i) => ({
         product_id: i.produtoId,
         quantity: 1,
@@ -518,7 +471,7 @@ export function DialogoDaVenda({
         amount_cents: centavos(p.valor),
         status: p.recebida ? ("recebida" as const) : ("prevista" as const),
       })),
-      payment_method: fechadaSit ? forma : "",
+      payment_method: base.length > 0 ? forma : "",
       is_recurring: recorrente,
       recurrence_active: recorrente && recorrenciaAtiva,
       // Escolheu os meses e não clicou em Aplicar? Vale a escolha (a rotina diária completa).
@@ -670,34 +623,6 @@ export function DialogoDaVenda({
                 </select>
               </div>
             ) : null}
-            <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Status da venda")}</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className={`inline-flex h-10 w-fit items-center gap-2 rounded-full border-[1.5px] px-4 text-sm font-medium ${STATUS_DA_VENDA_TAG[situacao].classe}`}
-                  >
-                    {t(STATUS_DA_VENDA_TAG[situacao].rotulo)}
-                    <CaretDown size={12} weight="bold" aria-hidden />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="grid w-56 gap-1.5 p-2">
-                  {(["interesse", "comprometida", "concluida", "cancelada"] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => escolherSituacao(v)}
-                      className={`rounded-full border-[1.5px] px-3 py-1.5 text-left text-sm font-medium ${STATUS_DA_VENDA_TAG[v].classe} ${
-                        v === situacao ? "ring-2 ring-primary/40" : ""
-                      }`}
-                    >
-                      {t(STATUS_DA_VENDA_TAG[v].rotulo)}
-                    </button>
-                  ))}
-                </PopoverContent>
-              </Popover>
-            </div>
           </div>
         </Fase>
 
@@ -862,7 +787,7 @@ export function DialogoDaVenda({
           </div>
         </Fase>
 
-        {fechadaSit ? (
+        {true ? (
           <Fase titulo={t("Pagamento")} cor="green">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="grid grid-cols-1 gap-1">
@@ -1244,7 +1169,7 @@ export function DialogoDaVenda({
               onClick={aoFechar}
               className="h-10 rounded-xl border px-4 text-sm font-medium hover:bg-secondary"
             >
-              {fechada && venda?.needs_details ? t("Detalhar depois") : t("Cancelar")}
+              {t("Cancelar")}
             </button>
             <button
               type="button"

@@ -248,6 +248,96 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
   };
 }
 
+/**
+ * A situação de uma OPORTUNIDADE vista como venda (derivada, nunca digitada): o dinheiro mora nas
+ * PARCELAS (prevista = comprometido, recebida = pago, cancelada) e a oportunidade só tem a etapa
+ * do funil. Aqui só se traduz para o vocabulário das telas de venda.
+ */
+export function statusDaOportunidade(
+  leadStatus: string | null | undefined,
+  parcelas: ReadonlyArray<{ status: string }>,
+): StatusDaVenda {
+  if (leadStatus === "lost") return "cancelada";
+  const vivas = parcelas.filter((p) => p.status !== "cancelada");
+  if (vivas.length > 0 && vivas.every((p) => p.status === "recebida")) return "concluida";
+  if (vivas.length > 0) return "comprometida";
+  return "interesse";
+}
+
+/** As colunas da oportunidade que a venda lê (com as junções que as telas pedem). */
+export const SELECAO_DA_OPORTUNIDADE =
+  "id, contact_id, pipeline_id, stage_id, status, title, nome_da_venda, description, value_cents, currency, expected_close_date, paid_on, closed_at, created_at, owner_user_id, demand_campaign_id, demand_landing_page_id, demand_creative_id, is_recurring, recurrence_active, recurrence_ahead, payment_method, installments, reference, notes, venda_adicional, " +
+  "contact:contacts(name, display_name, phone_number), campaign:demand_campaigns(name), creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), pipeline:crm_pipelines(name), stage:crm_stages!crm_leads_stage_id_fkey(name), " +
+  "items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status, forma, origem_do_pagamento, id_externo)";
+
+/** Uma oportunidade (linha de `crm_leads` com `SELECAO_DA_OPORTUNIDADE`) no formato da venda. */
+export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
+  const itens = Array.isArray(l.items) ? (l.items as Array<Record<string, unknown>>) : [];
+  const parcelas = Array.isArray(l.payments) ? (l.payments as Array<Record<string, unknown>>) : [];
+  const nomes = [...itens]
+    .sort((a, b) => (Number(a.position) || 0) - (Number(b.position) || 0))
+    .map((i) => String(i.product_name ?? ""))
+    .filter(Boolean)
+    .join(" + ");
+  const vivas = parcelas.filter((p) => p.status !== "cancelada");
+  const recorrente = l.is_recurring === true;
+  // Assinatura: o total é a soma das parcelas (o valor dos produtos é o da mensalidade).
+  const total =
+    recorrente && vivas.length > 0
+      ? vivas.reduce((s, p) => s + (Number(p.amount_cents) || 0), 0)
+      : Number(l.value_cents) || itens.reduce((s, i) => s + (Number(i.amount_cents) || 0), 0);
+  const previstas = parcelas
+    .filter((p) => p.status === "prevista")
+    .map((p) => String(p.due_on))
+    .sort();
+  const fechado = typeof l.closed_at === "string" ? l.closed_at.slice(0, 10) : null;
+  const status = statusDaOportunidade(
+    l.status as string | null,
+    parcelas.map((p) => ({ status: String(p.status) })),
+  );
+  return vendaDaLinha({
+    id: l.id,
+    contact_id: l.contact_id,
+    lead_id: l.id,
+    pipeline_id: l.pipeline_id,
+    demand_campaign_id: l.demand_campaign_id ?? null,
+    demand_landing_page_id: l.demand_landing_page_id ?? null,
+    demand_creative_id: l.demand_creative_id ?? null,
+    product_name: nomes || String(l.title ?? ""),
+    name: String(l.nome_da_venda ?? ""),
+    description: String(l.description ?? ""),
+    amount_cents: total,
+    currency: l.currency ?? "BRL",
+    status,
+    expected_on: previstas[0] ?? null,
+    expected_close_date: l.expected_close_date ?? null,
+    paid_on: l.paid_on ?? null,
+    is_recurring: recorrente,
+    reference: String(l.reference ?? ""),
+    notes: String(l.notes ?? ""),
+    payment_method: String(l.payment_method ?? ""),
+    installments: Number(l.installments) || 1,
+    closed_on: fechado ?? (l.paid_on as string | null) ?? null,
+    needs_details: false,
+    recurrence_active: l.recurrence_active === true,
+    recurrence_ahead: Number(l.recurrence_ahead) || 1,
+    created_at: l.created_at,
+    contact: l.contact,
+    campaign: l.campaign,
+    creative: l.creative,
+    landing_page: l.landing_page,
+    pipeline: l.pipeline,
+    items: l.items,
+    payments: l.payments,
+    lead: {
+      stage_id: l.stage_id,
+      status: l.status,
+      owner_user_id: l.owner_user_id ?? null,
+      stage: l.stage,
+    },
+  });
+}
+
 export interface TotaisDeVendas {
   recebido: number;
   comprometido: number;

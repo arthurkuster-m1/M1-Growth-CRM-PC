@@ -185,9 +185,23 @@ export function recusaDeMotivoDaPerda(idioma?: Idioma | null): {
 export function recusaDeMotivoDaPerdaPeloBanco(
   erro: { code?: string | null; message?: string | null } | null | undefined,
   idioma?: Idioma | null,
-): { codigo: "lost_reason_required" | "lost_reason_invalid"; mensagem: string } | null {
+): {
+  codigo: "lost_reason_required" | "lost_reason_invalid" | "comprou_exige_pagamento";
+  mensagem: string;
+} | null {
   const codigo = erro?.code ?? "";
   const texto = erro?.message ?? "";
+
+  // Comprou só vale com dinheiro recebido (mesmo só o sinal): a regra do banco vira recusa de negócio.
+  if (codigo === "22023" && texto.includes("comprou_exige_pagamento")) {
+    return {
+      codigo: "comprou_exige_pagamento",
+      mensagem: traduzir(
+        "Para marcar como Comprou, registre antes um pagamento recebido (mesmo que seja só o sinal).",
+        idioma ?? IDIOMA_PADRAO,
+      ),
+    };
+  }
 
   if (codigo === "23514" && texto.includes("crm_leads_lost_reason_required")) {
     return recusaDeMotivoDaPerda(idioma);

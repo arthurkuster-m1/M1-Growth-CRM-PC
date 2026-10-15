@@ -32,10 +32,10 @@ const reais = (c: number) => moedaDoNumero(c / 100);
 const dataBr = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "—");
 
 const ROTULO: Record<StatusDaVenda, string> = {
-  interesse: "Interesse",
-  comprometida: "Comprometida",
-  concluida: "Concluída",
-  cancelada: "Cancelada",
+  interesse: "Possível venda",
+  comprometida: "Comprometido",
+  concluida: "Pago",
+  cancelada: "Cancelado",
 };
 const COR: Record<StatusDaVenda, "blue" | "yellow" | "green" | "gray"> = {
   interesse: "blue",

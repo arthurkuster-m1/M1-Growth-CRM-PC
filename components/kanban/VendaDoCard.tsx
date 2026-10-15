@@ -63,11 +63,8 @@ export function VendaDoCard({
   async function salvar(v: DadosDaVenda): Promise<boolean> {
     try {
       const { id, contact_id: _contato, ...resto } = v;
+      // A primeira parcela recebida leva a oportunidade a Comprou (o banco faz).
       await apiClient.patch(`/api/v1/vendas/${id ?? venda!.id}`, resto);
-      // Venda fechada: o card ganha (a venda já existe, o gatilho não cria outra).
-      if (resto.status === "comprometida" && lead.status === "open") {
-        await apiClient.post(`/api/v1/leads/${lead.id}/win`, {});
-      }
       await recarregar();
       return true;
     } catch (e) {

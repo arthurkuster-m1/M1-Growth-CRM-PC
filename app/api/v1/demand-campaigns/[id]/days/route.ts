@@ -105,29 +105,30 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     for (const l of leadsPorDia) dia(l.day).leads = l.leads;
 
     // Vendas: a primeira parcela recebida conta a venda; o dinheiro entra no dia em que caiu.
-    const { data: vendas } = await a.supabase
-      .from("crm_sales")
-      .select("id, status, amount_cents, paid_on")
+    // A venda é a oportunidade (card) da campanha.
+    const { data: oportunidades } = await a.supabase
+      .from("crm_leads")
+      .select("id")
       .eq("organization_id", a.orgId)
       .eq("demand_campaign_id", id)
       .limit(5000);
-    const idsDeVendas = ((vendas ?? []) as Array<{ id: string }>).map((v) => v.id);
+    const idsDeVendas = ((oportunidades ?? []) as Array<{ id: string }>).map((v) => v.id);
     const pagamentos: Array<{ sale_id: string; paid_on: string; amount_cents: number }> = [];
     for (let i = 0; i < idsDeVendas.length; i += 200) {
       const { data } = await a.supabase
         .from("crm_sale_payments")
-        .select("sale_id, paid_on, amount_cents, status")
+        .select("lead_id, paid_on, amount_cents, status")
         .eq("organization_id", a.orgId)
         .eq("status", "recebida")
-        .in("sale_id", idsDeVendas.slice(i, i + 200));
+        .in("lead_id", idsDeVendas.slice(i, i + 200));
       for (const p of (data ?? []) as Array<{
-        sale_id: string;
+        lead_id: string;
         paid_on: string | null;
         amount_cents: number | string;
       }>) {
         if (p.paid_on) {
           pagamentos.push({
-            sale_id: p.sale_id,
+            sale_id: p.lead_id,
             paid_on: p.paid_on.slice(0, 10),
             amount_cents: Number(p.amount_cents),
           });
@@ -139,19 +140,6 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       dia(p.paid_on).valorTotal += p.amount_cents / 100;
       const atual = primeiraPaga.get(p.sale_id);
       if (!atual || p.paid_on < atual) primeiraPaga.set(p.sale_id, p.paid_on);
-    }
-    const comParcelas = new Set(pagamentos.map((p) => p.sale_id));
-    for (const v of (vendas ?? []) as Array<{
-      id: string;
-      status: string;
-      amount_cents: number | string;
-      paid_on: string | null;
-    }>) {
-      if (!comParcelas.has(v.id) && v.status === "concluida" && v.paid_on) {
-        const d = v.paid_on.slice(0, 10);
-        dia(d).valorTotal += Number(v.amount_cents) / 100;
-        primeiraPaga.set(v.id, d);
-      }
     }
     for (const d of primeiraPaga.values()) dia(d).vendas += 1;
 

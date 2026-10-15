@@ -67,13 +67,13 @@ const dataBr = (iso: string | null) => (iso ? iso.split("-").reverse().join("/")
 function rotuloDoStatusDaVenda(t: (s: string) => string, s: StatusDaVenda): string {
   switch (s) {
     case "interesse":
-      return t("Interesse");
+      return t("Possível venda");
     case "comprometida":
-      return t("Comprometida");
+      return t("Comprometido");
     case "concluida":
-      return t("Concluída");
+      return t("Pago");
     case "cancelada":
-      return t("Cancelada");
+      return t("Cancelado");
   }
 }
 
