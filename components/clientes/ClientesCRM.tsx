@@ -22,7 +22,13 @@ import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
-import { COR_DO_CICLO, CICLOS_DE_VIDA, ehCicloDeVida, ROTULO_DO_CICLO } from "@/lib/ciclo-de-vida";
+import {
+  COR_DO_CICLO,
+  CICLOS_DE_VIDA,
+  ehCicloDeVida,
+  ROTULO_DO_CICLO,
+  ROTULO_PLURAL_DO_CICLO,
+} from "@/lib/ciclo-de-vida";
 import { BASE_DA_COR } from "@/lib/motor/cores";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
@@ -1361,7 +1367,44 @@ export function ClientesCRM({
   const colunasDaVisao = colunas.filter((c) =>
     ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id),
   );
-  const resolvidas = resolverColunas(colunasDaVisao, preferencias);
+  // A linha de totais do fim da tabela: somas e contagens do que está na tela.
+  const somaDe = (linhas: readonly Linha[], f: (l: Linha) => number) =>
+    linhas.reduce((s2, l) => s2 + f(l), 0);
+  const totalDe: Record<string, (linhas: readonly Linha[]) => React.ReactNode> = {
+    nome: (ls) => (
+      <span className="block px-2 text-sm">
+        {t("Total")} · {ls.length}
+      </span>
+    ),
+    mql: (ls) => (
+      <span className="block px-2 text-sm tabular-nums">{ls.filter((l) => l.is_mql).length}</span>
+    ),
+    ltv: (ls) => (
+      <span className="block px-2 text-sm tabular-nums">
+        {moeda(somaDe(ls, (l) => valoresDoLead(l).pago))}
+      </span>
+    ),
+    "ltv-previsto": (ls) => (
+      <span className="block px-2 text-sm tabular-nums">
+        {moeda(somaDe(ls, (l) => valoresDoLead(l).aReceber))}
+      </span>
+    ),
+    interesse: (ls) => (
+      <span className="block px-2 text-sm tabular-nums">
+        {moeda(somaDe(ls, (l) => valoresDoLead(l).interesse))}
+      </span>
+    ),
+    vendas: (ls) => (
+      <span className="block px-2 text-sm tabular-nums">{somaDe(ls, (l) => l.vendas)}</span>
+    ),
+    "oportunidades-abertas": (ls) => (
+      <span className="block px-2 text-sm tabular-nums">
+        {somaDe(ls, (l) => l.oportunidades_abertas)}
+      </span>
+    ),
+  };
+  const colunasComTotal = colunasDaVisao.map((c) => ({ ...c, total: totalDe[c.id] }));
+  const resolvidas = resolverColunas(colunasComTotal, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
 
   const termo = semAcento(busca);
@@ -1678,14 +1721,13 @@ export function ClientesCRM({
                           ? "polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%)"
                           : "polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%)",
                       backgroundColor: `color-mix(in srgb, ${cor} ${ativo ? 38 : 20}%, transparent)`,
-                      borderLeft: `4px solid ${cor}`,
                       opacity: apagado ? 0.5 : 1,
-                      paddingLeft: i === 0 ? 12 : 22,
+                      paddingLeft: i === 0 ? 14 : 24,
                       paddingRight: 18,
                     }}
                   >
                     <span className="truncate text-[11px] font-semibold tracking-wide uppercase">
-                      {t(ROTULO_DO_CICLO[ciclo])}
+                      {t(ROTULO_PLURAL_DO_CICLO[ciclo])}
                     </span>
                     <span className="text-xl leading-tight font-semibold tabular-nums">{n}</span>
                   </button>

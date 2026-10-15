@@ -4,7 +4,12 @@ import Link from "next/link";
 
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
-import { CICLOS_DE_VIDA, COR_DO_CICLO, ehCicloDeVida, ROTULO_DO_CICLO } from "@/lib/ciclo-de-vida";
+import {
+  CICLOS_DE_VIDA,
+  COR_DO_CICLO,
+  ehCicloDeVida,
+  ROTULO_PLURAL_DO_CICLO,
+} from "@/lib/ciclo-de-vida";
 
 interface ClienteDoQuadro {
   contact_id: string;
@@ -40,7 +45,7 @@ export function QuadroDoCiclo({ clientes }: { clientes: readonly ClienteDoQuadro
         >
           <header className="flex items-center justify-between gap-2 px-1.5 pt-1">
             <Etiqueta ponto cor={COR_DO_CICLO[ciclo]}>
-              {t(ROTULO_DO_CICLO[ciclo])}
+              {t(ROTULO_PLURAL_DO_CICLO[ciclo])}
             </Etiqueta>
             <span className="text-xs font-medium text-muted-foreground tabular-nums">
               {itens.length}

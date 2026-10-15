@@ -25,6 +25,17 @@ export const ROTULO_DO_CICLO: Record<CicloDeVida, string> = {
   desqualificado: "Desqualificado",
 };
 
+/** Os nomes no plural, para contagens e filtros ("5 Clientes Ativos"). */
+export const ROTULO_PLURAL_DO_CICLO: Record<CicloDeVida, string> = {
+  novo_lead: "Leads Novos",
+  em_negociacao: "Em Negociação",
+  ativo: "Clientes Ativos",
+  ex_cliente: "Ex-Clientes",
+  em_reativacao: "Em Reativação",
+  nunca_comprou: "Nunca Comprou",
+  desqualificado: "Desqualificados",
+};
+
 export const COR_DO_CICLO: Record<CicloDeVida, CorDaOpcao> = {
   novo_lead: "blue",
   em_negociacao: "yellow",

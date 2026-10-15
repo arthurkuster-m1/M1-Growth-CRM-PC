@@ -27,6 +27,7 @@ import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { recebeuNoMes, recorteDoMes, resumoDaVenda } from "@/lib/vendas-tabela";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
@@ -365,13 +366,44 @@ export function VendasCRM() {
       id: "parcelas",
       titulo: t("Parcelas"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 110,
+      largura: 270,
       celula: (v) => {
-        const r = resumoDaVenda(v);
+        const parcelas = (v.parcelas ?? []).filter((p) => p.status !== "cancelada");
+        if (parcelas.length === 0) {
+          return (
+            <div className="flex items-center gap-2 px-2 text-xs">
+              <CirculoDeRecebida
+                marcado={v.status === "concluida"}
+                desabilitado={v.status === "cancelada"}
+                rotulo={`${t("À vista")} ${t("recebido")}`}
+                aoMudar={(ok) =>
+                  mudarStatus.mutate({ id: v.id, status: ok ? "concluida" : "comprometida" })
+                }
+              />
+              <span className="tabular-nums">
+                {t("À vista")} · {reais(v.amount_cents)}
+              </span>
+            </div>
+          );
+        }
         return (
-          <span className="block px-2 text-sm tabular-nums">
-            {r.parcelas.length > 0 ? `${r.parcelasPagas}/${r.parcelas.length}` : "—"}
-          </span>
+          <ul className="grid gap-1 px-2 py-1">
+            {parcelas.map((p) => (
+              <li key={p.number} className="flex items-center gap-2 text-xs whitespace-nowrap">
+                <CirculoDeRecebida
+                  marcado={p.status === "recebida"}
+                  rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
+                  aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
+                />
+                <span className="tabular-nums">
+                  {p.number}/{parcelas.length} · {reais(p.amount_cents)} ·{" "}
+                  {p.status === "recebida" && p.paid_on
+                    ? `${t("pago em")} ${dataBr(p.paid_on.slice(0, 10))}`
+                    : `${t("vence")} ${dataBr(p.due_on)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
         );
       },
     },
@@ -454,7 +486,30 @@ export function VendasCRM() {
       celula: (v) => texto(v.posicionamento ?? ""),
     },
   ];
-  const resolvidas = resolverColunas(colunas, preferencias);
+  // A linha de totais do fim da tabela (somas e contagens do que está na tela).
+  const somar = (linhas: readonly Venda[], f: (r: ReturnType<typeof resumoDaVenda>) => number) =>
+    linhas.reduce((s2, v) => s2 + f(resumoDaVenda(v)), 0);
+  const totalDe: Record<string, (linhas: readonly Venda[]) => React.ReactNode> = {
+    oportunidade: (ls) => (
+      <span className="block px-2 text-sm">
+        {t("Total")} · {ls.length}
+      </span>
+    ),
+    parcelas: (ls) => {
+      const pagas = somar(ls, (r) => r.parcelasPagas);
+      const todas = somar(ls, (r) => r.parcelas.length);
+      return (
+        <span className="block px-2 text-sm tabular-nums">
+          {pagas}/{todas} {t("parcelas pagas")}
+        </span>
+      );
+    },
+    pago: (ls) => dinheiro(somar(ls, (r) => r.pagoCents), "text-green-700 dark:text-green-400"),
+    previsto: (ls) => dinheiro(somar(ls, (r) => r.previstoCents)),
+    valor: (ls) => dinheiro(ls.reduce((s2, v) => s2 + v.amount_cents, 0)),
+  };
+  const colunasComTotal = colunas.map((c) => ({ ...c, total: totalDe[c.id] }));
+  const resolvidas = resolverColunas(colunasComTotal, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
 
   const campos: Array<

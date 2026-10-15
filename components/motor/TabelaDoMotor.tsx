@@ -46,6 +46,8 @@ export interface ColunaDoMotor<T> extends DefinicaoDeColuna {
   titulo: string;
   icone?: ReactNode;
   celula: (linha: T) => ReactNode;
+  /** O total da coluna (soma, média, contagem…), na linha de totais do fim da tabela. */
+  total?: (linhas: readonly T[]) => ReactNode;
 }
 
 interface Props<T> {
@@ -612,6 +614,24 @@ export function TabelaDoMotor<T>({
             </DndContext>
           )}
         </div>
+
+        {linhas.length > 0 && colunas.some((c) => c.total) ? (
+          <div
+            role="row"
+            aria-label={t("Totais")}
+            style={{ gridTemplateColumns: grade }}
+            className="grid items-center border-t-2 bg-secondary/60 text-sm font-semibold"
+          >
+            {comSelecao ? <div role="cell" /> : null}
+            {comAlca ? <div role="cell" /> : null}
+            {colunas.map((c) => (
+              <div key={c.id} role="cell" className="min-w-0 px-0.5 py-2">
+                {c.total ? c.total(linhas) : null}
+              </div>
+            ))}
+            {comAcoes || comFim ? <div role="cell" /> : null}
+          </div>
+        ) : null}
 
         {aoCriar ? (
           <button
