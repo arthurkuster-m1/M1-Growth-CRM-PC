@@ -129,3 +129,4 @@ Hotmart (entra depois da Fase B), contas a receber/pagar e dashboard financeiro 
 ## 11. Andamento
 
 - **Fase A (0635):** ensaiada em rollback com os dados reais: divergências 0, total pago intacto (R$ 10.500,00), 13 → 14 cards (o card com 2 vendas virou 2 oportunidades; a paga foi para Comprou) e 14 vendas.
+- **Fases B e C (15/10/2026):** migrations 0636 (corte) e 0637 (limpeza) aplicadas. A venda é a oportunidade (id do card); itens e parcelas só com `lead_id`; `crm_sales` e o espelho removidos; Comprou exige parcela recebida (e a primeira parcela recebida leva a Comprou sozinha); várias oportunidades por pessoa e funil; status da venda derivado (Possível venda / Comprometido / Pago / Cancelado, das parcelas); `venda_adicional` e `needs_details` removidos; Oportunidades com uma linha por oportunidade.
