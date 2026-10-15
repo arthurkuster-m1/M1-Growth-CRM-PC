@@ -88,14 +88,45 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     }
   }
   if (pagamentos !== undefined) {
-    await supabase
+    // A tela manda a lista inteira; o servidor ATUALIZA a parcela de mesmo número e só cria/apaga o
+    // que mudou — assim forma, origem, id externo, quem confirmou e os avisos da parcela não se
+    // perdem a cada gravação. Parcela cancelada fica (ela reabre o interesse e se exclui à parte).
+    const { data: existentes } = await supabase
       .from("crm_sale_payments")
-      .delete()
+      .select("id, number, status")
       .eq("sale_id", id)
       .eq("organization_id", orgId);
-    if (pagamentos.length > 0) {
+    const vivas = ((existentes ?? []) as Array<{ id: string; number: number; status: string }>)
+      .filter((p) => p.status !== "cancelada")
+      .sort((a, b) => a.number - b.number);
+    const usadas = new Set<string>();
+    const novas: typeof pagamentos = [];
+    for (const p of pagamentos) {
+      const alvo = vivas.find((e) => e.number === p.number && !usadas.has(e.id));
+      if (!alvo) {
+        novas.push(p);
+        continue;
+      }
+      usadas.add(alvo.id);
+      const { error: eu } = await supabase
+        .from("crm_sale_payments")
+        .update({
+          due_on: p.due_on,
+          paid_on: p.paid_on ?? null,
+          amount_cents: p.amount_cents,
+          status: p.status,
+        })
+        .eq("id", alvo.id)
+        .eq("organization_id", orgId);
+      if (eu) return fail("internal_error", "Erro ao salvar as parcelas.", 500, { requestId });
+    }
+    const sobrando = vivas.filter((e) => !usadas.has(e.id)).map((e) => e.id);
+    if (sobrando.length > 0) {
+      await supabase.from("crm_sale_payments").delete().in("id", sobrando).eq("organization_id", orgId);
+    }
+    if (novas.length > 0) {
       const { error: e2 } = await supabase.from("crm_sale_payments").insert(
-        pagamentos.map((p) => ({
+        novas.map((p) => ({
           number: p.number,
           due_on: p.due_on,
           paid_on: p.paid_on ?? null,
@@ -112,7 +143,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { data: venda } = await supabase
     .from("crm_sales")
     .select(
-      `${COLUNAS_DA_VENDA}, creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status)`,
+      `${COLUNAS_DA_VENDA}, creative:demand_campaign_creatives(name), landing_page:demand_campaign_landing_pages(name), lead:crm_leads(stage_id, status, owner_user_id, stage:crm_stages!crm_leads_stage_id_fkey(name)), items:crm_sale_items(id, product_id, product_name, quantity, amount_cents, position), payments:crm_sale_payments(id, number, due_on, paid_on, amount_cents, status, forma, origem_do_pagamento, id_externo)`,
     )
     .eq("id", id)
     .single();

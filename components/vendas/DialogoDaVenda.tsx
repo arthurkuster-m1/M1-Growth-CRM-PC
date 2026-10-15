@@ -21,6 +21,7 @@ import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { CaretDown, Plus, Trash } from "@/lib/ui/icons";
 import {
   FORMAS_DE_PAGAMENTO,
+  rotuloDaForma,
   ajustarParcelasAoTotal,
   gerarParcelas,
   redistribuirAposEditar,
@@ -64,27 +65,6 @@ export interface DadosDaVenda {
   recurrence_ahead?: number;
   /** Quem da equipe é o responsável pela venda (só vem quando mudou). */
   responsavel_id?: string | null;
-}
-
-function rotuloDaForma(t: (s: string) => string, f: FormaDePagamento): string {
-  switch (f) {
-    case "pix":
-      return t("PIX");
-    case "cartao_credito":
-      return t("Cartão de crédito");
-    case "cartao_debito":
-      return t("Cartão de débito");
-    case "boleto":
-      return t("Boleto");
-    case "transferencia":
-      return t("Transferência");
-    case "dinheiro":
-      return t("Dinheiro");
-    case "recorrencia":
-      return t("Recorrência (assinatura)");
-    case "outro":
-      return t("Outra");
-  }
 }
 
 const hoje = () => new Date().toISOString().slice(0, 10);

@@ -44,6 +44,8 @@ export interface Lead {
   position_in_stage: number;
   value_cents: number | null;
   currency: string | null;
+  /** Já recebeu algum pagamento (migration 0633). Em "Comprou" sem pagamento = aguardando. */
+  com_pagamento?: boolean;
   owner_user_id: string | null;
   /** 0070: quem é dono do negócio — humano, agente de IA, ou ninguém. */
   owner_kind: OwnerKind;

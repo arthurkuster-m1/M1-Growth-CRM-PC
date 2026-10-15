@@ -26,6 +26,7 @@ const corpoSchema = z.discriminatedUnion("acao", [
     acao: z.literal("receber"),
     amount_cents: z.number().int().min(0).max(100_000_000_000).optional(),
     paid_on: dia.optional(),
+    forma: z.string().trim().max(60).optional(),
   }),
   z.object({
     acao: z.literal("negociar"),
@@ -33,6 +34,7 @@ const corpoSchema = z.discriminatedUnion("acao", [
   }),
   z.object({ acao: z.literal("adiar"), due_on: dia }),
   z.object({ acao: z.literal("cancelar") }),
+  z.object({ acao: z.literal("forma"), forma: z.string().trim().max(60) }),
 ]);
 
 export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
@@ -56,13 +58,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
           status: "recebida",
           paid_on: c.paid_on ?? new Date().toISOString().slice(0, 10),
           confirmed_at: new Date().toISOString(),
+          confirmed_by: authz.user.id,
           ...(c.amount_cents !== undefined ? { amount_cents: c.amount_cents } : {}),
+          ...(c.forma ? { forma: c.forma } : {}),
         }
       : c.acao === "negociar"
         ? { amount_cents: c.amount_cents }
         : c.acao === "adiar"
           ? { due_on: c.due_on, reminded_before_on: null, reminded_after_on: null }
-          : { status: "cancelada" };
+          : c.acao === "forma"
+            ? { forma: c.forma || null }
+            : { status: "cancelada" };
 
   const { data, error } = await supabase
     .from("crm_sale_payments")
@@ -96,5 +102,36 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
         .like("title", "Cobrança:%");
     }
   }
+  return ok({ id }, { requestId });
+}
+
+/**
+ * DELETE /api/v1/vendas/parcelas/[id] — exclui uma parcela CANCELADA (o valor dela já voltou a
+ * ser interesse; excluir tira de vez). Parcela prevista ou recebida não se exclui: cancele antes.
+ */
+export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
+  const requestId = randomUUID();
+  const authz = await requireRole("agent", { requestId, resource: "crm_sales" });
+  if (!authz.ok) return authz.response;
+  const { id } = await ctx.params;
+  if (!z.string().uuid().safeParse(id).success) {
+    return fail("not_found", "Parcela não encontrada.", 404, { requestId });
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("crm_sale_payments")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", authz.org.orgId)
+    .eq("status", "cancelada")
+    .select("id, sale_id")
+    .maybeSingle();
+  if (error) return fail("internal_error", "Erro ao excluir a parcela.", 500, { requestId });
+  if (!data) {
+    return fail("not_found", "Só uma parcela cancelada pode ser excluída.", 404, { requestId });
+  }
+  await acertarTotalDaRecorrente(supabase, authz.org.orgId, data.sale_id as string);
   return ok({ id }, { requestId });
 }

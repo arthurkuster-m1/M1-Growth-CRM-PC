@@ -240,11 +240,20 @@ export function KanbanCard({
           {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}
           <p
             className={cn(
-              "mt-1 h-5 text-xs font-medium leading-5 tabular-nums",
+              "mt-1 flex h-5 items-center gap-1.5 text-xs font-medium leading-5 tabular-nums",
               value ? "text-text" : "text-text-muted",
             )}
           >
-            {value ?? "—"}
+            <span>{value ?? "—"}</span>
+            {/* Comprou só vale com dinheiro recebido: sem parcela paga, o card avisa. */}
+            {lead.status === "won" && lead.com_pagamento === false && (
+              <span
+                title={t("Comprou, mas nenhum pagamento foi recebido ainda")}
+                className="rounded bg-warning-bg px-1.5 text-[11px] font-medium leading-4 text-warning-fg"
+              >
+                {t("Aguardando pagamento")}
+              </span>
+            )}
           </p>
 
           {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}

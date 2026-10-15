@@ -28,6 +28,31 @@ export const FORMAS_DE_PAGAMENTO = [
 ] as const;
 export type FormaDePagamento = (typeof FORMAS_DE_PAGAMENTO)[number];
 
+/** O nome da forma de pagamento na tela (`t` é o tradutor do idioma). */
+export function rotuloDaForma(t: (s: string) => string, f: string): string {
+  switch (f) {
+    case "pix":
+      return t("PIX");
+    case "cartao_credito":
+      return t("Cartão de crédito");
+    case "cartao_debito":
+      return t("Cartão de débito");
+    case "boleto":
+      return t("Boleto");
+    case "transferencia":
+      return t("Transferência");
+    case "dinheiro":
+      return t("Dinheiro");
+    case "recorrencia":
+      return t("Recorrência (assinatura)");
+    case "outro":
+      return t("Outra");
+    default:
+      return f;
+  }
+}
+
+
 export interface ItemDaVenda {
   id?: string;
   /** O produto cadastrado em Produtos e Ofertas: toda venda é de um produto do catálogo. */
@@ -44,6 +69,10 @@ export interface ParcelaDaVenda {
   paid_on: string | null;
   amount_cents: number;
   status: StatusDaParcela;
+  /** Como esta parcela é/foi paga (por parcela; nasce da forma da venda). */
+  forma?: string | null;
+  origem_do_pagamento?: "manual" | "integracao";
+  id_externo?: string | null;
 }
 
 export interface Venda {
@@ -198,6 +227,10 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
           paid_on: (p.paid_on as string | null) ?? null,
           amount_cents: Number(p.amount_cents) || 0,
           status: p.status as StatusDaParcela,
+          forma: (p.forma as string | null | undefined) ?? null,
+          origem_do_pagamento:
+            p.origem_do_pagamento === "integracao" ? ("integracao" as const) : ("manual" as const),
+          id_externo: (p.id_externo as string | null | undefined) ?? null,
         }))
         .sort((a, b) => a.number - b.number)
     : undefined;

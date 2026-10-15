@@ -44,6 +44,8 @@ import { cn } from "@/lib/utils";
 import {
   STATUS_DA_VENDA,
   fluxoDoMes,
+  FORMAS_DE_PAGAMENTO,
+  rotuloDaForma,
   totaisDeVendas,
   nomeDaVenda,
   valorPagoDaVenda,
@@ -251,6 +253,14 @@ export function VendasCRM() {
     },
     onError: showApiError,
   });
+  const excluirParcela = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/api/v1/vendas/parcelas/${id}`),
+    onSuccess: async () => {
+      await recarregar();
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: showApiError,
+  });
   const [hojeIso] = useState(() => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10));
   const cobrancas = vendas
     .filter((v) => v.status === "comprometida" || v.status === "concluida")
@@ -260,6 +270,9 @@ export function VendasCRM() {
         .map((p) => ({ venda: v, parcela: p })),
     )
     .sort((a, b) => a.parcela.due_on.localeCompare(b.parcela.due_on));
+  const canceladas = vendas.flatMap((v) =>
+    (v.parcelas ?? []).filter((p) => p.status === "cancelada").map((p) => ({ venda: v, parcela: p })),
+  );
   // Parcelas por mês: o que ENTROU na conta (paid_on) e o que vence (due_on) no mês escolhido —
   // vale também para venda comprometida que já recebeu um sinal.
   const recebidoNoMes = (v: Venda) => {
@@ -757,12 +770,59 @@ export function VendasCRM() {
                 produto={nomeDaVenda(venda)}
                 parcela={parcela}
                 hoje={hojeIso}
-                aoReceber={(valor) =>
-                  confirmar.mutate({ id: parcela.id!, acao: "receber", amount_cents: valor })
+                formaInicial={parcela.forma ?? venda.payment_method ?? ""}
+                aoReceber={(valor, forma) =>
+                  confirmar.mutate({
+                    id: parcela.id!,
+                    acao: "receber",
+                    amount_cents: valor,
+                    ...(forma ? { forma } : {}),
+                  })
                 }
                 aoAdiar={(due_on) => confirmar.mutate({ id: parcela.id!, acao: "adiar", due_on })}
                 aoCancelar={() => confirmar.mutate({ id: parcela.id!, acao: "cancelar" })}
               />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {canceladas.length > 0 ? (
+        <section
+          aria-label={t("Parcelas canceladas")}
+          className="grid grid-cols-1 gap-2 rounded-2xl border p-4"
+        >
+          <h2 className="text-sm font-semibold">
+            {t("Parcelas canceladas")} ({canceladas.length})
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {t("O valor delas voltou a contar como interesse. Exclua para tirar de vez.")}
+          </p>
+          <ul className="grid grid-cols-1 gap-1">
+            {canceladas.map(({ venda, parcela }) => (
+              <li
+                key={parcela.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm"
+              >
+                <span className="min-w-0 truncate">
+                  {venda.cliente?.nome ?? "—"} · {nomeDaVenda(venda) || t("Recorrência")} ·{" "}
+                  {parcela.due_on.split("-").reverse().join("/")} ·{" "}
+                  {(parcela.amount_cents / 100).toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(t("Excluir esta parcela cancelada?")))
+                      excluirParcela.mutate(parcela.id!);
+                  }}
+                  className="h-8 rounded-lg px-3 text-xs text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                >
+                  {t("Excluir")}
+                </button>
+              </li>
             ))}
           </ul>
         </section>
@@ -1062,6 +1122,7 @@ function CobrancaParaConfirmar({
   produto,
   parcela,
   hoje,
+  formaInicial,
   aoReceber,
   aoAdiar,
   aoCancelar,
@@ -1070,13 +1131,15 @@ function CobrancaParaConfirmar({
   produto: string;
   parcela: { due_on: string; amount_cents: number };
   hoje: string;
-  aoReceber: (valorCents: number) => void;
+  formaInicial: string;
+  aoReceber: (valorCents: number, forma: string) => void;
   aoAdiar: (due_on: string) => void;
   aoCancelar: () => void;
 }) {
   const t = useT();
   const [valor, setValor] = useState((parcela.amount_cents / 100).toFixed(2).replace(".", ","));
   const [novaData, setNovaData] = useState("");
+  const [forma, setForma] = useState(formaInicial);
   const atrasada = parcela.due_on < hoje;
   const quando = atrasada
     ? t("Venceu")
@@ -1108,9 +1171,22 @@ function CobrancaParaConfirmar({
             className="h-9 w-28 rounded-lg border bg-background px-2 text-right text-sm tabular-nums"
           />
         </label>
+        <select
+          value={forma}
+          onChange={(e) => setForma(e.target.value)}
+          aria-label={t("Forma de pagamento")}
+          className="h-9 rounded-lg border bg-background px-2 text-sm"
+        >
+          <option value="">{t("Forma…")}</option>
+          {FORMAS_DE_PAGAMENTO.map((f) => (
+            <option key={f} value={f}>
+              {rotuloDaForma(t, f)}
+            </option>
+          ))}
+        </select>
         <button
           type="button"
-          onClick={() => aoReceber(valorEmCentavos)}
+          onClick={() => aoReceber(valorEmCentavos, forma)}
           className="h-9 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
         >
           {t("Pagou")}
