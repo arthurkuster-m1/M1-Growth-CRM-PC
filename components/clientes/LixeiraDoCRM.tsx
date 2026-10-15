@@ -64,6 +64,55 @@ export function LixeiraDoCRM() {
   });
 
   const itens = consulta.data ?? [];
+  const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
+  const [emLote, setEmLote] = useState(false);
+  const marcadosVivos = itens.filter((i) => marcados.has(i.id));
+  const alternar = (id: string) =>
+    setMarcados((a) => {
+      const novo = new Set(a);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  /** Restaurar ou apagar de vez vários de uma vez; o que falhar fica marcado e é avisado. */
+  async function emMassa(acao: "restaurar" | "apagar") {
+    if (marcadosVivos.length === 0) return;
+    if (
+      acao === "apagar" &&
+      !window.confirm(
+        t("Apagar de vez os {n} selecionados? Isso não pode ser desfeito.").replace(
+          "{n}",
+          String(marcadosVivos.length),
+        ),
+      )
+    ) {
+      return;
+    }
+    setEmLote(true);
+    let falhas = 0;
+    const falharam = new Set<string>();
+    for (const i of marcadosVivos) {
+      try {
+        if (acao === "restaurar") await apiClient.post(`/api/v1/lixeira/${i.id}/restaurar`, {});
+        else await apiClient.delete(`/api/v1/lixeira/${i.id}`);
+      } catch {
+        falhas += 1;
+        falharam.add(i.id);
+      }
+    }
+    setMarcados(falharam);
+    await recarregar();
+    setEmLote(false);
+    const feitos = marcadosVivos.length - falhas;
+    if (feitos > 0) {
+      toast.success(
+        acao === "restaurar"
+          ? `${feitos} ${t("restaurado(s)")}`
+          : `${feitos} ${t("apagado(s) de vez")}`,
+      );
+    }
+    if (falhas > 0) toast.error(`${falhas} ${t("não puderam ser processados.")}`);
+  }
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
   const diasPara = (iso: string) =>
@@ -87,14 +136,57 @@ export function LixeiraDoCRM() {
           {t("A lixeira está vazia.")}
         </p>
       ) : (
+        <>
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card px-3 py-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={itens.length > 0 && marcadosVivos.length === itens.length}
+              onChange={(e) =>
+                setMarcados(e.target.checked ? new Set(itens.map((i) => i.id)) : new Set())
+              }
+            />
+            {marcadosVivos.length > 0
+              ? `${marcadosVivos.length} ${t("selecionado(s)")}`
+              : t("Selecionar todos")}
+          </label>
+          {marcadosVivos.length > 0 ? (
+            <>
+              <Button size="sm" disabled={emLote} onClick={() => void emMassa("restaurar")}>
+                {t("Restaurar selecionados")}
+              </Button>
+              {podeApagarDeVez ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-error-fg hover:text-error-fg"
+                  disabled={emLote}
+                  onClick={() => void emMassa("apagar")}
+                >
+                  <Trash size={14} aria-hidden className="mr-1" />
+                  {t("Apagar de vez selecionados")}
+                </Button>
+              ) : null}
+              <Button size="sm" variant="ghost" onClick={() => setMarcados(new Set())}>
+                {t("Limpar seleção")}
+              </Button>
+            </>
+          ) : null}
+        </div>
         <ul className="grid gap-2">
           {itens.map((i) => {
             const dias = diasPara(i.expira_em);
             return (
               <li
                 key={i.id}
-                className="grid grid-cols-1 gap-2 rounded-2xl border bg-card p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 rounded-2xl border bg-card p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center"
               >
+                <input
+                  type="checkbox"
+                  aria-label={`${t("Selecionar")} ${i.nome}`}
+                  checked={marcados.has(i.id)}
+                  onChange={() => alternar(i.id)}
+                />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{i.nome}</p>
                   <p className="truncate text-xs text-muted-foreground">
@@ -121,7 +213,7 @@ export function LixeiraDoCRM() {
                       : ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1">
                   <Button
                     size="sm"
                     disabled={restaurar.isPending}
@@ -153,6 +245,7 @@ export function LixeiraDoCRM() {
             );
           })}
         </ul>
+        </>
       )}
     </div>
   );
