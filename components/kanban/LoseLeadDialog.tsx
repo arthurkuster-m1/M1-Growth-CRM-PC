@@ -22,6 +22,8 @@ interface LoseLeadDialogProps {
   onOpenChange: (open: boolean) => void;
   leadId: string;
   pipelineId: string;
+  /** Etapa de encerramento escolhida (ex.: Desqualificado). Sem ela, a etapa de perda. */
+  stageId?: string;
 }
 
 const MAX_LEN = 500;
@@ -31,6 +33,7 @@ export function LoseLeadDialog({
   onOpenChange,
   leadId,
   pipelineId,
+  stageId,
 }: LoseLeadDialogProps) {
   const t = useT();
   const [reasonCode, setReasonCode] = useState<string>("");
@@ -88,7 +91,7 @@ export function LoseLeadDialog({
   const handleSubmit = async () => {
     if (disabled) return;
     try {
-      await mutation.mutateAsync({ leadId, lostReason: finalReason });
+      await mutation.mutateAsync({ leadId, lostReason: finalReason, stageId });
       setReasonCode("");
       setOtherText("");
       onOpenChange(false);

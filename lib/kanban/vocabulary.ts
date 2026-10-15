@@ -3,8 +3,8 @@ import type { PipelineVocabulary } from "./types";
 const DEFAULTS: Required<PipelineVocabulary> = {
   lead: "Lead",
   deal: "Negócio",
-  won: "Ganho",
-  lost: "Perdido",
+  won: "Comprou",
+  lost: "Não comprou",
 };
 
 export function resolveVocabulary(

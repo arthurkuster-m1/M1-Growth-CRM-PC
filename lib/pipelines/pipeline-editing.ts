@@ -293,8 +293,8 @@ export const ETAPAS_INICIAIS: ReadonlyArray<{
 }> = [
   { name: "Novo", slug: "novo", is_won: false, is_lost: false },
   { name: "Em andamento", slug: "em_andamento", is_won: false, is_lost: false },
-  { name: "Ganho", slug: "ganho", is_won: true, is_lost: false },
-  { name: "Perdido", slug: "perdido", is_won: false, is_lost: true },
+  { name: "Comprou", slug: "ganho", is_won: true, is_lost: false },
+  { name: "Não comprou", slug: "perdido", is_won: false, is_lost: true },
 ];
 
 /**

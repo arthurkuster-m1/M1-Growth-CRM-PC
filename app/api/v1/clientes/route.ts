@@ -115,7 +115,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       .order("position", { ascending: true }),
     supabase
       .from("crm_stages")
-      .select("id, pipeline_id, name, color, position, is_won, is_lost")
+      .select("id, pipeline_id, name, color, position, is_won, is_lost, qualification")
       .eq("organization_id", orgId)
       .eq("is_archived", false)
       .order("position", { ascending: true }),

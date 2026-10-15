@@ -62,6 +62,7 @@ interface Etapa {
   position: number;
   is_won: boolean;
   is_lost: boolean;
+  qualification?: "mql" | "disqualified" | null;
 }
 interface Dados {
   funis: Funil[];
@@ -124,7 +125,7 @@ export function ClientesCRM() {
   const [agora] = useState(() => Date.now());
   const [configurando, setConfigurando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
-  const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string } | null>(null);
+  const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   /** Status de venda que a tabela mostra (vazio = todos): "só abertas", "só concluídas"… */
   // (guardado na visualização: ver `statusDasVendas` logo depois de `preferencias`)
@@ -587,6 +588,11 @@ export function ClientesCRM() {
                   // Etapa de perda pede o motivo (o mesmo diálogo de antes).
                   if (etapasPorId.get(id)?.is_lost) {
                     setPerdendo({ leadId: p.lead_id, funilId: p.funil_id });
+                    return;
+                  }
+                  // Desqualificado também encerra, e também pede o motivo.
+                  if (etapasPorId.get(id)?.qualification === "disqualified") {
+                    setPerdendo({ leadId: p.lead_id, funilId: p.funil_id, etapaId: id });
                     return;
                   }
                   // Etapa de ganho: fecha como venda (o banco efetiva a venda e abre o pop-up).
@@ -1632,6 +1638,7 @@ export function ClientesCRM() {
           open
           leadId={perdendo.leadId}
           pipelineId={perdendo.funilId}
+          stageId={perdendo.etapaId}
           onOpenChange={(aberto) => {
             if (aberto) return;
             setPerdendo(null);

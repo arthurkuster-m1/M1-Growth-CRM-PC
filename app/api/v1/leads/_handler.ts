@@ -1252,7 +1252,7 @@ export async function moveLeadHandler(
 
   const { data: stage, error: stageErr } = await supabase
     .from("crm_stages")
-    .select("id, pipeline_id, organization_id, name, is_lost, is_won")
+    .select("id, pipeline_id, organization_id, name, is_lost, is_won, qualification")
     .eq("id", input.to_stage_id)
     .maybeSingle();
   if (stageErr) {
@@ -1376,7 +1376,11 @@ export async function moveLeadHandler(
   // (MCP `crm_move_lead_stage`, ações de automação), e a regra é a mesma do
   // arrasto: etapa de perda exige motivo, e o motivo sai na mesma escrita.
   const veredito = decideMotivoDaPerda({
-    etapaDeDestino: stage,
+    // Desqualificado encerra como perda: pede o motivo como a etapa de perda.
+    etapaDeDestino: {
+      ...stage,
+      is_lost: stage.is_lost || stage.qualification === "disqualified",
+    },
     motivo: input.lost_reason,
     motivoAtual: (lead as { lost_reason?: string | null }).lost_reason ?? null,
     idioma: ctx.idioma,

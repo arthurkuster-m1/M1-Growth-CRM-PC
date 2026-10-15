@@ -49,7 +49,7 @@ export async function POST(
         requestId,
         idioma: authz.user.idioma,
       },
-      { leadId, desfecho: "lost", motivo: input.lost_reason },
+      { leadId, desfecho: "lost", motivo: input.lost_reason, etapaDestinoId: input.stage_id },
     );
     return ok(lead, { requestId });
   } catch (err) {

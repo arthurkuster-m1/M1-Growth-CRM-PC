@@ -176,6 +176,8 @@ export function categoriaPadraoDoMotivo(valor: string): CategoriaDePerda | undef
  */
 export const loseLeadSchema = z.object({
   lost_reason: z.string().min(1, "lost_reason é obrigatório").max(500),
+  /** Etapa de encerramento escolhida: a de perda ou a Desqualificado do funil. Sem ela, a de perda. */
+  stage_id: z.string().uuid().optional(),
 });
 export type LoseLeadInput = z.infer<typeof loseLeadSchema>;
 

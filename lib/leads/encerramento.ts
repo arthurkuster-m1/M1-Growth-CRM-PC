@@ -56,6 +56,11 @@ export interface EncerraDemandaInput {
    * no audit; só a frase da tela muda.
    */
   razaoNaTimeline?: string;
+  /**
+   * Perda para uma etapa de encerramento ESPECÍFICA do funil: a de perda ("Não comprou") ou a
+   * "Desqualificado" (papel `disqualified`). Sem ela, a primeira etapa de perda.
+   */
+  etapaDestinoId?: string;
   /** Acrescentado ao `payload` da linha (ex.: para onde o negócio foi). */
   payloadNaTimeline?: Record<string, unknown>;
 }
@@ -133,13 +138,21 @@ export async function encerraDemanda(
   }
 
   const colunaTerminal = input.desfecho === "won" ? "is_won" : "is_lost";
-  const { data: stage, error: stErr } = await supabase
+  let consultaDaEtapa = supabase
     .from("crm_stages")
     .select("id, name")
     .eq("organization_id", ctx.organization_id)
     .eq("pipeline_id", (lead as { pipeline_id: string }).pipeline_id)
-    .eq(colunaTerminal, true)
-    .eq("is_archived", false)
+    .eq("is_archived", false);
+  if (input.desfecho === "lost" && input.etapaDestinoId) {
+    // A etapa escolhida vale se for de perda ou a de Desqualificado do MESMO funil.
+    consultaDaEtapa = consultaDaEtapa
+      .eq("id", input.etapaDestinoId)
+      .or("is_lost.eq.true,qualification.eq.disqualified");
+  } else {
+    consultaDaEtapa = consultaDaEtapa.eq(colunaTerminal, true);
+  }
+  const { data: stage, error: stErr } = await consultaDaEtapa
     .order("position", { ascending: true })
     .limit(1)
     .maybeSingle();

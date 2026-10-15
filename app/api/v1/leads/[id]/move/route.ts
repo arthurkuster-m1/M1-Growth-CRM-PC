@@ -84,7 +84,7 @@ export async function POST(
   // REABRIRIA um negócio encerrado (issue #1538).
   const { data: stage, error: stageErr } = await supabase
     .from("crm_stages")
-    .select("id, pipeline_id, name, is_lost, is_won")
+    .select("id, pipeline_id, name, is_lost, is_won, qualification")
     .eq("id", input.stage_id)
     .maybeSingle();
 
@@ -196,7 +196,8 @@ export async function POST(
   // exige o motivo. Decidido ANTES do update, porque depois dele o que existe é a
   // linha recusada — e a recusa do Postgres chegava ao board como 500.
   const veredito = decideMotivoDaPerda({
-    etapaDeDestino: stage,
+    // Desqualificado encerra como perda: pede o motivo como a etapa de perda.
+    etapaDeDestino: { ...stage, is_lost: stage.is_lost || stage.qualification === "disqualified" },
     motivo: input.lost_reason,
     motivoAtual: (lead as { lost_reason?: string | null }).lost_reason ?? null,
     idioma: user.idioma,
