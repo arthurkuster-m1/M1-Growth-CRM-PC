@@ -45,11 +45,21 @@ export function LinhaDoTempoDoLead({
 /** O bloco "Registrar ação" (ligação + resultado, mensagem enviada, remarcou…): usado aqui e na Visão geral. */
 export function RegistrarAcaoDoLead({
   contactId,
+  contactIds,
   podeEditar,
+  semBloco = false,
+  aoRegistrar,
 }: {
-  contactId: string;
+  /** Um lead (a ficha). Em massa, passe `contactIds`. */
+  contactId?: string;
+  /** Vários leads de uma vez: a mesma ação é registrada na linha do tempo de cada um. */
+  contactIds?: readonly string[];
   podeEditar: boolean;
+  /** Sem o cartão da ficha em volta (para usar dentro de um popup). */
+  semBloco?: boolean;
+  aoRegistrar?: () => void;
 }) {
+  const alvos = contactIds ?? (contactId ? [contactId] : []);
   const t = useT();
   const qc = useQueryClient();
   const [acao, setAcao] = useState<IdDaAcao | null>(null);
@@ -71,22 +81,50 @@ export function RegistrarAcaoDoLead({
   }
 
   const registrar = useMutation({
-    mutationFn: async () =>
-      apiClient.post<{ data: { tag: string | null } }>(`/api/v1/contacts/${contactId}/atividades`, {
+    mutationFn: async () => {
+      const corpo = {
         acao,
         ...(titulo.trim() ? { titulo: titulo.trim() } : {}),
         ...(resultado ? { resultado } : {}),
         ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
         ...(comTag && tag.trim() ? { tag: tag.trim() } : {}),
-      }),
-    onSuccess: (r) => {
-      const tagFinal = (r as { data?: { tag?: string | null } } | undefined)?.data?.tag;
-      toast.success(
-        tagFinal
-          ? `${t("Ação registrada. Tag:")} ${tagFinal}`
-          : t("Ação registrada no histórico"),
-      );
-      void qc.invalidateQueries({ queryKey: ["contact", contactId] });
+      };
+      let tagFinal: string | null = null;
+      let falhas = 0;
+      for (const id of alvos) {
+        try {
+          const r = await apiClient.post<{ data: { tag: string | null } }>(
+            `/api/v1/contacts/${id}/atividades`,
+            corpo,
+          );
+          tagFinal = (r as { data?: { tag?: string | null } } | undefined)?.data?.tag ?? tagFinal;
+        } catch {
+          falhas += 1;
+        }
+      }
+      return { tagFinal, falhas, total: alvos.length };
+    },
+    onSuccess: ({ tagFinal, falhas, total }) => {
+      if (falhas === total) {
+        toast.error(t("Não foi possível registrar a ação."));
+        return;
+      }
+      if (total > 1) {
+        toast.success(
+          `${t("Ação registrada em")} ${total - falhas} ${t("leads")}${
+            falhas > 0 ? ` · ${falhas} ${t("falharam")}` : ""
+          }`,
+        );
+      } else {
+        toast.success(
+          tagFinal
+            ? `${t("Ação registrada. Tag:")} ${tagFinal}`
+            : t("Ação registrada no histórico"),
+        );
+      }
+      void qc.invalidateQueries({ queryKey: ["contact"] });
+      void qc.invalidateQueries({ queryKey: ["clientes"] });
+      aoRegistrar?.();
       escolher(null);
       void qc.invalidateQueries({ queryKey: ["contact-timeline"] });
       void qc.invalidateQueries({ queryKey: ["timeline"] });
@@ -99,10 +137,19 @@ export function RegistrarAcaoDoLead({
   const podeRegistrar = !exigeTitulo || titulo.trim().length >= 3;
 
   if (!podeEditar) return null;
+  const envolver = (children: React.ReactNode) =>
+    semBloco ? (
+      <div>{children}</div>
+    ) : (
+      <BlocoDaFicha titulo={t("Registrar ação")} cor="purple">
+        {children}
+      </BlocoDaFicha>
+    );
   return (
     <div className="grid gap-4">
       {podeEditar ? (
-        <BlocoDaFicha titulo={t("Registrar ação")} cor="purple">
+        envolver(
+        <>
           <div className="flex flex-wrap gap-2">
             {ACOES_DO_LEAD.map((a) => (
               <button
@@ -195,7 +242,8 @@ export function RegistrarAcaoDoLead({
               </div>
             </div>
           ) : null}
-        </BlocoDaFicha>
+        </>,
+        )
       ) : null}
     </div>
   );

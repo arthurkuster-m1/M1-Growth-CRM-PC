@@ -4,7 +4,7 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import { useT } from "@/hooks/i18n/useT";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useDeleteContact } from "@/hooks/contacts/useDeleteContact";
 import { format } from "date-fns";
@@ -80,7 +80,20 @@ function ContactDetailInner({ contactId }: Props) {
   // VALOR mora no contato. `camposDoFunil` é o mesmo leitor que o Kanban usa.
   const pipelineQuery = useDefaultPipeline(Boolean(activeOrg));
   const [anonOpen, setAnonOpen] = useState(false);
-  const [aba, setAba] = useState("overview");
+  const abaDaUrl = useSearchParams().get("aba");
+  const ABAS_VALIDAS = [
+    "overview",
+    "cadastro",
+    "atendimento",
+    "oportunidades",
+    "vendas",
+    "anotacoes",
+    "timeline",
+    "lgpd",
+  ];
+  const [aba, setAba] = useState(
+    abaDaUrl && ABAS_VALIDAS.includes(abaDaUrl) ? abaDaUrl : "overview",
+  );
   /** A tarefa que a Visão geral mandou abrir na aba Atendimento e Tarefas. */
   const [tarefaParaAbrir, setTarefaParaAbrir] = useState<string | null>(null);
   // Trocar de aba com algo digitado e não salvo pergunta antes (o que é do Cadastro, por ora).

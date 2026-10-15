@@ -249,7 +249,7 @@ export function KanbanCard({
             {lead.status === "won" && lead.com_pagamento === false && (
               <span
                 title={t("Comprou, mas nenhum pagamento foi recebido ainda")}
-                className="rounded bg-warning-bg px-1.5 text-[11px] font-medium leading-4 text-warning-fg"
+                className="rounded-md bg-warning-bg px-1.5 text-[11px] font-medium leading-4 text-warning-fg"
               >
                 {t("Aguardando pagamento")}
               </span>

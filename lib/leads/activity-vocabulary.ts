@@ -200,7 +200,22 @@ export type ActivityType =
    * possível (`lead_id` é NOT NULL), só auditoria (D6).
    */
   | "contact_marked_personal"
-  | "contact_unmarked_personal";
+  | "contact_unmarked_personal"
+  /**
+   * O DINHEIRO DA OPORTUNIDADE, na linha do tempo (migration 0640): cada parcela comprometida,
+   * recebida, cancelada, com vencimento ou valor alterado, e a que venceu sem pagar. Escritos por
+   * trigger do banco (`fn_parcela_na_linha_do_tempo`) e pela rotina diária
+   * (`fn_registrar_parcelas_atrasadas`): o SQL grava os literais, então este vocabulário e o
+   * `.sql` mudam juntos.
+   */
+  | "payment_committed"
+  | "payment_received"
+  | "payment_cancelled"
+  | "payment_rescheduled"
+  | "payment_value_changed"
+  | "payment_overdue"
+  /** O ciclo de vida do cliente mudou (Novo lead → Em negociação → Cliente ativo → Ex-cliente…). */
+  | "lifecycle_changed";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   lead_created: "Entrou no funil",
@@ -313,6 +328,13 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   // que o contato saiu da operação (ou voltou), não o nome da coluna.
   contact_marked_personal: "Marcado como pessoal",
   contact_unmarked_personal: "Desmarcado como pessoal",
+  payment_committed: "Parcela comprometida",
+  payment_received: "Pagamento recebido",
+  payment_cancelled: "Parcela cancelada",
+  payment_rescheduled: "Vencimento da parcela alterado",
+  payment_value_changed: "Valor da parcela alterado",
+  payment_overdue: "Parcela atrasada",
+  lifecycle_changed: "Ciclo de vida do cliente mudou",
 };
 
 /** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */

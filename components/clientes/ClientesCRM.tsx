@@ -24,6 +24,7 @@ import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizaca
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { COR_DO_CICLO, CICLOS_DE_VIDA, ehCicloDeVida, ROTULO_DO_CICLO } from "@/lib/ciclo-de-vida";
 import { BASE_DA_COR } from "@/lib/motor/cores";
+import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { AcoesEmMassaDeClientes } from "@/components/clientes/AcoesEmMassaDeClientes";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -103,6 +104,28 @@ const COR_DA_VENDA: Record<string, string> = {
   concluida: "border-green-500/60 bg-green-500/10 text-green-700 dark:text-green-300",
 };
 const ID_DA_PADRAO = "padrao";
+
+/** Propriedades que são da OPORTUNIDADE: não aparecem na aba Clientes. */
+const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
+  "funis",
+  "etapa",
+  "campanha",
+  "status",
+  "responsavel",
+  "proxima-acao",
+  "proxima-acao-em",
+  "vendas-ativas",
+  "valor",
+  "previsao",
+]);
+/** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
+const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
+  "dono",
+  "ativo-ate",
+  "oportunidades-abertas",
+  "origem-campanha",
+  "origem-posicionamento",
+]);
 const TIPOS_DO_CRM = ["tabela", "kanban"] as const;
 
 const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -763,7 +786,7 @@ export function ClientesCRM({
     },
     {
       id: "dono",
-      titulo: t("Dono do relacionamento"),
+      titulo: t("Gestor de Relacionamento"),
       icone: <Users size={14} aria-hidden />,
       largura: 210,
       padrao: !ehOportunidades,
@@ -772,7 +795,7 @@ export function ClientesCRM({
           membros={membros}
           valorId={l.dono_user_id}
           podeEditar={podeEditar}
-          rotulo={t("Dono do relacionamento")}
+          rotulo={t("Gestor de Relacionamento")}
           aoEscolher={(id) => {
             otimista((c) => ({ ...c, dono_user_id: id }), l.contact_id);
             void executar(() =>
@@ -898,6 +921,14 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 170,
       celula: (l) => {
+        // Na aba Clientes a origem é a do CADASTRO do lead (não a de uma oportunidade dele).
+        if (!ehOportunidades) {
+          return (
+            <span className="block truncate px-2 text-sm">
+              {l.origem_do_cliente.fonte ?? l.origem ?? "—"}
+            </span>
+          );
+        }
         const alvo = alvoDaLinha(l);
         const atual = alvo?.origem ?? l.origem ?? "";
         if (!alvo) return <span className="block truncate px-2 text-sm">{atual || "—"}</span>;
@@ -1001,7 +1032,7 @@ export function ClientesCRM({
     },
     {
       id: "vendas",
-      titulo: t("Vendas pagas (qtd)"),
+      titulo: t("Compras pagas (qtd)"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 130,
       padrao: false,
@@ -1043,11 +1074,57 @@ export function ClientesCRM({
       },
     },
     {
+      id: "oportunidades-abertas",
+      titulo: t("Oportunidades abertas"),
+      icone: <Kanban size={14} aria-hidden />,
+      largura: 190,
+      celula: (l) =>
+        l.oportunidades_abertas > 0 ? (
+          <Link
+            href={`/app/contacts/${l.contact_id}?aba=oportunidades`}
+            title={t("Ver as oportunidades deste cliente")}
+            onClick={(e) => e.stopPropagation()}
+            className="mx-2 inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-primary/10 px-2 text-sm font-semibold text-primary tabular-nums hover:bg-primary/20"
+          >
+            {l.oportunidades_abertas}
+          </Link>
+        ) : (
+          <span className="block px-2 text-sm text-muted-foreground">0</span>
+        ),
+    },
+    {
+      id: "origem-campanha",
+      titulo: t("Campanha"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 240,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">{l.origem_do_cliente.campanha ?? "—"}</span>
+      ),
+    },
+    {
+      id: "origem-posicionamento",
+      titulo: t("Posicionamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 180,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {l.origem_do_cliente.posicionamento ?? "—"}
+        </span>
+      ),
+    },
+    {
       id: "anuncio",
       titulo: t("Anúncio"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 220,
       celula: (l) => {
+        if (!ehOportunidades) {
+          return (
+            <span className="block truncate px-2 text-sm">{l.origem_do_cliente.anuncio ?? "—"}</span>
+          );
+        }
         const lista = itensDaLinha(l);
         if (lista.length === 0) return semValor;
         return empilhado(
@@ -1072,6 +1149,11 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 220,
       celula: (l) => {
+        if (!ehOportunidades) {
+          return (
+            <span className="block truncate px-2 text-sm">{l.origem_do_cliente.pagina ?? "—"}</span>
+          );
+        }
         const lista = itensDaLinha(l);
         if (lista.length === 0) return semValor;
         return empilhado(
@@ -1161,7 +1243,7 @@ export function ClientesCRM({
     },
     {
       id: "dono",
-      titulo: t("Dono do relacionamento"),
+      titulo: t("Gestor de Relacionamento"),
       tipo: "opcao",
       valorDe: (l) => l.dono_user_id,
       opcoes: membros.map((m) => ({ id: m.id, rotulo: m.nome, cor: "gray" as CorDaOpcao })),
@@ -1174,7 +1256,30 @@ export function ClientesCRM({
       tipo: "data",
       valorDe: (l) => l.participacao?.proxima_acao_em ?? null,
     },
-    { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (l) => l.origem },
+    {
+      id: "origem",
+      titulo: t("Origem"),
+      tipo: "texto",
+      valorDe: (l) => (ehOportunidades ? l.origem : (l.origem_do_cliente.fonte ?? l.origem)),
+    },
+    {
+      id: "oportunidades-abertas",
+      titulo: t("Oportunidades abertas"),
+      tipo: "numero",
+      valorDe: (l) => l.oportunidades_abertas,
+    },
+    {
+      id: "origem-campanha",
+      titulo: t("Campanha (origem)"),
+      tipo: "texto",
+      valorDe: (l) => l.origem_do_cliente.campanha ?? "",
+    },
+    {
+      id: "origem-posicionamento",
+      titulo: t("Posicionamento"),
+      tipo: "texto",
+      valorDe: (l) => l.origem_do_cliente.posicionamento ?? "",
+    },
     { id: "tags", titulo: t("Tags"), tipo: "multi", valorDe: (l) => l.tags },
     {
       id: "entrou",
@@ -1241,9 +1346,9 @@ export function ClientesCRM({
     },
   ];
   // Etapa e situação são de UM funil: na lista "Todos" não há uma só etapa por lead.
-  const campos = todosOsCampos.filter(
-    (c) => funilAtual !== null || (c.id !== "etapa" && c.id !== "status"),
-  );
+  const campos = todosOsCampos
+    .filter((c) => funilAtual !== null || (c.id !== "etapa" && c.id !== "status"))
+    .filter((c) => (ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id)));
 
   const camposDaBarra: CampoDaBarra[] = campos.map((c) => ({
     id: c.id,
@@ -1252,7 +1357,11 @@ export function ClientesCRM({
     opcoes: c.opcoes,
   }));
 
-  const resolvidas = resolverColunas(colunas, preferencias);
+  // Cada aba mostra só o que é dela: Clientes, o que é da pessoa; Oportunidades, o do negócio.
+  const colunasDaVisao = colunas.filter((c) =>
+    ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id),
+  );
+  const resolvidas = resolverColunas(colunasDaVisao, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
 
   const termo = semAcento(busca);
@@ -1794,6 +1903,16 @@ export function ClientesCRM({
                 </div>
               ) : (
                 <TabelaDoMotor
+                  aoOrdenarPor={(coluna) =>
+                    mudarConsulta({
+                      filtros: preferencias.filtros,
+                      ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
+                      agrupar: preferencias.agrupar,
+                      agruparPor: preferencias.agruparPor,
+                    })
+                  }
+                  ordenacao={preferencias.ordenacao}
+                  colunasOrdenaveis={new Set(camposDaBarra.map((c) => c.id))}
                   linhas={resultado.linhas}
                   idDe={(l) => l.chave}
                   colunas={mostradas}

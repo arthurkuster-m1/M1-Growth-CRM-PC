@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { SeletorDeTagsEmMassa } from "@/components/clientes/SeletorDeTagsEmMassa";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 
-type Dialogo = "tag" | "campanha" | "excluir" | null;
+type Dialogo = "tag" | "campanha" | "excluir" | "acao" | null;
 
 const classeDoSelect = "h-9 w-full rounded-lg border bg-background px-2 text-sm";
 const NOVA = "__nova";
@@ -175,13 +176,16 @@ export function AcoesEmMassaDeClientes({
     <>
       <div
         data-lote-selecionados={n}
-        className="sticky bottom-4 z-30 mx-auto flex w-fit max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-md"
+        className="fixed bottom-20 left-1/2 z-40 flex w-fit max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-lg md:bottom-6"
       >
         <span className="text-sm font-medium">
           {n} {n === 1 ? t("selecionado") : t("selecionados")}
         </span>
         <Button size="sm" variant="outline" onClick={() => setDialogo("tag")}>
           {t("Adicionar tag")}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setDialogo("acao")}>
+          {t("Registrar ação")}
         </Button>
         {podeGerir ? (
           <Button size="sm" onClick={() => setDialogo("campanha")}>
@@ -201,7 +205,17 @@ export function AcoesEmMassaDeClientes({
         </Button>
       </div>
 
-      <Dialog open={dialogo !== null} onOpenChange={(v) => (v ? null : setDialogo(null))}>
+      <RegistrarAcaoEmMassaDialog
+        contatoIds={contatoIds}
+        aberto={dialogo === "acao"}
+        aoFechar={() => setDialogo(null)}
+        aoConcluir={aoLimpar}
+      />
+
+      <Dialog
+        open={dialogo !== null && dialogo !== "acao"}
+        onOpenChange={(v) => (v ? null : setDialogo(null))}
+      >
         <DialogContent>
           {dialogo === "tag" ? (
             <>

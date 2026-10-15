@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/hooks/i18n/useT";
 import { normalizarTag } from "@/lib/contacts/tag-normalizada";
-import { categoriaDaTag } from "@/lib/tags/categorias";
+import { categoriaDaTag, tagEhAutomatica } from "@/lib/tags/categorias";
 import { Plus, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,9 @@ export function SeletorDeTagsEmMassa({
   const alternar = (tag: string) =>
     aoMudar(marcadas.has(tag) ? escolhidas.filter((x) => x !== tag) : [...escolhidas, tag]);
 
-  const todas = [...new Set([...existentes, ...escolhidas])].sort((a, b) => a.localeCompare(b));
+  // Tag de rastreio, funil, ação e MQL é do sistema: não se escolhe nem se cria à mão.
+  const manuais = existentes.filter((x) => !tagEhAutomatica(x, config));
+  const todas = [...new Set([...manuais, ...escolhidas])].sort((a, b) => a.localeCompare(b));
   const termo = busca.trim().toLowerCase();
   const visiveis = termo ? todas.filter((x) => x.toLowerCase().includes(termo)) : todas;
 
@@ -50,9 +52,19 @@ export function SeletorDeTagsEmMassa({
     }))
     .filter((g) => g.itens.length > 0);
 
+  const [aviso, setAviso] = useState<string | null>(null);
   function adicionarNova() {
     const tag = normalizarTag(nova);
     if (!tag) return;
+    if (tagEhAutomatica(tag, config)) {
+      setAviso(
+        t(
+          "Essa tag é criada pelo sistema (origem, funil, ação ou MQL) e não pode ser adicionada à mão.",
+        ),
+      );
+      return;
+    }
+    setAviso(null);
     if (!marcadas.has(tag)) aoMudar([...escolhidas, tag]);
     setNova("");
   }
@@ -92,7 +104,10 @@ export function SeletorDeTagsEmMassa({
         <Input
           value={nova}
           maxLength={60}
-          onChange={(e) => setNova(e.target.value)}
+          onChange={(e) => {
+            setNova(e.target.value);
+            setAviso(null);
+          }}
           placeholder={t("Nova tag…")}
           className="h-9"
         />
@@ -101,6 +116,8 @@ export function SeletorDeTagsEmMassa({
           {t("Adicionar")}
         </Button>
       </form>
+
+      {aviso ? <p className="text-xs text-error-fg">{aviso}</p> : null}
 
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-2">

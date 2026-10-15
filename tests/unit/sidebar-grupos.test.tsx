@@ -131,8 +131,8 @@ describe("Sidebar agrupado", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
-    // O CRM do dia a dia é "Clientes"; a lista de funis fica no hub do grupo.
-    expect(screen.getByRole("link", { name: "Clientes" })).toHaveAttribute("href", "/app/clientes");
+    // O CRM do dia a dia é "CRM"; a lista de funis fica no hub do grupo.
+    expect(screen.getByRole("link", { name: "CRM" })).toHaveAttribute("href", "/app/clientes");
     expect(screen.queryByRole("link", { name: "Funis" })).toBeNull();
   });
 
@@ -207,7 +207,7 @@ describe("Sidebar agrupado", () => {
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
     expect(screen.getByRole("link", { name: /Inbox/ })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Clientes" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "CRM" })).not.toHaveAttribute("aria-current");
   });
 
   it("só o grupo da rota atual começa aberto (menu curto, como no desenho do M1)", () => {

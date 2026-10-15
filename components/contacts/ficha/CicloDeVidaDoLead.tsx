@@ -118,10 +118,10 @@ export function CicloDeVidaDoLead({
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">{t("Dono do relacionamento")}</dt>
+            <dt className="text-xs text-muted-foreground">{t("Gestor de Relacionamento")}</dt>
             <dd>
               <select
-                aria-label={t("Dono do relacionamento")}
+                aria-label={t("Gestor de Relacionamento")}
                 disabled={!podeEditar}
                 value={d.dono_user_id ?? ""}
                 onChange={(e) => void mudarDono(e.target.value)}

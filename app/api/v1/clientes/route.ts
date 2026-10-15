@@ -16,6 +16,7 @@ import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { statusDaOportunidade } from "@/lib/vendas";
+import { origemDoContato } from "@/lib/leads/origem-do-contato";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,15 @@ export interface ClienteDaLista {
   oportunidades_abertas: number;
   /** Quem cuida do relacionamento com a pessoa (diferente do dono da oportunidade). */
   dono_user_id: string | null;
+  /** De onde o CLIENTE veio (o cadastro do lead), não a origem de uma oportunidade dele. */
+  origem_do_cliente: {
+    fonte: string | null;
+    campanha: string | null;
+    conjunto: string | null;
+    anuncio: string | null;
+    pagina: string | null;
+    posicionamento: string | null;
+  };
   /** Quando deixa de contar como cliente ativo se não pagar de novo (fim da janela). */
   ativo_ate: string | null;
   valor_em_aberto_cents: number;
@@ -101,6 +111,32 @@ export interface ClienteDaLista {
   ultima_atividade: string | null;
   campos: Record<string, unknown>;
   participacoes: ParticipacaoDoCliente[];
+}
+
+/** A origem do cadastro do lead (o que a ficha mostra em Cadastro › Origem), em campos soltos. */
+function origemDoCadastro(
+  metadata: Record<string, unknown> | null,
+  fonte: string | null,
+): ClienteDaLista["origem_do_cliente"] {
+  const o = origemDoContato(metadata, fonte ?? "");
+  const manual =
+    metadata && typeof metadata.origem_manual === "object" && metadata.origem_manual
+      ? (metadata.origem_manual as Record<string, unknown>)
+      : {};
+  const txt = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
+  const pagina =
+    txt(manual.lp) ??
+    txt(metadata?.lp_name) ??
+    txt(metadata?.landing_page_name) ??
+    txt(metadata?.landing_page);
+  return {
+    fonte: o.origem || null,
+    campanha: o.campanha,
+    conjunto: o.conjunto,
+    anuncio: o.anuncio,
+    pagina,
+    posicionamento: o.posicionamento,
+  };
 }
 
 export async function GET(req: NextRequest): Promise<Response> {
@@ -177,7 +213,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeContatos = supabase
     .from("contacts")
     .select(
-      "id, name, display_name, phone_number, email, tags, source, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on, ciclo_de_vida, ciclo_motivo, oportunidades_abertas, valor_em_aberto_cents, proximo_vencimento, dono_user_id, ativo_ate",
+      "id, name, display_name, phone_number, email, tags, source, source_metadata, is_mql, mql_at, created_at, first_approached_at, first_purchase_on, last_activity_at, custom_fields, ltv_cents, ltv_forecast_cents, interest_cents, sales_count, last_purchase_on, ciclo_de_vida, ciclo_motivo, oportunidades_abertas, valor_em_aberto_cents, proximo_vencimento, dono_user_id, ativo_ate",
     )
     .eq("organization_id", orgId)
     .eq("kind", "person")
@@ -360,6 +396,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       email: string | null;
       tags: string[] | null;
       source: string | null;
+      source_metadata: Record<string, unknown> | null;
       is_mql: boolean;
       mql_at: string | null;
       created_at: string;
@@ -400,6 +437,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     ciclo_motivo: c.ciclo_motivo,
     oportunidades_abertas: c.oportunidades_abertas ?? 0,
     dono_user_id: c.dono_user_id,
+    origem_do_cliente: origemDoCadastro(c.source_metadata, c.source),
     ativo_ate: c.ativo_ate,
     valor_em_aberto_cents: Number(c.valor_em_aberto_cents) || 0,
     proximo_vencimento: c.proximo_vencimento,

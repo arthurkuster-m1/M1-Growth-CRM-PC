@@ -21,6 +21,7 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { normalizarTags } from "@/lib/contacts/tag-normalizada";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { tagEhAutomatica } from "@/lib/tags/categorias";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +113,18 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   if (corpo.data.action === "tags") {
     const novas = normalizarTags(corpo.data.add);
+    // Tag de rastreio, de funil, de ação e MQL é do sistema: não entra à mão.
+    const automaticas = novas.filter((x) => tagEhAutomatica(x));
+    if (automaticas.length > 0) {
+      return fail(
+        "validation_failed",
+        t(
+          "Essas tags são criadas pelo sistema (origem, funil, ação e MQL) e não podem ser adicionadas à mão",
+        ) + `: ${automaticas.join(", ")}`,
+        422,
+        { requestId },
+      );
+    }
     const { data } = await supabase
       .from("contacts")
       .select("id, tags")

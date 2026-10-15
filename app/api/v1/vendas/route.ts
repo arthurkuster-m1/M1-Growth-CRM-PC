@@ -21,6 +21,7 @@ import {
   gravarItensEParcelas,
 } from "@/lib/vendas-servidor";
 import { SELECAO_DA_OPORTUNIDADE, novaVendaSchema, vendaDaOportunidade } from "@/lib/vendas";
+import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +177,16 @@ export async function POST(req: NextRequest): Promise<Response> {
       return fail("internal_error", "Erro ao registrar a venda.", 500, { requestId });
     }
     leadId = (criada as { id: string }).id;
+    void emitLeadActivity(supabase, {
+      organizationId: orgId,
+      leadId,
+      contactId: corpo.data.contact_id,
+      type: "lead_created",
+      sourceModule: "vendas",
+      actor: { type: "user", id: authz.user.id },
+      reason: "Nova oportunidade registrada",
+      payload: { origem: "venda" },
+    });
   }
 
   const gravou = await gravarItensEParcelas(supabase, orgId, leadId, itens, pagamentos);

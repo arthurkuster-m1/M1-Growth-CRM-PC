@@ -16,13 +16,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { invalidarCategoriasDeTags, useCategoriasDeTags, useCorDaEtiqueta } from "@/components/tags/CoresDasEtiquetas";
+import { SeletorDeTagsEmMassa } from "@/components/clientes/SeletorDeTagsEmMassa";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -603,7 +604,15 @@ export function TagsDoLead({
   const queryClient = useQueryClient();
   const config = useCategoriasDeTags();
   const atualizar = useUpdateContact(contact.id);
-  const [novaTag, setNovaTag] = useState("");
+  const [novasTags, setNovasTags] = useState<string[]>([]);
+  const [adicionando, setAdicionando] = useState(false);
+  // As tags que já existem na base, para escolher em vez de digitar (as automáticas ficam de fora).
+  const existentes = useQuery({
+    queryKey: ["tags-existentes"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (await apiClient.get<{ data: { tags: string[] } }>("/api/v1/tags/existentes")).data.tags,
+  });
   const [agrupar, setAgrupar] = useState(false);
   const [filtro, setFiltro] = useState<string>("");
   const [gerenciando, setGerenciando] = useState(false);
@@ -788,26 +797,44 @@ export function TagsDoLead({
       )}
 
       {podeEditar ? (
-        <form
-          className="mt-3 flex items-center gap-1"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const novas = normalizarTags([novaTag]);
-            if (novas.length === 0) return;
-            void gravar(normalizarTags([...tags, ...novas]));
-            setNovaTag("");
-          }}
-        >
-          <Input
-            value={novaTag}
-            onChange={(e) => setNovaTag(e.target.value)}
-            placeholder={t("Nova tag…")}
-            className="h-8 w-44"
-          />
-          <Button size="sm" type="submit" variant="outline" disabled={!novaTag.trim()}>
-            {t("Adicionar")}
-          </Button>
-        </form>
+        <Popover open={adicionando} onOpenChange={setAdicionando}>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline" className="mt-3">
+              <Plus size={14} weight="bold" aria-hidden className="mr-1" />
+              {t("Adicionar tag")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[min(92vw,420px)] p-3">
+            <SeletorDeTagsEmMassa
+              existentes={existentes.data ?? []}
+              escolhidas={novasTags}
+              aoMudar={setNovasTags}
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setNovasTags([]);
+                  setAdicionando(false);
+                }}
+              >
+                {t("Cancelar")}
+              </Button>
+              <Button
+                size="sm"
+                disabled={novasTags.length === 0}
+                onClick={() => {
+                  void gravar(normalizarTags([...tags, ...novasTags]));
+                  setNovasTags([]);
+                  setAdicionando(false);
+                }}
+              >
+                {t("Aplicar")}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       ) : null}
 
       {gerenciando ? (

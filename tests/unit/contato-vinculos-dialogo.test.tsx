@@ -159,15 +159,15 @@ async function consultarRota() {
 }
 
 describe("GET /api/v1/contacts/[id]/vinculos — a pré-checagem", () => {
-  it("conta o compromisso da própria organização e nomeia o vínculo", async () => {
+  it("compromisso na agenda não barra mais: sai junto, para a lixeira (7 dias)", async () => {
     estado.agenda = [{ contact_id: CONTATO, organization_id: ORG }];
 
     const { status, body } = await consultarRota();
 
     expect(status).toBe(200);
     expect((body as unknown as { data: unknown }).data).toEqual({
-      vinculos: ["1 compromisso(s) na agenda"],
-      por_tabela: { calendar_appointments: 1 },
+      vinculos: [],
+      por_tabela: {},
     });
   });
 
@@ -244,7 +244,7 @@ describe("diálogo 'Excluir contato?' — o aviso antes do clique", () => {
     // "não havia vínculo para avisar".
     expect(await screen.findByText("Excluir contato?")).toBeInTheDocument();
     expect(screen.queryByText(/Este contato tem/)).toBeNull();
-    expect(screen.getByText(/e a conversa associada, se houver/)).toBeInTheDocument();
+    expect(screen.getByText(/Fica 7 dias na Lixeira do CRM/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
     // `mutateAsync` entra na fila do react-query: a chamada da rota vem no

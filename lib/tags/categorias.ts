@@ -47,6 +47,28 @@ export function categoriaPorRegra(tag: string): string | null {
   return null;
 }
 
+/** As categorias que o SISTEMA preenche sozinho: ninguém digita tag delas à mão. */
+const CATEGORIAS_AUTOMATICAS: ReadonlySet<string> = new Set([
+  "acao",
+  "tracking",
+  "funil",
+  "qualificacao",
+]);
+
+/**
+ * A tag é criada pelo sistema, não pela equipe: origem (Campanha/Ad/LP/Conjunto/Posicionamento),
+ * funil, MQL e as ações da linha do tempo (No show, Remarcou…). Essas não se adicionam à mão — o
+ * sistema as põe ao rastrear o lead, ao entrar num funil, ao qualificar e ao registrar uma ação.
+ */
+export function tagEhAutomatica(tag: string, config?: ConfigDeCategorias | null): boolean {
+  const t = chaveDaEtiqueta(tag);
+  if (/^posicionamento\s*:/.test(t)) return true;
+  const porRegra = categoriaPorRegra(tag);
+  if (porRegra && CATEGORIAS_AUTOMATICAS.has(porRegra)) return true;
+  const escolhida = config ? categoriaDaTag(tag, config)?.id : null;
+  return Boolean(escolhida && CATEGORIAS_AUTOMATICAS.has(escolhida));
+}
+
 /** Lê o que está em `settings` sem quebrar com lixo: as padrão sempre presentes, cores válidas. */
 export function lerConfigDeCategorias(settings: unknown): ConfigDeCategorias {
   const bruto =

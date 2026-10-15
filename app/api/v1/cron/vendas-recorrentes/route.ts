@@ -176,10 +176,15 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { data: recalculados } = await admin.rpc("fn_ciclo_recalcula_todos" as never, {} as never);
   if (typeof recalculados === "number") ciclos = recalculados;
 
+  // ── 3b. Parcelas vencidas entram na linha do tempo do lead (uma vez cada) ─────────────────
+  let atrasadas = 0;
+  const { data: marcadas } = await admin.rpc("fn_registrar_parcelas_atrasadas" as never, {} as never);
+  if (typeof marcadas === "number") atrasadas = marcadas;
+
   // ── 4. Lixeira: o que passou de 7 dias é apagado de vez ────────────────────────────────
   let lixeira = 0;
   const { data: esvaziados } = await admin.rpc("fn_lixeira_esvaziar" as never, {} as never);
   if (typeof esvaziados === "number") lixeira = esvaziados;
 
-  return ok({ geradas, avisos, ciclos, lixeira }, { requestId });
+  return ok({ geradas, avisos, ciclos, atrasadas, lixeira }, { requestId });
 }
