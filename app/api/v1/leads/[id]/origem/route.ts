@@ -165,10 +165,17 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
             is_won: boolean;
             is_lost: boolean;
             is_archived: boolean;
+            position: number | null;
           }>
         )
           .filter((e) => !e.is_archived)
-          .map((e) => ({ id: e.id, nome: e.name, ganho: e.is_won, perdido: e.is_lost })),
+          .map((e) => ({
+            id: e.id,
+            nome: e.name,
+            ganho: e.is_won,
+            perdido: e.is_lost,
+            position: e.position,
+          })),
         field_defs: camposDoFunil(settingsDoEmbed(l.crm_pipelines)),
       },
       contact_id: l.contact_id,

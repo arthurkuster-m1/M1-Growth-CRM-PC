@@ -94,6 +94,18 @@ function rotuloDoStatusDaVenda(t: (s: string) => string, s: StatusDaVenda): stri
 export function VendasCRM() {
   const t = useT();
   const rotuloDaFormaDe = useRotuloDaForma();
+  const equipeDaEmpresa = useQuery({
+    queryKey: ["team", "assignable", "vendas"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: Array<{ user_id: string; full_name: string | null }> }>(
+          "/api/v1/team/assignable",
+        )
+      ).data,
+  });
+  const nomeDoResponsavel = (id: string | null | undefined) =>
+    (equipeDaEmpresa.data ?? []).find((p) => p.user_id === id)?.full_name?.trim() ?? "";
   const queryClient = useQueryClient();
   const router = useRouter();
   const caminho = usePathname();
@@ -466,6 +478,20 @@ export function VendasCRM() {
       celula: (v) => dataCelula(resumoDaVenda(v).proximoPagamento),
     },
     {
+      id: "previsao",
+      titulo: t("Previsão de fechamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 180,
+      celula: (v) => dataCelula(v.expected_close_date),
+    },
+    {
+      id: "responsavel",
+      titulo: t("Responsável"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 180,
+      celula: (v) => texto(nomeDoResponsavel(v.responsavel_id)),
+    },
+    {
       id: "origem",
       titulo: t("Origem"),
       icone: <TextAa size={14} aria-hidden />,
@@ -591,6 +617,18 @@ export function VendasCRM() {
       titulo: t("Próximo pagamento"),
       tipo: "data",
       valorDe: (v) => resumoDaVenda(v).proximoPagamento,
+    },
+    {
+      id: "previsao",
+      titulo: t("Previsão de fechamento"),
+      tipo: "texto",
+      valorDe: (v) => v.expected_close_date ?? "",
+    },
+    {
+      id: "responsavel",
+      titulo: t("Responsável"),
+      tipo: "texto",
+      valorDe: (v) => nomeDoResponsavel(v.responsavel_id),
     },
     { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (v) => v.origem ?? "" },
     { id: "campanha", titulo: t("Campanha"), tipo: "texto", valorDe: (v) => v.campanha ?? "" },

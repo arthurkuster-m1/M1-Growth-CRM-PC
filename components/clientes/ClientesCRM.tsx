@@ -20,6 +20,7 @@ import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeCo
 import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
+import { CelulaDeDia } from "@/components/motor/CelulaDeDia";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import {
@@ -793,6 +794,34 @@ export function ClientesCRM({
             rotulo={t("Responsável no funil")}
             aoEscolher={(id) =>
               void salvarNegocio(l, alvo, { owner_user_id: id }, { responsavel_id: id })
+            }
+          />
+        );
+      },
+    },
+    {
+      id: "previsao",
+      titulo: t("Previsão de fechamento"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 190,
+      padrao: ehOportunidades,
+      celula: (l) => {
+        const alvo = alvoDaLinha(l);
+        if (!alvo) {
+          const datas = partes(l)
+            .map((p) => p.previsao_de_fechamento)
+            .filter((d): d is string => Boolean(d))
+            .sort();
+          return <span className="block truncate px-2 text-sm text-muted-foreground">{datas[0] ? dia(datas[0]) : "—"}</span>;
+        }
+        return (
+          <CelulaDeDia
+            valor={alvo.previsao_de_fechamento ? alvo.previsao_de_fechamento.slice(0, 10) : null}
+            tag={tag}
+            podeEditar={podeEditar}
+            rotulo={t("Previsão de fechamento")}
+            aoSalvar={(d) =>
+              void salvarNegocio(l, alvo, { expected_close_date: d }, { previsao_de_fechamento: d })
             }
           />
         );

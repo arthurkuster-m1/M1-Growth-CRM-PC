@@ -604,7 +604,14 @@ export function redistribuirAposEditar(
   });
 }
 
-/** O nome da venda na tela: o que a pessoa deu, ou os produtos juntados quando não deu nome. */
-export function nomeDaVenda(v: Pick<Venda, "name" | "product_name">): string {
-  return v.name?.trim() || v.product_name;
+/** O nome da oportunidade na tela: o que a pessoa deu, ou "Cliente | Produto" quando não deu nome. */
+export function nomeDaVenda(
+  v: Pick<Venda, "name" | "product_name"> & { cliente?: { nome: string } | null },
+): string {
+  const dado = v.name?.trim();
+  if (dado) return dado;
+  // Sem nome dado: "Nome do Cliente | Produto".
+  const cliente = v.cliente?.nome?.trim();
+  if (cliente && v.product_name) return `${cliente} | ${v.product_name}`;
+  return v.product_name || cliente || "";
 }

@@ -63,7 +63,13 @@ export interface DadosDoLead {
     funil_nome: string | null;
     etapa_nome: string | null;
     etapa_id?: string | null;
-    etapas?: Array<{ id: string; nome: string; ganho: boolean; perdido: boolean }>;
+    etapas?: Array<{
+      id: string;
+      nome: string;
+      ganho: boolean;
+      perdido: boolean;
+      position?: number | null;
+    }>;
     field_defs: CustomFieldDef[];
   };
   campanhas: Array<{

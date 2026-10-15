@@ -20,8 +20,16 @@ import { SeletorDaFormaDePagamento } from "@/components/vendas/SeletorDaFormaDeP
 import { useTaxasDePagamento } from "@/hooks/financeiro/useTaxasDePagamento";
 import { taxaDoRecebimento } from "@/lib/financeiro/taxas";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
-import { Plus, Trash } from "@/lib/ui/icons";
+import { Bell, Plus, Trash } from "@/lib/ui/icons";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
+import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
+  STATUS_DA_VENDA,
+  type StatusDaVenda,
+  nomeDaVenda,
   ajustarParcelasAoTotal,
   gerarParcelas,
   redistribuirAposEditar,
@@ -29,6 +37,17 @@ import {
   type ParcelaDaVenda,
   type Venda,
 } from "@/lib/vendas";
+
+const PALETA_DE_ETAPAS: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
+
+const COR_DO_STATUS: Record<StatusDaVenda, CorDaOpcao> = {
+  interesse: "purple",
+  comprometida: "orange",
+  concluida: "green",
+  recorrencia_ativa: "blue",
+  recorrencia_encerrada: "brown",
+  cancelada: "gray",
+};
 
 const CAMPO =
   "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
@@ -85,6 +104,23 @@ const BARRAS = {
 } as const;
 
 /** Uma fase do popup: cartão com a barra colorida na lateral e o título. */
+function rotuloDoStatus(t: (s: string) => string, st: StatusDaVenda): string {
+  switch (st) {
+    case "interesse":
+      return t("Possível venda");
+    case "comprometida":
+      return t("Comprometido");
+    case "concluida":
+      return t("Pago");
+    case "recorrencia_ativa":
+      return t("Recorrência ativa");
+    case "recorrencia_encerrada":
+      return t("Recorrência encerrada");
+    case "cancelada":
+      return t("Cancelado");
+  }
+}
+
 function Fase({
   titulo,
   cor,
@@ -118,11 +154,11 @@ export function DialogoDaVenda({
   aoFechar,
   aoSalvar,
   aoApagar,
-  negocio,
+  negocio: negocioProp,
 }: {
   /** Quando a venda é o card de um funil: a etapa (editável) e o atalho para a ficha do lead. */
   negocio?: {
-    etapas: Array<{ id: string; nome: string }>;
+    etapas: Array<{ id: string; nome: string; cor?: CorDaOpcao }>;
     etapaId: string | null;
     aoMoverEtapa: (etapaId: string) => Promise<void>;
     fichaHref?: string;
@@ -171,8 +207,8 @@ export function DialogoDaVenda({
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
   const [descricao, setDescricao] = useState(venda?.description ?? "");
   const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
-  const [etapaId, setEtapaId] = useState(negocio?.etapaId ?? "");
-  const responsavelInicial = venda?.responsavel_id ?? negocio?.responsavelId ?? "";
+  const [etapaId, setEtapaId] = useState(negocioProp?.etapaId ?? "");
+  const responsavelInicial = venda?.responsavel_id ?? negocioProp?.responsavelId ?? "";
   const [responsavel, setResponsavel] = useState(responsavelInicial);
   // A equipe da empresa: quem pode ser o responsável por esta venda.
   const equipeConsulta = useQuery({
@@ -189,14 +225,18 @@ export function DialogoDaVenda({
     id: p.user_id,
     nome: p.full_name?.trim() || t("Membro da equipe"),
   }));
-  // Sem nome dado, a venda se chama pelos produtos (é o que aparece como sugestão no campo).
+  // Sem nome dado, a oportunidade se chama "Nome do Cliente | Produto" (é o que aparece como sugestão no campo).
   const nomesDosProdutos = itens
     .map((it) => produtos.find((p) => p.id === it.produtoId)?.nome ?? "")
     .filter(Boolean)
     .join(" + ");
-  const [camposDoNegocio, setCamposDoNegocio] = useState<Record<string, unknown>>(
-    negocio?.camposValores ?? {},
-  );
+  const nomeDoClienteDaOportunidade = venda?.cliente?.nome ?? contatoInicial?.nome ?? "";
+  const nomePadrao = nomeDaVenda({
+    name: "",
+    product_name: nomesDosProdutos,
+    cliente: nomeDoClienteDaOportunidade ? { nome: nomeDoClienteDaOportunidade } : null,
+  });
+  const [camposEditados, setCamposDoNegocio] = useState<Record<string, unknown> | null>(null);
   // ── Origem da venda (o mesmo modelo do lead): fonte + campanha → conjunto → anúncio → página ──
   const queryClient = useQueryClient();
   const leadDaVenda = venda?.lead_id ?? null;
@@ -218,6 +258,69 @@ export function DialogoDaVenda({
         }>("/api/v1/marketing/origem-opcoes")
       ).data,
   });
+  // O MESMO painel em qualquer porta de entrada: etapa, funil, responsável e campos do funil vêm
+  // da própria oportunidade, não de quem abriu o painel.
+  const [perdendo, setPerdendo] = useState(false);
+  const dadosDoLead = origemDoCard.data;
+  async function recarregarTudo() {
+    await queryClient.invalidateQueries();
+  }
+  async function moverEtapaDaOportunidade(novaEtapaId: string) {
+    const d = dadosDoLead;
+    if (!d || !leadDaVenda) return;
+    const alvo = (d.negocio.etapas ?? []).find((e) => e.id === novaEtapaId);
+    // Etapa de perda pede o motivo; a de ganho fecha como venda. A etapa É o resultado.
+    if (alvo?.perdido) {
+      setPerdendo(true);
+      return;
+    }
+    try {
+      if (alvo?.ganho && d.negocio.status === "open") {
+        await apiClient.post(`/api/v1/leads/${leadDaVenda}/win`, {});
+      } else {
+        await apiClient.post(`/api/v1/leads/${leadDaVenda}/move`, {
+          stage_id: novaEtapaId,
+          position_in_stage: Date.now(),
+          expected_updated_at: d.sistema.atualizado_em,
+        });
+      }
+      await recarregarTudo();
+    } catch (e) {
+      // Comprou sem pagamento: o aviso diz o que falta.
+      showApiError(e);
+    }
+  }
+  const negocio: typeof negocioProp =
+    dadosDoLead && leadDaVenda
+      ? {
+          etapas: (dadosDoLead.negocio.etapas ?? []).map((e, i) => ({
+            id: e.id,
+            nome: e.nome,
+            cor: e.ganho
+              ? ("green" as CorDaOpcao)
+              : e.perdido
+                ? ("red" as CorDaOpcao)
+                : PALETA_DE_ETAPAS[(e.position ?? i) % PALETA_DE_ETAPAS.length]!,
+          })),
+          etapaId: dadosDoLead.negocio.etapa_id ?? null,
+          aoMoverEtapa: moverEtapaDaOportunidade,
+          fichaHref: venda ? `/app/contacts/${venda.contact_id}` : undefined,
+          responsavelId: dadosDoLead.sistema.dono_id ?? null,
+          camposDoFunil: dadosDoLead.negocio.field_defs ?? [],
+          camposValores: dadosDoLead.custom_fields ?? {},
+          aoSalvarExtras: async (x) => {
+            try {
+              if (Object.keys(x).length > 0) await apiClient.patch(`/api/v1/leads/${leadDaVenda}`, x);
+              await recarregarTudo();
+            } catch (e) {
+              showApiError(e);
+            }
+          },
+        }
+      : negocioProp;
+  const camposDoNegocio = camposEditados ?? negocio?.camposValores ?? {};
+  const etapaAtualId = etapaId || negocio?.etapaId || "";
+
   const origemInicial: ValorDaOrigem | null = origemDoCard.data
     ? valorDaOrigemDoCard(origemDoCard.data)
     : null;
@@ -417,6 +520,56 @@ export function DialogoDaVenda({
     );
   }
 
+  /**
+   * Mudou o número de parcelas (Enter ou sair do campo): as parcelas são geradas na hora. As já
+   * recebidas ficam; o que falta é dividido nas demais.
+   */
+  function aplicarQtdDeParcelas() {
+    const n = Math.max(1, Math.min(120, Math.round(lerNumero(qtd) ?? 1)));
+    if (total <= 0) return;
+    if (recorrente && parcelas.some((p) => p.recebida)) return;
+    if (parcelas.length === n) return;
+    const recebidas = parcelas.filter((p) => p.recebida);
+    if (recebidas.length === 0) {
+      gerar();
+      return;
+    }
+    const jaRecebido = recebidas.reduce((a2, p) => a2 + centavos(p.valor), 0);
+    const restantes = Math.max(1, n - recebidas.length);
+    const novas = gerarParcelas(Math.max(0, total - jaRecebido), restantes, primeiro || hoje());
+    setParcelas(
+      [
+        ...recebidas,
+        ...novas.map((p: ParcelaDaVenda) => ({
+          number: 0,
+          due_on: p.due_on,
+          valor: textoDe(p.amount_cents),
+          recebida: false,
+          paid_on: null as string | null,
+        })),
+      ].map((p, k) => ({ ...p, number: k + 1 })),
+    );
+  }
+
+  // O status da oportunidade vem das parcelas; aqui dá para mudá-lo (cancelar e encerrar pedem o
+  // motivo, e o que já foi pago continua no faturamento).
+  const statusAtual: StatusDaVenda = venda?.status ?? "interesse";
+  const [cancelandoStatus, setCancelandoStatus] = useState(false);
+  async function mudarStatusDaOportunidade(novo: StatusDaVenda) {
+    if (!venda || novo === statusAtual) return;
+    if (novo === "cancelada" || novo === "recorrencia_encerrada") {
+      setCancelandoStatus(true);
+      return;
+    }
+    try {
+      await apiClient.patch(`/api/v1/vendas/${venda.id}`, { status: novo });
+      await queryClient.invalidateQueries();
+      aoFechar();
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+
   const itensValidos = itens.filter((i) => i.produtoId !== "");
   const valido =
     contato !== "" &&
@@ -497,7 +650,7 @@ export function DialogoDaVenda({
     });
     if (salvou === false) {
       setSalvando(false);
-      setErro(t("Não consegui salvar a venda. Confira os campos e tente de novo."));
+      setErro(t("Não consegui salvar a oportunidade. Confira os campos e tente de novo."));
       return;
     }
     // O lembrete: cria, muda a data ou desliga a tarefa.
@@ -509,8 +662,8 @@ export function DialogoDaVenda({
           await apiClient.patch(`/api/v1/tasks/${tarefaDoLembrete}`, { due_date: quando, status: "pending" });
         } else {
           await apiClient.post("/api/v1/tasks", {
-            title: `${t("Lembrete da venda")}${nome ? `: ${nome}` : ""}`,
-            description: `${t("Lembrete da venda")}${venda ? ` [venda:${venda.id}]` : ""}`,
+            title: `${t("Lembrete da oportunidade")}${nome ? `: ${nome}` : ""}`,
+            description: `${t("Lembrete da oportunidade")}${venda ? ` [venda:${venda.id}]` : ""}`,
             due_date: quando,
             contact_id: contato,
             lead_id: venda?.lead_id ?? null,
@@ -532,7 +685,7 @@ export function DialogoDaVenda({
         await queryClient.invalidateQueries();
       } catch {
         setSalvando(false);
-        setErro(t("A venda foi salva, mas não consegui salvar a origem. Tente de novo."));
+        setErro(t("A oportunidade foi salva, mas não consegui salvar a origem. Tente de novo."));
         return;
       }
     }
@@ -548,16 +701,152 @@ export function DialogoDaVenda({
   }
 
   return (
+    <>
+    {(perdendo || cancelandoStatus) && leadDaVenda && (venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id) ? (
+      <LoseLeadDialog
+        open
+        leadId={leadDaVenda}
+        pipelineId={(venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id)!}
+        onOpenChange={(aberta) => {
+          if (aberta) return;
+          const foiStatus = cancelandoStatus;
+          setPerdendo(false);
+          setCancelandoStatus(false);
+          void queryClient.invalidateQueries().then(() => {
+            if (foiStatus) aoFechar();
+          });
+        }}
+      />
+    ) : null}
     <Dialog open onOpenChange={(a) => !a && aoFechar()}>
       <DialogContent className="max-h-[92vh] max-w-3xl gap-4 overflow-y-auto bg-background p-5 sm:rounded-2xl">
-        <DialogTitle className="text-base font-semibold">
-          {titulo ?? (venda ? t("Editar venda") : t("Nova venda"))}
-        </DialogTitle>
+        <div className="flex items-start justify-between gap-2 pr-8">
+          <DialogTitle className="min-w-0 text-base font-semibold break-words">
+            {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
+          </DialogTitle>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("Lembrete")}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary ${
+                  lembreteAtivo ? "border-primary/60 bg-primary/10 text-primary" : ""
+                }`}
+              >
+                <Bell size={14} aria-hidden />
+                {lembreteAtivo && lembreteDia
+                  ? lembreteDia.split("-").reverse().join("/")
+                  : t("Lembrete")}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 space-y-3 p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={lembreteAtivo}
+                  onChange={(e) => setLembreteAtivo(e.target.checked)}
+                />
+                {t("Ativar um lembrete para esta oportunidade")}
+              </label>
+              {lembreteAtivo ? (
+                <div className="grid gap-3">
+                  <div className="grid gap-1">
+                    <span className="text-xs text-muted-foreground">{t("Data")}</span>
+                    <CampoDeData
+                      valor={lembreteDia}
+                      aoMudar={setLembreteDia}
+                      rotulo={t("Data do lembrete")}
+                      limpavel={false}
+                      className="w-full"
+                    />
+                  </div>
+                  <label className="grid gap-1">
+                    <span className="text-xs text-muted-foreground">{t("Hora")}</span>
+                    <input
+                      type="time"
+                      value={lembreteHora}
+                      onChange={(e) => setLembreteHora(e.target.value)}
+                      className={CAMPO}
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("Vira uma tarefa com este dia e hora, ligada ao lead — ela aparece em Tarefas e avisa na hora.")}
+                  </p>
+                </div>
+              ) : null}
+            </PopoverContent>
+          </Popover>
+        </div>
         <DialogDescription className="text-sm text-muted-foreground">
           {t(
             "Informe os produtos, o valor real e como o cliente vai pagar. Só entra no mês o que de fato cair na conta.",
           )}
         </DialogDescription>
+
+        {/* O NEGÓCIO da venda: previsão, descrição e campos do funil. */}
+        <Fase titulo={t("Negócio")} cor="purple">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Nome da oportunidade")}</span>
+              <input
+                value={nomeDaVendaTexto}
+                maxLength={120}
+                onChange={(e) => setNomeDaVendaTexto(e.target.value)}
+                placeholder={nomePadrao || t("Nome do cliente | Produto")}
+                className="h-10 w-full min-w-0 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <div className="grid gap-1">
+              <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
+              <CampoDeData
+                valor={previsao}
+                aoMudar={setPrevisao}
+                rotulo={t("Previsão de fechamento")}
+                className="w-full"
+              />
+            </div>
+            <div className="grid gap-1">
+              <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
+              <SeletorEmPopup
+                rotulo={t("Responsável pela oportunidade")}
+                valor={responsavel}
+                opcoes={equipe.map((p) => ({ id: p.id, rotulo: p.nome }))}
+                rotuloVazio={t("Sem responsável")}
+                aoEscolher={setResponsavel}
+              />
+            </div>
+            <label className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Descrição da oportunidade")}</span>
+              <textarea
+                rows={2}
+                maxLength={2000}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder={t("Contexto desta negociação…")}
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
+              <div className="grid gap-1 sm:col-span-2">
+                <span className="text-xs text-muted-foreground">{t("Campos do funil")}</span>
+                <CustomFieldsEditor
+                  fields={negocio.camposDoFunil}
+                  value={camposDoNegocio}
+                  onChange={setCamposDoNegocio}
+                  mode="lead"
+                />
+              </div>
+            ) : null}
+            {negocio?.fichaHref ? (
+              <Link
+                href={negocio.fichaHref}
+                className="text-xs font-medium text-primary hover:underline sm:col-span-2"
+              >
+                {t("Abrir a ficha do lead (cadastro, atendimento, linha do tempo)")}
+              </Link>
+            ) : null}
+          </div>
+        </Fase>
 
         <Fase titulo={t("Cliente, funil e status")} cor="blue">
         <div className="grid grid-cols-1 gap-1">
@@ -607,11 +896,11 @@ export function DialogoDaVenda({
         </div>
 
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3">
             {venda?.funil ? (
               <div className="grid gap-1">
                 <span className="text-xs text-muted-foreground">{t("Funil")}</span>
-                <p className="flex h-10 items-center rounded-xl border bg-secondary/40 px-3 text-sm font-medium">
+                <p className="rounded-xl border bg-secondary/40 px-3 py-2 text-sm font-medium break-words">
                   {venda.funil}
                 </p>
               </div>
@@ -619,92 +908,17 @@ export function DialogoDaVenda({
             {negocio ? (
               <div className="grid gap-1">
                 <span className="text-xs text-muted-foreground">{t("Status no funil")}</span>
-                <select
-                  className={CAMPO}
-                  value={etapaId}
-                  onChange={(e) => {
-                    setEtapaId(e.target.value);
-                    if (e.target.value) void negocio.aoMoverEtapa(e.target.value);
+                <SeletorEmPopup
+                  rotulo={t("Status no funil")}
+                  valor={etapaAtualId}
+                  opcoes={negocio.etapas.map((e) => ({ id: e.id, rotulo: e.nome, cor: e.cor ?? "gray" }))}
+                  aoEscolher={(id) => {
+                    if (!id || id === etapaAtualId) return;
+                    setEtapaId(id);
+                    void negocio.aoMoverEtapa(id);
                   }}
-                >
-                  {negocio.etapas.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </div>
-        </Fase>
-
-        {/* O NEGÓCIO da venda: previsão, descrição e campos do funil. */}
-        <Fase titulo={t("Negócio")} cor="purple">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Nome da venda")}</span>
-              <input
-                value={nomeDaVendaTexto}
-                maxLength={120}
-                onChange={(e) => setNomeDaVendaTexto(e.target.value)}
-                placeholder={nomesDosProdutos || t("Ex.: Plano anual — Maria")}
-                className="h-10 w-full min-w-0 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
-              <CampoDeData
-                valor={previsao}
-                aoMudar={setPrevisao}
-                rotulo={t("Previsão de fechamento")}
-                className="w-full"
-              />
-            </div>
-            <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
-              <select
-                className={CAMPO}
-                value={responsavel}
-                onChange={(e) => setResponsavel(e.target.value)}
-                aria-label={t("Responsável pela venda")}
-              >
-                <option value="">{t("Sem responsável")}</option>
-                {equipe.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <label className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Descrição da venda")}</span>
-              <textarea
-                rows={2}
-                maxLength={2000}
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder={t("Contexto desta negociação…")}
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
-              <div className="grid gap-1 sm:col-span-2">
-                <span className="text-xs text-muted-foreground">{t("Campos do funil")}</span>
-                <CustomFieldsEditor
-                  fields={negocio.camposDoFunil}
-                  value={camposDoNegocio}
-                  onChange={setCamposDoNegocio}
-                  mode="lead"
                 />
               </div>
-            ) : null}
-            {negocio?.fichaHref ? (
-              <Link
-                href={negocio.fichaHref}
-                className="text-xs font-medium text-primary hover:underline sm:col-span-2"
-              >
-                {t("Abrir a ficha do lead (cadastro, atendimento, linha do tempo)")}
-              </Link>
             ) : null}
           </div>
         </Fase>
@@ -712,16 +926,19 @@ export function DialogoDaVenda({
         <Fase titulo={t("Produtos e serviços")} cor="orange">
           {itens.map((it, i) => (
             <div key={i} className="grid grid-cols-[1fr_8rem_auto] items-center gap-2">
-              <select
-                value={it.produtoId}
-                onChange={(e) => {
-                  const p = produtos.find((x) => x.id === e.target.value);
+              <SeletorEmPopup
+                rotulo={`${t("Produto")} ${i + 1}`}
+                valor={it.produtoId}
+                opcoes={produtos.map((p) => ({ id: p.id, rotulo: p.nome }))}
+                placeholder={t("Escolha o produto cadastrado")}
+                aoEscolher={(novo) => {
+                  const p = produtos.find((x) => x.id === novo);
                   setItens((l) =>
                     l.map((x, k) =>
                       k === i
                         ? {
                             ...x,
-                            produtoId: e.target.value,
+                            produtoId: novo,
                             // O preço de tabela entra de partida; pode mudar (desconto, negociação).
                             valor:
                               x.valor === "" && p && p.valor > 0
@@ -732,16 +949,7 @@ export function DialogoDaVenda({
                     ),
                   );
                 }}
-                aria-label={`${t("Produto")} ${i + 1}`}
-                className={CAMPO}
-              >
-                <option value="">{t("Escolha o produto cadastrado")}</option>
-                {produtos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
+              />
               <input
                 value={it.valor}
                 inputMode="decimal"
@@ -770,7 +978,7 @@ export function DialogoDaVenda({
           {produtos.length === 0 ? (
             <p className="rounded-lg bg-warning-bg px-3 py-2 text-xs text-warning-fg">
               {t(
-                "Nenhum produto cadastrado ainda. Cadastre em Marketing › Produtos e ofertas: toda venda é de um produto do catálogo.",
+                "Nenhum produto cadastrado ainda. Cadastre em Marketing › Produtos e ofertas: toda oportunidade é de um produto do catálogo.",
               )}
             </p>
           ) : null}
@@ -801,6 +1009,24 @@ export function DialogoDaVenda({
 
         {true ? (
           <Fase titulo={t("Pagamento")} cor="green">
+            {venda && venda.lead_id ? (
+              <div className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Status da oportunidade")}</span>
+                <SeletorEmPopup
+                  rotulo={t("Status da oportunidade")}
+                  valor={statusAtual}
+                  opcoes={STATUS_DA_VENDA.map((st) => ({
+                    id: st,
+                    rotulo: rotuloDoStatus(t, st),
+                    cor: COR_DO_STATUS[st],
+                  }))}
+                  aoEscolher={(id) => void mudarStatusDaOportunidade(id as StatusDaVenda)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {t("Ao mudar o status, ele é salvo na hora e o painel fecha.")}
+                </span>
+              </div>
+            ) : null}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="grid grid-cols-1 gap-1">
                 <span className="text-xs text-muted-foreground">{t("Forma de pagamento")}</span>
@@ -815,6 +1041,13 @@ export function DialogoDaVenda({
                   value={qtd}
                   inputMode="numeric"
                   onChange={(e) => setQtd(e.target.value.replace(/\D/g, ""))}
+                  onBlur={aplicarQtdDeParcelas}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      aplicarQtdDeParcelas();
+                    }
+                  }}
                   className={CAMPO}
                 />
               </label>
@@ -829,19 +1062,6 @@ export function DialogoDaVenda({
               </label>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={gerar}
-                disabled={total <= 0 || (recorrente && parcelas.some((p) => p.recebida))}
-                title={
-                  recorrente && parcelas.some((p) => p.recebida)
-                    ? t("Venda recorrente com parcelas recebidas: o histórico não é refeito.")
-                    : undefined
-                }
-                className="h-9 rounded-lg border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
-              >
-                {parcelas.length > 0 ? t("Refazer as parcelas") : t("Gerar as parcelas")}
-              </button>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -891,7 +1111,7 @@ export function DialogoDaVenda({
                         "Todo mês o sistema cria a próxima parcela como prevista e avisa na véspera, no dia e no dia seguinte para você confirmar se o lead pagou e se o valor mudou. Nada é dado como pago sozinho.",
                       )
                     : t(
-                        "Encerrada: a venda e as parcelas já recebidas ficam no histórico (e no LTV). Nenhuma parcela nova é criada nem cobrada.",
+                        "Encerrada: a oportunidade e as parcelas já recebidas ficam no histórico (e no LTV). Nenhuma parcela nova é criada nem cobrada.",
                       )}
                 </p>
                 {recorrenciaAtiva ? (
@@ -901,18 +1121,15 @@ export function DialogoDaVenda({
                         <span className="text-xs text-muted-foreground">
                           {t("Manter quantos meses de previsão à frente")}
                         </span>
-                        <select
-                          value={mesesRascunho}
-                          aria-label={t("Meses à frente")}
-                          onChange={(e) => setMesesRascunho(Number(e.target.value))}
-                          className={CAMPO}
-                        >
-                          {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
-                            <option key={n} value={n}>
-                              {n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`}
-                            </option>
-                          ))}
-                        </select>
+                        <SeletorEmPopup
+                          rotulo={t("Meses à frente")}
+                          valor={String(mesesRascunho)}
+                          opcoes={Array.from({ length: 12 }, (_, k) => k + 1).map((n) => ({
+                            id: String(n),
+                            rotulo: n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`,
+                          }))}
+                          aoEscolher={(v) => setMesesRascunho(Number(v))}
+                        />
                       </label>
                       <label className="grid gap-1">
                         <span className="text-xs text-muted-foreground">
@@ -1033,7 +1250,31 @@ export function DialogoDaVenda({
           </Fase>
         ) : null}
 
-        <Fase titulo={t("Detalhes")} cor="gray">
+        {leadDaVenda ? (
+          <Fase titulo={t("Origem")} cor="pink">
+            {origemAtual ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "De onde veio esta oportunidade. É isto que leva o valor para a análise de landing pages e criativos.",
+                  )}
+                </p>
+                <OrigemEmCascata
+                  valor={origemAtual}
+                  aoMudar={setOrigemEditada}
+                  campanhas={opcoesDeOrigem.data?.campanhas ?? []}
+                  posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
+                  fontes={opcoesDeOrigem.data?.fontes ?? []}
+                  carregando={opcoesDeOrigem.isLoading}
+                />
+              </>
+            ) : (
+              <div className="h-16 animate-pulse rounded-lg bg-secondary" />
+            )}
+          </Fase>
+        ) : null}
+
+        <Fase titulo={t("Detalhes da oportunidade")} cor="gray">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid grid-cols-1 gap-1">
               <span className="text-xs text-muted-foreground">
@@ -1079,67 +1320,6 @@ export function DialogoDaVenda({
           </div>
         </Fase>
 
-        <Fase titulo={t("Lembrete")} cor="yellow">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={lembreteAtivo}
-              onChange={(e) => setLembreteAtivo(e.target.checked)}
-            />
-            {t("Ativar um lembrete para esta venda")}
-          </label>
-          {lembreteAtivo ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Data")}</span>
-                <CampoDeData
-                  valor={lembreteDia}
-                  aoMudar={setLembreteDia}
-                  rotulo={t("Data do lembrete")}
-                  limpavel={false}
-                  className="w-full"
-                />
-              </div>
-              <label className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Hora")}</span>
-                <input
-                  type="time"
-                  value={lembreteHora}
-                  onChange={(e) => setLembreteHora(e.target.value)}
-                  className={CAMPO}
-                />
-              </label>
-              <p className="text-xs text-muted-foreground sm:col-span-2">
-                {t("Vira uma tarefa com este dia e hora, ligada ao lead — ela aparece em Tarefas e avisa na hora.")}
-              </p>
-            </div>
-          ) : null}
-        </Fase>
-
-        {leadDaVenda ? (
-          <Fase titulo={t("Origem")} cor="pink">
-            {origemAtual ? (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    "De onde veio esta venda. É isto que leva o valor para a análise de landing pages e criativos.",
-                  )}
-                </p>
-                <OrigemEmCascata
-                  valor={origemAtual}
-                  aoMudar={setOrigemEditada}
-                  campanhas={opcoesDeOrigem.data?.campanhas ?? []}
-                  posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
-                  fontes={opcoesDeOrigem.data?.fontes ?? []}
-                  carregando={opcoesDeOrigem.isLoading}
-                />
-              </>
-            ) : (
-              <div className="h-16 animate-pulse rounded-lg bg-secondary" />
-            )}
-          </Fase>
-        ) : null}
-
         {erro ? (
           <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm">
             {erro}
@@ -1152,7 +1332,7 @@ export function DialogoDaVenda({
               type="button"
               onClick={() => {
                 if (
-                  window.confirm(t("Apagar esta venda? Os totais do cliente serão recalculados."))
+                  window.confirm(t("Apagar esta oportunidade? Os totais do cliente serão recalculados."))
                 ) {
                   void aoApagar().then(aoFechar);
                 }
@@ -1179,11 +1359,12 @@ export function DialogoDaVenda({
               onClick={() => void salvar()}
               className="h-10 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
-              {salvando ? t("Salvando…") : t("Salvar venda")}
+              {salvando ? t("Salvando…") : t("Salvar oportunidade")}
             </button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

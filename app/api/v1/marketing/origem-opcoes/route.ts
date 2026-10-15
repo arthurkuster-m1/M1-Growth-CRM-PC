@@ -121,7 +121,17 @@ export async function GET(): Promise<Response> {
       .not("source", "is", null)
       .limit(3000),
   ]);
+  // As origens cadastradas pela empresa (viram opção para todos).
+  const { data: orgSettings } = await createAdminClient()
+    .from("organizations")
+    .select("settings")
+    .eq("id", orgId)
+    .maybeSingle();
+  const cadastradas = (orgSettings?.settings as { fontes_de_origem?: unknown } | null)?.fontes_de_origem;
   const fontes = fontesDeOrigem([
+    ...(Array.isArray(cadastradas) ? (cadastradas as unknown[]) : []).filter(
+      (x): x is string => typeof x === "string",
+    ),
     ...((contatosFontes.data ?? []) as Array<{ source: string | null }>).map((c) => c.source),
     ...((cardsFontes.data ?? []) as Array<{ source: string | null }>).map((c) => c.source),
   ]);
