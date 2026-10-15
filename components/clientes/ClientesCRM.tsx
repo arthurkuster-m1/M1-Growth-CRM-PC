@@ -57,7 +57,7 @@ import type {
   ParticipacaoDoCliente,
   VendaAtivaDoCliente,
 } from "@/app/api/v1/clientes/route";
-import type { Venda } from "@/lib/vendas";
+import { STATUS_DA_VENDA, type Venda } from "@/lib/vendas";
 interface Funil {
   id: string;
   name: string;
@@ -100,14 +100,20 @@ interface Linha extends ClienteDaLista {
 const PALETA: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
 const TODOS = "todos";
 const ROTULO_DA_VENDA: Record<string, string> = {
-  interesse: "Interesse",
-  comprometida: "Comprometida",
-  concluida: "Concluída",
+  interesse: "Possível venda",
+  comprometida: "Comprometido",
+  concluida: "Pago",
+  recorrencia_ativa: "Recorrência ativa",
+  recorrencia_encerrada: "Recorrência encerrada",
+  cancelada: "Cancelado",
 };
 const COR_DA_VENDA: Record<string, string> = {
   interesse: "border-blue-500/60 bg-blue-500/10 text-blue-700 dark:text-blue-300",
   comprometida: "border-yellow-500/70 bg-yellow-500/10 text-yellow-800 dark:text-yellow-300",
   concluida: "border-green-500/60 bg-green-500/10 text-green-700 dark:text-green-300",
+  recorrencia_ativa: "border-indigo-500/60 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+  recorrencia_encerrada: "border-stone-500/60 bg-stone-500/10 text-stone-700 dark:text-stone-300",
+  cancelada: "border-gray-400/70 bg-gray-500/10 text-muted-foreground",
 };
 const ID_DA_PADRAO = "padrao";
 
@@ -253,8 +259,8 @@ export function ClientesCRM({
   ) => {
     const valor = typeof novo === "function" ? novo(statusDasVendas) : novo;
     const lista = [...valor].filter(
-      (v): v is "interesse" | "comprometida" | "concluida" | "cancelada" =>
-        v === "interesse" || v === "comprometida" || v === "concluida" || v === "cancelada",
+      (v): v is (typeof STATUS_DA_VENDA)[number] =>
+        (STATUS_DA_VENDA as readonly string[]).includes(v),
     );
     atualizar((p) => ({ ...p, statusDasVendas: lista.length > 0 ? lista : undefined }));
   };

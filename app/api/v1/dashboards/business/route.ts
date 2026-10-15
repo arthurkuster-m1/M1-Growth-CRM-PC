@@ -71,7 +71,6 @@ export async function GET(req: NextRequest): Promise<Response> {
     .eq("status", "recebida")
     .gte("paid_on", desde)
     .lte("paid_on", ate.data)
-    .neq("crm_leads.status", "lost")
     .limit(30000);
   const recebidas: Parcela[] = ((recebidasBrutas ?? []) as unknown as Array<Record<string, unknown>>).map(
     (p) => {
@@ -202,7 +201,6 @@ export async function GET(req: NextRequest): Promise<Response> {
     .select("id, recurrence_active, updated_at, status, value_cents")
     .eq("organization_id", a.orgId)
     .eq("is_recurring", true)
-    .neq("status", "lost")
     .limit(5000);
   const lista = (assinaturas ?? []) as Array<{
     id: string;

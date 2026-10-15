@@ -50,7 +50,7 @@ export interface ParticipacaoDoCliente {
 export interface VendaAtivaDoCliente {
   id: string;
   nome: string;
-  status: "interesse" | "comprometida" | "concluida";
+  status: "interesse" | "comprometida" | "concluida" | "recorrencia_ativa" | "recorrencia_encerrada" | "cancelada";
   funil_id: string | null;
   valor_cents: number;
   pago_cents: number;
@@ -274,10 +274,9 @@ export async function GET(req: NextRequest): Promise<Response> {
     const { data: oportunidades } = await supabase
       .from("crm_leads")
       .select(
-        "id, contact_id, pipeline_id, status, title, nome_da_venda, value_cents, is_recurring, demand_campaign_id, demand_creative_id, demand_landing_page_id, items:crm_sale_items(product_name, position), payments:crm_sale_payments(status, amount_cents)",
+        "id, contact_id, pipeline_id, status, title, nome_da_venda, value_cents, is_recurring, recurrence_active, demand_campaign_id, demand_creative_id, demand_landing_page_id, items:crm_sale_items(product_name, position), payments:crm_sale_payments(status, amount_cents)",
       )
       .eq("organization_id", orgId)
-      .neq("status", "lost")
       .in("contact_id", idsDosContatos.slice(i, i + 200))
       .limit(5000);
     for (const o of (oportunidades ?? []) as unknown as Array<{
@@ -289,6 +288,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       nome_da_venda: string | null;
       value_cents: number | string | null;
       is_recurring: boolean | null;
+      recurrence_active: boolean | null;
       demand_campaign_id: string | null;
       demand_creative_id: string | null;
       demand_landing_page_id: string | null;
@@ -296,6 +296,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       payments: Array<{ status: string; amount_cents: number | string }> | null;
     }>) {
       const pagamentosTodos = o.payments ?? [];
+      // Oportunidade perdida só entra se já recebeu algo: o sinal não volta e conta no LTV.
+      if (o.status === "lost" && !pagamentosTodos.some((p) => p.status === "recebida")) continue;
       const nomesDosProdutos = [...(o.items ?? [])]
         .sort((x, y) => (x.position ?? 0) - (y.position ?? 0))
         .map((x) => x.product_name)
@@ -309,10 +311,10 @@ export async function GET(req: NextRequest): Promise<Response> {
         is_recurring: o.is_recurring,
         pipeline_id: o.pipeline_id,
         demand_campaign_id: o.demand_campaign_id,
-        status: statusDaOportunidade(o.status, pagamentosTodos) as
-          | "interesse"
-          | "comprometida"
-          | "concluida",
+        status: statusDaOportunidade(o.status, pagamentosTodos, {
+          is_recurring: o.is_recurring,
+          recurrence_active: o.recurrence_active,
+        }) as VendaAtivaDoCliente["status"],
         name: o.nome_da_venda,
         product_name: nomesDosProdutos || o.title,
         amount_cents:

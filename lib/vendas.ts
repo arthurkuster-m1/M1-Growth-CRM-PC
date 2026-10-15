@@ -6,11 +6,20 @@ import { z } from "zod";
  *   interesse    — potencial, ainda sem compromisso;
  *   comprometida — o cliente se comprometeu: vai entrar (contas a receber);
  *   concluida    — recebida;
- *   cancelada    — não conta.
+ *   recorrencia_ativa     — assinatura já paga e que segue gerando parcelas;
+ *   recorrencia_encerrada — assinatura cancelada (o que já entrou continua no faturamento);
+ *   cancelada    — a venda caiu; o que já foi pago (um sinal) continua no faturamento.
  *
  * ⚠️ A FORMA de `STATUS_DA_VENDA` é requisito de instrumento (extrator do vocabulário banco×TS).
  */
-export const STATUS_DA_VENDA = ["interesse", "comprometida", "concluida", "cancelada"] as const;
+export const STATUS_DA_VENDA = [
+  "interesse",
+  "comprometida",
+  "concluida",
+  "recorrencia_ativa",
+  "recorrencia_encerrada",
+  "cancelada",
+] as const;
 export type StatusDaVenda = (typeof STATUS_DA_VENDA)[number];
 
 export const STATUS_DA_PARCELA = ["prevista", "recebida", "cancelada"] as const;
@@ -256,9 +265,17 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
 export function statusDaOportunidade(
   leadStatus: string | null | undefined,
   parcelas: ReadonlyArray<{ status: string }>,
+  recorrencia?: { is_recurring?: boolean | null; recurrence_active?: boolean | null },
 ): StatusDaVenda {
-  if (leadStatus === "lost") return "cancelada";
   const vivas = parcelas.filter((p) => p.status !== "cancelada");
+  // Assinatura que já recebeu: ativa enquanto gera parcelas; encerrada quando foi cancelada (o
+  // que entrou continua valendo).
+  if (recorrencia?.is_recurring && vivas.some((p) => p.status === "recebida")) {
+    return leadStatus === "lost" || !recorrencia.recurrence_active
+      ? "recorrencia_encerrada"
+      : "recorrencia_ativa";
+  }
+  if (leadStatus === "lost") return "cancelada";
   if (vivas.length > 0 && vivas.every((p) => p.status === "recebida")) return "concluida";
   if (vivas.length > 0) return "comprometida";
   return "interesse";
@@ -294,6 +311,7 @@ export function vendaDaOportunidade(l: Record<string, unknown>): Venda {
   const status = statusDaOportunidade(
     l.status as string | null,
     parcelas.map((p) => ({ status: String(p.status) })),
+    { is_recurring: recorrente, recurrence_active: l.recurrence_active === true },
   );
   const venda = vendaDaLinha({
     id: l.id,
@@ -367,18 +385,32 @@ export interface TotaisDeVendas {
 }
 
 export function totaisDeVendas(
-  vendas: readonly Pick<Venda, "status" | "amount_cents">[],
+  vendas: readonly Pick<Venda, "status" | "amount_cents" | "parcelas">[],
 ): TotaisDeVendas {
   let recebido = 0;
   let comprometido = 0;
   let interesse = 0;
   let n = 0;
   for (const v of vendas) {
-    if (v.status === "concluida") {
-      recebido += v.amount_cents;
+    // O que entrou conta SEMPRE, mesmo numa venda cancelada ou numa assinatura encerrada (um
+    // sinal pago não volta); o que ainda não entrou só conta enquanto a venda está de pé.
+    const vivas = (v.parcelas ?? []).filter((p) => p.status !== "cancelada");
+    const pago =
+      vivas.length > 0
+        ? vivas.filter((p) => p.status === "recebida").reduce((s, p) => s + p.amount_cents, 0)
+        : v.status === "concluida"
+          ? v.amount_cents
+          : 0;
+    if (pago > 0) {
+      recebido += pago;
       n += 1;
-    } else if (v.status === "comprometida") comprometido += v.amount_cents;
-    else if (v.status === "interesse") interesse += v.amount_cents;
+    }
+    if (v.status === "cancelada" || v.status === "recorrencia_encerrada") continue;
+    if (v.status === "interesse") interesse += v.amount_cents;
+    else {
+      const aReceber = vivas.filter((p) => p.status === "prevista").reduce((s, p) => s + p.amount_cents, 0);
+      comprometido += vivas.length > 0 ? aReceber : v.status === "comprometida" ? v.amount_cents : 0;
+    }
   }
   return {
     recebido,
@@ -439,13 +471,19 @@ export function fluxoDoMes(
   let recebido = 0;
   let aReceber = 0;
   for (const v of vendas) {
-    if (v.status === "cancelada" || v.status === "interesse") continue;
+    if (v.status === "interesse") continue;
+    // Venda cancelada ou assinatura encerrada: o que JÁ entrou continua no faturamento; o que
+    // ainda estava previsto não vem mais.
+    const caiu = v.status === "cancelada" || v.status === "recorrencia_encerrada";
     if (v.parcelas && v.parcelas.length > 0) {
       for (const p of v.parcelas) {
         if (p.status === "recebida" && (p.paid_on ?? p.due_on).startsWith(mes))
           recebido += p.amount_cents;
-        else if (p.status === "prevista" && p.due_on.startsWith(mes)) aReceber += p.amount_cents;
+        else if (!caiu && p.status === "prevista" && p.due_on.startsWith(mes))
+          aReceber += p.amount_cents;
       }
+    } else if (caiu) {
+      continue;
     } else if (v.status === "concluida" && (v.paid_on ?? "").startsWith(mes)) {
       recebido += v.amount_cents;
     } else if (v.status === "comprometida" && (v.expected_on ?? "").startsWith(mes)) {
@@ -526,7 +564,7 @@ export function valorPagoDaVenda(v: Pick<Venda, "status" | "amount_cents" | "par
 export function valorPrevistoDaVenda(
   v: Pick<Venda, "status" | "amount_cents" | "parcelas"> & { is_recurring?: boolean },
 ): number {
-  if (v.status === "cancelada") return 0;
+  if (v.status === "cancelada" || v.status === "recorrencia_encerrada") return 0;
   // Assinatura: o previsto são as parcelas dos meses à frente (o valor da venda não cresce).
   if (v.is_recurring && (v.parcelas ?? []).length > 0) {
     return v.parcelas!

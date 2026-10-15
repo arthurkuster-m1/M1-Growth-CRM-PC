@@ -27,6 +27,7 @@ import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { recebeuNoMes, recorteDoMes, resumoDaVenda } from "@/lib/vendas-tabela";
 import { apiClient } from "@/lib/api/client";
@@ -60,6 +61,8 @@ const COR: Record<StatusDaVenda, CorDaOpcao> = {
   interesse: "purple",
   comprometida: "orange",
   concluida: "green",
+  recorrencia_ativa: "blue",
+  recorrencia_encerrada: "brown",
   cancelada: "gray",
 };
 
@@ -74,6 +77,10 @@ function rotuloDoStatusDaVenda(t: (s: string) => string, s: StatusDaVenda): stri
       return t("Comprometido");
     case "concluida":
       return t("Pago");
+    case "recorrencia_ativa":
+      return t("Recorrência ativa");
+    case "recorrencia_encerrada":
+      return t("Recorrência encerrada");
     case "cancelada":
       return t("Cancelado");
   }
@@ -194,6 +201,7 @@ export function VendasCRM() {
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
   const [soComRecebimento, setSoComRecebimento] = useState(false);
   const [abertaId, setAbertaId] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState<Venda | null>(null);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
 
   const consulta = useQuery({
@@ -347,7 +355,13 @@ export function VendasCRM() {
           valorId={v.status}
           podeEditar
           rotulo={t("Status da venda")}
-          aoEscolher={(id) => mudarStatus.mutate({ id: v.id, status: id as StatusDaVenda })}
+          aoEscolher={(id) => {
+            if (id === v.status) return;
+            // Cancelar a venda ou encerrar a recorrência pede o motivo (o que já foi pago, um sinal
+            // por exemplo, continua no faturamento).
+            if (id === "cancelada" || id === "recorrencia_encerrada") setCancelando(v);
+            else mudarStatus.mutate({ id: v.id, status: id as StatusDaVenda });
+          }}
         >
           <Etiqueta ponto cor={COR[v.status]}>
             {rotuloDoStatusDaVenda(t, v.status)}
@@ -387,15 +401,15 @@ export function VendasCRM() {
           );
         }
         return (
-          <ul className="grid gap-1 px-2 py-1">
+          <ul className="grid min-w-0 gap-1 overflow-hidden px-2 py-1">
             {parcelas.map((p) => (
-              <li key={p.number} className="flex items-center gap-2 text-xs whitespace-nowrap">
+              <li key={p.number} className="flex min-w-0 items-center gap-2 text-xs">
                 <CirculoDeRecebida
                   marcado={p.status === "recebida"}
                   rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
                   aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
                 />
-                <span className="tabular-nums">
+                <span className="min-w-0 truncate tabular-nums">
                   {p.number}/{parcelas.length} · {reais(p.amount_cents)} ·{" "}
                   {p.status === "recebida" && p.paid_on
                     ? `${t("pago em")} ${dataBr(p.paid_on.slice(0, 10))}`
@@ -771,7 +785,6 @@ export function VendasCRM() {
         ))}
       </section>
 
-      <PorProduto mes={mes} />
 
       <BarraDeFunis
         funis={funisNaOrdem}
@@ -994,6 +1007,18 @@ export function VendasCRM() {
       />
 
       {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
+      {cancelando && cancelando.pipeline_id ? (
+        <LoseLeadDialog
+          open
+          leadId={cancelando.id}
+          pipelineId={cancelando.pipeline_id}
+          onOpenChange={(aberta) => {
+            if (aberta) return;
+            setCancelando(null);
+            void recarregar();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -136,6 +136,29 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     }
   }
 
+  // "Recorrência ativa": a venda vira assinatura em andamento (gera as parcelas dos meses à frente).
+  if (status === "recorrencia_ativa") {
+    await supabase
+      .from("crm_leads")
+      .update({ is_recurring: true, recurrence_active: true })
+      .eq("id", id)
+      .eq("organization_id", orgId);
+  }
+  // "Recorrência encerrada": para de gerar parcelas e as previstas saem; o que já entrou fica.
+  if (status === "recorrencia_encerrada") {
+    await supabase
+      .from("crm_leads")
+      .update({ recurrence_active: false })
+      .eq("id", id)
+      .eq("organization_id", orgId);
+    await supabase
+      .from("crm_sale_payments")
+      .update({ status: "cancelada" })
+      .eq("lead_id", id)
+      .eq("organization_id", orgId)
+      .eq("status", "prevista");
+  }
+
   // "Cancelada": a oportunidade termina como Não comprou e as parcelas abertas saem.
   if (status === "cancelada" && (existe as { status: string }).status !== "lost") {
     await supabase

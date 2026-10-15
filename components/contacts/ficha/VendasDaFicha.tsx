@@ -13,6 +13,7 @@ import {
 } from "@/lib/motor/consulta";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
 import { Etiqueta } from "@/components/motor/Etiqueta";
@@ -39,18 +40,24 @@ const ROTULO: Record<StatusDaVenda, string> = {
   interesse: "Possível venda",
   comprometida: "Comprometido",
   concluida: "Pago",
+  recorrencia_ativa: "Recorrência ativa",
+  recorrencia_encerrada: "Recorrência encerrada",
   cancelada: "Cancelado",
 };
 const COR_DA_OPCAO: Record<StatusDaVenda, CorDaOpcao> = {
   interesse: "blue",
   comprometida: "yellow",
   concluida: "green",
+  recorrencia_ativa: "blue",
+  recorrencia_encerrada: "brown",
   cancelada: "gray",
 };
 const COR: Record<StatusDaVenda, "blue" | "yellow" | "green" | "gray"> = {
   interesse: "blue",
   comprometida: "yellow",
   concluida: "green",
+  recorrencia_ativa: "blue",
+  recorrencia_encerrada: "gray",
   cancelada: "gray",
 };
 
@@ -63,6 +70,7 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
   const queryClient = useQueryClient();
   const marcarParcela = useMarcarParcela();
   const [abertaId, setAbertaId] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState<Venda | null>(null);
   const [busca, setBusca] = useState("");
   const [consultaDaTabela, setConsultaDaTabela] = useState<ConsultaDaTabela>({});
 
@@ -82,7 +90,15 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     );
   }
   const vendas = consulta.data ?? [];
-  const realizadas = vendas.filter((v) => v.status === "comprometida" || v.status === "concluida");
+  // Entram as vendas de pé e as que já receberam algo (um sinal de venda cancelada não volta).
+  const realizadas = vendas.filter(
+    (v) =>
+      v.status === "comprometida" ||
+      v.status === "concluida" ||
+      v.status === "recorrencia_ativa" ||
+      v.status === "recorrencia_encerrada" ||
+      (v.parcelas ?? []).some((p) => p.status === "recebida"),
+  );
   /** O que já entrou: as parcelas recebidas (ou o total, na venda concluída sem parcelas). */
   const recebido = valorPagoDaVenda;
   /** O que falta entrar: o total menos o que já entrou (venda cancelada não deve nada). */
@@ -316,7 +332,11 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                               valorId={v.status}
                               podeEditar
                               rotulo={t("Status da venda")}
-                              aoEscolher={(id) => void mudarStatus(v, id as StatusDaVenda)}
+                              aoEscolher={(id) => {
+                                if (id === v.status) return;
+                                if (id === "cancelada" || id === "recorrencia_encerrada") setCancelando(v);
+                                else void mudarStatus(v, id as StatusDaVenda);
+                              }}
                             >
                               <Etiqueta ponto cor={COR_DA_OPCAO[v.status]}>
                                 {t(ROTULO[v.status])}
@@ -345,13 +365,13 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
                               <ul className="grid gap-1">
                                 {r.parcelas.map((p) => (
                                   <li key={p.number}>
-                                    <div className="flex items-center gap-2 text-xs whitespace-nowrap">
+                                    <div className="flex min-w-0 items-center gap-2 text-xs">
                                       <CirculoDeRecebida
                                         marcado={p.status === "recebida"}
                                         rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
                                         aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
                                       />
-                                      <span className="tabular-nums">
+                                      <span className="min-w-0 truncate tabular-nums">
                                         {p.number}/{r.parcelas.length} · {reais(p.amount_cents)} ·{" "}
                                         {p.status === "recebida" && p.paid_on
                                           ? `${t("pago em")} ${dataBr(p.paid_on.slice(0, 10))}`
@@ -413,6 +433,18 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
       </BlocoDaFicha>
 
       {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
+      {cancelando && cancelando.pipeline_id ? (
+        <LoseLeadDialog
+          open
+          leadId={cancelando.id}
+          pipelineId={cancelando.pipeline_id}
+          onOpenChange={(aberta) => {
+            if (aberta) return;
+            setCancelando(null);
+            void atualizar();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -169,7 +169,6 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
         ? `pipeline_id.eq.${c.pipeline_id},demand_campaign_id.eq.${id}`
         : `demand_campaign_id.eq.${id}`,
     )
-    .neq("status", "lost")
     .limit(LIMITE);
   const dentroDaJanela = (d: string | null | undefined) => {
     if (!personalizado) return true;
@@ -177,6 +176,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     return dia2 !== "" && dia2 >= janela.de && dia2 <= janela.ate;
   };
   for (const v of ((vendas ?? []) as unknown as Array<{
+    status: string;
     pipeline_id: string | null;
     demand_campaign_id: string | null;
     demand_creative_id: string | null;
@@ -191,7 +191,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     for (const p of v.payments ?? []) {
       if (p.status === "recebida") {
         if (dentroDaJanela(p.paid_on)) recebido += Number(p.amount_cents);
-      } else if (p.status === "prevista") previsto += Number(p.amount_cents);
+      } else if (p.status === "prevista" && v.status !== "lost") previsto += Number(p.amount_cents);
     }
     faturamento.aReceber += previsto;
     // Nada pago (no período): ainda não é venda para a análise.

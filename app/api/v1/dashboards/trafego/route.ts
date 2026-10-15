@@ -154,7 +154,6 @@ export async function GET(req: NextRequest): Promise<Response> {
     .select("id, pipeline_id, demand_campaign_id, demand_creative_id, demand_landing_page_id")
     .eq("organization_id", a.orgId)
     .or(filtroDeDonas)
-    .neq("status", "lost")
     .limit(5000);
   // A venda é a oportunidade: o id da venda é o do card.
   const vendas = ((vendasBrutas ?? []) as Array<{

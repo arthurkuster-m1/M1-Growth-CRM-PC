@@ -42,7 +42,15 @@ export function VendasDoCliente({
   if (consulta.isError) return null; // sem permissão para ver vendas
   const vendas = consulta.data ?? [];
   const interesse = vendas.filter((v) => v.status === "interesse");
-  const realizadas = vendas.filter((v) => v.status === "comprometida" || v.status === "concluida");
+  // Entram as vendas de pé e as que já receberam algo (um sinal de venda cancelada não volta).
+  const realizadas = vendas.filter(
+    (v) =>
+      v.status === "comprometida" ||
+      v.status === "concluida" ||
+      v.status === "recorrencia_ativa" ||
+      v.status === "recorrencia_encerrada" ||
+      (v.parcelas ?? []).some((p) => p.status === "recebida"),
+  );
   const ltv = realizadas.reduce((s, v) => {
     const p = v.parcelas ?? [];
     if (p.length === 0) return s + (v.status === "concluida" ? v.amount_cents : 0);
