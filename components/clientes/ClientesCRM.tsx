@@ -17,6 +17,9 @@ import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
 import { ResultadoRapidoDaLigacao } from "@/components/clientes/ResultadoRapidoDaLigacao";
 import { prioridadeDaFila } from "@/lib/leads/resultados-rapidos";
+import { BotaoWhatsApp } from "@/components/clientes/BotaoWhatsApp";
+import { ConfirmarDataDaProximaAcao } from "@/components/clientes/ConfirmarDataDaProximaAcao";
+import { ModoProspeccao, type LeadDaProspeccao } from "@/components/clientes/ModoProspeccao";
 import { QuadroDoCiclo } from "@/components/clientes/QuadroDoCiclo";
 import {
   QuadroDeEtapas,
@@ -237,6 +240,14 @@ export function ClientesCRM({
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   const [novaOportunidade, setNovaOportunidade] = useState(false);
+  const [prospectando, setProspectando] = useState(false);
+  /** A próxima ação foi escrita: pede a confirmação da data (a atual já vem escolhida). */
+  const [confirmandoAcao, setConfirmandoAcao] = useState<{
+    leadId: string;
+    contactId: string;
+    texto: string;
+    dataAtual: string | null;
+  } | null>(null);
   /** Editar os comentários das oportunidades selecionadas (texto inicial = o que foi colado). */
   const [comentariosEmMassa, setComentariosEmMassa] = useState<string | null>(null);
   /** O lead em que se registra uma ação rápida (ligação, mensagem…) direto da tabela. */
@@ -1052,22 +1063,19 @@ export function ClientesCRM({
       icone: <WhatsappLogo size={14} aria-hidden />,
       largura: 120,
       padrao: ehOportunidades,
-      celula: (l) => {
-        const digitos = (l.telefone ?? "").replace(/\D/g, "");
-        return digitos ? (
-          <a
-            href={`https://wa.me/${digitos}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
-          >
-            <WhatsappLogo size={14} aria-hidden />
-            WhatsApp
-          </a>
-        ) : (
-          semValor
-        );
-      },
+      celula: (l) => (
+        <BotaoWhatsApp
+          telefone={l.telefone}
+          dados={{
+            nome: l.nome,
+            produto: l.participacao?.produtos ?? "",
+            campanha: l.participacao?.campanha_id
+              ? (campanhasPorId.get(l.participacao.campanha_id) ?? "")
+              : "",
+            responsavel: nomeDoMembro(l.participacao?.responsavel_id ?? null) ?? "",
+          }}
+        />
+      ),
     },
     {
       id: "instagram",
@@ -1176,10 +1184,13 @@ export function ClientesCRM({
             aoSalvar={(texto) => {
               const nova = texto.trim();
               if (nova === p.proxima_acao) return;
-              otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, proxima_acao: nova }));
-              void executar(() =>
-                apiClient.put(`/api/v1/leads/${p.lead_id}/proxima-acao`, { proxima_acao: nova }),
-              );
+              // Toda vez que a ação é escrita, a data é confirmada (a atual já vem escolhida).
+              setConfirmandoAcao({
+                leadId: p.lead_id,
+                contactId: l.contact_id,
+                texto: nova,
+                dataAtual: p.proxima_acao_em,
+              });
             }}
           />
         );
@@ -2303,6 +2314,33 @@ export function ClientesCRM({
     return aba ? [aba] : [];
   });
 
+  /** As oportunidades abertas da lista atual (filtros e ordem), para o modo prospecção. */
+  const itensDaProspeccao: LeadDaProspeccao[] = resultado.linhas.flatMap((l) => {
+    const p = l.participacao;
+    if (!p || p.status !== "open") return [];
+    const insta = typeof l.campos.link_instagram === "string" ? l.campos.link_instagram : null;
+    return [
+      {
+        chave: l.chave,
+        leadId: p.lead_id,
+        contactId: l.contact_id,
+        funilId: p.funil_id,
+        nome: l.nome,
+        titulo: p.titulo || l.nome,
+        telefone: l.telefone,
+        instagram: insta,
+        produto: p.produtos,
+        campanha: p.campanha_id ? (campanhasPorId.get(p.campanha_id) ?? "") : "",
+        responsavel: nomeDoMembro(p.responsavel_id) ?? "",
+        comentarios: p.comentarios,
+        proximaAcao: p.proxima_acao,
+        proximaAcaoEm: p.proxima_acao_em,
+        tentativas: p.tentativas,
+        ultimaTentativa: p.ultima_tentativa,
+      },
+    ];
+  });
+
   /** As oportunidades selecionadas, na ordem em que aparecem na lista. */
   const selecionadasNaOrdem = resultado.linhas.filter(
     (l) => selecionadas.has(l.chave) && l.participacao,
@@ -2401,6 +2439,16 @@ export function ClientesCRM({
         </div>
         {dados?.pode_editar ? (
           <div className="flex flex-wrap items-center gap-2">
+            {ehOportunidades ? (
+              <button
+                type="button"
+                onClick={() => setProspectando(true)}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+              >
+                <Phone size={14} aria-hidden />
+                {t("Modo prospecção")}
+              </button>
+            ) : null}
             {ehOportunidades ? (
               <button
                 type="button"
@@ -2567,6 +2615,45 @@ export function ClientesCRM({
           </ol>
         </section>
       )}
+
+      {confirmandoAcao ? (
+        <ConfirmarDataDaProximaAcao
+          texto={confirmandoAcao.texto}
+          dataAtual={confirmandoAcao.dataAtual}
+          aoCancelar={() => setConfirmandoAcao(null)}
+          aoConfirmar={(data) => {
+            const c = confirmandoAcao;
+            setConfirmandoAcao(null);
+            otimistaNegocio(c.contactId, c.leadId, (x) => ({
+              ...x,
+              proxima_acao: c.texto,
+              proxima_acao_em: data,
+            }));
+            void executar(() =>
+              apiClient.put(`/api/v1/leads/${c.leadId}/proxima-acao`, {
+                proxima_acao: c.texto,
+                proxima_acao_em: data,
+              }),
+            );
+          }}
+        />
+      ) : null}
+
+      {prospectando ? (
+        <ModoProspeccao
+          itens={itensDaProspeccao}
+          aoFechar={() => setProspectando(false)}
+          aoPerder={(i) => {
+            setProspectando(false);
+            setPerdendo({ leadId: i.leadId, funilId: i.funilId });
+          }}
+          aoAbrirOportunidade={(i) => {
+            const linha = resultado.linhas.find((x) => x.participacao?.lead_id === i.leadId);
+            setProspectando(false);
+            if (linha) void abrirVenda(linha, i.leadId);
+          }}
+        />
+      ) : null}
 
       {comentariosEmMassa !== null && selecionadasNaOrdem.length > 0 ? (
         <ComentariosEmMassaDialog

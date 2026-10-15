@@ -21,6 +21,7 @@ import { useTaxasDePagamento } from "@/hooks/financeiro/useTaxasDePagamento";
 import { taxaDoRecebimento } from "@/lib/financeiro/taxas";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { Bell, Plus, Trash } from "@/lib/ui/icons";
+import { ConfirmarDataDaProximaAcao } from "@/components/clientes/ConfirmarDataDaProximaAcao";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
@@ -213,6 +214,8 @@ export function DialogoDaVenda({
   const [referencia, setReferencia] = useState(venda?.reference ?? "");
   const [notas, setNotas] = useState(venda?.notes ?? "");
   const [proximoPasso, setProximoPasso] = useState(venda?.proxima_acao ?? "");
+  const [proximoPassoEm, setProximoPassoEm] = useState(venda?.proxima_acao_em ?? "");
+  const [confirmandoPasso, setConfirmandoPasso] = useState<string | null>(null);
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
   const [descricao, setDescricao] = useState(venda?.description ?? "");
   const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
@@ -699,10 +702,15 @@ export function DialogoDaVenda({
         return;
       }
     }
-    if (venda?.lead_id && proximoPasso.trim() !== (venda.proxima_acao ?? "")) {
+    if (
+      venda?.lead_id &&
+      (proximoPasso.trim() !== (venda.proxima_acao ?? "") ||
+        (proximoPassoEm || null) !== (venda.proxima_acao_em ?? null))
+    ) {
       try {
         await apiClient.put(`/api/v1/leads/${venda.lead_id}/proxima-acao`, {
           proxima_acao: proximoPasso.trim(),
+          proxima_acao_em: proximoPassoEm || null,
         });
       } catch (e) {
         showApiError(e);
@@ -721,6 +729,20 @@ export function DialogoDaVenda({
 
   return (
     <>
+    {confirmandoPasso !== null ? (
+      <ConfirmarDataDaProximaAcao
+        texto={confirmandoPasso}
+        dataAtual={proximoPassoEm || null}
+        aoCancelar={() => {
+          setConfirmandoPasso(null);
+          setProximoPasso(venda?.proxima_acao ?? "");
+        }}
+        aoConfirmar={(data) => {
+          setConfirmandoPasso(null);
+          setProximoPassoEm(data ?? "");
+        }}
+      />
+    ) : null}
     {(perdendo || cancelandoStatus) && leadDaVenda && (venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id) ? (
       <LoseLeadDialog
         open
@@ -840,10 +862,25 @@ export function DialogoDaVenda({
                 value={proximoPasso}
                 maxLength={300}
                 onChange={(e) => setProximoPasso(e.target.value)}
+                // Escreveu a ação: confirma a data (a atual já vem escolhida).
+                onBlur={() => {
+                  if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
+                    setConfirmandoPasso(proximoPasso.trim());
+                  }
+                }}
                 placeholder={t("Ex.: Ligar na terça com a proposta")}
                 className={CAMPO}
               />
             </label>
+            <div className="grid gap-1 sm:col-span-2">
+              <span className="text-xs text-muted-foreground">{t("Próxima ação em")}</span>
+              <CampoDeData
+                valor={proximoPassoEm}
+                aoMudar={setProximoPassoEm}
+                rotulo={t("Próxima ação em")}
+                className="w-full"
+              />
+            </div>
             <label className="grid gap-1 sm:col-span-2">
               <span className="text-xs text-muted-foreground">{t("Comentários")}</span>
               <textarea

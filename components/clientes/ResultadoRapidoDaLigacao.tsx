@@ -7,7 +7,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
-import { apiClient } from "@/lib/api/client";
+import { aplicarResultadoRapido } from "@/lib/leads/aplicar-resultado-rapido";
 import { RESULTADOS_RAPIDOS, somarDiasUteis } from "@/lib/leads/resultados-rapidos";
 import { cn } from "@/lib/utils";
 
@@ -42,17 +42,7 @@ export function ResultadoRapidoDaLigacao({
   async function aplicar(id: string, resultado: string, proximo?: { texto: string; em: string }) {
     setOcupado(id);
     try {
-      await apiClient.post(`/api/v1/contacts/${contactId}/atividades`, {
-        acao: "ligacao",
-        resultado,
-        lead_id: leadId,
-      });
-      if (proximo) {
-        await apiClient.put(`/api/v1/leads/${leadId}/proxima-acao`, {
-          proxima_acao: proximo.texto,
-          proxima_acao_em: proximo.em,
-        });
-      }
+      await aplicarResultadoRapido({ leadId, contactId, resultado, proximo });
       await qc.invalidateQueries({ queryKey: ["clientes"] });
       aoFeito?.();
     } catch (e) {
