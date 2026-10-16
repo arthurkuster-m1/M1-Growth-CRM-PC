@@ -210,7 +210,10 @@ async function marcarConexao(
 
 async function executar(req: NextRequest): Promise<Response> {
   if (!autorizaCron(req)) {
-    return NextResponse.json({ error: { code: "unauthenticated", message: "cron secret inválido" } }, { status: 401 });
+    return NextResponse.json(
+      { error: { code: "unauthenticated", message: "cron secret inválido" } },
+      { status: 401 },
+    );
   }
   const resumo = await renovarAgendasDoGoogle(createAdminClient(), { agora: new Date() });
   return NextResponse.json({ data: resumo });

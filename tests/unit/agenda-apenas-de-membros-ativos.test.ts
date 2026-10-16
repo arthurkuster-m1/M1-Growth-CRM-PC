@@ -233,8 +233,15 @@ function cronsDaAgendaDoGoogle(): string[] {
     .sort();
 }
 
+// A lógica de ida e volta mora em `lib/agenda/google/rodar-*.ts` (a rota e o botão da Agenda usam a mesma).
+const LIB_DO_CRON: Record<string, string> = {
+  "agenda-google-push": "lib/agenda/google/rodar-ida.ts",
+  "agenda-google-sync": "lib/agenda/google/rodar-volta.ts",
+};
 function fonteDoCron(nome: string): string {
-  return readFileSync(join(DIR_CRON, nome, "route.ts"), "utf8");
+  const rota = readFileSync(join(DIR_CRON, nome, "route.ts"), "utf8");
+  const lib = LIB_DO_CRON[nome];
+  return lib ? readFileSync(join(process.cwd(), lib), "utf8") : rota;
 }
 
 /**

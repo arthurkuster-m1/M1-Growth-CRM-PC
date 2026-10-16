@@ -11,7 +11,9 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 
 import { addDays, format, startOfDay, startOfMonth, startOfWeek } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { toast } from "sonner";
 import * as React from "react";
 
 import { AvisoDaConexaoGoogle } from "./_components/AvisoDaConexaoGoogle";
@@ -42,7 +44,7 @@ import {
   useRemarcarAgendamento,
 } from "@/hooks/agenda/useRemarcarAgendamento";
 import { usePessoasDaAgenda } from "@/hooks/agenda/usePessoasDaAgenda";
-import { CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
+import { ArrowsClockwise, CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const VISOES: Array<{ id: VisaoDaAgenda; rotulo: string }> = [
@@ -137,6 +139,26 @@ export function AgendaClient({
   const localeDaData = useLocaleDeData();
   const t = useT();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [sincronizando, setSincronizando] = React.useState(false);
+  const sincronizarComGoogle = async () => {
+    setSincronizando(true);
+    try {
+      const r = await fetch("/api/v1/agenda/google/sincronizar", { method: "POST" });
+      if (!r.ok) {
+        const j = await r.json().catch(() => null);
+        toast.error(j?.error?.message ?? t("Não foi possível sincronizar com o Google agora."));
+      } else {
+        toast.success(t("Sincronizado com o Google."));
+        await queryClient.invalidateQueries();
+        router.refresh();
+      }
+    } catch {
+      toast.error(t("Não foi possível sincronizar com o Google agora."));
+    } finally {
+      setSincronizando(false);
+    }
+  };
   const [marcando, setMarcando] = React.useState(false);
   // O compromisso criado NESTA abertura do painel. Serve para levar a grade até
   // ele quando o painel fechar por qualquer caminho — ver `ancoraAoFecharPainel`.
@@ -479,14 +501,6 @@ export function AgendaClient({
         <EntradaDaAgenda onContext={onContext} onLead={setLeadId} />
       </React.Suspense>
 
-      <CartaoDaConexaoGoogle
-        configurado={googleConfigurado}
-        falta={faltaNoGoogle}
-        linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
-        contaConectada={contaConectada}
-        enderecoDeRetorno={enderecoDeRetorno}
-      />
-
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <nav className="mb-1 flex gap-1 text-sm" aria-label={t("Agenda")}>
@@ -544,6 +558,18 @@ export function AgendaClient({
           {/* PRIMEIRA PORTA da escrita nesta tela. Quem só lê não vê o botão: o
               403 da rota nunca chega a ser oferecido, e o rótulo segue igual (a
               spec e2e o acha por papel/rótulo, e não muda). */}
+          {contaConectada && podeMarcar && (
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="sincronizar-google"
+              disabled={sincronizando}
+              onClick={sincronizarComGoogle}
+            >
+              <ArrowsClockwise size={16} weight="bold" aria-hidden />
+              <span>{sincronizando ? t("Sincronizando…") : t("Sincronizar com Google")}</span>
+            </Button>
+          )}
           {podeMarcar && (
             <Button
               size="sm"
@@ -1245,6 +1271,14 @@ export function AgendaClient({
           router.push(`/app/agenda?${parametros.toString()}`);
         }}
         className="min-h-0 flex-1"
+      />
+
+      <CartaoDaConexaoGoogle
+        configurado={googleConfigurado}
+        falta={faltaNoGoogle}
+        linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
+        contaConectada={contaConectada}
+        enderecoDeRetorno={enderecoDeRetorno}
       />
     </div>
   );
