@@ -1,6 +1,6 @@
 # PLANO DO M1 GROWTH CRM
 
-Atualizado em 14/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
+Atualizado em 16/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
 
@@ -86,6 +86,40 @@ Detalhe sessão a sessão em `docs/PLANO-CRM-M1.md`.
 - **Marketing**: edição de blocos colorida por tipo, subtítulo em slide próprio na apresentação,
   "Apagar subpágina" em vermelho no topo e modo claro/escuro no link público.
 
+### CRM, Dashboards e Agenda (14 a 16/10/2026)
+Detalhe em `MODELO-CRM-M1.md`, `PLANO-OPORTUNIDADE-UNICA-M1.md`, `MODELO-AGENDA-M1.md` e `PLANO-DASHBOARDS-M1.md`.
+- **Dashboards D0 a D3 no ar** (Tráfego Pago, Business, Atendimento ao vivo; Prospecção Ativa "Em breve").
+  Horário de atendimento da empresa em `organizations.settings.horario_de_atendimento`.
+- **Modelo do CRM (migrations 0630 a 0637):** Cliente (pessoa, ciclo de vida calculado) × Oportunidade
+  (`crm_leads`) × Pagamento (parcela). Etapas fixas Comprou / Não comprou / Desqualificado; Comprou exige
+  pagamento recebido; várias oportunidades por pessoa; `crm_sales` e os espelhos removidos.
+- **Página CRM** (Clientes, Oportunidades, Vendas): visualizações com dono e "arquivar para mim"; Oportunidades
+  em tabela estilo Notion e quadro; painel único da oportunidade (Próxima ação com confirmação de data);
+  linha do tempo completa; atribuição pelo funil da oportunidade (0641); dinheiro recebido não some ao
+  cancelar (0642); formas de pagamento com taxas e custo variável no Business (0643).
+- **Lixeira de 7 dias** (0639, 0644 a 0646): excluir leva tudo junto, restaurar mescla com o cadastro novo.
+- **Ida e volta do pagamento** (0647): desmarcar a parcela devolve a etapa de antes do Comprou.
+- **Prospecção, etapas 1 a 4:** resultado rápido da ligação, tentativas, Ligar hoje, Modo prospecção,
+  WhatsApp com mensagem pronta, melhor horário, engrenagem de configuração.
+- **Campanhas:** Dia a dia com colunas escolhíveis, ordenar, arrastar e total; Resultados; Funil completo
+  com Venda e Reunião; MQL e taxa de desqualificação por criativo.
+- **Agenda (frente 10):** rotinas passaram a rodar na VPS (`/etc/cron.d/m1-rotinas`; backlog de 85 eventos
+  descartado); compromisso ligado à oportunidade; compromissos na oportunidade e na ficha; importação do
+  Google (calendário Assessoria M1); análises; anti no-show com resposta do cliente (0648). Google → app
+  validado pelo Arthur em 16/10 (agendamento do app apareceu no Google).
+- Migrations aplicadas até a **0648**.
+
+## 1B. PRÓXIMOS PASSOS (ordem combinada em 16/10/2026)
+1. ~~Repositório privado~~ Adiado: primeiro finalizar a edição do app e o deploy na VPS; depois o Arthur
+   torna o repositório privado (exige token de leitura no servidor e ajuste de `m1-puxar-build.sh`).
+2. Checagem da suíte de testes (separar falhas antigas de regressões).
+3. Validar lembrete de compromisso e anti no-show com lembrete ligado (Configurações › Agenda).
+4. Inbox (frente 5).
+5. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa).
+6. Hotmart; depois financeiro e CAC real (D5).
+7. D6 metas e alertas; D4 Google Ads.
+Rotinas desligadas de propósito (~25): disparam mensagens; ligar por pacote, só a pedido.
+
 ## 2. PEQUENOS AJUSTES PENDENTES
 
 | Item | Situação |
@@ -103,16 +137,16 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 
 | # | Frente | Escopo | Situação | O que você pode ir decidindo no planejamento |
 | --- | --- | --- | --- | --- |
-| 1 | **Dashboards** | Tráfego (Meta/Google), vendas, faturamento e meta × realizado do Planejamento num lugar só | **Parcial.** Existem `/app/metrics`, `/app/ads/meta`, `/app/faturamento`; o CRM já mostra faturamento recebido, valor em aberto e LTV; campanhas mostram vendas e faturamento por anúncio e LP. Falta a tela única | Quais números mandam na tela inicial? Quais períodos? Quem vê o quê (agência × cliente)? |
+| 1 | **Dashboards** | Tráfego (Meta/Google), vendas, faturamento e meta × realizado do Planejamento num lugar só | **Parcial (D0 a D3 no ar, ver PLANO-DASHBOARDS).** Antes: Existem `/app/metrics`, `/app/ads/meta`, `/app/faturamento`; o CRM já mostra faturamento recebido, valor em aberto e LTV; campanhas mostram vendas e faturamento por anúncio e LP. Falta a tela única | Quais números mandam na tela inicial? Quais períodos? Quem vê o quê (agência × cliente)? |
 | 2 | **Cronograma** | Feito | **Feito** | Só as melhorias futuras abaixo |
 | 3 | **IA ajudante** | Rascunho de página a partir do Kick Off e dos prompts do método (precisa de chave de IA) | **A fazer** | Quais páginas geram rascunho primeiro? Que modelo de IA e qual orçamento? |
 | 4 | **Geração de demanda** | Campanhas, criativos e textos com status; você já tem uma base | **Em andamento.** Cadastro, tabela, cards e linha do tempo; criativos do Meta com todas as variações; dia a dia automático; origem rastreável. Plano em `docs/PLANO-CAMPANHAS-M1.md` | Mande a base atual. Quais campos e quais status? |
 | 5 | **Inbox** | Ajustes visuais e conexões com "outros bancos" | **A fazer** | O que são esses "outros bancos"? Que ajustes visuais incomodam? |
 | 6 | **Equipe** | Pessoas, papéis e interface por empresa | **A fazer** (a equipe já aparece como responsável por lead e por venda) | Quais papéis existem de fato na agência e no cliente? |
-| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **A fazer** (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? |
+| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **Parcial** (prospecção ativa por ligação e WhatsApp feita; scraping e disparos em massa a fazer) (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? |
 | 8 | **CRM** (o maior) | Visualizações, funis, base de leads e de vendas, ligação com dashboards, rastreamento, CAPI e movimentação automática estilo Tintim | **Em andamento, avançado.** Faltam Hotmart, contas a receber, Lead Ads nativo, CAPI/movimentação automática (ver `docs/PLANO-CRM-M1.md`) | Já está no `PLANO-CRM-M1.md` do fork |
 | 9 | **Conexões e webhooks** | Formulários e LPs entrando como leads | **Parcial.** Receber lead já tratado (n8n/sistema próprio) e importação feitos; falta Lead Ads nativo e os eventos de CAPI | Quais LPs e formulários? Quais campos chegam? Que eventos viram CAPI? |
-| 10 | **Agenda** | Ajustes visuais e de UX | **A fazer** | Liste o que incomoda hoje |
+| 10 | **Agenda** | Ajustes visuais e de UX | **Em andamento** (Google, oportunidade, análises e anti no-show feitos; falta validar lembretes) | Liste o que incomoda hoje |
 | 11 | **Agentes de IA** | Revisar agentes e a fonte de conhecimento (as ofertas já alimentam) | **A fazer** | Quais agentes existem? Qual é o papel de cada um? |
 | 12 | **Configurações gerais** | Centralizar ajustes | **A fazer** (categorias e cores de tag já têm tela própria em Configurações › Tags) | O que está espalhado hoje? |
 | 13 | **Barra de pesquisa** | Evoluir a paleta de comandos | **A fazer** | O que deve ser pesquisável (leads, tarefas, produtos, páginas)? |

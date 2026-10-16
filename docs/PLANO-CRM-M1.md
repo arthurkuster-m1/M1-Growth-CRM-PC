@@ -403,3 +403,10 @@ Abas: **Visão geral · Cadastro · Atendimento e Tarefas · Vendas · Funis · 
    do valor pago por produto só no relatório por produto (não no popup).
 9. Regra assumida: a origem da venda **não** pode diferir da do card (se quiser origem própria da
    venda, é decisão a tomar).
+
+### Sessões 11 em diante (15 e 16/10/2026): modelo novo
+O desenho vigente está em `MODELO-CRM-M1.md` e `PLANO-OPORTUNIDADE-UNICA-M1.md` (migrations 0630 a 0648, todas
+aplicadas). Resumo: Cliente × Oportunidade × Pagamento; a venda é a oportunidade; Comprou exige pagamento;
+ciclo de vida calculado; lixeira de 7 dias; atribuição pelo funil; prospecção ativa; Agenda ligada à
+oportunidade. As pendências da lista de 13/10 que continuam: Hotmart, contas a receber, Lead Ads nativo,
+limpeza das tabelas de propostas, 2 vendas sem campanha, filtros de tags só no navegador.

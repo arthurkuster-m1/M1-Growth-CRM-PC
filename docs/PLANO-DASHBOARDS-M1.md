@@ -217,3 +217,12 @@ Horário de atendimento da empresa em `organizations.settings.horario_de_atendim
 conta a partir da abertura; prazo = 1 h (`lib/dashboards/atendimento.ts`). Números: conversas
 iniciadas/respondidas, 1ª resposta (média e mediana), SLA, > 24 h e > 7 dias sem resposta (lista
 nominal para agent+), por atendente (IA em linha própria), mapa dia × hora, tempo geral.
+
+## 10. Atualização de 16/10/2026
+- D1 a D3 seguem no ar. Depois deles o modelo do CRM mudou (ver `MODELO-CRM-M1.md`): venda = oportunidade;
+  lead e faturamento vão para a campanha dona do funil; Business já desconta taxas das formas de pagamento
+  como custo variável; MQL, custo por MQL e taxa de desqualificação por criativo entram no Tráfego Pago.
+- **Para alinhar (próxima rodada):** conferir se Business e Tráfego leem a atribuição pelo funil (0641) e o
+  novo status de venda (Recorrência ativa/encerrada); ligar Prospecção Ativa (tentativas, resultados rápidos,
+  Ligar hoje) e os compromissos da Agenda (comparecimento, conversão) como novo bloco.
+- Continuam: D4 Google Ads, D5 gestão financeira e CAC real, D6 metas e alertas; "encerrada em" para churn exato.
