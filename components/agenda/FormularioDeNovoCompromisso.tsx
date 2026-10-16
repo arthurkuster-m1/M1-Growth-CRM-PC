@@ -112,6 +112,16 @@ export function FormularioDeNovoCompromisso({
     rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
   }));
 
+  // Trocou o responsável ou o tipo: o horário escolhido pode ter deixado de ser livre. Pede de novo.
+  const chaveDaAgenda = `${tipo?.id ?? ""}|${responsavelId}`;
+  const chaveAnterior = React.useRef(chaveDaAgenda);
+  React.useEffect(() => {
+    const [tipoAntes, donoAntes] = chaveAnterior.current.split("|");
+    chaveAnterior.current = chaveDaAgenda;
+    // Só quando os dois já estavam definidos: o preenchimento inicial não apaga o horário que veio do clique na grade.
+    if (tipoAntes && donoAntes && chaveDaAgenda !== `${tipoAntes}|${donoAntes}`) setQuando(null);
+  }, [chaveDaAgenda]);
+
   const criar = useMutation({
     mutationFn: async () =>
       apiClient.post<{ data: { id: string } }>("/api/v1/agenda/agendamentos", {
@@ -191,7 +201,16 @@ export function FormularioDeNovoCompromisso({
 
         <div className="grid gap-1">
           <p className="text-sm font-medium">{t("Data e horário")}</p>
-          <CampoDeDataEHora valor={quando} fuso={fuso} tag={tag} aoEscolher={setQuando} rotulo={t("Data e horário do compromisso")} />
+          <CampoDeDataEHora
+            valor={quando}
+            fuso={fuso}
+            tag={tag}
+            aoEscolher={setQuando}
+            rotulo={t("Data e horário do compromisso")}
+            desabilitado={!tipo}
+            horariosLivres={tipo ? { eventTypeId: tipo.id, ownerId: responsavelId || null } : undefined}
+          />
+          <p className="text-xs text-text-muted">{t("Aparecem só os horários livres do responsável escolhido.")}</p>
         </div>
 
         <div className="grid gap-1">

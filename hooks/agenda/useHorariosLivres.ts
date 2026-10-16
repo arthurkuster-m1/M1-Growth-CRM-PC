@@ -34,6 +34,8 @@ export interface HorariosLivresResposta {
 export interface HorariosLivresFiltro {
   event_type_id: string;
   owner_user_id?: string;
+  /** Remarcar: o próprio compromisso não ocupa o horário de onde sai. */
+  ignorar_agendamento_id?: string;
   /** ISO-8601. */
   de: string;
   ate: string;
@@ -55,6 +57,7 @@ export function useHorariosLivres(filtro: HorariosLivresFiltro | null) {
         ate: filtro!.ate,
       });
       if (filtro!.owner_user_id) qs.set("owner_user_id", filtro!.owner_user_id);
+      if (filtro!.ignorar_agendamento_id) qs.set("ignorar_agendamento_id", filtro!.ignorar_agendamento_id);
       try {
         const r = await apiClient.get<{ data: HorariosLivresResposta }>(
           `/api/v1/agenda/horarios-livres?${qs.toString()}`,

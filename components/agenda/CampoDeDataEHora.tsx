@@ -9,6 +9,8 @@ import { useCelular } from "@/hooks/motor/useCelular";
 import { useT } from "@/hooks/i18n/useT";
 import { deCampoLocal, hojeNoFuso, paraCampoLocal, rotuloDaData } from "@/lib/motor/datas-do-campo";
 import { CalendarBlank } from "@/lib/ui/icons";
+
+import { SeletorDeHorarioLivre } from "./SeletorDeHorarioLivre";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,7 +26,13 @@ export function CampoDeDataEHora({
   desabilitado,
   rotulo,
   className,
+  horariosLivres,
 }: {
+  /**
+   * Com o tipo (e o atendente), o campo só oferece os HORÁRIOS LIVRES dele: dias sem vaga ficam
+   * desligados e o horário se escolhe numa lista. Sem isto, é o seletor livre de data e hora.
+   */
+  horariosLivres?: { eventTypeId: string; ownerId?: string | null; ignorarId?: string };
   /** ISO com fuso, ou `null` enquanto nada foi escolhido. */
   valor: string | null;
   fuso: string;
@@ -73,7 +81,21 @@ export function CampoDeDataEHora({
       </span>
     </button>
   );
-  const seletor = (
+  const seletor = horariosLivres ? (
+    <SeletorDeHorarioLivre
+      eventTypeId={horariosLivres.eventTypeId}
+      ownerId={horariosLivres.ownerId}
+      ignorarId={horariosLivres.ignorarId}
+      fuso={fuso}
+      tag={tag}
+      hoje={hojeNoFuso(agora, fuso)}
+      valor={valor}
+      aoEscolher={(iso) => {
+        setAberto(false);
+        if (iso !== valor) aoEscolher(iso);
+      }}
+    />
+  ) : (
     <SeletorDeData
       dia={dia}
       hora={hora}

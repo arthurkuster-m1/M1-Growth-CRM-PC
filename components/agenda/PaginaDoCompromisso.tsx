@@ -285,6 +285,11 @@ function PaginaExistente({
                       rotulo={t("Reagendar o compromisso")}
                       desabilitado={!podeEditar || encerrado || reagendar.isPending}
                       aoEscolher={(iso) => reagendar.mutate(iso)}
+                      horariosLivres={
+                        a.tipo
+                          ? { eventTypeId: a.tipo.id, ownerId: a.responsavel_id, ignorarId: a.id }
+                          : undefined
+                      }
                     />
                     {podeEditar && !encerrado && (
                       <p className="mt-1 text-[11px] text-text-muted">{t("Escolher outra data ou horário reagenda o compromisso.")}</p>
