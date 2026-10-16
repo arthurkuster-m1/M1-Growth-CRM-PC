@@ -2,6 +2,10 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { ConfiguracaoDaAgenda } from "./_components/ConfiguracaoDaAgenda";
+import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "@/components/agenda/AcoesDoCompromisso";
+import { AbasDaAgenda } from "@/components/agenda/AbasDaAgenda";
+import { AvisoDeReuniaoEncerrada } from "@/components/agenda/AvisoDeReuniaoEncerrada";
 import { EntradaDaAgenda } from "@/components/agenda/EntradaDaAgenda";
 import { OportunidadeDaMarcacao } from "@/components/agenda/OportunidadeDaMarcacao";
 import { EnderecoDaMarcacao } from "@/components/agenda/EnderecoDaMarcacao";
@@ -91,7 +95,12 @@ export function AgendaClient({
   tiposIniciais,
   agendamentosIniciais,
   podeMarcar,
+  configuracaoDosTipos,
+  podeGerenciarEquipe,
 }: {
+  /** A configuração dos tipos de atendimento (conteúdo de servidor), no fim da página. */
+  configuracaoDosTipos?: React.ReactNode;
+  podeGerenciarEquipe?: boolean;
   /**
    * O fuso RESOLVIDO da organização (`fusoUtilizavel(activeOrg.timezone)`,
    * calculado em `page.tsx`). É a régua da grade: sem ele a agenda desenha
@@ -489,7 +498,7 @@ export function AgendaClient({
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full flex-col gap-4 p-6"
+      className="flex h-full flex-col gap-6 p-6"
     >
       {/*
         Em Suspense porque `useSearchParams` obriga: sem a fronteira, o Next
@@ -503,15 +512,7 @@ export function AgendaClient({
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <nav className="mb-1 flex gap-1 text-sm" aria-label={t("Agenda")}>
-            <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">{t("Agenda")}</span>
-            <Link
-              href="/app/agenda/analises"
-              className="rounded-lg px-2.5 py-1 text-muted-foreground hover:bg-secondary"
-            >
-              {t("Análises")}
-            </Link>
-          </nav>
+          <AbasDaAgenda ativa="agenda" />
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
@@ -524,6 +525,7 @@ export function AgendaClient({
           <Button
             variant="outline"
             size="sm"
+            className="rounded-xl"
             onClick={() => setAncora(ancoraLocalDoDia(hojeNaOrganizacao))}
           >
             {t("Hoje")}
@@ -562,6 +564,7 @@ export function AgendaClient({
             <Button
               variant="outline"
               size="sm"
+              className="rounded-xl"
               data-testid="sincronizar-google"
               disabled={sincronizando}
               onClick={sincronizarComGoogle}
@@ -573,6 +576,7 @@ export function AgendaClient({
           {podeMarcar && (
             <Button
               size="sm"
+              className="rounded-xl"
               disabled={!tipo}
               // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
               // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
@@ -1145,10 +1149,23 @@ export function AgendaClient({
         não informa nada que a grade — que O DESENHA no horário — já não diga
         melhor. A ocupação continua inteira onde ela serve.
       */}
+      {podeMarcar ? <AvisoDeReuniaoEncerrada agendamentos={agendamentosAcionaveis} usuarioId={usuarioId} /> : null}
+
       <HistoricoDaAgenda
         agendamentos={agendamentosAcionaveis}
         pessoas={pessoas}
         agora={new Date()}
+        renderAcoes={(a, { aba, jaComecou }) => (
+          <>
+            {podeMarcar && aba !== "cancelados" && (a.situacao === "pending" || a.situacao === "confirmed") ? (
+              <BotaoConfirmado id={a.id} />
+            ) : null}
+            {podeMarcar && aba === "passados" && a.situacao !== "completed" && a.situacao !== "no_show" ? (
+              <BotaoResultado id={a.id} jaComecou={jaComecou} />
+            ) : null}
+            {podeMarcar ? <BotaoExcluir id={a.id} /> : null}
+          </>
+        )}
         // Mesma régua da grade ao lado: sem isto a lista imprime o relógio do
         // navegador e a MESMA tela diz duas horas para o mesmo compromisso.
         fuso={fusoDaAgenda}
@@ -1280,6 +1297,14 @@ export function AgendaClient({
         contaConectada={contaConectada}
         enderecoDeRetorno={enderecoDeRetorno}
       />
+
+      {configuracaoDosTipos ? (
+        <ConfiguracaoDaAgenda
+          tipos={configuracaoDosTipos}
+          podeGerenciarEquipe={podeGerenciarEquipe === true}
+          fuso={fusoDaAgenda}
+        />
+      ) : null}
     </div>
   );
 }

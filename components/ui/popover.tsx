@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 function usaTelaPequena(): boolean {
   const [pequena, setPequena] = React.useState(false);
   React.useEffect(() => {
+    // Sem matchMedia (testes, navegadores antigos): fica como computador.
+    if (typeof window.matchMedia !== "function") return;
     const m = window.matchMedia("(max-width: 639px)");
     const atualizar = () => setPequena(m.matches);
     atualizar();

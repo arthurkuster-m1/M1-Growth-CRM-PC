@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
@@ -46,7 +46,9 @@ export function BotaoWhatsApp({
 }) {
   const t = useT();
   const [aberto, setAberto] = useState(false);
-  const [escolhido, setEscolhido] = useState<string>(() => lerUltimo());
+  const [escolhido, setEscolhido] = useState<string>("");
+  // O modelo usado por último vem do navegador: lê depois da hidratação, não no useState.
+  useEffect(() => setEscolhido(lerUltimo()), []);
   const modelos = useQuery({
     queryKey: ["message-templates", "prospeccao"],
     staleTime: 60_000,

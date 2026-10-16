@@ -9,6 +9,7 @@
  *
  * Auth: `Authorization: Bearer <INTERNAL_CRON_SECRET>` (fail-closed).
  */
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
@@ -133,10 +134,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     };
     if (venda.status === "lost") continue;
     const cliente =
-      venda.contacts?.display_name ||
-      venda.contacts?.name ||
-      venda.contacts?.phone_number ||
-      "Cliente";
+      nomeDoContato(venda.contacts) ?? venda.contacts?.phone_number ?? "Cliente";
     const valor = (Number(p.amount_cents) / 100).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",

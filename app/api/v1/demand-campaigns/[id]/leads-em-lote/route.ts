@@ -6,6 +6,7 @@
  * É o que faz uma campanha de Reativação de Base: seleciona os leads no CRM, cria a campanha e
  * eles já entram no funil novo.
  */
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -136,7 +137,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       pipeline_id: pipelineId,
       stage_id: etapaId,
       contact_id: c.id,
-      title: (c.name ?? c.display_name ?? c.phone_number ?? "Lead").slice(0, 200),
+      title: (nomeDoContato(c) ?? c.phone_number ?? "Lead").slice(0, 200),
       status: "open",
       source: "reativacao",
       demand_campaign_id: origemDoCliente.get(c.id)?.demand_campaign_id ?? id,

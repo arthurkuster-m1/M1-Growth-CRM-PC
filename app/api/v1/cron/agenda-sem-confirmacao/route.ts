@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { HORAS_PARA_AVISAR_SEM_CONFIRMACAO } from "@/lib/agenda/resposta-de-confirmacao";
 import { autorizaCron } from "@/lib/auth/cron-auth";
 import { logger } from "@/lib/logger";
+import { idsDeOrgsParadas } from "@/lib/organizacao/operante";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { criarTarefaInterna } from "@/lib/tarefas/criar-tarefa";
 
@@ -41,8 +42,10 @@ async function executar(req: NextRequest) {
     // Antes da migração a coluna não existe: sem trabalho, sem erro.
     return NextResponse.json({ data: { avisados: 0, motivo: "indisponivel" } });
   }
+  // Empresa suspensa não recebe tarefa nova.
+  const paradas = new Set(await idsDeOrgsParadas(admin));
   let avisados = 0;
-  for (const a of (data ?? []) as Array<{
+  for (const a of ((data ?? []) as Array<{
     id: string;
     organization_id: string;
     contact_id: string;
@@ -50,7 +53,7 @@ async function executar(req: NextRequest) {
     title: string;
     starts_at: string;
     time_zone: string;
-  }>) {
+  }>).filter((x) => !paradas.has(x.organization_id))) {
     // Marca primeiro: duas rodadas concorrentes não criam duas tarefas.
     const { data: marcado } = await admin
       .from("calendar_appointments")

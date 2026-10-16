@@ -2,7 +2,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePermission } from "@/hooks/auth/AuthProvider";
 import { useEffect } from "react";
-import { DetalheDoCompromisso } from "./DetalheDoCompromisso";
+import { PaginaDoCompromisso } from "./PaginaDoCompromisso";
 export function EntradaDaAgenda({
   onContext,
   onLead,
@@ -33,7 +33,7 @@ export function EntradaDaAgenda({
     onLead?.(lead ?? "");
   }, [lead, onLead]);
   return (
-    <DetalheDoCompromisso
+    <PaginaDoCompromisso
       key={params.get("compromisso")}
       podeEditar={podeEditar}
       id={params.get("compromisso")}

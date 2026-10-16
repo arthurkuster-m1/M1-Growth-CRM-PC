@@ -8,6 +8,7 @@
  * Toda a empresa lê (viewer+) os agregados; a lista nominal de leads esperando é de agent+.
  * Lê com o cliente da empresa filtrado por organização.
  */
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -238,10 +239,7 @@ export async function GET(req: NextRequest): Promise<Response> {
           conversa_id: c.id,
           contato_id: c.contact_id,
           nome:
-            c.contacts?.display_name?.trim() ||
-            c.contacts?.name?.trim() ||
-            c.contacts?.phone_number ||
-            "—",
+            nomeDoContato(c.contacts) ?? c.contacts?.phone_number ?? "—",
           canal: c.channel ?? "—",
           responsavel:
             c.assignee_kind === "ai" ? "Atendente IA" : (c.assigned_to_user_name ?? "Sem responsável"),

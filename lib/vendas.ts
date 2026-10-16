@@ -1,3 +1,4 @@
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { z } from "zod";
 
 /**
@@ -221,7 +222,7 @@ export function vendaDaLinha(l: Record<string, unknown>): Venda {
     | null
     | undefined;
   const nome =
-    cliente?.display_name?.trim() || cliente?.name?.trim() || cliente?.phone_number || "—";
+    nomeDoContato(cliente) ?? cliente?.phone_number ?? "—";
   const itens = Array.isArray(l.items)
     ? (l.items as Array<Record<string, unknown>>)
         .map((i) => ({

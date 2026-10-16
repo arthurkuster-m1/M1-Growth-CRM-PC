@@ -3,6 +3,8 @@
  * trabalho interno, a própria organização (sem contato). A rota junta o nome do contato para a
  * tela mostrar sem outra consulta.
  */
+
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 export const COLUNAS_COM_CLIENTE = "contact:contacts(name, display_name, phone_number)";
 
 export const ID_DO_CLIENTE_INTERNO = "interno";
@@ -19,6 +21,6 @@ export function comNomeDoCliente<T extends Record<string, unknown>>(
 ): Omit<T, "contact"> & { cliente_nome: string | null } {
   const { contact, ...resto } = linha as T & { contact?: unknown };
   const c = (Array.isArray(contact) ? contact[0] : contact) as ContatoJuntado | null | undefined;
-  const nome = c?.display_name?.trim() || c?.name?.trim() || c?.phone_number || null;
+  const nome = nomeDoContato(c) ?? c?.phone_number ?? null;
   return { ...(resto as Omit<T, "contact">), cliente_nome: nome };
 }

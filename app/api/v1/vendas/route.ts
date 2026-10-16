@@ -23,6 +23,7 @@ import {
 import { SELECAO_DA_OPORTUNIDADE, novaVendaSchema, vendaDaOportunidade } from "@/lib/vendas";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { createClient } from "@/lib/supabase/server";
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 export const dynamic = "force-dynamic";
 const LIMITE = 3000;
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       display_name: string | null;
       phone_number: string | null;
     };
-    const titulo = (c.display_name?.trim() || c.name?.trim() || c.phone_number || "Venda").slice(0, 200);
+    const titulo = (nomeDoContato(c) ?? c.phone_number ?? "Venda").slice(0, 200);
     const { data: criada, error } = await supabase
       .from("crm_leads")
       .insert({

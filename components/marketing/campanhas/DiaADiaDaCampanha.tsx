@@ -117,7 +117,7 @@ function CabecalhoOrdenavel({
         <button
           type="button"
           aria-label={coluna.rotulo}
-          className="cursor-grab touch-none text-muted-foreground/60 hover:text-foreground active:cursor-grabbing"
+          className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >

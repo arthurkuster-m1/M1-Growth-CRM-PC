@@ -102,6 +102,7 @@ export function HistoricoDaAgenda({
   onRealizado,
   onFaltou,
   onConfirmar,
+  renderAcoes,
   className,
 }: {
   agendamentos: Agendamento[];
@@ -136,6 +137,11 @@ export function HistoricoDaAgenda({
    * menos quem deveria.
    */
   onConfirmar?: (id: string) => void;
+  /**
+   * As ações rápidas da linha (Confirmado, Resultado, Excluir). Quem monta a tela as entrega
+   * prontas; sem elas a lista mostra só os botões simples de antes.
+   */
+  renderAcoes?: (a: Agendamento, ctx: { aba: AbaDoHistorico; jaComecou: boolean }) => React.ReactNode;
   className?: string;
 }) {
   const localeDaData = useLocaleDeData();
@@ -153,7 +159,7 @@ export function HistoricoDaAgenda({
       <div
         role="tablist"
         aria-label={t("Filtrar o histórico")}
-        className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+        className="flex flex-wrap items-center gap-0.5 rounded-2xl border border-border bg-surface p-1"
       >
         {ABAS.map((a) => {
           const n = grupos[a.id].length;
@@ -166,7 +172,7 @@ export function HistoricoDaAgenda({
               aria-selected={aba === a.id}
               onClick={() => setAba(a.id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs transition-colors duration-fast ease-out",
+                "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs transition-colors duration-fast ease-out",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500",
                 aba === a.id
                   ? "bg-accent font-semibold text-accent-foreground"
@@ -191,7 +197,7 @@ export function HistoricoDaAgenda({
         })}
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface">
+      <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-3xl border border-border bg-surface">
         {daAba.length === 0 ? (
           <p data-testid="historico-vazio" className="p-8 text-center text-sm text-text-muted">
             {aba === "proximos" && t("Nada marcado daqui para a frente.")}
@@ -209,7 +215,7 @@ export function HistoricoDaAgenda({
                 <li
                   key={a.id}
                   data-testid={`linha-${a.id}`}
-                  className="flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0"
+                  className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
                 >
                   <span
                     aria-hidden
@@ -246,7 +252,7 @@ export function HistoricoDaAgenda({
                   <Badge variant={variante} className="shrink-0">
                     {t(ROTULO_DA_SITUACAO[a.situacao])}
                   </Badge>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                     {/*
                       Ação por aba, e a lista de CADA aba tem razão própria.
                       A primeira versão disto oferecia ação só em "próximos" e
@@ -302,6 +308,7 @@ export function HistoricoDaAgenda({
                       </>
                     )}
                     {aba === "passados" &&
+                      !renderAcoes &&
                       a.situacao !== "completed" &&
                       a.situacao !== "no_show" && (
                         // Decisão 17. Só enquanto o desfecho NÃO foi registrado:
@@ -340,6 +347,7 @@ export function HistoricoDaAgenda({
                           </Button>
                         </>
                       )}
+                    {renderAcoes?.(a, { aba, jaComecou: comeca <= agora })}
                   </div>
                 </li>
               );

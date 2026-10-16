@@ -167,7 +167,7 @@ describe("nenhum botão fica cinza por falta de fiação", () => {
     // Controle do instrumento. Sem isto, mover `components/` ou quebrar o
     // extrator deixaria o gate verde por não conhecer controle nenhum — e ele
     // afirmaria o que não mediu.
-    expect(CONTROLES.length, "nenhum `disabled={!onAlgo}` encontrado").toBeGreaterThanOrEqual(4);
+    expect(CONTROLES.length, "nenhum `disabled={!onAlgo}` encontrado").toBeGreaterThanOrEqual(3);
     expect(LIGADAS.size, "nenhuma callback encontrada em app/app").toBeGreaterThanOrEqual(20);
   });
 

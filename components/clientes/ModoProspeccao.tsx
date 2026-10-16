@@ -406,7 +406,7 @@ export function ModoProspeccao({
                   onClick={() => iniciar(r)}
                   className={cn(botao, "perde" in r && r.perde && "text-error-fg")}
                 >
-                  <kbd className="mr-1.5 rounded border px-1 text-[10px] text-muted-foreground">{i + 1}</kbd>
+                  <kbd className="mr-1.5 rounded-md border px-1 text-[10px] text-muted-foreground">{i + 1}</kbd>
                   {t(r.rotulo)}
                 </button>
               ))}

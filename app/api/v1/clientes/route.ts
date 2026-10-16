@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { statusDaOportunidade } from "@/lib/vendas";
 import { origemDoContato } from "@/lib/leads/origem-do-contato";
 import { origemDaOportunidade } from "@/lib/vendas";
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 export const dynamic = "force-dynamic";
 
@@ -567,7 +568,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     }>
   ).map((c) => ({
     contact_id: c.id,
-    nome: c.display_name?.trim() || c.name?.trim() || c.phone_number || "—",
+    nome: nomeDoContato(c) ?? c.phone_number ?? "—",
     telefone: c.phone_number,
     email: c.email,
     tags: c.tags ?? [],
@@ -599,7 +600,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     campos: c.custom_fields ?? {},
     participacoes: (porContato.get(c.id) ?? []).map((p) => {
       const d = detalheDaOportunidade.get(p.lead_id);
-      const cliente = c.display_name?.trim() || c.name?.trim() || c.phone_number || "";
+      const cliente = nomeDoContato(c) ?? c.phone_number ?? "";
       const produtos = d?.produtos ?? "";
       return {
         ...p,

@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -402,7 +403,7 @@ function FormularioDoContato({
 }) {
   const atualizar = useUpdateContact(contactId);
   const queryClient = useQueryClient();
-  const [nome, setNome] = useState(contato.name ?? contato.display_name ?? "");
+  const [nome, setNome] = useState(nomeDoContato(contato) ?? "");
   const [telefone, setTelefone] = useState(contato.phone_number ?? "");
   const [email, setEmail] = useState(contato.email ?? "");
   const [nascimento, setNascimento] = useState(contato.birthdate ?? "");
@@ -415,7 +416,7 @@ function FormularioDoContato({
   const sujo =
     tagsMudaram ||
     nascimento !== (contato.birthdate ?? "") ||
-    nome.trim() !== (contato.name ?? contato.display_name ?? "") ||
+    nome.trim() !== (nomeDoContato(contato) ?? "") ||
     telefoneE164(telefone) !== (contato.phone_number ?? "") ||
     email.trim() !== (contato.email ?? "");
 

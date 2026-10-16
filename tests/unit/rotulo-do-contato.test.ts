@@ -199,11 +199,6 @@ describe("a sétima cópia não nasce", () => {
       motivo: "apelido do CANAL no aviso de saúde; `channel_sessions` não tem `name`",
     },
     {
-      arquivo: "app/app/contacts/[id]/_client.tsx",
-      trecho: '{contact.display_name ?? "—"}',
-      motivo: "a ficha mostra a COLUNA `display_name` com rótulo próprio, logo abaixo de `name`",
-    },
-    {
       arquivo: "components/connections/CanalParceiroClient.tsx",
       trecho: 'estado?.display_name ?? t("Número conectado")',
       motivo: "nome do CANAL conectado",

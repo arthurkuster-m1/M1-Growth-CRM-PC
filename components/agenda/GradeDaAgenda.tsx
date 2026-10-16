@@ -1061,7 +1061,7 @@ export function GradeDaAgenda({
       data-testid="grade-da-agenda"
       data-visao={visao}
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface",
+        "flex min-h-0 flex-col overflow-hidden rounded-3xl border border-border bg-surface",
         className,
       )}
     >

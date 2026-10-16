@@ -20,6 +20,8 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { Agendamento as AgendamentoDaTela } from "@/components/agenda/tipos";
 
+import { ConteudoDaConfiguracaoDaAgenda } from "@/app/app/settings/tenant/agenda/_conteudo";
+
 import { AgendaClient } from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -278,6 +280,12 @@ export default async function AgendaPage() {
       // leitura, que `resolveActiveOrg` resolve como `viewer` — levaria 403. A
       // tela esconder é cortesia: quem decide segue sendo a rota.
       podeMarcar={ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent}
+      podeGerenciarEquipe={ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager}
+      configuracaoDosTipos={
+        ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent ? (
+          <ConteudoDaConfiguracaoDaAgenda user={user} activeOrg={activeOrg} />
+        ) : undefined
+      }
       tiposIniciais={(tipos ?? []).map((t) => ({
         id: t.id,
         nome: t.name,

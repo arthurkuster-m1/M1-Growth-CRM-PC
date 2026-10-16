@@ -114,7 +114,7 @@ describe("os três estados da lista de tipos", () => {
 
   it("a página repassa o erro da leitura em vez de descartá-lo", () => {
     // Sem comentários: uma linha comentada não pode contar como ponte presente.
-    const fonte = readFileSync(join(__dirname, "page.tsx"), "utf8").replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "");
+    const fonte = readFileSync(join(__dirname, "_conteudo.tsx"), "utf8").replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "");
 
     // O defeito original: `const [{ data: tipos }] = await Promise.all(...)`.
     expect(fonte).toMatch(/\[\s*\{[^}]*\berror:\s*erroTipos\b[^}]*\}/);

@@ -7,8 +7,12 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ok, fail } from "@/lib/api/wrappers";
+import { requireSupportWrite } from "@/lib/impersonate/support";
+import { reconcileAppointment } from "@/lib/agenda/google/sync-executor";
+import { audit } from "@/lib/audit";
 import { tagDeIdioma } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
   const requestId = randomUUID();
@@ -82,6 +86,120 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   const meeting = data.contact_id ? {location_kind:data.location_kind,state:data.meeting_state,url:data.meeting_state === "ready" ? data.meeting_url : null,request_id:data.meeting_request_id,error:data.meeting_last_error,delivery_state:deliveryState,delivery_error:delivery.success ? delivery.data.error ?? null : null,delivery_authorization_current:authorizationCurrent,delivery_conversation_id:delivery.success ? delivery.data.service_boundary?.conversation_id ?? null : null,can_manage:data.owner_user_id === auth.user.id,destinations:(destinations.data ?? []).map(d=>{const contact=Array.isArray(d.contacts)?d.contacts[0]:d.contacts;return {id:d.id,label:`${contact?.name ?? traduzir("Contato", auth.user.idioma)}${contact?.phone_number ? ` — ${contact.phone_number}` : ""} — ${new Date(d.created_at).toLocaleDateString(tagDeIdioma(auth.user.idioma))}`};})} : null;
   const { meeting_delivery_job_id: _deliveryJob, meeting_delivery: _privateDelivery, meeting_request_id: _request, meeting_last_error: _error, meeting_state: _state, meeting_url: _url, google_domain_revision, google_conflict, google_local_revision, google_synced_local_revision, google_etag, google_synced_at, google_sync_error, owner_user_id, ...detail } = data;
   const conflict = conflictSchema.safeParse(google_conflict);
-  return ok({ ...detail, meeting, google_sync: { revision: google_domain_revision, local_revision: String(google_local_revision), etag: google_etag, synced_at: google_synced_at, error: google_sync_error,
+  // Para a página do compromisso: quem é o cliente, qual a oportunidade, o tipo e o responsável.
+  const [cli, vinc, tipoLinha] = await Promise.all([
+    data.contact_id
+      ? db.from("contacts").select("name,display_name,phone_number,email").eq("organization_id", org).eq("id", data.contact_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    db.from("crm_lead_links").select("lead_id").eq("organization_id", org).eq("target_kind", "appointment").eq("target_id", id).limit(1),
+    db.from("calendar_appointments").select("calendar_event_types(id,name,slug)").eq("organization_id", org).eq("id", id).maybeSingle(),
+  ]);
+  const tipoRaw = (tipoLinha.data as { calendar_event_types?: unknown } | null)?.calendar_event_types;
+  const tipoDoCompromisso = (Array.isArray(tipoRaw) ? tipoRaw[0] : tipoRaw) as { id: string; name: string; slug: string } | null | undefined;
+  const cliente = cli.data as { name?: string | null; display_name?: string | null; phone_number?: string | null; email?: string | null } | null;
+  const extra = {
+    cliente: cliente
+      ? { nome: nomeDoContato(cliente) ?? cliente.phone_number ?? null, telefone: cliente.phone_number ?? null, email: cliente.email ?? null }
+      : null,
+    lead_id: ((vinc.data ?? [])[0] as { lead_id?: string } | undefined)?.lead_id ?? null,
+    tipo: tipoDoCompromisso ? { id: tipoDoCompromisso.id, nome: tipoDoCompromisso.name, slug: tipoDoCompromisso.slug } : null,
+    responsavel_id: owner_user_id,
+    eh_responsavel: owner_user_id === auth.user.id,
+  };
+  return ok({ ...detail, ...extra, meeting, google_sync: { revision: google_domain_revision, local_revision: String(google_local_revision), etag: google_etag, synced_at: google_synced_at, error: google_sync_error,
     pending: BigInt(google_local_revision) > BigInt(google_synced_local_revision), conflict: conflict.success ? conflict.data : null, can_resolve: owner_user_id === auth.user.id }, recovery: recovery.data ? {...recovery.data,enrollment_status:enrollment.data?.status??null,cancel_reason:enrollment.data?.cancel_reason??null} : null, evidence_messages: messages.data }, { requestId });
+}
+
+const RANK: Record<string, number> = { viewer: 0, agent: 1, manager: 2, admin: 3, owner: 4 };
+
+/**
+ * EXCLUIR de vez. Diferente de cancelar (que guarda o motivo e o histórico): aqui o compromisso
+ * some da agenda, da ficha e das análises, e o evento sai do Google. Quem pode: o responsável
+ * pelo compromisso ou um gerente.
+ *
+ * Com evento no Google, primeiro cancela e empurra o apagar para o Google; só apaga a linha
+ * depois que o Google confirmou. Se o Google não responder agora, o compromisso fica cancelado
+ * (já liberou o horário) e o botão Excluir vale de novo mais tarde.
+ */
+export async function DELETE(_req: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = randomUUID();
+  const denied = await requireSupportWrite();
+  if (denied) return denied;
+  const auth = await requireRole("agent", { requestId, resource: "agenda" });
+  if (!auth.ok) return auth.response;
+  const { id } = await context.params;
+  if (!z.uuid().safeParse(id).success)
+    return fail("not_found", "Compromisso indisponível.", 404, { requestId });
+  const org = auth.org.orgId;
+  const admin = createAdminClient();
+  const { data: a, error } = await admin
+    .from("calendar_appointments")
+    .select("id,status,revision,owner_user_id,google_event_id")
+    .eq("organization_id", org)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return fail("internal_error", "Não foi possível excluir agora.", 500, { requestId });
+  if (!a) return fail("not_found", "Compromisso indisponível.", 404, { requestId });
+  const ehDono = a.owner_user_id === auth.user.id;
+  if (!ehDono && (RANK[auth.org.role] ?? 0) < RANK.manager!)
+    return fail("forbidden", "Só o responsável ou um gerente pode excluir este compromisso.", 403, {
+      requestId,
+    });
+
+  if (a.google_event_id) {
+    if (a.status !== "cancelled") {
+      const { error: e1 } = await admin.rpc("fn_appointment_change", {
+        p_org: org,
+        p_id: id,
+        p_revision: Number(a.revision),
+        p_patch: { status: "cancelled", cancellation_reason: "Excluído" },
+      });
+      if (e1)
+        return fail("conflict", "O compromisso mudou. Recarregue e tente de novo.", 409, {
+          requestId,
+        });
+    }
+    let r: string;
+    try {
+      r = await reconcileAppointment(admin, org, id);
+    } catch {
+      r = "failed";
+    }
+    const { data: depois } = await admin
+      .from("calendar_appointments")
+      .select("google_event_id,needs_google_push")
+      .eq("organization_id", org)
+      .eq("id", id)
+      .maybeSingle();
+    if (r !== "processed" && r !== "terminal" && depois?.needs_google_push)
+      return fail(
+        "google_pendente",
+        "O compromisso foi cancelado, mas o Google ainda não confirmou a remoção. Tente excluir de novo em alguns minutos.",
+        202,
+        { requestId },
+      );
+  }
+
+  const { error: del } = await admin
+    .from("calendar_appointments")
+    .delete()
+    .eq("organization_id", org)
+    .eq("id", id);
+  if (del)
+    return fail(
+      "internal_error",
+      "Este compromisso tem registros ligados e não pôde ser apagado. Ele ficou cancelado.",
+      409,
+      { requestId },
+    );
+  void audit({
+    action: "agenda.appointment_updated",
+    actorUserId: auth.user.id,
+    organizationId: org,
+    resourceType: "calendar_appointment",
+    resourceId: id,
+    requestId,
+    metadata: { excluido: true },
+  });
+  return ok({ id, excluido: true }, { requestId });
 }

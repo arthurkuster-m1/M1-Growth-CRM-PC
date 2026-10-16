@@ -149,8 +149,20 @@ vi.mock("@/lib/agenda/vinculo-da-marcacao", () => ({
  * montável sem rede: o que se mede aqui é a URL que o fecho deixa para trás,
  * não o conteúdo do detalhe.
  */
-vi.mock("@/components/agenda/DetalheDoCompromisso", () => ({
-  DetalheDoCompromisso: ({ id, onClose }: { id: string | null; onClose: () => void }) =>
+vi.mock("@/components/agenda/AcoesDoCompromisso", () => ({
+  useAcoesDoCompromisso: () => ({
+    confirmar: { mutate: vi.fn(), isPending: false },
+    resultado: { mutate: vi.fn(), isPending: false },
+    excluir: { mutate: vi.fn(), isPending: false },
+  }),
+  OPCOES_DE_RESULTADO: [],
+  BotaoConfirmado: () => null,
+  BotaoResultado: () => null,
+  BotaoExcluir: () => null,
+}));
+
+vi.mock("@/components/agenda/PaginaDoCompromisso", () => ({
+  PaginaDoCompromisso: ({ id, onClose }: { id: string | null; onClose: () => void }) =>
     id ? (
       <button data-testid="fechar-detalhe" onClick={onClose}>
         fechar

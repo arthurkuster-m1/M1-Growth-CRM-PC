@@ -23,6 +23,7 @@ import { ConfigDaProspeccaoDialog } from "@/components/clientes/ConfigDaProspecc
 import { ModoProspeccao, type LeadDaProspeccao } from "@/components/clientes/ModoProspeccao";
 import {
   carregarConfigDaProspeccao,
+  CONFIG_PADRAO_DA_PROSPECCAO,
   salvarConfigDaProspeccao,
   type ConfigDaProspeccao,
 } from "@/lib/leads/config-de-prospeccao";
@@ -249,9 +250,11 @@ export function ClientesCRM({
   const [novaOportunidade, setNovaOportunidade] = useState(false);
   const [prospectando, setProspectando] = useState(false);
   const [configProspeccao, setConfigProspeccao] = useState(false);
-  const [configDaProspeccao, setConfigDaProspeccao] = useState<ConfigDaProspeccao>(() =>
-    carregarConfigDaProspeccao(),
+  const [configDaProspeccao, setConfigDaProspeccao] = useState<ConfigDaProspeccao>(
+    CONFIG_PADRAO_DA_PROSPECCAO,
   );
+  // A configuração fica neste navegador: lê depois da hidratação, não no useState.
+  useEffect(() => setConfigDaProspeccao(carregarConfigDaProspeccao()), []);
   /** A próxima ação foi escrita: pede a confirmação da data (a atual já vem escolhida). */
   const [confirmandoAcao, setConfirmandoAcao] = useState<{
     leadId: string;

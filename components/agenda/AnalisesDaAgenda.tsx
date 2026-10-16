@@ -1,5 +1,7 @@
 "use client";
 
+import { AbasDaAgenda } from "./AbasDaAgenda";
+
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
@@ -134,12 +136,7 @@ export function AnalisesDaAgenda() {
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <nav className="mb-1 flex gap-1 text-sm" aria-label={t("Agenda")}>
-            <Link href="/app/agenda" className="rounded-lg px-2.5 py-1 text-muted-foreground hover:bg-secondary">
-              {t("Agenda")}
-            </Link>
-            <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">{t("Análises")}</span>
-          </nav>
+          <AbasDaAgenda ativa="analises" />
           <h1 className="text-2xl font-semibold tracking-tight">{t("Análises da Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("Compromissos, comparecimento e conversão. Presença e falta são sempre declaradas por uma pessoa.")}

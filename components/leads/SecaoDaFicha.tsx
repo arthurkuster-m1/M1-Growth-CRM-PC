@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { CaretDown, CaretRight } from "@/lib/ui/icons";
 
@@ -31,9 +31,9 @@ export function SecaoDaFicha({
   padraoAberta?: boolean;
   children: ReactNode;
 }) {
-  const [aberta, setAberta] = useState(() =>
-    typeof window === "undefined" ? padraoAberta : lerAberta(id, padraoAberta),
-  );
+  const [aberta, setAberta] = useState(padraoAberta);
+  // O que a pessoa deixou aberto fica neste navegador: lê depois da hidratação.
+  useEffect(() => setAberta(lerAberta(id, padraoAberta)), [id, padraoAberta]);
   function alternar() {
     const proximo = !aberta;
     setAberta(proximo);

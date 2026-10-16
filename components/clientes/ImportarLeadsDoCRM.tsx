@@ -435,7 +435,7 @@ export function ImportarLeadsDoCRM({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={linhas.length >= MAX_LINHAS}
+            disabled={MAX_LINHAS <= linhas.length}
             onClick={() => setLinhas((a) => [...a, ...Array.from({ length: 5 }, () => vazia(ncols))].slice(0, MAX_LINHAS))}
           >
             {t("+ Adicionar 5 linhas")}

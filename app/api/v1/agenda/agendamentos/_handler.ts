@@ -1244,14 +1244,14 @@ async function leadJaVinculado(
 ): Promise<string | null> {
   const { data } = await supabase
     .from("crm_lead_links")
-    .select("lead_id")
+    .select("lead_id, created_at")
     .eq("organization_id", ctx.organization_id)
     .eq("target_kind", ALVO_DE_VINCULO_DO_AGENDAMENTO)
-    .eq("target_id", appointmentId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return (data as { lead_id?: string } | null)?.lead_id ?? null;
+    .eq("target_id", appointmentId);
+  // O vínculo mais antigo vale (a ordem é aqui, não na consulta).
+  const linhas = (Array.isArray(data) ? data : []) as Array<{ lead_id?: string; created_at?: string }>;
+  linhas.sort((x, y) => String(x.created_at ?? "").localeCompare(String(y.created_at ?? "")));
+  return linhas[0]?.lead_id ?? null;
 }
 
 /** O negócio ativo do contato — pela MESMA régua do resto do produto.

@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
@@ -617,9 +617,8 @@ export function TagsDoLead({
   const [filtro, setFiltro] = useState<string>("");
   const [gerenciando, setGerenciando] = useState(false);
   // Filtros personalizados (nome + categorias + texto), guardados neste navegador.
-  const [meusFiltros, setMeusFiltros] = useState<FiltroDeTags[]>(() =>
-    typeof window === "undefined" ? [] : lerFiltrosGuardados(),
-  );
+  const [meusFiltros, setMeusFiltros] = useState<FiltroDeTags[]>([]);
+  useEffect(() => setMeusFiltros(lerFiltrosGuardados()), []);
   const [filtroPersonalizadoId, setFiltroPersonalizadoId] = useState("");
   function guardarFiltros(lista: FiltroDeTags[]) {
     setMeusFiltros(lista);
