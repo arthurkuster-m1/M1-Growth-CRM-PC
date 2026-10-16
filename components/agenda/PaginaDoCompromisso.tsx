@@ -8,6 +8,8 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
+import { toast } from "sonner";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
@@ -20,6 +22,10 @@ import type { Venda } from "@/lib/vendas";
 import { cn } from "@/lib/utils";
 
 import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "./AcoesDoCompromisso";
+import { useAuth } from "@/hooks/auth/AuthProvider";
+import type { PedidoDeNovoCompromisso } from "@/lib/agenda/abrir-novo";
+import { CampoDeDataEHora } from "./CampoDeDataEHora";
+import { FormularioDeNovoCompromisso, useContextoDeMarcacao, usePessoasDaEquipe } from "./FormularioDeNovoCompromisso";
 import { MeetDoCompromisso, type MeetingDetail } from "./MeetDoCompromisso";
 import { SincronizacaoDoCompromisso, type SyncDetail } from "./SincronizacaoDoCompromisso";
 
@@ -88,7 +94,7 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
  * A página única do compromisso: abre no centro da tela, de qualquer lugar da Agenda. Tem tudo que o
  * atendente precisa para atender dentro do app. O miolo do atendimento muda com o TIPO do compromisso.
  */
-export function PaginaDoCompromisso({
+function PaginaExistente({
   id,
   onClose,
   podeEditar = true,
@@ -112,14 +118,9 @@ export function PaginaDoCompromisso({
   });
   const a = consulta.data;
 
-  const pessoas = useQuery({
-    queryKey: ["agenda", "pessoas-nomes"],
-    enabled: !!a?.responsavel_id,
-    staleTime: 60_000,
-    queryFn: async () =>
-      (await apiClient.get<{ data: Array<{ user_id: string; full_name: string | null }> }>("/api/v1/agenda/pessoas")).data,
-  });
+  const pessoas = usePessoasDaEquipe();
   const nomeDoResponsavel = pessoas.data?.find((p) => p.user_id === a?.responsavel_id)?.full_name ?? null;
+  const contexto = useContextoDeMarcacao(a?.contact_id ?? "", "");
 
   const oportunidade = useQuery({
     queryKey: ["venda-da-oportunidade", a?.lead_id],
@@ -134,6 +135,39 @@ export function PaginaDoCompromisso({
       apiClient.patch("/api/v1/agenda/agendamentos", { id, revision: a?.revision, ...patch }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["agenda"] });
+    },
+    onError: showApiError,
+  });
+
+  const recarregar = () => {
+    void qc.invalidateQueries({ queryKey: ["agenda"] });
+    void qc.invalidateQueries({ queryKey: ["venda-da-oportunidade"] });
+    void consulta.refetch();
+  };
+  const reagendar = useMutation({
+    mutationFn: async (iso: string) =>
+      apiClient.patch("/api/v1/agenda/agendamentos", { id, revision: a?.revision, starts_at: iso }),
+    onSuccess: () => {
+      toast.success(t("Compromisso reagendado."));
+      recarregar();
+    },
+    onError: showApiError,
+  });
+  const trocarResponsavel = useMutation({
+    mutationFn: async (userId: string) =>
+      apiClient.patch(`/api/v1/agenda/agendamentos/${id}/responsavel`, { user_id: userId }),
+    onSuccess: () => {
+      toast.success(t("Responsável do compromisso trocado."));
+      recarregar();
+    },
+    onError: showApiError,
+  });
+  const trocarOportunidade = useMutation({
+    mutationFn: async (leadId: string) =>
+      apiClient.patch(`/api/v1/agenda/agendamentos/${id}/oportunidade`, { lead_id: leadId || null }),
+    onSuccess: () => {
+      toast.success(t("Oportunidade do compromisso atualizada."));
+      recarregar();
     },
     onError: showApiError,
   });
@@ -220,7 +254,42 @@ export function PaginaDoCompromisso({
                       <span className="text-text-muted">{t("Compromisso pessoal, sem cliente")}</span>
                     )}
                   </Campo>
-                  <Campo rotulo={t("Responsável")}>{nomeDoResponsavel ?? "—"}</Campo>
+                  <div className="min-w-0">
+                    <div className="mb-1 text-xs text-text-muted">{t("Responsável pela reunião")}</div>
+                    {podeEditar && !encerrado ? (
+                      <SeletorEmPopup
+                        rotulo={t("Responsável pela reunião")}
+                        valor={a.responsavel_id ?? ""}
+                        opcoes={(pessoas.data ?? []).map((p) => ({
+                          id: p.user_id,
+                          rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
+                        }))}
+                        desabilitado={trocarResponsavel.isPending}
+                        aoEscolher={(uid) => uid && uid !== a.responsavel_id && trocarResponsavel.mutate(uid)}
+                      />
+                    ) : (
+                      <div className="min-h-9 rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                        {nomeDoResponsavel ?? "—"}
+                      </div>
+                    )}
+                    <p className="mt-1 text-[11px] text-text-muted">
+                      {t("Trocar aqui vale só para este compromisso; o CRM e a oportunidade não mudam.")}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="mb-1 text-xs text-text-muted">{t("Data e horário")}</div>
+                    <CampoDeDataEHora
+                      valor={a.starts_at}
+                      fuso={a.time_zone}
+                      tag={tag}
+                      rotulo={t("Reagendar o compromisso")}
+                      desabilitado={!podeEditar || encerrado || reagendar.isPending}
+                      aoEscolher={(iso) => reagendar.mutate(iso)}
+                    />
+                    {podeEditar && !encerrado && (
+                      <p className="mt-1 text-[11px] text-text-muted">{t("Escolher outra data ou horário reagenda o compromisso.")}</p>
+                    )}
+                  </div>
                   <Campo rotulo={t("Telefone")}>
                     {a.cliente?.telefone ? (
                       <a href={`tel:${a.cliente.telefone}`} className="inline-flex items-center gap-1.5">
@@ -320,6 +389,21 @@ export function PaginaDoCompromisso({
                   ) : undefined
                 }
               >
+                {podeEditar && !encerrado && a.contact_id ? (
+                  <div className="mb-3">
+                    <SeletorEmPopup
+                      rotulo={t("Oportunidade do compromisso")}
+                      valor={a.lead_id ?? ""}
+                      rotuloVazio={t("Sem oportunidade (atendimento ao cliente)")}
+                      desabilitado={trocarOportunidade.isPending}
+                      opcoes={(contexto.data?.oportunidades ?? []).map((o) => ({
+                        id: o.id,
+                        rotulo: `${o.titulo}${o.funil ? ` · ${o.funil}` : ""}${o.etapa ? ` › ${o.etapa}` : ""}`,
+                      }))}
+                      aoEscolher={(lid) => lid !== (a.lead_id ?? "") && trocarOportunidade.mutate(lid)}
+                    />
+                  </div>
+                ) : null}
                 {!a.lead_id ? (
                   <p className="text-sm text-text-muted">{t("Este compromisso não está ligado a uma oportunidade.")}</p>
                 ) : oportunidade.isPending ? (
@@ -461,6 +545,46 @@ export function PaginaDoCompromisso({
             }}
           />
         ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * A página do compromisso. Com `id`, abre o compromisso; com `novo`, abre o formulário de um
+ * compromisso novo e, ao criar, passa para a página dele.
+ */
+export function PaginaDoCompromisso({
+  id,
+  novo,
+  onClose,
+  onCriado,
+  podeEditar = true,
+}: {
+  id?: string | null;
+  novo?: PedidoDeNovoCompromisso | null;
+  onClose: () => void;
+  /** Avisa o id do compromisso recém-criado (quem abriu decide se continua com ele aberto). */
+  onCriado?: (id: string) => void;
+  podeEditar?: boolean;
+}) {
+  const { user } = useAuth();
+  if (id) return <PaginaExistente id={id} onClose={onClose} podeEditar={podeEditar} />;
+  if (!novo) return null;
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        data-testid="pagina-do-compromisso"
+        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-y-auto rounded-3xl bg-background p-0 sm:rounded-3xl"
+      >
+        <DialogTitle className="sr-only">Novo compromisso</DialogTitle>
+        <DialogDescription className="sr-only">Formulário de novo compromisso</DialogDescription>
+        <FormularioDeNovoCompromisso
+          inicial={novo}
+          usuarioId={user.id}
+          aoCancelar={onClose}
+          aoCriar={(novoId) => onCriado?.(novoId)}
+        />
       </DialogContent>
     </Dialog>
   );

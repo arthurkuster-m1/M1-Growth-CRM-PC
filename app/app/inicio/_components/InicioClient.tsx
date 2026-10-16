@@ -1,5 +1,7 @@
 "use client";
 
+import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
+
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
@@ -354,14 +356,15 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
             titulo={t("Calendário")}
           >
             <div className="flex items-center gap-2">
-              <Link
-                href="/app/agenda"
+              <button
+                type="button"
+                onClick={() => abrirNovoCompromisso()}
                 aria-label={t("Novo agendamento")}
                 title={t("Novo agendamento")}
                 className="grid h-8 w-8 place-items-center rounded-lg border bg-background text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Plus size={16} aria-hidden />
-              </Link>
+              </button>
               <div className="flex rounded-lg bg-secondary p-0.5 text-xs">
                 {(["dia", "semana"] as const).map((valor) => (
                   <button

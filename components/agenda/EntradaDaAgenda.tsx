@@ -2,13 +2,13 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePermission } from "@/hooks/auth/AuthProvider";
 import { useEffect } from "react";
+import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { PaginaDoCompromisso } from "./PaginaDoCompromisso";
 export function EntradaDaAgenda({
-  onContext,
-  onLead,
+  onContext: _onContext,
+  onLead: _onLead,
 }: {
-  onContext: (contact: string, conversation: string) => void;
-  /** A oportunidade que a rota carrega (`?lead=`), quando o link veio dela. */
+  onContext?: (contact: string, conversation: string) => void;
   onLead?: (lead: string) => void;
 }) {
   const podeEditar = usePermission("inbox.reply");
@@ -17,21 +17,16 @@ export function EntradaDaAgenda({
   const contact = params.get("contato");
   const conversation = params.get("conversa");
   const lead = params.get("lead");
-  // ⚠️ SEMPRE avisa, inclusive quando a rota NÃO traz contexto.
-  //
-  // Era `if (contact) onContext(...)`, e a guarda era o defeito: quem abria
-  // "Marcar compromisso" de dentro de uma conversa e depois ia para a Agenda
-  // pelo menu continuava com aquele cliente no painel. A rota mudava
-  // (`?contato=` sumia), mas esta é a MESMA rota do App Router — o componente
-  // não remonta, só a query muda —, e sem a chamada ninguém contava ao painel
-  // que o contexto tinha acabado. Quem decide abrir é o `onContext`, pelo
-  // valor de `contact`; aqui é só o recado.
+  // Links com `?contato=`, `?conversa=` ou `?lead=` (o "Marcar compromisso" de antes) abrem o NOVO
+  // compromisso e limpam a URL: o painel antigo de marcação não existe mais.
   useEffect(() => {
-    onContext(contact ?? "", conversation ?? "");
-  }, [contact, conversation, onContext]);
-  useEffect(() => {
-    onLead?.(lead ?? "");
-  }, [lead, onLead]);
+    if (!contact && !lead) return;
+    if (podeEditar)
+      abrirNovoCompromisso({ contactId: contact, conversationId: conversation, leadId: lead });
+    const tipo = params.get("tipo");
+    router.replace(tipo ? `/app/agenda?tipo=${encodeURIComponent(tipo)}` : "/app/agenda");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact, conversation, lead]);
   return (
     <PaginaDoCompromisso
       key={params.get("compromisso")}

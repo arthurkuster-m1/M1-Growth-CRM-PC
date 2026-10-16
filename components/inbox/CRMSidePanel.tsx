@@ -1,5 +1,6 @@
 "use client";
 
+import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { RoteirosDoContato } from "@/components/contacts/RoteirosDoContato";
 import { AcervoSearch } from "./AcervoSearch";
 import { LeadEnrichment } from "./LeadEnrichment";
@@ -622,7 +623,7 @@ export function CRMSidePanel({ conversation }: Props) {
             </div>
           )}
           <div className="flex flex-wrap gap-2 pt-1">
-            {contactId&&conversation?<Link className="underline" href={`/app/agenda?contato=${contactId}&conversa=${conversation.id}`}>{t("Marcar compromisso")}</Link>:null}
+            {contactId&&conversation?<button type="button" className="underline" onClick={()=>abrirNovoCompromisso({contactId,conversationId:conversation.id})}>{t("Marcar compromisso")}</button>:null}
             <Button
               size="sm"
               variant="outline"

@@ -6,6 +6,7 @@
  * cadastrado na LP (nunca um endereço vindo do pedido), recusa destinos internos (anti-SSRF) e
  * segue no máximo 3 redirecionamentos, conferindo cada salto.
  */
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -46,6 +47,8 @@ async function lerCabecalhos(inicial: string): Promise<{ headers: Headers; statu
 }
 
 export async function POST(_req: NextRequest, ctx: Ctx): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const a = await autorizarCampanhas("manager", false);
   if (!a.ok) return a.response;
   const { id, lpId } = await ctx.params;

@@ -3,6 +3,7 @@
  * visualização SÓ PARA QUEM PEDIU. A visualização em si não muda para ninguém. Serve sobretudo
  * para esconder a visualização de outra pessoa, que não se edita nem se apaga.
  */
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -20,6 +21,8 @@ export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const requestId = randomUUID();
   const { id } = await ctx.params;
   const authz = await requireRole("viewer", { requestId, resource: "crm_saved_views" });

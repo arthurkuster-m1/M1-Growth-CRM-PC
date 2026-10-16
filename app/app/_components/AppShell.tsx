@@ -1,4 +1,5 @@
 "use client";
+import { NovoCompromissoGlobal } from "@/components/agenda/NovoCompromissoGlobal";
 import { PagamentoPedidoDaOportunidade } from "@/components/vendas/PagamentoPedidoDaOportunidade";
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
@@ -122,6 +123,8 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
       <BarraInferior />
       {/* Comprou sem pagamento, de qualquer tela: abre a venda para registrar o sinal. */}
       {podeAtender ? <PagamentoPedidoDaOportunidade /> : null}
+      {/* "Novo agendamento" de qualquer tela abre a página única do compromisso. */}
+      {podeAtender ? <NovoCompromissoGlobal /> : null}
     </div>
   );
 }

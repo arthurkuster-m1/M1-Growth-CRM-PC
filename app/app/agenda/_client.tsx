@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { ConfiguracaoDaAgenda } from "./_components/ConfiguracaoDaAgenda";
 import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "@/components/agenda/AcoesDoCompromisso";
+import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { AbasDaAgenda } from "@/components/agenda/AbasDaAgenda";
 import { AvisoDeReuniaoEncerrada } from "@/components/agenda/AvisoDeReuniaoEncerrada";
 import { EntradaDaAgenda } from "@/components/agenda/EntradaDaAgenda";
@@ -168,6 +169,7 @@ export function AgendaClient({
       setSincronizando(false);
     }
   };
+  const tipoIdAtual = React.useRef<string | null>(null);
   const [marcando, setMarcando] = React.useState(false);
   // O compromisso criado NESTA abertura do painel. Serve para levar a grade até
   // ele quando o painel fechar por qualquer caminho — ver `ancoraAoFecharPainel`.
@@ -203,10 +205,10 @@ export function AgendaClient({
     [podeMarcar, registrarVinculoDaRota],
   );
   /** Abrir o painel do zero: o vínculo volta a ser o da rota, nunca o da vez anterior. */
+  // "Novo agendamento" abre a página única do compromisso (a mesma de qualquer tela).
   const abrirMarcacao = React.useCallback(() => {
-    reiniciarVinculo();
-    setMarcando(true);
-  }, [reiniciarVinculo]);
+    abrirNovoCompromisso({ eventTypeId: tipoIdAtual.current });
+  }, []);
   // O horário que veio de um CLIQUE NA GRADE. Preenchido, o painel abre já em
   // "confirmando" naquele instante; vazio, ele abre pedindo o dia, como sempre.
   const [horarioEscolhido, setHorarioEscolhido] = React.useState<HorarioLivre | null>(null);
@@ -265,6 +267,7 @@ export function AgendaClient({
     () => busca.get("tipo") ?? tiposIniciais[0]?.id ?? null,
   );
   const tipo = tiposIniciais.find((t) => t.id === tipoId) ?? tiposIniciais[0] ?? null;
+  tipoIdAtual.current = tipo?.id ?? null;
   /**
    * ESCOLHER O TIPO GRAVA NA URL — a outra metade do `useState` acima.
    *
@@ -1175,9 +1178,9 @@ export function AgendaClient({
         // nasciam cinzas em toda linha, de toda organização — e o `title` dizia
         // "Disponível quando a agenda estiver conectada", que é falso: PATCH e
         // DELETE não tocam o Google. Só a IA conseguia remarcar ou cancelar.
+        // Remarcar abre a página do compromisso: é lá que se escolhe a nova data e o horário.
         onRemarcar={(id) => {
-          setRemarcandoId(id);
-          setMarcando(true);
+          router.push(`/app/agenda?compromisso=${id}`);
         }}
         onCancelar={(id) => {
           setMotivo("");
@@ -1266,9 +1269,8 @@ export function AgendaClient({
                   rotulo: format(dataDeParede(new Date(instante), fusoDaAgenda), "HH:mm"),
                 });
                 setRemarcandoId(null);
-                // `abrirMarcacao` e não `setMarcando(true)`: clicar num bloco
-                // livre abre uma marcação NOVA, e ela nasce com o vínculo da rota.
-                abrirMarcacao();
+                // Clicar num bloco livre abre o NOVO compromisso já nesse horário.
+                abrirNovoCompromisso({ startsAt: instante, eventTypeId: tipoIdAtual.current });
               }
             : undefined
         }

@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { ROTULO_DA_CONFIRMACAO } from "@/lib/agenda/confirmacao";
 import { useT } from "@/hooks/i18n/useT";
+import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { apiClient } from "@/lib/api/client";
 import { Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -66,11 +67,6 @@ export function CompromissosDoLead({
       hour: "2-digit",
       minute: "2-digit",
     });
-  const novo =
-    `/app/agenda?${new URLSearchParams({
-      ...(contactId ? { contato: contactId } : {}),
-      ...(leadId ? { lead: leadId } : {}),
-    })}`;
 
   const linha = (c: Compromisso) => (
     <li key={c.id}>
@@ -110,13 +106,15 @@ export function CompromissosDoLead({
             ? `${t("Próximo compromisso:")} ${quando(futuros[0]!.iniciaEm)}`
             : t("Nenhum compromisso agendado.")}
         </p>
-        <Link
-          href={novo}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+        <button
+          type="button"
+          data-testid="novo-compromisso-do-lead"
+          onClick={() => abrirNovoCompromisso({ contactId, leadId })}
+          className="inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium hover:bg-secondary"
         >
           <Plus size={14} aria-hidden />
           {t("Novo compromisso")}
-        </Link>
+        </button>
       </div>
       {futuros.length + passados.length > 0 ? (
         <ul className="grid gap-0.5">

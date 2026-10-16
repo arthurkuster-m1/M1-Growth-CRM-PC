@@ -8,6 +8,7 @@
  * isola a organização); escrita pelo admin client DEPOIS do portão de papel, com a organização
  * conferida à mão — a escrita de `settings` não é aberta ao gerente pela RLS.
  */
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -52,6 +53,8 @@ const corpoSchema = z.object({
 });
 
 export async function PUT(req: NextRequest): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const requestId = randomUUID();
   const auth = await requireRole("manager", { requestId, resource: "settings_tags" });
   if (!auth.ok) return auth.response;

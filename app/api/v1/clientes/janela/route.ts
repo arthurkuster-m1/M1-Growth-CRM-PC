@@ -4,6 +4,7 @@
  * própria (`marketing_pages.janela_ativo_meses`). Mudar recalcula o ciclo de vida de todos.
  * Ler: viewer+. Mudar: manager+.
  */
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -33,6 +34,8 @@ export async function GET(): Promise<Response> {
 }
 
 export async function PATCH(req: NextRequest): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const requestId = randomUUID();
   const authz = await requireRole("manager", { requestId, resource: "crm_leads" });
   if (!authz.ok) return authz.response;

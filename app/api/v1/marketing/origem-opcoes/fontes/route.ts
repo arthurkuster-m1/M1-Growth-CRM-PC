@@ -3,6 +3,7 @@
  * Ela passa a ser opção para todos os leads e oportunidades (`organizations.settings.fontes_de_origem`).
  * Agent+ cadastra: quem atende o lead precisa poder criar a origem na hora.
  */
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -16,6 +17,8 @@ export const dynamic = "force-dynamic";
 const corpo = z.object({ nome: z.string().trim().min(2).max(60) });
 
 export async function POST(req: NextRequest): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const requestId = randomUUID();
   const authz = await requireRole("agent", { requestId, resource: "crm_leads" });
   if (!authz.ok) return authz.response;
