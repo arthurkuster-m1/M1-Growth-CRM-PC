@@ -17,6 +17,7 @@
  * `ctx.organizationId` e filtra `organization_id` em toda query. Está escrito lá
  * dentro, e é o que separa esta chamada de um vazamento entre organizações.
  */
+import { horariosLivresDaEquipe } from "@/lib/agenda/equipe";
 import { z } from "zod";
 
 import {
@@ -327,7 +328,7 @@ export const crmFindFreeSlots: McpToolDefinition<typeof horariosLivresShape> = {
         ? new Date(de.getTime() + (input.dias_a_frente ?? DIAS_PADRAO) * 86_400_000)
         : janela.ate;
 
-    const consulta = await horariosLivresDaOrg(ctx.supabase, ctx.organizationId, {
+    const consulta = await horariosLivresDaEquipe(ctx.supabase, ctx.organizationId, {
       eventTypeSlug: input.event_type_slug,
       ownerUserId: input.owner_user_id ?? null,
       de,
@@ -719,7 +720,8 @@ export const crmBookAppointment: McpToolDefinition<typeof marcarShape> = {
           event_type_id: tipo.id,
           starts_at: input.starts_at,
           contact_id: input.contact_id,
-          ...(input.owner_user_id ? { owner_user_id: input.owner_user_id } : {}),
+          // Sem atendente escolhido, o menos carregado entre os livres do tipo.
+          ...(input.owner_user_id ? { owner_user_id: input.owner_user_id } : { distribuir: true }),
           ...(input.title ? { title: input.title } : {}),
           ...(input.notes ? { notes: input.notes } : {}),
           ...(input.description ? { description: input.description } : {}),
@@ -880,7 +882,7 @@ export const crmFindAndBookAppointment: McpToolDefinition<typeof consultarEMarca
     const agora = new Date();
     const { de, ate } = faixaAmplaDoDia(input.dia);
 
-    const consulta = await horariosLivresDaOrg(ctx.supabase, ctx.organizationId, {
+    const consulta = await horariosLivresDaEquipe(ctx.supabase, ctx.organizationId, {
       eventTypeSlug: input.event_type_slug,
       ownerUserId: input.owner_user_id ?? null,
       de,

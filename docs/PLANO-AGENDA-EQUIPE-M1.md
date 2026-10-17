@@ -135,3 +135,9 @@ Aba **Atendentes e horários** da Configuração da Agenda, com:
 - **Publicado no código:** biblioteca da equipe (`lib/agenda/equipe.ts`); `GET /agenda/atendentes-livres` (escolhi o horário, quem está livre); `GET /horarios-livres?owner_user_id=qualquer` (união dos horários, cada um com quem está livre); `GET/PUT /agenda/atendentes-do-tipo` (matriz, só gerente grava); marcação com `distribuir` (menos carregado no dia entre os livres); formulário de novo compromisso com os dois sentidos e avisos (não faz o tipo, não está livre, sem Google); página do compromisso com a lista de responsáveis filtrada (atendentes do tipo livres naquele horário); matriz pessoas × tipos na Configuração da Agenda.
 - **Google ao trocar o responsável:** apaga o evento da agenda do anterior e cria na do novo; sem Google no novo, só no app; se o Google não deixar remover, avisa para apagar à mão.
 - Falta: aplicar a migration 0649 (aguarda o "pode aplicar"); marcação pela IA e por integrações usando a mesma distribuição (fase 3).
+
+## 11. Fase 3 e migration (17/10/2026)
+
+- **Migration 0649 aplicada** (3 linhas copiadas dos responsáveis atuais; RLS ligada).
+- **IA e integrações** passam a usar a equipe: `horariosLivresDaEquipe` oferece a união dos horários dos atendentes do tipo (com zero ou um atendente, é a consulta de sempre) e `crm_book_appointment` sem atendente escolhido marca pelo **menos carregado** entre os livres. Qualquer falha ao ler a equipe cai na consulta antiga.
+- **Aviso de reunião encerrada** agora vale em qualquer tela do app (confere de minuto em minuto).

@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { horariosLivresDaOrg } from "@/lib/agenda/consulta";
+import {
+  horariosLivresDaOrg,
+  type ParametrosDaConsulta,
+  type ResultadoDaConsulta,
+} from "@/lib/agenda/consulta";
 
 /**
  * A EQUIPE DA AGENDA: quem atende cada tipo, quem está livre num horário e quem pega o
@@ -120,4 +124,54 @@ export function escolherOMenosCarregado(livres: AtendenteLivre[]): AtendenteLivr
   return livres.length === 0
     ? null
     : [...livres].sort((x, y) => x.carga - y.carga || x.priority - y.priority)[0]!;
+}
+
+/**
+ * Os horários livres do TIPO, para quem não escolheu um atendente (a IA e as integrações): a união
+ * dos horários dos atendentes do tipo. Com zero ou um atendente, é exatamente a consulta de sempre.
+ * Qualquer falha ao ler a equipe cai na consulta de sempre: a equipe melhora a oferta, não a bloqueia.
+ */
+export async function horariosLivresDaEquipe(
+  db: SupabaseClient,
+  organizationId: string,
+  params: ParametrosDaConsulta,
+): Promise<ResultadoDaConsulta> {
+  if (params.ownerUserId) return horariosLivresDaOrg(db, organizationId, params);
+  let equipe: AtendenteDoTipo[] = [];
+  try {
+    const { data: tipo } = await db
+      .from("calendar_event_types")
+      .select("id, default_owner_user_id")
+      .eq("organization_id", organizationId)
+      .eq(params.eventTypeSlug ? "slug" : "id", params.eventTypeSlug ?? params.eventTypeId ?? "")
+      .maybeSingle();
+    if (tipo?.id)
+      equipe = await atendentesDoTipo(
+        db,
+        organizationId,
+        tipo.id as string,
+        (tipo.default_owner_user_id as string | null) ?? null,
+      );
+  } catch {
+    equipe = [];
+  }
+  if (equipe.length <= 1) return horariosLivresDaOrg(db, organizationId, params);
+
+  const resultados = await Promise.all(
+    equipe.map((a) => horariosLivresDaOrg(db, organizationId, { ...params, ownerUserId: a.user_id })),
+  );
+  const oks = resultados.filter((r): r is Extract<ResultadoDaConsulta, { ok: true }> => r.ok);
+  if (oks.length === 0) return resultados[0]!;
+  const porInicio = new Map<number, (typeof oks)[number]["slots"][number]>();
+  for (const r of oks) for (const sl of r.slots) if (!porInicio.has(sl.inicio.getTime())) porInicio.set(sl.inicio.getTime(), sl);
+  const base = oks[0]!;
+  return {
+    ...base,
+    slots: [...porInicio.entries()].sort((x, y) => x[0] - y[0]).map(([, sl]) => sl),
+    publicouHorarios: oks.some((r) => r.publicouHorarios),
+    fusoSuposto: oks.every((r) => r.fusoSuposto),
+    fontesDefasadas: oks.flatMap((r) => r.fontesDefasadas),
+    agendaExternaNuncaLida: oks.every((r) => r.agendaExternaNuncaLida),
+    googleCoberturaParcial: oks.some((r) => r.googleCoberturaParcial),
+  };
 }

@@ -6,7 +6,6 @@ import { ConfiguracaoDaAgenda } from "./_components/ConfiguracaoDaAgenda";
 import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "@/components/agenda/AcoesDoCompromisso";
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { AbasDaAgenda } from "@/components/agenda/AbasDaAgenda";
-import { AvisoDeReuniaoEncerrada } from "@/components/agenda/AvisoDeReuniaoEncerrada";
 import { EntradaDaAgenda } from "@/components/agenda/EntradaDaAgenda";
 import { OportunidadeDaMarcacao } from "@/components/agenda/OportunidadeDaMarcacao";
 import { EnderecoDaMarcacao } from "@/components/agenda/EnderecoDaMarcacao";
@@ -1152,8 +1151,6 @@ export function AgendaClient({
         não informa nada que a grade — que O DESENHA no horário — já não diga
         melhor. A ocupação continua inteira onde ela serve.
       */}
-      {podeMarcar ? <AvisoDeReuniaoEncerrada agendamentos={agendamentosAcionaveis} usuarioId={usuarioId} /> : null}
-
       <HistoricoDaAgenda
         agendamentos={agendamentosAcionaveis}
         pessoas={pessoas}
