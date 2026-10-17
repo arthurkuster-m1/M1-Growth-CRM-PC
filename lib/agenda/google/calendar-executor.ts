@@ -8,6 +8,11 @@ import { googleTransport, GoogleHttpError, type GoogleFetch } from "./transport"
 import { calendarSnapshotSchema, googleRpc, type CalendarFence } from "./sync-store";
 import { reconcileAppointment, tokenForConnection } from "./sync-executor";
 
+/** O texto do erro SÓ para o log do servidor: nunca vai para o banco nem para a tela. */
+function textoDoErroParaOLog(erro: unknown): string {
+  return erro instanceof Error ? erro.message : String(erro);
+}
+
 /** A frase persistida quando a leitura incremental do Google falha. */
 export function mensagemDaRecusaDeLeitura(erro: unknown): string {
   if (erro instanceof GoogleHttpError) {
@@ -170,7 +175,7 @@ export async function syncCalendar(
     // O motivo real vai para o log do servidor (a tela só recebe a frase genérica).
     logger.warn("[agenda.google.sync] leitura da agenda falhou", {
       calendarId,
-      erro: e instanceof Error ? e.message : String(e),
+      erro: textoDoErroParaOLog(e),
       status: e instanceof GoogleHttpError ? e.status : undefined,
     });
     try {
