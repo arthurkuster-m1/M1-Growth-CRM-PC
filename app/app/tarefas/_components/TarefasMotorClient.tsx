@@ -71,6 +71,7 @@ import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
 import {
   SITUACOES_DA_TAREFA,
   estaAtrasada,
+  type EdicaoDaTarefa,
   type PrioridadeDaTarefa,
   type Tarefa,
 } from "@/lib/tarefas/tipos";
@@ -117,6 +118,9 @@ const normalizarBusca = (texto: string) =>
     .trim();
 
 const SEM_IDS: ReadonlySet<string> = new Set();
+
+/** O id da tarefa que ainda está sendo preenchida no pop-up (não existe no banco). */
+const ID_DO_RASCUNHO = "__nova__";
 
 /** O relógio fica fora do componente: é lido só quando a pessoa cria a tarefa, nunca ao desenhar a tela. */
 const relogioEmSegundos = () => Date.now() / 1000;
@@ -167,8 +171,8 @@ export function TarefasMotorClient({
     tarefas: todasAsTarefas,
     carregando,
     falhou,
-    editarTarefa,
     reordenar,
+    editarTarefa: editarTarefaBase,
     criarTarefa: criarTarefaBase,
     apagarTarefa,
     editarVarias,
@@ -186,6 +190,17 @@ export function TarefasMotorClient({
     criarTarefaBase(
       contatoFixo ? { ...entrada, contact_id: contatoFixo.id } : entrada,
     );
+  // A tarefa que ainda está sendo preenchida no pop-up de "Nova tarefa" (ainda não existe no
+  // banco). As MESMAS células editáveis da tabela servem a ela: editar a tarefa-rascunho muda o
+  // rascunho, não o servidor — só "Criar tarefa" grava.
+  const [rascunho, setRascunho] = useState<Tarefa | null>(null);
+  const editarTarefa: typeof editarTarefaBase = (id, enviar, local) => {
+    if (id !== ID_DO_RASCUNHO) return editarTarefaBase(id, enviar, local);
+    setRascunho((atual) =>
+      atual ? ({ ...atual, ...enviar, ...local } as Tarefa) : atual,
+    );
+    return Promise.resolve(undefined);
+  };
   const { modelos, criarModelo, editarModelo, apagarModelo } = useModelosDeTarefa();
   const { opcoes, criarOpcao, editarOpcao, apagarOpcao } = useOpcoesDeStatus();
   const { propriedades, criarPropriedade, editarPropriedade, apagarPropriedade } =
@@ -252,15 +267,17 @@ export function TarefasMotorClient({
               aoSalvar={(title) => void editarTarefa(tarefa.id, { title }, { title })}
             />
           </div>
-          <button
-            type="button"
-            aria-label={t("Abrir tarefa")}
-            title={t("Abrir tarefa")}
-            onClick={() => setAbertaId(tarefa.id)}
-            className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase transition-opacity hover:bg-secondary hover:text-foreground focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
-          >
-            {t("Abrir")}
-          </button>
+          {tarefa.id === ID_DO_RASCUNHO ? null : (
+            <button
+              type="button"
+              aria-label={t("Abrir tarefa")}
+              title={t("Abrir tarefa")}
+              onClick={() => setAbertaId(tarefa.id)}
+              className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase transition-opacity hover:bg-secondary hover:text-foreground focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+            >
+              {t("Abrir")}
+            </button>
+          )}
         </div>
       ),
     },
@@ -594,6 +611,21 @@ export function TarefasMotorClient({
     atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
   }
 
+  // Calendário: as propriedades dentro de cada tarefa são uma escolha SÓ dele (esconder uma
+  // coluna da tabela não pode mudar o calendário, nem o contrário). A ordem é a da tabela.
+  const idsNoCalendario = new Set(preferencias.calendario?.propriedades ?? []);
+  const colunasDoCalendario = resolvidas.filter(
+    (c) => c.id !== "titulo" && c.id !== "descricao" && idsNoCalendario.has(c.id),
+  );
+  function alternarNoCalendario(id: string) {
+    atualizar((p) => {
+      const ids = new Set(p.calendario?.propriedades ?? []);
+      if (ids.has(id)) ids.delete(id);
+      else ids.add(id);
+      return { ...p, calendario: { propriedades: [...ids] } };
+    });
+  }
+
   // ── filtros, ordenação e agrupamento ────────────────────────────────────────────────
   // Os campos consultáveis moram em `lib/tarefas/campos-da-tarefa.ts`: a MESMA lista serve à
   // barra de filtros, ao motor de consulta e à regra "a tarefa nova nasce com os filtros".
@@ -773,10 +805,7 @@ export function TarefasMotorClient({
    *     vale mais que o filtro sobre o mesmo campo; o grupo "Sem valor" deixa o campo vazio;
    *  3. o DIA em que a pessoa clicou no Calendário (vira o prazo).
    */
-  async function novaTarefa(origem?: { dia?: string; grupo?: { campo: string; chave: string } }) {
-    // No fim da lista: acima da maior posição existente E do relógio, para a tarefa nova
-    // não ficar atrás de uma que foi arrastada para o fim.
-    const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
+  function novaTarefa(origem?: { dia?: string; grupo?: { campo: string; chave: string } }) {
     const herdados: Record<string, string | number | boolean | string[]> = {
       ...valoresDeNascimento(preferencias.filtros, camposConsultaveis, {
         hoje: hojeNoFuso(agora, fuso),
@@ -798,26 +827,68 @@ export function TarefasMotorClient({
       opcoes,
       propriedades,
       fuso,
-      tituloPadrao: t("Sem título"),
+      tituloPadrao: "",
       dia: origem?.dia,
     });
+    // O status já vem escolhido (o do filtro/coluna, ou o primeiro): o que a pessoa vê no
+    // pop-up é exatamente o que será gravado.
+    const opcaoInicial =
+      opcoes.find((o) => o.id === tarefa.status_option_id) ??
+      opcoes.find((o) => o.grupo === "pending") ??
+      opcoes[0];
+    const agoraIsoDoRascunho = new Date().toISOString();
+    setRascunho({
+      id: ID_DO_RASCUNHO,
+      organization_id: "",
+      title: tituloVeioDoFiltro ? tarefa.title : "",
+      description: tarefa.description ?? null,
+      due_date: tarefa.due_date ?? null,
+      start_date: tarefa.start_date ?? null,
+      priority: tarefa.priority ?? "medium",
+      status: opcaoInicial?.grupo ?? "pending",
+      status_option_id: opcaoInicial?.id ?? null,
+      lead_id: null,
+      contact_id: contatoFixo?.id ?? null,
+      cliente_nome: contatoFixo?.nome ?? null,
+      assigned_to: tarefa.assigned_to ?? null,
+      created_by: null,
+      created_at: agoraIsoDoRascunho,
+      updated_at: agoraIsoDoRascunho,
+      custom_fields: personalizados,
+      cronograma_lado: null,
+    });
+  }
+
+  /** "Criar tarefa" no pop-up: grava o rascunho de uma vez, com tudo o que a pessoa preencheu. */
+  async function criarDoRascunho() {
+    if (!rascunho) return;
+    const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
+    const personalizados = rascunho.custom_fields ?? {};
     try {
       const criada = await criarTarefa({
-        ...tarefa,
+        title: rascunho.title.trim() || t("Sem título"),
+        description: rascunho.description,
+        due_date: rascunho.due_date,
+        start_date: rascunho.start_date ?? null,
+        priority: rascunho.priority,
+        status_option_id: rascunho.status_option_id ?? null,
+        assigned_to: rascunho.assigned_to,
+        contact_id: rascunho.contact_id,
         position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
       });
-      // A criação não aceita propriedades personalizadas: elas entram logo em seguida.
-      if (Object.keys(personalizados).length > 0) {
-        void editarTarefa(criada.id, { custom_fields: personalizados });
-      }
+      // A criação não aceita propriedades personalizadas nem o cronograma: entram logo em seguida.
+      const extras: EdicaoDaTarefa = {};
+      if (Object.keys(personalizados).length > 0) extras.custom_fields = personalizados;
+      if (rascunho.cronograma_lado) extras.cronograma_lado = rascunho.cronograma_lado;
+      if (Object.keys(extras).length > 0) void editarTarefaBase(criada.id, extras);
       garantirQueAparece({
         ...criada,
         custom_fields: { ...criada.custom_fields, ...personalizados },
+        cronograma_lado: rascunho.cronograma_lado ?? null,
       });
-      // O título já veio do filtro? Então não há o que digitar; senão, abre para nomear.
-      if (!tituloVeioDoFiltro) setEditandoId(criada.id);
+      setRascunho(null);
     } catch {
-      // O hook já mostrou o erro da API.
+      // O hook já mostrou o erro da API; o pop-up fica aberto com o que a pessoa preencheu.
     }
   }
 
@@ -847,7 +918,7 @@ export function TarefasMotorClient({
               <button
                 aria-label={t("Nova tarefa")}
                 type="button"
-                onClick={() => void novaTarefa()}
+                onClick={() => novaTarefa()}
                 className="inline-flex h-9 items-center gap-2 rounded-l-xl px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
               >
                 <Plus size={16} weight="bold" aria-hidden />
@@ -977,8 +1048,9 @@ export function TarefasMotorClient({
           aoMudarPrazo={(tarefa, due_date) =>
             void editarTarefa(tarefa.id, { due_date }, { due_date })
           }
-          aoCriarNoDia={(dia) => void novaTarefa({ dia })}
+          aoCriarNoDia={(dia) => novaTarefa({ dia })}
           aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
+          colunas={colunasDoCalendario}
         />
       ) : visualizacao === "timeline" ? (
         <LinhaDoTempo
@@ -1000,7 +1072,7 @@ export function TarefasMotorClient({
           aoAbrir={(tarefa) => setAbertaId(tarefa.id)}
           aoCriarNaColuna={
             podeEditar
-              ? (opcao) => void novaTarefa({ grupo: { campo: "status", chave: opcao.id } })
+              ? (opcao) => novaTarefa({ grupo: { campo: "status", chave: opcao.id } })
               : undefined
           }
           aoMudarStatus={(tarefa, opcao) =>
@@ -1078,11 +1150,11 @@ export function TarefasMotorClient({
           aoSelecionar={podeEditar ? selecionar : undefined}
           aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
           aoReordenar={(id, destino) => void reordenar(id, destino)}
-          aoCriar={podeEditar ? () => void novaTarefa() : undefined}
+          aoCriar={podeEditar ? () => novaTarefa() : undefined}
           aoCriarNoGrupo={
             podeEditar && preferencias.agrupar
               ? (chave) =>
-                  void novaTarefa({
+                  novaTarefa({
                     grupo: {
                       campo: preferencias.agrupar!,
                       chave: chave === "__vazio" ? "" : chave,
@@ -1183,20 +1255,60 @@ export function TarefasMotorClient({
                 visivel: c.visivel,
                 obrigatoria: c.fixa || c.semOcultar,
               }))
-            : []
+            : visualizacao === "calendario"
+              ? resolvidas
+                  .filter((c) => c.id !== "titulo" && c.id !== "descricao")
+                  .map((c) => ({
+                    id: c.id,
+                    titulo: c.titulo,
+                    icone: c.icone,
+                    visivel: idsNoCalendario.has(c.id),
+                  }))
+              : []
+        }
+        dicaDasPropriedades={
+          visualizacao === "calendario"
+            ? t("Escolha o que aparece dentro de cada tarefa no calendário, abaixo do título.")
+            : undefined
         }
         aoMover={moverColunaNoLayout}
-        aoAlternar={alternarColuna}
+        aoAlternar={visualizacao === "calendario" ? alternarNoCalendario : alternarColuna}
         aoMostrarTodas={(mostrar) =>
-          atualizar((p) => ({
-            ...p,
-            visiveis: Object.fromEntries(
-              resolvidas.filter((c) => !c.fixa && !c.semOcultar).map((c) => [c.id, mostrar]),
-            ),
-          }))
+          visualizacao === "calendario"
+            ? atualizar((p) => ({
+                ...p,
+                calendario: {
+                  propriedades: mostrar
+                    ? resolvidas.filter((c) => c.id !== "titulo" && c.id !== "descricao").map((c) => c.id)
+                    : [],
+                },
+              }))
+            : atualizar((p) => ({
+                ...p,
+                visiveis: Object.fromEntries(
+                  resolvidas.filter((c) => !c.fixa && !c.semOcultar).map((c) => [c.id, mostrar]),
+                ),
+              }))
         }
         aoDuplicar={visaoAtiva ? () => duplicarVisao(visaoAtiva.id) : undefined}
         aoApagar={visaoAtiva ? () => setApagarVisaoId(visaoAtiva.id) : undefined}
+      />
+
+      {/* "Nova tarefa": o pop-up central, com todas as propriedades de uma vez (como o compromisso). */}
+      <PainelDaTarefa
+        nova={{
+          aoCriar: () => void criarDoRascunho(),
+          aoMudarTitulo: (title) =>
+            setRascunho((atual) => (atual ? { ...atual, title } : atual)),
+        }}
+        tarefa={rascunho}
+        colunas={colunas}
+        podeEditar={podeEditar}
+        aoSalvarDescricao={(tarefa, description) =>
+          void editarTarefa(tarefa.id, { description }, { description })
+        }
+        aoApagar={() => setRascunho(null)}
+        aoFechar={() => setRascunho(null)}
       />
 
       <PainelDaTarefa

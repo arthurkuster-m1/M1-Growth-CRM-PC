@@ -87,12 +87,12 @@ describe("módulos da estratégia", () => {
     }
   });
 
-  it("chaves únicas, e as três fases do método têm módulos (3, 3 e 6)", () => {
+  it("chaves únicas; as duas primeiras fases têm 3 cartões e a de Geração de Demanda, nenhum fixo", () => {
     const chaves = MODULOS_DA_ESTRATEGIA.map((m) => m.chave);
     expect(new Set(chaves).size).toBe(chaves.length);
     expect(modulosDaFase("diagnostico")).toHaveLength(3);
     expect(modulosDaFase("produto-e-oferta")).toHaveLength(3);
-    expect(modulosDaFase("geracao-de-demanda")).toHaveLength(6);
+    expect(modulosDaFase("geracao-de-demanda")).toHaveLength(0);
   });
 
   it("o nome de cada fase segue o Notion do Arthur ('01 | Diagnóstico'…)", () => {

@@ -39,10 +39,13 @@ export default async function SubpaginaDaEstrategiaPage({
         rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
         subpagina={{
           tipo: `${nomeDaFase(t, modulo.fase)} · ${textosDoTipo.titulo}`,
-          voltar: {
-            href: `/app/marketing/estrategia/${modulo.chave}`,
-            rotulo: textosDoPai.titulo,
-          },
+          // O módulo sem página própria não é um destino: volta para a galeria da Estratégia.
+          voltar: modulo.semPagina
+            ? { href: "/app/marketing/estrategia", rotulo: t("Estratégia") }
+            : {
+                href: `/app/marketing/estrategia/${modulo.chave}`,
+                rotulo: textosDoPai.titulo,
+              },
         }}
       />
     </div>

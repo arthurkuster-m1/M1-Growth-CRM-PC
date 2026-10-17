@@ -207,3 +207,22 @@ describe("data e hora do campo, no fuso da organização", () => {
     expect(rotuloDaData("2027-01-10T17:30:00.000Z", SP, "pt-BR", agora)).toMatch(/2027/);
   });
 });
+
+describe("calendário: propriedades dentro de cada tarefa", () => {
+  it("a escolha é guardada no layout e a forma é validada", () => {
+    const ok = preferenciasDaTabelaSchema.safeParse({
+      visualizacao: "calendario",
+      calendario: { propriedades: ["status", "responsavel"] },
+    });
+    expect(ok.success).toBe(true);
+    // Lista vazia vale: é "só o título".
+    expect(
+      preferenciasDaTabelaSchema.safeParse({ calendario: { propriedades: [] } }).success,
+    ).toBe(true);
+    // Forma errada é recusada em vez de gravada.
+    expect(preferenciasDaTabelaSchema.safeParse({ calendario: { propriedades: [1] } }).success).toBe(
+      false,
+    );
+    expect(preferenciasDaTabelaSchema.safeParse({ calendario: {} }).success).toBe(false);
+  });
+});

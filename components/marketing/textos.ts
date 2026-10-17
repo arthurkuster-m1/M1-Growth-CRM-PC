@@ -65,31 +65,6 @@ export function textosDoModulo(
         titulo: t("Estratégia de marketing"),
         descricao: t("A ideia e a estratégia por trás das campanhas."),
       };
-    case "trafego-pago":
-      return {
-        titulo: t("Tráfego pago"),
-        descricao: t("Campanhas, criativos e textos que estão ativos."),
-      };
-    case "outbound-marketing":
-      return {
-        titulo: t("Outbound marketing"),
-        descricao: t("Prospecção ativa: abordar quem ainda não conhece a marca."),
-      };
-    case "programas-de-indicacao":
-      return {
-        titulo: t("Programas de indicação"),
-        descricao: t("Clientes que trazem novos clientes."),
-      };
-    case "social-media":
-      return {
-        titulo: t("Social media"),
-        descricao: t("Presença e conteúdo nas redes sociais."),
-      };
-    case "parcerias-e-influenciadores":
-      return {
-        titulo: t("Parcerias e influenciadores"),
-        descricao: t("Quem fala da marca para a audiência certa."),
-      };
     default:
       return null;
   }
@@ -138,6 +113,13 @@ export function textosDoTipoDeSubpagina(
         titulo: t("Perguntas-chave"),
         descricao: t(
           "As perguntas que guiam a análise: quem são, o que fazem e onde somos melhores.",
+        ),
+      };
+    case "estrategia":
+      return {
+        titulo: t("Estratégia"),
+        descricao: t(
+          "Uma estratégia de marketing: a ideia, o que se espera, o caminho e as campanhas.",
         ),
       };
     case "concorrente":

@@ -15,6 +15,14 @@ interface Props {
   aoSalvarDescricao: (tarefa: Tarefa, texto: string | null) => void;
   aoApagar: (tarefa: Tarefa) => void;
   aoFechar: () => void;
+  /**
+   * Modo "Nova tarefa": a tarefa é um RASCUNHO que ainda não existe no banco. O título vira um
+   * campo simples, a descrição vale a cada tecla e o rodapé troca "Apagar" por "Criar tarefa".
+   */
+  nova?: {
+    aoCriar: () => void;
+    aoMudarTitulo: (titulo: string) => void;
+  };
 }
 
 /**
@@ -34,21 +42,49 @@ export function PainelDaTarefa({
   aoSalvarDescricao,
   aoApagar,
   aoFechar,
+  nova,
 }: Props) {
   const t = useT();
   const titulo = colunas.find((c) => c.id === "titulo");
-  const propriedades = colunas.filter((c) => c.id !== "titulo" && c.id !== "descricao");
+  const propriedades = colunas.filter(
+    (c) => c.id !== "titulo" && c.id !== "descricao" && !(nova && c.id === "criada"),
+  );
 
   return (
     <Dialog open={tarefa !== null} onOpenChange={(aberto) => !aberto && aoFechar()}>
       <DialogContent className="max-w-xl gap-5 overflow-x-hidden p-5 sm:rounded-2xl sm:p-6 [&>*]:min-w-0">
         {tarefa ? (
           <>
-            <DialogTitle className="sr-only">{tarefa.title}</DialogTitle>
+            <DialogTitle className="sr-only">
+              {nova ? t("Nova tarefa") : tarefa.title}
+            </DialogTitle>
             <DialogDescription className="sr-only">{t("Propriedades da tarefa")}</DialogDescription>
-            <div className="min-w-0 pr-8 text-xl font-semibold [overflow-wrap:anywhere] [&_button]:text-xl [&_input]:text-lg">
-              {titulo?.celula(tarefa)}
-            </div>
+            {nova ? (
+              <div className="min-w-0 pr-8">
+                <p className="mb-1 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+                  {t("Nova tarefa")}
+                </p>
+                <input
+                  autoFocus
+                  value={tarefa.title}
+                  maxLength={255}
+                  placeholder={t("Título da tarefa")}
+                  aria-label={t("Título da tarefa")}
+                  onChange={(e) => nova.aoMudarTitulo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      nova.aoCriar();
+                    }
+                  }}
+                  className="w-full rounded-xl border bg-background px-3 py-2 text-xl font-semibold outline-hidden placeholder:font-normal focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            ) : (
+              <div className="min-w-0 pr-8 text-xl font-semibold [overflow-wrap:anywhere] [&_button]:text-xl [&_input]:text-lg">
+                {titulo?.celula(tarefa)}
+              </div>
+            )}
             <dl className="grid gap-1">
               {propriedades.map((c) => (
                 <div key={c.id} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-[6rem_minmax(0,1fr)]">
@@ -61,12 +97,30 @@ export function PainelDaTarefa({
               ))}
             </dl>
             <Descricao
-              key={`${tarefa.id}:${tarefa.description ?? ""}`}
+              key={nova ? tarefa.id : `${tarefa.id}:${tarefa.description ?? ""}`}
               valor={tarefa.description ?? ""}
               podeEditar={podeEditar}
               aoSalvar={(texto) => aoSalvarDescricao(tarefa, texto)}
+              aCadaTecla={nova !== undefined}
             />
-            {podeEditar ? (
+            {nova ? (
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <button
+                  type="button"
+                  onClick={aoFechar}
+                  className="inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium hover:bg-secondary"
+                >
+                  {t("Cancelar")}
+                </button>
+                <button
+                  type="button"
+                  onClick={nova.aoCriar}
+                  className="inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
+                >
+                  {t("Criar tarefa")}
+                </button>
+              </div>
+            ) : podeEditar ? (
               <div className="flex justify-end border-t pt-3">
                 <button
                   type="button"
@@ -89,10 +143,13 @@ function Descricao({
   valor,
   podeEditar,
   aoSalvar,
+  aCadaTecla = false,
 }: {
   valor: string;
   podeEditar: boolean;
   aoSalvar: (texto: string | null) => void;
+  /** No rascunho da tarefa nova, o texto vale a cada tecla: não há "sair do campo" para salvar. */
+  aCadaTecla?: boolean;
 }) {
   const t = useT();
   const [rascunho, setRascunho] = useState(valor);
@@ -109,8 +166,12 @@ function Descricao({
         maxLength={5000}
         rows={5}
         placeholder={podeEditar ? t("Escreva uma descrição…") : undefined}
-        onChange={(e) => setRascunho(e.target.value)}
+        onChange={(e) => {
+          setRascunho(e.target.value);
+          if (aCadaTecla) aoSalvar(e.target.value === "" ? null : e.target.value);
+        }}
         onBlur={() => {
+          if (aCadaTecla) return;
           const novo = rascunho.trim();
           if (novo !== valor.trim()) aoSalvar(novo === "" ? null : novo);
         }}

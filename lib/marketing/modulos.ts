@@ -25,6 +25,12 @@ export interface ModuloDaEstrategia {
   tom: TomDaCapa;
   /** Aparece como cartão LARGO embaixo da galeria da fase, e não como um dos cartões. */
   largo?: boolean;
+  /**
+   * O módulo não tem página própria: só existe para abrigar as subpáginas (ex.: as estratégias
+   * de marketing, criadas uma a uma conforme a necessidade do cliente). Ninguém abre nem
+   * publica o módulo em si.
+   */
+  semPagina?: boolean;
   /** Nome do ícone em `lib/ui/icons`. */
   icone:
     | "Rocket"
@@ -77,17 +83,15 @@ export const MODULOS_DA_ESTRATEGIA: readonly ModuloDaEstrategia[] = [
     icone: "Package",
     largo: true,
   },
-  // 03 | Geração de Demanda
-  { chave: "estrategia-de-marketing", fase: "geracao-de-demanda", tom: "blue", icone: "Lightbulb" },
-  { chave: "trafego-pago", fase: "geracao-de-demanda", tom: "blue", icone: "Target" },
-  { chave: "outbound-marketing", fase: "geracao-de-demanda", tom: "blue", icone: "Megaphone" },
-  { chave: "programas-de-indicacao", fase: "geracao-de-demanda", tom: "blue", icone: "Handshake" },
-  { chave: "social-media", fase: "geracao-de-demanda", tom: "blue", icone: "InstagramLogo" },
+  // 03 | Geração de Demanda — não há páginas fixas: cada estratégia é uma subpágina criada sob
+  // medida (uma empresa tem uma, outra tem quatro).
   {
-    chave: "parcerias-e-influenciadores",
+    chave: "estrategia-de-marketing",
     fase: "geracao-de-demanda",
     tom: "blue",
-    icone: "ShareNetwork",
+    icone: "Lightbulb",
+    largo: true,
+    semPagina: true,
   },
 ];
 
@@ -124,6 +128,7 @@ export const SUBPAGINAS_DOS_MODULOS: Readonly<Record<string, readonly TipoDeSubp
     { tipo: "porques", repetivel: false, icone: "Compass" },
   ],
   "produtos-e-ofertas": [{ tipo: "oferta", repetivel: true, icone: "Package" }],
+  "estrategia-de-marketing": [{ tipo: "estrategia", repetivel: true, icone: "Lightbulb" }],
   "analise-de-concorrencia": [
     { tipo: "pesquisa-de-mercado", repetivel: false, icone: "Binoculars" },
     { tipo: "perguntas-chave", repetivel: false, icone: "Lightbulb" },

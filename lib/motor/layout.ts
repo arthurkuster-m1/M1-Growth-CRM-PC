@@ -38,6 +38,12 @@ export const preferenciasDaTabelaSchema = z
     visualizacao: z.enum(["tabela", "kanban", "calendario", "timeline", "galeria"]).optional(),
     /** Posição da aba "Todas" entre as abas salvas (menor = mais à esquerda). */
     posicao: z.number().finite().optional(),
+    /** Calendário: as propriedades que aparecem DENTRO de cada tarefa (ids de coluna, na ordem da tabela). */
+    calendario: z
+      .object({
+        propriedades: z.array(z.string().min(1).max(80)).max(MAXIMO_DE_COLUNAS),
+      })
+      .optional(),
     /** Linha do tempo: quantos dias aparecem na tela e se as colunas são dias ou semanas. */
     linhaDoTempo: z
       .object({

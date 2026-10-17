@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
@@ -25,6 +25,8 @@ export default async function ModuloDaEstrategiaPage({
   const modulo = moduloPorChave((await params).modulo);
   const textos = modulo ? textosDoModulo(t, modulo.chave) : null;
   if (!modulo || !textos) notFound();
+  // Módulo que só abriga subpáginas (as estratégias de marketing): a galeria da Estratégia é a casa dele.
+  if (modulo.semPagina) redirect("/app/marketing/estrategia");
   const org = await resolveActiveOrg(user);
   const publicado = org ? (await modulosPublicados(org.orgId)).has(modulo.chave) : false;
 

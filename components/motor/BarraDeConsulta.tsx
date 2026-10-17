@@ -4,6 +4,7 @@ import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useState, type ReactNode } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SeletorEmPopup, type OpcaoDoPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
 import {
   OPERADORES_DO_TIPO,
@@ -38,6 +39,34 @@ interface Props {
 
 const SELECT =
   "h-8 min-w-0 rounded-lg border bg-background px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40";
+
+/** O seletor em popup no tamanho da barra (no lugar do `<select>` do navegador). */
+function Escolha({
+  valor,
+  opcoes,
+  aoEscolher,
+  rotulo,
+  largura,
+  rotuloVazio,
+}: {
+  valor: string;
+  opcoes: readonly OpcaoDoPopup[];
+  aoEscolher: (id: string) => void;
+  rotulo: string;
+  largura: string;
+  rotuloVazio?: string;
+}) {
+  return (
+    <SeletorEmPopup
+      rotulo={rotulo}
+      valor={valor}
+      opcoes={opcoes}
+      aoEscolher={aoEscolher}
+      rotuloVazio={rotuloVazio}
+      className={cn("h-8 min-h-8 min-w-0 gap-1 rounded-lg px-2 py-0 text-sm", largura)}
+    />
+  );
+}
 
 function Gatilho({
   icone,
@@ -216,19 +245,14 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
     // Opção, pessoa e seleção múltipla: escolhe-se entre as existentes.
     const atual = Array.isArray(f.valor) ? (f.valor[0] ?? "") : "";
     return (
-      <select
-        value={atual}
-        aria-label={t("Valor do filtro")}
-        onChange={(e) => alterar(e.target.value ? [e.target.value] : undefined)}
-        className={cn(SELECT, "w-36")}
-      >
-        <option value="">{t("Escolher…")}</option>
-        {(campo.opcoes ?? []).map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.rotulo}
-          </option>
-        ))}
-      </select>
+      <Escolha
+        valor={atual}
+        rotulo={t("Valor do filtro")}
+        largura="w-40"
+        rotuloVazio={t("Escolher…")}
+        aoEscolher={(id) => alterar(id ? [id] : undefined)}
+        opcoes={campo.opcoes ?? []}
+      />
     );
   }
 
@@ -259,51 +283,42 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
                         {t("Onde")}
                       </span>
                     ) : (
-                      <select
-                        value={f.juncao ?? "e"}
-                        aria-label={t("Ligação com o filtro anterior")}
-                        onChange={(e) =>
-                          mudarFiltro(i, {
-                            ...f,
-                            juncao: e.target.value === "ou" ? "ou" : "e",
-                          })
+                      <Escolha
+                        valor={f.juncao ?? "e"}
+                        rotulo={t("Ligação com o filtro anterior")}
+                        largura="w-16 shrink-0"
+                        aoEscolher={(v) =>
+                          mudarFiltro(i, { ...f, juncao: v === "ou" ? "ou" : "e" })
                         }
-                        className={cn(SELECT, "w-14 shrink-0")}
-                      >
-                        <option value="e">{t("e")}</option>
-                        <option value="ou">{t("ou")}</option>
-                      </select>
+                        opcoes={[
+                          { id: "e", rotulo: t("e") },
+                          { id: "ou", rotulo: t("ou") },
+                        ]}
+                      />
                     )}
-                    <select
-                      value={f.campo}
-                      aria-label={t("Campo do filtro")}
-                      onChange={(e) => trocarCampoDoFiltro(i, e.target.value)}
-                      className={cn(SELECT, "w-36")}
-                    >
-                      {campos.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.titulo}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={f.operador}
-                      aria-label={t("Condição do filtro")}
-                      onChange={(e) =>
+                    <Escolha
+                      valor={f.campo}
+                      rotulo={t("Campo do filtro")}
+                      largura="w-40"
+                      aoEscolher={(v) => trocarCampoDoFiltro(i, v)}
+                      opcoes={campos.map((c) => ({ id: c.id, rotulo: c.titulo }))}
+                    />
+                    <Escolha
+                      valor={f.operador}
+                      rotulo={t("Condição do filtro")}
+                      largura="w-36"
+                      aoEscolher={(v) =>
                         mudarFiltro(i, {
                           campo: f.campo,
-                          operador: e.target.value as Operador,
+                          operador: v as Operador,
                           ...(f.juncao ? { juncao: f.juncao } : {}),
                         })
                       }
-                      className={cn(SELECT, "w-32")}
-                    >
-                      {OPERADORES_DO_TIPO[campo.tipo].map((op) => (
-                        <option key={op} value={op}>
-                          {rotuloDoOperador[op]}
-                        </option>
-                      ))}
-                    </select>
+                      opcoes={OPERADORES_DO_TIPO[campo.tipo].map((op) => ({
+                        id: op,
+                        rotulo: rotuloDoOperador[op],
+                      }))}
+                    />
                     {campoDeValor(i, f, campo)}
                     <BotaoRemover
                       rotulo={t("Remover filtro")}
@@ -335,41 +350,35 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
             <ul className="space-y-2">
               {ordenacao.map((o, i) => (
                 <li key={i} className="flex items-center gap-1.5">
-                  <select
-                    value={o.campo}
-                    aria-label={t("Campo da ordenação")}
-                    onChange={(e) =>
+                  <Escolha
+                    valor={o.campo}
+                    rotulo={t("Campo da ordenação")}
+                    largura="w-44"
+                    aoEscolher={(v) =>
+                      aoMudar({
+                        ...consulta,
+                        ordenacao: ordenacao.map((x, k) => (k === i ? { ...x, campo: v } : x)),
+                      })
+                    }
+                    opcoes={campos.map((c) => ({ id: c.id, rotulo: c.titulo }))}
+                  />
+                  <Escolha
+                    valor={o.direcao}
+                    rotulo={t("Direção")}
+                    largura="w-36"
+                    aoEscolher={(v) =>
                       aoMudar({
                         ...consulta,
                         ordenacao: ordenacao.map((x, k) =>
-                          k === i ? { ...x, campo: e.target.value } : x,
+                          k === i ? { ...x, direcao: v as "asc" | "desc" } : x,
                         ),
                       })
                     }
-                    className={cn(SELECT, "w-40")}
-                  >
-                    {campos.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.titulo}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={o.direcao}
-                    aria-label={t("Direção")}
-                    onChange={(e) =>
-                      aoMudar({
-                        ...consulta,
-                        ordenacao: ordenacao.map((x, k) =>
-                          k === i ? { ...x, direcao: e.target.value as "asc" | "desc" } : x,
-                        ),
-                      })
-                    }
-                    className={cn(SELECT, "w-32")}
-                  >
-                    <option value="asc">{t("Crescente")}</option>
-                    <option value="desc">{t("Decrescente")}</option>
-                  </select>
+                    opcoes={[
+                      { id: "asc", rotulo: t("Crescente") },
+                      { id: "desc", rotulo: t("Decrescente") },
+                    ]}
+                  />
                   <BotaoRemover
                     rotulo={t("Remover ordenação")}
                     aoClicar={() =>
@@ -407,44 +416,35 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
           <p className="mb-2 text-xs font-semibold tracking-wider text-text-subtle uppercase">
             {t("Agrupar por")}
           </p>
-          <select
-            value={consulta.agrupar ?? ""}
-            aria-label={t("Agrupar por")}
-            onChange={(e) =>
-              aoMudar({ ...consulta, agrupar: e.target.value === "" ? undefined : e.target.value })
-            }
-            className={cn(SELECT, "w-full")}
-          >
-            <option value="">{t("Sem agrupamento")}</option>
-            {agrupaveis.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.titulo}
-              </option>
-            ))}
-          </select>
+          <Escolha
+            valor={consulta.agrupar ?? ""}
+            rotulo={t("Agrupar por")}
+            largura="w-full"
+            rotuloVazio={t("Sem agrupamento")}
+            aoEscolher={(v) => aoMudar({ ...consulta, agrupar: v === "" ? undefined : v })}
+            opcoes={agrupaveis.map((c) => ({ id: c.id, rotulo: c.titulo }))}
+          />
           {consulta.agrupar && campoDe(consulta.agrupar)?.tipo === "data" ? (
             <>
               <p className="mt-3 mb-2 text-xs font-semibold tracking-wider text-text-subtle uppercase">
                 {t("Agrupar datas por")}
               </p>
-              <select
-                value={consulta.agruparPor ?? "dia"}
-                aria-label={t("Agrupar datas por")}
-                onChange={(e) =>
+              <Escolha
+                valor={consulta.agruparPor ?? "dia"}
+                rotulo={t("Agrupar datas por")}
+                largura="w-full"
+                aoEscolher={(v) =>
                   aoMudar({
                     ...consulta,
-                    agruparPor:
-                      e.target.value === "semana" || e.target.value === "mes"
-                        ? e.target.value
-                        : undefined,
+                    agruparPor: v === "semana" || v === "mes" ? v : undefined,
                   })
                 }
-                className={cn(SELECT, "w-full")}
-              >
-                <option value="dia">{t("Dia")}</option>
-                <option value="semana">{t("Semana")}</option>
-                <option value="mes">{t("Mês")}</option>
-              </select>
+                opcoes={[
+                  { id: "dia", rotulo: t("Dia") },
+                  { id: "semana", rotulo: t("Semana") },
+                  { id: "mes", rotulo: t("Mês") },
+                ]}
+              />
             </>
           ) : null}
           <BotaoAplicar rotulo={t("Aplicar")} aoClicar={() => setAbertoGrupo(false)} />
