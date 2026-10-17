@@ -119,6 +119,8 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 - **Visual:** abas com pasta, cantos arredondados, celular sem rolagem lateral. **Início:** a visão Dia/Semana do calendário fica salva neste navegador.
 - **Nome do cliente numa regra só** em todo o app (o nome digitado vale primeiro; depois o apelido do WhatsApp).
 - **Qualidade:** suíte de testes triada (falhas antigas do espanhol removido seguem fora do escopo); rotinas ignoram empresa suspensa; rotas de gravação sem guarda de suporte corrigidas; popover sem erro em ambiente de teste.
+- **Configuração da Agenda reorganizada (17/10):** um bloco grande que abre ao clicar, com 3 páginas: Regras da agenda (Google, presença, clientes pela agenda, colegas e dias fora da rotina, cada uma num bloco que abre), Tipos de atendimento (com a **página de atendimento de cada tipo**: modelo, blocos que aparecem e roteiro editável em `organizations.settings.atendimento_por_tipo`) e Atendentes e horários (matriz pessoas × tipos, **Adicionar atendente** que convida por e-mail, horários). Painel antigo de marcação removido da Agenda.
+- **Corrigido (17/10):** a página de Campanhas quebrava depois de um commit de outra sessão (função de cliente chamada no servidor); `comVoltar` foi para `lib/navigation/voltar.ts`.
 - **Equipe da Agenda (decisões fechadas em 17/10):** vários atendentes por tipo, cada um com a própria agenda e jornada. Distribuição ao "qualquer atendente" = **menos carregado no dia** (desempate pela prioridade). Uma jornada por pessoa. Padrão ao marcar = responsável da oportunidade, com "qualquer atendente" a um clique. Só gerentes configuram. Atendente sem Google entra, com aviso. **Funciona nos dois sentidos:** escolhendo o responsável, só os horários dele; escolhendo o horário, só os atendentes livres nele. **Google:** cada atendente sincroniza a própria agenda; trocar o responsável tira o evento da agenda do Google do anterior e põe na do novo; sem Google conectado, fica só na agenda do app. **Andamento:** código publicado (rotas, matriz pessoas × tipos, os dois sentidos, distribuição, troca de agenda no Google ao mudar o responsável); migration 0649 **aplicada**; a IA e as integrações oferecem a união dos horários da equipe e marcam pelo menos carregado; o aviso de reunião encerrada vale em qualquer tela.
 
 
@@ -155,8 +157,8 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
 1. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google com uma segunda pessoa conectada.
-2. Limpar o código do painel antigo de marcação.
-3. Roteiro de vendas e modelos de atendimento editáveis por empresa e por tipo; recomendações da IA ao vivo.
+2. Recomendações da IA ao vivo na reunião de vendas (hoje o espaço aparece como "em breve").
+3. Campo de endereço/local e observação pública no novo compromisso (o painel antigo tinha).
 4. Inbox (frente 5).
 5. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa, compromissos da Agenda).
 6. Hotmart; depois financeiro e CAC real (D5).

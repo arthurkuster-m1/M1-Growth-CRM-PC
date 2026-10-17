@@ -21,29 +21,6 @@ describe("endereço e observação existem na marcação e chegam ao compromisso
   const get = readFileSync("app/api/v1/agenda/agendamentos/[id]/route.ts", "utf8");
   const mcp = readFileSync("lib/mcp/tools/agendamento.ts", "utf8");
 
-  it("a tela de marcar tem os dois campos, e só na criação", () => {
-    const campo = readFileSync("components/agenda/EnderecoDaMarcacao.tsx", "utf8");
-    expect(campo).toContain('data-testid="endereco-do-compromisso"');
-    expect(campo).toContain('role="combobox"');
-    expect(tela).toContain("EnderecoDaMarcacao");
-    expect(tela).toContain('data-testid="observacao-do-compromisso"');
-    // Remarcar não oferece: o PATCH ainda não aceita estes campos.
-    const bloco = tela.slice(
-      tela.indexOf("{!remarcandoId ? ("),
-      tela.indexOf("<PainelDeMarcacao"),
-    );
-    expect(bloco).toContain("EnderecoDaMarcacao");
-    expect(bloco).toContain("observacao-do-compromisso");
-  });
-
-  it("o POST manda location_details e description — não notes", () => {
-    const inicio = tela.indexOf("return marcar");
-    const bloco = tela.slice(inicio, tela.indexOf(".then((r) => {", inicio));
-    expect(bloco).toContain("location_details:");
-    expect(bloco).toContain("description:");
-    expect(bloco, "observação em notes nunca chega ao calendário").not.toContain("notes:");
-  });
-
   it("a rota aceita os dois campos, e o handler grava description (não notes)", () => {
     expect(rota).toContain("description: z.string().max(2000).optional()");
     expect(rota).toContain("location_details: z.string().max(300).optional()");

@@ -141,3 +141,9 @@ Aba **Atendentes e horários** da Configuração da Agenda, com:
 - **Migration 0649 aplicada** (3 linhas copiadas dos responsáveis atuais; RLS ligada).
 - **IA e integrações** passam a usar a equipe: `horariosLivresDaEquipe` oferece a união dos horários dos atendentes do tipo (com zero ou um atendente, é a consulta de sempre) e `crm_book_appointment` sem atendente escolhido marca pelo **menos carregado** entre os livres. Qualquer falha ao ler a equipe cai na consulta antiga.
 - **Aviso de reunião encerrada** agora vale em qualquer tela do app (confere de minuto em minuto).
+
+## 12. Páginas de atendimento por tipo e configuração (17/10/2026)
+
+- Cada tipo tem a sua **página de atendimento**: modelo (reunião de vendas ou atendimento padrão), blocos que aparecem (roteiro, anotações, oportunidade e venda, recomendações da IA) e roteiro com passos e dicas, editável em Configuração da Agenda › Tipos de atendimento. Fica em `organizations.settings.atendimento_por_tipo` (sem migration); sem configuração vale o padrão do modelo. A página do compromisso lê essa configuração.
+- Configuração da Agenda: bloco que abre/fecha, três páginas (regras, tipos, atendentes), cada regra num bloco que abre.
+- "Adicionar atendente": convida por e-mail (admin+), a pessoa aparece na matriz ao aceitar.

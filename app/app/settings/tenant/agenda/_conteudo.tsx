@@ -12,7 +12,9 @@ import { TiposDeAgendamentoClient, type TipoRow } from "./_client";
 export async function ConteudoDaConfiguracaoDaAgenda({
   user,
   activeOrg,
+  parte = "tudo",
 }: {
+  parte?: "regras" | "tipos" | "tudo";
   user: { id: string; is_platform_admin?: boolean; support?: unknown };
   activeOrg: { orgId: string; role: keyof typeof ROLE_RANK };
 }) {
@@ -69,6 +71,7 @@ export async function ConteudoDaConfiguracaoDaAgenda({
 
   return (
     <TiposDeAgendamentoClient
+      parte={parte}
         tiposIniciais={(tipos ?? []) as TipoRow[]}
         erroDeLeitura={erroTipos ? erroTipos.message : null}
         pessoas={(pessoas ?? []).map((p) => ({

@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
-import { ROTEIRO_DE_VENDAS, ROTULO_DO_MODELO, modeloDoAtendimento } from "@/lib/agenda/atendimentos";
+import { ROTULO_DO_MODELO, modeloDoAtendimento } from "@/lib/agenda/atendimentos";
+import { padraoDoModelo } from "@/lib/agenda/modelos-de-atendimento";
 import { apiClient } from "@/lib/api/client";
 import { rotuloDoLocal } from "@/lib/agenda/locais";
 import { formatCents as formatMoney } from "@/lib/money";
@@ -25,6 +26,7 @@ import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "./AcoesDoCompromi
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import type { PedidoDeNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { CampoDeDataEHora } from "./CampoDeDataEHora";
+import { useModelosDeAtendimento } from "./modelos-hooks";
 import { atendentesDoTipoNaMatriz, useAtendentesLivres, useMatrizDeAtendentes } from "./equipe-hooks";
 import { FormularioDeNovoCompromisso, useContextoDeMarcacao, usePessoasDaEquipe } from "./FormularioDeNovoCompromisso";
 import { MeetDoCompromisso, type MeetingDetail } from "./MeetDoCompromisso";
@@ -123,6 +125,7 @@ function PaginaExistente({
   const nomeDoResponsavel = pessoas.data?.find((p) => p.user_id === a?.responsavel_id)?.full_name ?? null;
   const contexto = useContextoDeMarcacao(a?.contact_id ?? "", "");
   const matriz = useMatrizDeAtendentes();
+  const modelosDosTipos = useModelosDeAtendimento();
   const livresNoHorario = useAtendentesLivres(a?.tipo?.id ?? null, a?.starts_at ?? null, a?.id);
 
   const oportunidade = useQuery({
@@ -185,7 +188,9 @@ function PaginaExistente({
   });
 
   if (!id) return null;
-  const modelo = modeloDoAtendimento(a?.tipo ?? null);
+  // A página de atendimento do TIPO (configurada na Agenda); sem configuração, o padrão do modelo.
+  const cfg = (a?.tipo && modelosDosTipos.data?.[a.tipo.id]) || padraoDoModelo(modeloDoAtendimento(a?.tipo ?? null));
+  const modelo = cfg.modelo;
   const comecou = a ? Date.parse(a.starts_at) <= Date.now() : false;
   const encerrado = a ? ["cancelled", "completed", "no_show"].includes(a.status) : false;
   const quando = a
@@ -407,6 +412,7 @@ function PaginaExistente({
                 )}
               </Bloco>
 
+              {cfg.blocos.oportunidade ? (
               <Bloco
                 titulo={t("Oportunidade")}
                 acao={
@@ -486,7 +492,9 @@ function PaginaExistente({
                   </div>
                 )}
               </Bloco>
+              ) : null}
 
+              {(cfg.blocos.roteiro && cfg.roteiro.length > 0) || cfg.blocos.anotacoes || cfg.blocos.ia ? (
               <Bloco
                 titulo={t(ROTULO_DO_MODELO[modelo])}
                 className="md:col-span-2"
@@ -504,14 +512,15 @@ function PaginaExistente({
                   ) : undefined
                 }
               >
-                <div className={cn("grid gap-4", modelo === "vendas" && "lg:grid-cols-[1fr_1.2fr]")}>
-                  {modelo === "vendas" && (
+                <div className={cn("grid gap-4", (cfg.blocos.roteiro || cfg.blocos.ia) && cfg.blocos.anotacoes && "lg:grid-cols-[1fr_1.2fr]")}>
+                  {(cfg.blocos.roteiro || cfg.blocos.ia) && (
                     <div className="space-y-3">
+                      {cfg.blocos.roteiro && cfg.roteiro.length > 0 ? (
                       <div>
-                        <div className="mb-1.5 text-xs font-medium text-text-muted">{t("Roteiro de vendas")}</div>
+                        <div className="mb-1.5 text-xs font-medium text-text-muted">{t("Roteiro de atendimento")}</div>
                         <ol className="space-y-1.5">
-                          {ROTEIRO_DE_VENDAS.map((e, i) => (
-                            <li key={e.titulo}>
+                          {cfg.roteiro.map((e, i) => (
+                            <li key={`${i}-${e.titulo}`}>
                               <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-background px-3 py-2">
                                 <input
                                   type="checkbox"
@@ -528,12 +537,16 @@ function PaginaExistente({
                           ))}
                         </ol>
                       </div>
+                      ) : null}
+                      {cfg.blocos.ia ? (
                       <div className="flex items-start gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-text-muted">
                         <Sparkle size={16} weight="bold" className="mt-0.5 shrink-0" aria-hidden />
                         <span>{t("Recomendações da IA ao vivo, durante a reunião: em breve.")}</span>
                       </div>
+                      ) : null}
                     </div>
                   )}
+                  {cfg.blocos.anotacoes ? (
                   <div>
                     <div className="mb-1.5 text-xs font-medium text-text-muted">{t("Anotações do atendimento")}</div>
                     <textarea
@@ -546,8 +559,10 @@ function PaginaExistente({
                       className="min-h-48 w-full resize-y rounded-2xl border border-border bg-background px-3 py-2.5 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
+                  ) : null}
                 </div>
               </Bloco>
+              ) : null}
             </div>
           </>
         )}

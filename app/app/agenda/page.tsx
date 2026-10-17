@@ -281,11 +281,17 @@ export default async function AgendaPage() {
       // tela esconder é cortesia: quem decide segue sendo a rota.
       podeMarcar={ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent}
       podeGerenciarEquipe={ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager}
-      configuracaoDosTipos={
+      configuracaoDasRegras={
         ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent ? (
-          <ConteudoDaConfiguracaoDaAgenda user={user} activeOrg={activeOrg} />
+          <ConteudoDaConfiguracaoDaAgenda user={user} activeOrg={activeOrg} parte="regras" />
         ) : undefined
       }
+      configuracaoDosTipos={
+        ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent ? (
+          <ConteudoDaConfiguracaoDaAgenda user={user} activeOrg={activeOrg} parte="tipos" />
+        ) : undefined
+      }
+      podeConvidarAtendentes={ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin}
       tiposIniciais={(tipos ?? []).map((t) => ({
         id: t.id,
         nome: t.name,

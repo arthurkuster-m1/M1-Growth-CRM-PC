@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { atendentesDoTipoNaMatriz, useMatrizDeAtendentes } from "@/components/agenda/equipe-hooks";
 import { usePessoasDaEquipe } from "@/components/agenda/FormularioDeNovoCompromisso";
+import { ConvidarAtendente } from "./ConvidarAtendente";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 
@@ -16,7 +17,7 @@ import { apiClient } from "@/lib/api/client";
  * Quem faz cada tipo de atendimento: uma linha por pessoa, uma coluna por tipo. A prioridade
  * desempata quando o "qualquer atendente" encontra pessoas com a mesma carga no dia.
  */
-export function MatrizDeAtendentes({ podeEditar }: { podeEditar: boolean }) {
+export function MatrizDeAtendentes({ podeEditar, podeConvidar = false }: { podeEditar: boolean; podeConvidar?: boolean }) {
   const t = useT();
   const qc = useQueryClient();
   const matriz = useMatrizDeAtendentes();
@@ -67,11 +68,14 @@ export function MatrizDeAtendentes({ podeEditar }: { podeEditar: boolean }) {
             {t("Marque os tipos que cada pessoa atende. Ao marcar horário, só aparecem os atendentes do tipo que estão livres.")}
           </p>
         </div>
-        {podeEditar && m.tabela_existe ? (
-          <Button type="button" size="sm" className="rounded-xl" disabled={!sujo || salvar.isPending} onClick={() => salvar.mutate()}>
-            {t("Salvar atendentes")}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {podeConvidar ? <ConvidarAtendente /> : null}
+          {podeEditar && m.tabela_existe ? (
+            <Button type="button" size="sm" className="rounded-xl" disabled={!sujo || salvar.isPending} onClick={() => salvar.mutate()}>
+              {t("Salvar atendentes")}
+            </Button>
+          ) : null}
+        </div>
       </div>
       {!m.tabela_existe ? (
         <p className="rounded-xl bg-warning-bg px-3 py-2 text-xs text-warning-fg">

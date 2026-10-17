@@ -11,6 +11,7 @@ export {
   // navigation (inbox icon = Tray in Phosphor)
   Tray as Inbox,
   FolderSimple,
+  UserPlus,
   NotePencil,
   BellRinging,
   ListChecks,

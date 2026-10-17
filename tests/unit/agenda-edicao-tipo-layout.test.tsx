@@ -22,6 +22,8 @@ vi.mock("@/components/agenda/AgendasConectadas", () => ({ AgendasConectadas: () 
 vi.mock("@/components/agenda/PrazosDePresenca", () => ({ PrazosDePresenca: () => null }));
 vi.mock("@/components/agenda/ClientePelaAgenda", () => ({ ClientePelaAgenda: () => null }));
 vi.mock("@/components/agenda/DiasBloqueados", () => ({ DiasBloqueados: () => null }));
+// A página de atendimento de cada tipo tem tela e teste próprios.
+vi.mock("@/components/agenda/EditorDaPaginaDeAtendimento", () => ({ EditorDasPaginasDeAtendimento: () => null }));
 
 const ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 

@@ -1,4 +1,6 @@
 "use client";
+import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
+import { EditorDasPaginasDeAtendimento } from "@/components/agenda/EditorDaPaginaDeAtendimento";
 import { AgendasConectadas } from "@/components/agenda/AgendasConectadas";
 import { PrazosDePresenca } from "@/components/agenda/PrazosDePresenca";
 import { AgendaDosColegas } from "@/components/agenda/AgendaDosColegas";
@@ -312,7 +314,10 @@ export function TiposDeAgendamentoClient({
   podeLigarClientePelaAgenda,
   colegasPodemMexerNaAgendaLigado,
   podeMudarAgendaDosColegas,
+  parte = "tudo",
 }: {
+  /** Qual parte mostrar: as regras (cada uma num bloco que abre), os tipos de atendimento, ou tudo. */
+  parte?: "regras" | "tipos" | "tudo";
   tiposIniciais: TipoRow[];
   pessoas: Array<{ id: string; papel: string; nome: string }>;
   podeEditar: boolean;
@@ -373,21 +378,31 @@ export function TiposDeAgendamentoClient({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4" data-testid="tipos-de-agendamento-config">
-      {podeConfigurarGoogle && <AgendasConectadas />}
-      <PrazosDePresenca podeEditar={podeEditar}/>
-      <ClientePelaAgenda
-        ligadoInicial={clientePelaAgendaLigado}
-        podeLigar={podeLigarClientePelaAgenda}
-      />
-      {/* A opção da issue #978 fica ao lado das outras regras de comportamento
-          da agenda: é a mesma pergunta ("como a agenda se comporta nesta
-          empresa?"), e separá-la noutra tela esconderia de quem configura que
-          ela existe. */}
-      <AgendaDosColegas
-        ligadoInicial={colegasPodemMexerNaAgendaLigado}
-        podeMudar={podeMudarAgendaDosColegas}
-      />
-      <DiasBloqueados podeEditar={podeEditar}/>
+      {parte !== "tipos" && (
+        <div className="grid gap-3" data-testid="regras-da-agenda">
+          {podeConfigurarGoogle && (
+            <BlocoRecolhivel titulo={t("Suas agendas Google")} resumo={t("Quais agendas contam como ocupadas e onde os compromissos entram")}>
+              <AgendasConectadas />
+            </BlocoRecolhivel>
+          )}
+          <BlocoRecolhivel titulo={t("Confirmação de presença")} resumo={t("Quando pedir para a equipe registrar se o cliente compareceu")}>
+            <PrazosDePresenca podeEditar={podeEditar} />
+          </BlocoRecolhivel>
+          <BlocoRecolhivel titulo={t("Clientes pela agenda")} resumo={t("Marcar cliente automaticamente a partir dos compromissos")}>
+            <ClientePelaAgenda ligadoInicial={clientePelaAgendaLigado} podeLigar={podeLigarClientePelaAgenda} />
+          </BlocoRecolhivel>
+          {/* A opção da issue #978 fica ao lado das outras regras de comportamento da agenda: é a
+              mesma pergunta ("como a agenda se comporta nesta empresa?"). */}
+          <BlocoRecolhivel titulo={t("Agenda dos colegas")} resumo={t("Se um colega pode mexer nos compromissos do outro")}>
+            <AgendaDosColegas ligadoInicial={colegasPodemMexerNaAgendaLigado} podeMudar={podeMudarAgendaDosColegas} />
+          </BlocoRecolhivel>
+          <BlocoRecolhivel titulo={t("Dias fora da rotina")} resumo={t("Feriados, férias e outros dias sem atendimento")}>
+            <DiasBloqueados podeEditar={podeEditar} />
+          </BlocoRecolhivel>
+        </div>
+      )}
+      {parte !== "regras" && (
+      <>
       {podeEditar ? (
         <div>
           {criando ? (
@@ -788,6 +803,9 @@ export function TiposDeAgendamentoClient({
           </li>
         ))}
       </ul>
+      <EditorDasPaginasDeAtendimento podeEditar={podeEditar} />
+      </>
+      )}
     </div>
   );
 }
