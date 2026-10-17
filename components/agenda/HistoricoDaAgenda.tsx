@@ -10,6 +10,7 @@ import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CaretDown } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 import { AvatarDaPessoa } from "./AvatarDaPessoa";
@@ -147,6 +148,7 @@ export function HistoricoDaAgenda({
   const localeDaData = useLocaleDeData();
   const t = useT();
   const [aba, setAba] = React.useState<AbaDoHistorico>("proximos");
+  const [filtroAberto, setFiltroAberto] = React.useState(false);
   const grupos = React.useMemo(() => separar(agendamentos, agora), [agendamentos, agora]);
   const daAba = grupos[aba];
 
@@ -159,7 +161,7 @@ export function HistoricoDaAgenda({
       <div
         role="tablist"
         aria-label={t("Filtrar o histórico")}
-        className="flex flex-nowrap items-center gap-0.5 overflow-x-auto rounded-2xl border border-border bg-surface p-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden"
+        className="hidden flex-wrap items-center gap-0.5 rounded-2xl border border-border bg-surface p-1 sm:flex"
       >
         {ABAS.map((a) => {
           const n = grupos[a.id].length;
@@ -195,6 +197,45 @@ export function HistoricoDaAgenda({
             </button>
           );
         })}
+      </div>
+
+      {/* No celular, o filtro é um botão no centro: ao tocar, as opções descem para escolher. */}
+      <div className="relative flex flex-col items-center sm:hidden" data-testid="filtro-do-historico-celular">
+        <button
+          type="button"
+          aria-expanded={filtroAberto}
+          onClick={() => setFiltroAberto((a) => !a)}
+          data-testid="abrir-filtro-do-historico"
+          className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-border bg-surface px-4 text-sm font-medium"
+        >
+          <span>{t(ABAS.find((x) => x.id === aba)!.rotulo)}</span>
+          <span className="rounded-full bg-surface-elevated px-2 text-xs tabular-nums text-text-subtle">{grupos[aba].length}</span>
+          <CaretDown size={14} weight="bold" aria-hidden className={cn("transition-transform", filtroAberto && "rotate-180")} />
+        </button>
+        {filtroAberto ? (
+          <ul className="mt-2 w-full max-w-xs overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+            {ABAS.map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  data-testid={`filtro-celular-${a.id}`}
+                  aria-pressed={aba === a.id}
+                  onClick={() => {
+                    setAba(a.id);
+                    setFiltroAberto(false);
+                  }}
+                  className={cn(
+                    "flex min-h-11 w-full items-center justify-between gap-2 px-4 text-left text-sm",
+                    aba === a.id ? "bg-accent-soft font-semibold text-accent" : "hover:bg-surface-elevated",
+                  )}
+                >
+                  <span>{t(a.rotulo)}</span>
+                  <span className="rounded-full bg-surface-elevated px-2 text-xs tabular-nums text-text-subtle">{grupos[a.id].length}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
       <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-3xl border border-border bg-surface">

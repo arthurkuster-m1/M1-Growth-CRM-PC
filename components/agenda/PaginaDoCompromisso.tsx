@@ -74,8 +74,8 @@ const STATUS_DA_VENDA: Record<string, string> = {
 
 function Bloco({ titulo, acao, children, className }: { titulo: string; acao?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-surface p-4", className)}>
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <section className={cn("min-w-0 rounded-2xl border border-border bg-surface p-4", className)}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{titulo}</h3>
         {acao}
       </div>
@@ -210,7 +210,7 @@ function PaginaExistente({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         data-testid="pagina-do-compromisso"
-        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-4xl gap-0 overflow-y-auto rounded-3xl bg-background p-0 sm:rounded-3xl"
+        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-4xl grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-0 sm:rounded-3xl"
       >
         <DialogTitle className="sr-only">{a?.cliente?.nome ?? a?.title ?? t("Compromisso")}</DialogTitle>
         <DialogDescription className="sr-only">{t("Página do compromisso")}</DialogDescription>
@@ -224,9 +224,9 @@ function PaginaExistente({
           </div>
         ) : (
           <>
-            <header className="flex flex-col gap-3 border-b border-border px-6 pb-4 pt-6 pr-14">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="neutral" className="rounded-lg">
+            <header className="flex min-w-0 flex-col items-center gap-3 border-b border-border px-4 pb-4 pt-12 text-center sm:items-start sm:px-6 sm:pr-14 sm:pt-6 sm:text-left">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <Badge variant="neutral" className="h-auto max-w-full whitespace-normal rounded-lg">
                   {a.tipo?.nome ?? t("Atendimento")} · {t(ROTULO_DO_MODELO[modelo])}
                 </Badge>
                 <Badge variant={SITUACAO[a.status].variante} className="rounded-lg">
@@ -237,12 +237,12 @@ function PaginaExistente({
                 )}
                 {saiuVenda && <Badge variant="success" className="rounded-lg">{t("Saiu venda nesta reunião")}</Badge>}
               </div>
-              <div>
-                <h2 className="text-xl font-semibold">{a.cliente?.nome ?? a.title}</h2>
+              <div className="min-w-0 max-w-full">
+                <h2 className="break-words text-xl font-semibold">{a.cliente?.nome ?? a.title}</h2>
                 <p className="mt-0.5 text-sm text-text-muted first-letter:uppercase">{quando}</p>
               </div>
               {podeEditar && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:justify-start">
                   {link && (
                     <Button asChild size="sm" className="gap-1.5 rounded-xl">
                       <a href={link} target="_blank" rel="noreferrer">
@@ -253,12 +253,12 @@ function PaginaExistente({
                   )}
                   {!encerrado && <BotaoConfirmado id={a.id} jaConfirmou={a.client_confirmation === "confirmed"} />}
                   {a.status !== "cancelled" && <BotaoResultado id={a.id} leadId={a.lead_id} jaComecou={comecou} />}
-                  <BotaoExcluir id={a.id} aoExcluir={onClose} className="ml-auto" />
+                  <BotaoExcluir id={a.id} aoExcluir={onClose} className="sm:ml-auto" />
                 </div>
               )}
             </header>
 
-            <div className="grid gap-4 p-6 md:grid-cols-2">
+            <div className="grid min-w-0 gap-4 p-3 sm:p-6 md:grid-cols-2">
               <Bloco titulo={t("Compromisso")}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Campo rotulo={t("Cliente")}>
@@ -472,7 +472,7 @@ function PaginaExistente({
                     {parcelas.length > 0 && (
                       <ul className="divide-y divide-border rounded-xl border border-border">
                         {parcelas.map((p) => (
-                          <li key={p.id ?? p.number} className="flex items-center justify-between gap-2 px-3 py-2">
+                          <li key={p.id ?? p.number} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                             <span className="tabular-nums">
                               {p.number}ª · {new Date(`${p.due_on}T12:00:00`).toLocaleDateString(tag)}
                             </span>
@@ -618,7 +618,7 @@ export function PaginaDoCompromisso({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         data-testid="pagina-do-compromisso"
-        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl gap-0 overflow-y-auto rounded-3xl bg-background p-0 sm:rounded-3xl"
+        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-0 sm:rounded-3xl"
       >
         <DialogTitle className="sr-only">Novo compromisso</DialogTitle>
         <DialogDescription className="sr-only">Formulário de novo compromisso</DialogDescription>

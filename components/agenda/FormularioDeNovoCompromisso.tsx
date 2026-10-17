@@ -79,6 +79,7 @@ export function FormularioDeNovoCompromisso({
   const [quando, setQuando] = React.useState<string | null>(inicial.startsAt ?? null);
   const [responsavelId, setResponsavelId] = React.useState("");
   const [responsavelTocado, setResponsavelTocado] = React.useState(false);
+  const [caiuParaQualquer, setCaiuParaQualquer] = React.useState(false);
   const [notas, setNotas] = React.useState("");
 
   const contexto = useContextoDeMarcacao(contactId, leadId);
@@ -106,8 +107,8 @@ export function FormularioDeNovoCompromisso({
       ? ctx.responsavel_padrao.origem
       : null;
   React.useEffect(() => {
-    if (!responsavelTocado) setResponsavelId(sugerido);
-  }, [sugerido, responsavelTocado]);
+    if (!responsavelTocado && !caiuParaQualquer) setResponsavelId(sugerido);
+  }, [sugerido, responsavelTocado, caiuParaQualquer]);
 
   const nomeDe = (id: string) =>
     (pessoas.data ?? []).find((p) => p.user_id === id)?.full_name?.trim() || t("Pessoa da equipe");
@@ -131,15 +132,23 @@ export function FormularioDeNovoCompromisso({
   const quemVaiAtender = qualquer && livres.data?.[0] ? livres.data[0] : null;
   const semGoogle = (id: string) => matriz.data && !matriz.data.com_google.includes(id);
 
-  // Trocou o responsável ou o tipo: o horário escolhido pode ter deixado de ser livre. Pede de novo.
-  const chaveDaAgenda = `${tipo?.id ?? ""}|${responsavelId}`;
-  const chaveAnterior = React.useRef(chaveDaAgenda);
+  // O horário escolhido (ou clicado na grade) NUNCA se apaga sozinho. Se o responsável sugerido não
+  // está livre nele, a tela passa para "qualquer atendente" (quem estiver livre) e avisa.
   React.useEffect(() => {
-    const [tipoAntes, donoAntes] = chaveAnterior.current.split("|");
-    chaveAnterior.current = chaveDaAgenda;
-    // Só quando os dois já estavam definidos: o preenchimento inicial não apaga o horário que veio do clique na grade.
-    if (tipoAntes && donoAntes && chaveDaAgenda !== `${tipoAntes}|${donoAntes}`) setQuando(null);
-  }, [chaveDaAgenda]);
+    if (
+      !responsavelTocado &&
+      !caiuParaQualquer &&
+      filtrando &&
+      responsavelId &&
+      responsavelId !== QUALQUER_ATENDENTE &&
+      !livresIds.has(responsavelId) &&
+      (livres.data?.length ?? 0) > 0
+    ) {
+      setCaiuParaQualquer(true);
+      setResponsavelId(QUALQUER_ATENDENTE);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtrando, responsavelId, responsavelTocado, caiuParaQualquer, livres.data]);
 
   const criar = useMutation({
     mutationFn: async () =>
@@ -165,7 +174,7 @@ export function FormularioDeNovoCompromisso({
   const pronto = Boolean(tipo && quando && responsavelId && !escolhidoOcupado && !(qualquer && livres.isSuccess && !quemVaiAtender));
 
   return (
-    <div data-testid="formulario-de-novo-compromisso" className="grid gap-5 p-6">
+    <div data-testid="formulario-de-novo-compromisso" className="grid min-w-0 gap-5 p-4 pt-12 sm:p-6">
       <div>
         <h2 className="text-xl font-semibold">{t("Novo compromisso")}</h2>
         <p className="text-sm text-text-muted">
@@ -184,6 +193,7 @@ export function FormularioDeNovoCompromisso({
               setConversationId(v);
               setLeadId("");
               setResponsavelTocado(false);
+              setCaiuParaQualquer(false);
             }}
           />
         </div>
@@ -203,6 +213,7 @@ export function FormularioDeNovoCompromisso({
             aoEscolher={(id) => {
               setLeadId(id);
               setResponsavelTocado(false);
+              setCaiuParaQualquer(false);
             }}
           />
         </div>
@@ -216,6 +227,7 @@ export function FormularioDeNovoCompromisso({
             aoEscolher={(id) => {
               setTipoId(id);
               setResponsavelTocado(false);
+              setCaiuParaQualquer(false);
             }}
           />
         </div>
@@ -254,7 +266,9 @@ export function FormularioDeNovoCompromisso({
           </p>
           {filtrando ? (
             <p className="text-xs text-text-muted">
-              {t("Mostrando só quem está livre no horário escolhido.")}
+              {caiuParaQualquer
+                ? t("O responsável sugerido não está livre neste horário: vai atender quem estiver livre.")
+                : t("Mostrando só quem está livre no horário escolhido.")}
             </p>
           ) : null}
           {quemVaiAtender ? (

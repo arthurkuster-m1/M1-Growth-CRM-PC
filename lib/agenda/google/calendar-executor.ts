@@ -3,6 +3,7 @@ import { doEventoDoGoogle, type EventoDoGoogle } from "./evento";
 import { ehEventoNosso } from "./escrita";
 import { importarEventoDoDestino } from "./importar";
 import { classificarErroDoGoogle } from "./erros";
+import { logger } from "@/lib/logger";
 import { googleTransport, GoogleHttpError, type GoogleFetch } from "./transport";
 import { calendarSnapshotSchema, googleRpc, type CalendarFence } from "./sync-store";
 import { reconcileAppointment, tokenForConnection } from "./sync-executor";
@@ -166,6 +167,12 @@ export async function syncCalendar(
     fence.cursor = saved.sync_cursor ?? fence.cursor;
     return saved.sync_cursor ? "partial" : "complete";
   } catch (e) {
+    // O motivo real vai para o log do servidor (a tela só recebe a frase genérica).
+    logger.warn("[agenda.google.sync] leitura da agenda falhou", {
+      calendarId,
+      erro: e instanceof Error ? e.message : String(e),
+      status: e instanceof GoogleHttpError ? e.status : undefined,
+    });
     try {
       if (e instanceof GoogleHttpError && e.status === 410) await call("reset");
       else await call("error", { message: mensagemDaRecusaDeLeitura(e) });

@@ -399,7 +399,7 @@ export function AgendaClient({
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
           </p>
         </div>
-        <div className="flex min-w-0 items-center justify-center gap-2 sm:justify-end">
+        <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:w-auto sm:flex-row sm:justify-end sm:gap-2">
           {/*
             DESABILITADO COM O MOTIVO À VISTA, e não ligado a um `onClick` vazio.
             Enquanto a frente 1 não expõe `/api/v1/agenda` não há o que marcar, e
@@ -434,7 +434,7 @@ export function AgendaClient({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-1.5 rounded-xl px-3 text-xs lg:h-8"
+              className="h-10 w-full max-w-xs gap-2 rounded-xl px-4 text-sm sm:h-9 sm:w-auto sm:max-w-none sm:px-3 sm:text-xs lg:h-8"
               data-testid="sincronizar-google"
               disabled={sincronizando}
               onClick={sincronizarComGoogle}
@@ -446,7 +446,7 @@ export function AgendaClient({
           {podeMarcar && (
             <Button
               size="sm"
-              className="h-9 gap-1.5 rounded-xl px-3 text-xs lg:h-8"
+              className="h-10 w-full max-w-xs gap-2 rounded-xl px-4 text-sm sm:h-9 sm:w-auto sm:max-w-none sm:px-3 sm:text-xs lg:h-8"
               disabled={!tipo}
               // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
               // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
