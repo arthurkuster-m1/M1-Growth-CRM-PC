@@ -8,6 +8,8 @@ import { Gear } from "@/lib/ui/icons";
 
 import { AttendantsClient } from "@/app/app/team/_components/AttendantsClient";
 
+import { MatrizDeAtendentes } from "./MatrizDeAtendentes";
+
 /**
  * Tudo que configura a Agenda, no fim da própria Agenda: tipos de atendimento (duração, local,
  * lembretes, responsável), prazos, dias bloqueados, agendas do Google, e a equipe que atende com a
@@ -50,6 +52,7 @@ export function ConfiguracaoDaAgenda({
           {tipos}
         </TabsContent>
         <TabsContent value="equipe" className="mt-5">
+          <MatrizDeAtendentes podeEditar={podeGerenciarEquipe} />
           {podeGerenciarEquipe ? (
             <AttendantsClient canManage organizationTimezone={fuso} />
           ) : (

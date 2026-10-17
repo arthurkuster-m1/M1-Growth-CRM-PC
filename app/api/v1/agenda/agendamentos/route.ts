@@ -84,6 +84,8 @@ const marcarSchema = z.object({
   event_type_id: z.string().uuid(),
   starts_at: z.string().datetime({ offset: true }),
   owner_user_id: z.string().uuid().optional(),
+  /** "Qualquer atendente": o servidor escolhe o menos carregado no dia entre os livres do tipo. */
+  distribuir: z.boolean().optional(),
   contact_id: z.string().uuid().optional(),
   /** A oportunidade do compromisso (vale também para o contato dela). */
   lead_id: z.string().uuid().optional(),

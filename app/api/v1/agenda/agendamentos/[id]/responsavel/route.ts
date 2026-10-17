@@ -5,6 +5,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { moverEventoParaOutroResponsavel } from "@/lib/agenda/google/mover-responsavel";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,8 @@ const corpo = z.object({ user_id: z.string().uuid() });
  * com o cliente continuam como estão (o atendente pode faltar e outra pessoa assumir a reunião).
  *
  * Quem pode: o responsável atual ou um gerente. O novo responsável precisa ser da equipe e estar
- * livre naquele horário. O evento que já está no Google continua na agenda de quem o criou.
+ * livre naquele horário. O evento do Google sai da agenda do anterior e entra na do novo (sem
+ * Google conectado no novo, fica só na agenda do app).
  */
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   const requestId = randomUUID();
@@ -33,7 +35,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   const admin = createAdminClient();
   const { data: a } = await admin
     .from("calendar_appointments")
-    .select("id,status,starts_at,ends_at,owner_user_id")
+    .select("id,status,starts_at,ends_at,owner_user_id,google_event_id,google_connection_id,google_calendar_id")
     .eq("organization_id", org)
     .eq("id", id)
     .maybeSingle();
@@ -66,12 +68,22 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   if (choque?.length)
     return fail("conflict", "Essa pessoa já tem um compromisso nesse horário.", 409, { requestId });
 
-  const { error } = await admin
-    .from("calendar_appointments")
-    .update({ owner_user_id: body.data.user_id })
-    .eq("organization_id", org)
-    .eq("id", id);
-  if (error) return fail("internal_error", "Não foi possível trocar o responsável.", 500, { requestId });
+  let google: string;
+  try {
+    google = await moverEventoParaOutroResponsavel(
+      admin,
+      org,
+      {
+        id,
+        google_event_id: (a.google_event_id as string | null) ?? null,
+        google_connection_id: (a.google_connection_id as string | null) ?? null,
+        google_calendar_id: (a.google_calendar_id as string | null) ?? null,
+      },
+      body.data.user_id,
+    );
+  } catch {
+    return fail("internal_error", "Não foi possível trocar o responsável.", 500, { requestId });
+  }
   void audit({
     action: "agenda.appointment_updated",
     actorUserId: auth.user.id,
@@ -81,5 +93,5 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     requestId,
     metadata: { owner_user_id: body.data.user_id, de: a.owner_user_id },
   });
-  return ok({ id, responsavel_id: body.data.user_id }, { requestId });
+  return ok({ id, responsavel_id: body.data.user_id, google }, { requestId });
 }

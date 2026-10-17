@@ -43,6 +43,9 @@ import {
   NOME_GENERICO_DO_TIPO,
   VINCULO_DE_AGENDAMENTO,
 } from "@/lib/agenda/tipos";
+import { atendentesLivresNoHorario, escolherOMenosCarregado } from "@/lib/agenda/equipe";
+import { chaveDoDia, inicioDoDia, somarDias } from "@/lib/inicio/datas";
+import { fusoUtilizavel } from "@/lib/tempo/fusos";
 import { ApiError } from "@/lib/api/types";
 import { comIdempotencia, hashDoCorpo } from "@/lib/api/idempotency";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
@@ -70,6 +73,8 @@ export interface MarcarInput {
   event_type_id: string;
   starts_at: string;
   owner_user_id?: string;
+  /** "Qualquer atendente": escolhe o menos carregado no dia entre os atendentes livres do tipo. */
+  distribuir?: boolean;
   contact_id?: string;
   /**
    * A OPORTUNIDADE do compromisso (`crm_leads.id`). Com ela o compromisso pertence a essa
@@ -347,7 +352,34 @@ async function executarCriacaoDeAgendamento(
     leadDoCompromisso = input.lead_id ?? null;
   }
 
-  const donoId = input.owner_user_id ?? tipo.default_owner_user_id;
+  let donoId = input.owner_user_id ?? tipo.default_owner_user_id;
+  if (!input.owner_user_id && input.distribuir) {
+    // "Qualquer atendente": o menos carregado no dia entre os livres naquele horário.
+    const fimDoTipo = new Date(inicio.getTime() + tipo.duration_minutes * 60_000);
+    const { data: orgTz } = await supabase.from("organizations").select("timezone").eq("id", ctx.organization_id).maybeSingle();
+    const fusoDaEquipe = fusoUtilizavel((orgTz as { timezone?: string | null } | null)?.timezone);
+    const dia = chaveDoDia(inicio, fusoDaEquipe);
+    const livres = await atendentesLivresNoHorario(supabase, ctx.organization_id, {
+      eventTypeId: tipo.id,
+      responsavelPadrao: tipo.default_owner_user_id ?? null,
+      inicio,
+      fim: fimDoTipo,
+      agora: new Date(),
+      diaDe: inicioDoDia(dia, fusoDaEquipe),
+      diaAte: inicioDoDia(somarDias(dia, 1), fusoDaEquipe),
+    });
+    const escolhido = escolherOMenosCarregado(livres);
+    if (!escolhido) {
+      throw new ApiError(
+        422,
+        "agenda_horario_indisponivel",
+        undefined,
+        ctx.requestId,
+        "Nenhum atendente está livre neste horário. Escolha outro horário.",
+      );
+    }
+    donoId = escolhido.user_id;
+  }
   if (!donoId) {
     throw new ApiError(
       422,

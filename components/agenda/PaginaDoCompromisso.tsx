@@ -25,6 +25,7 @@ import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "./AcoesDoCompromi
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import type { PedidoDeNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { CampoDeDataEHora } from "./CampoDeDataEHora";
+import { atendentesDoTipoNaMatriz, useAtendentesLivres, useMatrizDeAtendentes } from "./equipe-hooks";
 import { FormularioDeNovoCompromisso, useContextoDeMarcacao, usePessoasDaEquipe } from "./FormularioDeNovoCompromisso";
 import { MeetDoCompromisso, type MeetingDetail } from "./MeetDoCompromisso";
 import { SincronizacaoDoCompromisso, type SyncDetail } from "./SincronizacaoDoCompromisso";
@@ -121,6 +122,8 @@ function PaginaExistente({
   const pessoas = usePessoasDaEquipe();
   const nomeDoResponsavel = pessoas.data?.find((p) => p.user_id === a?.responsavel_id)?.full_name ?? null;
   const contexto = useContextoDeMarcacao(a?.contact_id ?? "", "");
+  const matriz = useMatrizDeAtendentes();
+  const livresNoHorario = useAtendentesLivres(a?.tipo?.id ?? null, a?.starts_at ?? null, a?.id);
 
   const oportunidade = useQuery({
     queryKey: ["venda-da-oportunidade", a?.lead_id],
@@ -155,9 +158,18 @@ function PaginaExistente({
   });
   const trocarResponsavel = useMutation({
     mutationFn: async (userId: string) =>
-      apiClient.patch(`/api/v1/agenda/agendamentos/${id}/responsavel`, { user_id: userId }),
-    onSuccess: () => {
-      toast.success(t("Responsável do compromisso trocado."));
+      apiClient.patch<{ data: { google?: string } }>(`/api/v1/agenda/agendamentos/${id}/responsavel`, { user_id: userId }),
+    onSuccess: (r) => {
+      const g = r.data?.google;
+      toast.success(
+        g === "movido"
+          ? t("Responsável trocado. O evento saiu da agenda do Google de quem tinha e foi para a do novo.")
+          : g === "so_no_app"
+            ? t("Responsável trocado. Ele não conectou o Google: o compromisso fica só na agenda do app.")
+            : g === "remocao_pendente"
+              ? t("Responsável trocado. Não consegui remover o evento da agenda do Google anterior: apague lá à mão.")
+              : t("Responsável do compromisso trocado."),
+      );
       recarregar();
     },
     onError: showApiError,
@@ -260,10 +272,21 @@ function PaginaExistente({
                       <SeletorEmPopup
                         rotulo={t("Responsável pela reunião")}
                         valor={a.responsavel_id ?? ""}
-                        opcoes={(pessoas.data ?? []).map((p) => ({
-                          id: p.user_id,
-                          rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
-                        }))}
+                        opcoes={(() => {
+                          const doTipo = a.tipo ? atendentesDoTipoNaMatriz(matriz.data, a.tipo.id) : [];
+                          const livres = new Set((livresNoHorario.data ?? []).map((l) => l.user_id));
+                          return (pessoas.data ?? [])
+                            .filter(
+                              (p) =>
+                                p.user_id === a.responsavel_id ||
+                                ((doTipo.length === 0 || doTipo.includes(p.user_id)) &&
+                                  (!livresNoHorario.isSuccess || livres.has(p.user_id))),
+                            )
+                            .map((p) => ({
+                              id: p.user_id,
+                              rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
+                            }));
+                        })()}
                         desabilitado={trocarResponsavel.isPending}
                         aoEscolher={(uid) => uid && uid !== a.responsavel_id && trocarResponsavel.mutate(uid)}
                       />
@@ -273,7 +296,7 @@ function PaginaExistente({
                       </div>
                     )}
                     <p className="mt-1 text-[11px] text-text-muted">
-                      {t("Trocar aqui vale só para este compromisso; o CRM e a oportunidade não mudam.")}
+                      {t("Só aparecem atendentes do tipo que estão livres neste horário. Trocar vale só para este compromisso: o CRM e a oportunidade não mudam, e o evento muda de agenda no Google.")}
                     </p>
                   </div>
                   <div className="min-w-0">

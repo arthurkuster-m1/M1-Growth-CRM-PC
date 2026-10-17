@@ -13,6 +13,7 @@ import type { PedidoDeNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { apiClient } from "@/lib/api/client";
 
 import { CampoDeDataEHora } from "./CampoDeDataEHora";
+import { QUALQUER_ATENDENTE, atendentesDoTipoNaMatriz, useAtendentesLivres, useMatrizDeAtendentes } from "./equipe-hooks";
 import { VinculoDaMarcacao } from "./VinculoDaMarcacao";
 
 export type ContextoDeMarcacao = {
@@ -82,6 +83,7 @@ export function FormularioDeNovoCompromisso({
 
   const contexto = useContextoDeMarcacao(contactId, leadId);
   const pessoas = usePessoasDaEquipe();
+  const matriz = useMatrizDeAtendentes();
   const ctx = contexto.data;
   const tipo = ctx?.tipos.find((x) => x.id === tipoId) ?? ctx?.tipos[0] ?? null;
 
@@ -107,10 +109,27 @@ export function FormularioDeNovoCompromisso({
     if (!responsavelTocado) setResponsavelId(sugerido);
   }, [sugerido, responsavelTocado]);
 
-  const nomes = (pessoas.data ?? []).map((p) => ({
-    id: p.user_id,
-    rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
-  }));
+  const nomeDe = (id: string) =>
+    (pessoas.data ?? []).find((p) => p.user_id === id)?.full_name?.trim() || t("Pessoa da equipe");
+  const doTipo = tipo ? atendentesDoTipoNaMatriz(matriz.data, tipo.id) : [];
+  const qualquer = responsavelId === QUALQUER_ATENDENTE;
+
+  // Escolhi o HORÁRIO: só os atendentes do tipo que estão livres nele.
+  const livres = useAtendentesLivres(tipo?.id ?? null, quando);
+  const livresIds = new Set((livres.data ?? []).map((l) => l.user_id));
+  const filtrando = Boolean(quando) && livres.isSuccess;
+  const pessoasDoTipo = doTipo.length > 0 ? doTipo : (pessoas.data ?? []).map((p) => p.user_id);
+  const opcoesDeResponsavel = [
+    { id: QUALQUER_ATENDENTE, rotulo: t("Qualquer atendente (o menos carregado no dia)") },
+    ...pessoasDoTipo
+      .filter((id) => !filtrando || livresIds.has(id))
+      .map((id) => ({ id, rotulo: nomeDe(id) })),
+  ];
+  const escolhidoNaoFazOTipo =
+    Boolean(responsavelId) && !qualquer && doTipo.length > 0 && !doTipo.includes(responsavelId);
+  const escolhidoOcupado = filtrando && Boolean(responsavelId) && !qualquer && !livresIds.has(responsavelId);
+  const quemVaiAtender = qualquer && livres.data?.[0] ? livres.data[0] : null;
+  const semGoogle = (id: string) => matriz.data && !matriz.data.com_google.includes(id);
 
   // Trocou o responsável ou o tipo: o horário escolhido pode ter deixado de ser livre. Pede de novo.
   const chaveDaAgenda = `${tipo?.id ?? ""}|${responsavelId}`;
@@ -127,7 +146,8 @@ export function FormularioDeNovoCompromisso({
       apiClient.post<{ data: { id: string } }>("/api/v1/agenda/agendamentos", {
         event_type_id: tipo!.id,
         starts_at: quando!,
-        owner_user_id: responsavelId || undefined,
+        owner_user_id: qualquer ? undefined : responsavelId || undefined,
+        distribuir: qualquer || undefined,
         contact_id: contactId || undefined,
         lead_id: leadId || undefined,
         conversation_id: conversationId || undefined,
@@ -142,7 +162,7 @@ export function FormularioDeNovoCompromisso({
   });
 
   const fuso = ctx?.fuso ?? "America/Sao_Paulo";
-  const pronto = Boolean(tipo && quando && responsavelId);
+  const pronto = Boolean(tipo && quando && responsavelId && !escolhidoOcupado && !(qualquer && livres.isSuccess && !quemVaiAtender));
 
   return (
     <div data-testid="formulario-de-novo-compromisso" className="grid gap-5 p-6">
@@ -218,7 +238,7 @@ export function FormularioDeNovoCompromisso({
           <SeletorEmPopup
             rotulo={t("Responsável pela reunião")}
             valor={responsavelId}
-            opcoes={nomes}
+            opcoes={opcoesDeResponsavel}
             aoEscolher={(id) => {
               setResponsavelId(id);
               setResponsavelTocado(true);
@@ -231,6 +251,29 @@ export function FormularioDeNovoCompromisso({
                 ? t(ROTULO_DA_ORIGEM_DO_RESPONSAVEL[origemDoSugerido])
                 : t("Responsável do tipo de atendimento")}
           </p>
+          {filtrando ? (
+            <p className="text-xs text-text-muted">
+              {t("Mostrando só quem está livre no horário escolhido.")}
+            </p>
+          ) : null}
+          {quemVaiAtender ? (
+            <p className="text-xs text-text-muted" data-testid="quem-vai-atender">
+              {t("Vai atender")}: {nomeDe(quemVaiAtender.user_id)} ({quemVaiAtender.carga} {t("no dia")})
+            </p>
+          ) : null}
+          {escolhidoNaoFazOTipo ? (
+            <p className="text-xs text-warning-fg">
+              {t("Esta pessoa não está na lista de atendentes deste tipo. Dá para marcar, ou escolha \"Qualquer atendente\".")}
+            </p>
+          ) : null}
+          {escolhidoOcupado ? (
+            <p className="text-xs text-error-fg">{t("Esta pessoa não está livre neste horário.")}</p>
+          ) : null}
+          {responsavelId && !qualquer && semGoogle(responsavelId) ? (
+            <p className="text-xs text-text-muted">
+              {t("Sem Google conectado: este compromisso fica só na agenda do app.")}
+            </p>
+          ) : null}
         </div>
 
         <label className="grid gap-1 sm:col-span-2">

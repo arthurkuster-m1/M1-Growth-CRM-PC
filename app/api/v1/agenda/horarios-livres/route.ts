@@ -44,12 +44,14 @@ import {
 } from "@/lib/agenda/consulta";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { atendentesDoTipo } from "@/lib/agenda/equipe";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 const querySchema = z.object({
   event_type_id: z.string().uuid(),
-  owner_user_id: z.string().uuid().optional(),
+  /** Uma pessoa, ou "qualquer": a união dos horários livres dos atendentes do tipo. */
+  owner_user_id: z.union([z.string().uuid(), z.literal("qualquer")]).optional(),
   /** Remarcar: o compromisso que sai do horário atual não conta como ocupação. */
   ignorar_agendamento_id: z.string().uuid().optional(),
   de: z.string().datetime({ offset: true }),
@@ -94,13 +96,62 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const supabase = await createClient();
 
+  // "Qualquer atendente": a união dos horários livres de quem faz o tipo. Cada horário diz quem
+  // está livre nele (`livres`), para a tela mostrar só os atendentes disponíveis.
+  if (parsed.data.owner_user_id === "qualquer") {
+    const { data: tipoDaEquipe } = await supabase
+      .from("calendar_event_types")
+      .select("default_owner_user_id")
+      .eq("organization_id", activeOrg.orgId)
+      .eq("id", parsed.data.event_type_id)
+      .maybeSingle();
+    const equipe = await atendentesDoTipo(
+      supabase,
+      activeOrg.orgId,
+      parsed.data.event_type_id,
+      (tipoDaEquipe?.default_owner_user_id as string | null) ?? null,
+    );
+    const uniao = new Map<string, { inicio: string; fim: string; livres: string[] }>();
+    let fusoDaRegra = "America/Sao_Paulo";
+    let algumPublicou = false;
+    for (const a of equipe) {
+      const r = await horariosLivresDaOrg(supabase, activeOrg.orgId, {
+        eventTypeId: parsed.data.event_type_id,
+        eventTypeSlug: null,
+        ownerUserId: a.user_id,
+        de,
+        ate,
+        agora: new Date(),
+        ignorarAgendamentoId: parsed.data.ignorar_agendamento_id,
+      });
+      if (!r.ok) continue;
+      fusoDaRegra = r.fusoDaRegra;
+      algumPublicou = algumPublicou || r.publicouHorarios;
+      for (const sl of r.slots) {
+        const k = sl.inicio.toISOString();
+        const atual = uniao.get(k) ?? { inicio: k, fim: sl.fim.toISOString(), livres: [] };
+        atual.livres.push(a.user_id);
+        uniao.set(k, atual);
+      }
+    }
+    return ok(
+      {
+        slots: [...uniao.values()].sort((x, y) => x.inicio.localeCompare(y.inicio)),
+        fuso_da_regra: fusoDaRegra,
+        publicou_horarios: algumPublicou,
+        fuso_suposto: false,
+      },
+      { requestId },
+    );
+  }
+
   // O miolo mora em `lib/agenda/consulta.ts` porque as ferramentas MCP precisam
   // do MESMO cálculo sem ter request nem cookie. Duas coletas dariam à IA e à
   // tela respostas diferentes sobre o mesmo horário.
   const consulta = await horariosLivresDaOrg(supabase, activeOrg.orgId, {
     eventTypeId: parsed.data.event_type_id,
     eventTypeSlug: null,
-    ownerUserId: parsed.data.owner_user_id ?? null,
+    ownerUserId: (parsed.data.owner_user_id as string | undefined) ?? null,
     de,
     ate,
     agora: new Date(),
