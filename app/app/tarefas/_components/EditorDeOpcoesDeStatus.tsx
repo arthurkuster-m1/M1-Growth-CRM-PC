@@ -2,6 +2,7 @@
 
 import { CampoDeNome, CampoDeNovaOpcao } from "@/components/motor/CamposDoEditor";
 import { SeletorDeCor } from "@/components/motor/SeletorDeCor";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
 import type { EdicaoDaOpcao, NovaOpcao } from "@/hooks/tarefas/useOpcoesDeStatus";
 import {
@@ -72,22 +73,14 @@ export function EditorDeOpcoesDeStatus({
                     rotulo={t("Nome da opção")}
                     aoSalvar={(nome) => void aoEditar(opcao.id, { name: nome })}
                   />
-                  <select
-                    value={opcao.grupo}
-                    disabled={ultima}
-                    title={ultima ? t("Cada grupo precisa de pelo menos uma opção.") : undefined}
-                    aria-label={t("Grupo")}
-                    onChange={(e) =>
-                      void aoEditar(opcao.id, { grupo: e.target.value as SituacaoDaTarefa })
-                    }
-                    className="h-7 w-[84px] shrink-0 rounded-md border bg-background px-1 text-xs text-muted-foreground disabled:opacity-50"
-                  >
-                    {SITUACOES_DA_TAREFA.map((g) => (
-                      <option key={g} value={g}>
-                        {titulosDosGrupos[g]}
-                      </option>
-                    ))}
-                  </select>
+                  <SeletorEmPopup
+                    rotulo={t("Grupo")}
+                    valor={opcao.grupo}
+                    desabilitado={ultima}
+                    aoEscolher={(g) => void aoEditar(opcao.id, { grupo: g as SituacaoDaTarefa })}
+                    opcoes={SITUACOES_DA_TAREFA.map((g) => ({ id: g, rotulo: titulosDosGrupos[g] }))}
+                    className="h-7 min-h-7 w-[104px] shrink-0 gap-1 rounded-md px-2 py-0 text-xs text-muted-foreground"
+                  />
                   <button
                     type="button"
                     disabled={ultima}

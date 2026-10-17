@@ -44,6 +44,10 @@ export default async function PainelPublicoPage({
   ]);
   const t = (texto: string) => traduzir(texto, empresa.idioma);
   const publicados = new Set(paginas.filter((p) => p.blocos.length > 0).map((p) => p.module_key));
+  // As estratégias de marketing publicadas: subpáginas criadas sob medida (não há módulo fixo).
+  const estrategias = paginas.filter(
+    (p) => p.module_key.startsWith("estrategia-de-marketing--") && p.blocos.length > 0,
+  );
 
   return (
     <IdiomaProvider locale={empresa.idioma}>
@@ -64,7 +68,7 @@ export default async function PainelPublicoPage({
               </p>
             </div>
 
-            {publicados.size === 0 && !temCronograma ? (
+            {publicados.size === 0 && estrategias.length === 0 && !temCronograma ? (
               <p className="rounded-3xl border bg-card p-8 text-center text-sm text-muted-foreground">
                 {t("Ainda não há nada publicado por aqui. Volte em breve.")}
               </p>
@@ -72,8 +76,12 @@ export default async function PainelPublicoPage({
               FASES_DA_ESTRATEGIA.map((fase) => {
                 const modulos = modulosDaFase(fase).filter((m) => publicados.has(m.chave));
                 const largo = moduloLargoDaFase(fase);
-                const largoPublicado = largo && publicados.has(largo.chave) ? largo : undefined;
-                if (modulos.length === 0 && !largoPublicado) return null;
+                const largoPublicado =
+                  largo && !largo.semPagina && publicados.has(largo.chave) ? largo : undefined;
+                const estrategiasDaFase = fase === "geracao-de-demanda" ? estrategias : [];
+                if (modulos.length === 0 && !largoPublicado && estrategiasDaFase.length === 0) {
+                  return null;
+                }
                 return (
                   <section key={fase} className="flex flex-col gap-3">
                     <h2 className="text-sm font-semibold text-muted-foreground">
@@ -96,6 +104,21 @@ export default async function PainelPublicoPage({
                         );
                       })}
                     </div>
+                    {estrategiasDaFase.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {estrategiasDaFase.map((e) => (
+                          <CartaoDeModulo
+                            key={e.module_key}
+                            href={`/p/${token}/${e.module_key}`}
+                            tom="blue"
+                            icone={iconeDoModulo("Lightbulb")}
+                            titulo={e.title || t("Estratégia")}
+                            fase={nomeDaFase(t, fase)}
+                            estado={t("Publicado")}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                     {largoPublicado ? (
                       <CartaoLargo
                         href={`/p/${token}/${largoPublicado.chave}`}

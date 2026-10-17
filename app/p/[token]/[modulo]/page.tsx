@@ -43,6 +43,8 @@ export default async function PaginaPublicaPage({
   const lida = lerChaveDePagina(chave);
   const modulo = lida ? moduloPorChave(lida.modulo) : undefined;
   if (!link || !lida || !modulo) notFound();
+  // Módulo que só abriga subpáginas (as estratégias): não há página dele para abrir.
+  if (modulo.semPagina && !lida.tipo) notFound();
   // Link de um módulo abre o módulo e as subpáginas dele, e nada além.
   if (link.moduloDoEscopo && link.moduloDoEscopo !== lida.modulo) notFound();
 
@@ -91,15 +93,25 @@ export default async function PaginaPublicaPage({
   // alcança o módulo e as subpáginas dele; o painel (Marketing) só existe no link do painel.
   const moduloHref = `/p/${token}/${lida.modulo}`;
   const painelHref = link.moduloDoEscopo ? null : `/p/${token}`;
-  const inicio = painelHref ?? moduloHref;
+  const inicio = painelHref ?? (modulo.semPagina ? `/p/${token}/${chave}` : moduloHref);
   const voltar = lida.tipo
-    ? { href: moduloHref, rotulo: textosDoPai.titulo }
+    ? modulo.semPagina
+      ? painelHref
+        ? { href: painelHref, rotulo: t("Todas as páginas") }
+        : undefined
+      : { href: moduloHref, rotulo: textosDoPai.titulo }
     : painelHref
       ? { href: painelHref, rotulo: t("Todas as páginas") }
       : undefined;
   const trilha: PassoDaTrilha[] = [
     ...(painelHref ? [{ rotulo: t("Marketing"), href: painelHref }] : []),
-    lida.tipo ? { rotulo: textosDoPai.titulo, href: moduloHref } : { rotulo: textosDoPai.titulo },
+    ...(modulo.semPagina
+      ? []
+      : [
+          lida.tipo
+            ? { rotulo: textosDoPai.titulo, href: moduloHref }
+            : { rotulo: textosDoPai.titulo },
+        ]),
     ...(lida.tipo ? [{ rotulo: textos.titulo }] : []),
   ];
 

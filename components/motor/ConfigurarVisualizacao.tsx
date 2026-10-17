@@ -66,6 +66,8 @@ interface Props {
   podeMoverAba?: { esquerda: boolean; direita: boolean };
   /** Os tipos que a tela sabe desenhar (padrão: todos). */
   tipos?: readonly TipoDeVisualizacao[];
+  /** Uma frase sob o título "Propriedades", quando a lista serve a uma visualização específica. */
+  dicaDasPropriedades?: string;
 }
 
 const TIPOS: TipoDeVisualizacao[] = ["tabela", "kanban", "calendario", "timeline"];
@@ -152,6 +154,7 @@ function Corpo({
   aoMoverAba,
   podeMoverAba,
   tipos = TIPOS,
+  dicaDasPropriedades,
   aoFechar,
 }: Props) {
   const t = useT();
@@ -260,6 +263,9 @@ function Corpo({
               </button>
             ) : null}
           </div>
+          {dicaDasPropriedades ? (
+            <p className="mb-2 text-xs text-muted-foreground">{dicaDasPropriedades}</p>
+          ) : null}
           <DndContext
             id={idDoDnd}
             sensors={sensores}

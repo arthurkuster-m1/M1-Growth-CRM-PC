@@ -4,19 +4,19 @@ import { useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/hooks/i18n/useT";
 import { useCelular } from "@/hooks/motor/useCelular";
 import { rotuloDaData } from "@/lib/motor/datas-do-campo";
 import type { OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-status";
 import {
-  FREQUENCIAS_DE_REPETICAO,
   type DadosDoModelo,
   type EntradaDeModelo,
   type FrequenciaDeRepeticao,
   type ModeloDeTarefa,
 } from "@/lib/tarefas/modelos";
-import { PRIORIDADES_DA_TAREFA, type PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
+import type { PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
 import { ArrowsClockwise, CaretLeft, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -270,17 +270,18 @@ function Corpo({
     campo(
       rotulo,
       <div className="flex gap-2">
-        <select
-          id={id}
-          value={modo}
-          disabled={!podeEditar}
-          onChange={(e) => aoMudarModo(e.target.value as ModoDeData)}
-          className={cn(CAMPO, "min-w-0 flex-1")}
-        >
-          <option value="nenhum">{t("Sem data")}</option>
-          <option value="hoje">{t("No dia em que for criada")}</option>
-          <option value="dias">{t("Alguns dias depois")}</option>
-        </select>
+        <SeletorEmPopup
+          rotulo={rotulo}
+          className="min-w-0 flex-1"
+          desabilitado={!podeEditar}
+          valor={modo}
+          aoEscolher={(v) => aoMudarModo(v as ModoDeData)}
+          opcoes={[
+            { id: "nenhum", rotulo: t("Sem data") },
+            { id: "hoje", rotulo: t("No dia em que for criada") },
+            { id: "dias", rotulo: t("Alguns dias depois") },
+          ]}
+        />
         {modo === "dias" ? (
           <input
             type="number"
@@ -350,62 +351,43 @@ function Corpo({
       <div className="grid grid-cols-2 gap-2">
         {campo(
           t("Prioridade"),
-          <select
-            id="modelo-prioridade"
-            value={r.priority}
-            disabled={!podeEditar}
-            onChange={(e) => mudar({ priority: e.target.value as PrioridadeDaTarefa })}
-            className={CAMPO}
-          >
-            {PRIORIDADES_DA_TAREFA.map((p) => (
-              <option key={p} value={p}>
-                {p === "low"
-                  ? t("Baixa")
-                  : p === "medium"
-                    ? t("Média")
-                    : p === "high"
-                      ? t("Alta")
-                      : t("Urgente")}
-              </option>
-            ))}
-          </select>,
+          <SeletorEmPopup
+            rotulo={t("Prioridade")}
+            desabilitado={!podeEditar}
+            valor={r.priority}
+            aoEscolher={(v) => mudar({ priority: v as PrioridadeDaTarefa })}
+            opcoes={[
+              { id: "low", rotulo: t("Baixa"), cor: "gray" },
+              { id: "medium", rotulo: t("Média"), cor: "blue" },
+              { id: "high", rotulo: t("Alta"), cor: "orange" },
+              { id: "urgent", rotulo: t("Urgente"), cor: "red" },
+            ]}
+          />,
           "modelo-prioridade",
         )}
         {campo(
           t("Status"),
-          <select
-            id="modelo-status"
-            value={r.status_option_id}
-            disabled={!podeEditar}
-            onChange={(e) => mudar({ status_option_id: e.target.value })}
-            className={CAMPO}
-          >
-            <option value="">{t("O primeiro")}</option>
-            {opcoesDeStatus.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>,
+          <SeletorEmPopup
+            rotulo={t("Status")}
+            desabilitado={!podeEditar}
+            valor={r.status_option_id}
+            aoEscolher={(v) => mudar({ status_option_id: v })}
+            rotuloVazio={t("O primeiro")}
+            opcoes={opcoesDeStatus.map((o) => ({ id: o.id, rotulo: o.name, cor: o.color }))}
+          />,
           "modelo-status",
         )}
       </div>
       {campo(
         t("Responsável"),
-        <select
-          id="modelo-responsavel"
-          value={r.assigned_to}
-          disabled={!podeEditar}
-          onChange={(e) => mudar({ assigned_to: e.target.value })}
-          className={CAMPO}
-        >
-          <option value="">{t("Ninguém")}</option>
-          {membros.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome}
-            </option>
-          ))}
-        </select>,
+        <SeletorEmPopup
+          rotulo={t("Responsável")}
+          desabilitado={!podeEditar}
+          valor={r.assigned_to}
+          aoEscolher={(v) => mudar({ assigned_to: v })}
+          rotuloVazio={t("Ninguém")}
+          opcoes={membros.map((m) => ({ id: m.id, rotulo: m.nome }))}
+        />,
         "modelo-responsavel",
       )}
 
@@ -466,25 +448,17 @@ function Corpo({
           <div className="mt-2 flex flex-col gap-3">
             {campo(
               t("Frequência"),
-              <select
-                id="modelo-frequencia"
-                value={r.repeat_frequency}
-                disabled={!podeEditar}
-                onChange={(e) =>
-                  mudar({ repeat_frequency: e.target.value as FrequenciaDeRepeticao })
-                }
-                className={CAMPO}
-              >
-                {FREQUENCIAS_DE_REPETICAO.map((f) => (
-                  <option key={f} value={f}>
-                    {f === "daily"
-                      ? t("Todo dia")
-                      : f === "weekly"
-                        ? t("Toda semana")
-                        : t("Todo mês")}
-                  </option>
-                ))}
-              </select>,
+              <SeletorEmPopup
+                rotulo={t("Frequência")}
+                desabilitado={!podeEditar}
+                valor={r.repeat_frequency}
+                aoEscolher={(v) => mudar({ repeat_frequency: v as FrequenciaDeRepeticao })}
+                opcoes={[
+                  { id: "daily", rotulo: t("Todo dia") },
+                  { id: "weekly", rotulo: t("Toda semana") },
+                  { id: "monthly", rotulo: t("Todo mês") },
+                ]}
+              />,
               "modelo-frequencia",
             )}
             {r.repeat_frequency === "weekly" ? (

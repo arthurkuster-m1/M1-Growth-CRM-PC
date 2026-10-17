@@ -45,7 +45,8 @@ function intervaloDa(tarefa: Tarefa, fuso: string): { de: string; ate: string } 
  * Edita-se na própria barra: arrastar o meio move as duas datas; arrastar a ponta esquerda
  * muda o início; a direita, o prazo. Tocar (ou clicar) sem arrastar abre a tarefa.
  * Tarefa com só uma das datas vira uma barra de um dia — arrastar a ponta oposta cria a outra.
- * Sem nenhuma das duas, a tarefa não tem onde aparecer e fica numa faixa à parte.
+ * Sem nenhuma das duas, a tarefa não tem onde aparecer e fica numa faixa à parte — de onde se
+ * arrasta para dentro da linha do tempo: ela entra no dia em que for solta (início e prazo).
  */
 export function LinhaDoTempo({
   tarefas,
@@ -60,6 +61,9 @@ export function LinhaDoTempo({
   const t = useT();
   const [inicio, setInicio] = useState(() => somarDias(hoje, -7));
   const [ao_vivo, setAoVivo] = useState<{ id: string; de: string; ate: string } | null>(null);
+  // Arrastar uma tarefa sem data para dentro da linha do tempo: o dia sobre o qual ela está.
+  const [diaDoArrasto, setDiaDoArrasto] = useState<string | null>(null);
+  const primeiroDia = useRef<HTMLDivElement>(null);
   const gesto = useRef<{
     id: string;
     tipo: Gesto;
@@ -85,6 +89,25 @@ export function LinhaDoTempo({
     new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", timeZone: "UTC" }).format(
       new Date(`${d}T12:00:00Z`),
     );
+
+  /** O dia da coluna sob o ponteiro (`null` = fora das colunas de dia, ex.: sobre os títulos). */
+  function diaSobOPonteiro(clientX: number): string | null {
+    const caixa = primeiroDia.current?.getBoundingClientRect();
+    if (!caixa) return null;
+    const indice = Math.floor((clientX - caixa.left) / LARGURA_DO_DIA);
+    return indice >= 0 && indice < DIAS_NA_JANELA ? (dias[indice] ?? null) : null;
+  }
+
+  function aoSoltarDeFora(e: React.DragEvent) {
+    e.preventDefault();
+    setDiaDoArrasto(null);
+    const dia = diaSobOPonteiro(e.clientX);
+    const tarefa = tarefas.find((x) => x.id === e.dataTransfer.getData("text/plain"));
+    if (!dia || !tarefa || !podeEditar) return;
+    // Uma barra de um dia só: a pessoa depois estica as pontas, se quiser.
+    const iso = trocarODia(null, dia, fuso);
+    aoMudarDatas(tarefa, { start_date: iso, due_date: iso });
+  }
 
   function comecar(
     e: React.PointerEvent,
@@ -172,17 +195,35 @@ export function LinhaDoTempo({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border bg-card shadow-sm">
+      <div
+        className={cn(
+          "overflow-x-auto rounded-2xl border bg-card shadow-sm transition-shadow",
+          diaDoArrasto && "ring-2 ring-primary/40",
+        )}
+        onDragOver={(e) => {
+          if (!podeEditar || !e.dataTransfer.types.includes("text/plain")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          const dia = diaSobOPonteiro(e.clientX);
+          if (dia !== diaDoArrasto) setDiaDoArrasto(dia);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDiaDoArrasto(null);
+        }}
+        onDrop={aoSoltarDeFora}
+      >
         <div style={{ minWidth: 112 + DIAS_NA_JANELA * LARGURA_DO_DIA }}>
           <div className="flex border-b bg-secondary/50 text-[11px] text-muted-foreground">
             <div className="sticky left-0 z-10 w-28 shrink-0 bg-secondary px-2 py-2 md:w-48" />
-            {dias.map((d) => (
+            {dias.map((d, i) => (
               <div
                 key={d}
+                ref={i === 0 ? primeiroDia : undefined}
                 style={{ width: LARGURA_DO_DIA }}
                 className={cn(
                   "shrink-0 py-2 text-center",
                   d === hoje && "font-semibold text-primary",
+                  d === diaDoArrasto && "bg-primary/20 font-semibold text-primary",
                 )}
               >
                 {Number(d.slice(8))}
@@ -283,14 +324,30 @@ export function LinhaDoTempo({
           <h3 className="mb-2 text-sm font-semibold">
             {t("Sem data")} <span className="text-muted-foreground">{semData.length}</span>
           </h3>
+          {podeEditar ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              {t(
+                "Arraste uma tarefa para dentro da linha do tempo, no dia em que ela deve acontecer.",
+              )}
+            </p>
+          ) : null}
           <ul className="flex flex-wrap gap-1.5">
             {semData.map((tarefa) => (
               <li key={tarefa.id} className="max-w-full">
                 <button
                   type="button"
+                  draggable={podeEditar}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", tarefa.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragEnd={() => setDiaDoArrasto(null)}
                   onClick={() => aoAbrir(tarefa)}
                   style={estiloDaEtiqueta(opcaoDaTarefa(tarefa, opcoes)?.color ?? "gray")}
-                  className="block max-w-full truncate rounded-md px-2 py-1 text-xs font-medium"
+                  className={cn(
+                    "block max-w-full truncate rounded-md px-2 py-1 text-xs font-medium",
+                    podeEditar && "cursor-grab active:cursor-grabbing",
+                  )}
                 >
                   {tarefa.title}
                 </button>

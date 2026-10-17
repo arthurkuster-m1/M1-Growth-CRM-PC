@@ -152,8 +152,18 @@ async function criarTarefaComFiltros(filtros: Filtro[]) {
     .catch(() => {});
   const botoes = await screen.findAllByRole("button", { name: "Nova tarefa" });
   await userEvent.click(botoes[0]!);
-  await waitFor(() => expect(criadas.length).toBe(1), { timeout: 4000 });
+  await confirmarNoPopupDeNovaTarefa();
   return criadas[0]!;
+}
+
+/**
+ * "Nova tarefa" abre o pop-up central, já preenchido com o que a tela pede (filtros, grupo, dia);
+ * a tarefa só nasce no "Criar tarefa". É o que o servidor recebe nesse clique que se confere.
+ */
+async function confirmarNoPopupDeNovaTarefa() {
+  const criar = await screen.findByRole("button", { name: "Criar tarefa" });
+  await userEvent.click(criar);
+  await waitFor(() => expect(criadas.length).toBe(1), { timeout: 4000 });
 }
 
 const f = (campo: string, operador: string, valor?: Filtro["valor"]): Filtro =>
@@ -204,6 +214,14 @@ describe("Nova tarefa com filtros ligados — o que é enviado ao servidor", () 
 // ─────────────────────────────────────────────────────────────────────────────────────────
 // Do jeito que a PESSOA faz: abre o Filtrar, monta o filtro clicando e só então cria.
 // ─────────────────────────────────────────────────────────────────────────────────────────
+/** Os seletores do app são popups (não o `<select>` do navegador): abre e clica na opção. */
+async function escolherNoPopup(botao: HTMLElement, texto: string) {
+  await userEvent.click(botao);
+  const abertos = screen.getAllByRole("dialog");
+  const lista = abertos[abertos.length - 1]!;
+  await userEvent.click(within(lista).getByRole("button", { name: texto }));
+}
+
 async function adicionarFiltroPelaTela(passos: {
   campo: string;
   condicao: string;
@@ -214,9 +232,9 @@ async function adicionarFiltroPelaTela(passos: {
   await userEvent.click(await screen.findByRole("button", { name: "Adicionar filtro" }));
   const campos = await screen.findAllByLabelText("Campo do filtro");
   const ultimo = campos.length - 1;
-  await userEvent.selectOptions(campos[ultimo]!, passos.campo);
+  await escolherNoPopup(campos[ultimo]!, passos.campo);
   const condicoes = screen.getAllByLabelText("Condição do filtro");
-  await userEvent.selectOptions(condicoes[ultimo]!, passos.condicao);
+  await escolherNoPopup(condicoes[ultimo]!, passos.condicao);
   if (passos.valor?.hoje) {
     await userEvent.click(within(painel()).getByRole("button", { name: "Hoje" }));
   }
@@ -226,7 +244,7 @@ async function adicionarFiltroPelaTela(passos: {
   }
   if (passos.valor?.opcao) {
     const valores = screen.getAllByLabelText("Valor do filtro");
-    await userEvent.selectOptions(valores[valores.length - 1]!, passos.valor.opcao);
+    await escolherNoPopup(valores[valores.length - 1]!, passos.valor.opcao);
   }
   await userEvent.keyboard("{Escape}");
 }
@@ -240,7 +258,7 @@ async function montarEClicarEmNovaTarefa(
   for (const filtro of filtrosPelaTela) await adicionarFiltroPelaTela(filtro);
   const botoes = screen.getAllByRole("button", { name: "Nova tarefa" });
   await userEvent.click(botoes[0]!);
-  await waitFor(() => expect(criadas.length).toBe(1), { timeout: 4000 });
+  await confirmarNoPopupDeNovaTarefa();
   return criadas[0]!;
 }
 
@@ -289,5 +307,45 @@ describe("GARANTIA: a tarefa criada sempre aparece, mesmo que não passe no filt
     const tabela = await screen.findByRole("table", { name: "Tarefas" });
     await waitFor(() => expect(within(tabela).getByText("normal")).toBeTruthy(), { timeout: 4000 });
     expect(toast.info).not.toHaveBeenCalled();
+  });
+});
+
+describe('Nova tarefa abre um pop-up e só grava no "Criar tarefa"', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("nada é criado ao abrir; o que se preenche no pop-up vai junto na criação", async () => {
+    simularApi([]);
+    montar();
+    const botoes = await screen.findAllByRole("button", { name: "Nova tarefa" });
+    await userEvent.click(botoes[0]!);
+
+    // O pop-up central abre com o título para digitar — e ainda não há tarefa nenhuma no servidor.
+    const titulo = await screen.findByRole("textbox", { name: "Título da tarefa" });
+    expect(criadas).toHaveLength(0);
+
+    await userEvent.type(titulo, "Revisar o funil");
+    await escolherNoPopup(screen.getByRole("button", { name: "Prioridade da tarefa" }), "Urgente");
+    await userEvent.type(screen.getByRole("textbox", { name: "Descrição" }), "Conferir as etapas");
+    expect(criadas).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Criar tarefa" }));
+    await waitFor(() => expect(criadas).toHaveLength(1), { timeout: 4000 });
+    expect(criadas[0]).toMatchObject({
+      title: "Revisar o funil",
+      priority: "urgent",
+      description: "Conferir as etapas",
+      status_option_id: OPCOES[0]!.id,
+    });
+  });
+
+  it("Cancelar fecha o pop-up sem criar nada", async () => {
+    simularApi([]);
+    montar();
+    const botoes = await screen.findAllByRole("button", { name: "Nova tarefa" });
+    await userEvent.click(botoes[0]!);
+    await screen.findByRole("textbox", { name: "Título da tarefa" });
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Criar tarefa" })).toBeNull());
+    expect(criadas).toHaveLength(0);
   });
 });

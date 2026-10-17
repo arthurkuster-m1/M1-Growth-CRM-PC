@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CartaoDeModulo, CartaoLargo, classeDaGaleria } from "@/components/marketing/Cartoes";
+import { EstrategiasDeMarketing } from "@/components/marketing/EstrategiasDeMarketing";
 import { iconeDoModulo } from "@/components/marketing/icones";
 import { PublicacaoEmMassa } from "@/components/marketing/PublicacaoEmMassa";
 import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
@@ -62,45 +63,54 @@ export default async function EstrategiaPage() {
         />
       </section>
 
-      {(["diagnostico", "produto-e-oferta", "geracao-de-demanda"] as const).map((fase) => (
-        <section key={fase} className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">{nomeDaFase(t, fase)}</h2>
-          <div className={classeDaGaleria(modulosDaFase(fase).length)}>
-            {modulosDaFase(fase).map((modulo) => {
-              const textos = textosDoModulo(t, modulo.chave);
-              if (!textos) return null;
-              return (
-                <CartaoDeModulo
-                  key={modulo.chave}
-                  href={`/app/marketing/estrategia/${modulo.chave}`}
-                  tom={modulo.tom}
-                  icone={iconeDoModulo(modulo.icone)}
-                  titulo={textos.titulo}
-                  fase={nomeDaFase(t, fase)}
-                  estado={publicados.has(modulo.chave) ? null : emBreve}
-                />
-              );
-            })}
-          </div>
-          {fase === "produto-e-oferta" ? (
-            <CartaoLargo
-              href="/app/marketing/estrategia/produtos-e-ofertas"
-              tom="purple"
-              icone={<Package weight="duotone" aria-hidden />}
-              titulo={t("Produtos e ofertas")}
-              descricao={t(
-                "A central de tudo o que a empresa vende: da ficha simples à oferta completa.",
-              )}
-              destaque={
-                totalDeProdutos > 0
-                  ? t("{n} ofertas publicadas").replace("{n}", String(totalDeProdutos))
-                  : t("Nenhuma oferta publicada ainda")
-              }
-              abrir={t("Abrir o cadastro")}
-            />
-          ) : null}
-        </section>
-      ))}
+      {(["diagnostico", "produto-e-oferta", "geracao-de-demanda"] as const).map((fase) =>
+        fase === "geracao-de-demanda" ? (
+          // Sem páginas fixas: cada estratégia é criada sob medida, no botão "Nova estratégia".
+          <EstrategiasDeMarketing
+            key={fase}
+            titulo={nomeDaFase(t, fase)}
+            fase={nomeDaFase(t, fase)}
+          />
+        ) : (
+          <section key={fase} className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">{nomeDaFase(t, fase)}</h2>
+            <div className={classeDaGaleria(modulosDaFase(fase).length)}>
+              {modulosDaFase(fase).map((modulo) => {
+                const textos = textosDoModulo(t, modulo.chave);
+                if (!textos) return null;
+                return (
+                  <CartaoDeModulo
+                    key={modulo.chave}
+                    href={`/app/marketing/estrategia/${modulo.chave}`}
+                    tom={modulo.tom}
+                    icone={iconeDoModulo(modulo.icone)}
+                    titulo={textos.titulo}
+                    fase={nomeDaFase(t, fase)}
+                    estado={publicados.has(modulo.chave) ? null : emBreve}
+                  />
+                );
+              })}
+            </div>
+            {fase === "produto-e-oferta" ? (
+              <CartaoLargo
+                href="/app/marketing/estrategia/produtos-e-ofertas"
+                tom="purple"
+                icone={<Package weight="duotone" aria-hidden />}
+                titulo={t("Produtos e ofertas")}
+                descricao={t(
+                  "A central de tudo o que a empresa vende: da ficha simples à oferta completa.",
+                )}
+                destaque={
+                  totalDeProdutos > 0
+                    ? t("{n} ofertas publicadas").replace("{n}", String(totalDeProdutos))
+                    : t("Nenhuma oferta publicada ainda")
+                }
+                abrir={t("Abrir o cadastro")}
+              />
+            ) : null}
+          </section>
+        ),
+      )}
     </PaginaDeMarketing>
   );
 }

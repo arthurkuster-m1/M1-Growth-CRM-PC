@@ -3,13 +3,14 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
+import { useRolagemLivre } from "@/lib/ui/rolagem-livre";
 import { cn } from "@/lib/utils";
 
 /**
  * No celular o popover é MODAL: a tela de trás não rola nem recebe toque enquanto ele está
  * aberto (o foco é o popover). No computador continua leve, sem travar a página.
  */
-function usaTelaPequena(): boolean {
+function useTelaPequena(): boolean {
   const [pequena, setPequena] = React.useState(false);
   React.useEffect(() => {
     // Sem matchMedia (testes, navegadores antigos): fica como computador.
@@ -27,7 +28,7 @@ const Popover = ({
   modal,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) => {
-  const pequena = usaTelaPequena();
+  const pequena = useTelaPequena();
   return <PopoverPrimitive.Root modal={modal ?? pequena} {...props} />;
 };
 Popover.displayName = "Popover";
@@ -39,10 +40,13 @@ const PopoverAnchor = PopoverPrimitive.Anchor;
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+>(({ className, align = "center", sideOffset = 4, ...props }, ref) => {
+  // A roda do mouse rola a lista mesmo quando o popup abre por cima de um diálogo.
+  const refComRolagem = useRolagemLivre(ref);
+  return (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
-      ref={ref}
+      ref={refComRolagem}
       align={align}
       sideOffset={sideOffset}
       className={cn(
@@ -52,7 +56,8 @@ const PopoverContent = React.forwardRef<
       {...props}
     />
   </PopoverPrimitive.Portal>
-));
+  );
+});
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
 export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor };

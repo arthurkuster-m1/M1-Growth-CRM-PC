@@ -122,6 +122,26 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 - **Equipe da Agenda (decisões fechadas em 17/10):** vários atendentes por tipo, cada um com a própria agenda e jornada. Distribuição ao "qualquer atendente" = **menos carregado no dia** (desempate pela prioridade). Uma jornada por pessoa. Padrão ao marcar = responsável da oportunidade, com "qualquer atendente" a um clique. Só gerentes configuram. Atendente sem Google entra, com aviso. **Funciona nos dois sentidos:** escolhendo o responsável, só os horários dele; escolhendo o horário, só os atendentes livres nele. **Google:** cada atendente sincroniza a própria agenda; trocar o responsável tira o evento da agenda do Google do anterior e põe na do novo; sem Google conectado, fica só na agenda do app. **Andamento:** código publicado (rotas, matriz pessoas × tipos, os dois sentidos, distribuição, troca de agenda no Google ao mudar o responsável); migration 0649 ensaiada em rollback, **aguardando o "pode aplicar"**; falta a IA e as integrações marcarem pela mesma distribuição.
 
 
+### Tarefas e Estratégia — ajustes de 17/10/2026
+- **Seletores no estilo do software:** os campos que eram o `<select>` do navegador em Tarefas
+  (modelos de tarefa, grupo das opções de status, filtros/ordenação/agrupamento) passaram a usar o
+  seletor em popup (`SeletorEmPopup`), com as etiquetas coloridas. Os de outras telas seguem como estavam.
+- **Roda do mouse nos popups:** a lista de qualquer popup (Popover, menu, Select) rola com a roda
+  mesmo aberta por cima de um diálogo (`lib/ui/rolagem-livre.ts`; antes só rolava pela barra lateral).
+- **Nova tarefa = pop-up central** (como compromisso/oportunidade): abre com todas as propriedades,
+  herda filtros/grupo/dia, e só grava no "Criar tarefa" (o rascunho usa as mesmas células da tabela).
+- **Calendário:** arrastar a tarefa para outro dia muda o prazo (com bloco que acompanha o mouse);
+  as tarefas **sem prazo** também se arrastam para um dia. **Propriedades dentro da tarefa** (título
+  em cima, propriedades editáveis embaixo): escolhe-se em Configurar visualização › Propriedades
+  (guardado em `config.calendario.propriedades`, só do calendário).
+- **Linha do tempo:** tarefa sem data arrasta-se da faixa "Sem data" para dentro da linha do tempo e
+  entra no dia onde foi solta (início e prazo no mesmo dia).
+- **Geração de Demanda (Estratégia):** as 6 páginas fixas saíram. A fase tem o botão **Nova
+  estratégia**; cada estratégia é uma subpágina do módulo `estrategia-de-marketing` (tipo
+  `estrategia`, repetível) com o modelo de estratégia (`lib/marketing/modelos-estrategia.ts`) e
+  aparece no link público quando publicada. Páginas antigas dos 5 módulos removidos continuam no
+  banco, sem tela.
+
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
 1. **Equipe da Agenda:** aplicar a migration 0649 (aguarda o "pode aplicar") e conferir os dois sentidos e a troca de agenda no Google; depois a IA e as integrações marcarem pela mesma distribuição.
 2. Aviso de reunião encerrada em qualquer tela do app (hoje só na Agenda); limpar o código do painel antigo de marcação.

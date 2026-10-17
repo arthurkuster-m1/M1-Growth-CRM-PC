@@ -83,3 +83,42 @@ describe("produtos e ofertas", () => {
     expect(tiposDeSubpagina("produtos-e-ofertas").map((t) => t.tipo)).toEqual(["oferta"]);
   });
 });
+
+describe("estratégias de marketing (Geração de Demanda)", () => {
+  it("não há páginas fixas: o módulo só abriga as estratégias criadas sob medida", async () => {
+    const { modulosDaFase, moduloPorChave, tiposDeSubpagina, lerChaveDePagina, chaveDeSubpagina } =
+      await import("@/lib/marketing/modulos");
+    expect(modulosDaFase("geracao-de-demanda")).toHaveLength(0);
+    expect(moduloPorChave("estrategia-de-marketing")?.semPagina).toBe(true);
+    // As seis páginas padrão antigas deixaram de existir.
+    for (const antiga of [
+      "trafego-pago",
+      "outbound-marketing",
+      "programas-de-indicacao",
+      "social-media",
+      "parcerias-e-influenciadores",
+    ]) {
+      expect(moduloPorChave(antiga), antiga).toBeUndefined();
+    }
+    expect(tiposDeSubpagina("estrategia-de-marketing").map((x) => [x.tipo, x.repetivel])).toEqual([
+      ["estrategia", true],
+    ]);
+    const chave = chaveDeSubpagina("estrategia-de-marketing", "estrategia", "ab12cd");
+    expect(lerChaveDePagina(chave)).toEqual({
+      modulo: "estrategia-de-marketing",
+      tipo: "estrategia",
+    });
+  });
+
+  it("a estratégia nasce com o modelo de estratégia, válido e com ids únicos", async () => {
+    const { chaveDeSubpagina } = await import("@/lib/marketing/modulos");
+    let n = 0;
+    const blocos = modeloDoModulo(
+      chaveDeSubpagina("estrategia-de-marketing", "estrategia", "ab12cd"),
+      () => `e${n++}`,
+    );
+    expect(blocos.length).toBeGreaterThan(8);
+    expect(blocosSchema.safeParse(blocos).success).toBe(true);
+    expect(new Set(blocos.map((b) => b.id)).size).toBe(blocos.length);
+  });
+});

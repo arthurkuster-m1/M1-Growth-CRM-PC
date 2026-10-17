@@ -1,4 +1,5 @@
 import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
+import { estrategiaDeMarketing } from "@/lib/marketing/modelos-estrategia";
 import { centralDeProdutos, oferta } from "@/lib/marketing/modelos-oferta";
 import { planejamentoEmpresarial } from "@/lib/marketing/modelos-planejamento";
 import { concorrente, perguntasChave } from "@/lib/marketing/modelos-concorrencia";
@@ -274,6 +275,8 @@ export function modeloDoModulo(chave: string, novoId: NovoId): Bloco[] {
       return concorrente(novoId);
     case "oferta":
       return oferta(novoId);
+    case "estrategia":
+      return estrategiaDeMarketing(novoId);
     case "perguntas-chave":
       return perguntasChave(novoId);
   }
