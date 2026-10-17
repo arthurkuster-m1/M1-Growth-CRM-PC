@@ -15,10 +15,13 @@ export function VinculoDaMarcacao({
   contactId,
   conversationId,
   onChange,
+  semConversa = false,
 }: {
   contactId: string;
   conversationId: string;
   onChange: (contact: string, conversation: string) => void;
+  /** Esconde o seletor de conversa (o novo compromisso só pede cliente e oportunidade). */
+  semConversa?: boolean;
 }) {
   const t = useT();
   const listaId = useId();
@@ -167,7 +170,7 @@ export function VinculoDaMarcacao({
           </div>
         </label>
       </div>
-      {contactId ? (
+      {contactId && !semConversa ? (
         <label className="block">
           {t("Conversa vinculada (opcional)")}
           <select
