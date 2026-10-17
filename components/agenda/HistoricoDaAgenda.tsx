@@ -159,7 +159,7 @@ export function HistoricoDaAgenda({
       <div
         role="tablist"
         aria-label={t("Filtrar o histórico")}
-        className="flex flex-wrap items-center gap-0.5 rounded-2xl border border-border bg-surface p-1"
+        className="flex flex-nowrap items-center gap-0.5 overflow-x-auto rounded-2xl border border-border bg-surface p-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden"
       >
         {ABAS.map((a) => {
           const n = grupos[a.id].length;
@@ -172,7 +172,7 @@ export function HistoricoDaAgenda({
               aria-selected={aba === a.id}
               onClick={() => setAba(a.id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs transition-colors duration-fast ease-out",
+                "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs transition-colors duration-fast ease-out",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500",
                 aba === a.id
                   ? "bg-accent font-semibold text-accent-foreground"

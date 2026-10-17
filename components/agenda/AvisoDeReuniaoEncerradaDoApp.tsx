@@ -16,6 +16,8 @@ interface Listado {
   situacao: string;
   donoId: string | null;
   contatoNome: string | null;
+  /** Ocupação do Google (bloco de terceiro): não é compromisso, não tem desfecho. */
+  origem?: string;
 }
 
 /**
@@ -37,7 +39,9 @@ export function AvisoDeReuniaoEncerradaDoApp() {
         limite: "30",
       });
       const r = await apiClient.get<{ data: Listado[] }>(`/api/v1/agenda/agendamentos?${qs}`);
-      return (r.data ?? []).map(
+      return (r.data ?? [])
+        .filter((a) => a.origem !== "google_sync" && (a.situacao === "confirmed" || a.situacao === "pending"))
+        .map(
         (a): Agendamento => ({
           id: a.id,
           titulo: a.titulo,

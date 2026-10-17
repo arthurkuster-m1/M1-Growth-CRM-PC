@@ -1,11 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { apiClient } from "@/lib/api/client";
 import { BellRinging } from "@/lib/ui/icons";
 
 import { OPCOES_DE_RESULTADO, useAcoesDoCompromisso } from "./AcoesDoCompromisso";
@@ -64,7 +67,40 @@ export function AvisoDeReuniaoEncerrada({
     )
     .sort((x, y) => Date.parse(x.termina) - Date.parse(y.termina))[0];
 
-  if (!pendente) return null;
+  // O compromisso de verdade: dados para mostrar e prova de que ainda existe (excluído, cancelado ou
+  // já respondido some do aviso).
+  const tag = useTagDeIdioma();
+  const detalhe = useQuery({
+    queryKey: ["agenda", "detalhe-do-aviso", pendente?.id],
+    enabled: Boolean(pendente),
+    retry: false,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: {
+            status: string;
+            starts_at: string;
+            ends_at: string;
+            time_zone: string;
+            oportunidade_titulo: string | null;
+            cliente: { nome: string | null } | null;
+          };
+        }>(`/api/v1/agenda/agendamentos/${pendente!.id}`)
+      ).data,
+  });
+  const sumiu =
+    detalhe.isError || (detalhe.data ? !["confirmed", "pending"].includes(detalhe.data.status) : false);
+
+  // Compromisso que sumiu (excluído, cancelado, já respondido): descarta e passa para o próximo.
+  const idDoPendente = pendente?.id;
+  React.useEffect(() => {
+    if (idDoPendente && sumiu) {
+      dispensar(idDoPendente);
+      setEscondidos((e) => [...e, idDoPendente]);
+    }
+  }, [idDoPendente, sumiu]);
+
+  if (!pendente || sumiu) return null;
   const esconder = () => {
     dispensar(pendente.id);
     setEscondidos((e) => [...e, pendente.id]);
@@ -83,9 +119,34 @@ export function AvisoDeReuniaoEncerrada({
           <div>
             <DialogTitle className="text-base">{t("Sua reunião terminou")}</DialogTitle>
             <DialogDescription className="text-sm">
-              {pendente.quemSeraAtendido ?? pendente.titulo} · {t("Como foi?")}
+              {t("Como foi?")}
             </DialogDescription>
           </div>
+        </div>
+        <div className="rounded-2xl bg-secondary/60 px-4 py-3 text-sm" data-testid="dados-do-aviso">
+          <div className="font-medium">
+            {detalhe.data?.oportunidade_titulo ?? detalhe.data?.cliente?.nome ?? pendente.quemSeraAtendido ?? pendente.titulo}
+          </div>
+          {detalhe.data ? (
+            <div className="text-xs text-muted-foreground first-letter:uppercase">
+              {new Intl.DateTimeFormat(tag, {
+                timeZone: detalhe.data.time_zone,
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+                hourCycle: "h23",
+              }).format(new Date(detalhe.data.starts_at))}
+              {" – "}
+              {new Intl.DateTimeFormat(tag, {
+                timeZone: detalhe.data.time_zone,
+                hour: "2-digit",
+                minute: "2-digit",
+                hourCycle: "h23",
+              }).format(new Date(detalhe.data.ends_at))}
+            </div>
+          ) : null}
         </div>
         <ul className="flex flex-col gap-2">
           {OPCOES_DE_RESULTADO.map((o) => (

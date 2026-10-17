@@ -96,12 +96,24 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   ]);
   const tipoRaw = (tipoLinha.data as { calendar_event_types?: unknown } | null)?.calendar_event_types;
   const tipoDoCompromisso = (Array.isArray(tipoRaw) ? tipoRaw[0] : tipoRaw) as { id: string; name: string; slug: string } | null | undefined;
+  const leadDoCompromisso = ((vinc.data ?? [])[0] as { lead_id?: string } | undefined)?.lead_id ?? null;
+  const { data: leadRow } = leadDoCompromisso
+    ? await db
+        .from("crm_leads")
+        .select("title, nome_da_venda")
+        .eq("organization_id", org)
+        .eq("id", leadDoCompromisso)
+        .maybeSingle()
+    : { data: null };
   const cliente = cli.data as { name?: string | null; display_name?: string | null; phone_number?: string | null; email?: string | null } | null;
   const extra = {
     cliente: cliente
       ? { nome: nomeDoContato(cliente) ?? cliente.phone_number ?? null, telefone: cliente.phone_number ?? null, email: cliente.email ?? null }
       : null,
-    lead_id: ((vinc.data ?? [])[0] as { lead_id?: string } | undefined)?.lead_id ?? null,
+    lead_id: leadDoCompromisso,
+    oportunidade_titulo:
+      ((leadRow as { nome_da_venda?: string | null; title?: string | null } | null)?.nome_da_venda?.trim() ||
+        (leadRow as { title?: string | null } | null)?.title?.trim()) ?? null,
     tipo: tipoDoCompromisso ? { id: tipoDoCompromisso.id, nome: tipoDoCompromisso.name, slug: tipoDoCompromisso.slug } : null,
     responsavel_id: owner_user_id,
     eh_responsavel: owner_user_id === auth.user.id,

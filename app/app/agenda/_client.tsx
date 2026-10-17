@@ -399,18 +399,7 @@ export function AgendaClient({
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
           </p>
         </div>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {/* "Hoje" é o hoje DA ORGANIZAÇÃO. Com `new Date()` o botão desfazia a
-              âncora do servidor e devolvia a semana do navegador — o defeito que
-              a tela acabou de fechar, a um clique de distância. */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl"
-            onClick={() => setAncora(ancoraLocalDoDia(hojeNaOrganizacao))}
-          >
-            {t("Hoje")}
-          </Button>
+        <div className="flex min-w-0 items-center justify-center gap-2 sm:justify-end">
           {/*
             DESABILITADO COM O MOTIVO À VISTA, e não ligado a um `onClick` vazio.
             Enquanto a frente 1 não expõe `/api/v1/agenda` não há o que marcar, e
@@ -445,19 +434,19 @@ export function AgendaClient({
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl"
+              className="h-9 gap-1.5 rounded-xl px-3 text-xs lg:h-8"
               data-testid="sincronizar-google"
               disabled={sincronizando}
               onClick={sincronizarComGoogle}
             >
-              <ArrowsClockwise size={16} weight="bold" aria-hidden />
+              <ArrowsClockwise size={14} weight="bold" aria-hidden />
               <span>{sincronizando ? t("Sincronizando…") : t("Sincronizar com Google")}</span>
             </Button>
           )}
           {podeMarcar && (
             <Button
               size="sm"
-              className="rounded-xl"
+              className="h-9 gap-1.5 rounded-xl px-3 text-xs lg:h-8"
               disabled={!tipo}
               // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
               // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
@@ -471,7 +460,7 @@ export function AgendaClient({
               title={tipo ? undefined : t("Cadastre um tipo de agendamento para começar")}
               onClick={abrirMarcacao}
             >
-              <CalendarPlus size={16} weight="bold" aria-hidden />
+              <CalendarPlus size={14} weight="bold" aria-hidden />
               <span>{t("Novo agendamento")}</span>
             </Button>
           )}
@@ -479,57 +468,44 @@ export function AgendaClient({
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("Período anterior")}
-              data-testid="periodo-anterior"
-              onClick={() => setAncora((d) => addDays(d, -passo))}
-            >
-              <CaretLeft size={16} weight="bold" aria-hidden />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("Próximo período")}
-              data-testid="periodo-seguinte"
-              onClick={() => setAncora((d) => addDays(d, passo))}
-            >
-              <CaretRight size={16} weight="bold" aria-hidden />
-            </Button>
-          </div>
-          {/*
-            `first-letter:uppercase` e NÃO `capitalize`: o `capitalize` do CSS
-            maiúscula toda palavra, e o date-fns em pt-br devolve "23 de ago" —
-            virava "23 De Ago". Preposição com maiúscula é o detalhe que faz o
-            produto parecer traduzido em vez de escrito, e fica na primeira
-            linha abaixo do título.
-          */}
+        <div className="flex w-full min-w-0 items-center justify-center gap-1.5 sm:w-auto sm:justify-start">
+          {/* "Hoje" é o hoje DA ORGANIZAÇÃO. Com `new Date()` o botão desfazia a âncora do servidor
+              e devolvia a semana do navegador. Fica ao lado da seleção de data. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-xl px-3 text-xs lg:h-8"
+            onClick={() => setAncora(ancoraLocalDoDia(hojeNaOrganizacao))}
+          >
+            {t("Hoje")}
+          </Button>
+          {/* seta, nome do dia ou da semana no centro, seta */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("Período anterior")}
+            data-testid="periodo-anterior"
+            onClick={() => setAncora((d) => addDays(d, -passo))}
+          >
+            <CaretLeft size={16} weight="bold" aria-hidden />
+          </Button>
+          {/* `first-letter:uppercase` e NÃO `capitalize`: o `capitalize` do CSS maiúscula toda
+              palavra, e o date-fns em pt-br devolve "23 de ago" — virava "23 De Ago". */}
           <span
             data-testid="periodo"
-            /*
-              QUEBRA EM DUAS LINHAS NO CELULAR, em vez de cortar.
-
-              Era `truncate`. Em 360px, "Segunda-feira, 5 de outubro" vira
-              "Segunda-feira, 5 de outu…" — e o que o corte come é justamente o
-              MÊS, a informação que diz onde a pessoa está no calendário. Medido
-              na captura de 360px: a reticência caía depois de "outu".
-
-              Trocar o formato por viewport exigiria decidir layout em
-              JavaScript, que é o que a casa recusa (pisca na hidratação), e o
-              padrão é traduzível — ele vem do dicionário, não do código. Duas
-              linhas custam ~20px e dizem a data inteira.
-
-              `lg:truncate` devolve uma linha onde a largura sobra: ali o corte
-              nunca chegava a acontecer, e manter o `truncate` protege a barra
-              de uma data longa num idioma mais verboso.
-            */
-            className="text-sm font-semibold text-balance first-letter:uppercase lg:truncate"
+            className="min-w-0 flex-1 text-center text-sm font-semibold text-balance first-letter:uppercase sm:min-w-[11rem] sm:flex-none"
           >
             {periodo}
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("Próximo período")}
+            data-testid="periodo-seguinte"
+            onClick={() => setAncora((d) => addDays(d, passo))}
+          >
+            <CaretRight size={16} weight="bold" aria-hidden />
+          </Button>
         </div>
 
         {/* `flex-wrap` pelo mesmo motivo da vitrine, e aqui é conserto de CLASSE e
@@ -541,7 +517,8 @@ export function AgendaClient({
           <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
           <div
             data-testid="alternador-de-visao"
-            className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+            // No celular a agenda é só do dia: o alternador de visão não aparece.
+            className="hidden items-center gap-0.5 rounded-xl border border-border bg-surface p-0.5 md:flex"
           >
             {VISOES.map((v) => (
               <button
