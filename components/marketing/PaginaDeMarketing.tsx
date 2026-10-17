@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Capa } from "@/components/marketing/Capa";
 import { EtiquetaDeEstado } from "@/components/marketing/Cartoes";
-import { comVoltar } from "@/components/shell/BotaoVoltar";
+import { comVoltar } from "@/lib/navigation/voltar";
 import type { TomDaCapa } from "@/lib/marketing/modulos";
 import { ArrowRight, CaretLeft } from "@/lib/ui/icons";
 

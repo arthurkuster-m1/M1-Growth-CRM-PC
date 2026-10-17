@@ -5,21 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
+import { PARAM_NOME_DO_VOLTAR, PARAM_VOLTAR, caminhoSeguro, comVoltar } from "@/lib/navigation/voltar";
 import { CaretLeft } from "@/lib/ui/icons";
 
-/** Os parâmetros que um atalho põe no endereço para a página de destino saber como voltar. */
-export const PARAM_VOLTAR = "voltar";
-export const PARAM_NOME_DO_VOLTAR = "vnome";
-
-/** O endereço de um atalho que, na chegada, mostra "Voltar" para `origem`. */
-export function comVoltar(href: string, origem: { href: string; rotulo: string }): string {
-  const separador = href.includes("?") ? "&" : "?";
-  return `${href}${separador}${PARAM_VOLTAR}=${encodeURIComponent(origem.href)}&${PARAM_NOME_DO_VOLTAR}=${encodeURIComponent(origem.rotulo)}`;
-}
-
-/** Só volta para dentro do app: nunca para outro site (`//x`, `https://…`). */
-const caminhoSeguro = (c: string | null): c is string =>
-  c !== null && c.startsWith("/app/") && !c.startsWith("//") && !c.includes("\\");
+// As funções puras moram em `lib/navigation/voltar.ts` (páginas de servidor as usam sem passar por aqui).
+export { PARAM_VOLTAR, PARAM_NOME_DO_VOLTAR, comVoltar };
 
 function Barra() {
   const t = useT();
