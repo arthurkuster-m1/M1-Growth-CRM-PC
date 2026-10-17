@@ -176,6 +176,7 @@ export function FormularioDeNovoCompromisso({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <VinculoDaMarcacao
+            semConversa
             contactId={contactId}
             conversationId={conversationId}
             onChange={(c, v) => {
