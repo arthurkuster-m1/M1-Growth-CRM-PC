@@ -3,7 +3,7 @@
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useAgendamentos } from "@/hooks/agenda/useAgendamentos";
 import { useAgentInbox } from "@/hooks/ai/useAgentInbox";
@@ -29,6 +29,8 @@ import {
   Plus,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
+
+const CHAVE_DA_VISAO_DO_CALENDARIO = "m1:inicio:visao-do-calendario";
 
 interface Props {
   nome: string;
@@ -108,7 +110,24 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
   const agora = useMemo(() => new Date(agoraIso), [agoraIso]);
   const hoje = chaveDoDia(agora, fuso);
   const [selecionada, setSelecionada] = useState(hoje);
-  const [modo, setModo] = useState<"semana" | "dia">("semana");
+  const [modo, setModoNaTela] = useState<"semana" | "dia">("semana");
+  // A visão escolhida (Dia ou Semana) fica neste navegador: lê depois da hidratação, não no useState.
+  useEffect(() => {
+    try {
+      const salvo = window.localStorage.getItem(CHAVE_DA_VISAO_DO_CALENDARIO);
+      if (salvo === "dia" || salvo === "semana") setModoNaTela(salvo);
+    } catch {
+      // sem armazenamento: fica na semana
+    }
+  }, []);
+  const setModo = (novo: "semana" | "dia") => {
+    setModoNaTela(novo);
+    try {
+      window.localStorage.setItem(CHAVE_DA_VISAO_DO_CALENDARIO, novo);
+    } catch {
+      // sem armazenamento: só não lembra
+    }
+  };
   const [escopo, setEscopo] = useState<"minhas" | "equipe">("minhas");
 
   const semana = useMemo(() => diasDaSemana(selecionada), [selecionada]);

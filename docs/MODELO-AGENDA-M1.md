@@ -121,3 +121,7 @@ Ordem recomendada: 0 → 1 → 2 → 3 → 5 → 4 → 6. Os passos 3 e 5 dão v
 3. **Lembretes e confirmação de presença:** os 3 tipos hoje estão com lembrete desligado. Quais tipos devem ter o fluxo anti no-show, e com que degraus (por exemplo 24h e 2h antes)?
 4. **Quem confirma a falta:** continua sendo sempre humano (como está), ou a falta pode ser presumida depois de um prazo?
 5. **Compromisso sem oportunidade:** para um cliente sem nenhuma oportunidade, o compromisso cria uma oportunidade nova ou fica só no contato?
+
+## 8. Estado em 17/10/2026
+
+Passos 0 a 6 entregues (rotinas, Google, compromisso ↔ oportunidade, importação, análises, anti no-show). Depois: página única do compromisso, "Novo agendamento" unificado, seletor só de horários livres, Confirmado/Resultado/Excluir, aviso de reunião encerrada, configuração dentro da Agenda e botão de sincronizar com o Google. Em andamento: vários atendentes por tipo (`PLANO-AGENDA-EQUIPE-M1.md`).

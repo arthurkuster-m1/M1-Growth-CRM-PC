@@ -1,6 +1,6 @@
 # PLANO DO M1 GROWTH CRM
 
-Atualizado em 16/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
+Atualizado em 17/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
 
@@ -109,15 +109,28 @@ Detalhe em `MODELO-CRM-M1.md`, `PLANO-OPORTUNIDADE-UNICA-M1.md`, `MODELO-AGENDA-
   validado pelo Arthur em 16/10 (agendamento do app apareceu no Google).
 - Migrations aplicadas até a **0648**.
 
-## 1B. PRÓXIMOS PASSOS (ordem combinada em 16/10/2026)
-1. ~~Repositório privado~~ Adiado: primeiro finalizar a edição do app e o deploy na VPS; depois o Arthur
-   torna o repositório privado (exige token de leitura no servidor e ajuste de `m1-puxar-build.sh`).
-2. Checagem da suíte de testes (separar falhas antigas de regressões).
-3. Validar lembrete de compromisso e anti no-show com lembrete ligado (Configurações › Agenda).
+### Agenda, página do compromisso e equipe (16 e 17/10/2026)
+Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
+- **Google:** botão "Sincronizar com Google" no topo da Agenda (ida e volta na hora, só da empresa); rotinas do Google a cada 10 minutos; cartão "Conexão com Google" no fim da página.
+- **Página única do compromisso** (popup central, a mesma de qualquer entrada): cliente, telefone, e-mail, link da reunião, status, oportunidade com venda e parcelas editáveis, atendimento que muda com o tipo (modelo de vendas com roteiro, anotações e espaço para a IA ao vivo, "em breve"). Botões Confirmado, Resultado (No show / Compareceu e não comprou / Compareceu e comprou) e Excluir; aviso quando a reunião termina (hoje só com a Agenda aberta).
+- **"Novo agendamento" em qualquer tela** (Agenda, grade, ficha, oportunidade, Inbox, Início) abre a mesma página, pedindo cliente, oportunidade, tipo, data/horário e responsável. Responsável sugerido: o da oportunidade; sem ele, o do relacionamento com o cliente; trocar na reunião não muda o CRM nem a oportunidade. Reagendar, trocar oportunidade e trocar responsável em qualquer visualização.
+- **Seletor só com horários livres** do atendente escolhido (dias sem vaga desligados).
+- **Configuração da Agenda no fim da página** (tipos e regras, atendentes e horários, agendas do Google).
+- **Visual:** abas com pasta, cantos arredondados, celular sem rolagem lateral. **Início:** a visão Dia/Semana do calendário fica salva neste navegador.
+- **Nome do cliente numa regra só** em todo o app (o nome digitado vale primeiro; depois o apelido do WhatsApp).
+- **Qualidade:** suíte de testes triada (falhas antigas do espanhol removido seguem fora do escopo); rotinas ignoram empresa suspensa; rotas de gravação sem guarda de suporte corrigidas; popover sem erro em ambiente de teste.
+- **Equipe da Agenda (decisões fechadas em 17/10):** vários atendentes por tipo, cada um com a própria agenda e jornada. Distribuição ao "qualquer atendente" = **menos carregado no dia** (desempate pela prioridade). Uma jornada por pessoa. Padrão ao marcar = responsável da oportunidade, com "qualquer atendente" a um clique. Só gerentes configuram. Atendente sem Google entra, com aviso. **Funciona nos dois sentidos:** escolhendo o responsável, só os horários dele; escolhendo o horário, só os atendentes livres nele. **Google:** cada atendente sincroniza a própria agenda; trocar o responsável tira o evento da agenda do Google do anterior e põe na do novo; sem Google conectado, fica só na agenda do app. **Andamento:** migration 0649 escrita e ensaiada em rollback (não aplicada); biblioteca da equipe pronta; falta rota, telas, distribuição na marcação e a troca de agenda no Google.
+
+
+## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
+1. **Equipe da Agenda (em andamento):** aplicar a migration 0649 (aguarda o "pode aplicar"), tela pessoas × tipos, escolha nos dois sentidos, distribuição pelo menos carregado e troca de agenda no Google ao mudar o responsável.
+2. Aviso de reunião encerrada em qualquer tela do app (hoje só na Agenda); limpar o código do painel antigo de marcação.
+3. Roteiro de vendas e modelos de atendimento editáveis por empresa e por tipo; recomendações da IA ao vivo.
 4. Inbox (frente 5).
-5. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa).
+5. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa, compromissos da Agenda).
 6. Hotmart; depois financeiro e CAC real (D5).
 7. D6 metas e alertas; D4 Google Ads.
+8. Último passo: finalizar o app, publicar na VPS e só então tornar o repositório privado (token de leitura no servidor).
 Rotinas desligadas de propósito (~25): disparam mensagens; ligar por pacote, só a pedido.
 
 ## 2. PEQUENOS AJUSTES PENDENTES

@@ -112,3 +112,25 @@ Aba **Atendentes e horários** da Configuração da Agenda, com:
 3. **Marcar sem escolher pessoa:** o padrão do formulário deve ser "qualquer atendente do tipo" ou o responsável da oportunidade (com opção de trocar)? *(sugestão: o da oportunidade, como hoje, com "qualquer atendente" a um clique)*
 4. **Quem configura:** só gerentes e acima (como hoje)?
 5. **Atendente sem Google conectado** entra na distribuição? *(sugestão: sim, avisando)*
+
+## 9. Decisões fechadas (17/10/2026)
+
+1. Distribuição ao "qualquer atendente": **menos carregado no dia**; empate pela prioridade.
+2. Horários: **uma jornada por pessoa** (a de hoje).
+3. Padrão ao marcar: **o responsável da oportunidade**, com "qualquer atendente" a um clique.
+4. Quem configura: **só gerentes e acima**.
+5. Atendente sem Google conectado **entra** na distribuição, **com aviso**.
+
+### Os dois sentidos (pedido do Arthur)
+- **Escolho o responsável:** o calendário mostra só os dias e horários livres dele (já no ar).
+- **Escolho o horário:** a tela mostra só os atendentes do tipo que estão livres naquele horário (com a carga do dia e o aviso de Google), e "qualquer atendente" escolhe o menos carregado.
+
+### Google por atendente
+- Cada atendente conecta o próprio Google; os compromissos em que ele é o responsável aparecem na agenda pessoal dele.
+- **Trocar o responsável** tira o evento da agenda do Google do anterior e cria na do novo. Sem Google conectado, o compromisso fica só na agenda do app.
+
+## 10. Andamento
+
+- Migration `0649_atendentes_por_tipo` escrita e **ensaiada em rollback** (3 linhas preenchidas a partir dos responsáveis atuais, RLS e idempotência conferidas). **Não aplicada.** O código novo funciona sem ela (cai no responsável do tipo).
+- Pronto: `lib/agenda/equipe.ts` (atendentes do tipo, livres no horário, o menos carregado) com teste.
+- Falta: rotas (atendentes livres, união de horários, configuração), tela pessoas × tipos, marcação com distribuição, troca de agenda no Google ao mudar o responsável.
