@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useEffect, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -131,7 +132,7 @@ export function EdicaoDaSemana({
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <select
+                <SelectDoApp
                   value={x.lado}
                   aria-label={t("Quem faz")}
                   onChange={(e) =>
@@ -141,8 +142,8 @@ export function EdicaoDaSemana({
                 >
                   <option value="agencia">{t("Agência")}</option>
                   <option value="cliente">{empresa || t("Cliente")}</option>
-                </select>
-                <select
+                </SelectDoApp>
+                <SelectDoApp
                   value={x.status === "cancelled" ? "pending" : x.status}
                   aria-label={t("Situação")}
                   onChange={(e) => void acoes.editar(x.id, { status: e.target.value })}
@@ -151,7 +152,7 @@ export function EdicaoDaSemana({
                   <option value="pending">{t("A fazer")}</option>
                   <option value="in_progress">{t("Em andamento")}</option>
                   <option value="done">{t("Concluída")}</option>
-                </select>
+                </SelectDoApp>
                 {x.status !== "done" ? (
                   <button
                     type="button"
@@ -202,14 +203,14 @@ export function EdicaoDaSemana({
             placeholder={t("Prazo")}
             aoMudar={setDia}
           />
-          <select
+          <SelectDoApp
             value={lado}
             onChange={(e) => setLado(e.target.value as LadoDaTarefa)}
             className={CAMPO}
           >
             <option value="agencia">{t("Agência")}</option>
             <option value="cliente">{empresa || t("Cliente")}</option>
-          </select>
+          </SelectDoApp>
           <button
             type="button"
             disabled={titulo.trim() === "" || dia === ""}
@@ -347,14 +348,14 @@ function DialogoDeIncluir({
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">{t("Quem faz")}</span>
-            <select
+            <SelectDoApp
               value={lado}
               onChange={(e) => setLado(e.target.value as LadoDaTarefa)}
               className={CAMPO}
             >
               <option value="agencia">{t("Agência")}</option>
               <option value="cliente">{empresa || t("Cliente")}</option>
-            </select>
+            </SelectDoApp>
           </label>
           <button
             type="button"

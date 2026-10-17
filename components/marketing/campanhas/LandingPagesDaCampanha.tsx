@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useEffect, useState } from "react";
 
 import {
@@ -482,7 +483,7 @@ function CartaoDaLp({
           rotulo={t("Link da LP (https://…)")}
           max={1000}
         />
-        <select
+        <SelectDoApp
           className={cn(CAMPO, "sm:w-36")}
           disabled={!podeEditar}
           value={lp.status}
@@ -494,7 +495,7 @@ function CartaoDaLp({
               {rotuloDoStatusDoCriativo(t, s)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </div>
       <Texto
         valor={lp.notes}

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { Capa } from "@/components/marketing/Capa";
 import { EtiquetaDeEstado } from "@/components/marketing/Cartoes";
+import { comVoltar } from "@/components/shell/BotaoVoltar";
 import type { TomDaCapa } from "@/lib/marketing/modulos";
 import { ArrowRight, CaretLeft } from "@/lib/ui/icons";
 
@@ -104,16 +105,19 @@ export function AtalhoEmDestaque({
   descricao,
   icone,
   tom = "blue",
+  voltarPara,
 }: {
   href: string;
   titulo: string;
   descricao: string;
   icone: ReactNode;
   tom?: "blue" | "green" | "purple" | "orange" | "pink";
+  /** A página de onde o atalho sai: na chegada aparece um "Voltar" que leva de volta a ela. */
+  voltarPara?: { href: string; rotulo: string };
 }) {
   return (
     <Link
-      href={href}
+      href={voltarPara ? comVoltar(href, voltarPara) : href}
       className="group flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
     >
       <span

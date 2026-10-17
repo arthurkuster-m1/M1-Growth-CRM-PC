@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -262,7 +263,7 @@ export function EditorDeOferta({
       <Grupo titulo={t("O que é")}>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <Rotulo texto={t("Etapa na escada de valor")}>
-            <select
+            <SelectDoApp
               value={bloco.etapa}
               onChange={(e) => set("etapa", e.target.value as Oferta["etapa"])}
               className={CAMPO}
@@ -272,7 +273,7 @@ export function EditorDeOferta({
                   {rotuloDaEtapa(e)}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <label className="flex items-end gap-2 pb-2 text-sm">
             <input
@@ -384,7 +385,7 @@ export function EditorDeOferta({
       <Grupo titulo={t("Preço e prazo")}>
         <div className="grid gap-3 sm:grid-cols-3">
           <Rotulo texto={t("Como é cobrado")}>
-            <select
+            <SelectDoApp
               value={bloco.preco.tipo}
               onChange={(e) =>
                 set("preco", { ...bloco.preco, tipo: e.target.value as Oferta["preco"]["tipo"] })
@@ -396,7 +397,7 @@ export function EditorDeOferta({
                   {rotuloDoPreco(p)}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </Rotulo>
           {bloco.preco.tipo === "setup-mensal" ? (
             <Rotulo texto={t("Setup (R$)")}>

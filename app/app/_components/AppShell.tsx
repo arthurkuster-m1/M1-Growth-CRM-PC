@@ -5,6 +5,7 @@ import { PagamentoPedidoDaOportunidade } from "@/components/vendas/PagamentoPedi
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
+import { BotaoVoltar } from "@/components/shell/BotaoVoltar";
 import { BarraInferior } from "@/components/shell/BarraInferior";
 import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNavegacao";
 import { useSinalDePresenca } from "@/hooks/atendimento/useSinalDePresenca";
@@ -105,6 +106,7 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
           style={estiloDaReserva(ocupacaoDoRodape)}
           data-rodape-ocupado={ocupacaoDoRodape}
         >
+          <BotaoVoltar />
           {children}
         </main>
       </div>

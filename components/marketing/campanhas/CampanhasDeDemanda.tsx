@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -963,6 +964,13 @@ function NovaCampanha({
   const [nome, setNome] = useState("");
   const [canal, setCanal] = useState<CampanhaDeDemanda["channel"]>("trafego_pago");
   const [criando, setCriando] = useState(false);
+  async function criar() {
+    if (nome.trim() === "" || criando) return;
+    setCriando(true);
+    await aoCriar({ name: nome.trim(), channel: canal });
+    setCriando(false);
+    setNome("");
+  }
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
       <DialogContent className="max-w-md gap-4 p-5 sm:rounded-2xl">
@@ -974,12 +982,19 @@ function NovaCampanha({
           value={nome}
           maxLength={160}
           autoFocus
-          placeholder={t("Ex.: [1º sessão] Campanha R$79,90")}
+          placeholder={t("Ex.: [CAMPANHA] Geração de Demanda")}
           aria-label={t("Nome da campanha")}
           onChange={(e) => setNome(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter cria a campanha (o IME em composição não conta).
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void criar();
+            }
+          }}
           className={CAMPO}
         />
-        <select
+        <SelectDoApp
           value={canal}
           aria-label={t("Canal")}
           onChange={(e) => setCanal(e.target.value as CampanhaDeDemanda["channel"])}
@@ -990,16 +1005,11 @@ function NovaCampanha({
               {rotuloDoCanal(t, c)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
         <button
           type="button"
           disabled={nome.trim() === "" || criando}
-          onClick={async () => {
-            setCriando(true);
-            await aoCriar({ name: nome.trim(), channel: canal });
-            setCriando(false);
-            setNome("");
-          }}
+          onClick={() => void criar()}
           className="h-10 rounded-xl bg-primary text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           {t("Criar campanha")}

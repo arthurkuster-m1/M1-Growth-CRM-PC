@@ -35,6 +35,7 @@ export default async function GeracaoDeDemandaPage() {
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
         <AtalhoEmDestaque
+          voltarPara={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Campanhas") }}
           href="/app/marketing/geracao-de-demanda/resultados"
           titulo={t("Resultados das campanhas")}
           descricao={t("Investido, leads, vendas e faturamento por período")}
@@ -42,6 +43,7 @@ export default async function GeracaoDeDemandaPage() {
           tom="blue"
         />
         <AtalhoEmDestaque
+          voltarPara={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Campanhas") }}
           href="/app/clientes"
           titulo={t("Clientes (CRM)")}
           descricao={t("Os leads de todos os funis, em tabela ou quadro")}
@@ -49,6 +51,7 @@ export default async function GeracaoDeDemandaPage() {
           tom="green"
         />
         <AtalhoEmDestaque
+          voltarPara={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Campanhas") }}
           href="/app/ads/meta"
           titulo={t("Meta Ads")}
           descricao={t("Resultados das campanhas pagas")}

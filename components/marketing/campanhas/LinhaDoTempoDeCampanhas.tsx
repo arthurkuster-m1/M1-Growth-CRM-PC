@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -104,7 +105,7 @@ export function LinhaDoTempoDeCampanhas({
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
               {t("Dias na tela")}
-              <select
+              <SelectDoApp
                 value={DIAS}
                 onChange={(e) => aoMudar({ dias: Number(e.target.value), escala })}
                 className="h-9 rounded-lg border bg-background px-2 text-sm text-foreground"
@@ -116,7 +117,7 @@ export function LinhaDoTempoDeCampanhas({
                       {n}
                     </option>
                   ))}
-              </select>
+              </SelectDoApp>
             </label>
             <div
               role="group"
