@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useEffect, useState } from "react";
 
 import { AcoesDaColecao } from "@/components/marketing/campanhas/AcoesDaColecao";
@@ -117,7 +118,7 @@ function Cartao({
         max={160}
       />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <select
+        <SelectDoApp
           className={CAMPO}
           disabled={bloqueado}
           value={a.medium}
@@ -129,8 +130,8 @@ function Cartao({
               {rotuloDoMeio(t, m)}
             </option>
           ))}
-        </select>
-        <select
+        </SelectDoApp>
+        <SelectDoApp
           className={CAMPO}
           disabled={bloqueado}
           value={a.status}
@@ -142,7 +143,7 @@ function Cartao({
               {rotuloDoStatusDoCriativo(t, s)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </div>
       <Texto
         valor={a.audience}

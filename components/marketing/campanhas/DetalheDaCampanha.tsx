@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -424,7 +425,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             </Rotulo>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Rotulo texto={t("Canal")}>
-                <select
+                <SelectDoApp
                   className={CAMPO}
                   disabled={bloqueado}
                   value={c.channel}
@@ -437,10 +438,10 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                       {rotuloDoCanal(t, x)}
                     </option>
                   ))}
-                </select>
+                </SelectDoApp>
               </Rotulo>
               <Rotulo texto={t("Status")}>
-                <select
+                <SelectDoApp
                   className={CAMPO}
                   disabled={bloqueado}
                   value={c.status}
@@ -451,7 +452,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                       {rotuloDoStatus(t, x)}
                     </option>
                   ))}
-                </select>
+                </SelectDoApp>
               </Rotulo>
             </div>
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
@@ -533,7 +534,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 />
               </Rotulo>
               <Rotulo texto={t("Vale por")}>
-                <select
+                <SelectDoApp
                   className={CAMPO}
                   disabled={bloqueado}
                   value={c.budget_period}
@@ -549,7 +550,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                       {rotuloDoPeriodo(t, p)}
                     </option>
                   ))}
-                </select>
+                </SelectDoApp>
               </Rotulo>
               <Rotulo texto={t("Imposto sobre o investimento (%)")}>
                 <NumeroGravavel
@@ -657,7 +658,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                   </ul>
                 ) : null}
                 {podeEditar ? (
-                  <select
+                  <SelectDoApp
                     className={CAMPO}
                     value=""
                     aria-label={t("Adicionar produto")}
@@ -677,7 +678,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                           {p.nome}
                         </option>
                       ))}
-                  </select>
+                  </SelectDoApp>
                 ) : null}
               </div>
             </Rotulo>
@@ -702,7 +703,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
           <Bloco titulo={t("Metas")} tom="amber">
             <Rotulo texto={t("As metas valem para")}>
-              <select
+              <SelectDoApp
                 className={CAMPO}
                 disabled={bloqueado}
                 value={c.goal_period}
@@ -715,7 +716,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
               >
                 <option value="total">{t("A campanha toda (início ao fim)")}</option>
                 <option value="mensal">{t("Cada mês (renova todo mês)")}</option>
-              </select>
+              </SelectDoApp>
             </Rotulo>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
               <Rotulo texto={t("Meta de leads")}>
@@ -953,7 +954,7 @@ function CampanhasDaPlataforma({
           ) : meta.opcoes ? (
             <>
               <Rotulo texto={t("Conta de anúncio")}>
-                <select
+                <SelectDoApp
                   className={CAMPO}
                   value={c.meta_account_id || meta.opcoes.account_id || ""}
                   onChange={(e) => aoGravar({ meta_account_id: e.target.value })}
@@ -964,7 +965,7 @@ function CampanhasDaPlataforma({
                       {a.status !== undefined && a.status !== 1 ? ` — ${t("inativa")}` : ""}
                     </option>
                   ))}
-                </select>
+                </SelectDoApp>
               </Rotulo>
               <div className="flex flex-wrap items-center gap-3">
                 <input
@@ -1061,7 +1062,7 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
       {podeEditar ? (
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr]">
-            <select
+            <SelectDoApp
               className={CAMPO}
               value={tipo}
               aria-label={t("Tipo da nota")}
@@ -1072,7 +1073,7 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
                   {rotuloDaNota(t, k)}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
             <SeletorDeData
               valor={data}
               rotulo={t("Data da nota")}

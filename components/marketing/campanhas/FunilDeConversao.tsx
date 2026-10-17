@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { GerenciarModelosDeFunil } from "@/components/marketing/campanhas/GerenciarModelosDeFunil";
 import Link from "next/link";
@@ -419,7 +420,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                     <span className="mb-1 block text-xs text-muted-foreground">
                       {t("O que acontece nesta etapa")}
                     </span>
-                    <select
+                    <SelectDoApp
                       className={CAMPO}
                       disabled={!podeEditar}
                       value={papelDe(atual)}
@@ -433,7 +434,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       <option value="disqualified">{t("Lead desqualificado")}</option>
                       <option value="won">{t("Aqui o cliente fecha")}</option>
                       <option value="lost">{t("Aqui o cliente desiste")}</option>
-                    </select>
+                    </SelectDoApp>
                     {atual.qualification ? (
                       <span className="mt-1 block text-xs text-muted-foreground">
                         {atual.qualification === "mql"
@@ -505,7 +506,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
             <span className="mb-1 block text-xs text-muted-foreground">
               {t("Quando o lead ganhar neste funil, ele entra em")}
             </span>
-            <select
+            <SelectDoApp
               className={CAMPO}
               value={funil?.ao_ganhar_funil_id ?? ""}
               onChange={async (ev) => {
@@ -527,7 +528,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                     {f.name}
                   </option>
                 ))}
-            </select>
+            </SelectDoApp>
             <span className="mt-1 block text-xs text-muted-foreground">
               {t(
                 "O lead continua no CRM: fica como ganho aqui e abre uma entrada na primeira etapa do funil escolhido.",

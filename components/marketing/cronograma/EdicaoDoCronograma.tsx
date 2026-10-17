@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useState } from "react";
 
 import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
@@ -241,7 +242,7 @@ function LinhaDeMeta({
           }
           className={CAMPO}
         />
-        <select
+        <SelectDoApp
           value={meta.tipo}
           aria-label={t("Tipo da meta")}
           onChange={(e) => void aoEditar({ tipo: e.target.value as TipoDeMeta })}
@@ -252,7 +253,7 @@ function LinhaDeMeta({
               {rotuloDoTipo(tipo)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
         {meta.tipo === "numero" ? (
           <input
             defaultValue={meta.unidade}
@@ -278,7 +279,7 @@ function LinhaDeMeta({
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         <Rotulo texto={t("De onde vem o número de hoje")}>
-          <select
+          <SelectDoApp
             value={meta.fonte}
             aria-label={t("De onde vem o número de hoje")}
             onChange={(e) => void aoEditar({ fonte: e.target.value as FonteDaMeta })}
@@ -292,12 +293,12 @@ function LinhaDeMeta({
             <option value="investido">{t("Investimento em anúncios")}</option>
             <option value="cpl">{t("CPL (custo por lead)")}</option>
             <option value="roas">{t("ROAS (retorno sobre o investido)")}</option>
-          </select>
+          </SelectDoApp>
         </Rotulo>
         {meta.fonte !== "manual" ? (
           <>
             <Rotulo texto={t("Prazo da meta")}>
-              <select
+              <SelectDoApp
                 value={meta.periodo}
                 aria-label={t("Prazo da meta")}
                 onChange={(e) => {
@@ -332,7 +333,7 @@ function LinhaDeMeta({
                   <option value="mes_passado">{t("Mês passado")}</option>
                 </optgroup>
                 <option value="personalizado">{t("Datas personalizadas…")}</option>
-              </select>
+              </SelectDoApp>
               {meta.periodo === "personalizado" ? (
                 <div className="mt-2">
                   <SeletorDePeriodo
@@ -348,7 +349,7 @@ function LinhaDeMeta({
             </Rotulo>
             {meta.fonte !== "cpl" && meta.fonte !== "roas" ? (
               <Rotulo texto={t("Cálculo")}>
-                <select
+                <SelectDoApp
                   value={meta.calculo}
                   aria-label={t("Cálculo")}
                   onChange={(e) => void aoEditar({ calculo: e.target.value as CalculoDaMeta })}
@@ -356,7 +357,7 @@ function LinhaDeMeta({
                 >
                   <option value="soma">{t("Soma do período")}</option>
                   <option value="media_diaria">{t("Média por dia")}</option>
-                </select>
+                </SelectDoApp>
               </Rotulo>
             ) : (
               <span />
@@ -426,7 +427,7 @@ function NovaMeta({ aoCriar }: { aoCriar: (m: DadosDaMeta) => Promise<unknown> }
           onChange={(e) => setTitulo(e.target.value)}
           className={CAMPO}
         />
-        <select
+        <SelectDoApp
           value={tipo}
           aria-label={t("Tipo da meta")}
           onChange={(e) => {
@@ -440,7 +441,7 @@ function NovaMeta({ aoCriar }: { aoCriar: (m: DadosDaMeta) => Promise<unknown> }
               {rotuloDoTipo(v)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
         {tipo === "numero" ? (
           <input
             value={unidade}
@@ -538,7 +539,7 @@ function LinhaDeAcao({
         }
       />
       <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto_auto] md:col-span-2 xl:col-span-1">
-        <select
+        <SelectDoApp
           value={item.status}
           aria-label={t("Situação")}
           onChange={(e) =>
@@ -551,8 +552,8 @@ function LinhaDeAcao({
               {rotuloDoStatus(s)}
             </option>
           ))}
-        </select>
-        <select
+        </SelectDoApp>
+        <SelectDoApp
           value={item.fase}
           aria-label={t("Fase")}
           onChange={(e) => void acoes.aoEditarItem(item.id, { fase: e.target.value })}
@@ -564,7 +565,7 @@ function LinhaDeAcao({
               {f}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <input
             type="checkbox"

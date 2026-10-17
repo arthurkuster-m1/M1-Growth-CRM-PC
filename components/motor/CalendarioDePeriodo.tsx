@@ -129,16 +129,54 @@ export function CalendarioDoDia({
   valor: string;
   aoMudar: (dia: string) => void;
 }) {
+  const t = useT();
   const hoje = hojeLocal();
   const [mes, setMes] = useState(() => inicioDoMes(valor || hoje));
+  const [texto, setTexto] = useState(formatarDiaBr(valor));
+  const [textoDe, setTextoDe] = useState(valor);
+  if (valor !== textoDe) {
+    setTextoDe(valor);
+    setTexto(formatarDiaBr(valor));
+  }
   return (
-    <GradeDoMes
-      mes={mes}
-      aoMudarMes={setMes}
-      hoje={hoje}
-      estado={(d) => ({ extremo: d === valor })}
-      aoEscolher={aoMudar}
-    />
+    <div>
+      <input
+        inputMode="numeric"
+        aria-label={t("Data")}
+        placeholder="dd/mm/aaaa"
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          const lido = lerDiaBr(e.target.value);
+          if (lido) {
+            setTextoDe(lido);
+            aoMudar(lido);
+            setMes(inicioDoMes(lido));
+          }
+        }}
+        onBlur={() => setTexto(formatarDiaBr(valor))}
+        className="mb-3 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+      />
+      <GradeDoMes
+        mes={mes}
+        aoMudarMes={setMes}
+        hoje={hoje}
+        estado={(d) => ({ extremo: d === valor })}
+        aoEscolher={aoMudar}
+      />
+      <div className="mt-2 border-t pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            aoMudar(hoje);
+            setMes(inicioDoMes(hoje));
+          }}
+          className="rounded-lg px-2 py-1.5 text-sm font-medium text-primary hover:bg-secondary"
+        >
+          {t("Hoje")}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -291,6 +329,45 @@ export function CampoDeData({
   );
 }
 
+/** Início ou fim do período: um campo que se escreve (dd/mm/aaaa) e acompanha o que o mês escolhe. */
+function CampoDigitavelDoPeriodo({
+  rotulo,
+  dia,
+  aoLer,
+}: {
+  rotulo: string;
+  dia: string;
+  aoLer: (dia: string) => void;
+}) {
+  const [texto, setTexto] = useState(formatarDiaBr(dia));
+  const [textoDe, setTextoDe] = useState(dia);
+  if (dia !== textoDe) {
+    setTextoDe(dia);
+    setTexto(formatarDiaBr(dia));
+  }
+  return (
+    <label className="rounded-xl border bg-background px-3 py-1.5">
+      <span className="block text-[10px] text-muted-foreground uppercase">{rotulo}</span>
+      <input
+        inputMode="numeric"
+        aria-label={rotulo}
+        placeholder="dd/mm/aaaa"
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          const lido = lerDiaBr(e.target.value);
+          if (lido) {
+            setTextoDe(lido);
+            aoLer(lido);
+          }
+        }}
+        onBlur={() => setTexto(formatarDiaBr(dia))}
+        className="w-full bg-transparent text-sm font-medium outline-hidden"
+      />
+    </label>
+  );
+}
+
 export interface AtalhoDePeriodo {
   id: string;
   rotulo: string;
@@ -397,16 +474,22 @@ export function SeletorDePeriodo({
           </div>
           <div>
             <div className="mb-3 grid grid-cols-2 gap-2">
-              <div className="rounded-xl border bg-background px-3 py-1.5">
-                <p className="text-[10px] text-muted-foreground uppercase">{t("Início")}</p>
-                <p className="text-sm font-medium">{a ? formatarDiaBr(a) : "—"}</p>
-              </div>
-              <div className="rounded-xl border bg-background px-3 py-1.5">
-                <p className="text-[10px] text-muted-foreground uppercase">{t("Fim")}</p>
-                <p className="text-sm font-medium">
-                  {inicio && sobre === inicio ? "…" : b ? formatarDiaBr(b) : "—"}
-                </p>
-              </div>
+              <CampoDigitavelDoPeriodo
+                rotulo={t("Início")}
+                dia={a}
+                aoLer={(dia) => {
+                  aoMudar({ de: dia, ate: dia > ate && ate ? dia : ate || dia });
+                  setMes(inicioDoMes(dia));
+                }}
+              />
+              <CampoDigitavelDoPeriodo
+                rotulo={t("Fim")}
+                dia={inicio && sobre === inicio ? "" : b}
+                aoLer={(dia) => {
+                  aoMudar({ de: dia < de && de ? dia : de || dia, ate: dia });
+                  setMes(inicioDoMes(dia));
+                }}
+              />
             </div>
             <GradeDoMes
               mes={mes}
@@ -420,6 +503,17 @@ export function SeletorDePeriodo({
               aoEscolher={escolher}
               aoPassarPor={(d) => inicio !== null && setSobre(d ?? inicio)}
             />
+            <button
+              type="button"
+              disabled={max !== undefined && hoje > max}
+              onClick={() => {
+                aoMudar({ de: hoje, ate: hoje });
+                setAberto(false);
+              }}
+              className="mt-2 rounded-lg px-2 py-1.5 text-sm font-medium text-primary hover:bg-secondary disabled:opacity-40"
+            >
+              {t("Hoje")}
+            </button>
             <p className="mt-2 text-xs text-muted-foreground">
               {inicio === null
                 ? t("Clique no primeiro dia e depois no último.")

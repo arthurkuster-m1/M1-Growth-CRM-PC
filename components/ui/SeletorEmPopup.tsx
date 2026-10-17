@@ -25,7 +25,8 @@ interface Props {
   /** Rótulo da opção que limpa a escolha (ex.: "Sem campanha"); sem isto não há opção vazia. */
   rotuloVazio?: string;
   desabilitado?: boolean;
-  rotulo: string;
+  /** Nome acessível; sem ele, vale o `<label>` que envolve o campo. */
+  rotulo?: string;
   className?: string;
   /** Permite criar uma opção nova ali mesmo (ex.: uma nova origem). */
   criar?: {

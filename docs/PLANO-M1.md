@@ -142,6 +142,17 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
   aparece no link público quando publicada. Páginas antigas dos 5 módulos removidos continuam no
   banco, sem tela.
 
+### Campanhas, datas e seletores — ajustes de 17/10/2026 (2)
+- **Nova campanha:** exemplo "[CAMPANHA] Geração de Demanda", Enter cria, canal no seletor do app.
+- **Seletores em todo Marketing:** `SelectDoApp` (`components/ui/SelectDoApp.tsx`) troca o `<select>`
+  do navegador pelo seletor em popup sem reescrever os formulários — Campanhas, Cronograma, editor
+  de páginas e ofertas.
+- **Datas:** todo seletor de data aceita escrever a data (dd/mm/aaaa) e o "Hoje" agora **escolhe**
+  o dia de hoje (cronograma, Tarefas/Agenda, célula de dia, período). Os `<input type="date">`
+  nativos que sobraram (honorários, antiban, contato) ainda não foram trocados.
+- **Atalhos com "Voltar":** os atalhos de Campanhas (Clientes, Meta Ads, Resultados) levam
+  `?voltar=` e a página de destino mostra "Voltar para …" (`components/shell/BotaoVoltar.tsx`).
+
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
 1. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google com uma segunda pessoa conectada.
 2. Limpar o código do painel antigo de marcação.
@@ -214,7 +225,9 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 
 ## 4. FECHAMENTO DO PROJETO (depois dos planos)
 1. Limpeza total do que veio do projeto original (docs, testes e2e, instalador, imagem Docker,
-   pastas e volumes antigos, linhas de cron apontando para pasta inexistente).
+   pastas e volumes antigos, linhas de cron apontando para pasta inexistente) **e de todas as
+   telas que não usamos mais** — entre elas a tela antiga "Novo agendamento" (painel lateral da
+   Agenda, `app/app/agenda/_client.tsx`), substituída pelo pop-up "Novo compromisso".
 2. Instalador (`instalar-vps.sh`) e roteiro de migração para a VPS nova; testar em VPS limpa;
    migrar com o atual no ar. Antes: cópia segura do `.env.local` (chaves que cifram dados do banco).
 

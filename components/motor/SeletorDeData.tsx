@@ -104,6 +104,17 @@ export function SeletorDeData({
           <p className="flex-1 text-base font-semibold capitalize">{nomeDoMes}</p>
           <button
             type="button"
+            onClick={() => {
+              // "Hoje" escolhe o dia de hoje (não só volta o mês).
+              aoMudarDia(hoje);
+              setMes(inicioDoMes(hoje));
+            }}
+            className="h-9 rounded-lg px-2 text-sm font-medium text-primary hover:bg-secondary"
+          >
+            {t("Hoje")}
+          </button>
+          <button
+            type="button"
             aria-label={t("Mês anterior")}
             onClick={() => setMes((m) => somarMeses(m, -1))}
             className="grid h-9 w-9 place-items-center rounded-lg hover:bg-secondary"

@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useState, type ReactNode } from "react";
 
 import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
@@ -95,7 +96,7 @@ function SeletorDeAlinhamento({
   const rotulo = useRotulosDeAlinhamento();
   return (
     <Rotulo texto={t("Alinhamento")}>
-      <select
+      <SelectDoApp
         value={valor}
         onChange={(e) => aoMudar(e.target.value as (typeof ALINHAMENTOS)[number])}
         className={CAMPO}
@@ -105,7 +106,7 @@ function SeletorDeAlinhamento({
             {rotulo(a)}
           </option>
         ))}
-      </select>
+      </SelectDoApp>
     </Rotulo>
   );
 }
@@ -488,14 +489,14 @@ function FormularioDoBloco({
       return (
         <div className="grid gap-3 sm:grid-cols-[9rem_9rem_1fr]">
           <Rotulo texto={t("Tamanho")}>
-            <select
+            <SelectDoApp
               value={bloco.nivel}
               onChange={(e) => aoMudar({ ...bloco, nivel: e.target.value === "2" ? 2 : 1 })}
               className={CAMPO}
             >
               <option value={1}>{t("Seção (novo slide)")}</option>
               <option value={2}>{t("Subtítulo")}</option>
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <SeletorDeAlinhamento
             valor={bloco.alinhamento ?? "esquerda"}
@@ -537,7 +538,7 @@ function FormularioDoBloco({
       return (
         <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
           <Rotulo texto={t("Tom")}>
-            <select
+            <SelectDoApp
               value={bloco.tom}
               onChange={(e) => aoMudar({ ...bloco, tom: e.target.value as typeof bloco.tom })}
               className={CAMPO}
@@ -545,7 +546,7 @@ function FormularioDoBloco({
               <option value="info">{t("Informação")}</option>
               <option value="sucesso">{t("Conquista")}</option>
               <option value="atencao">{t("Atenção")}</option>
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <Rotulo texto={t("Texto do destaque")}>
             <textarea
@@ -563,7 +564,7 @@ function FormularioDoBloco({
       return (
         <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
           <Rotulo texto={t("Estilo")}>
-            <select
+            <SelectDoApp
               value={bloco.estilo}
               onChange={(e) => aoMudar({ ...bloco, estilo: e.target.value as typeof bloco.estilo })}
               className={CAMPO}
@@ -571,7 +572,7 @@ function FormularioDoBloco({
               <option value="marcadores">{t("Marcadores")}</option>
               <option value="numerada">{t("Numerada")}</option>
               <option value="check">{t("Com check")}</option>
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <Rotulo texto={t("Itens (um por linha)")}>
             <textarea
@@ -765,7 +766,7 @@ function FormularioDoBloco({
       return (
         <div className="grid gap-3">
           <Rotulo texto={t("Forma")}>
-            <select
+            <SelectDoApp
               value={bloco.forma}
               onChange={(e) => aoMudar({ ...bloco, forma: e.target.value as typeof bloco.forma })}
               className={cn(CAMPO, "sm:w-56")}
@@ -775,7 +776,7 @@ function FormularioDoBloco({
                   {f === "piramide" ? t("Pirâmide (topo estreito)") : t("Funil (topo largo)")}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <p className="text-xs text-muted-foreground">
             {t("Do topo para a base, na ordem em que aparecem.")}
@@ -1072,7 +1073,7 @@ function FormularioDoBloco({
       return (
         <div className="grid gap-3">
           <Rotulo texto={t("Estilo")}>
-            <select
+            <SelectDoApp
               value={bloco.estilo}
               onChange={(e) => aoMudar({ ...bloco, estilo: e.target.value as typeof bloco.estilo })}
               className={cn(CAMPO, "sm:w-56")}
@@ -1082,7 +1083,7 @@ function FormularioDoBloco({
                   {x === "swot" ? t("SWOT (com cores)") : t("Neutro")}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <div className="grid gap-3 sm:grid-cols-2">
             {bloco.celulas.map((c, i) => (
@@ -1170,7 +1171,7 @@ function FormularioDoBloco({
           </Rotulo>
           <div className="grid gap-3 sm:grid-cols-2">
             <Rotulo texto={t("Largura")}>
-              <select
+              <SelectDoApp
                 value={bloco.largura}
                 onChange={(e) =>
                   aoMudar({ ...bloco, largura: e.target.value as typeof bloco.largura })
@@ -1188,7 +1189,7 @@ function FormularioDoBloco({
                           : t("Largura total")}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
             </Rotulo>
             <SeletorDeAlinhamento
               valor={bloco.alinhamento}
@@ -1206,7 +1207,7 @@ function FormularioDoBloco({
             aoMudar={(arquivo) => aoMudar({ ...bloco, arquivo })}
           />
           <Rotulo texto={t("Imagem fica à")}>
-            <select
+            <SelectDoApp
               value={bloco.lado}
               onChange={(e) => aoMudar({ ...bloco, lado: e.target.value as typeof bloco.lado })}
               className={cn(CAMPO, "sm:w-40")}
@@ -1216,7 +1217,7 @@ function FormularioDoBloco({
                   {l === "esquerda" ? t("Esquerda") : t("Direita")}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </Rotulo>
           <Rotulo texto={t("Título")}>
             <input

@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -73,7 +74,7 @@ export function ApagarCampanhasDialog({
                 : `${dados!.leads} ${t("leads estão nesse funil e vão ser mantidos.")}`}{" "}
               {t("Para qual funil eles devem passar?")}
             </p>
-            <select
+            <SelectDoApp
               value={destino}
               aria-label={t("Funil de destino dos leads")}
               onChange={(e) => setDestino(e.target.value)}
@@ -85,7 +86,7 @@ export function ApagarCampanhasDialog({
                   {f.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
         ) : null}
 

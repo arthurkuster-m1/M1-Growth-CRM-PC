@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -346,7 +347,7 @@ function CartaoDoCriativo({
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <select
+        <SelectDoApp
           className={CAMPO}
           disabled={bloqueado}
           value={c.status}
@@ -358,8 +359,8 @@ function CartaoDoCriativo({
               {rotuloDoStatusDoCriativo(t, s)}
             </option>
           ))}
-        </select>
-        <select
+        </SelectDoApp>
+        <SelectDoApp
           className={CAMPO}
           disabled={bloqueado}
           value={c.format}
@@ -371,7 +372,7 @@ function CartaoDoCriativo({
               {rotuloDoFormato(t, f)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </div>
 
       <ImagensDoCriativo

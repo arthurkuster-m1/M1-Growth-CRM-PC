@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -124,7 +125,7 @@ export function CompartilharPagina({
           </div>
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">{t("Validade")}</span>
-            <select
+            <SelectDoApp
               value={validade}
               onChange={(e) => setValidade(e.target.value)}
               className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
@@ -133,7 +134,7 @@ export function CompartilharPagina({
               <option value="7">{t("7 dias")}</option>
               <option value="30">{t("30 dias")}</option>
               <option value="90">{t("90 dias")}</option>
-            </select>
+            </SelectDoApp>
           </label>
           <button
             type="button"

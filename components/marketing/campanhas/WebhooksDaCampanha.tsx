@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -207,7 +208,7 @@ export function WebhooksDaCampanha({
               <span className="text-xs text-muted-foreground">
                 {t("Ou ligar um webhook que já existe")}
               </span>
-              <select
+              <SelectDoApp
                 className="h-10 rounded-xl border bg-background px-3 text-sm"
                 value=""
                 onChange={(e) => {
@@ -221,7 +222,7 @@ export function WebhooksDaCampanha({
                     {f.name}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
             </label>
           ) : null}
         </div>

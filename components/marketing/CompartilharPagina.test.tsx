@@ -61,7 +61,8 @@ describe("Compartilhar com o cliente", () => {
     });
     montar();
     await screen.findByLabelText("Endereço do link");
-    await userEvent.selectOptions(screen.getByLabelText("Validade"), "30");
+    await userEvent.click(screen.getByLabelText("Validade"));
+    await userEvent.click(await screen.findByRole("button", { name: "30 dias" }));
     await userEvent.click(screen.getByRole("button", { name: "Gerar link" }));
     await waitFor(() =>
       expect(apiClient.post).toHaveBeenCalledWith("/api/v1/marketing/share-links", {

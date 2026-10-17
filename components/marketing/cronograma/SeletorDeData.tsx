@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
+import { formatarDiaBr, lerDiaBr } from "@/lib/motor/calendario";
 import { FUSO_DO_CRONOGRAMA } from "@/lib/marketing/cronograma";
 import { CalendarBlank, CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,13 @@ export function SeletorDeData({
   const tag = useTagDeIdioma();
   const [aberto, setAberto] = useState(false);
   const hoje = chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA);
+  // O campo de cima se escreve (dd/mm/aaaa): é o caminho curto para datas longe de hoje.
+  const [digitado, setDigitado] = useState(() => formatarDiaBr(valor));
+  const [digitadoDe, setDigitadoDe] = useState(valor);
+  if (valor !== digitadoDe) {
+    setDigitadoDe(valor);
+    setDigitado(formatarDiaBr(valor));
+  }
   const base = valor || hoje;
   const [mes, setMes] = useState(() => ({
     ano: Number(base.slice(0, 4)),
@@ -118,7 +126,24 @@ export function SeletorDeData({
         collisionPadding={8}
         className="max-h-[var(--radix-popover-content-available-height)] w-[17.5rem] max-w-[94vw] overflow-y-auto overscroll-contain rounded-2xl p-3"
       >
-        <div className="mb-2 rounded-lg border bg-background px-3 py-2 text-sm">{texto}</div>
+        <input
+          inputMode="numeric"
+          aria-label={rotulo}
+          placeholder="dd/mm/aaaa"
+          value={digitado}
+          onChange={(e) => {
+            setDigitado(e.target.value);
+            const lido = lerDiaBr(e.target.value);
+            if (lido) {
+              setDigitadoDe(lido);
+              aoMudar(lido);
+              setMes({ ano: Number(lido.slice(0, 4)), m: Number(lido.slice(5, 7)) - 1 });
+            }
+          }}
+          onBlur={() => setDigitado(formatarDiaBr(valor))}
+          onKeyDown={(e) => e.key === "Enter" && setAberto(false)}
+          className="mb-2 h-10 w-full rounded-lg border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        />
         <div className="mb-1 flex items-center justify-between px-1">
           <span className="text-sm font-semibold capitalize">{nomeDoMes}</span>
           <span className="inline-flex items-center gap-0.5">
@@ -132,9 +157,7 @@ export function SeletorDeData({
             </button>
             <button
               type="button"
-              onClick={() => {
-                setMes({ ano: Number(hoje.slice(0, 4)), m: Number(hoje.slice(5, 7)) - 1 });
-              }}
+              onClick={() => escolher(hoje)}
               className="h-7 rounded-md px-2 text-xs font-medium text-primary hover:bg-secondary"
             >
               {t("Hoje")}

@@ -61,6 +61,10 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
       <DetalheDaCampanha id={id} />
       <section className="grid gap-3 sm:grid-cols-2">
         <AtalhoEmDestaque
+          voltarPara={{
+            href: `/app/marketing/geracao-de-demanda/campanhas/${id}`,
+            rotulo: nome ?? t("a campanha"),
+          }}
           href="/app/clientes"
           titulo={t("Clientes (CRM)")}
           descricao={t("Os leads de todos os funis")}
@@ -68,6 +72,10 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
           tom="green"
         />
         <AtalhoEmDestaque
+          voltarPara={{
+            href: `/app/marketing/geracao-de-demanda/campanhas/${id}`,
+            rotulo: nome ?? t("a campanha"),
+          }}
           href="/app/ads/meta"
           titulo={t("Meta Ads")}
           descricao={t("Resultados das campanhas pagas")}
