@@ -131,15 +131,15 @@ describe("leitura paginada sob claim original", () => {
     );
     expect(item()).toEqual({ external_event_id: event.id });
   });
-  it("prefixo sem tupla é problema visível, nunca silêncio por anti-eco", async () => {
+  it("evento do produto sem compromisso (excluído) não trava a leitura: sai do Google e vira lápide", async () => {
     transport.mockResolvedValue(
       new Response(
         JSON.stringify({ items: [{ ...event, id: idDeEventoDoGoogle(id) }], nextSyncToken: "new" }),
       ),
     );
-    expect(await syncCalendar(db(), org, id, transport)).toBe("failed");
-    expect(actions.some((a) => a.action === "error")).toBe(true);
-    expect(actions.some((a) => a.action === "page")).toBe(false);
+    expect(await syncCalendar(db(), org, id, transport)).not.toBe("failed");
+    expect(actions.some((a) => a.action === "error")).toBe(false);
+    expect(item()).toMatchObject({ external_event_id: idDeEventoDoGoogle(id), status: "cancelled" });
   });
   it("cancelamento de terceiro preserva lápide sem horários", async () => {
     transport.mockResolvedValue(

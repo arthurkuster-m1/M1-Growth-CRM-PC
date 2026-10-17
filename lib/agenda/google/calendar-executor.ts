@@ -123,8 +123,27 @@ export async function syncCalendar(
         await call("item", { item: { external_event_id: event.id } });
         continue;
       }
-      if (ehEventoNosso(event.id))
-        throw new Error("Evento do produto sem vínculo. Revise a publicação antiga.");
+      if (ehEventoNosso(event.id)) {
+        // Evento que o PRODUTO criou, mas cujo compromisso não existe mais (foi excluído). Antes a
+        // leitura parava aqui para sempre e a agenda ficava "não verificada". Agora o evento
+        // órfão sai do Google e a leitura segue.
+        try {
+          const g = googleTransport(token, transport);
+          const atual = await g.get(c.external_calendar_id, event.id!);
+          if (atual) await g.write(c.external_calendar_id, event.id!, "DELETE", undefined, atual.etag ?? null);
+        } catch {
+          // não deu para apagar agora: fica registrado como cancelado e a leitura segue
+        }
+        await call("item", {
+          item: {
+            external_event_id: event.id,
+            status: "cancelled",
+            recurring_event_id: event.recurringEventId,
+            original_start_time: event.originalStartTime,
+          },
+        });
+        continue;
+      }
       const read = doEventoDoGoogle(event, { fusoDoCalendario: timeZone! });
       if (read.tipo === "recusado")
         throw new Error("Evento inválido. A leitura não foi concluída.");
