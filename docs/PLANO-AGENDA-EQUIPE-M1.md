@@ -129,8 +129,9 @@ Aba **Atendentes e horários** da Configuração da Agenda, com:
 - Cada atendente conecta o próprio Google; os compromissos em que ele é o responsável aparecem na agenda pessoal dele.
 - **Trocar o responsável** tira o evento da agenda do Google do anterior e cria na do novo. Sem Google conectado, o compromisso fica só na agenda do app.
 
-## 10. Andamento
+## 10. Andamento (17/10/2026)
 
-- Migration `0649_atendentes_por_tipo` escrita e **ensaiada em rollback** (3 linhas preenchidas a partir dos responsáveis atuais, RLS e idempotência conferidas). **Não aplicada.** O código novo funciona sem ela (cai no responsável do tipo).
-- Pronto: `lib/agenda/equipe.ts` (atendentes do tipo, livres no horário, o menos carregado) com teste.
-- Falta: rotas (atendentes livres, união de horários, configuração), tela pessoas × tipos, marcação com distribuição, troca de agenda no Google ao mudar o responsável.
+- Migration `0649_atendentes_por_tipo` escrita e **ensaiada em rollback** (3 linhas preenchidas a partir dos responsáveis atuais, RLS e idempotência conferidas). **Não aplicada.** O código funciona sem ela (cai no responsável do tipo).
+- **Publicado no código:** biblioteca da equipe (`lib/agenda/equipe.ts`); `GET /agenda/atendentes-livres` (escolhi o horário, quem está livre); `GET /horarios-livres?owner_user_id=qualquer` (união dos horários, cada um com quem está livre); `GET/PUT /agenda/atendentes-do-tipo` (matriz, só gerente grava); marcação com `distribuir` (menos carregado no dia entre os livres); formulário de novo compromisso com os dois sentidos e avisos (não faz o tipo, não está livre, sem Google); página do compromisso com a lista de responsáveis filtrada (atendentes do tipo livres naquele horário); matriz pessoas × tipos na Configuração da Agenda.
+- **Google ao trocar o responsável:** apaga o evento da agenda do anterior e cria na do novo; sem Google no novo, só no app; se o Google não deixar remover, avisa para apagar à mão.
+- Falta: aplicar a migration 0649 (aguarda o "pode aplicar"); marcação pela IA e por integrações usando a mesma distribuição (fase 3).
