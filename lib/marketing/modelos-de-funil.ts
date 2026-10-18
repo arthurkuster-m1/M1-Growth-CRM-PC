@@ -52,6 +52,12 @@ export const criarFunilDaCampanhaSchema = z.object({
     .union([z.string().uuid(), z.string().regex(/^fixo:[a-z0-9-]{1,60}$/)])
     .nullable()
     .optional(),
+  /**
+   * RECOMEÇAR: a campanha já tem funil, e o pedido é trocá-lo por um novo (de um modelo). Os
+   * formulários da campanha passam para o novo funil; o antigo é apagado se estiver vazio e
+   * arquivado, com todo o histórico, se tiver oportunidades.
+   */
+  substituir: z.boolean().optional(),
 });
 
 /** As etapas do modelo lidas do banco (jsonb), descartando o que não casa com o formato. */

@@ -177,6 +177,11 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
   importado do Google) leva a oportunidade para "agendado"; resultado "realizada" leva para "reuniao-realizada"
   (só para a frente). "Comprou" continua abrindo o pagamento. Pendente: perguntar "e agora?" após "não
   comprou" (negociação / desqualificado / não comprou com motivo) e lead que já chega qualificado/agendado pela LP.
+- **Feito (18/10):** diálogo "E agora?" após "Compareceu e não comprou" (`DestinoPosReuniao`, rota
+  `/api/v1/leads/[id]/destinos-pos-reuniao`); webhook aceita `qualificado`/`qualified`/`mql`/`lead_qualificado` =
+  sim → lead nasce na etapa MQL (`lib/webhooks/qualificacao-da-captacao.ts`); "Apagar e recomeçar" no funil da
+  campanha (`substituir: true`: webhooks vão para o funil novo; antigo apagado se vazio, arquivado se tiver negócios).
+  Apagar de vez as oportunidades de um funil NÃO foi feito (carregam vendas e histórico) — decisão pendente.
 - Hoje só aparecem ao criar o funil de uma campanha; levar para "Novo funil" em Configurações › Funis é o próximo passo natural.
 
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)

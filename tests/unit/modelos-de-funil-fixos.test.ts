@@ -42,6 +42,13 @@ describe("modelos de funil fixos", () => {
     },
   );
 
+  it("os modelos com reunião têm 'Em negociação' (para onde vai quem compareceu e não comprou)", () => {
+    for (const chave of ["trafego-pago-com-reuniao", "prospeccao-ativa"]) {
+      const etapas = MODELOS_DE_FUNIL_FIXOS.find((m) => m.chave === chave)!.stages;
+      expect(etapas.find((e) => e.name === "Em negociação")?.slug, chave).toBe("em-negociacao");
+    }
+  });
+
   it("o tráfego com reunião passa por agendamento e reunião; o sem reunião, não", () => {
     const nomes = (chave: string) =>
       MODELOS_DE_FUNIL_FIXOS.find((m) => m.chave === chave)!.stages.map((e) => e.name);
@@ -78,5 +85,9 @@ describe("modelos de funil fixos", () => {
     ).toBe(true);
     expect(criarFunilDaCampanhaSchema.safeParse({ template_id: "fixo:../x" }).success).toBe(false);
     expect(criarFunilDaCampanhaSchema.safeParse({}).success).toBe(true);
+    // Recomeçar: troca o funil que a campanha já tem.
+    expect(
+      criarFunilDaCampanhaSchema.safeParse({ template_id: id, substituir: true }).success,
+    ).toBe(true);
   });
 });

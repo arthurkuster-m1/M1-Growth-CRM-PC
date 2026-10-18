@@ -7,6 +7,7 @@ import {
   modeloFixoDoId,
 } from "@/lib/marketing/modelos-de-funil-fixos";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
+import { RecomecarFunil } from "@/components/marketing/campanhas/RecomecarFunil";
 import { GerenciarModelosDeFunil } from "@/components/marketing/campanhas/GerenciarModelosDeFunil";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -105,6 +106,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [modeloEscolhido, setModeloEscolhido] = useState("");
   const [gerenciando, setGerenciando] = useState(false);
+  const [recomecando, setRecomecando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const router = useRouter();
 
@@ -224,10 +226,10 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                 type="button"
                 disabled={criando}
                 onClick={() => void criarFunil(null)}
-                className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                className="inline-flex h-10 w-fit max-w-full items-center gap-1.5 rounded-xl bg-primary px-3 text-[13px] font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50 sm:px-4 sm:text-sm"
               >
-                <Plus size={14} weight="bold" aria-hidden />
-                {criando ? t("Criando…") : t("Criar o funil desta campanha")}
+                <Plus size={14} weight="bold" className="shrink-0" aria-hidden />
+                {criando ? t("Criando…") : t("Criar funil da campanha")}
               </button>
             </div>
             <div className="grid grid-cols-1 content-start gap-2 rounded-xl border p-3">
@@ -277,7 +279,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                 type="button"
                 disabled={criando || modeloEscolhido === ""}
                 onClick={() => void criarFunil(modeloEscolhido)}
-                className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                className="inline-flex h-10 w-fit max-w-full items-center gap-1.5 rounded-xl bg-primary px-3 text-[13px] font-medium whitespace-nowrap text-primary-foreground disabled:opacity-50 sm:px-4 sm:text-sm"
               >
                 {criando ? t("Criando…") : t("Criar a partir do modelo")}
               </button>
@@ -319,6 +321,15 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                 {t("Salvar como modelo")}
               </button>
             ) : null}
+            {podeEditar ? (
+              <button
+                type="button"
+                onClick={() => setRecomecando(true)}
+                className="h-9 rounded-xl border border-error/40 px-3 text-sm font-medium whitespace-nowrap text-error-fg hover:bg-error-bg"
+              >
+                {t("Apagar e recomeçar")}
+              </button>
+            ) : null}
             <Link
               href={`/app/clientes?visao=oportunidades&funil=${c.pipeline_id}`}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
@@ -339,6 +350,19 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
               aoGravar={(nome) => void renomearFunil(nome)}
             />
           </label>
+        ) : null}
+        {recomecando ? (
+          <RecomecarFunil
+            campanhaId={c.id}
+            modelos={modelos}
+            aoFechar={() => setRecomecando(false)}
+            aoConcluir={async () => {
+              setEtapas(null);
+              setEscolhida(null);
+              await queryClient.invalidateQueries({ queryKey: ["demand-campaigns"] });
+              router.refresh();
+            }}
+          />
         ) : null}
         {aviso ? (
           <p role="status" className="text-sm text-muted-foreground">
