@@ -6,6 +6,7 @@
  * ação síncrona além de criar o lead (motor de regras consome lead.created
  * via event_log). Aceita JSON e form-urlencoded na mesma URL.
  */
+import { etapaDeMql, veioQualificado } from "@/lib/webhooks/qualificacao-da-captacao";
 import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -623,6 +624,16 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     }
   }
 
+  // Formulário que já qualificou o lead: ele nasce na etapa de MQL do funil, não na primeira.
+  let qualificadoNaCaptacao = false;
+  if (funilDoLead && veioQualificado(achatarPayload(payload))) {
+    const mql = await etapaDeMql(admin, source.organization_id, funilDoLead);
+    if (mql) {
+      etapaDoLead = mql;
+      qualificadoNaCaptacao = true;
+    }
+  }
+
   const leadInput: CreateLeadInput & {
     custom_fields?: Record<string, unknown>;
     source_metadata?: Record<string, unknown>;
@@ -641,6 +652,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
       ...mapped.source_metadata,
       webhook_source_id: source.id,
       ...(origemDaCampanha ? { demand_campaign_id: origemDaCampanha.campanhaId } : {}),
+      ...(qualificadoNaCaptacao ? { qualificado_na_captacao: true } : {}),
     },
     ...(externalId ? { external_id: externalId } : {}),
   };

@@ -8,8 +8,9 @@
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { lerFunis } from "@/app/api/v1/pipelines/_funis";
+import { lerDependencias, lerFunis } from "@/app/api/v1/pipelines/_funis";
 import { fail, ok } from "@/lib/api/wrappers";
+import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { slugDeNome } from "@/lib/leads/stage-editing";
@@ -21,7 +22,13 @@ import {
   type EtapaDoModelo,
 } from "@/lib/marketing/modelos-de-funil";
 import { modeloFixoDoId } from "@/lib/marketing/modelos-de-funil-fixos";
-import { ETAPAS_INICIAIS, posicaoEntre, slugDeFunil } from "@/lib/pipelines/pipeline-editing";
+import {
+  ETAPAS_INICIAIS,
+  podeExcluirDeVez,
+  posicaoEntre,
+  slugDeFunil,
+  validarArquivamento,
+} from "@/lib/pipelines/pipeline-editing";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -54,7 +61,8 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     .eq("organization_id", a.orgId)
     .maybeSingle();
   if (!campanha) return campanhaNaoEncontrada(a.t, a.requestId);
-  if (campanha.pipeline_id) {
+  const funilAntigoId = (campanha.pipeline_id as string | null) ?? null;
+  if (funilAntigoId && !corpo.data.substituir) {
     return fail("validation_failed", a.t("Esta campanha já tem um funil."), 409, {
       requestId: a.requestId,
     });
@@ -82,7 +90,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     etapas = doModelo;
   }
 
-  const funis = await lerFunis(a.supabase, a.orgId);
+  let funis = await lerFunis(a.supabase, a.orgId);
   const nomes = new Set(funis.map((f) => f.name.trim().toLowerCase()));
   const base = (campanha.name as string).trim().slice(0, 76);
   let nome = base;
@@ -103,11 +111,15 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     .select("id")
     .single();
   if (error || !criado) {
-    return fail("internal_error", a.t("Erro ao criar o funil."), 500, { requestId: a.requestId });
+    logger.error("[demand-campaigns.funnel] funil não criado", { campaign_id: id, erro: error?.message });
+    return fail("funnel_stages_failed", `${a.t("Erro ao criar o funil")}: ${error?.message ?? ""}`, 500, {
+      requestId: a.requestId,
+    });
   }
   const pipelineId = (criado as { id: string }).id;
 
   const slugs: string[] = [];
+  const papeisNaoGravados: string[] = [];
   const linhas = etapas.map((e, i) => {
     // O slug do modelo (`agendado`, `reuniao-realizada`) liga a etapa ao compromisso; sem ele, do nome.
     const slug = e.slug && !slugs.includes(e.slug) ? e.slug : slugDeNome(e.name, slugs);
@@ -125,17 +137,64 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       qualification: e.is_won || e.is_lost ? null : e.qualification,
     };
   });
-  const { error: erroEtapas } = await a.supabase.from("crm_stages").insert(linhas);
+  let { error: erroEtapas } = await a.supabase.from("crm_stages").insert(linhas);
   if (erroEtapas) {
+    // O papel de qualificação (MQL / desqualificado) dispara uma regra da Meta no banco; se ESSA
+    // parte falhar, o funil não pode deixar de nascer por causa dela. Tenta de novo sem o papel e
+    // aplica-o etapa por etapa — o que não pegar fica sem o papel, e o aviso diz quais.
+    logger.warn("[demand-campaigns.funnel] etapas com qualificação falharam; tentando sem", {
+      campaign_id: id,
+      erro: erroEtapas.message,
+      codigo: (erroEtapas as { code?: string }).code,
+    });
+    const { data: inseridas, error: erroSemPapel } = await a.supabase
+      .from("crm_stages")
+      .insert(linhas.map((l) => ({ ...l, qualification: null })))
+      .select("id, slug");
+    if (!erroSemPapel) {
+      erroEtapas = null;
+      for (const l of linhas) {
+        if (!l.qualification) continue;
+        const criada = (inseridas ?? []).find((x) => x.slug === l.slug);
+        if (!criada) continue;
+        const { error: erroPapel } = await a.supabase
+          .from("crm_stages")
+          .update({ qualification: l.qualification })
+          .eq("id", criada.id as string)
+          .eq("organization_id", a.orgId);
+        if (erroPapel) {
+          logger.warn("[demand-campaigns.funnel] papel de qualificação não gravado", {
+            campaign_id: id,
+            etapa: l.name,
+            erro: erroPapel.message,
+          });
+          papeisNaoGravados.push(l.name);
+        }
+      }
+    } else {
+      erroEtapas = erroSemPapel;
+    }
+  }
+  if (erroEtapas) {
+    logger.error("[demand-campaigns.funnel] etapas não criadas", {
+      campaign_id: id,
+      erro: erroEtapas.message,
+      codigo: (erroEtapas as { code?: string }).code,
+    });
     // Funil sem etapa é quadro morto: desfaz o que acabou de criar.
     await a.supabase
       .from("crm_pipelines")
       .delete()
       .eq("id", pipelineId)
       .eq("organization_id", a.orgId);
-    return fail("internal_error", a.t("Erro ao criar as etapas do funil."), 500, {
-      requestId: a.requestId,
-    });
+    // Código próprio (não `internal_error`): a tela mostra a frase, com o motivo do banco, em vez
+    // do "erro interno" genérico — quem está montando o funil precisa saber o que recusou.
+    return fail(
+      "funnel_stages_failed",
+      `${a.t("Erro ao criar as etapas do funil")}: ${erroEtapas.message}`,
+      500,
+      { requestId: a.requestId },
+    );
   }
 
   const { error: erroCampanha } = await a.supabase
@@ -149,9 +208,87 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       .delete()
       .eq("id", pipelineId)
       .eq("organization_id", a.orgId);
-    return fail("internal_error", a.t("Erro ao ligar o funil à campanha."), 500, {
-      requestId: a.requestId,
+    logger.error("[demand-campaigns.funnel] campanha não ligada ao funil", {
+      campaign_id: id,
+      erro: erroCampanha.message,
     });
+    return fail(
+      "funnel_stages_failed",
+      `${a.t("Erro ao ligar o funil à campanha")}: ${erroCampanha.message}`,
+      500,
+      { requestId: a.requestId },
+    );
+  }
+
+  // RECOMEÇAR: o que dependia do funil antigo passa para o novo, e o antigo sai de cena.
+  let funilAntigo: "excluido" | "arquivado" | "mantido" | null = null;
+  let motivoDoAntigo: string | undefined;
+  let nomeFinal = nome;
+  if (funilAntigoId) {
+    // Os formulários da campanha (fonte de webhook) mandam o lead para o funil novo — sem isso o
+    // lead continuaria entrando no antigo.
+    const primeiraEtapa = await a.supabase
+      .from("crm_stages")
+      .select("id")
+      .eq("organization_id", a.orgId)
+      .eq("pipeline_id", pipelineId)
+      .eq("is_archived", false)
+      .eq("is_won", false)
+      .eq("is_lost", false)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    await a.supabase
+      .from("webhook_sources")
+      .update({
+        default_pipeline_id: pipelineId,
+        default_stage_id: (primeiraEtapa.data?.id as string | undefined) ?? null,
+      })
+      .eq("organization_id", a.orgId)
+      .eq("default_pipeline_id", funilAntigoId);
+
+    funis = await lerFunis(a.supabase, a.orgId);
+    const deps = await lerDependencias(a.supabase, a.orgId, funilAntigoId);
+    const antigo = funis.find((f) => f.id === funilAntigoId);
+    const veredito = podeExcluirDeVez(funis, funilAntigoId, deps);
+    if (veredito.ok) {
+      const { error: erroExcluir } = await a.supabase
+        .from("crm_pipelines")
+        .delete()
+        .eq("id", funilAntigoId)
+        .eq("organization_id", a.orgId);
+      funilAntigo = erroExcluir ? "mantido" : "excluido";
+      if (erroExcluir) motivoDoAntigo = erroExcluir.message;
+    } else {
+      const arquivavel = validarArquivamento(funis, funilAntigoId, deps);
+      if (arquivavel.ok) {
+        // Nome livre para o novo funil: o antigo vira "(antigo)" e o novo fica com o nome limpo.
+        const ocupados = new Set(funis.map((f) => f.name.trim().toLowerCase()));
+        let nomeAntigo = `${(antigo?.name ?? base).slice(0, 70)} (antigo)`;
+        for (let n = 2; ocupados.has(nomeAntigo.toLowerCase()); n++) {
+          nomeAntigo = `${(antigo?.name ?? base).slice(0, 66)} (antigo ${n})`;
+        }
+        const { error: erroArquivar } = await a.supabase
+          .from("crm_pipelines")
+          .update({ is_archived: true, name: nomeAntigo })
+          .eq("id", funilAntigoId)
+          .eq("organization_id", a.orgId);
+        funilAntigo = erroArquivar ? "mantido" : "arquivado";
+        if (erroArquivar) motivoDoAntigo = erroArquivar.message;
+      } else {
+        funilAntigo = "mantido";
+        motivoDoAntigo = arquivavel.erro;
+      }
+    }
+    // O antigo saiu da frente: o novo pode ficar com o nome limpo da campanha.
+    if (funilAntigo !== "mantido" && nome !== base) {
+      const { error: erroNome } = await a.supabase
+        .from("crm_pipelines")
+        .update({ name: base })
+        .eq("id", pipelineId)
+        .eq("organization_id", a.orgId);
+      if (!erroNome) nomeFinal = base;
+    }
   }
 
   void audit({
@@ -161,8 +298,23 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     resourceType: "crm_pipeline",
     resourceId: pipelineId,
     requestId: a.requestId,
-    metadata: { name: nome, campaign_id: id, template_id: corpo.data.template_id ?? null },
+    metadata: {
+      name: nomeFinal,
+      campaign_id: id,
+      template_id: corpo.data.template_id ?? null,
+      substituiu_funil: funilAntigoId,
+      funil_antigo: funilAntigo,
+    },
   });
 
-  return ok({ pipeline_id: pipelineId, name: nome }, { requestId: a.requestId, status: 201 });
+  return ok(
+    {
+      pipeline_id: pipelineId,
+      name: nomeFinal,
+      funil_antigo: funilAntigo,
+      ...(papeisNaoGravados.length > 0 ? { etapas_sem_papel_de_qualificacao: papeisNaoGravados } : {}),
+      ...(motivoDoAntigo ? { motivo_do_funil_antigo: motivoDoAntigo } : {}),
+    },
+    { requestId: a.requestId, status: 201 },
+  );
 }

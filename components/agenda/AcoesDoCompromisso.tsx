@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { pedirDestinoPosReuniao } from "@/lib/destino-pos-reuniao-cliente";
 import { pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export function useAcoesDoCompromisso() {
   const resultado = useMutation({
     mutationFn: async (a: { id: string; opcao: ResultadoDaReuniao; leadId?: string | null }) => {
       let { leadId } = a;
-      if (a.opcao === "comprou" && leadId === undefined) {
+      if (a.opcao !== "no_show" && leadId === undefined) {
         const d = await apiClient.get<{ data: { lead_id: string | null } }>(`/api/v1/agenda/agendamentos/${a.id}`);
         leadId = d.data.lead_id;
       }
@@ -62,6 +63,8 @@ export function useAcoesDoCompromisso() {
       recarregar();
       if (opcao !== "comprou") {
         toast.success(t("Resultado registrado."));
+        // Compareceu e não comprou: pergunta para onde vai a oportunidade (o funil diz o que oferece).
+        if (opcao === "nao_comprou" && leadId) pedirDestinoPosReuniao(leadId);
         return;
       }
       if (leadId) pedirPagamentoDaOportunidade(leadId);

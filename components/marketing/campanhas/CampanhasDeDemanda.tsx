@@ -655,9 +655,9 @@ export function CampanhasDeDemanda() {
           <button
             type="button"
             onClick={() => setNova(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium whitespace-nowrap text-primary-foreground"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-[13px] font-medium whitespace-nowrap text-primary-foreground sm:text-sm"
           >
-            <Plus size={14} weight="bold" aria-hidden />
+            <Plus size={14} weight="bold" className="shrink-0" aria-hidden />
             {t("Nova campanha")}
           </button>
         ) : null}

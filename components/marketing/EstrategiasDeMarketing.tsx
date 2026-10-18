@@ -54,15 +54,15 @@ export function EstrategiasDeMarketing({ titulo, fase }: { titulo: string; fase:
   return (
     <section aria-label={titulo} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">{titulo}</h2>
+        <h2 className="min-w-0 text-sm font-semibold text-muted-foreground">{titulo}</h2>
         {podeEditar ? (
           <Popover open={aberto} onOpenChange={setAberto}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-[13px] font-medium whitespace-nowrap transition-colors hover:bg-secondary sm:text-sm"
               >
-                <Plus size={14} weight="bold" aria-hidden />
+                <Plus size={14} weight="bold" className="shrink-0" aria-hidden />
                 {t("Nova estratégia")}
               </button>
             </PopoverTrigger>
