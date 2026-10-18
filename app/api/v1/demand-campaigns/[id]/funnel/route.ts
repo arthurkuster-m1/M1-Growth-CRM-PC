@@ -118,6 +118,14 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
   const pipelineId = (criado as { id: string }).id;
 
+  // Alguns bancos criam etapas sozinhos ao nascer um funil (ex.: "Desqualificado"). O funil é novo
+  // e é nosso: limpa o que nasceu junto para o modelo ocupar os slugs sem colidir.
+  await a.supabase
+    .from("crm_stages")
+    .delete()
+    .eq("pipeline_id", pipelineId)
+    .eq("organization_id", a.orgId);
+
   const slugs: string[] = [];
   const papeisNaoGravados: string[] = [];
   const linhas = etapas.map((e, i) => {
