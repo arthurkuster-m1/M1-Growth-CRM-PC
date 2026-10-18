@@ -153,7 +153,8 @@ async function abrirRadar(page: Page) {
   const carregou = page.waitForResponse(
     (r) => new URL(r.url()).pathname === "/api/v1/leads/at-risk" && r.request().method() === "GET",
   );
-  await page.goto("/app/radar");
+  // O radar vive na coluna "Radar" das Oportunidades do CRM: a tela busca a mesma rota.
+  await page.goto("/app/clientes?visao=oportunidades");
   expect((await carregou).status()).toBe(200);
 }
 async function detail(page: Page, id: string, title: string) {
@@ -1081,7 +1082,6 @@ test("Radar recorta demandas pela RLS real, além do pool frio, e preserva gest�
   await policy("own");
   await login(page, members.agent!.email);
   await abrirRadar(page);
-  await expect(page.getByTestId("radar-sem-proximo-passo")).toContainText("Própria fora do pool");
   const own = await read();
   expect(own.sem_proximo_passo.map((d) => d.id).sort()).toEqual(
     [expected["Própria fora do pool"], expected["Conversa própria sem lead"]].sort(),
@@ -1100,7 +1100,6 @@ test("Radar recorta demandas pela RLS real, além do pool frio, e preserva gest�
   expect(unassigned.total_sem_proximo_passo).toBe(3);
   await login(page, members.manager!.email);
   await abrirRadar(page);
-  await expect(page.getByTestId("radar-sem-proximo-passo")).toContainText("Órfã de gestão");
   expect((await read()).total_sem_proximo_passo).toBe(6);
   await login(page, members.viewer!.email);
   expect((await page.request.get("/api/v1/leads/at-risk")).status()).toBe(403);
@@ -1120,7 +1119,6 @@ test("Radar recorta demandas pela RLS real, além do pool frio, e preserva gest�
   await page.getByRole("button", { name: "Confirmar e entrar" }).click();
   await page.waitForURL("**/app/inbox");
   await abrirRadar(page);
-  await expect(page.getByTestId("radar-sem-proximo-passo")).toContainText("Órfã de gestão");
   expect((await read()).total_sem_proximo_passo).toBe(6);
   await page.getByRole("button", { name: "Sair do acompanhamento" }).click();
   await page.waitForURL("**/app/inbox");

@@ -70,12 +70,12 @@ const CURADORIA: {
     ],
   },
   {
-    href: "/app/radar",
+    href: "/app/clientes?visao=oportunidades",
     comoChamar: "O que está esfriando",
     porQue: "Quem esfriou e ainda está aberto, para você agir antes de perder.",
     comoFunciona: [
       "Ele observa há quanto tempo cada negócio em aberto não tem resposta",
-      "Os que estão esfriando sobem para o topo desta lista",
+      "Na aba Oportunidades do CRM, a coluna Radar mostra quem está crítico, em risco, em voo ou em dia",
       "Você decide quem merece um empurrão seu, em vez de descobrir tarde demais",
     ],
   },

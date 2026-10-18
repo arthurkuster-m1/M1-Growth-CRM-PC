@@ -45,7 +45,6 @@ const TELAS: ReadonlyArray<readonly [string, string]> = [
   ["/app/templates", "Respostas rápidas"],
   ["/app/webhooks", "Webhooks"],
   ["/app/metrics", "Desempenho"],
-  ["/app/radar", "Radar"],
   ["/app/audit", "Audit Log"],
   ["/app/ai", "Agente de IA"],
   ["/app/analise", "Análise"],

@@ -222,14 +222,6 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
-    href: "/app/radar",
-    label: "Radar",
-    description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
-    icon: "ClockCountdown",
-    group: "atendimento",
-    sidebar: true,
-  },
-  {
     // Entra em "atendimento", e não em "organizacao", porque a Agenda é onde o
     // dia acontece e não onde ele se configura: quem atende abre isto de manhã
     // junto com o Inbox. Os TIPOS de agendamento — que são configuração de

@@ -62,7 +62,8 @@ export const PORTA_DA_CAPACIDADE: Record<ExtensionCapability, PortaDaCapacidade>
   "kanban.open": { destino: "/app/kanban", permissao: "navigation.kanban" },
   "contacts.open": { destino: "/app/contacts", permissao: "navigation.contacts" },
   "agenda.open": { destino: "/app/agenda", permissao: "navigation.agenda" },
-  "radar.open": { destino: "/app/radar", permissao: "navigation.radar" },
+  // O Radar virou a coluna "Radar" das Oportunidades do CRM: a porta antiga segue valendo e abre no CRM (a coluna Radar fica na aba Oportunidades).
+  "radar.open": { destino: "/app/clientes", permissao: "navigation.radar" },
 };
 
 /** Todos os destinos que o host aceita devolver. A tela reconfere contra este conjunto. */

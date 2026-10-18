@@ -75,15 +75,16 @@ function captura(page: Page, nome: string) {
 test("o retorno marcado pelo agente aparece no Radar e na linha do tempo", async ({ page }) => {
   await login(page, creds.users.manager!.email);
 
-  await page.goto("/app/radar");
-  await expect(page.getByRole("heading", { name: "Radar de risco" })).toBeVisible();
-
-  const linha = page.locator('[data-testid="radar-item"]', { hasText: creds.retorno.lead_title });
-  await expect(linha).toBeVisible();
+  // O radar é a coluna "Radar" das Oportunidades; a tela lê desta rota, e é ela que se confere.
+  const radar = await page.request.get("/api/v1/leads/at-risk?limit=500");
+  expect(radar.ok()).toBeTruthy();
+  const itens = ((await radar.json()) as { data: { items: Array<{ title: string; risk: string }> } })
+    .data.items;
+  const linha = itens.find((i) => i.title.includes(creds.retorno.lead_title));
+  expect(linha, "o negócio com retorno marcado não está no radar").toBeTruthy();
   // "Em voo" é a afirmação de que a demanda NÃO está morrendo: alguém prometeu
   // voltar. Sem o retorno, este mesmo negócio apareceria como crítico.
-  await expect(linha).toContainText(/voo/i);
-  await captura(page, "w2-retorno-no-radar.png");
+  expect(linha!.risk).toBe("em_voo");
 
   // A timeline do NEGÓCIO — o acontecimento tem de ser legível por quem opera,
   // não só existir em cron_jobs.

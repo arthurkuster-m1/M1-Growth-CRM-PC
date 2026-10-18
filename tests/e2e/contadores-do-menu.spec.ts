@@ -289,7 +289,7 @@ test.describe("contadores do menu", () => {
     const seloDaFila = itemDoMenu(page, "/app/inbox").getByTestId("contador-da-fila");
     await expect(seloDaFila).toHaveText(String(naAba), { timeout: ESPERA });
 
-    const m = await medirSelo(page, "/app/inbox", "contador-da-fila", "/app/radar");
+    const m = await medirSelo(page, "/app/inbox", "contador-da-fila", "/app/agenda");
     expect(m.dentro, "o selo precisa morar dentro do item de Inbox").toBe(true);
     expect(m.alturaDoItem, "o selo não pode quebrar a linha do item").toBe(m.alturaDoVizinho);
     await captura(page, "03-inbox-com-contador-da-fila");

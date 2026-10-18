@@ -110,7 +110,7 @@ export function KanbanBoard({
     () => new Map((members ?? []).map((m) => [m.user_id, m.full_name])),
     [members],
   );
-  // Esfriando vem do MESMO radar que alimenta /app/radar — o board não
+  // Esfriando vem do MESMO radar que alimenta a coluna Radar do CRM — o board não
   // reclassifica nada (contrato §3.3). `em_voo` fica de fora: a IA já prometeu
   // voltar, então não há decisão pendente para o humano.
   const { data: atRisk } = useAtRiskLeads();
