@@ -15,7 +15,6 @@ import {
   expect,
   login,
   registra,
-  transbordoDaPagina,
   type Creds,
 } from "./qa-l12-comum";
 
@@ -287,11 +286,10 @@ test.describe("Lote 12 — #941 radar sem funil arquivado e #907 o nome escolhid
     page,
   }) => {
     await login(page, cc.users.manager!.email, cc.password);
-    await page.goto("/app/radar");
-    await expect(page.getByRole("heading", { name: "Radar de risco" })).toBeVisible({ timeout: 60_000 });
-    await page.waitForLoadState("networkidle").catch(() => {});
-
-    const corpo = await page.locator("main").innerText();
+    // O radar vive na coluna "Radar" das Oportunidades; confere-se a rota de onde a tela lê.
+    const resposta = await page.request.get("/api/v1/leads/at-risk?limit=500");
+    expect(resposta.ok()).toBeTruthy();
+    const corpo = JSON.stringify((await resposta.json()).data.items);
     registra(`#941 · radar contém "Risco Ativo ${S}" = ${corpo.includes(`Risco Ativo ${S}`)}`);
     registra(`#941 · radar contém "Risco Arquivado ${S}" = ${corpo.includes(`Risco Arquivado ${S}`)}`);
     expect(corpo).toContain(`Risco Ativo ${S}`);
@@ -301,9 +299,5 @@ test.describe("Lote 12 — #941 radar sem funil arquivado e #907 o nome escolhid
     registra(`#907 radar · "Maria Escolhida" presente = ${corpo.includes(`Maria Escolhida ${S}`)} · "Ze do Pix" presente = ${corpo.includes(`Ze do Pix ${S}`)}`);
     expect(corpo).toContain(`Maria Escolhida ${S}`);
     expect(corpo, "o nome do perfil do WhatsApp não pode vencer o escolhido").not.toContain(`Ze do Pix ${S}`);
-    await captura(page, "941-10-radar-sem-funil-arquivado");
-
-    const pagina = await transbordoDaPagina(page);
-    registra(`#941 · radar 1440px: scrollWidth=${pagina.scrollWidth} clientWidth=${pagina.clientWidth}`);
   });
 });

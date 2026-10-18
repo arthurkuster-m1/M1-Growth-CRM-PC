@@ -155,6 +155,17 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 - **Atalhos com "Voltar":** os atalhos de Campanhas (Clientes, Meta Ads, Resultados) levam
   `?voltar=` e a página de destino mostra "Voltar para …" (`components/shell/BotaoVoltar.tsx`).
 
+### Radar no CRM — 18/10/2026
+- **A página `/app/radar` foi excluída** (menu mais curto). O radar agora é a coluna **Radar** da
+  aba Oportunidades do CRM (Crítico / Em risco / Em voo / Em dia + tempo sem resposta), com filtro,
+  agrupamento e ordenação por urgência. Mesma classificação de antes (`classifyRisk`: janela da
+  etapa, follow-up em voo, proteção da agenda), lida de `/api/v1/leads/at-risk?limit=500` pelo hook
+  `useRadarDasOportunidades`; negócio aberto que não vem na lista está em dia.
+- A coluna antiga "Sem resposta há" foi trocada por ela (o filtro numérico em horas continua).
+- A porta de extensão `radar.open` e os avisos da Central agora abrem o CRM.
+- Fica pendente: criar uma aba salva "Radar" (filtro Crítico/Em risco, ordenado) e, se for o caso,
+  reabrir "demandas sem próximo passo" e "propostas vencidas" como filtros do CRM.
+
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
 1. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google com uma segunda pessoa conectada.
 2. Recomendações da IA ao vivo na reunião de vendas (hoje o espaço aparece como "em breve").

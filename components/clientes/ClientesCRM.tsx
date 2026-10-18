@@ -15,6 +15,8 @@ import { QuadroDeOportunidades, type GrupoDoQuadro } from "@/components/clientes
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
+import type { RiskBucket } from "@/lib/leads/risk-radar";
+import { useRadarDasOportunidades } from "@/hooks/leads/useRadarDasOportunidades";
 import { ResultadoRapidoDaLigacao } from "@/components/clientes/ResultadoRapidoDaLigacao";
 import { prioridadeDaFila } from "@/lib/leads/resultados-rapidos";
 import { BotaoWhatsApp } from "@/components/clientes/BotaoWhatsApp";
@@ -154,6 +156,21 @@ const COR_DA_VENDA: Record<string, string> = {
 };
 const ID_DA_PADRAO = "padrao";
 
+/** O Radar de risco na tabela: do mais urgente ao menos. */
+const BALDES_DO_RADAR: readonly RiskBucket[] = ["critico", "em_risco", "em_voo", "em_dia"];
+const ROTULO_DO_RADAR: Record<RiskBucket, string> = {
+  critico: "Crítico",
+  em_risco: "Em risco",
+  em_voo: "Em voo",
+  em_dia: "Em dia",
+};
+const COR_DO_RADAR: Record<RiskBucket, CorDaOpcao> = {
+  critico: "red",
+  em_risco: "orange",
+  em_voo: "blue",
+  em_dia: "green",
+};
+
 /** Propriedades que são da OPORTUNIDADE: não aparecem na aba Clientes. */
 const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "funis",
@@ -167,6 +184,7 @@ const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "valor",
   "previsao",
   "sem-resposta",
+  "radar",
   "ligar",
   "whatsapp",
   "instagram",
@@ -243,6 +261,13 @@ export function ClientesCRM({
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
   const hojeIso = new Date(agora).toISOString().slice(0, 10);
+  // O radar de cada oportunidade aberta (mesma classificação da IA); negócio fora da lista está em dia.
+  const radarPorLead = useRadarDasOportunidades().data;
+  const baldeDoRadar = (l: Linha): RiskBucket | null => {
+    const p = l.participacao;
+    if (!p || p.status !== "open" || !radarPorLead) return null;
+    return radarPorLead.get(p.lead_id) ?? "em_dia";
+  };
   const [configurando, setConfigurando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
   const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
@@ -991,20 +1016,27 @@ export function ClientesCRM({
       ),
     },
     {
-      id: "sem-resposta",
-      titulo: t("Sem resposta há"),
+      id: "radar",
+      titulo: t("Radar"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 170,
+      largura: 230,
       padrao: ehOportunidades,
       celula: (l) => {
         const p = l.participacao;
         if (!p || p.status !== "open") return semValor;
+        const balde = baldeDoRadar(l);
+        if (!balde) return semValor;
         const horas = (agora - new Date(p.ultima_atividade ?? p.criado_em).getTime()) / 3_600_000;
         return (
-          <span
-            className={`block truncate px-2 text-sm ${horas >= 24 ? "text-warning-fg" : "text-muted-foreground"}`}
-          >
-            {coolingLabel(horas, t)}
+          <span className="flex min-w-0 items-center gap-2 px-2">
+            <Etiqueta ponto cor={COR_DO_RADAR[balde]}>
+              {t(ROTULO_DO_RADAR[balde])}
+            </Etiqueta>
+            {balde !== "em_dia" ? (
+              <span className="truncate text-xs text-muted-foreground">
+                {coolingLabel(horas, t)}
+              </span>
+            ) : null}
           </span>
         );
       },
@@ -1753,6 +1785,19 @@ export function ClientesCRM({
   > = [
     { id: "nome", titulo: t("Nome"), tipo: "texto", valorDe: (l) => l.nome },
     { id: "telefone", titulo: t("Telefone"), tipo: "texto", valorDe: (l) => l.telefone },
+    {
+      id: "radar",
+      titulo: t("Radar"),
+      tipo: "opcao",
+      valorDe: (l) => (l.participacao?.status === "open" ? baldeDoRadar(l) : undefined),
+      opcoes: BALDES_DO_RADAR.map((id) => ({
+        id,
+        rotulo: t(ROTULO_DO_RADAR[id]),
+        cor: COR_DO_RADAR[id],
+      })),
+      // Crítico primeiro: ordenar por Radar é ordenar por urgência.
+      ordemDoValor: (v) => BALDES_DO_RADAR.indexOf(v as RiskBucket),
+    },
     {
       id: "sem-resposta",
       titulo: t("Sem resposta há (horas)"),

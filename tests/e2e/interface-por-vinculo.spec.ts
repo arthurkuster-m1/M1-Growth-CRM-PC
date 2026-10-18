@@ -112,8 +112,8 @@ test("interface por membro atualiza ao vivo, preserva formulário e convite apli
       ).status(),
     ).toBe(403);
     // Área oculta autorizada continua disponível diretamente.
-    await member.goto("/app/radar");
-    await expect(member.getByRole("heading", { name: /Radar/ }).first()).toBeVisible();
+    await member.goto("/app/clientes");
+    await expect(member.getByRole("tab", { name: "Oportunidades" })).toBeVisible();
     await member.goto("/app/settings/profile");
     await customize(page, emails[1]!, "Produtos");
     await expect(nav(member).getByRole("link", { name: "Inbox", exact: true })).toHaveCount(0);

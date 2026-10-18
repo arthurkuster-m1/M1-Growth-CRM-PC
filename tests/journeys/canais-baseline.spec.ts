@@ -162,8 +162,8 @@ test.describe("jornada WAHA — baseline do seam de canais", () => {
     await page.waitForTimeout(3_000);
     await shot(page, "06-followup.png");
 
-    await page.goto("/app/radar");
-    await expect(page.getByRole("heading", { name: /radar/i }).first()).toBeVisible({
+    await page.goto("/app/clientes?visao=oportunidades");
+    await expect(page.getByRole("tab", { name: "Oportunidades" })).toBeVisible({
       timeout: 30_000,
     });
     await page.waitForTimeout(3_000);

@@ -239,7 +239,7 @@ export async function resolverDestinosDosAvisos<T extends ReferenciaDoAviso>(
           destination = item.ref_id !== organizationId ? INDISPONIVEL
             : item.kind === "contact_proposal_expired" ? { estado: "sem_destino", orientacao: p.orientacao }
             : !permite(papel, item.ref_kind === "ai_budget" ? "manager" : "agent") ? semPermissao("manager")
-            : { estado: "disponivel", href: item.ref_kind === "ai_budget" ? "/app/ai/usage" : "/app/radar", rotulo: item.ref_kind === "ai_budget" ? "Abrir uso de IA" : "Abrir Radar" };
+            : { estado: "disponivel", href: item.ref_kind === "ai_budget" ? "/app/ai/usage" : "/app/clientes?visao=oportunidades", rotulo: item.ref_kind === "ai_budget" ? "Abrir uso de IA" : "Abrir Oportunidades" };
         } else destination = { estado: "sem_destino", orientacao: p.orientacao };
       }
     }
