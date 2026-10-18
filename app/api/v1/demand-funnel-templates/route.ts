@@ -54,7 +54,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const { data: etapas, error: erroEtapas } = await a.supabase
     .from("crm_stages")
-    .select("name, is_won, is_lost, win_probability, expected_duration_hours, qualification")
+    .select("name, slug, is_won, is_lost, win_probability, expected_duration_hours, qualification")
     .eq("organization_id", a.orgId)
     .eq("pipeline_id", corpo.data.from_pipeline_id)
     .eq("is_archived", false)
@@ -70,6 +70,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     expected_duration_hours:
       e.expected_duration_hours === null ? null : Math.round(Number(e.expected_duration_hours)),
     qualification: (e.qualification as "mql" | "disqualified" | null) ?? null,
+    // Guarda o slug: o funil criado do modelo mantém as etapas ligadas à Agenda.
+    ...(typeof e.slug === "string" && /^[a-z0-9_-]{2,40}$/.test(e.slug) ? { slug: e.slug } : {}),
   }));
   const { data, error } = await a.supabase
     .from("demand_funnel_templates")

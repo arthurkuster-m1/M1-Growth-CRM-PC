@@ -34,6 +34,8 @@ interface Cenario {
   etapaPorSlug?: (slug: string) => Resposta;
   /** O `crm_pipelines.settings` que a régua de campos obrigatórios lê (#1536). */
   funil?: Resposta;
+  /** A etapa em que o negócio está agora (nome e posição). */
+  origem?: Resposta;
 }
 
 function cenario(over: Partial<Cenario> = {}): Cenario {
@@ -84,7 +86,7 @@ function fakeAdmin(c: Cenario, rpcs: ChamadaRpc[] = []) {
             if (c.etapaPorSlug && b._slugVal) return Promise.resolve(c.etapaPorSlug(b._slugVal));
             return Promise.resolve(c.etapaDestino);
           }
-          return Promise.resolve({ data: ETAPA_ORIGEM, error: null });
+          return Promise.resolve(c.origem ?? { data: ETAPA_ORIGEM, error: null });
         },
         then(onF: (v: unknown) => unknown, onR?: (e: unknown) => unknown) {
           const r = b._update ? c.update : c.lead;
@@ -97,7 +99,7 @@ function fakeAdmin(c: Cenario, rpcs: ChamadaRpc[] = []) {
   } as any;
 }
 
-const mover = (c: Cenario, transicao: "pending" | "confirmed" = "confirmed") =>
+const mover = (c: Cenario, transicao: "pending" | "confirmed" | "completed" = "confirmed") =>
   moverLeadParaEtapaDeAgendamento(fakeAdmin(c), {
     organizationId: ORG,
     leadId: LEAD.id,
@@ -185,6 +187,7 @@ describe("moverLeadParaEtapaDeAgendamento", () => {
     expect(SLUG_ETAPA_POR_TRANSICAO).toEqual({
       pending: "agendamento-solicitado",
       confirmed: "agendado",
+      completed: "reuniao-realizada",
     });
   });
 
@@ -263,5 +266,46 @@ describe("moverLeadParaEtapaDeAgendamento e a régua de campos obrigatórios", (
       cenario({ etapaDestino: { data: { ...ETAPA_AGENDADO, id: ETAPA_UUID }, error: null } }),
     );
     expect(r).toEqual({ moveu: true, motivo: "movido" });
+  });
+
+  describe("o resultado da reunião (completed)", () => {
+    const REALIZADA = { id: "s-realizada", name: "Reunião realizada", position: 5000 };
+
+    it("leva o negócio para 'reuniao-realizada' quando ele está antes dela", async () => {
+      const r = await mover(
+        cenario({
+          etapaDestino: { data: REALIZADA, error: null },
+          origem: { data: { name: "Reunião agendada", position: 4000 }, error: null },
+        }),
+        "completed",
+      );
+      expect(r).toEqual({ moveu: true, motivo: "movido" });
+    });
+
+    it("nunca puxa para trás: negócio já adiante (ex.: em negociação) fica onde está", async () => {
+      const r = await mover(
+        cenario({
+          etapaDestino: { data: REALIZADA, error: null },
+          origem: { data: { name: "Em negociação", position: 6000 }, error: null },
+        }),
+        "completed",
+      );
+      expect(r).toEqual({ moveu: false, motivo: "ja_adiante" });
+      expect(vi.mocked(emitLeadActivity)).not.toHaveBeenCalled();
+    });
+
+    it("funil sem a etapa 'reuniao-realizada': nada muda", async () => {
+      const r = await mover(cenario({ etapaDestino: { data: null, error: null } }), "completed");
+      expect(r).toEqual({ moveu: false, motivo: "sem_etapa_mapeada" });
+    });
+
+    it("o mapa tem só as três transições que movem o card (no_show e cancelado não)", () => {
+      expect(Object.keys(SLUG_ETAPA_POR_TRANSICAO).sort()).toEqual([
+        "completed",
+        "confirmed",
+        "pending",
+      ]);
+      expect(SLUG_ETAPA_POR_TRANSICAO.completed).toBe("reuniao-realizada");
+    });
   });
 });

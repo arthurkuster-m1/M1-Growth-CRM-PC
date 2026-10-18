@@ -109,7 +109,8 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
 
   const slugs: string[] = [];
   const linhas = etapas.map((e, i) => {
-    const slug = slugDeNome(e.name, slugs);
+    // O slug do modelo (`agendado`, `reuniao-realizada`) liga a etapa ao compromisso; sem ele, do nome.
+    const slug = e.slug && !slugs.includes(e.slug) ? e.slug : slugDeNome(e.name, slugs);
     slugs.push(slug);
     return {
       organization_id: a.orgId,

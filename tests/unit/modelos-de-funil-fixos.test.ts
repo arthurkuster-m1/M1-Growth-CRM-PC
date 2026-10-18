@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { SLUG_ETAPA_POR_TRANSICAO } from "@/lib/leads/appointment-stage-move";
 import { slugDeNome } from "@/lib/leads/stage-editing";
 import { criarFunilDaCampanhaSchema, etapaDoModeloSchema } from "@/lib/marketing/modelos-de-funil";
 import {
@@ -51,6 +52,17 @@ describe("modelos de funil fixos", () => {
     expect(nomes("prospeccao-ativa")).toEqual(
       expect.arrayContaining(["Primeiro contato", "Contato com o decisor"]),
     );
+  });
+
+  it("as etapas de reunião nascem com o slug que a Agenda reconhece", () => {
+    for (const chave of ["trafego-pago-com-reuniao", "prospeccao-ativa"]) {
+      const etapas = MODELOS_DE_FUNIL_FIXOS.find((m) => m.chave === chave)!.stages;
+      expect(etapas.find((e) => e.name === "Reunião agendada")?.slug).toBe("agendado");
+      expect(etapas.find((e) => e.name === "Reunião realizada")?.slug).toBe("reuniao-realizada");
+    }
+    // Os slugs do mapa existem de verdade nos funis que dependem deles.
+    expect(SLUG_ETAPA_POR_TRANSICAO.confirmed).toBe("agendado");
+    expect(SLUG_ETAPA_POR_TRANSICAO.completed).toBe("reuniao-realizada");
   });
 
   it("o id da API é `fixo:<chave>` e a rota o aceita ao lado dos uuids", () => {

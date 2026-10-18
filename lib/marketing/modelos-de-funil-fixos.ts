@@ -25,6 +25,7 @@ const aberta = (
   win_probability: number,
   expected_duration_hours: number | null,
   qualification: EtapaDoModelo["qualification"] = null,
+  slug?: string,
 ): EtapaDoModelo => ({
   name,
   is_won: false,
@@ -32,7 +33,17 @@ const aberta = (
   win_probability,
   expected_duration_hours,
   qualification,
+  ...(slug ? { slug } : {}),
 });
+
+/**
+ * As duas etapas que o resto do sistema reconhece pelo slug: marcar um compromisso leva o negócio
+ * para `agendado`; registrar que a reunião aconteceu, para `reuniao-realizada`
+ * (`lib/leads/appointment-stage-move.ts`).
+ */
+const REUNIAO_AGENDADA = () => aberta("Reunião agendada", 40, null, null, "agendado");
+const REUNIAO_REALIZADA = (horas: number) =>
+  aberta("Reunião realizada", 60, horas, null, "reuniao-realizada");
 const comprou: EtapaDoModelo = {
   name: "Comprou",
   is_won: true,
@@ -68,8 +79,8 @@ export const MODELOS_DE_FUNIL_FIXOS: readonly ModeloDeFunilFixo[] = [
       aberta("Novo lead", 5, 4),
       aberta("Em contato", 10, 24),
       aberta("Qualificado", 25, 48, "mql"),
-      aberta("Reunião agendada", 40, null),
-      aberta("Reunião realizada", 60, 48),
+      REUNIAO_AGENDADA(),
+      REUNIAO_REALIZADA(48),
       desqualificado(),
       comprou,
       naoComprou,
@@ -100,8 +111,8 @@ export const MODELOS_DE_FUNIL_FIXOS: readonly ModeloDeFunilFixo[] = [
       aberta("Prospectado", 3, 48),
       aberta("Primeiro contato", 8, 48),
       aberta("Contato com o decisor", 25, 72, "mql"),
-      aberta("Reunião agendada", 40, null),
-      aberta("Reunião realizada", 60, 72),
+      REUNIAO_AGENDADA(),
+      REUNIAO_REALIZADA(72),
       desqualificado(),
       comprou,
       naoComprou,

@@ -17,17 +17,27 @@ import type { Transicao } from "@/lib/agenda/laco";
  * `slug` da etapa, e pipeline sem a etapa correspondente não muda de
  * comportamento nenhum (`sem_etapa_mapeada`, igual a `sem_etapa_de_handoff`).
  *
- * ⚠️ SÓ `pending` E `confirmed` AVANÇAM O CARD, de propósito. As demais
- * transições (`rescheduled`, `cancelled`, `completed`, `no_show`) não têm
- * entrada no mapa: cancelar ou faltar a UM compromisso não é o negócio
- * esfriando — o cliente pode remarcar, e quem decide que o negócio morreu
- * continua sendo o agente (`crm_stages.agent_stage_hint = 'lost'`) ou um
- * humano arrastando o card, nunca o agendamento sozinho.
+ * ⚠️ SÓ `pending`, `confirmed` E `completed` MOVEM O CARD, de propósito. As demais
+ * transições (`rescheduled`, `cancelled`, `no_show`) não têm entrada no mapa:
+ * cancelar ou faltar a UM compromisso não é o negócio esfriando — o cliente pode
+ * remarcar, e quem decide que o negócio morreu continua sendo o agente
+ * (`crm_stages.agent_stage_hint = 'lost'`) ou um humano arrastando o card, nunca o
+ * agendamento sozinho.
+ *
+ * `completed` (a reunião aconteceu) leva o negócio a `reuniao-realizada`, e SÓ PARA
+ * A FRENTE: um negócio que já está em negociação não volta uma etapa porque
+ * alguém registrou o resultado de uma reunião antiga. O que acontece DEPOIS da
+ * reunião (comprou, negociando, perdido) é decisão da pessoa — "comprou" abre o
+ * pagamento, que é o que fecha a venda.
  */
 export const SLUG_ETAPA_POR_TRANSICAO: Partial<Record<Transicao, string>> = {
   pending: "agendamento-solicitado",
   confirmed: "agendado",
+  completed: "reuniao-realizada",
 };
+
+/** As transições que nunca puxam o negócio para trás. */
+const SO_PARA_FRENTE: ReadonlySet<Transicao> = new Set<Transicao>(["completed"]);
 
 export interface ResultadoDoMovimentoDeAgendamento {
   moveu: boolean;
@@ -38,6 +48,8 @@ export interface ResultadoDoMovimentoDeAgendamento {
     | "ja_esta_la"
     | "lead_nao_encontrado"
     | "lead_fechado"
+    /** O negócio já está numa etapa adiante da que a transição pediria. */
+    | "ja_adiante"
     | "conflito_humano"
     /**
      * A etapa de agendamento exige CAMPOS que o negócio não tem (issue #1536) —
@@ -102,7 +114,7 @@ export async function moverLeadParaEtapaDeAgendamento(
 
   const { data: etapaData, error: erroEtapa } = await admin
     .from("crm_stages")
-    .select("id, name, is_won, is_lost")
+    .select("id, name, is_won, is_lost, position")
     .eq("pipeline_id", leadRow.pipeline_id)
     .eq("slug", slugAlvo)
     .eq("is_archived", false)
@@ -119,7 +131,7 @@ export async function moverLeadParaEtapaDeAgendamento(
   if (!etapa && slugAlvo.includes("-")) {
     const { data: etapaLegada, error: erroLegada } = await admin
       .from("crm_stages")
-      .select("id, name, is_won, is_lost")
+      .select("id, name, is_won, is_lost, position")
       .eq("pipeline_id", leadRow.pipeline_id)
       .eq("slug", slugAlvo.replace(/-/g, "_"))
       .eq("is_archived", false)
@@ -144,10 +156,29 @@ export async function moverLeadParaEtapaDeAgendamento(
     name: string;
     is_won?: boolean | null;
     is_lost?: boolean | null;
+    position?: number | null;
   };
 
   if (leadRow.stage_id === etapaRow.id) {
     return { moveu: false, motivo: "ja_esta_la" };
+  }
+
+  // Nome (e posição) da etapa de origem: enfeita a timeline e, nas transições que só andam para
+  // a frente, diz se o negócio já passou do destino. Erro descartado de propósito, mesmo
+  // raciocínio de `agent-stage-sync.ts` e `handoff-stage-move.ts`: sem ela só se perde o enfeite.
+  const { data: origem } = await admin
+    .from("crm_stages")
+    .select("name, position")
+    .eq("id", leadRow.stage_id)
+    .maybeSingle();
+  const posicaoDaOrigem = (origem as { position?: number | null } | null)?.position;
+  if (
+    SO_PARA_FRENTE.has(input.transicao) &&
+    typeof posicaoDaOrigem === "number" &&
+    typeof etapaRow.position === "number" &&
+    posicaoDaOrigem >= etapaRow.position
+  ) {
+    return { moveu: false, motivo: "ja_adiante" };
   }
 
   // ── A RÉGUA DE CAMPOS OBRIGATÓRIOS (issue #1536) ────────────────────────────
@@ -178,14 +209,6 @@ export async function moverLeadParaEtapaDeAgendamento(
     });
     return { moveu: false, motivo: "campos_obrigatorios", detalhe };
   }
-
-  // Nome da origem só enfeita o texto da timeline — erro descartado de
-  // propósito, mesmo raciocínio de `agent-stage-sync.ts` e `handoff-stage-move.ts`.
-  const { data: origem } = await admin
-    .from("crm_stages")
-    .select("name")
-    .eq("id", leadRow.stage_id)
-    .maybeSingle();
 
   const serviceOrigin = await observeServiceOrigin(admin, input.organizationId, leadRow.contact_id);
   const { data: atualizadas, error: erroUpdate } = await admin
