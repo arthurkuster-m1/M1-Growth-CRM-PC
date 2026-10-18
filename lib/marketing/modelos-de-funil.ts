@@ -11,6 +11,15 @@ export const etapaDoModeloSchema = z.object({
   win_probability: z.number().int().min(0).max(100).nullable(),
   expected_duration_hours: z.number().int().min(1).max(8760).nullable(),
   qualification: z.enum(["mql", "disqualified"]).nullable(),
+  /**
+   * O slug que a etapa nasce com. É ele que liga a etapa ao resto do sistema: `agendado` é a etapa
+   * para onde o compromisso marcado leva o negócio, `reuniao-realizada` a do resultado da reunião.
+   * Sem slug, ele sai do nome (como sempre foi).
+   */
+  slug: z
+    .string()
+    .regex(/^[a-z0-9_-]{2,40}$/)
+    .optional(),
 });
 export type EtapaDoModelo = z.infer<typeof etapaDoModeloSchema>;
 

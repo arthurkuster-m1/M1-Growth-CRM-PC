@@ -172,6 +172,11 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 - Três funis prontos no seletor "Usar um modelo de funil" da campanha (`lib/marketing/modelos-de-funil-fixos.ts`,
   id `fixo:<chave>`, sem banco, não editáveis): **Tráfego pago · com reunião**, **Tráfego pago · sem reunião**
   e **Prospecção ativa**. Incluem MQL, Desqualificado, Comprou/Não comprou e a janela do Radar por etapa.
+- **Agenda ↔ funil (18/10):** as etapas "Reunião agendada" e "Reunião realizada" dos modelos nascem com os
+  slugs `agendado` e `reuniao-realizada`, que a Agenda reconhece: compromisso marcado (pela Agenda ou
+  importado do Google) leva a oportunidade para "agendado"; resultado "realizada" leva para "reuniao-realizada"
+  (só para a frente). "Comprou" continua abrindo o pagamento. Pendente: perguntar "e agora?" após "não
+  comprou" (negociação / desqualificado / não comprou com motivo) e lead que já chega qualificado/agendado pela LP.
 - Hoje só aparecem ao criar o funil de uma campanha; levar para "Novo funil" em Configurações › Funis é o próximo passo natural.
 
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
