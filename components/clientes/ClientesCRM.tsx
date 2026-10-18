@@ -15,6 +15,7 @@ import { QuadroDeOportunidades, type GrupoDoQuadro } from "@/components/clientes
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
+import { MODELOS_DAS_OPORTUNIDADES } from "@/lib/clientes/modelos-de-visao";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
 import { useRadarDasOportunidades } from "@/hooks/leads/useRadarDasOportunidades";
 import { ResultadoRapidoDaLigacao } from "@/components/clientes/ResultadoRapidoDaLigacao";
@@ -2901,6 +2902,19 @@ export function ClientesCRM({
                 (v) => v && ir({ aba: v.id }),
               )
             }
+            modelos={ehOportunidades ? MODELOS_DAS_OPORTUNIDADES : []}
+            aoCriarModelo={(id) => {
+              const modelo = MODELOS_DAS_OPORTUNIDADES.find((m) => m.id === id);
+              if (!modelo) return;
+              // Já existe uma aba com o nome do modelo? Abre essa em vez de duplicar.
+              const existente = visoes.find((v) => v.name === modelo.nome);
+              if (existente) return ir({ aba: existente.id });
+              void criarVisao({
+                name: modelo.nome,
+                type: modelo.tipo,
+                config: modelo.config,
+              }).then((v) => v && ir({ aba: v.id }));
+            }}
             aoConfigurar={() => setConfigurando(true)}
           />
           {ehOportunidades ? null : (
