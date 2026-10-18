@@ -30,7 +30,7 @@ import { LEAD_STAGES, type LeadStage } from "@/lib/agent-engine/agent/lead-state
 import { ApiError } from "@/lib/api/types";
 import { ROTULO_DO_PASSO } from "@/lib/leads/agent-mapping";
 import type { TaxaDaEtapa } from "@/lib/metrics/taxa-da-etapa";
-import { Archive, CaretDown, CaretUp, Plus, Warning } from "@/lib/ui/icons";
+import { CaretDown, CaretUp, Plus, Trash, Warning } from "@/lib/ui/icons";
 import { SeloDeAutoria } from "@/components/operacao/SeloDeAutoria";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -460,7 +460,7 @@ export function StagesSection({
         <h3 className="text-sm font-semibold">{t("Etapas deste funil")}</h3>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
           {t(
-            "Estas são as colunas do seu quadro, na ordem em que o cliente avança. Você pode renomear, criar, reordenar e arquivar.",
+            "Estas são as colunas do seu quadro, na ordem em que o cliente avança. Você pode renomear, criar, reordenar e apagar.",
           )}
         </p>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
@@ -651,8 +651,8 @@ export function StagesSection({
                     setArquivamento({ etapaId: etapa.id, negocios: null, destino: null, erro: null });
                   }}
                 >
-                  <Archive size={16} className="mr-1" aria-hidden />
-                  {t("Arquivar")}
+                  <Trash size={16} className="mr-1" aria-hidden />
+                  {t("Apagar")}
                 </Button>
               </div>
 
@@ -737,9 +737,9 @@ export function StagesSection({
                     </p>
                   ) : arquivandoAqui.negocios === null ? (
                     <p className="text-sm leading-relaxed">
-                      {t("Arquivar")} «{etapa.name}»?{" "}
+                      {t("Apagar")} «{etapa.name}»?{" "}
                       {t(
-                        "A coluna sai do quadro e para de receber negócios novos. Nada é apagado — o histórico de quem passou por ela continua guardado —, mas",
+                        "A coluna sai do quadro e para de receber negócios novos. O histórico de quem passou por ela continua guardado, mas",
                       )}{" "}
                       <strong>{t("não dá para trazer a coluna de volta por aqui")}</strong>.
                     </p>
@@ -753,7 +753,7 @@ export function StagesSection({
                         : t(
                             "estão nesta etapa e não há outra coluna em aberto para recebê-los.",
                           )}{" "}
-                      {t("Crie uma etapa antes de arquivar")} «{etapa.name}».
+                      {t("Crie uma etapa antes de apagar")} «{etapa.name}».
                     </p>
                   ) : (
                     <>
@@ -828,8 +828,8 @@ export function StagesSection({
                         onClick={() => pedirArquivamento(etapa, arquivandoAqui.destino)}
                       >
                         {arquivandoAqui.negocios === null
-                          ? t("Arquivar")
-                          : t("Mover os negócios e arquivar")}
+                          ? t("Apagar")
+                          : t("Mover os negócios e apagar")}
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => setArquivamento(null)}>
