@@ -20,6 +20,7 @@ import {
   etapasDoModelo,
   type EtapaDoModelo,
 } from "@/lib/marketing/modelos-de-funil";
+import { modeloFixoDoId } from "@/lib/marketing/modelos-de-funil-fixos";
 import { ETAPAS_INICIAIS, posicaoEntre, slugDeFunil } from "@/lib/pipelines/pipeline-editing";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +61,14 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
 
   let etapas = ETAPAS_PADRAO;
-  if (corpo.data.template_id) {
+  const fixo = modeloFixoDoId(corpo.data.template_id);
+  if (corpo.data.template_id?.startsWith("fixo:")) {
+    // Modelo fixo (já vem pronto, igual em toda empresa): não está no banco.
+    if (!fixo) {
+      return fail("not_found", a.t("Modelo não encontrado."), 404, { requestId: a.requestId });
+    }
+    etapas = fixo.stages;
+  } else if (corpo.data.template_id) {
     const { data: modelo } = await a.supabase
       .from("demand_funnel_templates")
       .select(COLUNAS_DO_MODELO)

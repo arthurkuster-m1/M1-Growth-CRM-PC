@@ -1,6 +1,11 @@
 "use client";
 
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
+import {
+  MODELOS_DE_FUNIL_FIXOS,
+  idDoModeloFixo,
+  modeloFixoDoId,
+} from "@/lib/marketing/modelos-de-funil-fixos";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { GerenciarModelosDeFunil } from "@/components/marketing/campanhas/GerenciarModelosDeFunil";
 import Link from "next/link";
@@ -227,44 +232,58 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
             </div>
             <div className="grid grid-cols-1 content-start gap-2 rounded-xl border p-3">
               <p className="text-sm font-medium">{t("Usar um modelo de funil")}</p>
-              {modelos.length === 0 ? (
+              <SeletorEmPopup
+                rotulo={t("Modelo de funil")}
+                valor={modeloEscolhido}
+                placeholder={t("Escolha um modelo")}
+                opcoes={[
+                  ...MODELOS_DE_FUNIL_FIXOS.map((m) => ({
+                    id: idDoModeloFixo(m.chave),
+                    rotulo: `${t("Pronto")} · ${t(m.nome)} (${m.stages.length} ${t("etapas")})`,
+                  })),
+                  ...modelos.map((m) => ({
+                    id: m.id,
+                    rotulo: `${m.name} (${m.stages.length} ${t("etapas")})`,
+                  })),
+                ]}
+                aoEscolher={setModeloEscolhido}
+              />
+              {modeloFixoDoId(modeloEscolhido) ? (
+                <div className="rounded-lg bg-secondary/60 p-2.5 text-xs text-muted-foreground">
+                  <p>{t(modeloFixoDoId(modeloEscolhido)!.descricao)}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {modeloFixoDoId(modeloEscolhido)!
+                      .stages.map((e) => t(e.name))
+                      .join(" → ")}
+                  </p>
+                </div>
+              ) : null}
+              {modelos.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setGerenciando(true)}
+                  className="w-fit text-xs font-medium text-primary hover:underline"
+                >
+                  {t("Editar ou excluir meus modelos")}
+                </button>
+              ) : (
                 <p className="text-xs text-muted-foreground">
                   {t(
-                    "Nenhum modelo ainda. Monte um funil e use “Salvar como modelo” para repetir em outras campanhas.",
+                    "Para repetir um funil seu, monte-o e use “Salvar como modelo”: ele aparece aqui junto com os prontos.",
                   )}
                 </p>
-              ) : (
-                <>
-                  <SeletorEmPopup
-                    rotulo={t("Modelo de funil")}
-                    valor={modeloEscolhido}
-                    placeholder={t("Escolha um modelo")}
-                    opcoes={modelos.map((m) => ({
-                      id: m.id,
-                      rotulo: `${m.name} (${m.stages.length} ${t("etapas")})`,
-                    }))}
-                    aoEscolher={setModeloEscolhido}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setGerenciando(true)}
-                    className="w-fit text-xs font-medium text-primary hover:underline"
-                  >
-                    {t("Editar ou excluir modelos")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={criando || modeloEscolhido === ""}
-                    onClick={() => void criarFunil(modeloEscolhido)}
-                    className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
-                  >
-                    {criando ? t("Criando…") : t("Criar a partir do modelo")}
-                  </button>
-                  <p className="text-xs text-muted-foreground">
-                    {t("O funil nasce com o nome da campanha. Você pode renomear depois.")}
-                  </p>
-                </>
               )}
+              <button
+                type="button"
+                disabled={criando || modeloEscolhido === ""}
+                onClick={() => void criarFunil(modeloEscolhido)}
+                className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              >
+                {criando ? t("Criando…") : t("Criar a partir do modelo")}
+              </button>
+              <p className="text-xs text-muted-foreground">
+                {t("O funil nasce com o nome da campanha. Você pode renomear depois.")}
+              </p>
             </div>
           </div>
         ) : null}
