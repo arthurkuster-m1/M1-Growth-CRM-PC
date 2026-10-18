@@ -484,7 +484,7 @@ describe("StagesSection — arquivar", () => {
     await user.click(screen.getByTestId("arquivar-confirmar-e1"));
 
     expect(await screen.findByTestId("arquivar-sem-destino-e1")).toHaveTextContent(
-      "Crie uma etapa antes de arquivar «Carrinho abandonado»",
+      "Crie uma etapa antes de apagar «Carrinho abandonado»",
     );
     expect(screen.queryByTestId("destino-e1")).not.toBeInTheDocument();
     expect(screen.queryByTestId("arquivar-confirmar-e1")).not.toBeInTheDocument();
