@@ -38,7 +38,11 @@ export const renomearModeloSchema = z
   .refine((v) => v.name !== undefined || v.stages !== undefined, { message: "Nada para alterar." });
 
 export const criarFunilDaCampanhaSchema = z.object({
-  template_id: z.string().uuid().nullable().optional(),
+  /** O id de um modelo da empresa (uuid) ou de um modelo fixo (`fixo:<chave>`). */
+  template_id: z
+    .union([z.string().uuid(), z.string().regex(/^fixo:[a-z0-9-]{1,60}$/)])
+    .nullable()
+    .optional(),
 });
 
 /** As etapas do modelo lidas do banco (jsonb), descartando o que não casa com o formato. */

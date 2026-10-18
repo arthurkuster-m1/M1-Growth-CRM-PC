@@ -168,6 +168,12 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 - Fica pendente, se for o caso: reabrir "demandas sem próximo passo" e "propostas vencidas" como
   filtros do CRM.
 
+### Modelos de funil fixos — 18/10/2026
+- Três funis prontos no seletor "Usar um modelo de funil" da campanha (`lib/marketing/modelos-de-funil-fixos.ts`,
+  id `fixo:<chave>`, sem banco, não editáveis): **Tráfego pago · com reunião**, **Tráfego pago · sem reunião**
+  e **Prospecção ativa**. Incluem MQL, Desqualificado, Comprou/Não comprou e a janela do Radar por etapa.
+- Hoje só aparecem ao criar o funil de uma campanha; levar para "Novo funil" em Configurações › Funis é o próximo passo natural.
+
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
 1. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google com uma segunda pessoa conectada.
 2. Recomendações da IA ao vivo na reunião de vendas (hoje o espaço aparece como "em breve").
