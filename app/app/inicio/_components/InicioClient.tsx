@@ -1,6 +1,7 @@
 "use client";
 
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
+import { compromissosDeTrabalho } from "@/lib/agenda/compromissos-de-trabalho";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -199,8 +200,9 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
   // ── eventos do calendário (agendamentos + prazos de tarefas) ────────────────
   const eventos = useMemo(() => {
     const lista: Evento[] = [];
-    for (const a of agenda.data ?? []) {
-      if (a.situacao === "cancelled") continue;
+    // Fora do Início: cancelados e a ocupação das outras agendas do Google (treino, meditação…).
+    // Essa ocupação continua segurando o horário na Agenda e nos horários livres.
+    for (const a of compromissosDeTrabalho(agenda.data ?? [])) {
       const inicio = new Date(a.comeca);
       lista.push({
         id: `a-${a.id}`,
