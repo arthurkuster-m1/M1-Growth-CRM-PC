@@ -163,8 +163,10 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
   `useRadarDasOportunidades`; negócio aberto que não vem na lista está em dia.
 - A coluna antiga "Sem resposta há" foi trocada por ela (o filtro numérico em horas continua).
 - A porta de extensão `radar.open` e os avisos da Central agora abrem o CRM.
-- Fica pendente: criar uma aba salva "Radar" (filtro Crítico/Em risco, ordenado) e, se for o caso,
-  reabrir "demandas sem próximo passo" e "propostas vencidas" como filtros do CRM.
+- **Aba pronta "Radar"** (`lib/clientes/modelos-de-visao.ts`): no "+" das abas das Oportunidades,
+  um clique cria a aba com filtro Crítico/Em risco ordenado por urgência (se já existe, abre).
+- Fica pendente, se for o caso: reabrir "demandas sem próximo passo" e "propostas vencidas" como
+  filtros do CRM.
 
 ## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
 1. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google com uma segunda pessoa conectada.

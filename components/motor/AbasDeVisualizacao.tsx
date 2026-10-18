@@ -24,6 +24,9 @@ interface Props {
   aoConfigurar: () => void;
   /** Os tipos que a tela sabe desenhar (padrão: todos). */
   tipos?: readonly TipoDeVisualizacao[];
+  /** Abas prontas, criadas com um clique no "+" (ex.: o Radar do CRM). */
+  modelos?: ReadonlyArray<{ id: string; nome: string; descricao: string }>;
+  aoCriarModelo?: (id: string) => void;
 }
 
 /** O ícone de cada tipo de visualização. */
@@ -75,6 +78,8 @@ export function AbasDeVisualizacao({
   aoCriar,
   aoConfigurar,
   tipos = TIPOS,
+  modelos = [],
+  aoCriarModelo,
 }: Props) {
   const t = useT();
   const rotuloDoTipo = useRotuloDoTipo();
@@ -174,6 +179,27 @@ export function AbasDeVisualizacao({
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[min(92vw,320px)] p-3">
+            {modelos.length > 0 && aoCriarModelo ? (
+              <div className="mb-3 border-b pb-3">
+                <p className="mb-1.5 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+                  {t("Prontas")}
+                </p>
+                {modelos.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      aoCriarModelo(m.id);
+                      setNovaAberta(false);
+                    }}
+                    className="block w-full rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-secondary"
+                  >
+                    <span className="block text-sm font-medium">{t(m.nome)}</span>
+                    <span className="block text-xs text-muted-foreground">{t(m.descricao)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <p className="mb-2 text-sm font-semibold">{t("Nova visualização")}</p>
             <input
               value={nome}
