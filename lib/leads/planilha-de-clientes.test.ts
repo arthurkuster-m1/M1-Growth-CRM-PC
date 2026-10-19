@@ -55,4 +55,15 @@ describe("lerLinhasDeClientes", () => {
     if ("erro" in r) throw new Error(r.erro);
     expect(r.erros).toHaveLength(1);
   });
+
+  it("lê Instagram e Site como links do contato; link ruim avisa e a linha entra", () => {
+    const r = lerLinhasDeClientes([
+      ["Nome", "Telefone", "Instagram", "Site"],
+      ["Gil", "(11) 99999-8888", "instagram.com/gil", "@gil"],
+    ]);
+    if ("erro" in r) throw new Error(r.erro);
+    expect(r.linhas[0]!.links).toEqual({ link_instagram: "https://instagram.com/gil" });
+    expect(r.erros).toHaveLength(1);
+    expect(r.colunasPersonalizadas).toEqual([]);
+  });
 });

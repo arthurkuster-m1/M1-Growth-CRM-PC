@@ -12,6 +12,7 @@
  * Puro: recebe as células já separadas (a 1ª linha é o cabeçalho) e devolve as linhas lidas.
  */
 import { normalizaData, normalizaTelefone } from "@/lib/contacts/csv";
+import { chaveDoLink, normalizarLink, TIPOS_DE_LINK } from "@/lib/leads/links-de-contato";
 import { campoDaColuna } from "@/lib/leads/colunas-da-planilha";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 
@@ -39,6 +40,8 @@ export interface LinhaDeCliente {
   descricao: string | null;
   etiquetas: string[];
   nascimento: string | null;
+  /** Links (Instagram, site…) já normalizados, por chave `link_<tipo>` do contato. */
+  links: Record<string, string>;
   /** Colunas a mais: nome da coluna → valor (viram campos personalizados). */
   campos: Record<string, string>;
 }
@@ -165,6 +168,21 @@ export function lerLinhasDeClientes(
       continue;
     }
 
+    const links: Record<string, string> = {};
+    for (const tipo of TIPOS_DE_LINK) {
+      const bruto = valor(`link_${tipo.id}`);
+      if (bruto === "") continue;
+      const url = normalizarLink(bruto);
+      if (url) links[chaveDoLink(tipo.id)] = url;
+      else {
+        // Link ruim não derruba a linha: o resto do lead entra e o aviso diz qual célula conferir.
+        erros.push({
+          linha: numero,
+          motivo: `${t("link não reconhecido")} ${tipo.rotulo} ("${bruto}") — ${t("cole o endereço completo, ex.: https://…")}`,
+        });
+      }
+    }
+
     const extras: Record<string, string> = {};
     for (const [idx, rotulo] of personalizadas) {
       const v = (bruto[idx] ?? "").trim();
@@ -195,6 +213,7 @@ export function lerLinhasDeClientes(
         .filter(Boolean)
         .slice(0, 20),
       nascimento,
+      links,
       campos: extras,
     });
   }

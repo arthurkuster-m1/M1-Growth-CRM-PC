@@ -168,9 +168,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     tags: string[];
     custom_fields: Record<string, unknown>;
     birthdate: string | null;
+    name: string | null;
+    email: string | null;
+    phone_number: string | null;
     source_metadata: Record<string, unknown>;
   } | null> {
-    const colunas = "id, tags, custom_fields, birthdate, source_metadata";
+    const colunas = "id, name, email, phone_number, tags, custom_fields, birthdate, source_metadata";
     if (l.telefone) {
       const { data } = await supabase
         .from("contacts")
@@ -267,13 +270,21 @@ export async function POST(req: NextRequest): Promise<Response> {
           const patch: Record<string, unknown> = {};
           const novasTags = normalizarTags([...(existente.tags ?? []), ...tags]);
           if (novasTags.length !== (existente.tags ?? []).length) patch.tags = novasTags;
-          if (Object.keys(camposDaLinha).length > 0) {
+          const linksDaLinha = l.links ?? {};
+          if (Object.keys(camposDaLinha).length > 0 || Object.keys(linksDaLinha).length > 0) {
             patch.custom_fields = {
               ...customAtual,
               ...camposDaLinha,
-              _rotulos: { ...rotulosAtuais, ...rotulos },
+              ...linksDaLinha,
+              ...(Object.keys(camposDaLinha).length > 0
+                ? { _rotulos: { ...rotulosAtuais, ...rotulos } }
+                : {}),
             };
           }
+          // Completa o que faltava no cadastro (nunca sobrescreve o que já está preenchido).
+          if (!existente.name && l.nome) patch.name = l.nome;
+          if (!existente.email && l.email) patch.email = l.email;
+          if (!existente.phone_number && l.telefone) patch.phone_number = l.telefone;
           if (l.nascimento && !existente.birthdate) patch.birthdate = l.nascimento;
           if (orig.temOrigem) {
             const meta = existente.source_metadata ?? {};
@@ -298,10 +309,10 @@ export async function POST(req: NextRequest): Promise<Response> {
               source: l.origem ?? "importacao_planilha",
               tags,
               birthdate: l.nascimento,
-              custom_fields:
-                Object.keys(camposDaLinha).length > 0
-                  ? { ...camposDaLinha, _rotulos: rotulos }
-                  : {},
+              custom_fields: {
+                ...(Object.keys(camposDaLinha).length > 0 ? { ...camposDaLinha, _rotulos: rotulos } : {}),
+                ...(l.links ?? {}),
+              },
               ...(orig.temOrigem ? { source_metadata: { origem_manual: orig.manual } } : {}),
             })
             .select("id")
