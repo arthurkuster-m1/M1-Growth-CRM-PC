@@ -1,5 +1,6 @@
 "use client";
 
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
@@ -538,8 +539,8 @@ export function ResultadosDasCampanhas() {
                   <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                     {m === "leads" ? t("Leads únicos") : nomeDaMetrica[m]}
                   </p>
-                  <p className="mt-1 truncate text-xl font-semibold tabular-nums">
-                    {valorTotal[m]}
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
+                    <NumeroQueCabe>{String(valorTotal[m])}</NumeroQueCabe>
                   </p>
                 </div>
               ))}

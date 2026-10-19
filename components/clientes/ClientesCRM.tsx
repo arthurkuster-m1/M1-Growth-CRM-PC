@@ -1,3 +1,4 @@
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -2591,7 +2592,7 @@ export function ClientesCRM({
               <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {n.rotulo}
               </p>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{n.valor}</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{n.valor}</NumeroQueCabe></p>
               {n.detalhe ? <p className="text-[11px] text-muted-foreground">{n.detalhe}</p> : null}
             </button>
           );

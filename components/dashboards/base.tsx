@@ -1,3 +1,4 @@
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 "use client";
 
 import type { ReactNode } from "react";
@@ -79,11 +80,11 @@ export function Kpi({
       <div className="relative mt-1.5 flex flex-wrap items-baseline gap-x-2">
         <p
           className={cn(
-            "min-w-0 truncate text-2xl font-bold tracking-tight tabular-nums sm:text-3xl",
+            "min-w-0 flex-1 basis-32 text-2xl font-bold tracking-tight tabular-nums sm:text-3xl",
             destaque && "text-primary",
           )}
         >
-          {valor}
+          <NumeroQueCabe>{valor}</NumeroQueCabe>
         </p>
         {variacao}
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import type { ReactNode } from "react";
 
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
@@ -72,7 +73,7 @@ function Numero({
           valor === null && "text-muted-foreground",
         )}
       >
-        {valor ?? "—"}
+        <NumeroQueCabe>{valor ?? "—"}</NumeroQueCabe>
       </p>
     </div>
   );

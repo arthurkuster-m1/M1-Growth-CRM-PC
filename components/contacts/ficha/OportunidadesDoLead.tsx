@@ -1,5 +1,6 @@
 "use client";
 
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -143,7 +144,67 @@ export function OportunidadesDoLead({
             placeholder={t("Buscar oportunidade, funil, etapa ou campanha")}
             className="h-9 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
-          <div className="max-w-full overflow-x-auto rounded-xl border">
+          {/* Celular: cada oportunidade é um cartão, com tudo à vista e sem rolar para o lado. */}
+          <ul className="grid gap-3 md:hidden">
+            {visiveis.map((v) => {
+              const { pago, aReceber } = dinheiroDa(v);
+              const situacao = v.lead_status ?? "open";
+              const origem = [v.anuncio, v.lp].filter(Boolean).join(" · ");
+              const linhas: Array<[string, string]> = [
+                [t("Funil › Etapa"), `${v.funil ?? "—"}${v.etapa ? ` › ${v.etapa}` : ""}`],
+                [t("Campanha"), v.campanha ?? "—"],
+                [t("Origem"), origem || "—"],
+                [t("Responsável"), nomeDoResponsavel(v.responsavel_id) || "—"],
+                [t("Previsão"), dia(v.expected_close_date) || "—"],
+                [t("Criada em"), dia(v.created_at) || "—"],
+              ];
+              return (
+                <li key={v.id}>
+                  <button
+                    type="button"
+                    onClick={() => setAbertaId(v.id)}
+                    className="grid w-full min-w-0 gap-3 rounded-2xl border bg-card p-4 text-left shadow-sm"
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <p className="min-w-0 text-sm font-semibold break-words">
+                        {nomeDaVenda(v) || t("Sem produto")}
+                      </p>
+                      <Etiqueta ponto cor={COR_DA_SITUACAO[situacao] ?? "gray"}>
+                        {t(ROTULO_DA_SITUACAO[situacao] ?? situacao)}
+                      </Etiqueta>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(
+                        [
+                          [t("Valor"), reais(v.amount_cents), ""],
+                          [t("Pago"), reais(pago), "text-green-700 dark:text-green-400"],
+                          [t("A receber"), reais(aReceber), ""],
+                        ] as const
+                      ).map(([rotulo, valor, cor]) => (
+                        <div key={rotulo} className="min-w-0 rounded-xl bg-secondary/60 px-2.5 py-2">
+                          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            {rotulo}
+                          </p>
+                          <p className={`text-sm font-semibold tabular-nums ${cor}`}>
+                            <NumeroQueCabe>{valor}</NumeroQueCabe>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <dl className="grid gap-1 text-xs">
+                      {linhas.map(([rotulo, valor]) => (
+                        <div key={rotulo} className="flex justify-between gap-3">
+                          <dt className="shrink-0 text-muted-foreground">{rotulo}</dt>
+                          <dd className="min-w-0 text-right break-words">{valor}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden max-w-full overflow-x-auto rounded-xl border md:block">
             <table className="w-full min-w-max text-sm">
               <thead className="bg-secondary/60 text-xs text-muted-foreground">
                 <tr>
