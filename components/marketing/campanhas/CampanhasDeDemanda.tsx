@@ -626,6 +626,14 @@ export function CampanhasDeDemanda() {
         return dinheiro(c.goal_revenue);
       case "estado-atual":
         return <span className="tabular-nums">{textoDoEstado(t, c.estado)}</span>;
+      case "investido":
+        return c.estado ? dinheiro(c.estado.investido) : "—";
+      case "leads":
+        return c.estado ? c.estado.leads : "—";
+      case "cpl":
+        return c.estado && c.estado.leads > 0 && c.estado.investido > 0
+          ? dinheiro(c.estado.investido / c.estado.leads)
+          : "—";
       case "plataforma":
         return c.platform_campaigns.map((p) => p.name).join(", ") || "—";
       default:
