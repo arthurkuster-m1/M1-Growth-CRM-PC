@@ -11,7 +11,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { aplicarConsulta, type CampoConsultavel, type ConsultaDaTabela } from "@/lib/motor/consulta";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { Check, TextAa } from "@/lib/ui/icons";
 import { rotuloDoIndicador } from "@/lib/plataformas-de-anuncio/meta/tabela-de-campanhas";
@@ -488,7 +488,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
         aoAlternar={(id) => {
           const atual = resolvidas.find((c) => c.id === id);
           if (!atual || atual.fixa || atual.semOcultar) return;
-          atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+          atualizar((p) => alternarVisibilidade(p, resolvidas, id));
         }}
         aoMostrarTodas={(mostrar) =>
           atualizar((p) => ({

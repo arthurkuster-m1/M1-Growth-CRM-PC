@@ -1,5 +1,6 @@
 "use client";
 
+import { registrarDesfazer } from "@/lib/motor/desfazer";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,7 +31,7 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import type { ResumoDeSubpagina } from "@/lib/marketing/paginas";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { Check, Package, TextAa, Trash } from "@/lib/ui/icons";
@@ -109,14 +110,31 @@ export function TabelaDeProdutos({
     );
     try {
       await corpo();
+      return true;
     } catch (e) {
       queryClient.setQueryData(chaveDoCache, antes);
       showApiError(e);
+      return false;
     } finally {
       void queryClient.invalidateQueries({ queryKey: chaveDoCache });
     }
   }
-  const editar = (keys: string[], m: Mudancas) =>
+  /** O que `m` mudou, com os valores que `p` tinha antes — a volta do Ctrl+Z. */
+  const inversoDe = (p: Produto, m: Mudancas): Mudancas => {
+    const o = p.oferta;
+    const volta: Record<string, unknown> = {};
+    if (m.title !== undefined) volta.title = p.title;
+    if (o) {
+      if (m.etapa !== undefined) volta.etapa = o.etapa;
+      if (m.nivel !== undefined) volta.nivel = o.nivel;
+      if (m.carroChefe !== undefined) volta.carroChefe = o.carroChefe;
+      if (m.tipoDePreco !== undefined) volta.tipoDePreco = o.tipoDePreco;
+      if (m.janelaAtivoMeses !== undefined) volta.janelaAtivoMeses = o.janelaAtivoMeses;
+      if (m.preco !== undefined) volta.preco = o.preco === "—" ? null : o.valor;
+    }
+    return volta as Mudancas;
+  };
+  const editarSemDesfazer = (keys: string[], m: Mudancas) =>
     gravar(
       keys,
       () => apiClient.patch(BASE_DA_API, { keys, mudancas: m }),
@@ -143,6 +161,20 @@ export function TabelaDeProdutos({
           : p.oferta,
       }),
     );
+  const editar = async (keys: string[], m: Mudancas) => {
+    const antes = (queryClient.getQueryData<DadosDoCache>(chaveDoCache)?.subpaginas ?? []).filter((s) =>
+      keys.includes(s.key),
+    );
+    const ok = await editarSemDesfazer(keys, m);
+    if (ok && antes.length > 0) {
+      registrarDesfazer({
+        rotulo: antes.length === 1 ? antes[0]!.title : `${antes.length} ${t("produtos")}`,
+        desfazer: async () => {
+          for (const p of antes) await editarSemDesfazer([p.key], inversoDe(p, m));
+        },
+      });
+    }
+  };
   const publicar = (keys: string[], publicada: boolean) =>
     gravar(
       keys,
@@ -734,7 +766,7 @@ export function TabelaDeProdutos({
         aoAlternar={(id) => {
           const atual = resolvidas.find((c) => c.id === id);
           if (!atual || atual.fixa || atual.semOcultar) return;
-          atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+          atualizar((p) => alternarVisibilidade(p, resolvidas, id));
         }}
         aoMostrarTodas={(mostrar) =>
           atualizar((p) => ({

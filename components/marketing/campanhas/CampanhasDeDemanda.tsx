@@ -43,7 +43,7 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { ArrowRight, CalendarBlank, Check, Megaphone, Plus, TextAa, Trash } from "@/lib/ui/icons";
@@ -957,7 +957,7 @@ export function CampanhasDeDemanda() {
         aoAlternar={(id) => {
           const atual = resolvidas.find((c) => c.id === id);
           if (!atual || atual.fixa || atual.semOcultar) return;
-          atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+          atualizar((p) => alternarVisibilidade(p, resolvidas, id));
         }}
         aoMostrarTodas={(mostrar) =>
           atualizar((p) => ({

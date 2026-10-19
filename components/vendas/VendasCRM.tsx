@@ -1,5 +1,6 @@
 "use client";
 
+import { registrarDesfazer } from "@/lib/motor/desfazer";
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
@@ -42,7 +43,7 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import { somarMeses } from "@/lib/marketing/campanhas-resumo";
 import { precisaDeConfirmacao } from "@/lib/vendas-recorrentes";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -245,7 +246,19 @@ export function VendasCRM() {
   const mudarStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: StatusDaVenda }) =>
       apiClient.patch(`/api/v1/vendas/${id}`, { status }),
-    onSuccess: recarregar,
+    onSuccess: (_r, { id }) => {
+      const anterior = queryClient.getQueryData<Venda[]>(["vendas"])?.find((x) => x.id === id);
+      if (anterior) {
+        registrarDesfazer({
+          rotulo: anterior.status,
+          desfazer: async () => {
+            await apiClient.patch(`/api/v1/vendas/${id}`, { status: anterior.status });
+            await recarregar();
+          },
+        });
+      }
+      return recarregar();
+    },
     onError: showApiError,
   });
   const mudarRecorrente = useMutation({
@@ -1026,7 +1039,7 @@ export function VendasCRM() {
         aoAlternar={(id) => {
           const atual = resolvidas.find((c) => c.id === id);
           if (!atual || atual.fixa || atual.semOcultar) return;
-          atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+          atualizar((p) => alternarVisibilidade(p, resolvidas, id));
         }}
         aoMostrarTodas={(mostrar) =>
           atualizar((p) => ({

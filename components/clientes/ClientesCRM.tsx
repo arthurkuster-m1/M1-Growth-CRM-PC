@@ -1,5 +1,6 @@
 "use client";
 
+import { registrarDesfazer, valoresAntes } from "@/lib/motor/desfazer";
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -77,7 +78,7 @@ import {
   type CampoConsultavel,
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import {
   ArrowRight,
@@ -621,6 +622,25 @@ export function ClientesCRM({
       contactId,
     );
   }
+  /**
+   * O "antes" de uma edição, para o Ctrl+Z: `patch` e `local` andam nas mesmas posições (o campo
+   * da API e o campo que a lista mostra), então o valor antigo de cada campo da lista é o valor
+   * antigo do campo da API na mesma posição.
+   */
+  function valoresDoDesfazer(
+    atual: object,
+    patch: Record<string, unknown>,
+    local: Record<string, unknown>,
+  ) {
+    const antesLocal = valoresAntes(atual, local);
+    const chavesLocal = Object.keys(local);
+    return {
+      local: antesLocal as Record<string, unknown>,
+      patch: Object.fromEntries(
+        Object.keys(patch).map((k, i) => [k, antesLocal[chavesLocal[i] ?? ""] ?? null]),
+      ) as Record<string, unknown>,
+    };
+  }
   async function executar(acao: () => Promise<unknown>) {
     try {
       await acao();
@@ -635,8 +655,17 @@ export function ClientesCRM({
     patch: Record<string, unknown>,
     local: Partial<ClienteDaLista>,
   ) => {
+    const volta = valoresDoDesfazer(l, patch, local);
     otimista((c) => ({ ...c, ...local }), l.contact_id);
-    return executar(() => apiClient.patch(`/api/v1/contacts/${l.contact_id}`, patch));
+    return executar(() => apiClient.patch(`/api/v1/contacts/${l.contact_id}`, patch)).then(() =>
+      registrarDesfazer({
+        rotulo: l.nome,
+        desfazer: async () => {
+          otimista((c) => ({ ...c, ...volta.local }), l.contact_id);
+          await executar(() => apiClient.patch(`/api/v1/contacts/${l.contact_id}`, volta.patch));
+        },
+      }),
+    );
   };
   const salvarNegocio = (
     l: Linha,
@@ -644,8 +673,17 @@ export function ClientesCRM({
     patch: Record<string, unknown>,
     local: Partial<ParticipacaoDoCliente>,
   ) => {
+    const volta = valoresDoDesfazer(p, patch, local);
     otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, ...local }));
-    return executar(() => apiClient.patch(`/api/v1/leads/${p.lead_id}`, patch));
+    return executar(() => apiClient.patch(`/api/v1/leads/${p.lead_id}`, patch)).then(() =>
+      registrarDesfazer({
+        rotulo: l.nome,
+        desfazer: async () => {
+          otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, ...volta.local }));
+          await executar(() => apiClient.patch(`/api/v1/leads/${p.lead_id}`, volta.patch));
+        },
+      }),
+    );
   };
   const salvarOrigem = (
     l: Linha,
@@ -3125,7 +3163,7 @@ export function ClientesCRM({
             aoAlternar={(id) => {
               const atual = resolvidas.find((c) => c.id === id);
               if (!atual || atual.fixa || atual.semOcultar) return;
-              atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+              atualizar((p) => alternarVisibilidade(p, resolvidas, id));
             }}
             aoMostrarTodas={(mostrar) =>
               atualizar((p) => ({

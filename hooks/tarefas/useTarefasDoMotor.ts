@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
+import { registrarDesfazer, valoresAntes } from "@/lib/motor/desfazer";
 import { lacunaAcabou, posicaoEntre, renumerar } from "@/lib/motor/ordem";
 import type { MudancasEmMassa } from "@/lib/tarefas/edicao-em-massa";
 import type { EdicaoDaTarefa, NovaTarefa, Tarefa } from "@/lib/tarefas/tipos";
@@ -55,11 +56,25 @@ export function useTarefasDoMotor() {
       queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
         (lista ?? []).map((t) => (t.id === id ? ({ ...t, ...enviar, ...local } as Tarefa) : t)),
       );
-      return { antes };
+      return { antes, anterior: antes?.find((t) => t.id === id) };
     },
     onError: (err, _vars, contexto) => {
       if (contexto?.antes) queryClient.setQueryData(CHAVE, contexto.antes);
       showApiError(err);
+    },
+    // Ctrl+Z: volta os campos que esta edição mudou ao que eram antes.
+    onSuccess: (_r, { id, enviar, local }, contexto) => {
+      const anterior = contexto?.anterior;
+      if (!anterior) return;
+      registrarDesfazer({
+        rotulo: anterior.title,
+        desfazer: () =>
+          editar.mutateAsync({
+            id,
+            enviar: valoresAntes(anterior, enviar) as EdicaoDaTarefa,
+            local: valoresAntes(anterior, local ?? {}) as Partial<Tarefa>,
+          }),
+      });
     },
     onSettled: invalidar,
   });
@@ -114,11 +129,29 @@ export function useTarefasDoMotor() {
           alvo.has(t.id) ? ({ ...t, ...mudancas, ...local } as Tarefa) : t,
         ),
       );
-      return { antes };
+      return { antes, anteriores: (antes ?? []).filter((t) => alvo.has(t.id)) };
     },
     onError: (err, _vars, contexto) => {
       if (contexto?.antes) queryClient.setQueryData(CHAVE, contexto.antes);
       showApiError(err);
+    },
+    // Ctrl+Z: cada tarefa volta ao que era (os valores antigos podem diferir de uma para outra).
+    onSuccess: (_r, { mudancas, local }, contexto) => {
+      const anteriores = contexto?.anteriores ?? [];
+      if (anteriores.length === 0) return;
+      registrarDesfazer({
+        rotulo: `${anteriores.length} ${anteriores.length === 1 ? "tarefa" : "tarefas"}`,
+        desfazer: () =>
+          Promise.all(
+            anteriores.map((t) =>
+              editar.mutateAsync({
+                id: t.id,
+                enviar: valoresAntes(t, mudancas as Record<string, unknown>) as EdicaoDaTarefa,
+                local: valoresAntes(t, local ?? {}) as Partial<Tarefa>,
+              }),
+            ),
+          ),
+      });
     },
     onSettled: invalidar,
   });
