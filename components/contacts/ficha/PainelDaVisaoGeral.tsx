@@ -1,5 +1,6 @@
-import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 "use client";
+
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
