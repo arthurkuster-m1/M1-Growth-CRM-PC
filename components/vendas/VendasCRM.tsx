@@ -1,5 +1,6 @@
-import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 "use client";
+
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

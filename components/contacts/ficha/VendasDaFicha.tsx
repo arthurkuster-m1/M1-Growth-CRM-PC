@@ -1,6 +1,6 @@
-import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
-("use client");
+"use client";
 
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 
