@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { Switch } from "@/components/ui/switch";
 import { JanelaDaEtapa } from "@/app/app/settings/tenant/pipelines/_stages";
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
@@ -32,6 +33,7 @@ interface Etapa {
   expected_duration_hours: number | null;
   win_probability?: number | null;
   qualification?: "mql" | "disqualified" | null;
+  avisar_na_central?: boolean | null;
 }
 
 type Papel = "nenhum" | "won" | "lost" | "mql" | "disqualified";
@@ -523,6 +525,17 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       aoConfirmar={(valor) => void mexer(atual.id, { expected_duration_hours: valor })}
                     />
                   </div>
+                  <label className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm sm:col-span-2">
+                    <span className="min-w-0">
+                      {t("Avisar a equipe na Central quando um negócio entrar aqui")}
+                    </span>
+                    <Switch
+                      checked={atual.avisar_na_central === true}
+                      disabled={!podeEditar}
+                      onCheckedChange={(v) => void mexer(atual.id, { avisar_na_central: v })}
+                      aria-label={`${t("Avisar a equipe na Central quando um negócio entrar em")} «${atual.name}»`}
+                    />
+                  </label>
                   <div className="flex flex-wrap items-end gap-2">
                     <button
                       type="button"

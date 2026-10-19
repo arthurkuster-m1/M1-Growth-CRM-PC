@@ -12,6 +12,7 @@ import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNa
 import { useSinalDePresenca } from "@/hooks/atendimento/useSinalDePresenca";
 import { useInboundMessageAlerts } from "@/hooks/notifications/useInboundMessageAlerts";
 import { useInboundCallAlerts } from "@/hooks/calls/useInboundCallAlerts";
+import { useAtalhoDesfazer } from "@/hooks/motor/useAtalhoDesfazer";
 import { useCrmAlerts } from "@/hooks/notifications/useCrmAlerts";
 import { useNotifyOpenFromServiceWorker } from "@/lib/notifications/notify_open";
 import { estiloDaReserva, useOcupacaoDoRodape } from "@/lib/ui/rodape-ocupado";
@@ -34,6 +35,7 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
   useInboundMessageAlerts();
   useInboundCallAlerts();
   useCrmAlerts();
+  useAtalhoDesfazer();
   useNotifyOpenFromServiceWorker();
   // O SINAL DE PRESENÇA (issue #996) sai daqui porque presença é "esta aba
   // está aberta" — não "a pessoa está na tela Equipe". Quem atende passa o dia

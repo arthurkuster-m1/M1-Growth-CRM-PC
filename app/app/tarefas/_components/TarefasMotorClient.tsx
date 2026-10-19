@@ -60,7 +60,7 @@ import {
 } from "@/lib/motor/consulta";
 import { formatarDiaBr } from "@/lib/motor/calendario";
 import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela } from "@/lib/motor/layout";
+import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -608,7 +608,7 @@ export function TarefasMotorClient({
   function alternarColuna(id: string) {
     const atual = resolvidas.find((c) => c.id === id);
     if (!atual || atual.fixa || atual.semOcultar) return;
-    atualizar((p) => ({ ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } }));
+    atualizar((p) => alternarVisibilidade(p, resolvidas, id));
   }
 
   // Calendário: as propriedades dentro de cada tarefa são uma escolha SÓ dele (esconder uma

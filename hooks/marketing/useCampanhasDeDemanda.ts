@@ -1,5 +1,6 @@
 "use client";
 
+import { registrarDesfazer, valoresAntes } from "@/lib/motor/desfazer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -64,6 +65,21 @@ export function useCampanhasDeDemanda() {
     );
     try {
       await Promise.all(ids.map((id) => apiClient.patch(`${BASE}/${id}`, patch)));
+      // Ctrl+Z: cada campanha volta ao que era (os valores antigos podem diferir entre elas).
+      const anteriores = (antes?.campanhas ?? []).filter((c) => ids.includes(c.id));
+      if (anteriores.length > 0) {
+        registrarDesfazer({
+          rotulo: anteriores.length === 1 ? anteriores[0]!.name : `${anteriores.length} campanhas`,
+          desfazer: async () => {
+            await Promise.all(
+              anteriores.map((c) =>
+                apiClient.patch(`${BASE}/${c.id}`, valoresAntes(c, patch as Record<string, unknown>)),
+              ),
+            );
+            void recarregar();
+          },
+        });
+      }
     } catch (e) {
       queryClient.setQueryData(CHAVE, antes);
       showApiError(e);
@@ -287,11 +303,24 @@ export function useCriativosDaCampanha(campanhaId: string) {
       }
     },
     editar: async (id: string, patch: EdicaoDeCriativo) => {
+      const anterior = queryClient.getQueryData<{ id: string }[]>(chave)?.find((i) => i.id === id);
       queryClient.setQueryData<Criativo[]>(chave, (l) =>
         (l ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
       );
       try {
         await apiClient.patch(`${BASE}/${campanhaId}/creatives/${id}`, patch);
+        if (anterior) {
+          registrarDesfazer({
+            rotulo: (anterior as { name?: string }).name,
+            desfazer: async () => {
+              await apiClient.patch(
+                `${BASE}/${campanhaId}/creatives/${id}`,
+                valoresAntes(anterior, patch as Record<string, unknown>),
+              );
+              void recarregar();
+            },
+          });
+        }
       } catch (e) {
         showApiError(e);
       } finally {
@@ -399,11 +428,24 @@ export function useAbordagensDaCampanha(campanhaId: string) {
       }
     },
     editar: async (id: string, patch: EdicaoDeAbordagem) => {
+      const anterior = queryClient.getQueryData<{ id: string }[]>(chave)?.find((i) => i.id === id);
       queryClient.setQueryData<Abordagem[]>(chave, (l) =>
         (l ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)),
       );
       try {
         await apiClient.patch(`${BASE}/${campanhaId}/approaches/${id}`, patch);
+        if (anterior) {
+          registrarDesfazer({
+            rotulo: (anterior as { name?: string }).name,
+            desfazer: async () => {
+              await apiClient.patch(
+                `${BASE}/${campanhaId}/approaches/${id}`,
+                valoresAntes(anterior, patch as Record<string, unknown>),
+              );
+              void recarregar();
+            },
+          });
+        }
       } catch (e) {
         showApiError(e);
       } finally {
@@ -458,11 +500,24 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
       }
     },
     editar: async (id: string, patch: EdicaoDeLp) => {
+      const anterior = queryClient.getQueryData<{ id: string }[]>(chave)?.find((i) => i.id === id);
       queryClient.setQueryData<LandingPage[]>(chave, (l) =>
         (l ?? []).map((x) => (x.id === id ? { ...x, ...patch } : x)),
       );
       try {
         await apiClient.patch(`${BASE}/${campanhaId}/landing-pages/${id}`, patch);
+        if (anterior) {
+          registrarDesfazer({
+            rotulo: (anterior as { name?: string }).name,
+            desfazer: async () => {
+              await apiClient.patch(
+                `${BASE}/${campanhaId}/landing-pages/${id}`,
+                valoresAntes(anterior, patch as Record<string, unknown>),
+              );
+              void recarregar();
+            },
+          });
+        }
       } catch (e) {
         showApiError(e);
       } finally {
