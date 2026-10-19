@@ -26,8 +26,16 @@ export const COLUNAS_DO_LEAD = [
   { id: "status_da_venda", rotulo: "Status da venda" },
   { id: "previsao", rotulo: "Previsão de fechamento" },
   { id: "descricao", rotulo: "Observações" },
-  { id: "etiquetas", rotulo: "Etiquetas" },
+  { id: "etiquetas", rotulo: "Tags" },
   { id: "nascimento", rotulo: "Nascimento" },
+  { id: "link_instagram", rotulo: "Instagram" },
+  { id: "link_site", rotulo: "Site" },
+  { id: "link_google_meu_negocio", rotulo: "Google Meu Negócio" },
+  { id: "link_facebook", rotulo: "Facebook" },
+  { id: "link_linkedin", rotulo: "LinkedIn" },
+  { id: "link_tiktok", rotulo: "TikTok" },
+  { id: "link_youtube", rotulo: "YouTube" },
+  { id: "link_outro", rotulo: "Outro link" },
 ] as const;
 
 /** Quebra um texto em linhas e células. Aceita tabulação (colar do Excel/Sheets), ; e , (CSV). */

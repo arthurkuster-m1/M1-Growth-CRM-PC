@@ -62,7 +62,7 @@ export function ImportarLeadsDoCRM({
 }) {
   const t = useT();
   const queryClient = useQueryClient();
-  const { camposDoFunil } = useCamposDosFunis(aberto);
+  const { camposDoFunil, rotulosDeTodosOsCampos } = useCamposDosFunis(aberto);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
   // Começa SEM funil: os contatos ficam só guardados (sem funil e sem venda).
@@ -367,10 +367,29 @@ export function ImportarLeadsDoCRM({
             {t("+ Adicionar coluna")}
           </Button>
         </div>
+        {(() => {
+          const jaTem = new Set(colunas.map((c) => c.rotulo.toLowerCase()));
+          const sugestoes = rotulosDeTodosOsCampos.filter((r) => !jaTem.has(r.toLowerCase()));
+          return sugestoes.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">{t("Campos personalizados já existentes:")}</span>
+              {sugestoes.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setColunasExtras((a) => (a.includes(r) ? a : [...a, r]))}
+                  className="rounded-full border px-2.5 py-0.5 text-xs hover:bg-secondary"
+                >
+                  + {r}
+                </button>
+              ))}
+            </div>
+          ) : null;
+        })()}
         {aviso ? <p className="text-xs text-muted-foreground">{aviso}</p> : null}
         <p className="text-xs text-muted-foreground">
           {t(
-            "Só o nome e o telefone ou o e-mail são obrigatórios: sem funil, o lead fica guardado (sem venda). Funil, etapa, produto e valor são opcionais. Telefone sem código do país vale como Brasil (+55). Datas: DD/MM/AAAA.",
+            "Só o nome e o telefone ou o e-mail são obrigatórios: sem funil, o lead fica guardado (sem venda). Quem já existe (mesmo telefone ou e-mail) é ATUALIZADO: o que estava vazio é preenchido, links e campos personalizados são gravados e as tags são somadas. Funil, etapa, produto e valor são opcionais. Telefone sem código do país vale como Brasil (+55). Datas: DD/MM/AAAA.",
           )}
         </p>
 

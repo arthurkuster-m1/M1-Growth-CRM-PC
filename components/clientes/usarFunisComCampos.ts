@@ -28,6 +28,10 @@ export function useCamposDosFunis(ativo: boolean) {
   }
   return {
     camposDoFunil: (id: string): CustomFieldDef[] => porFunil.get(id) ?? [],
+    /** Os rótulos de todos os campos personalizados de todos os funis (sem repetir). */
+    rotulosDeTodosOsCampos: [
+      ...new Set([...porFunil.values()].flatMap((defs) => defs.map((d) => d.label))),
+    ],
     /** O produto principal que o funil declara (Configurações › Funis), se houver. */
     produtoPrincipalDoFunil: (id: string): string | undefined => produtoPorFunil.get(id),
   };
