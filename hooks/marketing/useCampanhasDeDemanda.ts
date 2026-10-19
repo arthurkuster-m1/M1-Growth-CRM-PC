@@ -49,7 +49,14 @@ export function useCampanhasDeDemanda() {
     mutationFn: async (entrada: EdicaoDeCampanha & { name: string }) =>
       (await apiClient.post<{ data: { campanha: CampanhaDeDemanda } }>(BASE, entrada)).data
         .campanha,
-    onSuccess: recarregar,
+    onSuccess: (campanha) => {
+      void recarregar();
+      // Ctrl+Z: a campanha criada é apagada de novo.
+      registrarDesfazer({
+        rotulo: campanha.name,
+        desfazer: () => apagar([campanha.id]),
+      });
+    },
     onError: showApiError,
   });
 
@@ -71,6 +78,18 @@ export function useCampanhasDeDemanda() {
         registrarDesfazer({
           rotulo: anteriores.length === 1 ? anteriores[0]!.name : `${anteriores.length} campanhas`,
           desfazer: async () => {
+            // A tela volta na hora; o servidor confirma por baixo.
+            queryClient.setQueryData<DadosDasCampanhas>(CHAVE, (d) =>
+              d
+                ? {
+                    ...d,
+                    campanhas: d.campanhas.map((c) => {
+                      const volta = anteriores.find((a) => a.id === c.id);
+                      return volta ? { ...c, ...valoresAntes(volta, patch as Record<string, unknown>) } : c;
+                    }),
+                  }
+                : d,
+            );
             await Promise.all(
               anteriores.map((c) =>
                 apiClient.patch(`${BASE}/${c.id}`, valoresAntes(c, patch as Record<string, unknown>)),
@@ -296,7 +315,17 @@ export function useCriativosDaCampanha(campanhaId: string) {
           entrada,
         );
         await recarregar();
-        return r.data.criativo;
+        const criada = r.data.criativo;
+        // Ctrl+Z: o item criado some de novo.
+        registrarDesfazer({
+          rotulo: (criada as { name?: string }).name,
+          desfazer: async () => {
+            queryClient.setQueryData<{ id: string }[]>(chave, (l) => (l ?? []).filter((i) => i.id !== criada.id));
+            await apiClient.delete(`${BASE}/${campanhaId}/creatives/${criada.id}`);
+            void recarregar();
+          },
+        });
+        return criada;
       } catch (e) {
         showApiError(e);
         return null;
@@ -313,10 +342,12 @@ export function useCriativosDaCampanha(campanhaId: string) {
           registrarDesfazer({
             rotulo: (anterior as { name?: string }).name,
             desfazer: async () => {
-              await apiClient.patch(
-                `${BASE}/${campanhaId}/creatives/${id}`,
-                valoresAntes(anterior, patch as Record<string, unknown>),
+              // A tela volta na hora; o servidor confirma por baixo.
+              const volta = valoresAntes(anterior, patch as Record<string, unknown>);
+              queryClient.setQueryData<{ id: string }[]>(chave, (l) =>
+                (l ?? []).map((i) => (i.id === id ? { ...i, ...volta } : i)),
               );
+              await apiClient.patch(`${BASE}/${campanhaId}/creatives/${id}`, volta);
               void recarregar();
             },
           });
@@ -336,8 +367,19 @@ export function useCriativosDaCampanha(campanhaId: string) {
       }
     },
     apagar: async (id: string) => {
+      const apagado = queryClient.getQueryData<{ id: string }[]>(chave)?.find((i) => i.id === id);
       try {
         await apiClient.delete(`${BASE}/${campanhaId}/creatives/${id}`);
+        if (apagado) {
+          // Ctrl+Z: o item volta (com um id novo).
+          registrarDesfazer({
+            rotulo: (apagado as { name?: string }).name,
+            desfazer: async () => {
+              await apiClient.post(`${BASE}/${campanhaId}/creatives`, apagado);
+              void recarregar();
+            },
+          });
+        }
       } catch (e) {
         showApiError(e);
       } finally {
@@ -421,7 +463,17 @@ export function useAbordagensDaCampanha(campanhaId: string) {
           entrada,
         );
         await recarregar();
-        return r.data.abordagem;
+        const criada = r.data.abordagem;
+        // Ctrl+Z: o item criado some de novo.
+        registrarDesfazer({
+          rotulo: (criada as { name?: string }).name,
+          desfazer: async () => {
+            queryClient.setQueryData<{ id: string }[]>(chave, (l) => (l ?? []).filter((i) => i.id !== criada.id));
+            await apiClient.delete(`${BASE}/${campanhaId}/approaches/${criada.id}`);
+            void recarregar();
+          },
+        });
+        return criada;
       } catch (e) {
         showApiError(e);
         return null;
@@ -438,10 +490,12 @@ export function useAbordagensDaCampanha(campanhaId: string) {
           registrarDesfazer({
             rotulo: (anterior as { name?: string }).name,
             desfazer: async () => {
-              await apiClient.patch(
-                `${BASE}/${campanhaId}/approaches/${id}`,
-                valoresAntes(anterior, patch as Record<string, unknown>),
+              // A tela volta na hora; o servidor confirma por baixo.
+              const volta = valoresAntes(anterior, patch as Record<string, unknown>);
+              queryClient.setQueryData<{ id: string }[]>(chave, (l) =>
+                (l ?? []).map((i) => (i.id === id ? { ...i, ...volta } : i)),
               );
+              await apiClient.patch(`${BASE}/${campanhaId}/approaches/${id}`, volta);
               void recarregar();
             },
           });
@@ -453,8 +507,19 @@ export function useAbordagensDaCampanha(campanhaId: string) {
       }
     },
     apagar: async (id: string) => {
+      const apagado = queryClient.getQueryData<{ id: string }[]>(chave)?.find((i) => i.id === id);
       try {
         await apiClient.delete(`${BASE}/${campanhaId}/approaches/${id}`);
+        if (apagado) {
+          // Ctrl+Z: o item volta (com um id novo).
+          registrarDesfazer({
+            rotulo: (apagado as { name?: string }).name,
+            desfazer: async () => {
+              await apiClient.post(`${BASE}/${campanhaId}/approaches`, apagado);
+              void recarregar();
+            },
+          });
+        }
       } catch (e) {
         showApiError(e);
       } finally {
@@ -493,7 +558,17 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
           entrada,
         );
         await recarregar();
-        return r.data.landing_page;
+        const criada = r.data.landing_page;
+        // Ctrl+Z: o item criado some de novo.
+        registrarDesfazer({
+          rotulo: (criada as { name?: string }).name,
+          desfazer: async () => {
+            queryClient.setQueryData<{ id: string }[]>(chave, (l) => (l ?? []).filter((i) => i.id !== criada.id));
+            await apiClient.delete(`${BASE}/${campanhaId}/landing-pages/${criada.id}`);
+            void recarregar();
+          },
+        });
+        return criada;
       } catch (e) {
         showApiError(e);
         return null;
@@ -510,10 +585,12 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
           registrarDesfazer({
             rotulo: (anterior as { name?: string }).name,
             desfazer: async () => {
-              await apiClient.patch(
-                `${BASE}/${campanhaId}/landing-pages/${id}`,
-                valoresAntes(anterior, patch as Record<string, unknown>),
+              // A tela volta na hora; o servidor confirma por baixo.
+              const volta = valoresAntes(anterior, patch as Record<string, unknown>);
+              queryClient.setQueryData<{ id: string }[]>(chave, (l) =>
+                (l ?? []).map((i) => (i.id === id ? { ...i, ...volta } : i)),
               );
+              await apiClient.patch(`${BASE}/${campanhaId}/landing-pages/${id}`, volta);
               void recarregar();
             },
           });
@@ -525,8 +602,19 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
       }
     },
     apagar: async (id: string) => {
+      const apagado = queryClient.getQueryData<{ id: string }[]>(chave)?.find((i) => i.id === id);
       try {
         await apiClient.delete(`${BASE}/${campanhaId}/landing-pages/${id}`);
+        if (apagado) {
+          // Ctrl+Z: o item volta (com um id novo).
+          registrarDesfazer({
+            rotulo: (apagado as { name?: string }).name,
+            desfazer: async () => {
+              await apiClient.post(`${BASE}/${campanhaId}/landing-pages`, apagado);
+              void recarregar();
+            },
+          });
+        }
       } catch (e) {
         showApiError(e);
       } finally {

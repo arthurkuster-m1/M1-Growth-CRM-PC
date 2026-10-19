@@ -27,6 +27,24 @@ const posicaoDe = (t: Tarefa) => t.position ?? 0;
  * Traz TODAS as situações (inclusive concluídas), em ordem manual: filtrar é decisão da
  * visualização, não do hook.
  */
+/** A tarefa como o formulário de criar a entende — para "desapagar" com o Ctrl+Z. */
+function comoNovaTarefa(t: Tarefa): NovaTarefa {
+  return {
+    title: t.title,
+    description: t.description,
+    due_date: t.due_date,
+    start_date: t.start_date ?? null,
+    priority: t.priority,
+    status: t.status,
+    lead_id: t.lead_id,
+    contact_id: t.contact_id,
+    assigned_to: t.assigned_to,
+    status_option_id: t.status_option_id ?? null,
+    position: t.position,
+    custom_fields: t.custom_fields,
+  };
+}
+
 export function useTarefasDoMotor() {
   const queryClient = useQueryClient();
 
@@ -85,6 +103,8 @@ export function useTarefasDoMotor() {
     onSuccess: (tarefa) => {
       queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) => [...(lista ?? []), tarefa]);
       void invalidar();
+      // Ctrl+Z: a tarefa criada some de novo.
+      registrarDesfazer({ rotulo: tarefa.title, desfazer: () => apagar.mutateAsync(tarefa.id) });
     },
     onError: showApiError,
   });
@@ -97,11 +117,17 @@ export function useTarefasDoMotor() {
       queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
         (lista ?? []).filter((t) => t.id !== id),
       );
-      return { antes };
+      return { antes, apagada: antes?.find((t) => t.id === id) };
     },
     onError: (err, _id, contexto) => {
       if (contexto?.antes) queryClient.setQueryData(CHAVE, contexto.antes);
       showApiError(err);
+    },
+    // Ctrl+Z: a tarefa apagada volta (com um id novo, no mesmo lugar da lista).
+    onSuccess: (_r, _id, contexto) => {
+      const apagada = contexto?.apagada;
+      if (!apagada) return;
+      registrarDesfazer({ rotulo: apagada.title, desfazer: () => criar.mutateAsync(comoNovaTarefa(apagada)) });
     },
     onSettled: invalidar,
   });
@@ -166,11 +192,20 @@ export function useTarefasDoMotor() {
       queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
         (lista ?? []).filter((t) => !alvo.has(t.id)),
       );
-      return { antes };
+      return { antes, apagadas: (antes ?? []).filter((t) => alvo.has(t.id)) };
     },
     onError: (err, _ids, contexto) => {
       if (contexto?.antes) queryClient.setQueryData(CHAVE, contexto.antes);
       showApiError(err);
+    },
+    // Ctrl+Z: as tarefas apagadas voltam.
+    onSuccess: (_r, _ids, contexto) => {
+      const apagadas = contexto?.apagadas ?? [];
+      if (apagadas.length === 0) return;
+      registrarDesfazer({
+        rotulo: `${apagadas.length} ${apagadas.length === 1 ? "tarefa" : "tarefas"}`,
+        desfazer: () => Promise.all(apagadas.map((t) => criar.mutateAsync(comoNovaTarefa(t)))),
+      });
     },
     onSettled: invalidar,
   });

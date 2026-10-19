@@ -26,17 +26,41 @@ export function podeDesfazer(): boolean {
   return pilha.length > 0;
 }
 
-/** Desfaz a última edição. Devolve o rótulo dela, ou `null` se não havia nada. */
-export async function desfazerUltimo(): Promise<EntradaDeDesfazer | null> {
+/**
+ * Começa a desfazer a última edição e devolve NA HORA a entrada e a promessa do fim. A tela já
+ * mudou quando `desfazer` volta (as edições são otimistas); `concluido` só confirma o servidor.
+ * `null` se não havia nada.
+ */
+export function iniciarDesfazer(): { entrada: EntradaDeDesfazer; concluido: Promise<void> } | null {
   const entrada = pilha.pop();
   if (!entrada) return null;
+  // A marca fica de pé até o servidor confirmar: o desfazer pode registrar edições em
+  // `onSuccess` (ex.: recriar uma linha apagada), e isso não é uma edição nova da pessoa.
   desfazendo = true;
+  let rodando: Promise<unknown>;
   try {
-    await entrada.desfazer();
-  } finally {
-    desfazendo = false;
+    rodando = Promise.resolve(entrada.desfazer());
+  } catch (e) {
+    rodando = Promise.reject(e);
   }
-  return entrada;
+  const concluido = rodando.then(
+    () => {
+      desfazendo = false;
+    },
+    (e) => {
+      desfazendo = false;
+      throw e;
+    },
+  );
+  return { entrada, concluido };
+}
+
+/** Desfaz a última edição e espera o servidor. Devolve a entrada, ou `null` se não havia nada. */
+export async function desfazerUltimo(): Promise<EntradaDeDesfazer | null> {
+  const r = iniciarDesfazer();
+  if (!r) return null;
+  await r.concluido;
+  return r.entrada;
 }
 
 export function limparDesfazer(): void {
