@@ -9,6 +9,7 @@ import { TimelineView } from "@/components/contacts/TimelineView";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -17,7 +18,6 @@ import {
   RESULTADOS_DA_LIGACAO,
   type IdDaAcao,
 } from "@/lib/leads/acoes-do-lead";
-import { cn } from "@/lib/utils";
 
 /**
  * A LINHA DO TEMPO: tudo o que aconteceu com o lead, num fluxo só (atividades, timeline, funis,
@@ -150,23 +150,18 @@ export function RegistrarAcaoDoLead({
       {podeEditar ? (
         envolver(
         <>
-          <div className="flex flex-wrap gap-2">
-            {ACOES_DO_LEAD.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => escolher(a.id === acao ? null : a.id)}
-                className={cn(
-                  "rounded-full border-[1.5px] px-3 py-1 text-xs font-medium transition-colors",
-                  a.id === acao
-                    ? "border-purple-500 bg-purple-500/15"
-                    : "border-border hover:border-purple-400 hover:bg-secondary",
-                )}
-              >
-                {t(a.rotulo)}
-              </button>
-            ))}
-          </div>
+          <Select value={acao ?? ""} onValueChange={(v) => escolher(v as IdDaAcao)}>
+            <SelectTrigger className="w-full sm:w-72">
+              <SelectValue placeholder={t("Escolher ação")} />
+            </SelectTrigger>
+            <SelectContent>
+              {ACOES_DO_LEAD.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {t(a.rotulo)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {atual ? (
             <div className="mt-3 grid gap-2">
               {exigeTitulo ? (
