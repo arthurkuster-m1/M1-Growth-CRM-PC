@@ -8,6 +8,7 @@ import { useState } from "react";
 import { CompromissosDoLead } from "@/components/agenda/CompromissosDoLead";
 import { BlocoDaFicha, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { RegistrarAcaoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
+import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
 import { UltimasAcoesDoLead } from "@/components/contacts/ficha/UltimasAcoesDoLead";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
@@ -72,6 +73,7 @@ export function PainelDaVisaoGeral({
 }) {
   const t = useT();
   const locale = useLocaleDeData();
+  const [abertaId, setAbertaId] = useState<string | null>(null);
   const [hoje] = useState(() => new Date().toISOString().slice(0, 10));
 
   const vendasQ = useQuery({
@@ -167,7 +169,12 @@ export function PainelDaVisaoGeral({
               {urgentesVendas.map(({ v, falta, vence }) => {
                 const atrasada = vence !== null && vence < hoje && falta > 0;
                 return (
-                  <li key={v.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5">
+                  <li key={v.id}>
+                  <button
+                    type="button"
+                    onClick={() => setAbertaId(v.id)}
+                    className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5 text-left hover:bg-secondary/40"
+                  >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{nomeDaVenda(v) || t("Sem produto")}</p>
                       <p className={atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"}>
@@ -183,6 +190,7 @@ export function PainelDaVisaoGeral({
                         {v.status === "interesse" ? t("Interesse") : t("Comprometida")}
                       </SeloDaFicha>
                     </div>
+                  </button>
                   </li>
                 );
               })}
@@ -275,6 +283,7 @@ export function PainelDaVisaoGeral({
           </ul>
         )}
       </BlocoDaFicha>
+      {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
     </div>
   );
 }
