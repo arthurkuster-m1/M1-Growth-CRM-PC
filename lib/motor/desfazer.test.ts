@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { desfazerUltimo, limparDesfazer, podeDesfazer, registrarDesfazer, valoresAntes } from "./desfazer";
+import { desfazerUltimo, iniciarDesfazer, limparDesfazer, podeDesfazer, registrarDesfazer, valoresAntes } from "./desfazer";
 
 describe("desfazer (Ctrl+Z das tabelas)", () => {
   beforeEach(() => limparDesfazer());
@@ -24,5 +24,19 @@ describe("desfazer (Ctrl+Z das tabelas)", () => {
 
   it("valoresAntes guarda só as chaves editadas, com o valor de antes", () => {
     expect(valoresAntes({ a: 1, b: 2, c: undefined }, { a: 9, c: 3 })).toEqual({ a: 1, c: null });
+  });
+
+  it("o que o desfazer registra de forma assíncrona também não entra na pilha", async () => {
+    registrarDesfazer({
+      desfazer: async () => {
+        await Promise.resolve();
+        registrarDesfazer({ desfazer: vi.fn() });
+      },
+    });
+    const r = iniciarDesfazer();
+    await r!.concluido;
+    expect(podeDesfazer()).toBe(false);
+    registrarDesfazer({ desfazer: vi.fn() });
+    expect(podeDesfazer()).toBe(true);
   });
 });
