@@ -15,7 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import { StagesSection } from "@/app/app/settings/tenant/pipelines/_stages";
+import { JanelaDaEtapa } from "@/app/app/settings/tenant/pipelines/_stages";
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { apiClient } from "@/lib/api/client";
@@ -512,6 +512,17 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       }}
                     />
                   </label>
+                  <div className="block">
+                    <span className="mb-1 block text-xs text-muted-foreground">
+                      {t("Janela de esfriamento (vazio = 24 h de padrão)")}
+                    </span>
+                    <JanelaDaEtapa
+                      key={`janela-${atual.id}-${atual.expected_duration_hours ?? "padrao"}`}
+                      etapa={atual}
+                      desabilitado={!podeEditar}
+                      aoConfirmar={(valor) => void mexer(atual.id, { expected_duration_hours: valor })}
+                    />
+                  </div>
                   <div className="flex flex-wrap items-end gap-2">
                     <button
                       type="button"
@@ -578,14 +589,6 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
               )}
             </span>
           </label>
-          <details className="rounded-xl border p-3">
-            <summary className="cursor-pointer text-sm font-medium">
-              {t("Configurações avançadas das etapas")}
-            </summary>
-            <div className="mt-3">
-              <StagesSection pipelineId={c.pipeline_id} ancoraMapeamento="" />
-            </div>
-          </details>
         </section>
       ) : null}
     </div>

@@ -29,6 +29,10 @@ vi.mock("./_stages", () => ({
   StagesSection: () => null,
   ancoraDasEtapas: () => "etapas",
 }));
+// O produto principal do funil lê o catálogo; este arquivo é sobre os CAMPOS.
+vi.mock("@/hooks/vendas/useCatalogoDeProdutos", () => ({
+  useCatalogoDeProdutos: () => ({ produtos: [], carregando: false }),
+}));
 vi.mock("./_mapping", () => ({
   AgentMappingSection: () => null,
   ancoraDoMapeamento: () => "mapeamento",
