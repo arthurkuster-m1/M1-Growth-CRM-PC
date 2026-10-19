@@ -60,6 +60,10 @@ export async function updatePipelineConfig(
   const currentSettings = (row.settings as Record<string, unknown> | null) ?? {};
   const nextSettings: Record<string, unknown> = { ...currentSettings };
   if (parsed.data.fields !== undefined) nextSettings.fields = parsed.data.fields;
+  if (parsed.data.produto_principal_id !== undefined) {
+    if (parsed.data.produto_principal_id === null) delete nextSettings.produto_principal_id;
+    else nextSettings.produto_principal_id = parsed.data.produto_principal_id;
+  }
   if (parsed.data.lost_reasons !== undefined) nextSettings.lost_reasons = parsed.data.lost_reasons;
   if (parsed.data.won_reasons !== undefined) nextSettings.won_reasons = parsed.data.won_reasons;
   if (parsed.data.won_reason_required !== undefined) {

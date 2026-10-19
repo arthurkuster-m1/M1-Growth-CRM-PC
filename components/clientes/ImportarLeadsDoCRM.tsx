@@ -263,7 +263,7 @@ export function ImportarLeadsDoCRM({
 
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="flex max-h-[92vh] flex-col overflow-hidden sm:max-w-5xl">
+      <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-full flex-col overflow-y-auto overflow-x-hidden sm:max-w-5xl sm:overflow-hidden">
         <DialogHeader>
           <DialogTitle>{t("Importar leads")}</DialogTitle>
           <DialogDescription>
@@ -274,7 +274,7 @@ export function ImportarLeadsDoCRM({
         </DialogHeader>
 
         <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5 max-sm:w-full">
             <Label>{t("Funil padrão")}</Label>
             <Select
               value={funilId || "__sem__"}
@@ -285,7 +285,7 @@ export function ImportarLeadsDoCRM({
                 setLinhas((atual) => atual.map((l) => l.slice(0, COLUNAS_DO_LEAD.length)));
               }}
             >
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full sm:w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -302,7 +302,7 @@ export function ImportarLeadsDoCRM({
           <div className="space-y-1.5">
             <Label>{t("Etapa padrão")}</Label>
             <Select value={etapaId || "inicial"} onValueChange={(v) => setEtapaId(v === "inicial" ? "" : v)}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="w-full sm:w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -352,7 +352,7 @@ export function ImportarLeadsDoCRM({
                 setNovaColuna("");
               }
             }}
-            className="h-9 w-72 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full rounded-xl sm:w-72 border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
           <Button
             type="button"
@@ -374,7 +374,7 @@ export function ImportarLeadsDoCRM({
           )}
         </p>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-xl border">
+        <div className="min-h-[18rem] flex-1 overflow-auto rounded-xl border sm:min-h-0">
           <table className="w-full min-w-max border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-secondary text-xs text-muted-foreground">
               <tr>

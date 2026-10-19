@@ -72,7 +72,7 @@ export function NovoLeadDoCRM({
   const t = useT();
   const org = useActiveOrg();
   const queryClient = useQueryClient();
-  const { camposDoFunil } = useCamposDosFunis(aberto);
+  const { camposDoFunil, produtoPrincipalDoFunil } = useCamposDosFunis(aberto);
   const { produtos } = useCatalogoDeProdutos(aberto);
 
   const [nome, setNome] = useState("");
@@ -214,7 +214,7 @@ export function NovoLeadDoCRM({
 
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-full overflow-x-hidden overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t("Novo lead")}</DialogTitle>
           <DialogDescription>
@@ -224,14 +224,14 @@ export function NovoLeadDoCRM({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-5">
-          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-blue-500 p-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-5">
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-blue-500 p-4 sm:grid-cols-2">
             <h3 className="text-sm font-semibold sm:col-span-2">{t("Contato")}</h3>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="min-w-0 space-y-1.5 sm:col-span-2">
               <Label htmlFor="nl-nome">{t("Nome")} *</Label>
               <Input id="nl-nome" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="nl-tel">{t("Telefone (WhatsApp)")}</Label>
               <Input
                 id="nl-tel"
@@ -241,7 +241,7 @@ export function NovoLeadDoCRM({
                 onChange={(e) => setTelefone(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="nl-email">{t("E-mail")}</Label>
               <Input
                 id="nl-email"
@@ -255,7 +255,7 @@ export function NovoLeadDoCRM({
             </p>
           </section>
 
-          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-orange-500 p-4">
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-orange-500 p-4">
             <h3 className="text-sm font-semibold">{t("Origem")}</h3>
             <OrigemEmCascata
               valor={origem}
@@ -272,10 +272,10 @@ export function NovoLeadDoCRM({
             </p>
           </section>
 
-          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-red-500 p-4 sm:grid-cols-2">
-            <h3 className="text-sm font-semibold sm:col-span-2">{t("Etiquetas e nascimento")}</h3>
-            <div className="space-y-1.5">
-              <Label htmlFor="nl-tags">{t("Etiquetas (separadas por vírgula)")}</Label>
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-red-500 p-4 sm:grid-cols-2">
+            <h3 className="text-sm font-semibold sm:col-span-2">{t("Tags e nascimento")}</h3>
+            <div className="min-w-0 space-y-1.5">
+              <Label htmlFor="nl-tags">{t("Tags (separadas por vírgula)")}</Label>
               <Input
                 id="nl-tags"
                 placeholder="vip, base-2025"
@@ -283,15 +283,15 @@ export function NovoLeadDoCRM({
                 onChange={(e) => setEtiquetas(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label>{t("Nascimento")}</Label>
               <CampoDeData valor={nascimento} aoMudar={setNascimento} rotulo={t("Nascimento")} className="w-full" />
             </div>
           </section>
 
-          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-purple-500 p-4 sm:grid-cols-2">
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-purple-500 p-4 sm:grid-cols-2">
             <h3 className="text-sm font-semibold sm:col-span-2">{t("Funil e venda (opcional)")}</h3>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label>{t("Funil")}</Label>
               <Select
                 value={funilId}
@@ -299,6 +299,12 @@ export function NovoLeadDoCRM({
                   setFunilId(v);
                   setEtapaId("");
                   setCamposDoFunilValores({});
+                  // O funil já sabe o produto principal: puxa sozinho (e o valor, se vazio).
+                  const principal = produtos.find((p) => p.id === produtoPrincipalDoFunil(v));
+                  setProdutoId(principal?.id ?? "");
+                  if (principal && principal.valor > 0 && valor.trim() === "") {
+                    setValor(principal.valor.toFixed(2).replace(".", ","));
+                  }
                 }}
               >
                 <SelectTrigger>
@@ -315,7 +321,7 @@ export function NovoLeadDoCRM({
               </Select>
             </div>
             {comFunil ? (
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>{t("Etapa")}</Label>
                 <Select
                   value={etapaId || "inicial"}
@@ -342,7 +348,7 @@ export function NovoLeadDoCRM({
 
             {comFunil ? (
               <>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label>{t("Produto")}</Label>
                   <Select
                     value={produtoId || "nenhum"}
@@ -368,7 +374,7 @@ export function NovoLeadDoCRM({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label htmlFor="nl-valor">
                     {t("Valor da venda")} ({simbolo})
                   </Label>
@@ -380,7 +386,7 @@ export function NovoLeadDoCRM({
                     onChange={(e) => setValor(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label>{t("Status da venda")}</Label>
                   <Select value={statusDaVenda} onValueChange={setStatusDaVenda}>
                     <SelectTrigger>
@@ -394,7 +400,7 @@ export function NovoLeadDoCRM({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label>{t("Previsão de fechamento")}</Label>
                   <CampoDeData
                     valor={previsao}
@@ -403,7 +409,7 @@ export function NovoLeadDoCRM({
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-1.5 sm:col-span-2">
+                <div className="min-w-0 space-y-1.5 sm:col-span-2">
                   <Label htmlFor="nl-obs">{t("Observações da venda")}</Label>
                   <Textarea
                     id="nl-obs"
@@ -413,7 +419,7 @@ export function NovoLeadDoCRM({
                   />
                 </div>
                 {definicoes.length > 0 ? (
-                  <div className="space-y-1.5 sm:col-span-2">
+                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
                     <Label>{t("Campos do funil")}</Label>
                     <CustomFieldsEditor
                       fields={definicoes}
@@ -427,7 +433,7 @@ export function NovoLeadDoCRM({
             ) : null}
           </section>
 
-          <section className="grid gap-3 rounded-2xl border border-l-4 border-l-pink-500 p-4">
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-pink-500 p-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">{t("Campos personalizados (opcional)")}</h3>
               <Button
