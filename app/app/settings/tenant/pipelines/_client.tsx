@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 import type { PipelineConfigPatch } from "@/lib/schemas/settings";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
@@ -234,6 +235,12 @@ function PipelineEditor({
   const [retomaComoNovo, setRetomaComoNovo] = useState(
     modoDeReabertura(pipeline.settings) === "novo_negocio",
   );
+  const { produtos } = useCatalogoDeProdutos();
+  const [produtoPrincipal, setProdutoPrincipal] = useState(
+    ((pipeline.settings as { produto_principal_id?: unknown } | null)?.produto_principal_id as
+      | string
+      | undefined) ?? "",
+  );
   const [fields, setFields] = useState<CustomFieldDef[]>(camposDoFunil(pipeline.settings));
   const [isPending, startTransition] = useTransition();
 
@@ -289,6 +296,7 @@ function PipelineEditor({
     const patch: PipelineConfigPatch = {
       vocabulary: { lead, deal, won, lost },
       fields: ok,
+      produto_principal_id: produtoPrincipal || null,
       lost_reasons: motivosComCategoria,
       won_reasons: wonReasons,
       won_reason_required: wonRequired,
@@ -395,6 +403,29 @@ function PipelineEditor({
           />
           {t("Exigir motivo de ganho ao fechar como ganho")}
         </label>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{t("Produto principal do funil")}</Label>
+        <Select
+          value={produtoPrincipal || "nenhum"}
+          onValueChange={(v) => setProdutoPrincipal(v === "nenhum" ? "" : v)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="nenhum">{t("Nenhum")}</SelectItem>
+            {produtos.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {t("Ao cadastrar um lead neste funil, o produto já vem escolhido.")}
+        </p>
       </div>
 
       <div className="space-y-1">

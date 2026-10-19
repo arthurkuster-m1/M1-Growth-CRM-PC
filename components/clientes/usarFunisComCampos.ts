@@ -21,7 +21,16 @@ export function useCamposDosFunis(ativo: boolean) {
   });
   const porFunil = new Map<string, CustomFieldDef[]>();
   for (const f of consulta.data ?? []) porFunil.set(f.id, camposDoFunil(f.settings));
-  return { camposDoFunil: (id: string): CustomFieldDef[] => porFunil.get(id) ?? [] };
+  const produtoPorFunil = new Map<string, string>();
+  for (const f of consulta.data ?? []) {
+    const id = f.settings?.produto_principal_id;
+    if (typeof id === "string" && id) produtoPorFunil.set(f.id, id);
+  }
+  return {
+    camposDoFunil: (id: string): CustomFieldDef[] => porFunil.get(id) ?? [],
+    /** O produto principal que o funil declara (Configurações › Funis), se houver. */
+    produtoPrincipalDoFunil: (id: string): string | undefined => produtoPorFunil.get(id),
+  };
 }
 
 export interface ResumoDaImportacaoDoCRM {

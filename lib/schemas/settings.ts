@@ -222,6 +222,8 @@ export const pipelineConfigPatchSchema = z.object({
     })
     .optional(),
   fields: z.array(customFieldSchema).max(50).optional(),
+  /** O produto principal do funil (id de Marketing › Produtos e Ofertas); `null` desliga. */
+  produto_principal_id: z.string().uuid().nullable().optional(),
   /**
    * Os motivos de perda do funil (issue #1537): texto puro continua valendo —
    * nenhum funil existente precisa migrar dado — e quem quiser agrupar no
