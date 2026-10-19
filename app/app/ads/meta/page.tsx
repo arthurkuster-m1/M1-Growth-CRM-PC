@@ -57,8 +57,9 @@ export default async function MetaAdsPage() {
     */
     <div
       data-superficie="clara"
-      className="-m-6 flex min-h-[calc(100%+3rem)] flex-col gap-6 bg-bg p-6 text-text"
+      className="-m-6 flex min-h-[calc(100%+3rem)] flex-col bg-bg p-6 text-text"
     >
+     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t("Meta Ads")}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
@@ -92,6 +93,7 @@ export default async function MetaAdsPage() {
           )}
         </div>
       )}
+     </div>
     </div>
   );
 }
