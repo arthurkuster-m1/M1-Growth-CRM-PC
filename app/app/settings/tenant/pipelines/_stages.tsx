@@ -928,12 +928,12 @@ export function StagesSection({
  * PAR: sem isto, digitar "2" dias e Tab para as horas gravaria 48 h por um
  * instante — dois PATCHes e um valor que ninguém digitou.
  */
-function JanelaDaEtapa({
+export function JanelaDaEtapa({
   etapa,
   desabilitado,
   aoConfirmar,
 }: {
-  etapa: EtapaDoFunil;
+  etapa: Pick<EtapaDoFunil, "expected_duration_hours" | "name" | "id">;
   desabilitado: boolean;
   aoConfirmar: (valor: number | null) => void;
 }) {
