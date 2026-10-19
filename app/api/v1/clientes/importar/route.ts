@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { createLeadHandler } from "@/app/api/v1/leads/_handler";
 import { ApiError } from "@/lib/api/types";
 import { fail, ok } from "@/lib/api/wrappers";
@@ -401,6 +402,25 @@ export async function POST(req: NextRequest): Promise<Response> {
           },
         };
         await supabase.from("crm_leads").update(patchDoCard).eq("id", leadId).eq("organization_id", orgId);
+        const partes = [
+          orig.manual.campanha && `campanha ${orig.manual.campanha}`,
+          orig.manual.conjunto && `conjunto ${orig.manual.conjunto}`,
+          orig.manual.anuncio && `anúncio ${orig.manual.anuncio}`,
+          orig.manual.lp && `página ${orig.manual.lp}`,
+        ].filter(Boolean);
+        if (partes.length > 0) {
+          void emitLeadActivity(supabase, {
+            organizationId: orgId,
+            leadId,
+            contactId,
+            type: "lead_edited",
+            sourceModule: "crm",
+            sourceId: leadId,
+            actor: { type: "user", id: authz.user.id },
+            reason: `Origem registrada: ${partes.join(" · ")}`,
+            payload: { origem: orig.manual },
+          });
+        }
       }
 
       // A oportunidade (o card): produto, valor e situação da linha. O dinheiro vira parcela:

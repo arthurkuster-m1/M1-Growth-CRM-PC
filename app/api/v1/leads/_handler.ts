@@ -841,6 +841,45 @@ export async function createLeadHandler(
     }
   }
 
+  // A certidão de nascimento do negócio: de onde ele veio. É o que responde "como esse lead
+  // chegou aqui?" na linha do tempo (cadastro à mão, planilha, formulário, integração).
+  {
+    const criado = lead as { id: string; contact_id?: string | null };
+    const origem = (input.source ?? "").trim();
+    const porQuem =
+      ctx.actor.type === "user"
+        ? "cadastrado manualmente"
+        : ctx.actor.type === "webhook_source"
+          ? "chegou por um formulário/integração"
+          : ctx.actor.type === "ai_agent"
+            ? "criado pelo assistente"
+            : "criado pela API";
+    const motivo = input.via_planilha
+      ? "Lead importado por planilha"
+      : `Lead ${porQuem}`;
+    const nascimento = await emitLeadActivity(supabase, {
+      organizationId: ctx.organization_id,
+      leadId: criado.id,
+      contactId: criado.contact_id ?? null,
+      type: "lead_created",
+      sourceModule: "crm",
+      sourceId: criado.id,
+      actor: ctx.actor,
+      reason: origem ? `${motivo} · origem: ${origem}` : motivo,
+      payload: { source: origem || null, via_planilha: Boolean(input.via_planilha) },
+    });
+    if (!nascimento.ok) {
+      await registraFalhaDeAtividade(supabase, {
+        organizationId: ctx.organization_id,
+        leadId: criado.id,
+        tipo: "lead_created",
+        origem: "leads/_handler.createLeadHandler",
+        erro: nascimento.error,
+        requestId: ctx.requestId,
+      });
+    }
+  }
+
   const a = actorAuditPayload(ctx.actor);
   await createAdminClient()
     .rpc("emit_event", {
