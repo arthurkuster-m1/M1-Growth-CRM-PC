@@ -1,3 +1,4 @@
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -142,7 +143,7 @@ export function PainelDaVisaoGeral({
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {rotulo}
             </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{valor}</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{valor}</NumeroQueCabe></p>
           </div>
         ))}
       </div>

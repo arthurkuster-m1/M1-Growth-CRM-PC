@@ -1,4 +1,5 @@
-"use client";
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
+("use client");
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
@@ -80,8 +81,8 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     retry: false,
     staleTime: 10_000,
     queryFn: async () =>
-      (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`)).data
-        .vendas,
+      (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`))
+        .data.vendas,
   });
   if (consulta.isError) {
     return (
@@ -222,17 +223,21 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
     <div className="grid min-w-0 gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {cartoes.map(([rotulo, valor, cor]) => (
-          <div key={rotulo} className={`rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${BARRA[cor]}`}>
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{rotulo}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{valor}</p>
+          <div
+            key={rotulo}
+            className={`rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${BARRA[cor]}`}
+          >
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              {rotulo}
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              <NumeroQueCabe>{valor}</NumeroQueCabe>
+            </p>
           </div>
         ))}
       </div>
 
-      <BlocoDaFicha
-        titulo={t("Vendas e interesses")}
-        cor="green"
-      >
+      <BlocoDaFicha titulo={t("Vendas e interesses")} cor="green">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <label className="relative min-w-0 flex-1 basis-56">
             <span className="sr-only">{t("Buscar")}</span>
@@ -254,7 +259,9 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
         {consulta.isLoading ? (
           <div className="h-16 animate-pulse rounded-lg bg-secondary" />
         ) : vendas.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("Nenhuma venda ou interesse cadastrado.")}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("Nenhuma venda ou interesse cadastrado.")}
+          </p>
         ) : resultado.linhas.length === 0 ? (
           <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
             {t("Nada combina com a busca e os filtros.")}
@@ -272,168 +279,233 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
             ) : null}
           </p>
         ) : (
-          <div className="max-w-full overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-max text-sm">
-              <thead className="bg-secondary/60 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">{t("Oportunidade")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Funil")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Produto(s)")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Forma de pagamento")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Parcelas")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("Valor pago")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("Valor previsto")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("Valor total")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Primeiro pagamento")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Último pagamento")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Próximo pagamento")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Origem")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Campanha")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Anúncio")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Landing page")}</th>
-                  <th className="px-3 py-2 text-left font-medium">{t("Posicionamento")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(grupos ?? [{ chave: "__todas", rotulo: "", linhas: resultado.linhas }]).map((g) => (
-                  <Fragment key={g.chave}>
-                    {grupos ? (
-                      <tr className="bg-secondary/40">
-                        <td colSpan={17} className="px-3 py-1.5 text-xs font-semibold">
-                          {g.rotulo} <span className="font-normal text-muted-foreground">({g.linhas.length})</span>
-                        </td>
-                      </tr>
-                    ) : null}
-                    {g.linhas.map((v) => {
-                      const r = resumoDaVenda(v);
-                      return (
-                        <tr key={v.id} className="border-t align-top hover:bg-secondary/40">
-                          <td className="max-w-[18rem] px-3 py-2">
-                            <button
-                              type="button"
-                              title={nomeDaVenda(v)}
-                              className="block max-w-full truncate text-left font-medium hover:underline"
-                              onClick={() => setAbertaId(v.id)}
-                            >
-                              {nomeDaVenda(v) || t("Sem produto")}
-                            </button>
-                          </td>
-                          <td className="px-3 py-2">{v.funil ?? "—"}</td>
-                          <td className="max-w-[16rem] truncate px-3 py-2" title={r.produtos}>
-                            {r.produtos || "—"}
-                          </td>
-                          <td className="px-3 py-2">
-                            <SeletorDeOpcao
-                              opcoes={STATUS_DA_VENDA.map((s) => ({
-                                id: s,
-                                rotulo: t(ROTULO[s]),
-                                cor: COR_DA_OPCAO[s],
-                              }))}
-                              valorId={v.status}
-                              podeEditar
-                              rotulo={t("Status da venda")}
-                              aoEscolher={(id) => {
-                                if (id === v.status) return;
-                                if (id === "cancelada" || id === "recorrencia_encerrada") setCancelando(v);
-                                else void mudarStatus(v, id as StatusDaVenda);
-                              }}
-                            >
-                              <Etiqueta ponto cor={COR_DA_OPCAO[v.status]}>
-                                {t(ROTULO[v.status])}
-                              </Etiqueta>
-                            </SeletorDeOpcao>
-                          </td>
-                          <td className="px-3 py-2">
-                            {v.payment_method ? rotuloDaFormaDe(v.payment_method) : "—"}
-                          </td>
-                          <td className="px-3 py-2">
-                            {r.parcelas.length === 0 ? (
-                              <div className="flex items-center gap-2 text-xs">
-                                <CirculoDeRecebida
-                                  marcado={v.status === "concluida"}
-                                  desabilitado={v.status === "cancelada"}
-                                  rotulo={`${t("À vista")} ${t("recebido")}`}
-                                  aoMudar={(ok) =>
-                                    void mudarStatus(v, ok ? "concluida" : "comprometida")
-                                  }
-                                />
-                                <span className="tabular-nums">
-                                  {t("À vista")} · {reais(v.amount_cents)}
-                                </span>
-                              </div>
-                            ) : (
-                              <ul className="grid gap-1">
-                                {r.parcelas.map((p) => (
-                                  <li key={p.number}>
-                                    <div className="flex min-w-0 items-center gap-2 text-xs">
-                                      <CirculoDeRecebida
-                                        marcado={p.status === "recebida"}
-                                        rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
-                                        aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
-                                      />
-                                      <span className="min-w-0 truncate tabular-nums">
-                                        {p.number}/{r.parcelas.length} · {reais(p.amount_cents)} ·{" "}
-                                        {p.status === "recebida" && p.paid_on
-                                          ? `${t("pago em")} ${dataBr(p.paid_on.slice(0, 10))}`
-                                          : `${t("vence")} ${dataBr(p.due_on)}`}
-                                      </span>
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                            {reais(r.pagoCents)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums">{reais(r.previstoCents)}</td>
-                          <td className="px-3 py-2 text-right font-medium tabular-nums">
-                            {reais(v.amount_cents)}
-                          </td>
-                          <td className="px-3 py-2 tabular-nums">{dataBr(r.primeiroPagamento)}</td>
-                          <td className="px-3 py-2 tabular-nums">{dataBr(r.ultimoPagamento)}</td>
-                          <td className="px-3 py-2 tabular-nums">{dataBr(r.proximoPagamento)}</td>
-                          <td className="px-3 py-2">{v.origem ?? "—"}</td>
-                          <td className="px-3 py-2">{v.campanha ?? "—"}</td>
-                          <td className="px-3 py-2">{v.anuncio ?? "—"}</td>
-                          <td className="px-3 py-2">{v.lp ?? "—"}</td>
-                          <td className="px-3 py-2">{v.posicionamento ?? "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                ))}
-              </tbody>
-              <tfoot className="border-t-2 bg-secondary/60 text-sm font-semibold">
-                <tr>
-                  <td className="px-3 py-2">
-                    {t("Total")} · {resultado.linhas.length}
-                  </td>
-                  <td colSpan={4} />
-                  <td className="px-3 py-2 tabular-nums">
-                    {resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).parcelasPagas, 0)}/
-                    {resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).parcelas.length, 0)}{" "}
-                    {t("parcelas pagas")}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                    {reais(resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).pagoCents, 0))}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {reais(resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).previstoCents, 0))}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {reais(resultado.linhas.reduce((a, v) => a + v.amount_cents, 0))}
-                  </td>
-                  <td colSpan={8} />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <>
+            {/* Celular: um cartão por venda (a tabela larga só cabe no computador). */}
+            <ul className="grid gap-3 md:hidden">
+              {resultado.linhas.map((v) => {
+                const r = resumoDaVenda(v);
+                return (
+                  <li key={v.id}>
+                    <button
+                      type="button"
+                      onClick={() => setAbertaId(v.id)}
+                      className="grid w-full min-w-0 gap-2 rounded-2xl border bg-card p-4 text-left shadow-sm"
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <p className="min-w-0 text-sm font-semibold break-words">
+                          {nomeDaVenda(v) || t("Sem produto")}
+                        </p>
+                        <Etiqueta ponto cor={COR_DA_OPCAO[v.status]}>
+                          {t(ROTULO[v.status])}
+                        </Etiqueta>
+                      </div>
+                      <p className="text-lg font-semibold tabular-nums">
+                        <NumeroQueCabe>{reais(v.amount_cents)}</NumeroQueCabe>
+                      </p>
+                      <dl className="grid gap-1 text-xs">
+                        {(
+                          [
+                            [t("Funil"), v.funil ?? "—"],
+                            [t("Produto(s)"), r.produtos || "—"],
+                            [
+                              t("Forma de pagamento"),
+                              v.payment_method ? rotuloDaFormaDe(v.payment_method) : "—",
+                            ],
+                          ] as const
+                        ).map(([rotulo, valor]) => (
+                          <div key={rotulo} className="flex justify-between gap-3">
+                            <dt className="shrink-0 text-muted-foreground">{rotulo}</dt>
+                            <dd className="min-w-0 text-right break-words">{valor}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden max-w-full overflow-x-auto rounded-xl border md:block">
+              <table className="w-full min-w-max text-sm">
+                <thead className="bg-secondary/60 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">{t("Oportunidade")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Funil")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Produto(s)")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Status")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Forma de pagamento")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Parcelas")}</th>
+                    <th className="px-3 py-2 text-right font-medium">{t("Valor pago")}</th>
+                    <th className="px-3 py-2 text-right font-medium">{t("Valor previsto")}</th>
+                    <th className="px-3 py-2 text-right font-medium">{t("Valor total")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Primeiro pagamento")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Último pagamento")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Próximo pagamento")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Origem")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Campanha")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Anúncio")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Landing page")}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t("Posicionamento")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(grupos ?? [{ chave: "__todas", rotulo: "", linhas: resultado.linhas }]).map(
+                    (g) => (
+                      <Fragment key={g.chave}>
+                        {grupos ? (
+                          <tr className="bg-secondary/40">
+                            <td colSpan={17} className="px-3 py-1.5 text-xs font-semibold">
+                              {g.rotulo}{" "}
+                              <span className="font-normal text-muted-foreground">
+                                ({g.linhas.length})
+                              </span>
+                            </td>
+                          </tr>
+                        ) : null}
+                        {g.linhas.map((v) => {
+                          const r = resumoDaVenda(v);
+                          return (
+                            <tr key={v.id} className="border-t align-top hover:bg-secondary/40">
+                              <td className="max-w-[18rem] px-3 py-2">
+                                <button
+                                  type="button"
+                                  title={nomeDaVenda(v)}
+                                  className="block max-w-full truncate text-left font-medium hover:underline"
+                                  onClick={() => setAbertaId(v.id)}
+                                >
+                                  {nomeDaVenda(v) || t("Sem produto")}
+                                </button>
+                              </td>
+                              <td className="px-3 py-2">{v.funil ?? "—"}</td>
+                              <td className="max-w-[16rem] truncate px-3 py-2" title={r.produtos}>
+                                {r.produtos || "—"}
+                              </td>
+                              <td className="px-3 py-2">
+                                <SeletorDeOpcao
+                                  opcoes={STATUS_DA_VENDA.map((s) => ({
+                                    id: s,
+                                    rotulo: t(ROTULO[s]),
+                                    cor: COR_DA_OPCAO[s],
+                                  }))}
+                                  valorId={v.status}
+                                  podeEditar
+                                  rotulo={t("Status da venda")}
+                                  aoEscolher={(id) => {
+                                    if (id === v.status) return;
+                                    if (id === "cancelada" || id === "recorrencia_encerrada")
+                                      setCancelando(v);
+                                    else void mudarStatus(v, id as StatusDaVenda);
+                                  }}
+                                >
+                                  <Etiqueta ponto cor={COR_DA_OPCAO[v.status]}>
+                                    {t(ROTULO[v.status])}
+                                  </Etiqueta>
+                                </SeletorDeOpcao>
+                              </td>
+                              <td className="px-3 py-2">
+                                {v.payment_method ? rotuloDaFormaDe(v.payment_method) : "—"}
+                              </td>
+                              <td className="px-3 py-2">
+                                {r.parcelas.length === 0 ? (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <CirculoDeRecebida
+                                      marcado={v.status === "concluida"}
+                                      desabilitado={v.status === "cancelada"}
+                                      rotulo={`${t("À vista")} ${t("recebido")}`}
+                                      aoMudar={(ok) =>
+                                        void mudarStatus(v, ok ? "concluida" : "comprometida")
+                                      }
+                                    />
+                                    <span className="tabular-nums">
+                                      {t("À vista")} · {reais(v.amount_cents)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <ul className="grid gap-1">
+                                    {r.parcelas.map((p) => (
+                                      <li key={p.number}>
+                                        <div className="flex min-w-0 items-center gap-2 text-xs">
+                                          <CirculoDeRecebida
+                                            marcado={p.status === "recebida"}
+                                            rotulo={`${t("Parcela")} ${p.number} ${t("recebida")}`}
+                                            aoMudar={(ok) => void marcarParcela(v, p.number, ok)}
+                                          />
+                                          <span className="min-w-0 truncate tabular-nums">
+                                            {p.number}/{r.parcelas.length} · {reais(p.amount_cents)}{" "}
+                                            ·{" "}
+                                            {p.status === "recebida" && p.paid_on
+                                              ? `${t("pago em")} ${dataBr(p.paid_on.slice(0, 10))}`
+                                              : `${t("vence")} ${dataBr(p.due_on)}`}
+                                          </span>
+                                        </div>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right text-green-700 tabular-nums dark:text-green-400">
+                                {reais(r.pagoCents)}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums">
+                                {reais(r.previstoCents)}
+                              </td>
+                              <td className="px-3 py-2 text-right font-medium tabular-nums">
+                                {reais(v.amount_cents)}
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {dataBr(r.primeiroPagamento)}
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {dataBr(r.ultimoPagamento)}
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {dataBr(r.proximoPagamento)}
+                              </td>
+                              <td className="px-3 py-2">{v.origem ?? "—"}</td>
+                              <td className="px-3 py-2">{v.campanha ?? "—"}</td>
+                              <td className="px-3 py-2">{v.anuncio ?? "—"}</td>
+                              <td className="px-3 py-2">{v.lp ?? "—"}</td>
+                              <td className="px-3 py-2">{v.posicionamento ?? "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    ),
+                  )}
+                </tbody>
+                <tfoot className="border-t-2 bg-secondary/60 text-sm font-semibold">
+                  <tr>
+                    <td className="px-3 py-2">
+                      {t("Total")} · {resultado.linhas.length}
+                    </td>
+                    <td colSpan={4} />
+                    <td className="px-3 py-2 tabular-nums">
+                      {resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).parcelasPagas, 0)}/
+                      {resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).parcelas.length, 0)}{" "}
+                      {t("parcelas pagas")}
+                    </td>
+                    <td className="px-3 py-2 text-right text-green-700 tabular-nums dark:text-green-400">
+                      {reais(resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).pagoCents, 0))}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {reais(
+                        resultado.linhas.reduce((a, v) => a + resumoDaVenda(v).previstoCents, 0),
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {reais(resultado.linhas.reduce((a, v) => a + v.amount_cents, 0))}
+                    </td>
+                    <td colSpan={8} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         )}
       </BlocoDaFicha>
 
-      {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
+      {abertaId ? (
+        <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} />
+      ) : null}
       {cancelando && cancelando.pipeline_id ? (
         <LoseLeadDialog
           open

@@ -1,3 +1,4 @@
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 "use client";
 
 import { AbasDaAgenda } from "./AbasDaAgenda";
@@ -85,7 +86,7 @@ export function AnalisesDaAgenda() {
       <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
         {rotulo}
       </p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">{valor}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{valor}</NumeroQueCabe></p>
       {apoio ? <p className="text-[11px] text-muted-foreground">{apoio}</p> : null}
     </div>
   );
