@@ -1,5 +1,6 @@
 "use client";
 
+import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -597,10 +598,12 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                               {l.periodo === c.budget_period ? ` · ${t("o que você digitou")}` : ""}
                             </p>
                             <p className="text-base font-semibold tabular-nums">
-                              {moedaDoNumero(l.bruto)}
+                              <NumeroQueCabe>{moedaDoNumero(l.bruto)}</NumeroQueCabe>
                             </p>
                             <p className="text-xs text-muted-foreground tabular-nums">
-                              {t("líquido")} {moedaDoNumero(l.liquido)}
+                              <NumeroQueCabe abreviar={false}>
+                                {`${t("líquido")} ${moedaDoNumero(l.liquido)}`}
+                              </NumeroQueCabe>
                             </p>
                           </div>
                         ))}

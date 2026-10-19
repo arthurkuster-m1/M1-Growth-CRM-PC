@@ -329,6 +329,42 @@ export function CampanhasDeDemanda() {
       ),
     },
     {
+      id: "investido",
+      titulo: t("Investido"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      padrao: false,
+      celula: (c) => (
+        <span className="block px-2 text-sm tabular-nums">
+          {c.estado ? dinheiro(c.estado.investido) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "leads",
+      titulo: t("Leads"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 110,
+      padrao: false,
+      celula: (c) => (
+        <span className="block px-2 text-sm tabular-nums">{c.estado ? String(c.estado.leads) : "—"}</span>
+      ),
+    },
+    {
+      id: "cpl",
+      titulo: t("CPL"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 120,
+      padrao: false,
+      celula: (c) => (
+        <span className="block px-2 text-sm tabular-nums">
+          {c.estado && c.estado.leads > 0 && c.estado.investido > 0
+            ? dinheiro(c.estado.investido / c.estado.leads)
+            : "—"}
+        </span>
+      ),
+    },
+    {
       id: "meta-cpl",
       titulo: t("Meta de CPL"),
       icone: <TextAa size={14} aria-hidden />,
@@ -442,6 +478,15 @@ export function CampanhasDeDemanda() {
     { id: "continua", titulo: t("Contínua"), tipo: "caixa", valorDe: (c) => c.continuous },
     { id: "investimento", titulo: t("Investimento"), tipo: "numero", valorDe: (c) => c.budget },
     { id: "meta-leads", titulo: t("Meta de leads"), tipo: "numero", valorDe: (c) => c.goal_leads },
+    { id: "investido", titulo: t("Investido"), tipo: "numero", valorDe: (c) => c.estado?.investido ?? null },
+    { id: "leads", titulo: t("Leads"), tipo: "numero", valorDe: (c) => c.estado?.leads ?? null },
+    {
+      id: "cpl",
+      titulo: t("CPL"),
+      tipo: "numero",
+      valorDe: (c) =>
+        c.estado && c.estado.leads > 0 && c.estado.investido > 0 ? c.estado.investido / c.estado.leads : null,
+    },
     { id: "meta-cpl", titulo: t("Meta de CPL"), tipo: "numero", valorDe: (c) => c.goal_cpl },
     {
       id: "meta-vendas",
