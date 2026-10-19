@@ -23,7 +23,8 @@ import { apiClient } from "@/lib/api/client";
 import { aplicarResultadoRapido } from "@/lib/leads/aplicar-resultado-rapido";
 import type { ConfigDaProspeccao } from "@/lib/leads/config-de-prospeccao";
 import { aplicarVariaveis } from "@/lib/leads/mensagem-de-prospeccao";
-import { RESULTADOS_RAPIDOS, somarDiasUteis } from "@/lib/leads/resultados-rapidos";
+import { resultadosAtivosDaConfig, type ResultadoDaProspeccao } from "@/lib/leads/config-de-prospeccao";
+import { somarDiasUteis } from "@/lib/leads/resultados-rapidos";
 import { InstagramLogo, Phone } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +51,7 @@ export interface LeadDaProspeccao {
   ultimaTentativa: string | null;
 }
 
-type Resultado = (typeof RESULTADOS_RAPIDOS)[number];
+type Resultado = ResultadoDaProspeccao;
 const hojeIso = () => new Intl.DateTimeFormat("en-CA").format(new Date());
 const MEIO_DO_TIPO = { ligacao: "ligacao", whatsapp: "whatsapp", instagram: "instagram", outro: "" } as const;
 
@@ -87,6 +88,7 @@ export function ModoProspeccao({
   const [comentarios, setComentarios] = useState(item?.comentarios ?? "");
   const [passo, setPasso] = useState(item?.proximaAcao ?? "");
   const [retornoAberto, setRetornoAberto] = useState(false);
+  const [resultadoDoRetorno, setResultadoDoRetorno] = useState<Resultado | null>(null);
   const [dataDoRetorno, setDataDoRetorno] = useState(somarDiasUteis(hojeIso(), 1));
   const [ocupado, setOcupado] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function ModoProspeccao({
   const campoDoPasso = useRef<HTMLInputElement | null>(null);
 
   const p = config.propriedades;
-  const resultadosAtivos = RESULTADOS_RAPIDOS.filter((r) => config.atalhos[r.id]);
+  const resultadosAtivos = resultadosAtivosDaConfig(config);
 
   useEffect(() => {
     if (!item || ultimaChave.current === item.chave) return;
@@ -137,22 +139,22 @@ export function ModoProspeccao({
     if (!item || ocupado) return;
     setOcupado(true);
     try {
-      const comPasso = "proximo" in r;
-      const dias = "diasUteis" in r ? r.diasUteis : 0;
+      const comPasso = Boolean(r.proximo);
+      const dias = r.diasUteis ?? 0;
       await aplicarResultadoRapido({
         leadId: item.leadId,
         contactId: item.contactId,
-        resultado: r.resultado,
+        resultado: r.resultado?.trim() || r.rotulo,
         comentario,
         proximo: comPasso
-          ? { texto: t(r.proximo), em: dataEscolhida ?? somarDiasUteis(hojeIso(), dias) }
+          ? { texto: t(r.proximo ?? ""), em: dataEscolhida ?? somarDiasUteis(hojeIso(), dias) }
           : undefined,
       });
       await qc.invalidateQueries({ queryKey: ["clientes"] });
       setRegistrado((m) => ({ ...m, [item.chave]: t(r.rotulo) }));
       if (comPasso) {
         // A cadência marcou o próximo passo: já aparece no campo, para ajustar se preciso.
-        const texto = t(r.proximo);
+        const texto = t(r.proximo ?? "");
         setPasso(texto);
         setSalvos((o) => ({
           ...o,
@@ -163,7 +165,7 @@ export function ModoProspeccao({
           },
         }));
       }
-      if ("perde" in r && r.perde) aoPerder(item);
+      if (r.perde) aoPerder(item);
       else window.setTimeout(() => campoDoPasso.current?.focus(), 50);
     } catch (e) {
       showApiError(e);
@@ -173,12 +175,13 @@ export function ModoProspeccao({
   }
 
   function iniciar(r: Resultado, data?: string) {
-    if ("pedeData" in r && r.pedeData && !data) {
+    if (r.pedeData && !data) {
+      setResultadoDoRetorno(r);
       setRetornoAberto(true);
       return;
     }
     // Quem atendeu: o que foi conversado é obrigatório. Não atendeu / caixa postal: sem comentário.
-    if ("exigeComentario" in r && r.exigeComentario) {
+    if (r.exigeComentario) {
       setTextoDoResultado("");
       setPedindo({ r, data });
       return;
@@ -245,15 +248,20 @@ export function ModoProspeccao({
     <>
       <Dialog open onOpenChange={(a) => !a && aoFechar()}>
         <DialogContent className="max-h-[92vh] max-w-3xl gap-4 overflow-y-auto p-5 sm:rounded-2xl">
-          <div className="flex items-center justify-between gap-2 pr-8">
-            <p className="text-sm font-semibold">
+          <div className="grid gap-2 pr-8">
+            <p className="text-sm font-semibold whitespace-nowrap">
               {t("Modo prospecção")} · {idx + 1} {t("de")} {itens.length}
             </p>
             <div className="flex gap-2">
-              <button type="button" onClick={anterior} disabled={idx === 0} className={botao}>
+              <button type="button" onClick={anterior} disabled={idx === 0} className={cn(botao, "whitespace-nowrap")}>
                 ← {t("Anterior")}
               </button>
-              <button type="button" onClick={proximo} disabled={idx >= itens.length - 1} className={botao}>
+              <button
+                type="button"
+                onClick={proximo}
+                disabled={idx >= itens.length - 1}
+                className={cn(botao, "whitespace-nowrap")}
+              >
                 {t("Próximo")} →
               </button>
             </div>
@@ -404,7 +412,7 @@ export function ModoProspeccao({
                   type="button"
                   disabled={ocupado}
                   onClick={() => iniciar(r)}
-                  className={cn(botao, "perde" in r && r.perde && "text-error-fg")}
+                  className={cn(botao, r.perde && "text-error-fg")}
                 >
                   <kbd className="mr-1.5 rounded-md border px-1 text-[10px] text-muted-foreground">{i + 1}</kbd>
                   {t(r.rotulo)}
@@ -421,9 +429,9 @@ export function ModoProspeccao({
                   type="button"
                   disabled={ocupado || !dataDoRetorno}
                   onClick={() => {
-                    const r = RESULTADOS_RAPIDOS.find((x) => x.id === "retornar")!;
+                    const r = resultadoDoRetorno;
                     setRetornoAberto(false);
-                    iniciar(r, dataDoRetorno);
+                    if (r) iniciar(r, dataDoRetorno);
                   }}
                   className="h-9 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
                 >
