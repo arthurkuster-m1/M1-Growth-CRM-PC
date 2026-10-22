@@ -7222,6 +7222,57 @@ export type Database = {
           },
         ]
       }
+      lead_source_costs: {
+        Row: {
+          amount_cents: number
+          campaign_id: string | null
+          created_at: string
+          created_by: string | null
+          day: string
+          id: string
+          note: string
+          organization_id: string
+          source: string
+        }
+        Insert: {
+          amount_cents: number
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          id?: string
+          note?: string
+          organization_id: string
+          source: string
+        }
+        Update: {
+          amount_cents?: number
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          id?: string
+          note?: string
+          organization_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_source_costs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "demand_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_source_costs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lgpd_requests: {
         Row: {
           attempts: number

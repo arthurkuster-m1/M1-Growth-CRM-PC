@@ -719,6 +719,9 @@ export const AUDIT_ACTIONS = [
   "crm_saved_view.deleted",
   // Dashboards que o Super ADM esconde para a empresa.
   "dashboards.visibility_changed",
+  // Custo de captação de leads por fonte (migration 0651).
+  "lead_source_cost.created",
+  "lead_source_cost.deleted",
   // Modelos de tarefa e tarefas repetidas (migration 0586).
   "crm_task_template.created",
   "crm_task_template.updated",

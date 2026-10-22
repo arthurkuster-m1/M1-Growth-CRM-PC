@@ -14,6 +14,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { diaNoFuso, investimentoDoDia } from "@/lib/marketing/dia-a-dia-automatico";
 import {
   classificarResultado,
+  type CustoDeCaptacao,
   diasDoRecorte,
   recorteAnterior,
   type Interacao,
@@ -108,6 +109,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     vendas: [] as VendaDoLead[],
     pagamentos: [] as PagamentoDoLead[],
     investimentoPorDia: {} as Record<string, number>,
+    custos: [] as CustoDeCaptacao[],
     abordagens: [] as Array<{ id: string; nome: string; meio: string; campanha: string }>,
     catalogo: catalogo.map((c) => ({ id: c.id, nome: c.name })),
     semResultado: 0,
@@ -314,6 +316,29 @@ export async function GET(req: NextRequest): Promise<Response> {
     if (soma > 0) investimentoPorDia[d] = Math.round(soma * 100) / 100;
   }
 
+  // Custos de captação lançados (por fonte): os de uma campanha escolhida e os de "todas".
+  const { data: custosBrutos } = await a.supabase
+    .from("lead_source_costs")
+    .select("campaign_id, source, day, amount_cents")
+    .eq("organization_id", a.orgId)
+    .gte("day", janelaDe)
+    .lte("day", ate.data)
+    .limit(2000);
+  const custos: CustoDeCaptacao[] = (
+    (custosBrutos ?? []) as Array<{
+      campaign_id: string | null;
+      source: string;
+      day: string;
+      amount_cents: number | string;
+    }>
+  )
+    .filter((c) => c.campaign_id === null || ids.includes(c.campaign_id))
+    .map((c) => ({
+      dia: String(c.day).slice(0, 10),
+      fonte: c.source,
+      valor: Number(c.amount_cents) / 100,
+    }));
+
   const { data: abordagens } = await a.supabase
     .from("demand_campaign_approaches")
     .select("id, name, medium, campaign_id")
@@ -331,6 +356,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       vendas,
       pagamentos,
       investimentoPorDia,
+      custos,
       semResultado,
       abordagens: (
         (abordagens ?? []) as Array<{

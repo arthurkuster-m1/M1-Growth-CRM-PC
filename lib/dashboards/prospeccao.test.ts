@@ -63,6 +63,7 @@ const base: BaseDaProspeccao = {
   vendas: [],
   pagamentos: [],
   investimentoPorDia: { "2026-10-01": 50, "2026-10-02": 50 },
+  custos: [{ dia: "2026-10-01", fonte: "extração", valor: 40 }],
 };
 const recorte = { de: "2026-10-01", ate: "2026-10-05" };
 
@@ -76,15 +77,20 @@ describe("agregarProspeccao", () => {
       contatos: 1,
       decisores: 1,
       reunioesAgendadas: 1,
-      investimento: 100,
+      investimento: 140,
     });
     const d = derivarProspeccao(t);
-    expect(d.custoPorAbordagem).toBeCloseTo(33.33, 1);
+    expect(d.custoPorAbordagem).toBeCloseTo(46.67, 1);
     expect(d.taxaDeResposta).toBe(50);
   });
   it("recorta por tipo sem inventar custo", () => {
     const t = agregarProspeccao(base, recorte, { tipo: "ligacao" });
     expect(t).toMatchObject({ abordagens: 2, leadsAbordados: 1, investimento: 0, leads: 0 });
+  });
+  it("a fonte só leva o custo lançado para ela, não o orçamento da campanha", () => {
+    const f = agregarProspeccao(base, recorte, { fonte: "Extração" });
+    expect(f).toMatchObject({ leads: 1, investimento: 40 });
+    expect(derivarProspeccao(f).cpl).toBe(40);
   });
   it("recorta por dia", () => {
     expect(agregarProspeccao(base, recorte, { dia: "2026-10-03" }).abordagens).toBe(2);

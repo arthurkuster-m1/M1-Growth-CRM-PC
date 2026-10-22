@@ -12,6 +12,7 @@ import {
   pct,
   vezes,
 } from "@/components/dashboards/base";
+import { CustosDeCaptacao } from "@/components/dashboards/CustosDeCaptacao";
 import { FunilComTaxas, FunilEmColunas } from "@/components/dashboards/funil";
 import { GraficoComparativo } from "@/components/dashboards/GraficoComparativo";
 import {
@@ -98,19 +99,8 @@ const SO_DA_ABORDAGEM = new Set([
   "decisores",
   "taxaDeDecisor",
 ]);
-const SEM_CUSTO = new Set([
-  "cpl",
-  "custoPorAbordagem",
-  "custoPorContato",
-  "custoPorDecisor",
-  "custoPorReuniaoAgendada",
-  "custoPorReuniaoFeita",
-  "cac",
-  "investimento",
-  "lucro",
-  "roas",
-]);
-const DA_FONTE = COLUNAS.filter((c) => !SEM_CUSTO.has(c.id));
+/** Fonte tem lead e custo lançado: leva o funil inteiro, com custos, lucro e ROAS. */
+const COLUNAS_DA_FONTE = COLUNAS;
 const DO_CONTATO = COLUNAS.filter((c) => SO_DA_ABORDAGEM.has(c.id));
 
 const REGRA: RegraDaTabela<BrutoDeProspeccao, DerivadasDeProspeccao> = {
@@ -158,12 +148,17 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
     bruto: b,
   }));
 
-  const fontes = useMemo(() => [...new Set(dados.leads.map((l) => l.fonte))].sort(), [dados.leads]);
+  const fontes = useMemo(() => {
+    const vistas = new Map<string, string>();
+    for (const f of [...dados.leads.map((l) => l.fonte), ...dados.custos.map((c) => c.fonte)]) {
+      if (!vistas.has(f.trim().toLowerCase())) vistas.set(f.trim().toLowerCase(), f.trim());
+    }
+    return [...vistas.values()].sort();
+  }, [dados.leads, dados.custos]);
   const linhasDeFontes: LinhaDeMetricas<BrutoDeProspeccao>[] = fontes.map((f) => ({
     chave: f,
     textos: { nome: f },
     bruto: agregarProspeccao(base, recorte, { fonte: f }),
-    semMidia: true,
   }));
   const linhasDeAbordagens: LinhaDeMetricas<BrutoDeProspeccao>[] = [
     ...dados.abordagens.map((x) => ({
@@ -286,7 +281,10 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
                 {
                   rotulo: t("Leads captados"),
                   valor: inteiro(a.leads),
-                  itens: [item(t("CPL"), brl(a.cpl))],
+                  itens: [
+                    item(t("CPL"), brl(a.cpl)),
+                    item(t("Investimento total"), brl(a.investimento)),
+                  ],
                 },
                 {
                   rotulo: t("Abordagens"),
@@ -416,8 +414,22 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
           <TabelaDeMetricas
             id="prospeccao-fontes"
             regra={regraComTotal()}
-            colunas={[texto("nome", t("Fonte")), ...DA_FONTE]}
+            colunas={[texto("nome", t("Fonte")), ...COLUNAS_DA_FONTE]}
             linhas={linhasDeFontes}
+          />
+        </Painel>
+      ) : null}
+
+      {visao === "fontes" ? (
+        <Painel
+          titulo={t("Custos de captação")}
+          nota={t("Quanto investimos para captar leads de cada fonte")}
+        >
+          <CustosDeCaptacao
+            de={dados.de}
+            ate={dados.ate}
+            fontes={fontes}
+            campanhas={dados.catalogo}
           />
         </Painel>
       ) : null}

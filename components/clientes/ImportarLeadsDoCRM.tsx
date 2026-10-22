@@ -7,9 +7,11 @@ import { toast } from "sonner";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useT } from "@/hooks/i18n/useT";
+import { apiClient } from "@/lib/api/client";
 import { campoDaColuna, normalizarCabecalho } from "@/lib/leads/colunas-da-planilha";
 import {
   COLUNAS_DO_LEAD,
@@ -87,6 +89,9 @@ export function ImportarLeadsDoCRM({
   const [linhas, setLinhas] = useState<string[][]>(() =>
     Array.from({ length: LINHAS_INICIAIS }, () => vazia(COLUNAS_DO_LEAD.length)),
   );
+  /** Quanto custou captar esta lista (opcional): vai para o investimento e o CPL da fonte. */
+  const [custo, setCusto] = useState("");
+  const [fonteDoCusto, setFonteDoCusto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -245,6 +250,21 @@ export function ImportarLeadsDoCRM({
         ],
       });
       void queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      const valorDoCusto = Number(custo.replace(/\./g, "").replace(",", "."));
+      if (Number.isFinite(valorDoCusto) && valorDoCusto > 0 && fonteDoCusto.trim()) {
+        try {
+          await apiClient.post("/api/v1/dashboards/prospeccao/custos", {
+            source: fonteDoCusto.trim(),
+            amount: valorDoCusto,
+            note: `${t("Importação de")} ${preenchidas.length} ${t("leads")}`,
+            funil_id: funilId || null,
+          });
+          setCusto("");
+          void queryClient.invalidateQueries({ queryKey: ["dashboard-prospeccao"] });
+        } catch {
+          toast.error(t("Os leads entraram, mas o custo não foi lançado (só gerente lança custo)."));
+        }
+      }
       if (r.erros.length === 0) {
         toast.success(
           `${r.contatos_criados} ${t("novos")} · ${r.contatos_atualizados} ${t("atualizados")} · ${r.cards_criados} ${t("no funil")}`,
@@ -316,6 +336,34 @@ export function ImportarLeadsDoCRM({
             </Select>
           </div>
           ) : null}
+
+          <div className="space-y-1.5">
+            <Label>{t("Custo desta lista (opcional)")}</Label>
+            <div className="flex gap-2">
+              <Input
+                value={fonteDoCusto}
+                maxLength={60}
+                list="fontes-do-custo-da-importacao"
+                placeholder={t("Fonte (igual à origem)")}
+                aria-label={t("Fonte do custo")}
+                className="w-40"
+                onChange={(e) => setFonteDoCusto(e.target.value)}
+              />
+              <datalist id="fontes-do-custo-da-importacao">
+                {["Extração de leads", "Importação de planilha", "Base de clientes", "Evento"].map((f) => (
+                  <option key={f} value={f} />
+                ))}
+              </datalist>
+              <Input
+                value={custo}
+                inputMode="decimal"
+                placeholder="R$"
+                aria-label={t("Custo")}
+                className="w-28"
+                onChange={(e) => setCusto(e.target.value)}
+              />
+            </div>
+          </div>
 
           <input
             ref={arquivoRef}
