@@ -125,11 +125,6 @@ export function Business({
           apoio={`${t("Margem")} ${dados.recebido > 0 ? pct((lucro / dados.recebido) * 100, 1) : "—"}`}
         />
         <Kpi
-          rotulo={t("A receber (próx. 60 dias)")}
-          valor={brl(dados.aReceber60)}
-          apoio={t("Parcelas previstas, assinaturas incluídas")}
-        />
-        <Kpi
           rotulo={t("CAC (só mídia)")}
           valor={brl(cac)}
           variacao={<Variacao atual={cac} anterior={cacAnt} menorEMelhor />}

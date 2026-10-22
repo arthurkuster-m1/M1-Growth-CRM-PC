@@ -47,7 +47,7 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/marketing":
     "redirect para /app/marketing/estrategia: Marketing é só o grupo (interruptor) do menu lateral, sem página própria; mantido por links e favoritos antigos",
   "/app/agenda/analises":
-    "aba Análises da Agenda (AbasDaAgenda): a Agenda é a porta, a aba é navegação interna dela",
+    "redirect para /app/marketing/dashboards?painel=comercial: as análises da Agenda viraram a aba Comercial dos Dashboards; mantido por links salvos",
   "/app/design-system":
     "página de consulta do Design System (referência visual do produto): alcançada pelo endereço ou por link na documentação, não é tela de uso diário",
   "/app/vendas":
