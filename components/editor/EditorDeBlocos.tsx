@@ -77,6 +77,9 @@ const ESTILO_DO_TEXTO: Record<TipoDeBloco, string> = {
   callout: "text-sm leading-6",
 };
 
+/** Quantos níveis de "afilhados" cabem (o leitor em `lerBlocos` aceita o mesmo). */
+const LIMITE_DE_NIVEIS = 5;
+
 const CONTINUAM_NA_LISTA: TipoDeBloco[] = ["todo", "bullet", "numero"];
 const SAEM_DO_TIPO_AO_FICAR_VAZIOS: TipoDeBloco[] = [
   "todo",
@@ -166,6 +169,7 @@ function LinhaDoBloco({
   ctx,
   nivel,
   unico,
+  aoDesindentar,
 }: {
   bloco: Bloco;
   indice: number;
@@ -175,6 +179,8 @@ function LinhaDoBloco({
   ctx: Contexto;
   nivel: number;
   unico: boolean;
+  /** Tira o bloco de dentro do pai e o põe logo depois dele (Shift+Tab). Ausente no 1º nível. */
+  aoDesindentar?: (id: string) => void;
 }) {
   const t = useT();
   const [menuAberto, setMenuAberto] = useState(false);
@@ -228,10 +234,31 @@ function LinhaDoBloco({
       return;
     }
 
+    // Tab "afilha" o bloco ao irmão de cima; Shift+Tab o devolve ao nível do pai.
+    if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (e.shiftKey) {
+        aoDesindentar?.(bloco.id);
+        return;
+      }
+      const anterior = lista[indice - 1];
+      if (!anterior || nivel >= LIMITE_DE_NIVEIS) return;
+      const copia = lista.filter((b) => b.id !== bloco.id);
+      copia[indice - 1] = {
+        ...anterior,
+        ...(anterior.tipo === "toggle" ? { aberto: true } : {}),
+        filhos: [...(anterior.filhos ?? []), bloco],
+      };
+      aoMudarLista(copia);
+      ctx.pedirFoco(bloco.id, inicio);
+      return;
+    }
+
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!bloco.texto && SAEM_DO_TIPO_AO_FICAR_VAZIOS.includes(bloco.tipo)) {
-        atualizar({ tipo: "texto" });
+        if (aoDesindentar) aoDesindentar(bloco.id);
+        else atualizar({ tipo: "texto" });
         return;
       }
       const antes = bloco.texto.slice(0, inicio);
@@ -257,6 +284,11 @@ function LinhaDoBloco({
       if (bloco.tipo !== "texto") {
         e.preventDefault();
         atualizar({ tipo: "texto" });
+        return;
+      }
+      if (aoDesindentar && indice === 0) {
+        e.preventDefault();
+        aoDesindentar(bloco.id);
         return;
       }
       const anterior = lista[indice - 1];
@@ -378,7 +410,7 @@ function LinhaDoBloco({
                   e.preventDefault();
                   setMenuAberto(true);
                 }}
-                className="mt-0.5 grid h-6 w-5 shrink-0 cursor-grab touch-none place-items-center rounded-md text-text-subtle opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 data-[state=open]:opacity-100 max-sm:opacity-60"
+                className="mt-0.5 grid h-6 w-5 shrink-0 cursor-grab touch-none place-items-center rounded-md text-text-subtle opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-secondary focus-visible:opacity-100 data-[state=open]:opacity-100"
               >
                 <DotsSixVertical size={16} weight="bold" aria-hidden />
               </button>
@@ -456,7 +488,7 @@ function LinhaDoBloco({
         </div>
       </div>
 
-      {bloco.tipo === "toggle" && bloco.aberto ? (
+      {(bloco.tipo === "toggle" ? bloco.aberto : filhos.length > 0) ? (
         <div className="ml-6 pl-1">
           {filhos.length ? (
             <ListaDeBlocos
@@ -464,8 +496,18 @@ function LinhaDoBloco({
               aoMudar={(nova) => atualizar({ filhos: nova })}
               ctx={ctx}
               nivel={nivel + 1}
+              aoDesindentar={(filhoId) => {
+                const filho = filhos.find((f) => f.id === filhoId);
+                if (!filho) return;
+                const restantes = filhos.filter((f) => f.id !== filhoId);
+                const copia = [...lista];
+                copia[indice] = { ...bloco, filhos: restantes.length ? restantes : undefined };
+                copia.splice(indice + 1, 0, filho);
+                aoMudarLista(copia);
+                ctx.pedirFoco(filho.id, "fim");
+              }}
             />
-          ) : ctx.podeEditar ? (
+          ) : ctx.podeEditar && bloco.tipo === "toggle" ? (
             <button
               type="button"
               onClick={() => {
@@ -489,11 +531,13 @@ function ListaDeBlocos({
   aoMudar,
   ctx,
   nivel,
+  aoDesindentar,
 }: {
   blocos: Bloco[];
   aoMudar: (nova: Bloco[]) => void;
   ctx: Contexto;
   nivel: number;
+  aoDesindentar?: (id: string) => void;
 }) {
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const id = useId();
@@ -532,6 +576,7 @@ function ListaDeBlocos({
                 aoMudarLista={aoMudar}
                 ctx={ctx}
                 nivel={nivel}
+                aoDesindentar={aoDesindentar}
                 unico={nivel === 0 && blocos.length === 1}
               />
             );
