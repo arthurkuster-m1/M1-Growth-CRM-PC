@@ -666,6 +666,15 @@ interface Selecao {
   ancora: string | null;
   ponta: string | null;
 }
+const JANELA_DA_DIGITACAO_MS = 1000;
+const LIMITE_DO_HISTORICO = 100;
+
+/** Só o texto mudou (mesma estrutura, tipos e marcações)? Então é digitação. */
+function estruturaIgual(a: Bloco[], b: Bloco[]): boolean {
+  const sem = (_: string, v: unknown) => (_ === "texto" ? "" : v);
+  return JSON.stringify(a, sem) === JSON.stringify(b, sem);
+}
+
 const SEM_SELECAO: Selecao = { ids: new Set(), ancora: null, ponta: null };
 
 /** O que foi copiado por último no editor (para colar blocos inteiros, não só o texto). */
@@ -686,7 +695,7 @@ interface Props {
  * Sem biblioteca de editor: cada bloco é uma área de texto simples, então o cursor, o colar e a
  * seleção são os do navegador. O texto não tem negrito/itálico por dentro do bloco.
  */
-export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
+export function EditorDeBlocos({ blocos, aoMudar: aoMudarDeFora, podeEditar }: Props) {
   const t = useT();
   const prefixo = `eb${useId().replace(/[^a-z0-9]/gi, "")}`;
   const raiz = useRef<HTMLDivElement | null>(null);
@@ -723,6 +732,46 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
     },
     [prefixo],
   );
+
+  // ── desfazer / refazer (Ctrl+Z, Ctrl+Shift+Z) ──────────────────────────────────────
+  // Todo o editor passa por `aoMudar`: cada alteração guarda o estado anterior. Digitar em
+  // sequência no mesmo ritmo vira UMA entrada (um Ctrl+Z desfaz a frase, não a letra).
+  const historico = useRef<{
+    passado: Bloco[][];
+    futuro: Bloco[][];
+    emDigitacao: boolean;
+    quando: number;
+  }>({ passado: [], futuro: [], emDigitacao: false, quando: 0 });
+
+  const aoMudar = (novos: Bloco[]) => {
+    const h = historico.current;
+    const soTexto = estruturaIgual(blocos, novos);
+    const agora = Date.now();
+    const continua = soTexto && h.emDigitacao && agora - h.quando < JANELA_DA_DIGITACAO_MS;
+    if (!continua) {
+      h.passado.push(blocos);
+      if (h.passado.length > LIMITE_DO_HISTORICO) h.passado.shift();
+    }
+    h.emDigitacao = soTexto;
+    h.quando = agora;
+    h.futuro = [];
+    aoMudarDeFora(novos);
+  };
+
+  const voltarNoTempo = (direcao: "desfazer" | "refazer") => {
+    const h = historico.current;
+    const de = direcao === "desfazer" ? h.passado : h.futuro;
+    const para = direcao === "desfazer" ? h.futuro : h.passado;
+    const alvo = de.pop();
+    if (!alvo) return;
+    para.push(blocos);
+    h.emDigitacao = false;
+    aoMudarDeFora(alvo);
+    setSel(SEM_SELECAO);
+    const foco = ultimoFocado.current;
+    const id = foco && acharBloco(alvo, foco) ? foco : idsVisiveis(alvo)[0];
+    if (id) pedirFoco(id, "fim");
+  };
 
   // ── seleção em massa ────────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selecao>(SEM_SELECAO);
@@ -819,6 +868,17 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
   };
 
   const aoTeclarNaSelecao = (e: KeyboardEvent<HTMLDivElement>) => {
+    // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y: valem em qualquer lugar do editor (no texto e na seleção) e
+    // não chegam ao "desfazer" das tabelas, que é da tela de fora.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && podeEditar) {
+      const k = e.key.toLowerCase();
+      if (k === "z" || k === "y") {
+        e.preventDefault();
+        e.stopPropagation();
+        voltarNoTempo(k === "y" || e.shiftKey ? "refazer" : "desfazer");
+        return;
+      }
+    }
     if (e.target !== e.currentTarget || !sel.ids.size) return;
     const mod = e.ctrlKey || e.metaKey;
     if (e.key === "Escape" || e.key === "Enter") {

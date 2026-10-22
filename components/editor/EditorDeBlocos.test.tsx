@@ -141,4 +141,30 @@ describe("EditorDeBlocos", () => {
     fireEvent.mouseUp(document);
     expect(linhas.filter((l) => l.className.includes("ring-1"))).toHaveLength(3);
   });
+
+  it("Ctrl+Z desfaz a digitação em sequência de uma vez e Ctrl+Shift+Z refaz", () => {
+    render(<Casca inicial="a" />);
+    const c = () => campos()[0]!;
+    fireEvent.change(c(), { target: { value: "ab" } });
+    fireEvent.change(c(), { target: { value: "abc" } });
+    expect(ultimo[0]?.texto).toBe("abc");
+    fireEvent.keyDown(c(), { key: "z", ctrlKey: true });
+    expect(ultimo[0]?.texto).toBe("a");
+    fireEvent.keyDown(c(), { key: "z", ctrlKey: true, shiftKey: true });
+    expect(ultimo[0]?.texto).toBe("abc");
+  });
+
+  it("Ctrl+Z desfaz a exclusão de blocos selecionados e a troca de tipo", () => {
+    render(<Casca inicial={"a\nb\nc"} />);
+    const raiz = screen.getByRole("group", { name: "Descrição" });
+    fireEvent.keyDown(campos()[0]!, { code: "Digit5", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(campos()[1]!, { key: "Escape" });
+    fireEvent.keyDown(raiz, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(raiz, { key: "Delete" });
+    expect(ultimo.map((b) => b.texto)).toEqual(["a"]);
+    fireEvent.keyDown(campos()[0]!, { key: "z", ctrlKey: true });
+    expect(ultimo.map((b) => b.texto)).toEqual(["a", "b", "c"]);
+    fireEvent.keyDown(campos()[0]!, { key: "z", ctrlKey: true });
+    expect(ultimo[0]?.tipo).toBe("texto");
+  });
 });
