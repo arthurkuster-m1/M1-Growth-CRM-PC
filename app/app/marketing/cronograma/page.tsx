@@ -23,7 +23,6 @@ export default async function CronogramaPage() {
       descricao={t(
         "As metas, o caminho até elas e as tarefas da semana: o que é da agência e o que é do cliente.",
       )}
-      voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
       <CronogramaDoCliente />
     </PaginaDeMarketing>

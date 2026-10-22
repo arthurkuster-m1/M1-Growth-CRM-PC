@@ -28,18 +28,21 @@ export function PaginaDeMarketing({
   titulo: string;
   descricao: string;
   estado?: string;
-  voltar: { href: string; rotulo: string };
+  /** Só nas páginas de dentro; as áreas de Marketing são do menu e não têm "voltar". */
+  voltar?: { href: string; rotulo: string };
   children?: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 p-4 sm:p-6">
-      <Link
-        href={voltar.href}
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <CaretLeft size={14} aria-hidden />
-        {voltar.rotulo}
-      </Link>
+    <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-6 p-4 sm:px-8 sm:py-6 2xl:px-12">
+      {voltar ? (
+        <Link
+          href={voltar.href}
+          className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <CaretLeft size={14} aria-hidden />
+          {voltar.rotulo}
+        </Link>
+      ) : null}
 
       <Capa tom={tom} icone={icone} className="rounded-3xl">
         <div className="relative z-10 flex flex-col gap-3 p-6 sm:p-9">

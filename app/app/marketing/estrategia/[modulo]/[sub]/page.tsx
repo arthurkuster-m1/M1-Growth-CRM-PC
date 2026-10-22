@@ -28,7 +28,7 @@ export default async function SubpaginaDaEstrategiaPage({
   if (!textosDoTipo || !textosDoPai) notFound();
 
   return (
-    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-6 p-4 sm:px-8 sm:py-6 2xl:px-12">
       <PaginaDoModulo
         chave={sub}
         titulo={textosDoTipo.titulo}
