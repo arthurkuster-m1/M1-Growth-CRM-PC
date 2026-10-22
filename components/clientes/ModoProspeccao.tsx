@@ -146,6 +146,8 @@ export function ModoProspeccao({
         contactId: item.contactId,
         resultado: r.resultado?.trim() || r.rotulo,
         comentario,
+        meio: config.tipo === "outro" ? "ligacao" : config.tipo,
+        abordagemId: abordagem?.id,
         proximo: comPasso
           ? { texto: t(r.proximo ?? ""), em: dataEscolhida ?? somarDiasUteis(hojeIso(), dias) }
           : undefined,

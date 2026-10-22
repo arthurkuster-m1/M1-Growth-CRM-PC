@@ -15,7 +15,8 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import {
   ACOES_DO_LEAD,
-  RESULTADOS_DA_LIGACAO,
+  exigeResultado,
+  resultadosDaAcao,
   type IdDaAcao,
 } from "@/lib/leads/acoes-do-lead";
 
@@ -134,7 +135,8 @@ export function RegistrarAcaoDoLead({
   });
   const atual = ACOES_DO_LEAD.find((a) => a.id === acao);
   const exigeTitulo = Boolean(atual && "exigeTitulo" in atual && atual.exigeTitulo);
-  const podeRegistrar = !exigeTitulo || titulo.trim().length >= 3;
+  const faltaResultado = Boolean(acao && exigeResultado(acao) && resultado.trim().length < 2);
+  const podeRegistrar = (!exigeTitulo || titulo.trim().length >= 3) && !faltaResultado;
 
   if (!podeEditar) return null;
   const envolver = (children: React.ReactNode) =>
@@ -177,7 +179,10 @@ export function RegistrarAcaoDoLead({
               ) : null}
               {atual.comResultado ? (
                 <div className="grid gap-1">
-                  <label className="text-xs font-medium">{t("Resultado")}</label>
+                  <label className="text-xs font-medium">
+                    {t("Resultado")}
+                    {acao && exigeResultado(acao) ? ` (${t("obrigatório")})` : ""}
+                  </label>
                   <Input
                     list="resultados-da-acao"
                     value={resultado}
@@ -186,7 +191,7 @@ export function RegistrarAcaoDoLead({
                     onChange={(e) => setResultado(e.target.value)}
                   />
                   <datalist id="resultados-da-acao">
-                    {RESULTADOS_DA_LIGACAO.map((r) => (
+                    {resultadosDaAcao(acao ?? "ligacao").map((r) => (
                       <option key={r} value={r} />
                     ))}
                   </datalist>

@@ -85,6 +85,7 @@ export function resultadosPadraoDoTipo(tipo: TipoDeProspeccao): ResultadoDaProsp
     return [
       { id: "sem_resposta", rotulo: "Sem resposta", ativo: true, proximo: "Chamar de novo no WhatsApp", diasUteis: 1 },
       { id: "sem_whatsapp", rotulo: "Sem WhatsApp", ativo: true, proximo: "Conferir o telefone do lead", diasUteis: 0 },
+      { id: "decisor", rotulo: "Falou o decisor", ativo: true, resultado: "Respondeu — falou com o decisor", proximo: "Seguir o combinado na conversa", diasUteis: 1, exigeComentario: true },
       { id: "conversa", rotulo: "Respondeu", ativo: true, resultado: "Respondeu — conversa positiva", proximo: "Seguir o combinado na conversa", diasUteis: 1, exigeComentario: true },
       { id: "retornar", rotulo: "Pediu retorno", ativo: true, resultado: "Respondeu — pediu para retornar", proximo: "Retornar a conversa", pedeData: true, exigeComentario: true },
       { id: "sem_interesse", rotulo: "Sem interesse", ativo: true, resultado: "Respondeu — sem interesse", perde: true, exigeComentario: true },
@@ -93,6 +94,7 @@ export function resultadosPadraoDoTipo(tipo: TipoDeProspeccao): ResultadoDaProsp
   if (tipo === "instagram") {
     return [
       { id: "dm_enviada", rotulo: "Mensagem enviada", ativo: true, proximo: "Ver se respondeu no Instagram", diasUteis: 2 },
+      { id: "decisor", rotulo: "Falou o decisor", ativo: true, resultado: "Respondeu — falou com o decisor", proximo: "Seguir o combinado na conversa", diasUteis: 1, exigeComentario: true },
       { id: "conversa", rotulo: "Respondeu", ativo: true, resultado: "Respondeu — conversa positiva", proximo: "Seguir o combinado na conversa", diasUteis: 1, exigeComentario: true },
       { id: "retornar", rotulo: "Pediu retorno", ativo: true, resultado: "Respondeu — pediu para retornar", proximo: "Retornar a conversa", pedeData: true, exigeComentario: true },
       { id: "sem_interesse", rotulo: "Sem interesse", ativo: true, resultado: "Respondeu — sem interesse", perde: true, exigeComentario: true },
@@ -142,6 +144,17 @@ export function carregarConfigDaProspeccao(): ConfigDaProspeccao {
       } else if (antigo && (tipo === "ligacao" || tipo === "outro")) {
         // Versão anterior: só ligava e desligava os seis botões fixos.
         resultadosPorTipo[tipo] = resultadosPorTipo[tipo].map((r) => ({ ...r, ativo: antigo[r.id] !== false }));
+      }
+    }
+    // Quem já tinha a lista guardada ganha o botão do decisor (a Prospecção conta decisores).
+    for (const tipo of TIPOS_DE_PROSPECCAO) {
+      const lista = resultadosPorTipo[tipo];
+      if (lista.length > 0 && !lista.some((r) => r.id === "decisor")) {
+        const novo = resultadosPadraoDoTipo(tipo).find((r) => r.id === "decisor");
+        if (novo) {
+          const i = lista.findIndex((r) => r.id === "conversa");
+          lista.splice(i >= 0 ? i : lista.length, 0, novo);
+        }
       }
     }
     return {

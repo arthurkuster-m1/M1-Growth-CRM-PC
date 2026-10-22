@@ -28,10 +28,10 @@ const FORMATOS: Record<FormatoDaMetrica, (v: number) => string> = {
 };
 
 /** Uma linha da tabela: o que a identifica (textos) e os números brutos de que tudo se deriva. */
-export interface LinhaDeMetricas {
+export interface LinhaDeMetricas<B = BrutoDeTrafego> {
   chave: string;
   textos?: Record<string, string>;
-  bruto: BrutoDeTrafego;
+  bruto: B;
   /** Sem entrega nem gasto próprios: as contas de mídia aparecem como "—". */
   semMidia?: boolean;
 }
@@ -41,14 +41,21 @@ export interface ColunaDeTexto {
   id: string;
   titulo: string;
 }
-export interface ColunaDeMetrica {
+export interface ColunaDeMetrica<D = DerivadasDeTrafego> {
   tipo: "metrica";
   id: string;
   titulo: string;
   formato: FormatoDaMetrica;
-  valor: (d: DerivadasDeTrafego) => number | null;
+  valor: (d: D) => number | null;
 }
-export type ColunaDaTabela = ColunaDeTexto | ColunaDeMetrica;
+export type ColunaDaTabela<D = DerivadasDeTrafego> = ColunaDeTexto | ColunaDeMetrica<D>;
+
+/** Como a tabela transforma o bruto em contas e soma o rodapé (o padrão é o do Tráfego Pago). */
+export interface RegraDaTabela<B, D> {
+  derivar: (b: B, semMidia?: boolean) => D;
+  /** O total do rodapé; se faltar, soma os brutos das linhas. */
+  total?: (linhas: readonly LinhaDeMetricas<B>[]) => B;
+}
 
 const CHAVE = (id: string) => `m1:dashboards:colunas-ocultas:${id}`;
 
@@ -79,19 +86,22 @@ function useColunasOcultas(id: string) {
  * (botão "Propriedades"), rolagem lateral que também se arrasta com o mouse, a primeira coluna
  * fixa, clique no título para ordenar e o total no rodapé (as taxas saem da soma, não da média).
  */
-export function TabelaDeMetricas({
+export function TabelaDeMetricas<B = BrutoDeTrafego, D = DerivadasDeTrafego>({
   id,
   colunas,
   linhas,
   rotuloDoRodape,
+  regra,
 }: {
   /** Identifica a tabela para lembrar as colunas escolhidas. */
   id: string;
   /** A primeira é a que identifica a linha (fica fixa à esquerda). */
-  colunas: readonly ColunaDaTabela[];
-  linhas: readonly LinhaDeMetricas[];
+  colunas: readonly ColunaDaTabela<D>[];
+  linhas: readonly LinhaDeMetricas<B>[];
   rotuloDoRodape?: string;
+  regra?: RegraDaTabela<B, D>;
 }) {
+  const derivar = (regra?.derivar ?? derivarTrafego) as unknown as (b: B, semMidia?: boolean) => D;
   const t = useT();
   const [ocultas, gravarOcultas] = useColunasOcultas(id);
   const [ordem, setOrdem] = useState<{ coluna: string; direcao: "asc" | "desc" } | null>(null);
@@ -103,7 +113,8 @@ export function TabelaDeMetricas({
   const visiveis = [primeira!, ...demais.filter((c) => !ocultas.includes(c.id))];
 
   const calculadas = useMemo(
-    () => linhas.map((l) => ({ l, d: derivarTrafego(l.bruto, l.semMidia) })),
+    () => linhas.map((l) => ({ l, d: derivar(l.bruto, l.semMidia) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [linhas],
   );
   const ordenadas = useMemo(() => {
@@ -124,7 +135,12 @@ export function TabelaDeMetricas({
   }, [calculadas, ordem, colunas]);
 
   const todasSemMidia = linhas.length > 0 && linhas.every((l) => l.semMidia);
-  const total = derivarTrafego(somarBrutos(linhas.map((l) => l.bruto)), todasSemMidia);
+  const total = derivar(
+    regra?.total
+      ? regra.total(linhas)
+      : (somarBrutos(linhas.map((l) => l.bruto as unknown as BrutoDeTrafego)) as unknown as B),
+    todasSemMidia,
+  );
 
   const alternarOrdem = (coluna: string) =>
     setOrdem((o) =>
@@ -135,7 +151,7 @@ export function TabelaDeMetricas({
           : null,
     );
 
-  const celula = (c: ColunaDaTabela, x: (typeof calculadas)[number]): ReactNode => {
+  const celula = (c: ColunaDaTabela<D>, x: (typeof calculadas)[number]): ReactNode => {
     if (c.tipo === "texto") return x.l.textos?.[c.id] || "—";
     const v = c.valor(x.d);
     return v === null ? "—" : FORMATOS[c.formato](v);

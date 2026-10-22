@@ -11,9 +11,16 @@ export async function aplicarResultadoRapido(args: {
   proximo?: { texto: string; em: string };
   /** O que foi conversado (obrigatório quando o lead atendeu). */
   comentario?: string;
+  /** Por onde foi a abordagem (padrão: ligação). */
+  meio?: "ligacao" | "whatsapp" | "instagram" | "email" | "outro";
+  /** A abordagem (roteiro) em uso. */
+  abordagemId?: string;
 }): Promise<void> {
+  const meio = args.meio ?? "ligacao";
   await apiClient.post(`/api/v1/contacts/${args.contactId}/atividades`, {
-    acao: "ligacao",
+    acao: meio === "ligacao" ? "ligacao" : meio === "email" ? "email" : "mensagem",
+    meio,
+    ...(args.abordagemId ? { abordagem_id: args.abordagemId } : {}),
     resultado: args.resultado,
     lead_id: args.leadId,
     ...(args.comentario?.trim() ? { comentario: args.comentario.trim() } : {}),

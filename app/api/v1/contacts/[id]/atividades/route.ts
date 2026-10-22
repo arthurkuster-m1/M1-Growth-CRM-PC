@@ -16,6 +16,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import {
   IDS_DAS_ACOES,
+  exigeResultado,
   corpoDaAcao,
   somarTagComContador,
   tituloDaAcao,
@@ -36,6 +37,10 @@ const corpoSchema = z.object({
   /** Tag a somar ao contato (a segunda vez vira "Tag: 2x"). */
   tag: z.string().trim().max(30).optional(),
   lead_id: z.string().uuid().optional(),
+  /** Por onde a abordagem foi feita (prospecção): alimenta o dashboard por tipo de contato. */
+  meio: z.enum(["ligacao", "whatsapp", "instagram", "email", "outro"]).optional(),
+  /** A abordagem (roteiro) usada, da campanha do lead. */
+  abordagem_id: z.string().uuid().optional(),
 });
 
 export async function POST(
@@ -62,8 +67,24 @@ export async function POST(
     );
   }
 
+  // Ligação, mensagem e e-mail são abordagens: sem resultado não entram no histórico (os
+  // dashboards de Prospecção contam contato e decisor a partir dele).
+  if (exigeResultado(corpo.data.acao) && (corpo.data.resultado ?? "").trim().length < 2) {
+    return fail("validation_failed", t("Diga o resultado da abordagem."), 422, { requestId });
+  }
+
   const supabase = await createClient();
   const orgId = authz.org.orgId;
+  let abordagemId: string | null = null;
+  if (corpo.data.abordagem_id) {
+    const { data: ab } = await supabase
+      .from("demand_campaign_approaches")
+      .select("id")
+      .eq("id", corpo.data.abordagem_id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    abordagemId = (ab as { id: string } | null)?.id ?? null;
+  }
 
   const { data: contato } = await supabase
     .from("contacts")
@@ -105,6 +126,8 @@ export async function POST(
       titulo: tituloDaAcao(corpo.data.acao, corpo.data.titulo),
       resultado: corpo.data.resultado ?? null,
       comentario: corpo.data.comentario ?? null,
+      ...(corpo.data.meio ? { meio: corpo.data.meio } : {}),
+      ...(abordagemId ? { abordagem_id: abordagemId } : {}),
     },
   });
   if (!r.ok) return fail("internal_error", t("Erro ao registrar a ação."), 500, { requestId });

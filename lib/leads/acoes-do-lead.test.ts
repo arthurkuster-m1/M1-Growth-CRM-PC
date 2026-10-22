@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { corpoDaAcao, somarTagComContador, tituloDaAcao } from "./acoes-do-lead";
+import {
+  corpoDaAcao,
+  exigeResultado,
+  resultadosDaAcao,
+  somarTagComContador,
+  tituloDaAcao,
+} from "./acoes-do-lead";
 
 describe("tituloDaAcao", () => {
   it("usa o título da ação", () => {
@@ -40,5 +46,16 @@ describe("somarTagComContador", () => {
   });
   it("nome com caracteres especiais", () => {
     expect(somarTagComContador(["R$ (1)"], "R$ (1)")).toEqual(["R$ (1): 2x"]);
+  });
+});
+
+describe("abordagens exigem resultado", () => {
+  it("ligação, mensagem e e-mail não se registram sem resultado; o resto sim", () => {
+    for (const id of ["ligacao", "mensagem", "email"]) expect(exigeResultado(id)).toBe(true);
+    for (const id of ["reuniao", "proposta", "nao_atendeu", "outro"]) expect(exigeResultado(id)).toBe(false);
+  });
+  it("o decisor está nas sugestões de resultado", () => {
+    expect(resultadosDaAcao("ligacao")).toContain("Atendeu — falou com o decisor");
+    expect(resultadosDaAcao("email")).toContain("Respondeu — falou com o decisor");
   });
 });

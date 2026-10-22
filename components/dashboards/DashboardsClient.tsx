@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Atendimento, type DadosDeAtendimento } from "@/components/dashboards/Atendimento";
 import { Business, type DadosDeBusiness } from "@/components/dashboards/Business";
 import { AnalisesDaAgenda } from "@/components/agenda/AnalisesDaAgenda";
+import { ProspeccaoAtiva, type DadosDeProspeccao } from "@/components/dashboards/ProspeccaoAtiva";
 import { SeletorDeCampanhas } from "@/components/dashboards/SeletorDeCampanhas";
 import { TrafegoPago, type DadosDeTrafego } from "@/components/dashboards/TrafegoPago";
 import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
@@ -41,6 +42,7 @@ export function DashboardsClient({
   const { atalhos, hoje } = useAtalhosDePeriodo();
   const [janela, setJanela] = useState(() => ({ de: `${hoje.slice(0, 7)}-01`, ate: hoje }));
   const [campanhas, setCampanhas] = useState<string[]>([]);
+  const [campanhasDeProspeccao, setCampanhasDeProspeccao] = useState<string[]>([]);
   const queryClient = useQueryClient();
   const visibilidade = useQuery({
     queryKey: ["dashboard-visibilidade"],
@@ -73,7 +75,6 @@ export function DashboardsClient({
       id: "prospeccao",
       rotulo: t("Prospecção Ativa"),
       icone: <UsersThree size={16} weight="duotone" aria-hidden />,
-      breve: true,
     },
     {
       id: "comercial",
@@ -120,6 +121,19 @@ export function DashboardsClient({
         )
       ).data,
   });
+  const prospeccao = useQuery({
+    queryKey: ["dashboard-prospeccao", janela.de, janela.ate, campanhasDeProspeccao.join(",")],
+    enabled: painel === "prospeccao",
+    staleTime: 30_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: DadosDeProspeccao }>(
+          `/api/v1/dashboards/prospeccao?de=${janela.de}&ate=${janela.ate}${
+            campanhasDeProspeccao.length > 0 ? `&campanhas=${campanhasDeProspeccao.join(",")}` : ""
+          }`,
+        )
+      ).data,
+  });
   const trafego = useQuery({
     queryKey: ["dashboard-trafego", janela.de, janela.ate, campanhas.join(",")],
     enabled: painel === "trafego",
@@ -156,18 +170,10 @@ export function DashboardsClient({
         <span
           className={cn(
             "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
-            painel !== "prospeccao"
-              ? "border-green-500/50 bg-green-500/10 text-green-800 dark:text-green-300"
-              : "border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+            "border-green-500/50 bg-green-500/10 text-green-800 dark:text-green-300",
           )}
         >
-          <span
-            className={cn(
-              "h-2 w-2 rounded-full",
-              painel !== "prospeccao" ? "bg-green-500" : "bg-amber-500",
-            )}
-            aria-hidden
-          />
+          <span className={cn("h-2 w-2 rounded-full", "bg-green-500")} aria-hidden />
           {painel === "trafego"
             ? t("Dados reais · Meta Ads + CRM")
             : painel === "business"
@@ -176,7 +182,7 @@ export function DashboardsClient({
                 ? t("Dados reais · conversas e mensagens")
                 : painel === "comercial"
                   ? t("Dados reais · agenda e vendas")
-                  : t("Protótipo: dados de exemplo")}
+                  : t("Dados reais · CRM, abordagens e vendas")}
         </span>
       </header>
 
@@ -248,27 +254,32 @@ export function DashboardsClient({
         ) : null}
       </div>
 
-      {painel !== "prospeccao" ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3">
-          <SeletorDePeriodo
-            de={janela.de}
-            ate={janela.ate}
-            rotulo={t("Período")}
-            atalhos={atalhos}
-            aoMudar={setJanela}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3">
+        <SeletorDePeriodo
+          de={janela.de}
+          ate={janela.ate}
+          rotulo={t("Período")}
+          atalhos={atalhos}
+          aoMudar={setJanela}
+        />
+        {painel === "prospeccao" ? (
+          <SeletorDeCampanhas
+            catalogo={prospeccao.data?.catalogo ?? []}
+            escolhidas={campanhasDeProspeccao}
+            aoMudar={setCampanhasDeProspeccao}
           />
-          {painel === "trafego" ? (
-            <SeletorDeCampanhas
-              catalogo={trafego.data?.catalogo ?? []}
-              escolhidas={campanhas}
-              aoMudar={setCampanhas}
-            />
-          ) : null}
-          <span className="ml-auto text-xs text-muted-foreground">
-            {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
-          </span>
-        </div>
-      ) : null}
+        ) : null}
+        {painel === "trafego" ? (
+          <SeletorDeCampanhas
+            catalogo={trafego.data?.catalogo ?? []}
+            escolhidas={campanhas}
+            aoMudar={setCampanhas}
+          />
+        ) : null}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
+        </span>
+      </div>
 
       {painel === "trafego" ? (
         trafego.isLoading ? (
@@ -319,15 +330,15 @@ export function DashboardsClient({
       ) : null}
       {painel === "comercial" ? <AnalisesDaAgenda periodo={janela} /> : null}
       {painel === "prospeccao" ? (
-        <div className="grid place-items-center gap-3 rounded-2xl border border-dashed bg-card p-10 text-center">
-          <UsersThree size={36} weight="duotone" aria-hidden className="text-muted-foreground" />
-          <h2 className="text-lg font-semibold">{t("Prospecção Ativa")}</h2>
-          <p className="max-w-md text-sm text-muted-foreground">
-            {t(
-              "Este dashboard chega junto com o módulo de Prospecção Ativa: leads captados por ação, disparos, respostas e custo por resposta e por reunião.",
-            )}
+        prospeccao.isLoading ? (
+          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+        ) : prospeccao.isError || !prospeccao.data ? (
+          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+            {t("Não consegui carregar os números de prospecção agora. Tente de novo em instantes.")}
           </p>
-        </div>
+        ) : (
+          <ProspeccaoAtiva dados={prospeccao.data} />
+        )
       ) : null}
     </div>
   );
