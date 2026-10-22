@@ -51140,3 +51140,15 @@ comment on table public.lead_source_costs is
   'Custo de captação de leads por fonte e dia (extração, importação…). campaign_id nulo = vale para todas as campanhas. Lido pela empresa toda; escrito a partir de manager.';
 
 notify pgrst, 'reload schema';
+
+-- ---- migration 0652 ----
+alter table public.demand_campaigns drop constraint if exists demand_campaigns_texts_check;
+alter table public.demand_campaigns add constraint demand_campaigns_texts_check
+  check (length(description) <= 20000 and length(idea) <= 4000 and length(objective) <= 2000
+         and length(platform) <= 40 and length(sheet_url) <= 500);
+
+update public.demand_campaigns
+   set goal_period = case when continuous or end_date is null then 'mensal' else 'total' end
+ where goal_period is distinct from (case when continuous or end_date is null then 'mensal' else 'total' end);
+
+notify pgrst, 'reload schema';

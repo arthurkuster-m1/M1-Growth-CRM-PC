@@ -108,7 +108,8 @@ const camposSchema = z.object({
   name: z.string().trim().min(1).max(160),
   channel: z.enum(CANAIS_DA_CAMPANHA),
   status: z.enum(STATUS_DA_CAMPANHA),
-  description: z.string().trim().max(4000),
+  // As notas guardam blocos (JSON do editor), então cabem mais que o texto puro de antes.
+  description: z.string().trim().max(20000),
   idea: z.string().trim().max(4000),
   objective: z.string().trim().max(2000),
   start_date: dia.nullable(),
@@ -140,6 +141,17 @@ const camposSchema = z.object({
     .trim()
     .regex(/^(act_\d{1,30})?$/),
 });
+
+/**
+ * Para que período valem as metas: campanha com início e fim → a campanha toda; contínua (ou sem
+ * data final) → cada mês. Não se escolhe mais: sai das datas.
+ */
+export function periodoDasMetas(c: {
+  continuous: boolean;
+  end_date: string | null;
+}): PeriodoDaMeta {
+  return c.continuous || !c.end_date ? "mensal" : "total";
+}
 
 const periodoValido = (v: { start_date?: string | null; end_date?: string | null }) =>
   !v.start_date || !v.end_date || v.end_date >= v.start_date;

@@ -12,6 +12,7 @@ import {
   COLUNAS_DA_CAMPANHA,
   campanhaDaLinha,
   novaCampanhaSchema,
+  periodoDasMetas,
   type CampanhaDeDemanda,
 } from "@/lib/marketing/campanhas";
 import { contaDoMetaPermitida } from "@/lib/marketing/conta-do-meta-servidor";
@@ -161,7 +162,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const { data, error } = await a.supabase
     .from("demand_campaigns")
-    .insert({ organization_id: a.orgId, created_by: a.userId, ...corpo.data })
+    .insert({
+      organization_id: a.orgId,
+      created_by: a.userId,
+      ...corpo.data,
+      goal_period: periodoDasMetas({
+        continuous: corpo.data.continuous ?? false,
+        end_date: corpo.data.end_date ?? null,
+      }),
+    })
     .select(COLUNAS_DA_CAMPANHA)
     .single();
   if (error || !data) {

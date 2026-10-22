@@ -3,7 +3,7 @@
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import { LinhaDoTempoDeCampanhas } from "@/components/marketing/campanhas/LinhaDoTempoDeCampanhas";
@@ -38,6 +38,7 @@ import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { lerNumero } from "@/lib/marketing/calculadora";
+import { textoDaDescricao } from "@/lib/tarefas/blocos";
 import {
   CANAIS_DA_CAMPANHA,
   PERIODOS_DO_ORCAMENTO,
@@ -64,6 +65,8 @@ const ID_DA_PADRAO = "padrao";
 const TIPOS_DAS_CAMPANHAS = ["tabela", "galeria", "timeline"] as const;
 const BASE = "/app/marketing/geracao-de-demanda/campanhas";
 type Vista = "tabela" | "cards" | "timeline";
+
+const CHAVE_DA_VISAO = "m1:campanhas:visao-ativa";
 
 const CAMPO =
   "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
@@ -133,6 +136,24 @@ export function CampanhasDeDemanda() {
     podeSalvar: podeEditar && (visaoAtiva?.editavel ?? true),
   });
   const escolherAba = (id: string) => router.replace(`${caminho}?v=${id}`, { scroll: false });
+  // Quem entra numa campanha (ou sai da página) e volta pelo link "Campanhas" cai de volta na
+  // visualização em que estava (cards, linha do tempo…), não na primeira aba.
+  useEffect(() => {
+    if (carregando) return;
+    try {
+      if (pedida) {
+        window.sessionStorage.setItem(CHAVE_DA_VISAO, pedida);
+        return;
+      }
+      const salva = window.sessionStorage.getItem(CHAVE_DA_VISAO);
+      if (salva && (salva === ID_DA_PADRAO || visoes.some((v) => v.id === salva))) {
+        router.replace(`${caminho}?v=${salva}`, { scroll: false });
+      }
+    } catch {
+      // sem armazenamento: abre na primeira aba
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregando, pedida, visoes.length]);
   const moverAba = (direcao: -1 | 1) => {
     const ids = ordemDasAbas.map((a) => a.id);
     const i = ids.indexOf(ativaId);
@@ -550,7 +571,7 @@ export function CampanhasDeDemanda() {
     () =>
       termo
         ? campanhas.filter((c) =>
-            `${c.name} ${c.description} ${c.platform_campaigns.map((p) => p.name).join(" ")}`
+            `${c.name} ${textoDaDescricao(c.description)} ${c.platform_campaigns.map((p) => p.name).join(" ")}`
               .normalize("NFD")
               .replace(/[̀-ͯ]/g, "")
               .toLowerCase()
