@@ -19,6 +19,7 @@ export function PaginaDeMarketing({
   descricao,
   estado,
   voltar,
+  larga = false,
   children,
 }: {
   tom: TomDaCapa;
@@ -30,10 +31,18 @@ export function PaginaDeMarketing({
   estado?: string;
   /** Só nas páginas de dentro; as áreas de Marketing são do menu e não têm "voltar". */
   voltar?: { href: string; rotulo: string };
+  /** Páginas de tabela: usam a tela toda (sem teto de largura e com margens menores). */
+  larga?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-6 p-4 sm:px-8 sm:py-6 2xl:px-12">
+    <div
+      className={
+        larga
+          ? "flex w-full min-w-0 flex-col gap-5 p-3 sm:px-5 sm:py-5"
+          : "mx-auto flex w-full max-w-[1800px] flex-col gap-6 p-4 sm:px-8 sm:py-6 2xl:px-12"
+      }
+    >
       {voltar ? (
         <Link
           href={voltar.href}

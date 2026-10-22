@@ -11,6 +11,7 @@ import {
   COR_DO_CANAL,
   COR_DO_STATUS,
   rotuloDoCanal,
+  rotuloDoPeriodo,
   rotuloDoStatus,
   textoDoEstado,
 } from "@/components/marketing/campanhas/rotulos";
@@ -26,7 +27,12 @@ import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
-import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
+import { CampoDeMoeda } from "@/components/marketing/CampoDeMoeda";
+import {
+  useCampanhasDeDemanda,
+  useOpcoesDoMeta,
+  type EdicaoDeCampanha,
+} from "@/hooks/marketing/useCampanhasDeDemanda";
 import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
@@ -34,19 +40,24 @@ import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { lerNumero } from "@/lib/marketing/calculadora";
 import {
   CANAIS_DA_CAMPANHA,
+  PERIODOS_DO_ORCAMENTO,
   STATUS_DA_CAMPANHA,
+  type CampanhaDaPlataforma,
   type CampanhaDeDemanda,
 } from "@/lib/marketing/campanhas";
 import { FUSO_DO_CRONOGRAMA } from "@/lib/marketing/cronograma";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import {
-  aplicarConsulta,
-  type CampoConsultavel,
-} from "@/lib/motor/consulta";
+import { aplicarConsulta, type CampoConsultavel } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+import {
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { cn } from "@/lib/utils";
 import { ArrowRight, CalendarBlank, Check, Megaphone, Plus, TextAa, Trash } from "@/lib/ui/icons";
 
 const ID_DA_PADRAO = "padrao";
@@ -77,10 +88,8 @@ export function CampanhasDeDemanda() {
   const [apagando, setApagando] = useState<string[]>([]);
 
   const padrao = useVisualizacao("campanhas");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
-    "campanhas",
-    podeEditar,
-  );
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } =
+    useVisoesSalvas("campanhas", podeEditar);
   // A ORDEM das abas é da empresa (a `position` de cada visualização salva); a aba "Todas"
   // guarda a própria posição nas preferências. A primeira aba é a que a página abre.
   const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
@@ -363,7 +372,9 @@ export function CampanhasDeDemanda() {
       largura: 110,
       padrao: false,
       celula: (c) => (
-        <span className="block px-2 text-sm tabular-nums">{c.estado ? String(c.estado.leads) : "—"}</span>
+        <span className="block px-2 text-sm tabular-nums">
+          {c.estado ? String(c.estado.leads) : "—"}
+        </span>
       ),
     },
     {
@@ -494,14 +505,21 @@ export function CampanhasDeDemanda() {
     { id: "continua", titulo: t("Contínua"), tipo: "caixa", valorDe: (c) => c.continuous },
     { id: "investimento", titulo: t("Investimento"), tipo: "numero", valorDe: (c) => c.budget },
     { id: "meta-leads", titulo: t("Meta de leads"), tipo: "numero", valorDe: (c) => c.goal_leads },
-    { id: "investido", titulo: t("Investido"), tipo: "numero", valorDe: (c) => c.estado?.investido ?? null },
+    {
+      id: "investido",
+      titulo: t("Investido"),
+      tipo: "numero",
+      valorDe: (c) => c.estado?.investido ?? null,
+    },
     { id: "leads", titulo: t("Leads"), tipo: "numero", valorDe: (c) => c.estado?.leads ?? null },
     {
       id: "cpl",
       titulo: t("CPL"),
       tipo: "numero",
       valorDe: (c) =>
-        c.estado && c.estado.leads > 0 && c.estado.investido > 0 ? c.estado.investido / c.estado.leads : null,
+        c.estado && c.estado.leads > 0 && c.estado.investido > 0
+          ? c.estado.investido / c.estado.leads
+          : null,
     },
     { id: "meta-cpl", titulo: t("Meta de CPL"), tipo: "numero", valorDe: (c) => c.goal_cpl },
     {
@@ -574,7 +592,6 @@ export function CampanhasDeDemanda() {
     });
     ultimoMarcado.current = id;
   };
-
 
   const abasPorId = new Map([
     [
@@ -668,9 +685,12 @@ export function CampanhasDeDemanda() {
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {lista.map((c) => (
         <li key={c.id} className="min-w-0">
-          <div className="flex h-full min-w-0 flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm">
+          <div className="relative flex h-full min-w-0 flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
             <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
-              <Link href={`${BASE}/${c.id}`} className="hover:text-primary hover:underline">
+              <Link
+                href={`${BASE}/${c.id}`}
+                className="after:absolute after:inset-0 after:rounded-2xl after:content-[''] hover:text-primary hover:underline"
+              >
                 {c.name}
               </Link>
             </h3>
@@ -679,7 +699,13 @@ export function CampanhasDeDemanda() {
               {cartao.map((col) => (
                 <div key={col.id} className="contents">
                   <dt className="truncate">{col.titulo}</dt>
-                  <dd className="min-w-0 text-sm [overflow-wrap:anywhere] text-foreground">
+                  <dd
+                    className={cn(
+                      "min-w-0 text-sm [overflow-wrap:anywhere] text-foreground",
+                      // As células editáveis ficam por cima do link que cobre o card.
+                      podeEditar && EDITAVEIS_NO_CARD.has(col.id) && "relative z-10",
+                    )}
+                  >
                     {podeEditar && EDITAVEIS_NO_CARD.has(col.id)
                       ? col.celula(c)
                       : valorDoCartao(col.id, c)}
@@ -730,7 +756,7 @@ export function CampanhasDeDemanda() {
       ) : (
         <>
           <AbasDeVisualizacao
-        aoReordenar={reordenarAbasNaTela}
+            aoReordenar={reordenarAbasNaTela}
             abas={abas}
             ativaId={ativaId}
             podeEditar={podeEditar}
@@ -754,7 +780,7 @@ export function CampanhasDeDemanda() {
               />
             </label>
             <BarraDeConsulta
-          salvamento={salvamento}
+              salvamento={salvamento}
               compacta
               campos={camposDaBarra}
               consulta={{
@@ -829,6 +855,11 @@ export function CampanhasDeDemanda() {
               aoMudar={
                 podeEditar || !visaoAtiva
                   ? (linhaDoTempo) => atualizar((p) => ({ ...p, linhaDoTempo }))
+                  : undefined
+              }
+              aoDatas={
+                podeEditar
+                  ? (id, datas) => void editar([id], { ...datas, continuous: false })
                   : undefined
               }
             />
@@ -1013,6 +1044,15 @@ export function CampanhasDeDemanda() {
   );
 }
 
+function Rotulo({ texto, children }: { texto: string; children: React.ReactNode }) {
+  return (
+    <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+      {texto}
+      {children}
+    </label>
+  );
+}
+
 function NovaCampanha({
   aberto,
   aoFechar,
@@ -1020,57 +1060,223 @@ function NovaCampanha({
 }: {
   aberto: boolean;
   aoFechar: () => void;
-  aoCriar: (e: { name: string; channel: CampanhaDeDemanda["channel"] }) => Promise<void>;
+  aoCriar: (e: EdicaoDeCampanha & { name: string }) => Promise<void>;
 }) {
   const t = useT();
   const [nome, setNome] = useState("");
   const [canal, setCanal] = useState<CampanhaDeDemanda["channel"]>("trafego_pago");
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState("");
+  const [continua, setContinua] = useState(false);
+  const [verba, setVerba] = useState("");
+  const [periodo, setPeriodo] = useState<CampanhaDeDemanda["budget_period"]>("total");
+  const [plataforma, setPlataforma] = useState<CampanhaDaPlataforma[]>([]);
+  const [digitada, setDigitada] = useState("");
   const [criando, setCriando] = useState(false);
+  const meta = useOpcoesDoMeta("", aberto && canal === "trafego_pago");
+
+  const fimAntesDoInicio = !continua && inicio !== "" && fim !== "" && fim < inicio;
+  const pode = nome.trim() !== "" && !criando && !fimAntesDoInicio;
+
+  const atrelarNome = () => {
+    const n = digitada.trim();
+    if (!n || plataforma.some((p) => p.name.toLowerCase() === n.toLowerCase())) return;
+    setPlataforma((l) => [...l, { id: null, name: n }]);
+    setDigitada("");
+  };
+  const atrelarDoMeta = (id: string, name: string) => {
+    if (plataforma.some((p) => p.id === id)) return;
+    setPlataforma((l) => [
+      ...l.filter((p) => !(p.id === null && p.name.toLowerCase() === name.toLowerCase())),
+      { id, name },
+    ]);
+  };
+  const doMeta = (meta.opcoes?.campanhas ?? []).filter(
+    (m) => !plataforma.some((p) => p.id === m.id) && m.associada_a === null,
+  );
+
   async function criar() {
-    if (nome.trim() === "" || criando) return;
+    if (!pode) return;
     setCriando(true);
-    await aoCriar({ name: nome.trim(), channel: canal });
+    const valorDaVerba = lerNumero(verba);
+    await aoCriar({
+      name: nome.trim(),
+      channel: canal,
+      ...(inicio ? { start_date: inicio } : {}),
+      ...(continua ? { continuous: true } : fim ? { end_date: fim } : {}),
+      ...(valorDaVerba !== null && valorDaVerba > 0
+        ? { budget: valorDaVerba, budget_period: periodo }
+        : {}),
+      ...(plataforma.length > 0 ? { platform_campaigns: plataforma } : {}),
+    });
     setCriando(false);
     setNome("");
+    setInicio("");
+    setFim("");
+    setContinua(false);
+    setVerba("");
+    setPlataforma([]);
   }
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-w-md gap-4 p-5 sm:rounded-2xl">
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-xl gap-4 rounded-2xl p-4 sm:p-6">
         <DialogTitle className="text-base font-semibold">{t("Nova campanha")}</DialogTitle>
         <DialogDescription className="text-sm text-muted-foreground">
-          {t("Comece pelo nome e pelo canal. O resto você completa na página da campanha.")}
+          {t("As informações centrais. O resto você completa na página da campanha.")}
         </DialogDescription>
-        <input
-          value={nome}
-          maxLength={160}
-          autoFocus
-          placeholder={t("Ex.: [CAMPANHA] Geração de Demanda")}
-          aria-label={t("Nome da campanha")}
-          onChange={(e) => setNome(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter cria a campanha (o IME em composição não conta).
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              void criar();
-            }
-          }}
-          className={CAMPO}
-        />
-        <SelectDoApp
-          value={canal}
-          aria-label={t("Canal")}
-          onChange={(e) => setCanal(e.target.value as CampanhaDeDemanda["channel"])}
-          className={CAMPO}
-        >
-          {CANAIS_DA_CAMPANHA.map((c) => (
-            <option key={c} value={c}>
-              {rotuloDoCanal(t, c)}
-            </option>
-          ))}
-        </SelectDoApp>
+        <Rotulo texto={t("Nome")}>
+          <input
+            value={nome}
+            maxLength={160}
+            autoFocus
+            placeholder={t("Ex.: [CAMPANHA] Geração de Demanda")}
+            aria-label={t("Nome da campanha")}
+            onChange={(e) => setNome(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter cria a campanha (o IME em composição não conta).
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                void criar();
+              }
+            }}
+            className={CAMPO}
+          />
+        </Rotulo>
+        <Rotulo texto={t("Tipo")}>
+          <SelectDoApp
+            value={canal}
+            aria-label={t("Tipo da campanha")}
+            onChange={(e) => setCanal(e.target.value as CampanhaDeDemanda["channel"])}
+            className={CAMPO}
+          >
+            {CANAIS_DA_CAMPANHA.map((c) => (
+              <option key={c} value={c}>
+                {rotuloDoCanal(t, c)}
+              </option>
+            ))}
+          </SelectDoApp>
+        </Rotulo>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Rotulo texto={t("Data de início")}>
+            <SeletorDeData valor={inicio} rotulo={t("Data de início")} aoMudar={setInicio} />
+          </Rotulo>
+          <Rotulo texto={t("Data final")}>
+            {continua ? (
+              <p className="flex h-10 items-center text-sm text-muted-foreground">
+                {t("Contínua (sem data final)")}
+              </p>
+            ) : (
+              <SeletorDeData valor={fim} rotulo={t("Data final")} aoMudar={setFim} />
+            )}
+          </Rotulo>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={continua}
+            onChange={(e) => setContinua(e.target.checked)}
+          />
+          {t("Campanha contínua (sem data final)")}
+        </label>
+        {fimAntesDoInicio ? (
+          <p role="alert" className="text-xs text-error-fg">
+            {t("A data final vem depois da data de início.")}
+          </p>
+        ) : null}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Rotulo texto={t("Verba de investimento")}>
+            <CampoDeMoeda
+              valor={verba}
+              aoMudar={setVerba}
+              ariaLabel={t("Verba de investimento")}
+              className={CAMPO}
+            />
+          </Rotulo>
+          <Rotulo texto={t("Vale por")}>
+            <SelectDoApp
+              value={periodo}
+              aria-label={t("Vale por")}
+              onChange={(e) => setPeriodo(e.target.value as CampanhaDeDemanda["budget_period"])}
+              className={CAMPO}
+            >
+              {PERIODOS_DO_ORCAMENTO.map((p) => (
+                <option key={p} value={p}>
+                  {rotuloDoPeriodo(t, p)}
+                </option>
+              ))}
+            </SelectDoApp>
+          </Rotulo>
+        </div>
+        <div className="grid gap-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            {t("Campanha da plataforma")}
+          </span>
+          {plataforma.length > 0 ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {plataforma.map((p, i) => (
+                <li
+                  key={`${p.id ?? p.name}-${i}`}
+                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
+                >
+                  <span className="truncate">{p.name}</span>
+                  <button
+                    type="button"
+                    aria-label={t("Tirar campanha")}
+                    onClick={() => setPlataforma((l) => l.filter((_, k) => k !== i))}
+                    className="text-muted-foreground hover:text-error-fg"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="flex gap-2">
+            <input
+              value={digitada}
+              maxLength={200}
+              placeholder={t("Nome da campanha no Meta ou no Google")}
+              aria-label={t("Nome da campanha da plataforma")}
+              onChange={(e) => setDigitada(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  atrelarNome();
+                }
+              }}
+              className={cn(CAMPO, "min-w-0 flex-1")}
+            />
+            <button
+              type="button"
+              disabled={digitada.trim() === ""}
+              onClick={atrelarNome}
+              className="h-10 shrink-0 rounded-xl border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            >
+              {t("Atrelar")}
+            </button>
+          </div>
+          {doMeta.length > 0 ? (
+            <SelectDoApp
+              value=""
+              aria-label={t("Escolher do Meta")}
+              onChange={(e) => {
+                const m = doMeta.find((x) => x.id === e.target.value);
+                if (m) atrelarDoMeta(m.id, m.name);
+              }}
+              className={CAMPO}
+            >
+              <option value="">{t("Escolher do Meta (só as sem associação)")}</option>
+              {doMeta.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </SelectDoApp>
+          ) : null}
+        </div>
         <button
           type="button"
-          disabled={nome.trim() === "" || criando}
+          disabled={!pode}
           onClick={() => void criar()}
           className="h-10 rounded-xl bg-primary text-sm font-medium text-primary-foreground disabled:opacity-50"
         >

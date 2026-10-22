@@ -24,6 +24,7 @@ export default async function GeracaoDeDemandaPage() {
   return (
     <PaginaDeMarketing
       tom="blue"
+      larga
       icone={<Megaphone weight="duotone" aria-hidden />}
       superior={t("Marketing")}
       titulo={t("Campanhas")}
