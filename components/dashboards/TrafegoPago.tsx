@@ -168,7 +168,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
         ]}
       />
 
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-3">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
           rotulo={t("Faturamento recebido")}
           valor={brl(a.recebido)}
@@ -390,6 +390,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
                 incluir: new Set([
                   "cliques",
                   "viewsLP",
+                  "cpVisitaLP",
                   "connect",
                   "convLP",
                   "leads",

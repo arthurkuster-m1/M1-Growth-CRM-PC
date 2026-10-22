@@ -372,17 +372,17 @@ export function colunasDoFunil(opcoes: {
     },
     {
       tipo: "metrica",
+      id: "cpVisitaLP",
+      titulo: "Custo por LP View",
+      formato: "brl",
+      valor: (d) => d.cpVisitaLP,
+    },
+    {
+      tipo: "metrica",
       id: "connect",
       titulo: "Connect Rate",
       formato: "pct1",
       valor: (d) => d.connect,
-    },
-    {
-      tipo: "metrica",
-      id: "convLP",
-      titulo: "Conversão LP",
-      formato: "pct1",
-      valor: (d) => d.convLP,
     },
     { tipo: "metrica", id: "leads", titulo: "Leads", formato: "inteiro", valor: (d) => d.leads },
     ...(opcoes.desqualificados
@@ -403,7 +403,15 @@ export function colunasDoFunil(opcoes: {
           },
         ] as ColunaDeMetrica[])
       : []),
+    {
+      tipo: "metrica",
+      id: "convLP",
+      titulo: "Conversão LP",
+      formato: "pct1",
+      valor: (d) => d.convLP,
+    },
     { tipo: "metrica", id: "cpl", titulo: "CPL", formato: "brl", valor: (d) => d.cpl },
+    { tipo: "metrica", id: "vendas", titulo: "Vendas", formato: "inteiro", valor: (d) => d.vendas },
     {
       tipo: "metrica",
       id: "convVenda",
@@ -411,7 +419,6 @@ export function colunasDoFunil(opcoes: {
       formato: "pct2",
       valor: (d) => d.convVenda,
     },
-    { tipo: "metrica", id: "vendas", titulo: "Vendas", formato: "inteiro", valor: (d) => d.vendas },
     { tipo: "metrica", id: "cac", titulo: "CAC", formato: "brl", valor: (d) => d.cac },
     {
       tipo: "metrica",
