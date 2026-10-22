@@ -22,6 +22,7 @@ export const TIPOS_DE_BLOCO = [
   "paleta",
   "links",
   "citacao",
+  "toggle",
   "imagem",
   "imagem-texto",
   "piramide",
@@ -103,7 +104,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   z.object({
     id,
     tipo: z.literal("titulo"),
-    nivel: z.union([z.literal(1), z.literal(2)]),
+    nivel: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     texto: curto,
     alinhamento,
   }),
@@ -147,6 +148,13 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     id,
     tipo: z.literal("links"),
     itens: z.array(z.object({ rotulo: curto, url: enderecoWeb })).max(30),
+  }),
+  z.object({
+    id,
+    tipo: z.literal("toggle"),
+    /** A linha que fica sempre à vista; o texto aparece ao abrir. */
+    titulo: curto,
+    texto: longo,
   }),
   z.object({ id, tipo: z.literal("citacao"), texto: longo.max(1000), autor: curto, alinhamento }),
   z.object({
@@ -310,6 +318,8 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
       return { id: novoId, tipo, itens: [{ rotulo: "", url: "" }] };
     case "citacao":
       return { id: novoId, tipo, texto: "", autor: "" };
+    case "toggle":
+      return { id: novoId, tipo, titulo: "", texto: "" };
     case "imagem":
       return {
         id: novoId,

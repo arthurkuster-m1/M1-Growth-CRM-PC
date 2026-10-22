@@ -44,7 +44,8 @@ export function slidesDaPagina(blocos: readonly Bloco[]): Slide[] {
   };
 
   for (const bloco of blocos) {
-    if (bloco.tipo === "titulo") {
+    // H3 é um subtítulo dentro do slide (não abre outro).
+    if (bloco.tipo === "titulo" && bloco.nivel !== 3) {
       abrir(bloco.texto || null, bloco.nivel === 2 ? 2 : 1);
       continue;
     }
