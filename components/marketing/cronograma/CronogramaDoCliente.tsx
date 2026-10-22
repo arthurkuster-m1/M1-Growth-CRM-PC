@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { EdicaoDaSemana } from "@/components/marketing/cronograma/EdicaoDaSemana";
 import {
+  FormularioDaConfig,
   GavetaDoCronograma,
   type VistaDaGaveta,
 } from "@/components/marketing/cronograma/GavetaDoCronograma";
@@ -311,13 +312,6 @@ export function CronogramaDoCliente() {
           </span>
           <button
             type="button"
-            onClick={() => setGaveta({ tipo: "config" })}
-            className="h-9 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
-          >
-            {t("Configurar")}
-          </button>
-          <button
-            type="button"
             onClick={() => setGaveta({ tipo: "arquivadas" })}
             className="h-9 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
           >
@@ -372,6 +366,20 @@ export function CronogramaDoCliente() {
           />
         </div>
       )}
+
+      {editandoGeral ? (
+        <section
+          aria-label={t("Configuração")}
+          className="grid gap-3 rounded-2xl border border-l-4 border-l-green-500 bg-card p-4"
+        >
+          <h3 className="text-sm font-semibold">{t("Configuração")}</h3>
+          <FormularioDaConfig
+            key={JSON.stringify(cfg)}
+            config={cfg}
+            aoSalvarConfig={c.salvarConfig}
+          />
+        </section>
+      ) : null}
 
       {editandoGeral && gaveta ? (
         <GavetaDoCronograma
