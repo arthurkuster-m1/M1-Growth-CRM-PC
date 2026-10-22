@@ -122,3 +122,19 @@ describe("estratégias de marketing (Geração de Demanda)", () => {
     expect(new Set(blocos.map((b) => b.id)).size).toBe(blocos.length);
   });
 });
+
+describe("catálogo de modelos aplicável a qualquer página", () => {
+  it("todo modelo do catálogo é válido, tem ids únicos e cabe na página", async () => {
+    const { MODELOS_DE_PAGINA } = await import("@/lib/marketing/modelos");
+    const { lerBlocos, MAXIMO_DE_BLOCOS } = await import("@/lib/marketing/blocos");
+    expect(MODELOS_DE_PAGINA.length).toBeGreaterThan(10);
+    for (const m of MODELOS_DE_PAGINA) {
+      let n = 0;
+      const blocos = m.montar(() => `${m.chave}-${n++}`);
+      expect(blocos.length, m.chave).toBeGreaterThan(0);
+      expect(blocos.length, m.chave).toBeLessThanOrEqual(MAXIMO_DE_BLOCOS);
+      expect(lerBlocos(blocos), m.chave).toHaveLength(blocos.length);
+      expect(new Set(blocos.map((b) => b.id)).size, m.chave).toBe(blocos.length);
+    }
+  });
+});

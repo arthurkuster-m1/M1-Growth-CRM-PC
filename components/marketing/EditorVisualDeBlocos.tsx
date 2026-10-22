@@ -28,6 +28,7 @@ import {
 } from "react";
 
 import { BlocosRender, type RotulosDosBlocos } from "@/components/marketing/BlocosRender";
+import type { EdicaoNoLugar } from "@/components/marketing/CampoNoLugar";
 import {
   COR_DO_TIPO,
   FormularioDoBloco,
@@ -35,6 +36,8 @@ import {
   useNomesDosTipos,
 } from "@/components/marketing/EditorDeBlocos";
 import { useHistoricoDeEdicao } from "@/hooks/editor/useHistoricoDeEdicao";
+import { toast } from "sonner";
+
 import { useT } from "@/hooks/i18n/useT";
 import { blocoEmBranco, lerBlocos, MAXIMO_DE_BLOCOS, type Bloco } from "@/lib/marketing/blocos";
 import {
@@ -51,6 +54,7 @@ import {
   textoDoBloco,
   type AlvoDeConversao,
 } from "@/lib/marketing/edicao-de-blocos";
+import { MODELOS_DE_PAGINA, modeloDoModulo } from "@/lib/marketing/modelos";
 import { Copy, DotsSixVertical, PencilSimple, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -61,9 +65,17 @@ interface Selecao {
 }
 const SEM_SELECAO: Selecao = { ids: new Set(), ancora: null, ponta: null };
 
+/** O bloco tem textos que se digitam direto nele (senão, só a caixa de edição). */
+function temCamposNoLugar(b: Bloco): boolean {
+  if (b.tipo === "oferta" || b.tipo === "calculadora" || b.tipo === "separador") return false;
+  if (b.tipo === "imagem") return b.arquivo !== "";
+  return true;
+}
+
 type Menu =
   | { tipo: "bloco"; x: number; y: number; blocoId: string }
-  | { tipo: "inserir"; x: number; y: number; depoisDe: string | null };
+  | { tipo: "inserir"; x: number; y: number; depoisDe: string | null }
+  | { tipo: "modelos"; x: number; y: number };
 
 /** O que foi copiado por último aqui (para colar os blocos inteiros, não só o texto). */
 const CHAVE_DA_COPIA = "m1:editor-visual:copia";
@@ -207,6 +219,56 @@ function ItemDoMenu({
   );
 }
 
+/** Um modelo no menu: o nome e as duas formas de aplicar (a substituição pede confirmação). */
+function LinhaDeModelo({
+  rotulo,
+  descricao,
+  confirmando,
+  vazia,
+  semAdicionar,
+  aoAdicionar,
+  aoSubstituir,
+}: {
+  rotulo: string;
+  descricao: string;
+  confirmando: boolean;
+  vazia: boolean;
+  semAdicionar?: boolean;
+  aoAdicionar: () => void;
+  aoSubstituir: () => void;
+}) {
+  const t = useT();
+  return (
+    <div className="rounded-lg px-2 py-1.5 hover:bg-secondary/60">
+      <p className="text-sm font-medium">{rotulo}</p>
+      {descricao ? <p className="text-xs text-muted-foreground">{descricao}</p> : null}
+      <div className="mt-1 flex flex-wrap gap-1">
+        {semAdicionar ? null : (
+          <button
+            type="button"
+            onClick={aoAdicionar}
+            className="rounded-lg border px-2 py-0.5 text-xs hover:bg-secondary"
+          >
+            {vazia ? t("Usar este modelo") : t("Adicionar ao final")}
+          </button>
+        )}
+        {vazia && !semAdicionar ? null : (
+          <button
+            type="button"
+            onClick={aoSubstituir}
+            className={cn(
+              "rounded-lg border px-2 py-0.5 text-xs hover:bg-secondary",
+              confirmando && "border-error bg-error-bg text-error-fg",
+            )}
+          >
+            {confirmando ? t("Confirmar: apagar tudo e usar") : t("Substituir a página")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── uma linha: o bloco como o cliente vai ver, com a alça e o "+" ────────────────
 function LinhaVisual({
   bloco,
@@ -216,6 +278,10 @@ function LinhaVisual({
   rotulos,
   aoPressionar,
   aoEditar,
+  aoEditarTudo,
+  aoSairDoTexto,
+  edicao,
+  digitando,
   aoAbrirMenu,
   aoInserir,
   painel,
@@ -227,7 +293,14 @@ function LinhaVisual({
   editando: boolean;
   rotulos: RotulosDosBlocos;
   aoPressionar: (e: MouseEvent<HTMLElement>, id: string) => void;
-  aoEditar: (id: string) => void;
+  /** Dois cliques: digitar no próprio bloco (ou abrir a caixa, nos blocos sem texto no lugar). */
+  aoEditar: (id: string, x: number, y: number) => void;
+  /** O lápis do bloco selecionado: a caixa com todos os campos. */
+  aoEditarTudo: (id: string) => void;
+  aoSairDoTexto: () => void;
+  edicao: EdicaoNoLugar;
+  /** Este bloco está em "digitar direto". */
+  digitando: boolean;
   aoAbrirMenu: (x: number, y: number, id: string) => void;
   aoInserir: (x: number, y: number, id: string) => void;
   painel: ReactNode;
@@ -296,19 +369,38 @@ function LinhaVisual({
             aria-label={`${rotuloDoTipo} ${posicao}`}
             aria-selected={selecionado}
             onMouseDown={(e) => aoPressionar(e, bloco.id)}
-            onDoubleClick={() => aoEditar(bloco.id)}
+            onDoubleClick={(e) => aoEditar(bloco.id, e.clientX, e.clientY)}
+            onBlur={(e) => {
+              if (digitando && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                aoSairDoTexto();
+              }
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               aoAbrirMenu(e.clientX, e.clientY, bloco.id);
             }}
             className={cn(
-              "cursor-pointer rounded-2xl border-2 border-transparent p-2 transition-colors select-none sm:p-3",
+              "relative rounded-2xl border-2 border-transparent p-2 transition-colors sm:p-3",
+              digitando ? "cursor-text" : "cursor-pointer select-none",
               selecionado ? "border-primary/50 bg-primary/10" : "hover:bg-secondary/40",
               editando && "border-primary/50",
             )}
           >
-            <div className="pointer-events-none">
-              {vazio ? (
+            {selecionado && !digitando && temCamposNoLugar(bloco) ? (
+              <button
+                type="button"
+                aria-label={t("Editar todos os campos do bloco")}
+                title={t("Editar todos os campos do bloco")}
+                onMouseDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onClick={() => aoEditarTudo(bloco.id)}
+                className="absolute top-2 right-2 z-10 grid h-7 w-7 place-items-center rounded-lg border bg-card text-muted-foreground shadow-sm hover:text-foreground"
+              >
+                <PencilSimple size={14} aria-hidden />
+              </button>
+            ) : null}
+            <div className={cn(!digitando && "pointer-events-none")}>
+              {vazio && !digitando ? (
                 <p
                   className={cn(
                     "rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground",
@@ -318,7 +410,7 @@ function LinhaVisual({
                   {rotuloDoTipo} — {t("dê dois cliques para editar")}
                 </p>
               ) : (
-                <BlocosRender blocos={[bloco]} rotulos={rotulos} />
+                <BlocosRender blocos={[bloco]} rotulos={rotulos} edicao={edicao} />
               )}
             </div>
           </div>
@@ -364,6 +456,10 @@ export function EditorVisualDeBlocos({
   const raiz = useRef<HTMLDivElement | null>(null);
   const [sel, setSel] = useState<Selecao>(SEM_SELECAO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  // O bloco em que se digita direto no texto final, e quem recebe o cursor no próximo desenho.
+  const [digitandoId, setDigitandoId] = useState<string | null>(null);
+  const [focoPedido, setFocoPedido] = useState<string | null>(null);
+  const [confirmarModelo, setConfirmarModelo] = useState<string | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [arrastandoMouse, setArrastandoMouse] = useState(false);
   const historico = useHistoricoDeEdicao(blocos, aoMudarDeFora);
@@ -374,8 +470,49 @@ export function EditorVisualDeBlocos({
   // A seleção só vale para blocos que ainda existem (um Ctrl+Z pode tê-los tirado).
   const selecionados = new Set([...sel.ids].filter((id) => ids.includes(id)));
   const editando = editandoId && ids.includes(editandoId) ? editandoId : null;
+  const digitando = digitandoId && ids.includes(digitandoId) ? digitandoId : null;
+  const edicao: EdicaoNoLugar = {
+    ativoId: digitando,
+    aoMudar: (novo) =>
+      aoMudar(
+        blocos.map((x) => (x.id === novo.id ? novo : x)),
+        novo.id,
+      ),
+    foco: focoPedido,
+    pedirFoco: setFocoPedido,
+    sair: () => {
+      setDigitandoId(null);
+      raiz.current?.focus({ preventScroll: true });
+    },
+  };
 
   const focarRaiz = () => raiz.current?.focus({ preventScroll: true });
+  /** Põe o bloco para digitar direto: o cursor vai ao texto sob o clique (ou ao primeiro). */
+  const digitarNoBloco = (id: string, x?: number, y?: number) => {
+    setEditandoId(null);
+    setDigitandoId(id);
+    requestAnimationFrame(() => {
+      const campos = Array.from(
+        document.querySelectorAll<HTMLTextAreaElement>(
+          `[data-bloco-id="${id}"] textarea[data-campo-no-lugar]`,
+        ),
+      );
+      const sob =
+        x === undefined || y === undefined
+          ? undefined
+          : campos.find((c) => {
+              const r = c.getBoundingClientRect();
+              return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+            });
+      const alvo = sob ?? campos[0];
+      alvo?.focus();
+      alvo?.setSelectionRange(alvo.value.length, alvo.value.length);
+    });
+  };
+  const abrirCaixa = (id: string) => {
+    setDigitandoId(null);
+    setEditandoId(id);
+  };
   const selecionarUnico = (id: string) => {
     setSel({ ids: new Set([id]), ancora: id, ponta: id });
     focarRaiz();
@@ -434,7 +571,8 @@ export function EditorVisualDeBlocos({
     copia.splice(i < 0 ? copia.length : i + 1, 0, novo);
     aoMudar(copia);
     selecionarUnico(novo.id);
-    if (novo.tipo !== "separador") setEditandoId(novo.id);
+    if (temCamposNoLugar(novo)) digitarNoBloco(novo.id);
+    else if (novo.tipo !== "separador") abrirCaixa(novo.id);
   };
   const colar = (novos: Bloco[]) => {
     if (!novos.length || blocos.length + novos.length > MAXIMO_DE_BLOCOS) return;
@@ -472,6 +610,8 @@ export function EditorVisualDeBlocos({
   // ── mouse: clicar seleciona, arrastar por cima de vários seleciona o trecho ─────
   const aoPressionar = (e: MouseEvent<HTMLElement>, id: string) => {
     if (e.button !== 0) return;
+    // Digitando no bloco: o clique é do cursor, não da seleção.
+    if (digitando === id) return;
     if (e.shiftKey) {
       e.preventDefault();
       return estender(id, sel.ancora ?? ids[0] ?? id);
@@ -513,6 +653,11 @@ export function EditorVisualDeBlocos({
       return voltarNoTempo(k === "y" || e.shiftKey ? "refazer" : "desfazer");
     }
     if (k === "escape") {
+      if (digitando) {
+        e.preventDefault();
+        setDigitandoId(null);
+        return focarRaiz();
+      }
       if (editando) {
         e.preventDefault();
         setEditandoId(null);
@@ -535,7 +680,9 @@ export function EditorVisualDeBlocos({
     }
     if (k === "enter" && selecionados.size === 1) {
       e.preventDefault();
-      return setEditandoId([...selecionados][0]!);
+      const unico = blocos.find((b) => b.id === [...selecionados][0]);
+      if (unico && temCamposNoLugar(unico)) return digitarNoBloco(unico.id);
+      return abrirCaixa([...selecionados][0]!);
     }
     if (k === "backspace" || k === "delete") {
       e.preventDefault();
@@ -578,6 +725,24 @@ export function EditorVisualDeBlocos({
     }
   };
 
+  const aplicarModelo = (
+    modo: "adicionar" | "substituir",
+    montar: (n: () => string) => Bloco[],
+  ) => {
+    const novos = montar(novoId);
+    const resultado = modo === "substituir" ? novos : [...blocos, ...novos];
+    if (resultado.length > MAXIMO_DE_BLOCOS) {
+      toast.error(t("A página passaria do limite de blocos."));
+      return;
+    }
+    aoMudar(resultado);
+    limpar();
+    setEditandoId(null);
+    setDigitandoId(null);
+    setMenu(null);
+    toast.success(t("Modelo aplicado. Ctrl+Z desfaz."));
+  };
+
   const abrirMenu = useCallback(
     (x: number, y: number, blocoId: string) => {
       if (!selecionados.has(blocoId)) selecionarUnico(blocoId);
@@ -594,11 +759,25 @@ export function EditorVisualDeBlocos({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted-foreground">
-        {t(
-          "Clique para selecionar · dois cliques para editar · botão direito para tipo e ajustes · Ctrl+Z desfaz",
-        )}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {t(
+            "Clique para selecionar · dois cliques para digitar no bloco · botão direito para tipo e ajustes · Ctrl+Z desfaz",
+          )}
+        </p>
+        <button
+          type="button"
+          aria-haspopup="menu"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setConfirmarModelo(null);
+            setMenu({ tipo: "modelos", x: r.right - 288, y: r.bottom + 4 });
+          }}
+          className="inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium hover:bg-secondary"
+        >
+          {t("Modelos")}
+        </button>
+      </div>
 
       <div
         ref={raiz}
@@ -632,10 +811,16 @@ export function EditorVisualDeBlocos({
                 rotulos={rotulos}
                 rotuloDoTipo={nomeDoTipo(b.tipo)}
                 aoPressionar={aoPressionar}
-                aoEditar={(id) => {
+                aoEditar={(id, x, y) => {
                   selecionarUnico(id);
-                  setEditandoId(id);
+                  const bloco = blocos.find((x2) => x2.id === id);
+                  if (bloco && temCamposNoLugar(bloco)) digitarNoBloco(id, x, y);
+                  else abrirCaixa(id);
                 }}
+                aoEditarTudo={abrirCaixa}
+                aoSairDoTexto={() => setDigitandoId(null)}
+                edicao={edicao}
+                digitando={digitando === b.id}
                 aoAbrirMenu={abrirMenu}
                 aoInserir={(x, y, id) => setMenu({ tipo: "inserir", x, y, depoisDe: id })}
                 painel={
@@ -696,7 +881,58 @@ export function EditorVisualDeBlocos({
 
       {menu ? (
         <MenuFlutuante x={menu.x} y={menu.y} aoFechar={fecharMenu}>
-          {menu.tipo === "inserir" ? (
+          {menu.tipo === "modelos" ? (
+            <>
+              {chaveDaPagina ? (
+                <>
+                  <CabecalhoDoMenu>{t("Modelo desta página")}</CabecalhoDoMenu>
+                  <LinhaDeModelo
+                    rotulo={t("O modelo padrão deste tipo de página")}
+                    descricao=""
+                    confirmando={confirmarModelo === "__padrao"}
+                    vazia={blocos.length === 0}
+                    aoAdicionar={() =>
+                      aplicarModelo("adicionar", (n) => modeloDoModulo(chaveDaPagina, n))
+                    }
+                    aoSubstituir={() => {
+                      if (blocos.length === 0 || confirmarModelo === "__padrao")
+                        aplicarModelo("substituir", (n) => modeloDoModulo(chaveDaPagina, n));
+                      else setConfirmarModelo("__padrao");
+                    }}
+                  />
+                </>
+              ) : null}
+              <CabecalhoDoMenu>{t("Todos os modelos")}</CabecalhoDoMenu>
+              <LinhaDeModelo
+                rotulo={t("Página em branco")}
+                descricao={t("Apaga todos os blocos")}
+                confirmando={confirmarModelo === "em-branco"}
+                vazia={blocos.length === 0}
+                semAdicionar
+                aoAdicionar={() => undefined}
+                aoSubstituir={() => {
+                  if (blocos.length === 0 || confirmarModelo === "em-branco")
+                    aplicarModelo("substituir", () => []);
+                  else setConfirmarModelo("em-branco");
+                }}
+              />
+              {MODELOS_DE_PAGINA.map((m) => (
+                <LinhaDeModelo
+                  key={m.chave}
+                  rotulo={t(m.rotulo)}
+                  descricao={t(m.descricao)}
+                  confirmando={confirmarModelo === m.chave}
+                  vazia={blocos.length === 0}
+                  aoAdicionar={() => aplicarModelo("adicionar", m.montar)}
+                  aoSubstituir={() => {
+                    if (blocos.length === 0 || confirmarModelo === m.chave)
+                      aplicarModelo("substituir", m.montar);
+                    else setConfirmarModelo(m.chave);
+                  }}
+                />
+              ))}
+            </>
+          ) : menu.tipo === "inserir" ? (
             <>
               <CabecalhoDoMenu>{t("Inserir bloco")}</CabecalhoDoMenu>
               {ALVOS_BASICOS.map((a) => (
@@ -765,10 +1001,10 @@ export function EditorVisualDeBlocos({
                   glifo={<PencilSimple size={14} aria-hidden />}
                   onClick={() => {
                     setMenu(null);
-                    setEditandoId(primario.id);
+                    abrirCaixa(primario.id);
                   }}
                 >
-                  {t("Editar bloco")}
+                  {t("Editar todos os campos")}
                 </ItemDoMenu>
               ) : null}
               <ItemDoMenu
