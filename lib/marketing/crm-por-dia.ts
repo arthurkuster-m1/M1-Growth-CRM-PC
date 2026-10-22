@@ -139,3 +139,127 @@ export function extrasDoCrm(d: DiaDoCrm): Record<string, number> {
     crm_reunioes: d.reunioes,
   };
 }
+
+/**
+ * O FUNIL DA COORTE: dos leads que ENTRARAM na campanha dentro da janela, quantos agendaram, fizeram
+ * a reunião e compraram (em qualquer data). Contar por pessoa e só dentro da coorte garante que o
+ * funil não desça de uma etapa para a anterior (nada de agendamento sem lead, nem venda sem
+ * agendamento): quem chegou a uma etapa conta também nas anteriores.
+ */
+export interface FunilDaCoorte {
+  leads: number;
+  agendados: number;
+  feitas: number;
+  vendas: number;
+  /** O dinheiro já recebido dessas pessoas. */
+  faturamento: number;
+}
+
+export function montarCoorte(
+  pessoas: ReadonlyMap<
+    string,
+    { agendou: boolean; fez: boolean; comprou: boolean; recebido: number }
+  >,
+): FunilDaCoorte {
+  let agendados = 0;
+  let feitas = 0;
+  let vendas = 0;
+  let faturamento = 0;
+  for (const p of pessoas.values()) {
+    const comprou = p.comprou;
+    const fez = p.fez || comprou;
+    const agendou = p.agendou || fez;
+    if (agendou) agendados += 1;
+    if (fez) feitas += 1;
+    if (comprou) vendas += 1;
+    faturamento += p.recebido;
+  }
+  return {
+    leads: pessoas.size,
+    agendados,
+    feitas,
+    vendas,
+    faturamento: Math.round(faturamento * 100) / 100,
+  };
+}
+
+export async function coorteDaCampanha(
+  supabase: SupabaseClient,
+  orgId: string,
+  campaignId: string,
+  pipelineId: string | null,
+  campanhasDoFunil: readonly CampanhaDoFunil[],
+  fuso: string,
+  janela: { de: string; ate: string },
+): Promise<FunilDaCoorte> {
+  const { data: oportunidades } = await supabase
+    .from("crm_leads")
+    .select("id, contact_id, pipeline_id, demand_campaign_id, created_at")
+    .eq("organization_id", orgId)
+    .or(
+      pipelineId
+        ? `pipeline_id.eq.${pipelineId},demand_campaign_id.eq.${campaignId}`
+        : `demand_campaign_id.eq.${campaignId}`,
+    )
+    .limit(5000);
+  const doGrupo = (
+    (oportunidades ?? []) as Array<{
+      id: string;
+      contact_id: string | null;
+      pipeline_id: string | null;
+      demand_campaign_id: string | null;
+      created_at: string;
+    }>
+  ).filter((o) => {
+    if (campanhaDaOportunidade(o, [...campanhasDoFunil]) !== campaignId) return false;
+    const d = diaNoFusoDaEmpresa(o.created_at, fuso);
+    return d >= janela.de && d <= janela.ate;
+  });
+  // A pessoa é o contato (o mesmo contato com duas oportunidades é um lead só).
+  const pessoaDe = new Map(doGrupo.map((o) => [o.id, o.contact_id ?? o.id]));
+  const pessoas = new Map<
+    string,
+    { agendou: boolean; fez: boolean; comprou: boolean; recebido: number }
+  >();
+  for (const pessoa of pessoaDe.values()) {
+    pessoas.set(pessoa, { agendou: false, fez: false, comprou: false, recebido: 0 });
+  }
+  const ids = doGrupo.map((o) => o.id);
+  for (let i = 0; i < ids.length; i += 200) {
+    const lote = ids.slice(i, i + 200);
+    const { data: atividades } = await supabase
+      .from("crm_lead_activities")
+      .select("lead_id, type, payload")
+      .eq("organization_id", orgId)
+      .in("lead_id", lote)
+      .in("type", ["note", "appointment_scheduled", "appointment_completed"])
+      .limit(10000);
+    for (const at of (atividades ?? []) as Array<{
+      lead_id: string;
+      type: string;
+      payload: { acao?: string } | null;
+    }>) {
+      const p = pessoas.get(pessoaDe.get(at.lead_id) ?? "");
+      if (!p) continue;
+      if (at.type === "appointment_scheduled") p.agendou = true;
+      else if (at.type === "appointment_completed" || at.payload?.acao === "reuniao") p.fez = true;
+    }
+    const { data: pagamentos } = await supabase
+      .from("crm_sale_payments")
+      .select("lead_id, amount_cents")
+      .eq("organization_id", orgId)
+      .eq("status", "recebida")
+      .in("lead_id", lote)
+      .limit(20000);
+    for (const pg of (pagamentos ?? []) as Array<{
+      lead_id: string;
+      amount_cents: number | string;
+    }>) {
+      const p = pessoas.get(pessoaDe.get(pg.lead_id) ?? "");
+      if (!p) continue;
+      p.comprou = true;
+      p.recebido += Number(pg.amount_cents) / 100;
+    }
+  }
+  return montarCoorte(pessoas);
+}

@@ -186,6 +186,34 @@ export interface MetasDaCampanha {
   novaMetaDiaria: number | null;
   /** Leads captados ÷ dias passados: a média real por dia até hoje. */
   mediaPorDia: number | null;
+  /** Leads no fim da campanha: captados + verba restante ÷ CPL médio dos 3 últimos dias. */
+  previsaoTotal: number | null;
+  /** Previsão − meta total: positivo = vai passar da meta; negativo = vai ficar abaixo. */
+  diferencaDaPrevisao: number | null;
+}
+
+/**
+ * Quantos leads a campanha deve ter ao fim: o que já captou mais o que a verba restante ainda
+ * compra, ao CPL médio dos 3 últimos dias com registro (até hoje). Sem leads nesses dias, vale o
+ * CPL da campanha toda. `null` quando não há como estimar (sem verba restante ou sem CPL).
+ */
+export function previsaoDeLeads(
+  dias: readonly DiaDaCampanha[],
+  hoje: string,
+  captados: number,
+  restante: number | null,
+  cplGeral: number | null,
+): number | null {
+  if (restante === null) return null;
+  const ultimos = dias
+    .filter((d) => d.day <= hoje && (d.spend > 0 || d.leads > 0))
+    .sort((a, b) => b.day.localeCompare(a.day))
+    .slice(0, 3);
+  const gasto = ultimos.reduce((s, d) => s + d.spend, 0);
+  const leads = ultimos.reduce((s, d) => s + d.leads, 0);
+  const cpl = leads > 0 && gasto > 0 ? gasto / leads : cplGeral;
+  if (cpl === null || cpl <= 0) return restante <= 0 ? captados : null;
+  return captados + Math.max(0, restante) / cpl;
 }
 
 export interface PaceDeGastos {
@@ -275,7 +303,13 @@ export function resumoDaCampanha(
     novaMetaDiaria:
       faltam !== null && periodo && periodo.restantes > 0 ? faltam / periodo.restantes : null,
     mediaPorDia: periodo && periodo.passados > 0 ? funil.leads / periodo.passados : null,
+    previsaoTotal: null,
+    diferencaDaPrevisao: null,
   };
+  metas.previsaoTotal = previsaoDeLeads(dias, hoje, funil.leads, restante, funil.cpl);
+  if (metas.previsaoTotal !== null && metaDeLeads !== null) {
+    metas.diferencaDaPrevisao = metas.previsaoTotal - metaDeLeads;
+  }
 
   // Os 2 últimos dias (até hoje) em que houve registro: a "velocidade" de gasto de agora.
   const ultimos = dias

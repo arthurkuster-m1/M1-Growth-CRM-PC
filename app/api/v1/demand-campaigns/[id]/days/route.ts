@@ -10,7 +10,12 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { campanhaDaOportunidade, type CampanhaDoFunil } from "@/lib/marketing/atribuicao";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
-import { crmDaCampanhaPorDia, extrasDoCrm } from "@/lib/marketing/crm-por-dia";
+import {
+  coorteDaCampanha,
+  crmDaCampanhaPorDia,
+  extrasDoCrm,
+  type FunilDaCoorte,
+} from "@/lib/marketing/crm-por-dia";
 import {
   CONTAGEM_VAZIA,
   chavesAutomaticas,
@@ -193,7 +198,8 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
         else if (at.type === "appointment_completed") d.reunioesFeitas += 1;
         else if (at.type === "proposal_sent") d.propostas += 1;
         else if (at.type === "note") {
-          if (acao === "ligacao" || acao === "mensagem" || acao === "nao_atendeu") d.abordagens += 1;
+          if (acao === "ligacao" || acao === "mensagem" || acao === "nao_atendeu")
+            d.abordagens += 1;
           else if (acao === "reuniao") d.reunioesFeitas += 1;
           else if (acao === "proposta") d.propostas += 1;
         }
@@ -225,7 +231,11 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     };
     if (cp.start_date) {
       const fim = cp.end_date && cp.end_date < hoje ? cp.end_date : hoje;
-      for (let d = cp.start_date; d <= fim; d = new Date(Date.parse(`${d}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10)) {
+      for (
+        let d = cp.start_date;
+        d <= fim;
+        d = new Date(Date.parse(`${d}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+      ) {
         const valor = investimentoDoDia(cp, d, hoje);
         if (valor === null) continue;
         const linha = base.get(d) ?? {
@@ -285,8 +295,33 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     resultado = [...porDia.values()].sort((x, y) => x.day.localeCompare(y.day));
   }
 
+  // O funil da coorte (leads que entraram + quantos agendaram, fizeram a reunião e compraram).
+  let coorte: FunilDaCoorte | null = null;
+  if (campanha && janela) {
+    const { data: org3 } = await a.supabase
+      .from("organizations")
+      .select("timezone")
+      .eq("id", a.orgId)
+      .maybeSingle();
+    const { data: todas3 } = await a.supabase
+      .from("demand_campaigns")
+      .select("id, pipeline_id")
+      .eq("organization_id", a.orgId)
+      .limit(1000);
+    coorte = await coorteDaCampanha(
+      a.supabase,
+      a.orgId,
+      id,
+      (campanha.pipeline_id as string | null) ?? null,
+      (todas3 ?? []) as CampanhaDoFunil[],
+      (org3?.timezone as string | null) || "America/Sao_Paulo",
+      janela,
+    );
+  }
+
   return ok(
     {
+      coorte,
       dias: resultado,
       funil_definido: Boolean(campanha?.pipeline_id),
       automatico: { chaves: automaticas, investimento: automaticas.length > 0 },
