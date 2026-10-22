@@ -9,9 +9,10 @@ import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizaca
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
 import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
+import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
-import { aplicarConsulta, type CampoConsultavel, type ConsultaDaTabela } from "@/lib/motor/consulta";
+import { aplicarConsulta, type CampoConsultavel } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { Check, TextAa } from "@/lib/ui/icons";
@@ -164,11 +165,20 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     }
   };
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
-  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
+    ? visaoAtiva.config
+    : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
+  // Filtro, ordem e agrupamento: rascunho sobre o salvo; "Reset" volta, "Salvar" vira o padrão.
+  const { preferencias, mudarConsulta, salvamento } = useConsultaEmRascunho({
+    ativaId,
+    salvas: preferenciasSalvas,
+    atualizar,
+    podeSalvar: visaoAtiva?.editavel ?? true,
+  });
   const escolherAba = (id: string) => {
     const novos = new URLSearchParams(parametros.toString());
     novos.set("v", id);
@@ -369,15 +379,6 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
 
-  function mudarConsulta(c: ConsultaDaTabela) {
-    atualizar((p) => ({
-      ...p,
-      filtros: c.filtros?.length ? c.filtros : undefined,
-      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
-      agrupar: c.agrupar,
-      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
-    }));
-  }
 
   const abasPorId = new Map([
     [ID_DA_PADRAO, { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Todas"), tipo: "tabela" as const }],
@@ -413,6 +414,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
           />
         </label>
         <BarraDeConsulta
+          salvamento={salvamento}
           compacta
           campos={camposDaBarra}
           consulta={{

@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
+import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { lerNumero } from "@/lib/marketing/calculadora";
@@ -41,7 +42,6 @@ import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import {
   aplicarConsulta,
   type CampoConsultavel,
-  type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
@@ -109,11 +109,20 @@ export function CampanhasDeDemanda() {
       : visaoAtiva?.type === "timeline"
         ? "timeline"
         : "tabela";
-  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
+    ? visaoAtiva.config
+    : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
+  // Filtro, ordem e agrupamento: rascunho sobre o salvo; "Reset" volta, "Salvar" vira o padrão.
+  const { preferencias, mudarConsulta, salvamento } = useConsultaEmRascunho({
+    ativaId,
+    salvas: preferenciasSalvas,
+    atualizar,
+    podeSalvar: podeEditar && (visaoAtiva?.editavel ?? true),
+  });
   const escolherAba = (id: string) => router.replace(`${caminho}?v=${id}`, { scroll: false });
   const moverAba = (direcao: -1 | 1) => {
     const ids = ordemDasAbas.map((a) => a.id);
@@ -566,15 +575,6 @@ export function CampanhasDeDemanda() {
     ultimoMarcado.current = id;
   };
 
-  function mudarConsulta(c: ConsultaDaTabela) {
-    atualizar((p) => ({
-      ...p,
-      filtros: c.filtros?.length ? c.filtros : undefined,
-      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
-      agrupar: c.agrupar,
-      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
-    }));
-  }
 
   const abasPorId = new Map([
     [
@@ -754,6 +754,7 @@ export function CampanhasDeDemanda() {
               />
             </label>
             <BarraDeConsulta
+          salvamento={salvamento}
               compacta
               campos={camposDaBarra}
               consulta={{

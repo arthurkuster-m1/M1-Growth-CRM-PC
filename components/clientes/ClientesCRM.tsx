@@ -69,6 +69,7 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
+import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { apiClient } from "@/lib/api/client";
@@ -77,7 +78,6 @@ import { lerNumero } from "@/lib/marketing/calculadora";
 import {
   aplicarConsulta,
   type CampoConsultavel,
-  type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -364,11 +364,20 @@ export function ClientesCRM({
     : ehOportunidades && abaPedida !== ID_DA_PADRAO
       ? "quadro"
       : "tabela";
-  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
+    ? visaoAtiva.config
+    : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
+  // Filtro, ordem e agrupamento: rascunho sobre o salvo; "Reset" volta, "Salvar" vira o padrão.
+  const { preferencias, mudarConsulta, salvamento } = useConsultaEmRascunho({
+    ativaId,
+    salvas: preferenciasSalvas,
+    atualizar,
+    podeSalvar: podeEditar && (visaoAtiva?.editavel ?? true),
+  });
   /** Os status de venda que a tabela mostra (vazio = todos): ficam salvos na visualização. */
   const statusDasVendas = useMemo<ReadonlySet<string>>(
     // Clientes não filtra por venda (isso é da aba Oportunidades).
@@ -2243,15 +2252,6 @@ export function ClientesCRM({
           g.rotulo);
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
-  function mudarConsulta(c: ConsultaDaTabela) {
-    atualizar((p) => ({
-      ...p,
-      filtros: c.filtros?.length ? c.filtros : undefined,
-      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
-      agrupar: c.agrupar,
-      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
-    }));
-  }
 
   const totalPago = alvos.reduce((s2, l) => s2 + valoresDoLead(l).pago, 0);
   const totalAReceber = alvos.reduce((s2, l) => s2 + valoresDoLead(l).aReceber, 0);
@@ -2990,6 +2990,7 @@ export function ClientesCRM({
                   />
                 </label>
                 <BarraDeConsulta
+          salvamento={salvamento}
                   compacta
                   campos={camposDaBarra}
                   consulta={{

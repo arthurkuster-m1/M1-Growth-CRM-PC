@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
+import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { abasNaOrdem, reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
@@ -53,13 +54,10 @@ import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import {
   aplicarConsulta,
   consultaAtiva,
-  consultasIguais,
-  normalizarConsulta,
   filtrar,
   filtrosQueReprovam,
   valoresDeNascimento,
   type CampoConsultavel,
-  type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { formatarDiaBr } from "@/lib/motor/calendario";
 import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
@@ -589,27 +587,17 @@ export function TarefasMotorClient({
   const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
     ? visaoAtiva.config
     : padrao.preferencias;
-  // Filtro, ordem e agrupamento são um RASCUNHO por cima do que está salvo na visualização (como
-  // no Notion): o que se muda vale na tela, e só "Salvar" o torna o padrão. "Reset" volta ao salvo.
-  const [consultasEmRascunho, setConsultasEmRascunho] = useState<Record<string, ConsultaDaTabela>>(
-    {},
-  );
-  const consultaRascunho = consultasEmRascunho[ativaId];
-  const consultaAlterada =
-    consultaRascunho !== undefined && !consultasIguais(consultaRascunho, preferenciasSalvas);
-  const preferencias: PreferenciasDaTabela = consultaRascunho
-    ? {
-        ...preferenciasSalvas,
-        filtros: consultaRascunho.filtros,
-        ordenacao: consultaRascunho.ordenacao,
-        agrupar: consultaRascunho.agrupar,
-        agruparPor: consultaRascunho.agruparPor,
-      }
-    : preferenciasSalvas;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
+  // Filtro, ordem e agrupamento: rascunho sobre o salvo; "Reset" volta, "Salvar" vira o padrão.
+  const { preferencias, mudarConsulta, salvamento } = useConsultaEmRascunho({
+    ativaId,
+    salvas: preferenciasSalvas,
+    atualizar,
+    podeSalvar: podeEditar && (visaoAtiva?.editavel ?? true),
+  });
   function duplicarVisao(id: string) {
     const origem = visoes.find((v) => v.id === id);
     if (!origem) return;
@@ -770,28 +758,6 @@ export function TarefasMotorClient({
       linhas: g.linhas,
     };
   });
-
-  function mudarConsulta(c: ConsultaDaTabela) {
-    setConsultasEmRascunho((r) => ({ ...r, [ativaId]: normalizarConsulta(c) }));
-  }
-  function resetarConsulta() {
-    setConsultasEmRascunho(({ [ativaId]: _descartado, ...resto }) => {
-      void _descartado;
-      return resto;
-    });
-  }
-  function salvarConsulta() {
-    if (!consultaRascunho) return;
-    const salvar = normalizarConsulta(consultaRascunho);
-    atualizar((p) => ({
-      ...p,
-      filtros: salvar.filtros,
-      ordenacao: salvar.ordenacao,
-      agrupar: salvar.agrupar,
-      agruparPor: salvar.agruparPor,
-    }));
-    resetarConsulta();
-  }
 
   // ── seleção de linhas e ações em massa ──────────────────────────────────────────────
   // A seleção é derivada: ids de tarefas que já não existem (apagadas por outra aba, ou por
@@ -1153,11 +1119,7 @@ export function TarefasMotorClient({
           campos={camposDaBarra}
           consulta={preferencias}
           aoMudar={mudarConsulta}
-          salvamento={{
-            alterada: consultaAlterada,
-            aoResetar: resetarConsulta,
-            aoSalvar: podeEditar && (visaoAtiva?.editavel ?? true) ? salvarConsulta : undefined,
-          }}
+          salvamento={salvamento}
         />
       </div>
 
