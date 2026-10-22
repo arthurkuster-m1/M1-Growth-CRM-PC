@@ -66,4 +66,25 @@ describe("EditorDeBlocos", () => {
     fireEvent.click(screen.getByText("Citação"));
     expect(ultimo[0]?.tipo).toBe("quote");
   });
+
+  it("Tab afilha o bloco ao de cima e Shift+Tab devolve", () => {
+    render(<Casca inicial={"Item 1\nItem a"} />);
+    fireEvent.keyDown(campos()[1]!, { key: "Tab" });
+    expect(ultimo).toHaveLength(1);
+    expect(ultimo[0]?.filhos?.[0]?.texto).toBe("Item a");
+    fireEvent.keyDown(campos()[1]!, { key: "Tab", shiftKey: true });
+    expect(ultimo.map((b) => b.texto)).toEqual(["Item 1", "Item a"]);
+    expect(ultimo[0]?.filhos).toBeUndefined();
+  });
+
+  it("afilhados em dois níveis e o primeiro filho não se afilha", () => {
+    render(<Casca inicial={"1\na\ni"} />);
+    fireEvent.keyDown(campos()[1]!, { key: "Tab" });
+    fireEvent.keyDown(campos()[2]!, { key: "Tab" }); // "i" vira irmão de "a"…
+    fireEvent.keyDown(campos()[2]!, { key: "Tab" }); // …e depois filho dele
+    expect(ultimo).toHaveLength(1);
+    expect(ultimo[0]?.filhos?.[0]?.filhos?.[0]?.texto).toBe("i");
+    fireEvent.keyDown(campos()[1]!, { key: "Tab" }); // "a" é o 1º filho: não tem irmão acima
+    expect(ultimo[0]?.filhos?.[0]?.texto).toBe("a");
+  });
 });
