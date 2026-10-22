@@ -28,6 +28,14 @@ export const RESULTADOS_RAPIDOS = [
     diasUteis: 0,
   },
   {
+    id: "decisor",
+    rotulo: "Falei com o decisor",
+    resultado: "Atendeu — falou com o decisor",
+    proximo: "Seguir o combinado na conversa",
+    diasUteis: 1,
+    exigeComentario: true,
+  },
+  {
     id: "conversa",
     rotulo: "Falei com o lead",
     resultado: "Atendeu — conversa positiva",

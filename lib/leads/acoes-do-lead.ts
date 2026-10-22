@@ -8,7 +8,8 @@
  */
 export const ACOES_DO_LEAD = [
   { id: "ligacao", rotulo: "Follow Up - Ligação", comResultado: true },
-  { id: "mensagem", rotulo: "Follow Up - Mensagem enviada", comResultado: false },
+  { id: "mensagem", rotulo: "Follow Up - Mensagem enviada", comResultado: true },
+  { id: "email", rotulo: "Follow Up - E-mail", comResultado: true },
   { id: "reuniao", rotulo: "Reunião realizada", comResultado: true },
   { id: "remarcou", rotulo: "Lead remarcou", comResultado: false, tagPadrao: "Remarcou" },
   { id: "no_show", rotulo: "No Show", comResultado: false, tagPadrao: "No Show" },
@@ -20,7 +21,14 @@ export const ACOES_DO_LEAD = [
 export type IdDaAcao = (typeof ACOES_DO_LEAD)[number]["id"];
 export const IDS_DAS_ACOES = ACOES_DO_LEAD.map((a) => a.id) as [IdDaAcao, ...IdDaAcao[]];
 
+/** Ações de abordagem: contam nos dashboards de Prospecção e NÃO se registram sem resultado. */
+export const ACOES_DE_ABORDAGEM = ["ligacao", "mensagem", "email"] as const;
+export const exigeResultado = (id: string) =>
+  (ACOES_DE_ABORDAGEM as readonly string[]).includes(id);
+
 export const RESULTADOS_DA_LIGACAO = [
+  "Atendeu — falou com o decisor",
+  "Atendeu — não é o decisor",
   "Atendeu — conversa positiva",
   "Atendeu — pediu para retornar",
   "Atendeu — sem interesse",
@@ -28,6 +36,21 @@ export const RESULTADOS_DA_LIGACAO = [
   "Caixa postal",
   "Número errado",
 ] as const;
+
+export const RESULTADOS_DA_MENSAGEM = [
+  "Respondeu — falou com o decisor",
+  "Respondeu — não é o decisor",
+  "Respondeu — conversa positiva",
+  "Respondeu — pediu para retornar",
+  "Respondeu — sem interesse",
+  "Sem resposta",
+  "Número ou e-mail inválido",
+] as const;
+
+/** Os resultados sugeridos de cada ação (a pessoa ainda pode escrever o seu). */
+export function resultadosDaAcao(id: string): readonly string[] {
+  return id === "ligacao" ? RESULTADOS_DA_LIGACAO : RESULTADOS_DA_MENSAGEM;
+}
 
 /** O título da linha na linha do tempo: o da ação, ou o que a pessoa escreveu em "Outra ação". */
 export function tituloDaAcao(id: IdDaAcao, tituloLivre?: string | null): string {
