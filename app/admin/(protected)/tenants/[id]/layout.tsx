@@ -1,10 +1,11 @@
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CaretLeft } from "@/lib/ui/icons";
+
 import { TabNav } from "./_tab-nav";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -76,13 +77,7 @@ export default async function TenantDetailLayout({ children, params }: TenantLay
   return (
     <div className="space-y-6">
       {/* Back nav */}
-      <Link
-        href="/admin/tenants"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <CaretLeft size={14} aria-hidden />
-        {traduzir("Tenants", idioma)}
-      </Link>
+      <LinkVoltar href="/admin/tenants">{traduzir("Tenants", idioma)}</LinkVoltar>
 
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

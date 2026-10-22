@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import { useT } from "@/hooks/i18n/useT";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { useDeleteContact } from "@/hooks/contacts/useDeleteContact";
 import { format } from "date-fns";
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck, LockOpen } from "@/lib/ui/icons";
+import { ShieldCheck, LockOpen } from "@/lib/ui/icons";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
@@ -201,13 +202,9 @@ function ContactDetailInner({ contactId }: Props) {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <Link
-            href="/app/clientes"
-            className="mb-2 inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1 text-xs font-medium hover:bg-secondary"
-          >
-            <ArrowLeft size={12} weight="bold" aria-hidden />
-            {t("Voltar ao CRM")}
-          </Link>
+          <LinkVoltar href="/app/clientes" className="mb-2">
+            {t("CRM")}
+          </LinkVoltar>
           {/* Sem truncar: nome é dado que a tela existe pra mostrar, e cortar
               com reticências sem um jeito de ver o resto violaria o princípio
               de nunca esconder informação crítica. Deixa quebrar linha. */}

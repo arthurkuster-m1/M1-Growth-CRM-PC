@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CaretLeft } from "@/lib/ui/icons";
+
 import { useAdminIncident } from "@/hooks/useAdminIncident";
 import { ResolveIncidentDialog } from "@/components/admin/incidents/ResolveIncidentDialog";
 import type { IncidentSeverity, IncidentStatus } from "@/hooks/useAdminIncidents";
@@ -69,12 +70,7 @@ export function IncidentDetailClient({ id }: IncidentDetailClientProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
         <p className="text-sm font-medium">{t("Incidente não encontrado")}</p>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/admin/incidents">
-            <CaretLeft size={14} aria-hidden />
-            {t("Voltar")}
-          </Link>
-        </Button>
+        <LinkVoltar href="/admin/incidents" />
       </div>
     );
   }
@@ -87,13 +83,7 @@ export function IncidentDetailClient({ id }: IncidentDetailClientProps) {
     <div className="space-y-6">
       {/* Back link */}
       <div>
-        <Link
-          href="/admin/incidents"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <CaretLeft size={14} aria-hidden />
-          {t("Incidentes")}
-        </Link>
+        <LinkVoltar href="/admin/incidents">{t("Incidentes")}</LinkVoltar>
       </div>
 
       {/* Header */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import type { Locale } from "date-fns";
@@ -8,7 +9,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CaretLeft } from "@/lib/ui/icons";
+
 import { useAdminAuditEntry } from "@/hooks/useAdminAuditEntry";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -101,12 +102,7 @@ export function AuditDetailClient({ entryId }: AuditDetailClientProps) {
   return (
     <div className="space-y-6">
       {/* Back */}
-      <Button asChild variant="ghost" size="sm" className="gap-1.5 -ml-2">
-        <Link href="/admin/audit">
-          <CaretLeft size={14} aria-hidden />
-          {t("Audit Log")}
-        </Link>
-      </Button>
+      <LinkVoltar href="/admin/audit">{t("Audit Log")}</LinkVoltar>
 
       {/* Header */}
       <div className="space-y-1">

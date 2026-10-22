@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -17,7 +18,7 @@ import {
   type ModeloDeTarefa,
 } from "@/lib/tarefas/modelos";
 import type { PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
-import { ArrowsClockwise, CaretLeft, Plus, Trash } from "@/lib/ui/icons";
+import { ArrowsClockwise, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -300,14 +301,7 @@ function Corpo({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => setEditando(null)}
-        className="inline-flex h-8 w-fit items-center gap-1 rounded-lg pr-2 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <CaretLeft size={14} aria-hidden />
-        {t("Modelos")}
-      </button>
+      <LinkVoltar aoClicar={() => setEditando(null)}>{t("Modelos")}</LinkVoltar>
 
       {campo(
         t("Nome do modelo"),

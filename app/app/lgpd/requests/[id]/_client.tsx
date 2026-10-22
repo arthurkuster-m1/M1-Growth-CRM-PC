@@ -1,11 +1,12 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import Link from "next/link";
 import { format } from "date-fns";
 import { useT } from "@/hooks/i18n/useT";
-import { CaretLeft } from "@/lib/ui/icons";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,12 +86,7 @@ export function LgpdRequestDetail({ id, hrefDaLista = "/app/lgpd/requests" }: Pr
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1 text-muted-foreground">
-            <Link href={hrefDaLista}>
-              <CaretLeft size={14} aria-hidden />
-              {t("Solicitações")}
-            </Link>
-          </Button>
+          <LinkVoltar href={hrefDaLista}>{t("Solicitações")}</LinkVoltar>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

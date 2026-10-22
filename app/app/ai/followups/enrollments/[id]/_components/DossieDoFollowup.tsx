@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData, useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
 import type { Locale } from "date-fns";
@@ -29,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CaretLeft, Clock, Pause, Play, SkipForward, Trash, Warning } from "@/lib/ui/icons";
+import { Clock, Pause, Play, SkipForward, Trash, Warning } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import {
   descreveEvento,
@@ -179,9 +180,9 @@ export function DossieDoFollowup({ id, canWrite }: Props) {
         <p className="text-sm text-warning-fg">
           {t("Não consegui carregar este follow-up. Recarregue a página; se persistir, ele pode ter sido removido.")}
         </p>
-        <Link href="/app/ai/followups" className="mt-3 inline-block text-sm underline">
-          {t("Voltar para a fila")}
-        </Link>
+        <LinkVoltar href="/app/ai/followups" className="mt-3">
+          {t("a fila")}
+        </LinkVoltar>
       </div>
     );
   }
@@ -202,12 +203,7 @@ export function DossieDoFollowup({ id, canWrite }: Props) {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <header className="flex flex-col gap-3">
-        <Link
-          href="/app/ai/followups"
-          className="inline-flex w-fit items-center gap-1 text-sm text-text-muted hover:text-text"
-        >
-          <CaretLeft size={14} aria-hidden /> {t("Fila de follow-ups")}
-        </Link>
+        <LinkVoltar href="/app/ai/followups">{t("Fila de follow-ups")}</LinkVoltar>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{data.contact.name}</h1>
           <Badge variant={tomDoStatus(data.status)} data-testid="dossie-status">
