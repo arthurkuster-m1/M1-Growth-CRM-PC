@@ -34,7 +34,8 @@ export function useVisoesSalvas(tela: string, podeEditar: boolean) {
     },
     staleTime: 30_000,
   });
-  const visoes = query.data ?? [];
+  // Na ordem das abas: a posição manda (arrastar uma aba só muda a posição dela).
+  const visoes = [...(query.data ?? [])].sort((a, b) => a.position - b.position);
 
   const pendentes = useRef(new Map<string, PreferenciasDaTabela>());
   const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -161,7 +162,8 @@ export function useVisoesSalvas(tela: string, podeEditar: boolean) {
 
   return {
     visoes,
-    arquivarVisao: (id: string) => arquivar.mutateAsync({ id, arquivar: true }).catch(() => undefined),
+    arquivarVisao: (id: string) =>
+      arquivar.mutateAsync({ id, arquivar: true }).catch(() => undefined),
     carregando: query.isLoading,
     salvarConfig,
     criarVisao: (entrada: {

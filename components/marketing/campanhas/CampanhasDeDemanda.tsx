@@ -27,6 +27,7 @@ import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMo
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
+import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { lerNumero } from "@/lib/marketing/calculadora";
@@ -93,6 +94,12 @@ export function CampanhasDeDemanda() {
       ? undefined
       : (visoes.find((v) => v.id === pedida) ??
         (pedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+  const reordenarAbasNaTela = (id: string, antesDeId: string | null) => {
+    for (const { id: alvo, posicao } of reordenarAbas(ordemDasAbas, id, antesDeId)) {
+      if (alvo === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(alvo, { position: posicao });
+    }
+  };
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   // O jeito de ver (Tabela, Cards ou Linha do tempo) é da aba salva, como no Notion; a aba
   // "Todas" é sempre a tabela.
@@ -723,6 +730,7 @@ export function CampanhasDeDemanda() {
       ) : (
         <>
           <AbasDeVisualizacao
+        aoReordenar={reordenarAbasNaTela}
             abas={abas}
             ativaId={ativaId}
             podeEditar={podeEditar}

@@ -8,6 +8,7 @@ import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeCo
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
+import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { aplicarConsulta, type CampoConsultavel, type ConsultaDaTabela } from "@/lib/motor/consulta";
@@ -156,6 +157,12 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
       ? undefined
       : (visoes.find((v) => v.id === pedida) ??
         (pedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+  const reordenarAbasNaTela = (id: string, antesDeId: string | null) => {
+    for (const { id: alvo, posicao } of reordenarAbas(ordemDasAbas, id, antesDeId)) {
+      if (alvo === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(alvo, { position: posicao });
+    }
+  };
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
@@ -384,6 +391,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <AbasDeVisualizacao
+        aoReordenar={reordenarAbasNaTela}
         abas={abas}
         ativaId={ativaId}
         podeEditar

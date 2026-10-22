@@ -7,7 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SeletorEmPopup, type OpcaoDoPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
 import {
+  DATAS_RELATIVAS,
   OPERADORES_DO_TIPO,
+  PERIODOS_RELATIVOS,
   TIPOS_AGRUPAVEIS,
   semFiltro,
   semValor,
@@ -35,6 +37,17 @@ interface Props {
   aoMudar: (consulta: ConsultaDaTabela) => void;
   /** Botões menores, para caber os três numa linha só (ex.: Campanhas). */
   compacta?: boolean;
+  /**
+   * Filtro SALVO vira o padrão da visualização (como no Notion): quando passado, não há "Limpar
+   * tudo" — o que se muda é um rascunho, e aparecem "Reset" (volta ao salvo) e, para quem pode
+   * editar a visualização, "Salvar" (o rascunho passa a ser o padrão).
+   */
+  salvamento?: {
+    alterada: boolean;
+    aoResetar: () => void;
+    /** Ausente = quem vê não pode salvar na visualização. */
+    aoSalvar?: () => void;
+  };
 }
 
 const SELECT =
@@ -142,7 +155,7 @@ function BotaoAdicionar({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => 
 }
 
 /** "Filtrar", "Ordenar" e "Agrupar": os três painéis que decidem o que a tabela mostra e em que ordem. */
-export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) {
+export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvamento }: Props) {
   const t = useT();
   const [abertoFiltro, setAbertoFiltro] = useState(false);
   const [abertoOrdem, setAbertoOrdem] = useState(false);
@@ -160,7 +173,10 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
     vazio: t("está vazio"),
     preenchido: t("está preenchido"),
     antes: t("antes de"),
+    ate: t("até (inclusive)"),
     depois: t("depois de"),
+    a_partir: t("a partir de (inclusive)"),
+    periodo: t("está em"),
     igual: t("igual a"),
     maior: t("maior que"),
     menor: t("menor que"),
@@ -191,6 +207,26 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
     });
   }
 
+  const rotuloDaData: Record<string, string> = {
+    hoje: t("Hoje"),
+    ontem: t("Ontem"),
+    amanha: t("Amanhã"),
+    inicio_da_semana: t("Início desta semana"),
+    fim_da_semana: t("Fim desta semana"),
+    inicio_do_mes: t("Início deste mês"),
+    fim_do_mes: t("Fim deste mês"),
+    esta_semana: t("Esta semana"),
+    semana_passada: t("Semana passada"),
+    proxima_semana: t("Próxima semana"),
+    este_mes: t("Este mês"),
+    mes_passado: t("Mês passado"),
+    proximo_mes: t("Próximo mês"),
+    ultimos_7_dias: t("Últimos 7 dias"),
+    proximos_7_dias: t("Próximos 7 dias"),
+    ultimos_30_dias: t("Últimos 30 dias"),
+    proximos_30_dias: t("Próximos 30 dias"),
+  };
+
   function campoDeValor(i: number, f: Filtro, campo: CampoDaBarra) {
     if (semValor(f.operador)) return null;
     const alterar = (valor: Filtro["valor"]) => mudarFiltro(i, { ...f, valor });
@@ -218,27 +254,34 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
       );
     }
     if (campo.tipo === "data") {
+      const ehPeriodo = f.operador === "periodo";
+      const relativos: readonly string[] = ehPeriodo ? PERIODOS_RELATIVOS : DATAS_RELATIVAS;
+      const atual = typeof f.valor === "string" ? f.valor : "";
+      const relativo = relativos.includes(atual);
       return (
-        <span className="flex items-center gap-1">
-          <CampoDeData
-            valor={typeof f.valor === "string" && f.valor !== "hoje" ? f.valor : ""}
+        <span className="flex flex-wrap items-center gap-1">
+          <Escolha
+            valor={relativo ? atual : atual ? "__exata" : ""}
             rotulo={t("Valor do filtro")}
-            aoMudar={(dia) => alterar(dia || undefined)}
-            className="h-8 px-2 text-sm"
+            largura="w-44"
+            rotuloVazio={t("Escolher…")}
+            aoEscolher={(id) => {
+              if (id === "__exata") alterar(new Date().toISOString().slice(0, 10));
+              else alterar(id || undefined);
+            }}
+            opcoes={[
+              ...(ehPeriodo ? [] : [{ id: "__exata", rotulo: t("Data exata…") }]),
+              ...relativos.map((r) => ({ id: r, rotulo: rotuloDaData[r] ?? r })),
+            ]}
           />
-          <button
-            type="button"
-            aria-pressed={f.valor === "hoje"}
-            onClick={() => alterar(f.valor === "hoje" ? undefined : "hoje")}
-            className={cn(
-              "h-8 rounded-lg border px-2 text-sm transition-colors",
-              f.valor === "hoje"
-                ? "border-primary bg-accent-soft text-primary"
-                : "text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            {t("Hoje")}
-          </button>
+          {!ehPeriodo && atual !== "" && !relativo ? (
+            <CampoDeData
+              valor={atual}
+              rotulo={t("Valor do filtro")}
+              aoMudar={(dia) => alterar(dia || undefined)}
+              className="h-8 px-2 text-sm"
+            />
+          ) : null}
         </span>
       );
     }
@@ -312,6 +355,14 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
                           campo: f.campo,
                           operador: v as Operador,
                           ...(f.juncao ? { juncao: f.juncao } : {}),
+                          // Trocar "antes de" por "até" mantém a data; de/para "está em", não.
+                          ...(campo.tipo === "data" &&
+                          v !== "periodo" &&
+                          f.operador !== "periodo" &&
+                          !semValor(v as Operador) &&
+                          f.valor !== undefined
+                            ? { valor: f.valor }
+                            : {}),
                         })
                       }
                       opcoes={OPERADORES_DO_TIPO[campo.tipo].map((op) => ({
@@ -451,7 +502,36 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta }: Props) 
         </PopoverContent>
       </Popover>
 
-      {filtros.length + ordenacao.length > 0 || consulta.agrupar ? (
+      {salvamento ? (
+        salvamento.alterada ? (
+          <>
+            <button
+              type="button"
+              onClick={salvamento.aoResetar}
+              title={t("Volta ao filtro salvo desta visualização")}
+              className={cn(
+                "shrink-0 rounded-xl border px-3 whitespace-nowrap text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+                compacta ? "h-8 text-xs" : "h-9 text-sm",
+              )}
+            >
+              {t("Reset")}
+            </button>
+            {salvamento.aoSalvar ? (
+              <button
+                type="button"
+                onClick={salvamento.aoSalvar}
+                title={t("O que está na tela vira o padrão desta visualização")}
+                className={cn(
+                  "shrink-0 rounded-xl bg-primary px-3 font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]",
+                  compacta ? "h-8 text-xs" : "h-9 text-sm",
+                )}
+              >
+                {t("Salvar")}
+              </button>
+            ) : null}
+          </>
+        ) : null
+      ) : filtros.length + ordenacao.length > 0 || consulta.agrupar ? (
         <button
           type="button"
           onClick={() => aoMudar({})}

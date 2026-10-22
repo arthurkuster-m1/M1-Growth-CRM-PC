@@ -1,6 +1,6 @@
 ﻿import { z } from "zod";
 
-import { somarDias } from "@/lib/inicio/datas";
+import { diasDaSemana, somarDias } from "@/lib/inicio/datas";
 
 import { chaveDoPeriodo } from "./calendario";
 
@@ -35,7 +35,10 @@ export const OPERADORES = [
   "vazio",
   "preenchido",
   "antes",
+  "ate",
   "depois",
+  "a_partir",
+  "periodo",
   "igual",
   "maior",
   "menor",
@@ -50,10 +53,114 @@ export const OPERADORES_DO_TIPO: Record<TipoDeCampo, readonly Operador[]> = {
   opcao: ["e", "nao_e", "vazio", "preenchido"],
   pessoa: ["e", "nao_e", "vazio", "preenchido"],
   multi: ["contem", "nao_contem", "vazio", "preenchido"],
-  data: ["antes", "depois", "e", "vazio", "preenchido"],
+  data: ["antes", "ate", "depois", "a_partir", "e", "periodo", "vazio", "preenchido"],
   numero: ["igual", "maior", "menor", "vazio", "preenchido"],
   caixa: ["marcado", "desmarcado"],
 };
+
+/**
+ * Valores de data que guardam o JEITO de contar, não o dia: "hoje" vale sempre o dia de hoje, e
+ * "fim da semana" anda com o calendário. É o que faz um filtro salvo ("vence até hoje") continuar
+ * certo amanhã. A semana vai de segunda a domingo (a mesma do Início).
+ */
+export const DATAS_RELATIVAS = [
+  "hoje",
+  "ontem",
+  "amanha",
+  "inicio_da_semana",
+  "fim_da_semana",
+  "inicio_do_mes",
+  "fim_do_mes",
+] as const;
+
+/** Os períodos que o operador "está em" entende ("Tarefas da semana" = está em esta semana). */
+export const PERIODOS_RELATIVOS = [
+  "hoje",
+  "ontem",
+  "amanha",
+  "esta_semana",
+  "semana_passada",
+  "proxima_semana",
+  "este_mes",
+  "mes_passado",
+  "proximo_mes",
+  "ultimos_7_dias",
+  "proximos_7_dias",
+  "ultimos_30_dias",
+  "proximos_30_dias",
+] as const;
+
+/** O primeiro dia do mês (`YYYY-MM-01`) que fica `deslocamento` meses de `dia`. */
+function primeiroDoMes(dia: string, deslocamento = 0): string {
+  const [ano, mes] = dia.split("-").map(Number) as [number, number];
+  const total = ano * 12 + (mes - 1) + deslocamento;
+  const a = Math.floor(total / 12);
+  const m = (total % 12) + 1;
+  return `${a}-${String(m).padStart(2, "0")}-01`;
+}
+const ultimoDoMes = (dia: string, deslocamento = 0) =>
+  somarDias(primeiroDoMes(dia, deslocamento + 1), -1);
+const segundaDaSemana = (dia: string) => diasDaSemana(dia)[0]!;
+
+/** Um valor de data do filtro como DIA (`YYYY-MM-DD`): o relativo é contado a partir de hoje. */
+export function resolverData(valor: string, hoje: string): string {
+  switch (valor) {
+    case "hoje":
+      return hoje;
+    case "ontem":
+      return somarDias(hoje, -1);
+    case "amanha":
+      return somarDias(hoje, 1);
+    case "inicio_da_semana":
+      return segundaDaSemana(hoje);
+    case "fim_da_semana":
+      return somarDias(segundaDaSemana(hoje), 6);
+    case "inicio_do_mes":
+      return primeiroDoMes(hoje);
+    case "fim_do_mes":
+      return ultimoDoMes(hoje);
+    default:
+      return valor;
+  }
+}
+
+/** Os dois dias (inclusive) de um período relativo; `null` se o nome não é de um. */
+export function intervaloDoPeriodo(
+  periodo: string,
+  hoje: string,
+): { de: string; ate: string } | null {
+  const segunda = segundaDaSemana(hoje);
+  switch (periodo) {
+    case "hoje":
+      return { de: hoje, ate: hoje };
+    case "ontem":
+      return { de: somarDias(hoje, -1), ate: somarDias(hoje, -1) };
+    case "amanha":
+      return { de: somarDias(hoje, 1), ate: somarDias(hoje, 1) };
+    case "esta_semana":
+      return { de: segunda, ate: somarDias(segunda, 6) };
+    case "semana_passada":
+      return { de: somarDias(segunda, -7), ate: somarDias(segunda, -1) };
+    case "proxima_semana":
+      return { de: somarDias(segunda, 7), ate: somarDias(segunda, 13) };
+    case "este_mes":
+      return { de: primeiroDoMes(hoje), ate: ultimoDoMes(hoje) };
+    case "mes_passado":
+      return { de: primeiroDoMes(hoje, -1), ate: ultimoDoMes(hoje, -1) };
+    case "proximo_mes":
+      return { de: primeiroDoMes(hoje, 1), ate: ultimoDoMes(hoje, 1) };
+    case "ultimos_7_dias":
+      return { de: somarDias(hoje, -6), ate: hoje };
+    case "proximos_7_dias":
+      return { de: hoje, ate: somarDias(hoje, 6) };
+    case "ultimos_30_dias":
+      return { de: somarDias(hoje, -29), ate: hoje };
+    case "proximos_30_dias":
+      return { de: hoje, ate: somarDias(hoje, 29) };
+    default:
+      return null;
+  }
+}
 
 /** Operadores que não pedem valor. */
 export function semValor(operador: Operador): boolean {
@@ -123,6 +230,24 @@ export interface ContextoDaConsulta {
 export const semFiltro = (filtros: readonly Filtro[], i: number): Filtro[] =>
   filtros.filter((_, k) => k !== i);
 
+/** A consulta sem o que não pede nada (lista vazia = ausente): é como ela se compara e se guarda. */
+export function normalizarConsulta(c: ConsultaDaTabela | undefined): ConsultaDaTabela {
+  return {
+    ...(c?.filtros?.length ? { filtros: c.filtros } : {}),
+    ...(c?.ordenacao?.length ? { ordenacao: c.ordenacao } : {}),
+    ...(c?.agrupar ? { agrupar: c.agrupar } : {}),
+    ...(c?.agrupar && c.agruparPor && c.agruparPor !== "dia" ? { agruparPor: c.agruparPor } : {}),
+  };
+}
+
+/** As duas consultas pedem exatamente o mesmo? (Decide se há o que salvar ou desfazer.) */
+export function consultasIguais(
+  a: ConsultaDaTabela | undefined,
+  b: ConsultaDaTabela | undefined,
+): boolean {
+  return JSON.stringify(normalizarConsulta(a)) === JSON.stringify(normalizarConsulta(b));
+}
+
 /** A consulta está pedindo algo? (Decide se a reordenação manual fica valendo.) */
 export function consultaAtiva(c: ConsultaDaTabela | undefined): boolean {
   return Boolean(c?.filtros?.length || c?.ordenacao?.length || c?.agrupar);
@@ -180,9 +305,15 @@ function aprova(
     }
     case "data": {
       if (typeof valor !== "string") return false;
-      const limite = f.valor === "hoje" ? contexto.hoje : String(f.valor);
+      if (op === "periodo") {
+        const intervalo = intervaloDoPeriodo(String(f.valor), contexto.hoje);
+        return intervalo !== null && valor >= intervalo.de && valor <= intervalo.ate;
+      }
+      const limite = resolverData(String(f.valor), contexto.hoje);
       if (op === "antes") return valor < limite;
+      if (op === "ate") return valor <= limite;
       if (op === "depois") return valor > limite;
+      if (op === "a_partir") return valor >= limite;
       return valor === limite;
     }
     case "numero": {
@@ -421,11 +552,23 @@ export function valoresDeNascimento<T>(
         break;
       case "data": {
         if (!lista[0]) break;
-        const base = lista[0] === "hoje" ? contexto.hoje : lista[0];
-        // "é" → o próprio dia. "antes de" / "depois de" não dizem UM dia, mas a linha tem de
-        // ficar à vista: nasce no dia imediatamente anterior / posterior ao limite.
-        if (f.operador === "e") saida[campo.id] = base;
-        else if (f.operador === "antes") saida[campo.id] = somarDias(base, -1);
+        if (f.operador === "periodo") {
+          // "Está em esta semana": nasce hoje, se hoje está no período; senão, no primeiro dia dele.
+          const intervalo = intervaloDoPeriodo(lista[0], contexto.hoje);
+          if (intervalo) {
+            saida[campo.id] =
+              contexto.hoje >= intervalo.de && contexto.hoje <= intervalo.ate
+                ? contexto.hoje
+                : intervalo.de;
+          }
+          break;
+        }
+        const base = resolverData(lista[0], contexto.hoje);
+        // "é" / "até" / "a partir de" → o próprio dia. "antes de" / "depois de" não dizem UM dia,
+        // mas a linha tem de ficar à vista: nasce no dia imediatamente anterior / posterior.
+        if (f.operador === "e" || f.operador === "ate" || f.operador === "a_partir") {
+          saida[campo.id] = base;
+        } else if (f.operador === "antes") saida[campo.id] = somarDias(base, -1);
         else if (f.operador === "depois") saida[campo.id] = somarDias(base, 1);
         break;
       }
