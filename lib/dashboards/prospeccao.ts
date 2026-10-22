@@ -74,6 +74,16 @@ export interface PagamentoDoLead {
   valor: number;
 }
 
+/** Quanto custou captar leads de uma fonte, lançado à mão (extração, importação…). */
+export interface CustoDeCaptacao {
+  dia: string;
+  fonte: string;
+  valor: number;
+}
+
+export const mesmaFonte = (a: string, b: string) =>
+  a.trim().toLowerCase() === b.trim().toLowerCase();
+
 export interface BaseDaProspeccao {
   leads: readonly LeadCaptado[];
   interacoes: readonly Interacao[];
@@ -82,6 +92,8 @@ export interface BaseDaProspeccao {
   pagamentos: readonly PagamentoDoLead[];
   /** Investimento (orçamento das campanhas) por dia. */
   investimentoPorDia: Readonly<Record<string, number>>;
+  /** Custos de captação lançados por fonte. */
+  custos: readonly CustoDeCaptacao[];
 }
 
 export interface BrutoDeProspeccao {
@@ -135,7 +147,8 @@ export function agregarProspeccao(
   } = {},
 ): BrutoDeProspeccao {
   const fonteDe = new Map(base.leads.map((l) => [l.id, l.fonte]));
-  const okLead = (id: string) => filtro.fonte === undefined || fonteDe.get(id) === filtro.fonte;
+  const okLead = (id: string) =>
+    filtro.fonte === undefined || mesmaFonte(fonteDe.get(id) ?? "", filtro.fonte);
   const okDia = (d: string) => (filtro.dia ? d === filtro.dia : dentro(d, recorte));
   const abordados = new Set<string>();
   const contatados = new Set<string>();
@@ -170,8 +183,16 @@ export function agregarProspeccao(
     for (const p of base.pagamentos) if (okDia(p.dia) && okLead(p.leadId)) recebido += p.valor;
   }
   let investimento = 0;
-  if (filtro.fonte === undefined && semFiltroDeContato) {
-    for (const [d, v] of Object.entries(base.investimentoPorDia)) if (okDia(d)) investimento += v;
+  if (semFiltroDeContato) {
+    // O orçamento da campanha não é de nenhuma fonte; o custo lançado é.
+    if (filtro.fonte === undefined) {
+      for (const [d, v] of Object.entries(base.investimentoPorDia)) if (okDia(d)) investimento += v;
+    }
+    for (const c of base.custos) {
+      if (okDia(c.dia) && (filtro.fonte === undefined || mesmaFonte(c.fonte, filtro.fonte))) {
+        investimento += c.valor;
+      }
+    }
   }
   return {
     leads: leads.size,
