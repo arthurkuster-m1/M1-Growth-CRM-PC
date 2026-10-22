@@ -24,6 +24,8 @@ import {
   type TipoDeContato,
   type VendaDoLead,
 } from "@/lib/dashboards/prospeccao";
+import { dolarEmReais, resolverCambio, type Cambio } from "@/lib/dashboards/cambio";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { campanhaDaOportunidade, type CampanhaDoFunil } from "@/lib/marketing/atribuicao";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 
@@ -52,6 +54,16 @@ function fonteDoLead(source: string | null, meta: Record<string, unknown> | null
   return FONTES_TECNICAS[bruta.toLowerCase()] ?? bruta.slice(0, 60);
 }
 
+/** Uma extração (busca de leads) com o custo que o provedor cobrou, já em reais. */
+interface ExtracaoComCusto {
+  id: string;
+  nome: string;
+  dia: string;
+  usd: number;
+  brl: number | null;
+}
+
+const FONTE_DA_EXTRACAO = "Extração de leads";
 const STATUS_DE_ENVIO = ["sent", "delivered", "read", "replied"];
 
 export async function GET(req: NextRequest): Promise<Response> {
@@ -110,6 +122,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     pagamentos: [] as PagamentoDoLead[],
     investimentoPorDia: {} as Record<string, number>,
     custos: [] as CustoDeCaptacao[],
+    extracoes: [] as ExtracaoComCusto[],
+    cambio: { taxa: null, origem: "indisponivel", iofPct: 3.5 } as Cambio,
     abordagens: [] as Array<{ id: string; nome: string; meio: string; campanha: string }>,
     catalogo: catalogo.map((c) => ({ id: c.id, nome: c.name })),
     semResultado: 0,
@@ -339,6 +353,42 @@ export async function GET(req: NextRequest): Promise<Response> {
       valor: Number(c.amount_cents) / 100,
     }));
 
+  // O custo das extrações: cobrado em dólar, convertido com a cotação do dia e o IOF.
+  const { data: orgCfg } = await a.supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", a.orgId)
+    .maybeSingle();
+  const cambio = await resolverCambio(orgCfg?.settings);
+  const { data: extracoesBrutas } = await createAdminClient()
+    .from("prospecting_campaigns")
+    .select("id, name, cost_usd, config, created_at")
+    .eq("organization_id", a.orgId)
+    .eq("search_status", "succeeded")
+    .not("cost_usd", "is", null)
+    .limit(500);
+  const extracoes: ExtracaoComCusto[] = [];
+  for (const e of (extracoesBrutas ?? []) as Array<{
+    id: string;
+    name: string;
+    cost_usd: number | string;
+    config: { pipeline_id?: string } | null;
+    created_at: string;
+  }>) {
+    const d = diaNoFuso(e.created_at, fuso);
+    if (d < janelaDe || d > ate.data) continue;
+    // A extração é da campanha dona do funil dela; sem dona, vale para todas.
+    const dona = e.config?.pipeline_id
+      ? catalogo.find((c) => c.pipeline_id === e.config?.pipeline_id)
+      : undefined;
+    if (dona && !ids.includes(dona.id)) continue;
+    const usd = Number(e.cost_usd);
+    if (!Number.isFinite(usd) || usd <= 0) continue;
+    const brl = dolarEmReais(usd, cambio);
+    extracoes.push({ id: e.id, nome: e.name, dia: d, usd, brl });
+    if (brl !== null) custos.push({ dia: d, fonte: FONTE_DA_EXTRACAO, valor: brl });
+  }
+
   const { data: abordagens } = await a.supabase
     .from("demand_campaign_approaches")
     .select("id, name, medium, campaign_id")
@@ -357,6 +407,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       pagamentos,
       investimentoPorDia,
       custos,
+      extracoes,
+      cambio,
       semResultado,
       abordagens: (
         (abordagens ?? []) as Array<{

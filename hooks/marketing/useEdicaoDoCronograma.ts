@@ -77,6 +77,15 @@ export function useEdicaoDoCronograma(
       }
       return r;
     },
+    /** Arquiva várias ações de uma vez, com um só Ctrl+Z (que as desarquiva). */
+    arquivarItens: async (ids: string[]) => {
+      if (!ids.length) return;
+      await Promise.all(ids.map((id) => c.editarItem(id, { arquivado: true })));
+      registrarDesfazer({
+        rotulo: t("Ações arquivadas"),
+        desfazer: () => Promise.all(ids.map((id) => c.editarItem(id, { arquivado: false }))),
+      });
+    },
     /** Reescreve a ordem de várias ações de uma vez (subir/descer), com um só Ctrl+Z. */
     gravarOrdem: async (mudancas: Array<{ id: string; ordem: number }>) => {
       if (!mudancas.length) return;
