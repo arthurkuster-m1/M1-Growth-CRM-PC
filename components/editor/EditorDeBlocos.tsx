@@ -22,16 +22,27 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ClipboardEvent,
   type KeyboardEvent,
+  type MouseEvent,
 } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
 import {
+  acharBloco,
   ATALHO_DO_TIPO,
+  clonar,
+  duplicarIds,
+  idsVisiveis,
+  inserirDepois,
+  mapearIds,
   novoBloco,
   novoId,
+  removerIds,
+  textoDosBlocos,
   TIPOS_DE_BLOCO,
+  topoDosEscolhidos,
   type Bloco,
   type TipoDeBloco,
 } from "@/lib/tarefas/blocos";
@@ -106,6 +117,20 @@ interface Contexto {
   podeEditar: boolean;
   pedirFoco: (id: string, posicao: number | "fim") => void;
   vizinho: (id: string, direcao: -1 | 1) => void;
+  /** Os blocos selecionados em massa (vazio fora do modo de seleção). */
+  selecionados: ReadonlySet<string>;
+  /** Esc num bloco: seleciona só ele. */
+  selecionarUnico: (id: string) => void;
+  /** Shift+clique estende, Ctrl+clique alterna. */
+  aoClicarNaAlca: (id: string, estende: boolean) => void;
+  /** Shift+↑/↓ na borda do texto: começa a selecionar para cima/para baixo. */
+  iniciarSelecao: (id: string, direcao: -1 | 1) => void;
+  /** Ações sobre toda a seleção (menu da alça de um bloco selecionado). */
+  emMassa: {
+    trocarTipo: (tipo: TipoDeBloco) => void;
+    duplicar: () => void;
+    apagar: () => void;
+  };
 }
 
 // ── operações puras sobre uma lista ──────────────────────────────────────────
@@ -184,6 +209,8 @@ function LinhaDoBloco({
 }) {
   const t = useT();
   const [menuAberto, setMenuAberto] = useState(false);
+  const selecionado = ctx.selecionados.has(bloco.id);
+  const emMassa = selecionado && ctx.selecionados.size > 1;
   const {
     attributes,
     listeners,
@@ -197,6 +224,7 @@ function LinhaDoBloco({
   const atualizar = (mudanca: Partial<Bloco>) => aoMudarLista(trocar(lista, bloco.id, mudanca));
 
   const trocarTipo = (tipo: TipoDeBloco) => {
+    if (emMassa) return ctx.emMassa.trocarTipo(tipo);
     atualizar({ tipo, ...(tipo === "toggle" ? { aberto: true } : {}) });
     ctx.pedirFoco(bloco.id, "fim");
   };
@@ -302,6 +330,28 @@ function LinhaDoBloco({
       return;
     }
 
+    // Esc seleciona o bloco; Shift+↑/↓ na borda do texto estende a seleção para os vizinhos.
+    if (e.key === "Escape") {
+      e.preventDefault();
+      ctx.selecionarUnico(bloco.id);
+      return;
+    }
+    if (e.shiftKey && e.key === "ArrowUp" && inicio === 0 && fim === 0) {
+      e.preventDefault();
+      ctx.iniciarSelecao(bloco.id, -1);
+      return;
+    }
+    if (
+      e.shiftKey &&
+      e.key === "ArrowDown" &&
+      inicio === bloco.texto.length &&
+      fim === bloco.texto.length
+    ) {
+      e.preventDefault();
+      ctx.iniciarSelecao(bloco.id, 1);
+      return;
+    }
+
     if (e.key === "ArrowUp" && !bloco.texto.slice(0, inicio).includes("\n") && inicio === fim) {
       e.preventDefault();
       ctx.vizinho(bloco.id, -1);
@@ -391,9 +441,11 @@ function LinhaDoBloco({
       className={cn("relative", isDragging && "z-10 opacity-70")}
     >
       <div
+        data-linha={bloco.id}
         className={cn(
           "group flex items-start gap-1 rounded-lg",
           (menuAberto || isDragging) && "bg-accent-soft/60",
+          selecionado && "bg-primary/15 ring-1 ring-primary/30",
         )}
       >
         {ctx.podeEditar ? (
@@ -406,6 +458,13 @@ function LinhaDoBloco({
                 {...listeners}
                 aria-label={t("Arrastar ou abrir o menu do bloco")}
                 title={t("Arraste para mover · clique para o menu")}
+                onClickCapture={(e) => {
+                  // Shift/Ctrl+clique na alça: seleciona vários blocos em vez de abrir o menu.
+                  if (!(e.shiftKey || e.ctrlKey || e.metaKey)) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  ctx.aoClicarNaAlca(bloco.id, e.shiftKey);
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setMenuAberto(true);
@@ -417,7 +476,9 @@ function LinhaDoBloco({
             </PopoverTrigger>
             <PopoverContent align="start" className="w-60 p-1.5">
               <p className="px-2 pt-1 pb-1.5 text-[11px] font-semibold tracking-wider text-text-subtle uppercase">
-                {t("Transformar em")}
+                {emMassa
+                  ? `${t("Transformar")} ${ctx.selecionados.size} ${t("blocos em")}`
+                  : t("Transformar em")}
               </p>
               <div className="max-h-72 overflow-y-auto">
                 {TIPOS_DE_BLOCO.map((tipo) => (
@@ -448,6 +509,7 @@ function LinhaDoBloco({
                 type="button"
                 onClick={() => {
                   setMenuAberto(false);
+                  if (emMassa) return ctx.emMassa.duplicar();
                   const copia = [...lista];
                   const nova = duplicar(bloco);
                   copia.splice(indice + 1, 0, nova);
@@ -462,6 +524,7 @@ function LinhaDoBloco({
                 type="button"
                 onClick={() => {
                   setMenuAberto(false);
+                  if (emMassa) return ctx.emMassa.apagar();
                   const restante = lista.filter((b) => b.id !== bloco.id);
                   aoMudarLista(restante.length || nivel > 0 ? restante : [novoBloco()]);
                 }}
@@ -587,6 +650,16 @@ function ListaDeBlocos({
   );
 }
 
+interface Selecao {
+  ids: ReadonlySet<string>;
+  ancora: string | null;
+  ponta: string | null;
+}
+const SEM_SELECAO: Selecao = { ids: new Set(), ancora: null, ponta: null };
+
+/** O que foi copiado por último no editor (para colar blocos inteiros, não só o texto). */
+let copiado: { texto: string; blocos: Bloco[] } | null = null;
+
 interface Props {
   blocos: Bloco[];
   aoMudar: (blocos: Bloco[]) => void;
@@ -640,7 +713,187 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
     [prefixo],
   );
 
-  const ctx: Contexto = { prefixo, podeEditar, pedirFoco, vizinho };
+  // ── seleção em massa ────────────────────────────────────────────────────────────
+  const [sel, setSel] = useState<Selecao>(SEM_SELECAO);
+  const ultimoFocado = useRef<string | null>(null);
+  const visiveis = idsVisiveis(blocos);
+
+  const limpar = useCallback(() => setSel((v) => (v.ids.size ? SEM_SELECAO : v)), []);
+  const focarRaiz = () => raiz.current?.focus({ preventScroll: true });
+  const selecionarUnico = (id: string) => {
+    setSel({ ids: new Set([id]), ancora: id, ponta: id });
+    focarRaiz();
+  };
+  const estender = (ponta: string, de: string | null = sel.ancora) => {
+    const ancora = de ?? ponta;
+    const a = visiveis.indexOf(ancora);
+    const b = visiveis.indexOf(ponta);
+    if (a < 0 || b < 0) return selecionarUnico(ponta);
+    const [i, j] = a < b ? [a, b] : [b, a];
+    setSel({ ids: new Set(visiveis.slice(i, j + 1)), ancora, ponta });
+    focarRaiz();
+  };
+  const alternar = (id: string) => {
+    const ids = new Set(sel.ids);
+    if (ids.has(id)) ids.delete(id);
+    else ids.add(id);
+    setSel({ ids, ancora: id, ponta: id });
+    focarRaiz();
+  };
+
+  const emMassa = {
+    trocarTipo: (tipo: TipoDeBloco) =>
+      aoMudar(
+        mapearIds(blocos, sel.ids, () => ({
+          tipo,
+          ...(tipo === "toggle" ? { aberto: true } : {}),
+        })),
+      ),
+    duplicar: () => aoMudar(duplicarIds(blocos, sel.ids)),
+    apagar: () => {
+      const ids = sel.ids;
+      const primeiro = visiveis.findIndex((v) => ids.has(v));
+      let alvo: string | undefined;
+      for (let i = primeiro - 1; i >= 0; i--) {
+        if (!ids.has(visiveis[i]!)) {
+          alvo = visiveis[i];
+          break;
+        }
+      }
+      const restantes = removerIds(blocos, ids);
+      const final = restantes.length ? restantes : [novoBloco()];
+      alvo ??= idsVisiveis(final)[0];
+      aoMudar(final);
+      setSel(SEM_SELECAO);
+      if (alvo) pedirFoco(alvo, "fim");
+    },
+  };
+
+  const ctx: Contexto = {
+    prefixo,
+    podeEditar,
+    pedirFoco,
+    vizinho,
+    selecionados: sel.ids,
+    selecionarUnico,
+    iniciarSelecao: (id, direcao) => {
+      const alvo = visiveis[visiveis.indexOf(id) + direcao];
+      if (!alvo) return selecionarUnico(id);
+      setSel({ ids: new Set([id, alvo]), ancora: id, ponta: alvo });
+      focarRaiz();
+    },
+    aoClicarNaAlca: (id, estende) =>
+      estende ? estender(id, sel.ancora ?? ultimoFocado.current) : alternar(id),
+    emMassa,
+  };
+
+  // Clicar fora do editor (e fora dos menus dele) encerra a seleção.
+  useEffect(() => {
+    if (!sel.ids.size) return;
+    const fora = (e: PointerEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      if (raiz.current?.contains(alvo) || alvo?.closest("[data-radix-popper-content-wrapper]"))
+        return;
+      limpar();
+    };
+    document.addEventListener("pointerdown", fora);
+    return () => document.removeEventListener("pointerdown", fora);
+  }, [sel.ids.size, limpar]);
+
+  const sairDaSelecao = () => {
+    const id = sel.ponta;
+    limpar();
+    if (id) pedirFoco(id, "fim");
+  };
+
+  const aoTeclarNaSelecao = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || !sel.ids.size) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (e.key === "Escape" || e.key === "Enter") {
+      e.preventDefault();
+      return sairDaSelecao();
+    }
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const alvo = visiveis[visiveis.indexOf(sel.ponta ?? "") + (e.key === "ArrowUp" ? -1 : 1)];
+      if (!alvo) return;
+      return e.shiftKey ? estender(alvo) : selecionarUnico(alvo);
+    }
+    if (!podeEditar) return;
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      return emMassa.apagar();
+    }
+    if (mod && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      setSel({
+        ids: new Set(visiveis),
+        ancora: visiveis[0] ?? null,
+        ponta: visiveis.at(-1) ?? null,
+      });
+      return;
+    }
+    if (mod && e.key.toLowerCase() === "d") {
+      e.preventDefault();
+      return emMassa.duplicar();
+    }
+    if (mod && e.shiftKey && /^Digit\d$/.test(e.code)) {
+      const tipo = TIPOS_DE_BLOCO.find((x) => ATALHO_DO_TIPO[x] === e.code.slice(5));
+      if (tipo) {
+        e.preventDefault();
+        emMassa.trocarTipo(tipo);
+      }
+    }
+  };
+
+  // Shift+clique em qualquer linha seleciona do bloco âncora até ela.
+  const aoClicarComShift = (e: MouseEvent<HTMLDivElement>) => {
+    if (!e.shiftKey || !podeEditar) return;
+    const linha = (e.target as HTMLElement).closest<HTMLElement>("[data-linha]");
+    const id = linha?.dataset.linha;
+    if (!id) return;
+    const ancora = sel.ancora ?? ultimoFocado.current;
+    e.preventDefault();
+    if (ancora && ancora !== id) estender(id, ancora);
+    else selecionarUnico(id);
+  };
+
+  const aoCopiar = (e: ClipboardEvent<HTMLDivElement>, cortar: boolean) => {
+    if (e.target !== e.currentTarget || !sel.ids.size) return;
+    const topo = topoDosEscolhidos(blocos, sel.ids);
+    const texto = textoDosBlocos(topo);
+    copiado = { texto, blocos: topo };
+    e.clipboardData.setData("text/plain", texto);
+    e.preventDefault();
+    if (cortar && podeEditar) emMassa.apagar();
+  };
+
+  const aoColar = (e: ClipboardEvent<HTMLDivElement>) => {
+    if (!podeEditar) return;
+    const texto = e.clipboardData.getData("text/plain");
+    const campo = (e.target as HTMLElement).closest<HTMLTextAreaElement>("textarea[data-bloco]");
+    const interno = copiado && copiado.texto === texto ? copiado.blocos.map(clonar) : null;
+    const novos =
+      interno ??
+      (campo && texto.includes("\n")
+        ? texto.split(/\r?\n/).map((l) => novoBloco("texto", l))
+        : null);
+    if (!novos?.length) return;
+    let alvo: string | null = null;
+    let substituir = false;
+    if (campo) {
+      alvo = campo.id.slice(prefixo.length + 1);
+      const atual = acharBloco(blocos, alvo);
+      substituir = Boolean(atual && !atual.texto && !atual.filhos?.length);
+    } else if (sel.ids.size) {
+      alvo = [...visiveis].reverse().find((v) => sel.ids.has(v)) ?? null;
+    }
+    if (!alvo) return;
+    e.preventDefault();
+    aoMudar(inserirDepois(blocos, alvo, novos, substituir));
+    setSel(SEM_SELECAO);
+    pedirFoco(novos[novos.length - 1]!.id, "fim");
+  };
 
   const ultimo = blocos[blocos.length - 1];
   const aoClicarNoFim = () => {
@@ -657,7 +910,25 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
   };
 
   return (
-    <div ref={raiz} role="group" aria-label={t("Descrição")} className="min-w-0">
+    <div
+      ref={raiz}
+      role="group"
+      aria-label={t("Descrição")}
+      tabIndex={-1}
+      onKeyDown={aoTeclarNaSelecao}
+      onMouseDownCapture={aoClicarComShift}
+      onFocusCapture={(e) => {
+        if (e.target === e.currentTarget) return;
+        if ((e.target as HTMLElement).dataset.bloco !== undefined) {
+          ultimoFocado.current = e.target.id.slice(prefixo.length + 1);
+          if (sel.ids.size) limpar();
+        }
+      }}
+      onCopy={(e) => aoCopiar(e, false)}
+      onCut={(e) => aoCopiar(e, true)}
+      onPaste={aoColar}
+      className="min-w-0 outline-hidden"
+    >
       <ListaDeBlocos blocos={blocos} aoMudar={aoMudar} ctx={ctx} nivel={0} />
       {podeEditar ? (
         <div aria-hidden onClick={aoClicarNoFim} className="min-h-8 flex-1 cursor-text" />

@@ -116,3 +116,122 @@ export function textoDaDescricao(descricao: string | null | undefined): string {
   percorre(lerBlocos(descricao));
   return partes.join(" · ");
 }
+
+// ── operações em vários blocos (seleção em massa) ────────────────────────────────
+
+/** Os ids na ordem em que aparecem na tela (filhos de toggle fechado ficam de fora). */
+export function idsVisiveis(blocos: Bloco[]): string[] {
+  const saida: string[] = [];
+  const percorre = (lista: Bloco[]) => {
+    for (const b of lista) {
+      saida.push(b.id);
+      if (b.filhos?.length && (b.tipo !== "toggle" || b.aberto)) percorre(b.filhos);
+    }
+  };
+  percorre(blocos);
+  return saida;
+}
+
+const comFilhos = (b: Bloco, filhos: Bloco[]): Bloco => {
+  const { filhos: _antigos, ...resto } = b;
+  void _antigos;
+  return filhos.length ? { ...resto, filhos } : resto;
+};
+
+/** Tira os blocos escolhidos (e o que há dentro deles). */
+export function removerIds(blocos: Bloco[], ids: ReadonlySet<string>): Bloco[] {
+  return blocos
+    .filter((b) => !ids.has(b.id))
+    .map((b) => (b.filhos ? comFilhos(b, removerIds(b.filhos, ids)) : b));
+}
+
+/** Aplica a mudança a cada bloco escolhido, em qualquer nível. */
+export function mapearIds(
+  blocos: Bloco[],
+  ids: ReadonlySet<string>,
+  mudanca: (b: Bloco) => Partial<Bloco>,
+): Bloco[] {
+  return blocos.map((b) => {
+    const novo = ids.has(b.id) ? { ...b, ...mudanca(b) } : b;
+    return novo.filhos ? { ...novo, filhos: mapearIds(novo.filhos, ids, mudanca) } : novo;
+  });
+}
+
+/** Cópia com ids novos (colar e duplicar não podem repetir id). */
+export function clonar(b: Bloco): Bloco {
+  return { ...b, id: novoId(), filhos: b.filhos?.map(clonar) };
+}
+
+/** Os blocos escolhidos de mais alto nível: o que está dentro de um escolhido vai junto com ele. */
+export function topoDosEscolhidos(blocos: Bloco[], ids: ReadonlySet<string>): Bloco[] {
+  const saida: Bloco[] = [];
+  for (const b of blocos) {
+    if (ids.has(b.id)) saida.push(b);
+    else if (b.filhos) saida.push(...topoDosEscolhidos(b.filhos, ids));
+  }
+  return saida;
+}
+
+/** Põe uma cópia logo depois de cada bloco escolhido de mais alto nível. */
+export function duplicarIds(blocos: Bloco[], ids: ReadonlySet<string>): Bloco[] {
+  const saida: Bloco[] = [];
+  for (const b of blocos) {
+    if (ids.has(b.id)) {
+      saida.push(b, clonar(b));
+    } else {
+      saida.push(b.filhos ? comFilhos(b, duplicarIds(b.filhos, ids)) : b);
+    }
+  }
+  return saida;
+}
+
+/** Insere `novos` logo depois do bloco `alvo` (ou no lugar dele, se `substituir`). */
+export function inserirDepois(
+  blocos: Bloco[],
+  alvo: string,
+  novos: Bloco[],
+  substituir = false,
+): Bloco[] {
+  const saida: Bloco[] = [];
+  for (const b of blocos) {
+    if (b.id === alvo) {
+      if (!substituir) saida.push(b);
+      saida.push(...novos);
+    } else {
+      saida.push(b.filhos ? comFilhos(b, inserirDepois(b.filhos, alvo, novos, substituir)) : b);
+    }
+  }
+  return saida;
+}
+
+export function acharBloco(blocos: Bloco[], id: string): Bloco | null {
+  for (const b of blocos) {
+    if (b.id === id) return b;
+    const dentro = b.filhos ? acharBloco(b.filhos, id) : null;
+    if (dentro) return dentro;
+  }
+  return null;
+}
+
+const PREFIXO_DO_TIPO: Record<TipoDeBloco, string> = {
+  texto: "",
+  h1: "# ",
+  h2: "## ",
+  h3: "### ",
+  todo: "[ ] ",
+  bullet: "- ",
+  numero: "1. ",
+  toggle: "> ",
+  quote: '" ',
+  callout: "",
+};
+
+/** Os blocos como texto (é o que vai para a área de transferência), um por linha, recuados. */
+export function textoDosBlocos(blocos: Bloco[], nivel = 0): string {
+  return blocos
+    .flatMap((b) => [
+      `${"  ".repeat(nivel)}${PREFIXO_DO_TIPO[b.tipo]}${b.texto}`,
+      ...(b.filhos?.length ? [textoDosBlocos(b.filhos, nivel + 1)] : []),
+    ])
+    .join("\n");
+}
