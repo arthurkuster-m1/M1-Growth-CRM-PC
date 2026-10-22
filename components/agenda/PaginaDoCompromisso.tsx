@@ -72,6 +72,48 @@ const STATUS_DA_VENDA: Record<string, string> = {
   cancelada: "Cancelado",
 };
 
+/**
+ * O título do compromisso, no topo da página: um campo que se edita no lugar (grava ao sair
+ * do campo ou no Enter). Quem não pode editar vê só o texto.
+ */
+function TituloEditavel({
+  valor,
+  podeEditar,
+  aoSalvar,
+}: {
+  valor: string;
+  podeEditar: boolean;
+  aoSalvar: (titulo: string) => void;
+}) {
+  const t = useT();
+  const [rascunho, setRascunho] = React.useState<string | null>(null);
+  if (!podeEditar) return <h2 className="break-words text-xl font-semibold">{valor}</h2>;
+  const texto = rascunho ?? valor;
+  const gravar = () => {
+    const limpo = texto.trim();
+    setRascunho(null);
+    if (limpo && limpo !== valor) aoSalvar(limpo);
+  };
+  return (
+    <input
+      value={texto}
+      maxLength={200}
+      aria-label={t("Título do compromisso")}
+      placeholder={t("Ex.: R1 · Nome do cliente")}
+      onChange={(e) => setRascunho(e.target.value)}
+      onBlur={gravar}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          setRascunho(null);
+          e.currentTarget.blur();
+        }
+      }}
+      className="w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 py-1 -mx-2 text-xl font-semibold outline-hidden transition-colors hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/20"
+    />
+  );
+}
+
 function Bloco({ titulo, acao, children, className }: { titulo: string; acao?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <section className={cn("min-w-0 rounded-2xl border border-border bg-surface p-4", className)}>
@@ -212,7 +254,7 @@ function PaginaExistente({
         data-testid="pagina-do-compromisso"
         className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-4xl grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-0 sm:rounded-3xl"
       >
-        <DialogTitle className="sr-only">{a?.cliente?.nome ?? a?.title ?? t("Compromisso")}</DialogTitle>
+        <DialogTitle className="sr-only">{a?.title ?? a?.cliente?.nome ?? t("Compromisso")}</DialogTitle>
         <DialogDescription className="sr-only">{t("Página do compromisso")}</DialogDescription>
 
         {consulta.isPending ? (
@@ -238,7 +280,12 @@ function PaginaExistente({
                 {saiuVenda && <Badge variant="success" className="rounded-lg">{t("Saiu venda nesta reunião")}</Badge>}
               </div>
               <div className="min-w-0 max-w-full">
-                <h2 className="break-words text-xl font-semibold">{a.cliente?.nome ?? a.title}</h2>
+                <TituloEditavel
+                  key={a.id}
+                  valor={a.title !== a.tipo?.nome ? a.title : (a.cliente?.nome ?? a.title)}
+                  podeEditar={podeEditar}
+                  aoSalvar={(titulo) => salvar.mutate({ title: titulo }, { onSuccess: () => void consulta.refetch() })}
+                />
                 <p className="mt-0.5 text-sm text-text-muted first-letter:uppercase">{quando}</p>
               </div>
               {podeEditar && (

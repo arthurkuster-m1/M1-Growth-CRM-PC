@@ -143,6 +143,12 @@ interface Props {
   contatoFixo?: { id: string; nome: string };
   /** Abre esta tarefa no painel ao montar (vindo da Visão geral da ficha). */
   abrirInicial?: string | null;
+  /**
+   * Só o painel da tarefa, sem a tabela: é como o Início abre uma tarefa no lugar, com as MESMAS
+   * propriedades e células da tela de Tarefas. `aoFecharPainel` avisa quando a pessoa fecha.
+   */
+  soPainel?: boolean;
+  aoFecharPainel?: () => void;
 }
 
 /**
@@ -161,6 +167,8 @@ export function TarefasMotorClient({
   nomeDaOrganizacao = "",
   contatoFixo,
   abrirInicial = null,
+  soPainel = false,
+  aoFecharPainel,
 }: Props) {
   void usuarioId;
   const t = useT();
@@ -890,6 +898,54 @@ export function TarefasMotorClient({
     } catch {
       // O hook já mostrou o erro da API; o pop-up fica aberto com o que a pessoa preencheu.
     }
+  }
+
+  if (soPainel) {
+    return (
+      <>
+        <PainelDaTarefa
+          tarefa={apagarId ? null : (tarefas.find((x) => x.id === abertaId) ?? null)}
+          colunas={colunas}
+          podeEditar={podeEditar}
+          aoSalvarDescricao={(tarefa, description) =>
+            void editarTarefa(tarefa.id, { description }, { description })
+          }
+          aoApagar={(tarefa) => setApagarId(tarefa.id)}
+          aoFechar={() => {
+            setAbertaId(null);
+            aoFecharPainel?.();
+          }}
+        />
+        <AlertDialog
+          open={apagarId !== null}
+          onOpenChange={(aberto) => {
+            if (aberto) return;
+            setApagarId(null);
+            if (!tarefas.some((x) => x.id === abertaId)) aoFecharPainel?.();
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("Apagar tarefa?")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("Esta ação não pode ser desfeita.")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (apagarId) void apagarTarefa(apagarId);
+                  setApagarId(null);
+                  setAbertaId(null);
+                  aoFecharPainel?.();
+                }}
+              >
+                {t("Apagar")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
   }
 
   return (
