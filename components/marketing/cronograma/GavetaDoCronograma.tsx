@@ -39,10 +39,7 @@ import { cn } from "@/lib/utils";
 
 /** O que a gaveta mostra: uma meta, uma ação, uma fase, a configuração ou as arquivadas. */
 export type VistaDaGaveta =
-  | { tipo: "meta" | "acao"; id: string }
-  | { tipo: "fase"; nome: string }
-  | { tipo: "config" }
-  | { tipo: "arquivadas" };
+  { tipo: "meta" | "acao"; id: string } | { tipo: "fase"; nome: string } | { tipo: "arquivadas" };
 
 type Acoes = ReturnType<typeof useEdicaoDoCronograma>;
 
@@ -602,7 +599,7 @@ function FormularioDaFase({
 }
 
 // ── Configuração ─────────────────────────────────────────────────────────────────
-function FormularioDaConfig({
+export function FormularioDaConfig({
   config,
   aoSalvarConfig,
 }: {
@@ -704,7 +701,7 @@ function ListaDeArquivadas({ itens, acoes }: { itens: readonly ItemDoCronograma[
 
 /**
  * A GAVETA de edição do cronograma: abre ao lado do painel quando se clica numa meta, ação ou fase
- * (ou em "Configurar"/"Arquivadas"). Não tapa nem trava o painel: o que se muda aqui aparece lá na
+ * (ou em "Arquivadas"). Não tapa nem trava o painel: o que se muda aqui aparece lá na
  * hora. No celular vira uma folha por baixo.
  */
 export function GavetaDoCronograma({
@@ -753,9 +750,7 @@ export function GavetaDoCronograma({
         ? t("Ação-chave")
         : vista.tipo === "fase"
           ? t("Fase")
-          : vista.tipo === "config"
-            ? t("Configurar o cronograma")
-            : t("Ações arquivadas");
+          : t("Ações arquivadas");
 
   let corpo: ReactNode = null;
   if (vista.tipo === "meta" && meta) {
@@ -792,8 +787,6 @@ export function GavetaDoCronograma({
         aoFechar={aoFechar}
       />
     );
-  } else if (vista.tipo === "config") {
-    corpo = <FormularioDaConfig config={config} aoSalvarConfig={aoSalvarConfig} />;
   } else if (vista.tipo === "arquivadas") {
     corpo = <ListaDeArquivadas itens={itens} acoes={acoes} />;
   } else {

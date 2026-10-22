@@ -13,3 +13,6 @@ os campos dela: a meta com tipo, fonte, prazo, valores e descrição; a ação c
 situação, fase, destaque e notas; a fase com nome, ordem, ações e arquivar/apagar. O painel
 mostra o resultado na hora. "Configurar" e "Arquivadas" ficam na barra de cima. Ctrl+Z desfaz
 criar, editar, apagar e reordenar. Nada precisa ser feito na instalação.
+
+O bloco "Configuração" (semanas na tela, domingo da semana 1 e frases) fica no fim do cronograma,
+no modo de edição, como antes.

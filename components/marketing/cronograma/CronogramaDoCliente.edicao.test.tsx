@@ -167,4 +167,14 @@ describe("cronograma — edição no próprio painel", () => {
     expect(document.querySelector("[data-editavel]")).toBeNull();
     expect(screen.queryByRole("complementary")).toBeNull();
   });
+
+  it("a configuração fica no fim do cronograma, só no modo de edição", async () => {
+    montar();
+    await screen.findByText("Montar a página");
+    expect(screen.queryByRole("region", { name: "Configuração" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const config = screen.getByRole("region", { name: "Configuração" });
+    expect(within(config).getByText("Quantas semanas aparecem na tela")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Configurar" })).toBeNull();
+  });
 });
