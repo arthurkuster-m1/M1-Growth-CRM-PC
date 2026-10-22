@@ -31,6 +31,7 @@ vi.mock("next/navigation", () => ({
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api/client";
+import { textoDaDescricao } from "@/lib/tarefas/blocos";
 import { TarefasMotorClient } from "./TarefasMotorClient";
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -325,7 +326,10 @@ describe('Nova tarefa abre um pop-up e só grava no "Criar tarefa"', () => {
 
     await userEvent.type(titulo, "Revisar o funil");
     await escolherNoPopup(screen.getByRole("button", { name: "Prioridade da tarefa" }), "Urgente");
-    await userEvent.type(screen.getByRole("textbox", { name: "Descrição" }), "Conferir as etapas");
+    await userEvent.type(
+      within(screen.getByRole("group", { name: "Descrição" })).getAllByRole("textbox")[0]!,
+      "Conferir as etapas",
+    );
     expect(criadas).toHaveLength(0);
 
     await userEvent.click(screen.getByRole("button", { name: "Criar tarefa" }));
@@ -333,9 +337,10 @@ describe('Nova tarefa abre um pop-up e só grava no "Criar tarefa"', () => {
     expect(criadas[0]).toMatchObject({
       title: "Revisar o funil",
       priority: "urgent",
-      description: "Conferir as etapas",
+      description: expect.any(String),
       status_option_id: OPCOES[0]!.id,
     });
+    expect(textoDaDescricao(criadas[0]!.description as string)).toBe("Conferir as etapas");
   });
 
   it("Cancelar fecha o pop-up sem criar nada", async () => {

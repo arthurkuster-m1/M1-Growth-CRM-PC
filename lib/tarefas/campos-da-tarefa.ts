@@ -1,4 +1,5 @@
 import { chaveDoDia } from "@/lib/inicio/datas";
+import { textoDaDescricao } from "@/lib/tarefas/blocos";
 import type { TipoDeCampo, ValorDoCampo } from "@/lib/motor/consulta";
 
 import type { CorDaOpcao, OpcaoDeStatus } from "./opcoes-de-status";
@@ -109,7 +110,12 @@ export function metasDaTarefa({
         ...clientes.map((c) => ({ id: c.id, rotulo: c.nome })),
       ],
     },
-    { id: "descricao", titulo: t("Descrição"), tipo: "texto", valorDe: (x) => x.description },
+    {
+      id: "descricao",
+      titulo: t("Descrição"),
+      tipo: "texto",
+      valorDe: (x) => textoDaDescricao(x.description),
+    },
     {
       id: "criada",
       titulo: t("Criada em"),

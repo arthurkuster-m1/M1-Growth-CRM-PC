@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/hooks/i18n/useT";
 import { somarDias } from "@/lib/inicio/datas";
@@ -172,15 +173,10 @@ export function SeletorDeData({
           <span className="text-sm">{t("Incluir hora")}</span>
           <div className="flex items-center gap-2">
             {hora !== null ? (
-              <input
-                type="time"
-                aria-label={t("Horário")}
-                value={hora}
-                onChange={(e) => aoMudarHora(e.target.value || "09:00")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") aoConfirmar();
-                }}
-                className="h-9 rounded-lg border bg-background px-2 text-sm"
+              <SeletorDeHora
+                valor={hora}
+                aoMudar={(nova) => aoMudarHora(nova || "09:00")}
+                aoConfirmar={aoConfirmar}
               />
             ) : null}
             <Switch

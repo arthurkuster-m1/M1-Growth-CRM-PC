@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { EditorDeBlocos } from "@/components/editor/EditorDeBlocos";
+import { escreverBlocos, LIMITE_DA_DESCRICAO, lerBlocos, type Bloco } from "@/lib/tarefas/blocos";
 
 import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -52,12 +55,10 @@ export function PainelDaTarefa({
 
   return (
     <Dialog open={tarefa !== null} onOpenChange={(aberto) => !aberto && aoFechar()}>
-      <DialogContent className="max-w-xl gap-5 overflow-x-hidden p-5 sm:rounded-2xl sm:p-6 [&>*]:min-w-0">
+      <DialogContent className="max-w-2xl gap-5 overflow-x-hidden p-5 sm:rounded-2xl sm:p-6 [&>*]:min-w-0">
         {tarefa ? (
           <>
-            <DialogTitle className="sr-only">
-              {nova ? t("Nova tarefa") : tarefa.title}
-            </DialogTitle>
+            <DialogTitle className="sr-only">{nova ? t("Nova tarefa") : tarefa.title}</DialogTitle>
             <DialogDescription className="sr-only">{t("Propriedades da tarefa")}</DialogDescription>
             {nova ? (
               <div className="min-w-0 pr-8">
@@ -87,7 +88,10 @@ export function PainelDaTarefa({
             )}
             <dl className="grid gap-1">
               {propriedades.map((c) => (
-                <div key={c.id} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-[6rem_minmax(0,1fr)]">
+                <div
+                  key={c.id}
+                  className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-[6rem_minmax(0,1fr)]"
+                >
                   <dt className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
                     {c.icone}
                     <span className="truncate">{c.titulo}</span>
@@ -97,7 +101,7 @@ export function PainelDaTarefa({
               ))}
             </dl>
             <Descricao
-              key={nova ? tarefa.id : `${tarefa.id}:${tarefa.description ?? ""}`}
+              key={tarefa.id}
               valor={tarefa.description ?? ""}
               podeEditar={podeEditar}
               aoSalvar={(texto) => aoSalvarDescricao(tarefa, texto)}
@@ -152,31 +156,51 @@ function Descricao({
   aCadaTecla?: boolean;
 }) {
   const t = useT();
-  const [rascunho, setRascunho] = useState(valor);
+  const [blocos, setBlocos] = useState(() => lerBlocos(valor));
+  const [grandeDemais, setGrandeDemais] = useState(false);
+  const pendente = useRef<string | null | undefined>(undefined);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const salvar = useRef(aoSalvar);
+  useEffect(() => {
+    salvar.current = aoSalvar;
+  });
+
+  const gravar = () => {
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = null;
+    if (pendente.current === undefined) return;
+    const texto = pendente.current;
+    pendente.current = undefined;
+    salvar.current(texto);
+  };
+  // Fechar o painel (ou trocar de tarefa) não perde o que ainda não foi gravado.
+  useEffect(() => () => gravar(), []);
+
+  const mudar = (novos: Bloco[]) => {
+    setBlocos(novos);
+    const texto = escreverBlocos(novos);
+    if (texto !== null && texto.length > LIMITE_DA_DESCRICAO) {
+      setGrandeDemais(true);
+      return;
+    }
+    setGrandeDemais(false);
+    pendente.current = texto;
+    if (aCadaTecla) return gravar();
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(gravar, 700);
+  };
 
   return (
-    <div>
-      <label htmlFor="descricao-da-tarefa" className="mb-1 block text-sm text-muted-foreground">
-        {t("Descrição")}
-      </label>
-      <textarea
-        id="descricao-da-tarefa"
-        value={rascunho}
-        readOnly={!podeEditar}
-        maxLength={5000}
-        rows={5}
-        placeholder={podeEditar ? t("Escreva uma descrição…") : undefined}
-        onChange={(e) => {
-          setRascunho(e.target.value);
-          if (aCadaTecla) aoSalvar(e.target.value === "" ? null : e.target.value);
-        }}
-        onBlur={() => {
-          if (aCadaTecla) return;
-          const novo = rascunho.trim();
-          if (novo !== valor.trim()) aoSalvar(novo === "" ? null : novo);
-        }}
-        className="w-full resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-      />
+    <div onBlur={(e) => !aCadaTecla && !e.currentTarget.contains(e.relatedTarget) && gravar()}>
+      <p className="mb-1 block text-sm text-muted-foreground">{t("Descrição")}</p>
+      <div className="rounded-xl border bg-background px-2 py-2 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+        <EditorDeBlocos blocos={blocos} aoMudar={mudar} podeEditar={podeEditar} />
+      </div>
+      {grandeDemais ? (
+        <p role="alert" className="mt-1 text-xs text-error-fg">
+          {t("A descrição ficou grande demais — as últimas alterações não foram salvas.")}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -380,7 +380,9 @@ export function TabelaDoMotor<T>({
   const grade = [
     ...(comSelecao ? [`${larguraDaSelecao}px`] : []),
     ...(comAlca ? [`${LARGURA_DO_ARRASTE}px`] : []),
-    ...colunas.map((c) => `${larguraDe(c)}px`),
+    // Sobrando espaço (tela larga, zoom menor), as colunas crescem juntas, na proporção da largura
+    // de cada uma — a tabela ocupa a página inteira, como no Notion.
+    ...colunas.map((c) => `minmax(${larguraDe(c)}px, ${larguraDe(c)}fr)`),
     ...(comAcoes || comFim ? [`${comAcoes ? LARGURA_DAS_ACOES : LARGURA_DO_FIM}px`] : []),
   ].join(" ");
   const larguraTotal =

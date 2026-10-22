@@ -93,6 +93,8 @@ import {
 import { AcoesEmMassa } from "./AcoesEmMassa";
 import { CelulaDePropriedade } from "./CelulaDePropriedade";
 import { EditorDeOpcoesDeStatus } from "./EditorDeOpcoesDeStatus";
+import { cn } from "@/lib/utils";
+import { textoDaDescricao } from "@/lib/tarefas/blocos";
 import { PainelDaTarefa } from "./PainelDaTarefa";
 import { ModelosDeTarefa } from "./ModelosDeTarefa";
 import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
@@ -487,18 +489,14 @@ export function TarefasMotorClient({
       largura: 280,
       padrao: false,
       celula: (tarefa) => (
-        <CelulaDeTexto
-          valor={tarefa.description ?? ""}
-          rotulo={t("Descrição da tarefa")}
-          vazioRotulo={t("Vazio")}
-          caixaGrande
-          permitirVazio
-          podeEditar={podeEditar}
-          aoSalvar={(texto) => {
-            const description = texto || null;
-            void editarTarefa(tarefa.id, { description }, { description });
-          }}
-        />
+        <span
+          className={cn(
+            "block truncate px-2 py-1.5 text-sm",
+            !tarefa.description && "text-text-subtle",
+          )}
+        >
+          {textoDaDescricao(tarefa.description) || t("Vazio")}
+        </span>
       ),
     },
     {
@@ -677,7 +675,7 @@ export function TarefasMotorClient({
   // A busca é só desta tela (não se salva na visualização): olha título e descrição.
   const termo = normalizarBusca(busca);
   const tarefasBuscadas = termo
-    ? tarefas.filter((x) => normalizarBusca(`${x.title} ${x.description ?? ""}`).includes(termo))
+    ? tarefas.filter((x) => normalizarBusca(`${x.title} ${textoDaDescricao(x.description)}`).includes(termo))
     : tarefas;
   // GARANTIA: a tarefa que a pessoa acabou de criar SEMPRE aparece. Normalmente ela já nasce
   // passando nos filtros; se por qualquer motivo não passar, ela fica à vista (e a tela avisa
@@ -953,7 +951,7 @@ export function TarefasMotorClient({
       className={
         contatoFixo
           ? "flex w-full min-w-0 flex-col gap-4"
-          : "mx-auto flex w-full max-w-[1400px] min-w-0 flex-col gap-4 p-4 sm:p-6"
+          : "mx-auto flex w-full max-w-none min-w-0 flex-col gap-4 p-4 sm:px-8 sm:py-6 2xl:px-12"
       }
     >
       <header className="flex flex-col gap-3">
@@ -1170,6 +1168,23 @@ export function TarefasMotorClient({
                   coluna.fixa || coluna.semOcultar ? undefined : () => alternarColuna(coluna.id)
                 }
                 aoLarguraPadrao={coluna.fixa ? undefined : () => larguraPadrao(coluna.id)}
+                ordenacao={
+                  camposDaBarra.some((c) => c.id === coluna.id)
+                    ? {
+                        atual:
+                          preferencias.ordenacao?.[0]?.campo === coluna.id
+                            ? preferencias.ordenacao[0]!.direcao
+                            : null,
+                        aoEscolher: (direcao) =>
+                          mudarConsulta({
+                            filtros: preferencias.filtros,
+                            ordenacao: direcao ? [{ campo: coluna.id, direcao }] : undefined,
+                            agrupar: preferencias.agrupar,
+                            agruparPor: preferencias.agruparPor,
+                          }),
+                      }
+                    : undefined
+                }
                 aoApagar={
                   propriedade && podeConfigurar
                     ? () => setApagarPropriedadeId(propriedade.id)
