@@ -36,12 +36,12 @@ import type { Periodo } from "@/lib/marketing/periodos";
 import { ArrowDown, ArrowUp, Archive, CaretDown, CaretRight, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
-const CAMPO =
+export const CAMPO =
   "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
-const BOTAO_ICONE =
+export const BOTAO_ICONE =
   "grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground";
 
-function Rotulo({ texto, children }: { texto: string; children: React.ReactNode }) {
+export function Rotulo({ texto, children }: { texto: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs text-muted-foreground">{texto}</span>
@@ -108,14 +108,14 @@ type AcoesDeItem = {
 };
 
 /** O texto do campo de valor a partir do número guardado, no formato do tipo. */
-function textoDoValor(valor: number | null, tipo: TipoDeMeta): string {
+export function textoDoValor(valor: number | null, tipo: TipoDeMeta): string {
   if (valor === null) return "";
   if (tipo === "moeda") return formatarMoeda(String(Math.round(valor * 100)));
   return String(valor).replace(".", ",");
 }
 
 /** Um campo de valor da meta: máscara de R$ para moeda, número simples nos outros tipos. */
-function CampoDeValor({
+export function CampoDeValor({
   tipo,
   texto,
   aoMudar,
@@ -629,7 +629,7 @@ function LinhaDeAcao({
  * em que semana do projeto cada ponta cai ("Semana 3 a 5"). Sem o domingo da semana 1 definido, a
  * primeira data escolhida vira o início do projeto.
  */
-function PeriodoDaAcao({
+export function PeriodoDaAcao({
   inicio,
   fim,
   config,

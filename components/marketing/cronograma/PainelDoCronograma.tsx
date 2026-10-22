@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 
 import css from "@/components/marketing/cronograma/Cronograma.module.css";
 import { chaveDoDia } from "@/lib/inicio/datas";
@@ -65,6 +72,23 @@ export interface RotulosDoCronograma {
 
 export type TemaDoCronograma = "claro" | "escuro";
 
+/** O que está aberto para edição no painel (uma meta, uma ação ou uma fase inteira). */
+export type SelecaoDoCronograma =
+  { tipo: "meta" | "acao"; id: string } | { tipo: "fase"; nome: string } | null;
+
+/**
+ * Só o editor passa isto: o painel ganha os botões "+ Nova meta / fase / ação" nos lugares onde
+ * elas aparecem, e meta, fase e ação passam a ser clicáveis (abrem as configurações ao lado).
+ */
+export interface EdicaoDoPainel {
+  selecao: SelecaoDoCronograma;
+  aoSelecionar: (s: SelecaoDoCronograma) => void;
+  aoNovaMeta: () => void;
+  aoNovaFase: () => void;
+  aoNovaAcao: (fase: string) => void;
+  rotulos: { novaMeta: string; novaFase: string; novaAcao: string; editar: string };
+}
+
 const PONTO_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
   feita: css.pontoFeita!,
   andamento: css.pontoAndamento!,
@@ -79,6 +103,24 @@ const ETIQUETA_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
   atrasada: css.etiquetaAtraso!,
   cancelada: "",
 };
+
+/** Lembra se o último gesto foi um arraste da janela (o clique que sobra dele não seleciona nada). */
+function useMarcaDeArraste() {
+  const ref = useRef(false);
+  return useMemo(
+    () => ({
+      marcar: (v: boolean) => {
+        ref.current = v;
+      },
+      consumir: () => {
+        const v = ref.current;
+        ref.current = false;
+        return v;
+      },
+    }),
+    [],
+  );
+}
 
 export function PainelDoCronograma({
   vista,
@@ -95,6 +137,7 @@ export function PainelDoCronograma({
   tag,
   janelaInicio = 1,
   aoMudarJanela,
+  edicao,
 }: {
   vista: "geral" | "semana";
   config: ConfigDoCronograma;
@@ -116,6 +159,7 @@ export function PainelDoCronograma({
   /** A primeira semana visível no cronograma geral (a janela anda para os dois lados). */
   janelaInicio?: number;
   aoMudarJanela?: (inicio: number) => void;
+  edicao?: EdicaoDoPainel;
 }) {
   const semanas = config.total_semanas;
   const visiveis = itens.filter((i) => !i.arquivado);
@@ -129,6 +173,8 @@ export function PainelDoCronograma({
   const estiloDaGrade = { "--semanas": semanas } as CSSProperties;
 
   const [arrastando, setArrastando] = useState(false);
+  // Depois de arrastar a janela de semanas, o clique que o navegador solta não é seleção.
+  const houveArraste = useMarcaDeArraste();
   const arraste = useRef<{ x: number; inicio: number; largura: number } | null>(null);
   const clamp = (n: number) => Math.min(maximoDaJanela, Math.max(1, n));
   const aoApertar = (e: PointerEvent<HTMLDivElement>) => {
@@ -136,6 +182,7 @@ export function PainelDoCronograma({
     if (!aoMudarJanela || e.button !== 0 || e.pointerType === "touch") return;
     const trilho = e.currentTarget.querySelector<HTMLElement>("[data-trilho]");
     const largura = (trilho?.getBoundingClientRect().width ?? 600) / semanas;
+    houveArraste.marcar(false);
     arraste.current = { x: e.clientX, inicio: primeira, largura: Math.max(20, largura) };
   };
   const aoMover = (e: PointerEvent<HTMLDivElement>) => {
@@ -144,6 +191,7 @@ export function PainelDoCronograma({
     const dx = e.clientX - a.x;
     if (!arrastando && Math.abs(dx) < 6) return;
     if (!arrastando) {
+      houveArraste.marcar(true);
       setArrastando(true);
       e.currentTarget.setPointerCapture(e.pointerId);
     }
@@ -224,6 +272,38 @@ export function PainelDoCronograma({
     );
   };
 
+  /** As propriedades de um item clicável no modo de edição (vazio fora dele). */
+  const editavel = (selecao: Exclude<SelecaoDoCronograma, null>) => {
+    if (!edicao) return {};
+    const atual = edicao.selecao;
+    const ativo =
+      atual !== null &&
+      atual.tipo === selecao.tipo &&
+      ("id" in atual && "id" in selecao
+        ? atual.id === selecao.id
+        : "nome" in atual && "nome" in selecao && atual.nome === selecao.nome);
+    const abrir = () => {
+      if (houveArraste.consumir()) return;
+      edicao.aoSelecionar(selecao);
+    };
+    return {
+      role: "button" as const,
+      tabIndex: 0,
+      "aria-label": edicao.rotulos.editar,
+      "aria-pressed": ativo,
+      "data-editavel": "",
+      onClick: abrir,
+      onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          abrir();
+        }
+      },
+      className: `${css.editavel} ${ativo ? css.selecionado : ""}`,
+    };
+  };
+
   if (vista === "geral") {
     return (
       <div
@@ -237,7 +317,7 @@ export function PainelDoCronograma({
 
         <section className={css.painel} aria-label={rotulos.metas}>
           <h3 className={css.secao}>{rotulos.metas}</h3>
-          {metas.length === 0 ? (
+          {metas.length === 0 && !edicao ? (
             <p className={css.vazio}>{rotulos.nenhumaMeta}</p>
           ) : (
             <div className={css.metas}>
@@ -245,8 +325,10 @@ export function PainelDoCronograma({
                 const leitura = leituraDaMeta(m);
                 const p = leitura?.barra ?? null;
                 const ruim = leitura?.bom === false;
+                const ed = editavel({ tipo: "meta", id: m.id });
+                const { className: classeEd, ...restoEd } = ed as { className?: string };
                 return (
-                  <div key={m.id} className={css.meta}>
+                  <div key={m.id} className={`${css.meta} ${classeEd ?? ""}`} {...restoEd}>
                     <p className={css.metaTitulo}>{m.titulo}</p>
                     <div className={css.metaValor}>
                       {formatarValorDaMeta(m.valor_alvo, m.tipo, m.unidade, tag)}
@@ -302,31 +384,59 @@ export function PainelDoCronograma({
                   </div>
                 );
               })}
+              {edicao ? (
+                <button
+                  type="button"
+                  data-sem-imagem=""
+                  className={css.novo}
+                  onClick={edicao.aoNovaMeta}
+                >
+                  + {edicao.rotulos.novaMeta}
+                </button>
+              ) : null}
             </div>
           )}
         </section>
 
-        {fases.length > 0 ? (
+        {fases.length > 0 || edicao ? (
           <section className={css.painel} aria-label={rotulos.fase}>
             <ol className={css.fases}>
-              {fases.map((f, k) => (
-                <li
-                  key={f.nome}
-                  className={[
-                    css.fase,
-                    f.situacao === "ativa" ? css.faseAtiva : "",
-                    f.situacao === "feita" ? css.faseFeita : "",
-                  ].join(" ")}
-                >
-                  <span className={css.faseNumero}>{String(k + 1).padStart(2, "0")}</span>
-                  <span className={css.faseNome}>{f.nome}</span>
-                  <span className={css.faseSemanas}>
-                    {rotulos.semanaCurta}
-                    {f.inicio}
-                    {f.fim !== f.inicio ? `–${f.fim}` : ""}
-                  </span>
+              {fases.map((f, k) => {
+                const ed = editavel({ tipo: "fase", nome: f.nome }) as { className?: string };
+                const { className: classeEd, ...restoEd } = ed;
+                return (
+                  <li
+                    key={f.nome}
+                    {...restoEd}
+                    className={[
+                      css.fase,
+                      f.situacao === "ativa" ? css.faseAtiva : "",
+                      f.situacao === "feita" ? css.faseFeita : "",
+                      classeEd ?? "",
+                    ].join(" ")}
+                  >
+                    <span className={css.faseNumero}>{String(k + 1).padStart(2, "0")}</span>
+                    <span className={css.faseNome}>{f.nome}</span>
+                    <span className={css.faseSemanas}>
+                      {rotulos.semanaCurta}
+                      {f.inicio}
+                      {f.fim !== f.inicio ? `–${f.fim}` : ""}
+                    </span>
+                  </li>
+                );
+              })}
+              {edicao ? (
+                <li className={css.fase} style={{ background: "transparent", clipPath: "none" }}>
+                  <button
+                    type="button"
+                    data-sem-imagem=""
+                    className={css.novo}
+                    onClick={edicao.aoNovaFase}
+                  >
+                    + {edicao.rotulos.novaFase}
+                  </button>
                 </li>
-              ))}
+              ) : null}
             </ol>
           </section>
         ) : null}
@@ -334,7 +444,19 @@ export function PainelDoCronograma({
         <section className={`${css.painel} ${css.rolagem}`} aria-label={rotulos.caminho}>
           <h3 className={css.secao}>{rotulos.caminho}</h3>
           {visiveis.length === 0 ? (
-            <p className={css.vazio}>{rotulos.nenhumaAcao}</p>
+            <>
+              <p className={css.vazio}>{rotulos.nenhumaAcao}</p>
+              {edicao ? (
+                <button
+                  type="button"
+                  data-sem-imagem=""
+                  className={css.novo}
+                  onClick={() => edicao.aoNovaAcao("")}
+                >
+                  + {edicao.rotulos.novaAcao}
+                </button>
+              ) : null}
+            </>
           ) : (
             <>
               <div className={css.janela} data-sem-imagem="">
@@ -406,31 +528,69 @@ export function PainelDoCronograma({
                       {g.nome ? (
                         <div className={css.linhaFase}>
                           <div className={css.faseTitulo}>
-                            {g.nome}
+                            {edicao ? (
+                              <span
+                                {...(editavel({ tipo: "fase", nome: g.nome }) as Record<
+                                  string,
+                                  never
+                                >)}
+                                style={{ borderRadius: 8, padding: "2px 6px" }}
+                              >
+                                {g.nome}
+                              </span>
+                            ) : (
+                              g.nome
+                            )}
                             <span className={css.faseContagem}>
                               {feitasDaFase}/{g.itens.length}
                             </span>
+                            {edicao ? (
+                              <button
+                                type="button"
+                                data-sem-imagem=""
+                                className={`${css.novo} ${css.novoPequeno}`}
+                                onClick={() => edicao.aoNovaAcao(g.nome)}
+                              >
+                                + {edicao.rotulos.novaAcao}
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       ) : null}
-                      {g.itens.map((i) => (
-                        <div key={i.id} className={css.linha}>
-                          <div className={css.acao}>
-                            {i.acao}
-                            {i.notas ? <div className={css.acaoNotas}>{i.notas}</div> : null}
+                      {g.itens.map((i) => {
+                        const ed = editavel({ tipo: "acao", id: i.id }) as { className?: string };
+                        const { className: classeEd, ...restoEd } = ed;
+                        return (
+                          <div key={i.id} {...restoEd} className={`${css.linha} ${classeEd ?? ""}`}>
+                            <div className={css.acao}>
+                              {i.acao}
+                              {i.notas ? <div className={css.acaoNotas}>{i.notas}</div> : null}
+                            </div>
+                            <div className={css.trilho} data-trilho="">
+                              {barra(
+                                i.semana_inicio,
+                                i.semana_fim,
+                                classeDaBarra(i.status, i.destaque) ?? "",
+                              )}
+                            </div>
                           </div>
-                          <div className={css.trilho} data-trilho="">
-                            {barra(
-                              i.semana_inicio,
-                              i.semana_fim,
-                              classeDaBarra(i.status, i.destaque) ?? "",
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
+                {edicao ? (
+                  <div style={{ padding: "14px 0 4px" }}>
+                    <button
+                      type="button"
+                      data-sem-imagem=""
+                      className={css.novo}
+                      onClick={() => edicao.aoNovaAcao("")}
+                    >
+                      + {edicao.rotulos.novaAcao}
+                    </button>
+                  </div>
+                ) : null}
               </div>
               <div className={css.legenda}>
                 <span className={css.legendaItem}>

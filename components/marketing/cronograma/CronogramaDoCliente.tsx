@@ -4,24 +4,33 @@ import { useMemo, useRef, useState } from "react";
 
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { EdicaoDaSemana } from "@/components/marketing/cronograma/EdicaoDaSemana";
-import { EdicaoDoCronograma } from "@/components/marketing/cronograma/EdicaoDoCronograma";
+import {
+  GavetaDoCronograma,
+  type VistaDaGaveta,
+} from "@/components/marketing/cronograma/GavetaDoCronograma";
 import { HistoricoDaSemana } from "@/components/marketing/cronograma/HistoricoDaSemana";
 import { TarefasAdiadas } from "@/components/marketing/cronograma/TarefasAdiadas";
-import { PainelDoCronograma } from "@/components/marketing/cronograma/PainelDoCronograma";
+import {
+  PainelDoCronograma,
+  type SelecaoDoCronograma,
+} from "@/components/marketing/cronograma/PainelDoCronograma";
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { useBaixarImagem, useCronograma } from "@/hooks/marketing/useCronograma";
+import { useEdicaoDoCronograma } from "@/hooks/marketing/useEdicaoDoCronograma";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useVerComoCliente } from "@/hooks/marketing/useVerComoCliente";
 import { somarDias } from "@/lib/inicio/datas";
 import {
   CONFIG_PADRAO,
+  type DadosDaMeta,
   domingoDeHoje,
   inicioDaJanela,
   numeroDaSemana,
   periodoDaSemana,
 } from "@/lib/marketing/cronograma";
+import { nomeNovoDeFase } from "@/lib/marketing/cronograma-ordem";
 import { CalendarBlank, CaretDown, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -45,7 +54,10 @@ export function CronogramaDoCliente() {
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
 
+  const [gaveta, setGaveta] = useState<VistaDaGaveta | null>(null);
+
   const c = useCronograma(inicio, aba === "historico");
+  const acoes = useEdicaoDoCronograma(c, c.dados?.itens ?? [], c.dados?.metas ?? []);
   const empresa = useActiveOrg()?.name ?? "";
   const rotulos = useMemo(() => rotulosDoCronograma(t, empresa), [t, empresa]);
 
@@ -68,6 +80,63 @@ export function CronogramaDoCliente() {
   const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, cfg.total_semanas);
   const vista: "geral" | "semana" = aba === "semana" ? "semana" : "geral";
 
+  const editandoGeral = podeEditar && editando && aba === "geral";
+  const selecao: SelecaoDoCronograma =
+    gaveta?.tipo === "meta" || gaveta?.tipo === "acao"
+      ? { tipo: gaveta.tipo, id: gaveta.id }
+      : gaveta?.tipo === "fase"
+        ? { tipo: "fase", nome: gaveta.nome }
+        : null;
+
+  // Criar já cria de verdade (com o Ctrl+Z para desfazer) e abre as configurações do novo item.
+  const novaMeta = async () => {
+    const dados: DadosDaMeta = {
+      titulo: t("Nova meta"),
+      tipo: "numero",
+      unidade: "",
+      valor_alvo: null,
+      valor_atual: null,
+      descricao: "",
+      fonte: "manual",
+      periodo: "mes",
+      periodo_de: null,
+      periodo_ate: null,
+      calculo: "soma",
+    };
+    const m = await acoes.criarMeta(dados);
+    if (m) setGaveta({ tipo: "meta", id: m.id });
+  };
+  const novaAcao = async (fase: string) => {
+    const daFase = itens.filter((i) => !i.arquivado && i.fase.trim() === fase);
+    const sugerida = daFase.length ? Math.max(...daFase.map((i) => i.semana_fim)) : 1;
+    const i = await acoes.criarItem({
+      acao: t("Nova ação"),
+      fase,
+      semana_inicio: sugerida,
+      semana_fim: sugerida,
+      status: "planejado",
+      destaque: false,
+      notas: "",
+      arquivado: false,
+    });
+    if (i) setGaveta({ tipo: "acao", id: i.id });
+  };
+  // Uma fase existe pelas ações que a têm: "nova fase" nasce com a sua primeira ação.
+  const novaFase = async () => {
+    const nome = nomeNovoDeFase(itens, t("Nova fase"));
+    const i = await acoes.criarItem({
+      acao: t("Nova ação"),
+      fase: nome,
+      semana_inicio: 1,
+      semana_fim: 1,
+      status: "planejado",
+      destaque: false,
+      notas: "",
+      arquivado: false,
+    });
+    if (i) setGaveta({ tipo: "fase", nome });
+  };
+
   const abas: Array<[Aba, string]> = [
     ["geral", t("Cronograma geral")],
     ["semana", t("Tarefas da semana")],
@@ -80,7 +149,7 @@ export function CronogramaDoCliente() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn("flex flex-col gap-4", editandoGeral && gaveta && "lg:pr-[27.5rem]")}>
       <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         {/* Celular: uma visão por vez; toca e abre a lista com as outras. */}
         <Popover open={menuDeVisoes} onOpenChange={setMenuDeVisoes}>
@@ -94,7 +163,10 @@ export function CronogramaDoCliente() {
               <CaretDown size={14} weight="bold" aria-hidden />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="grid w-[var(--radix-popover-trigger-width)] gap-1 p-1.5 sm:hidden">
+          <PopoverContent
+            align="start"
+            className="grid w-[var(--radix-popover-trigger-width)] gap-1 p-1.5 sm:hidden"
+          >
             {abas.map(([valor, rotulo]) => (
               <button
                 key={valor}
@@ -117,14 +189,17 @@ export function CronogramaDoCliente() {
         <div
           role="group"
           aria-label={t("Visão do cronograma")}
-          className="hidden sm:inline-flex sm:w-auto sm:max-w-full sm:overflow-x-auto rounded-xl bg-secondary p-0.5"
+          className="hidden rounded-xl bg-secondary p-0.5 sm:inline-flex sm:w-auto sm:max-w-full sm:overflow-x-auto"
         >
           {abas.map(([valor, rotulo]) => (
             <button
               key={valor}
               type="button"
               aria-pressed={aba === valor}
-              onClick={() => setAba(valor)}
+              onClick={() => {
+                setAba(valor);
+                setGaveta(null);
+              }}
               className={cn(
                 "h-10 shrink-0 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors sm:h-8",
                 aba === valor
@@ -200,7 +275,10 @@ export function CronogramaDoCliente() {
               <button
                 type="button"
                 aria-pressed={editando}
-                onClick={() => setEditando((e) => !e)}
+                onClick={() => {
+                  setEditando((e) => !e);
+                  setGaveta(null);
+                }}
                 className={cn(
                   "h-9 rounded-xl px-4 text-sm font-medium whitespace-nowrap",
                   editando ? "bg-primary text-primary-foreground" : "border hover:bg-secondary",
@@ -226,6 +304,28 @@ export function CronogramaDoCliente() {
         </div>
       ) : null}
 
+      {editandoGeral ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+          <span className="mr-auto text-muted-foreground">
+            {t("Clique numa meta, fase ou ação para editar · use + para criar · Ctrl+Z desfaz")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setGaveta({ tipo: "config" })}
+            className="h-9 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+          >
+            {t("Configurar")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setGaveta({ tipo: "arquivadas" })}
+            className="h-9 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+          >
+            {t("Arquivadas")} ({itens.filter((i) => i.arquivado).length})
+          </button>
+        </div>
+      ) : null}
+
       {aba === "historico" ? (
         <HistoricoDaSemana eventos={c.historico} />
       ) : aba === "adiadas" ? (
@@ -245,22 +345,45 @@ export function CronogramaDoCliente() {
             tag={tag}
             janelaInicio={janelaInicio}
             aoMudarJanela={setJanela}
+            edicao={
+              editandoGeral
+                ? {
+                    selecao,
+                    aoSelecionar: (s) =>
+                      setGaveta(
+                        s === null
+                          ? null
+                          : s.tipo === "fase"
+                            ? { tipo: "fase", nome: s.nome }
+                            : { tipo: s.tipo, id: s.id },
+                      ),
+                    aoNovaMeta: () => void novaMeta(),
+                    aoNovaFase: () => void novaFase(),
+                    aoNovaAcao: (fase) => void novaAcao(fase),
+                    rotulos: {
+                      novaMeta: t("Nova meta"),
+                      novaFase: t("Nova fase"),
+                      novaAcao: t("Nova ação"),
+                      editar: t("Clique para editar"),
+                    },
+                  }
+                : undefined
+            }
           />
         </div>
       )}
 
-      {podeEditar && editando && aba === "geral" ? (
-        <EdicaoDoCronograma
-          config={cfg}
+      {editandoGeral && gaveta ? (
+        <GavetaDoCronograma
+          vista={gaveta}
           itens={itens}
           metas={metas}
+          config={cfg}
           aoSalvarConfig={c.salvarConfig}
-          aoCriarItem={c.criarItem}
-          aoEditarItem={c.editarItem}
-          aoApagarItem={c.apagarItem}
-          aoCriarMeta={c.criarMeta}
-          aoEditarMeta={c.editarMeta}
-          aoApagarMeta={c.apagarMeta}
+          acoes={acoes}
+          aoMudarVista={setGaveta}
+          aoNovaAcao={(fase) => void novaAcao(fase)}
+          aoFechar={() => setGaveta(null)}
         />
       ) : null}
 
