@@ -9,6 +9,7 @@ import {
   COLUNAS_DA_CAMPANHA,
   campanhaDaLinha,
   edicaoDeCampanhaSchema,
+  periodoDasMetas,
 } from "@/lib/marketing/campanhas";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 import { contaDoMetaPermitida } from "@/lib/marketing/conta-do-meta-servidor";
@@ -39,9 +40,25 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
       { requestId: a.requestId },
     );
   }
+  // O período das metas sai das datas: mexeu em fim ou contínua, ele acompanha.
+  const patch: Record<string, unknown> = { ...corpo.data };
+  if ("continuous" in corpo.data || "end_date" in corpo.data) {
+    const { data: atual } = await a.supabase
+      .from("demand_campaigns")
+      .select("continuous, end_date")
+      .eq("id", id)
+      .eq("organization_id", a.orgId)
+      .maybeSingle();
+    if (atual) {
+      patch.goal_period = periodoDasMetas({
+        continuous: corpo.data.continuous ?? (atual.continuous as boolean),
+        end_date: "end_date" in corpo.data ? (corpo.data.end_date ?? null) : (atual.end_date as string | null),
+      });
+    }
+  }
   const { data, error } = await a.supabase
     .from("demand_campaigns")
-    .update(corpo.data)
+    .update(patch)
     .eq("id", id)
     .eq("organization_id", a.orgId)
     .select(COLUNAS_DA_CAMPANHA)

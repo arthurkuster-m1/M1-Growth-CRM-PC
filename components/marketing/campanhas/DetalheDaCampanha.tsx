@@ -4,11 +4,13 @@ import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
 import {
   COR_DA_NOTA,
+  COR_DO_CANAL,
+  COR_DO_STATUS,
   rotuloDaNota,
   rotuloDoCanal,
   rotuloDoPeriodo,
@@ -23,7 +25,10 @@ import { AbordagensDaCampanha } from "@/components/marketing/campanhas/Abordagen
 import { CriativosDaCampanha } from "@/components/marketing/campanhas/CriativosDaCampanha";
 import { DiaADiaDaCampanha } from "@/components/marketing/campanhas/DiaADiaDaCampanha";
 import { ResumoDaCampanha } from "@/components/marketing/campanhas/ResumoDaCampanha";
+import { EditorDeBlocos } from "@/components/editor/EditorDeBlocos";
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { useT } from "@/hooks/i18n/useT";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import {
@@ -48,6 +53,7 @@ import {
   STATUS_DA_CAMPANHA,
   TIPOS_DE_NOTA,
   investimentoLiquido,
+  periodoDasMetas,
   type CampanhaDeDemanda,
   type TipoDeNota,
 } from "@/lib/marketing/campanhas";
@@ -61,7 +67,14 @@ import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha"
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
 import { periodoPadraoDaCampanha } from "@/lib/marketing/periodo-da-campanha";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import { ArrowSquareOut, CaretDown, CaretRight, Plus, Trash, X } from "@/lib/ui/icons";
+import {
+  escreverBlocos,
+  LIMITE_DA_DESCRICAO,
+  lerBlocos,
+  type Bloco as BlocoDeTexto,
+} from "@/lib/tarefas/blocos";
+import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { CaretDown, CaretRight, Plus, Trash, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
@@ -117,6 +130,7 @@ function TextoGravavel({
   rotulo,
   longo,
   max,
+  className,
 }: {
   valor: string;
   aoGravar: (v: string) => void;
@@ -124,6 +138,7 @@ function TextoGravavel({
   rotulo: string;
   longo?: boolean;
   max: number;
+  className?: string;
 }) {
   const [v, setV] = useState(valor);
   useEffect(() => setV(valor), [valor]);
@@ -138,7 +153,7 @@ function TextoGravavel({
   return longo ? (
     <textarea rows={3} className={AREA} {...comum} />
   ) : (
-    <input className={CAMPO} {...comum} />
+    <input className={cn(CAMPO, className)} {...comum} />
   );
 }
 
@@ -150,6 +165,7 @@ function NumeroGravavel({
   rotulo,
   inteiro,
   prefixo,
+  className,
 }: {
   valor: number | null;
   aoGravar: (n: number | null) => void;
@@ -157,6 +173,7 @@ function NumeroGravavel({
   rotulo: string;
   inteiro?: boolean;
   prefixo?: string;
+  className?: string;
 }) {
   const inicial = valor === null ? "" : String(valor).replace(".", ",");
   const [v, setV] = useState(inicial);
@@ -182,8 +199,76 @@ function NumeroGravavel({
           if (n === null || n < 0) return setV(inicial);
           aoGravar(inteiro ? Math.round(n) : n);
         }}
-        className={cn(CAMPO, prefixo && "pl-10")}
+        className={cn(CAMPO, prefixo && "pl-10", className)}
       />
+    </div>
+  );
+}
+
+/** As NOTAS da campanha: o mesmo editor de blocos das tarefas; grava sozinho ao parar de digitar. */
+function NotasDaCampanha({
+  valor,
+  podeEditar,
+  aoSalvar,
+}: {
+  valor: string;
+  podeEditar: boolean;
+  aoSalvar: (texto: string) => void;
+}) {
+  const t = useT();
+  const [blocos, setBlocos] = useState<BlocoDeTexto[]>(() => lerBlocos(valor));
+  const [grandeDemais, setGrandeDemais] = useState(false);
+  const pendente = useRef<string | undefined>(undefined);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const salvar = useRef(aoSalvar);
+  useEffect(() => {
+    salvar.current = aoSalvar;
+  });
+  const gravar = () => {
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = null;
+    if (pendente.current === undefined) return;
+    const texto = pendente.current;
+    pendente.current = undefined;
+    salvar.current(texto);
+  };
+  // Sair da página não perde o que ainda não foi gravado.
+  useEffect(() => () => gravar(), []);
+  const mudar = (novos: BlocoDeTexto[]) => {
+    setBlocos(novos);
+    const texto = escreverBlocos(novos) ?? "";
+    if (texto.length > LIMITE_DA_DESCRICAO) {
+      setGrandeDemais(true);
+      return;
+    }
+    setGrandeDemais(false);
+    pendente.current = texto;
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(gravar, 700);
+  };
+  return (
+    <div onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && gravar()}>
+      <p className="mb-1 text-xs font-medium text-muted-foreground">{t("Notas")}</p>
+      <div className="rounded-xl border bg-background px-2 py-2 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+        <EditorDeBlocos blocos={blocos} aoMudar={mudar} podeEditar={podeEditar} />
+      </div>
+      {grandeDemais ? (
+        <p role="alert" className="mt-1 text-xs text-error-fg">
+          {t("As notas ficaram grandes demais — as últimas alterações não foram salvas.")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Um título de seção pequeno dentro do cartão do cadastro. */
+function SecaoPequena({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-2 border-t pt-3">
+      <h3 className="text-[11px] font-semibold tracking-wider text-text-subtle uppercase">
+        {titulo}
+      </h3>
+      {children}
     </div>
   );
 }
@@ -226,6 +311,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   /** Grava e, no mesmo gesto, recalcula as metas que dependem do que mudou. */
   const gravaComMetas = (patch: EdicaoDeCampanha, mudou: CampoQueMudou) => {
     const m = { ...c, ...patch };
+    m.goal_period = periodoDasMetas(m);
     const liq = m.budget === null ? null : investimentoLiquido(m.budget, m.tax_pct);
     const relacionadas = metasRelacionadas(
       {
@@ -412,8 +498,8 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
       {aba === "cadastro" ? (
         <>
-          <Bloco titulo={t("Cadastro")}>
-            <Rotulo texto={t("Nome da campanha")}>
+          <section className="grid min-w-0 gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 lg:gap-6">
               <TextoGravavel
                 valor={c.name}
                 aoGravar={(name) =>
@@ -422,305 +508,270 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                 desabilitado={bloqueado}
                 rotulo={t("Nome da campanha")}
                 max={160}
+                className="h-10 text-base font-semibold"
               />
-            </Rotulo>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Rotulo texto={t("Canal")}>
-                <SelectDoApp
-                  className={CAMPO}
-                  disabled={bloqueado}
-                  value={c.channel}
-                  onChange={(e) =>
-                    grava({ channel: e.target.value as CampanhaDeDemanda["channel"] })
-                  }
-                >
-                  {CANAIS_DA_CAMPANHA.map((x) => (
-                    <option key={x} value={x}>
-                      {rotuloDoCanal(t, x)}
-                    </option>
-                  ))}
-                </SelectDoApp>
-              </Rotulo>
-              <Rotulo texto={t("Status")}>
-                <SelectDoApp
-                  className={CAMPO}
-                  disabled={bloqueado}
-                  value={c.status}
-                  onChange={(e) => grava({ status: e.target.value as CampanhaDeDemanda["status"] })}
-                >
-                  {STATUS_DA_CAMPANHA.map((x) => (
-                    <option key={x} value={x}>
-                      {rotuloDoStatus(t, x)}
-                    </option>
-                  ))}
-                </SelectDoApp>
-              </Rotulo>
-            </div>
-            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
-              <Rotulo texto={t("Início")}>
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 <SeletorDeData
                   valor={c.start_date ?? ""}
                   rotulo={t("Início")}
+                  placeholder={t("Início")}
+                  className="h-9 w-[8.75rem] px-2.5 text-sm"
                   aoMudar={(d) => !bloqueado && grava({ start_date: d || null })}
                 />
-              </Rotulo>
-              <Rotulo texto={t("Fim")}>
                 {c.continuous ? (
-                  <p className="flex h-10 items-center text-sm text-muted-foreground">
-                    {t("Contínua (sem data final)")}
-                  </p>
+                  <span className="inline-flex h-9 items-center rounded-xl border border-dashed px-3 text-sm text-muted-foreground">
+                    {t("Sem fim")}
+                  </span>
                 ) : (
                   <SeletorDeData
                     valor={c.end_date ?? ""}
                     rotulo={t("Fim")}
+                    placeholder={t("Fim")}
+                    className="h-9 w-[8.75rem] px-2.5 text-sm"
                     aoMudar={(d) => !bloqueado && grava({ end_date: d || null })}
                   />
                 )}
-              </Rotulo>
-              <label className="flex h-10 items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  disabled={bloqueado}
-                  checked={c.continuous}
-                  onChange={(e) => grava({ continuous: e.target.checked })}
-                />
-                {t("Contínua")}
-              </label>
-            </div>
-            <Rotulo texto={t("Descrição")}>
-              <TextoGravavel
-                valor={c.description}
-                aoGravar={(description) => grava({ description })}
-                desabilitado={bloqueado}
-                rotulo={t("Descrição")}
-                longo
-                max={4000}
-              />
-            </Rotulo>
-            <Rotulo texto={t("Link da planilha (opcional)")}>
-              <div className="flex gap-2">
-                <div className="min-w-0 flex-1">
-                  <TextoGravavel
-                    valor={c.sheet_url}
-                    aoGravar={(sheet_url) => grava({ sheet_url })}
-                    desabilitado={bloqueado}
-                    rotulo={t("Link da planilha (opcional)")}
-                    max={500}
+                <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 text-sm">
+                  <CaixaRedonda
+                    disabled={bloqueado}
+                    checked={c.continuous}
+                    onChange={(e) => grava({ continuous: e.target.checked })}
                   />
-                </div>
-                {/^https?:\/\//i.test(c.sheet_url) ? (
-                  <a
-                    href={c.sheet_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
-                  >
-                    <ArrowSquareOut size={16} aria-hidden />
-                    {t("Abrir")}
-                  </a>
-                ) : null}
-              </div>
-            </Rotulo>
-          </Bloco>
-
-          <Bloco titulo={t("Investimento")} tom="emerald">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Rotulo texto={t("Investimento bruto")}>
-                <NumeroGravavel
-                  valor={c.budget}
-                  aoGravar={(budget) => gravaComMetas({ budget }, "investimento")}
-                  desabilitado={bloqueado}
-                  rotulo={t("Investimento bruto")}
-                  prefixo="R$"
-                />
-              </Rotulo>
-              <Rotulo texto={t("Vale por")}>
-                <SelectDoApp
-                  className={CAMPO}
-                  disabled={bloqueado}
-                  value={c.budget_period}
-                  onChange={(e) =>
-                    gravaComMetas(
-                      { budget_period: e.target.value as CampanhaDeDemanda["budget_period"] },
-                      "investimento",
-                    )
-                  }
+                  {t("Contínua")}
+                </label>
+                <SeletorDeOpcao
+                  opcoes={STATUS_DA_CAMPANHA.map((x) => ({
+                    id: x,
+                    rotulo: rotuloDoStatus(t, x),
+                    cor: COR_DO_STATUS[x] as CorDaOpcao,
+                  }))}
+                  valorId={c.status}
+                  podeEditar={podeEditar}
+                  rotulo={t("Status")}
+                  aoEscolher={(id) => grava({ status: id as CampanhaDeDemanda["status"] })}
                 >
-                  {PERIODOS_DO_ORCAMENTO.map((p) => (
-                    <option key={p} value={p}>
-                      {rotuloDoPeriodo(t, p)}
-                    </option>
-                  ))}
-                </SelectDoApp>
-              </Rotulo>
-              <Rotulo texto={t("Imposto sobre o investimento (%)")}>
-                <NumeroGravavel
-                  valor={c.tax_pct}
-                  aoGravar={(n) =>
-                    gravaComMetas({ tax_pct: Math.min(100, n ?? 0) }, "investimento")
-                  }
-                  desabilitado={bloqueado}
-                  rotulo={t("Imposto sobre o investimento (%)")}
-                  prefixo="%"
-                />
-              </Rotulo>
+                  <Etiqueta ponto cor={COR_DO_STATUS[c.status]}>
+                    {rotuloDoStatus(t, c.status)}
+                  </Etiqueta>
+                </SeletorDeOpcao>
+                <SeletorDeOpcao
+                  opcoes={CANAIS_DA_CAMPANHA.map((x) => ({
+                    id: x,
+                    rotulo: rotuloDoCanal(t, x),
+                    cor: COR_DO_CANAL[x] as CorDaOpcao,
+                  }))}
+                  valorId={c.channel}
+                  podeEditar={podeEditar}
+                  rotulo={t("Tipo de campanha")}
+                  aoEscolher={(id) => grava({ channel: id as CampanhaDeDemanda["channel"] })}
+                >
+                  <Etiqueta cor={COR_DO_CANAL[c.channel]}>{rotuloDoCanal(t, c.channel)}</Etiqueta>
+                </SeletorDeOpcao>
+              </div>
             </div>
-            {c.budget !== null && c.budget > 0
-              ? (() => {
-                  const { dias, baseadoNoMes } = diasParaOrcamento(c);
-                  const linhas = equivalenciasDoOrcamento(
-                    c.budget,
-                    c.budget_period,
-                    dias,
-                    c.tax_pct,
-                  );
-                  const rotulos: Record<string, string> = {
-                    total: t("Total da campanha"),
-                    mensal: t("Por mês"),
-                    semanal: t("Por semana"),
-                    diario: t("Por dia"),
-                  };
-                  return (
-                    <div className="grid gap-2">
-                      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                        {linhas.map((l) => (
-                          <div
-                            key={l.periodo}
-                            className={cn(
-                              "rounded-xl border px-3 py-2",
-                              l.periodo === c.budget_period
-                                ? "border-emerald-500/60 bg-emerald-500/10"
-                                : "bg-secondary/40",
-                            )}
-                          >
-                            <p className="text-xs text-muted-foreground">
-                              {rotulos[l.periodo]}
-                              {l.periodo === c.budget_period ? ` · ${t("o que você digitou")}` : ""}
-                            </p>
-                            <p className="text-base font-semibold tabular-nums">
-                              <NumeroQueCabe>{moedaDoNumero(l.bruto)}</NumeroQueCabe>
-                            </p>
-                            <p className="text-xs text-muted-foreground tabular-nums">
-                              <NumeroQueCabe abreviar={false}>
-                                {`${t("líquido")} ${moedaDoNumero(l.liquido)}`}
-                              </NumeroQueCabe>
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {baseadoNoMes
-                          ? t("Campanha contínua (ou sem datas): o total é o do mês, de 30 dias.")
-                          : `${t("Calculado com")} ${dias} ${dias === 1 ? t("dia") : t("dias")} ${t("de campanha")}.`}
-                        {c.tax_pct > 0
-                          ? ` ${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%.`
-                          : ""}
-                      </p>
-                    </div>
-                  );
-                })()
-              : null}
-          </Bloco>
 
-          <Bloco titulo={t("Produtos e ticket médio esperado")} tom="violet">
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "Todo lead que entra nesta campanha já gera uma venda de INTERESSE com estes produtos e este ticket — o LTV previsto. Na hora de fechar, o valor real é informado.",
-              )}
-            </p>
-            <Rotulo texto={t("Produtos que a campanha vende")}>
-              <div className="grid gap-2">
-                {idsDosProdutos.length > 0 ? (
-                  <ul className="flex flex-wrap gap-2">
-                    {idsDosProdutos.map((pid) => {
-                      const p = produtos.find((x) => x.id === pid);
-                      return (
-                        <li
-                          key={pid}
-                          className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-sm"
-                        >
-                          <span>{p?.nome ?? t("Produto removido")}</span>
-                          {p && p.valor > 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              {moedaDoNumero(p.valor)}
-                            </span>
-                          ) : null}
-                          {podeEditar ? (
-                            <button
-                              type="button"
-                              aria-label={`${t("Tirar")} ${p?.nome ?? ""}`}
-                              onClick={() => gravaProdutos(idsDosProdutos.filter((x) => x !== pid))}
-                              className="grid h-5 w-5 place-items-center rounded-md text-muted-foreground hover:bg-card hover:text-error-fg"
-                            >
-                              <X size={12} weight="bold" aria-hidden />
-                            </button>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-                {podeEditar ? (
+            <SecaoPequena titulo={t("Investimento")}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Rotulo texto={t("Investimento bruto")}>
+                  <NumeroGravavel
+                    valor={c.budget}
+                    aoGravar={(budget) => gravaComMetas({ budget }, "investimento")}
+                    desabilitado={bloqueado}
+                    rotulo={t("Investimento bruto")}
+                    prefixo="R$"
+                    className="h-9"
+                  />
+                </Rotulo>
+                <Rotulo texto={t("Vale por")}>
                   <SelectDoApp
-                    className={CAMPO}
-                    value=""
-                    aria-label={t("Adicionar produto")}
+                    className={cn(CAMPO, "h-9")}
+                    disabled={bloqueado}
+                    value={c.budget_period}
                     onChange={(e) =>
-                      e.target.value && gravaProdutos([...idsDosProdutos, e.target.value])
+                      gravaComMetas(
+                        { budget_period: e.target.value as CampanhaDeDemanda["budget_period"] },
+                        "investimento",
+                      )
                     }
                   >
-                    <option value="">
-                      {idsDosProdutos.length === 0
-                        ? t("Escolha um produto cadastrado")
-                        : t("Adicionar outro produto")}
-                    </option>
-                    {produtos
-                      .filter((p) => !idsDosProdutos.includes(p.id))
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}
-                        </option>
-                      ))}
+                    {PERIODOS_DO_ORCAMENTO.map((p) => (
+                      <option key={p} value={p}>
+                        {rotuloDoPeriodo(t, p)}
+                      </option>
+                    ))}
                   </SelectDoApp>
-                ) : null}
+                </Rotulo>
+                <Rotulo texto={t("Imposto sobre o investimento (%)")}>
+                  <NumeroGravavel
+                    valor={c.tax_pct}
+                    aoGravar={(n) =>
+                      gravaComMetas({ tax_pct: Math.min(100, n ?? 0) }, "investimento")
+                    }
+                    desabilitado={bloqueado}
+                    rotulo={t("Imposto sobre o investimento (%)")}
+                    prefixo="%"
+                    className="h-9"
+                  />
+                </Rotulo>
               </div>
-            </Rotulo>
-            <Rotulo texto={t("Ticket médio esperado por lead")}>
-              <NumeroGravavel
-                valor={c.ticket_cents === null ? null : c.ticket_cents / 100}
-                aoGravar={(n) =>
-                  gravaComMetas({ ticket_cents: n === null ? null : Math.round(n * 100) }, "ticket")
-                }
-                desabilitado={bloqueado}
-                rotulo={t("Ticket médio esperado por lead")}
-                prefixo="R$"
+              {c.budget !== null && c.budget > 0
+                ? (() => {
+                    const { dias, baseadoNoMes } = diasParaOrcamento(c);
+                    const linhas = equivalenciasDoOrcamento(
+                      c.budget,
+                      c.budget_period,
+                      dias,
+                      c.tax_pct,
+                    );
+                    const rotulos: Record<string, string> = {
+                      total: t("Total da campanha"),
+                      mensal: t("Por mês"),
+                      semanal: t("Por semana"),
+                      diario: t("Por dia"),
+                    };
+                    return (
+                      <div className="grid gap-2">
+                        <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+                          {linhas.map((l) => (
+                            <div
+                              key={l.periodo}
+                              className={cn(
+                                "rounded-lg border px-2.5 py-1.5",
+                                l.periodo === c.budget_period
+                                  ? "border-emerald-500/60 bg-emerald-500/10"
+                                  : "bg-secondary/40",
+                              )}
+                            >
+                              <p className="text-xs text-muted-foreground">
+                                {rotulos[l.periodo]}
+                                {l.periodo === c.budget_period
+                                  ? ` · ${t("o que você digitou")}`
+                                  : ""}
+                              </p>
+                              <p className="text-sm font-semibold tabular-nums">
+                                <NumeroQueCabe>{moedaDoNumero(l.bruto)}</NumeroQueCabe>
+                              </p>
+                              <p className="text-xs text-muted-foreground tabular-nums">
+                                <NumeroQueCabe abreviar={false}>
+                                  {`${t("líquido")} ${moedaDoNumero(l.liquido)}`}
+                                </NumeroQueCabe>
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {baseadoNoMes
+                            ? t("Campanha contínua (ou sem datas): o total é o do mês, de 30 dias.")
+                            : `${t("Calculado com")} ${dias} ${dias === 1 ? t("dia") : t("dias")} ${t("de campanha")}.`}
+                          {c.tax_pct > 0
+                            ? ` ${t("Imposto")}: ${String(c.tax_pct).replace(".", ",")}%.`
+                            : ""}
+                        </p>
+                      </div>
+                    );
+                  })()
+                : null}
+            </SecaoPequena>
+
+            <SecaoPequena titulo={t("Produtos e ticket médio esperado")}>
+              <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_15rem]">
+                <Rotulo texto={t("Produtos que a campanha vende")}>
+                  <div className="grid gap-2">
+                    {idsDosProdutos.length > 0 ? (
+                      <ul className="flex flex-wrap gap-2">
+                        {idsDosProdutos.map((pid) => {
+                          const p = produtos.find((x) => x.id === pid);
+                          return (
+                            <li
+                              key={pid}
+                              className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-sm"
+                            >
+                              <span>{p?.nome ?? t("Produto removido")}</span>
+                              {p && p.valor > 0 ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {moedaDoNumero(p.valor)}
+                                </span>
+                              ) : null}
+                              {podeEditar ? (
+                                <button
+                                  type="button"
+                                  aria-label={`${t("Tirar")} ${p?.nome ?? ""}`}
+                                  onClick={() =>
+                                    gravaProdutos(idsDosProdutos.filter((x) => x !== pid))
+                                  }
+                                  className="grid h-5 w-5 place-items-center rounded-md text-muted-foreground hover:bg-card hover:text-error-fg"
+                                >
+                                  <X size={12} weight="bold" aria-hidden />
+                                </button>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                    {podeEditar ? (
+                      <SelectDoApp
+                        className={CAMPO}
+                        value=""
+                        aria-label={t("Adicionar produto")}
+                        onChange={(e) =>
+                          e.target.value && gravaProdutos([...idsDosProdutos, e.target.value])
+                        }
+                      >
+                        <option value="">
+                          {idsDosProdutos.length === 0
+                            ? t("Escolha um produto cadastrado")
+                            : t("Adicionar outro produto")}
+                        </option>
+                        {produtos
+                          .filter((p) => !idsDosProdutos.includes(p.id))
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nome}
+                            </option>
+                          ))}
+                      </SelectDoApp>
+                    ) : null}
+                  </div>
+                </Rotulo>
+                <Rotulo texto={t("Ticket médio esperado por lead")}>
+                  <NumeroGravavel
+                    valor={c.ticket_cents === null ? null : c.ticket_cents / 100}
+                    aoGravar={(n) =>
+                      gravaComMetas(
+                        { ticket_cents: n === null ? null : Math.round(n * 100) },
+                        "ticket",
+                      )
+                    }
+                    desabilitado={bloqueado}
+                    rotulo={t("Ticket médio esperado por lead")}
+                    prefixo="R$"
+                  />
+                </Rotulo>
+              </div>
+              {idsDosProdutos.length > 1 ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("Soma dos preços de tabela")}: {moedaDoNumero(precoDe(idsDosProdutos))}.{" "}
+                  {t("O ticket é seu: pode ser menor que a soma (desconto).")}
+                </p>
+              ) : null}
+            </SecaoPequena>
+
+            <SecaoPequena titulo={t("Notas")}>
+              <NotasDaCampanha
+                valor={c.description}
+                podeEditar={podeEditar}
+                aoSalvar={(description) => grava({ description })}
               />
-            </Rotulo>
-            {idsDosProdutos.length > 1 ? (
-              <p className="text-xs text-muted-foreground">
-                {t("Soma dos preços de tabela")}: {moedaDoNumero(precoDe(idsDosProdutos))}.{" "}
-                {t("O ticket é seu: pode ser menor que a soma (desconto).")}
-              </p>
-            ) : null}
-          </Bloco>
+            </SecaoPequena>
+          </section>
 
           <Bloco titulo={t("Metas")} tom="amber">
-            <Rotulo texto={t("As metas valem para")}>
-              <SelectDoApp
-                className={CAMPO}
-                disabled={bloqueado}
-                value={c.goal_period}
-                onChange={(e) =>
-                  gravaComMetas(
-                    { goal_period: e.target.value as CampanhaDeDemanda["goal_period"] },
-                    "investimento",
-                  )
-                }
-              >
-                <option value="total">{t("A campanha toda (início ao fim)")}</option>
-                <option value="mensal">{t("Cada mês (renova todo mês)")}</option>
-              </SelectDoApp>
-            </Rotulo>
+            <p className="text-xs text-muted-foreground">
+              {periodoDasMetas(c) === "mensal"
+                ? t("As metas renovam todo mês (campanha contínua).")
+                : t("As metas valem pela campanha toda (do início ao fim).")}
+            </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
               <Rotulo texto={t("Meta de leads")}>
                 <NumeroGravavel
@@ -763,7 +814,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
               {t(
                 "As metas se calculam sozinhas: vendas × ticket = faturamento (e o inverso); investimento líquido ÷ leads = CPL (e o inverso). Mude uma e a outra acompanha.",
               )}{" "}
-              {investimentoBaseDasMetas(liquido, c.budget_period, c.goal_period) === null &&
+              {investimentoBaseDasMetas(liquido, c.budget_period, periodoDasMetas(c)) === null &&
               (c.goal_leads !== null || c.goal_cpl !== null)
                 ? t(
                     "Leads e CPL só se calculam entre si quando o investimento e as metas valem pelo mesmo período (os dois pela campanha toda, ou os dois por mês).",
