@@ -109,29 +109,56 @@ export function BlocosRender({
     <div className={cn("flex flex-col", slide ? "gap-6 sm:gap-8" : "gap-6")}>
       {blocos.map((b): ReactNode => {
         switch (b.tipo) {
-          case "titulo":
-            return b.nivel === 1 ? (
-              <h2
+          case "titulo": {
+            const alinhado = ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"];
+            if (b.nivel === 1) {
+              return (
+                <h2
+                  key={b.id}
+                  className={cn(
+                    "font-bold tracking-tight",
+                    slide ? "text-3xl sm:text-5xl" : "border-b pb-2 text-2xl sm:text-3xl",
+                    alinhado,
+                  )}
+                >
+                  {b.texto}
+                </h2>
+              );
+            }
+            if (b.nivel === 2) {
+              return (
+                <h3
+                  key={b.id}
+                  className={cn("font-semibold", slide ? "text-2xl sm:text-3xl" : "text-xl", alinhado)}
+                >
+                  {b.texto}
+                </h3>
+              );
+            }
+            return (
+              <h4
                 key={b.id}
-                className={cn(
-                  "font-bold tracking-tight",
-                  slide ? "text-3xl sm:text-5xl" : "border-b pb-2 text-2xl sm:text-3xl",
-                  ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
-                )}
+                className={cn("font-semibold", slide ? "text-xl sm:text-2xl" : "text-lg", alinhado)}
               >
                 {b.texto}
-              </h2>
-            ) : (
-              <h3
-                key={b.id}
-                className={cn(
-                  "font-semibold",
-                  slide ? "text-2xl sm:text-3xl" : "text-xl",
-                  ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
-                )}
-              >
-                {b.texto}
-              </h3>
+              </h4>
+            );
+          }
+
+          case "toggle":
+            return (
+              <details key={b.id} open={slide} className={cn("group rounded-xl", corpo)}>
+                <summary className="flex cursor-pointer list-none items-center gap-2 font-medium [&::-webkit-details-marker]:hidden">
+                  <span
+                    aria-hidden
+                    className="inline-block text-xs text-muted-foreground transition-transform group-open:rotate-90"
+                  >
+                    ▶
+                  </span>
+                  {b.titulo}
+                </summary>
+                <Paragrafos texto={b.texto} className="mt-2 pl-5 text-muted-foreground" />
+              </details>
             );
 
           case "texto":

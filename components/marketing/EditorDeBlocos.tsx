@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 const CAMPO =
   "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
-function useNomesDosTipos() {
+export function useNomesDosTipos() {
   const t = useT();
   return (tipo: TipoDeBloco): string => {
     switch (tipo) {
@@ -55,6 +55,8 @@ function useNomesDosTipos() {
         return t("Links");
       case "citacao":
         return t("Citação");
+      case "toggle":
+        return t("Lista recolhível (toggle)");
       case "imagem":
         return t("Imagem");
       case "imagem-texto":
@@ -154,7 +156,7 @@ function BotaoDeIcone({
  * A COR DE CADA TIPO DE BLOCO na edição: a barra da lateral, o fundo suave e a etiqueta. Cores
  * diferentes por tipo deixam a página inteira legível de relance (texto, destaque, dados, mídia…).
  */
-const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiqueta: string }> = {
+export const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiqueta: string }> = {
   titulo: {
     barra: "border-l-violet-500",
     fundo: "bg-violet-500/5",
@@ -169,6 +171,11 @@ const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiqueta: stri
     barra: "border-l-amber-500",
     fundo: "bg-amber-500/5",
     etiqueta: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  },
+  toggle: {
+    barra: "border-l-blue-500",
+    fundo: "bg-blue-500/5",
+    etiqueta: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   },
   citacao: {
     barra: "border-l-amber-500",
@@ -259,7 +266,7 @@ const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiqueta: stri
 const COR_PADRAO = COR_DO_TIPO.texto!;
 
 /** Uma linha de texto do bloco, para identificá-lo quando está fechado (só o título/começo). */
-function resumoDoBloco(b: Bloco): string {
+export function resumoDoBloco(b: Bloco): string {
   const x = b as unknown as Record<string, unknown>;
   const curto = (v: string) => {
     const limpo = v.replace(/\s+/g, " ").trim();
@@ -471,7 +478,7 @@ export function EditorDeBlocos({
   );
 }
 
-function FormularioDoBloco({
+export function FormularioDoBloco({
   bloco,
   aoMudar,
   tituloDaPagina,
@@ -491,11 +498,14 @@ function FormularioDoBloco({
           <Rotulo texto={t("Tamanho")}>
             <SelectDoApp
               value={bloco.nivel}
-              onChange={(e) => aoMudar({ ...bloco, nivel: e.target.value === "2" ? 2 : 1 })}
+              onChange={(e) =>
+                aoMudar({ ...bloco, nivel: e.target.value === "3" ? 3 : e.target.value === "2" ? 2 : 1 })
+              }
               className={CAMPO}
             >
               <option value={1}>{t("Seção (novo slide)")}</option>
               <option value={2}>{t("Subtítulo")}</option>
+              <option value={3}>{t("Título pequeno")}</option>
             </SelectDoApp>
           </Rotulo>
           <SeletorDeAlinhamento
@@ -1122,6 +1132,29 @@ function FormularioDoBloco({
               </div>
             ))}
           </div>
+        </div>
+      );
+
+    case "toggle":
+      return (
+        <div className="grid gap-3">
+          <Rotulo texto={t("Linha sempre visível")}>
+            <input
+              value={bloco.titulo}
+              maxLength={200}
+              onChange={(e) => aoMudar({ ...bloco, titulo: e.target.value })}
+              className={CAMPO}
+            />
+          </Rotulo>
+          <Rotulo texto={t("Texto que aparece ao abrir")}>
+            <textarea
+              value={bloco.texto}
+              rows={4}
+              maxLength={5000}
+              onChange={(e) => aoMudar({ ...bloco, texto: e.target.value })}
+              className={cn(CAMPO, "resize-y")}
+            />
+          </Rotulo>
         </div>
       );
 

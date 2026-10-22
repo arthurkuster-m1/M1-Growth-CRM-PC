@@ -124,8 +124,8 @@ describe("página do módulo — a agência (edita)", () => {
     montar();
     // Página publicada abre em "Ver página": a agência clica em Editar para mexer.
     await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
-    // Os blocos começam fechados (só o título): abre o bloco para editar.
-    await userEvent.click(await screen.findByRole("button", { name: /Ana, 34 anos/ }));
+    // A página já aparece como o cliente a vê: dois cliques no bloco abrem a caixa de edição.
+    await userEvent.dblClick(await screen.findByRole("group", { name: "Texto 2" }));
     const campo = await screen.findByDisplayValue("Ana, 34 anos, dona de clínica.");
     await userEvent.clear(campo);
     await userEvent.type(campo, "Nova ideia");
@@ -199,8 +199,8 @@ describe("página do módulo — a agência (edita)", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Começar com um modelo básico" }),
     );
-    expect(await screen.findAllByRole("region")).not.toHaveLength(0);
-    expect(screen.getAllByText("Título").length).toBeGreaterThan(0);
+    expect(await screen.findAllByRole("group", { name: /^Título 1$/ })).not.toHaveLength(0);
+    expect(screen.getAllByRole("group", { name: /^Texto \d+$/ }).length).toBeGreaterThan(0);
   });
 
   it("'Apresentar' abre a tela cheia, a seta avança e Esc fecha", async () => {

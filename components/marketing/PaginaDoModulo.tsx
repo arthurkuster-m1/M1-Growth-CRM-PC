@@ -12,7 +12,7 @@ import { useHistoricoDeMarketing } from "@/hooks/marketing/useHistoricoDeMarketi
 import { Apresentacao } from "@/components/marketing/Apresentacao";
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
 import { BlocosRender, type RotulosDosBlocos } from "@/components/marketing/BlocosRender";
-import { EditorDeBlocos } from "@/components/marketing/EditorDeBlocos";
+import { EditorVisualDeBlocos } from "@/components/marketing/EditorVisualDeBlocos";
 import { useT } from "@/hooks/i18n/useT";
 import { usePaginaDeMarketing } from "@/hooks/marketing/usePaginaDeMarketing";
 import { type Bloco } from "@/lib/marketing/blocos";
@@ -280,12 +280,13 @@ export function PaginaDoModulo({
               </button>
             </div>
           ) : null}
-          <EditorDeBlocos
+          <EditorVisualDeBlocos
             blocos={blocos}
             aoMudar={editar}
             novoId={randomId}
             tituloDaPagina={tituloAtual}
             chaveDaPagina={chave}
+            rotulos={rotulos}
           />
         </>
       ) : vazio ? (
