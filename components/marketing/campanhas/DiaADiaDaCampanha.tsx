@@ -36,7 +36,9 @@ import {
 import {
   METRICAS_DO_CANAL,
   hojeIso,
+  leadsForaDoPeriodo,
   linhasDoPeriodo,
+  periodoComDados,
   type DiaDaCampanha,
 } from "@/lib/marketing/campanhas-resumo";
 import type { CampanhaDeDemanda, CanalDaCampanha } from "@/lib/marketing/campanhas";
@@ -64,7 +66,11 @@ function colunasDisponiveis(
     rotulo: t(c.rotulo),
     formato: c.formato,
     // Fora do tráfego pago, os números de anúncio não existem: de fábrica fica só o que o canal tem.
-    padrao: canal === "trafego_pago" ? c.padrao : ["leads", "vendas", "recebido"].includes(c.id) || (c.id === "investido" && automatico.investimento),
+    padrao:
+      canal === "trafego_pago"
+        ? c.padrao
+        : ["leads", "vendas", "recebido"].includes(c.id) ||
+          (c.id === "investido" && automatico.investimento),
     doDia: (d) => c.valor(agregadoDoDia(d)),
     doTotal: (dias) => c.valor(somarAgregados(dias.map(agregadoDoDia))),
   }));
@@ -72,7 +78,12 @@ function colunasDisponiveis(
     canal === "trafego_pago"
       ? []
       : METRICAS_DO_CANAL[canal]
-          .filter((m) => automatico.chaves.includes(m.chave) && m.chave !== "vendas" && m.chave !== "valor_total")
+          .filter(
+            (m) =>
+              automatico.chaves.includes(m.chave) &&
+              m.chave !== "vendas" &&
+              m.chave !== "valor_total",
+          )
           .map((m): Coluna => ({
             id: `x:${m.chave}`,
             rotulo: rotuloDaMetrica(t, m.chave),
@@ -82,8 +93,20 @@ function colunasDisponiveis(
             doTotal: (dias) => dias.reduce((s, d) => s + (d.extras[m.chave] ?? 0), 0),
           }));
   // Quem não é anúncio não tem impressões/cliques/visitas: some da lista de escolha.
-  const semAnuncio = new Set(["impressoes", "cliques", "visitas", "cpm", "ctr", "cpc", "cpv", "conversao_lp"]);
-  return [...doCatalogo.filter((c) => canal === "trafego_pago" || !semAnuncio.has(c.id)), ...extras];
+  const semAnuncio = new Set([
+    "impressoes",
+    "cliques",
+    "visitas",
+    "cpm",
+    "ctr",
+    "cpc",
+    "cpv",
+    "conversao_lp",
+  ]);
+  return [
+    ...doCatalogo.filter((c) => canal === "trafego_pago" || !semAnuncio.has(c.id)),
+    ...extras,
+  ];
 }
 
 function chaveSalva(canal: string) {
@@ -167,7 +190,11 @@ export function DiaADiaDaCampanha({
   const disponiveis = colunasDisponiveis(t, canal, automatico);
   const [soComDados, setSoComDados] = useState(false);
   const hoje = hojeIso();
-  const periodo = usePeriodoDaCampanha(periodoPadraoDaCampanha(campanha, hoje));
+  // O período padrão se estica até os dias de fora que têm dados (lead que chegou depois do fim).
+  const periodo = usePeriodoDaCampanha(
+    periodoComDados(periodoPadraoDaCampanha(campanha, hoje), campanha, dias),
+  );
+  const fora = leadsForaDoPeriodo(campanha, dias);
   const [ordenacao, setOrdenacao] = useState<{ id: string; dir: "asc" | "desc" } | null>(null);
   // Colunas escolhidas e a ordem delas: guardadas neste navegador, por canal.
   const [escolha, setEscolha] = useState<{ visiveis: string[] | null; ordem: string[] }>({
@@ -239,6 +266,14 @@ export function DiaADiaDaCampanha({
         <h2 className="text-sm font-semibold">{t("Dia a dia")}</h2>
       </div>
 
+      {fora ? (
+        <p role="status" className="rounded-xl bg-warning-bg px-3 py-2 text-sm text-warning-fg">
+          {fora.total} {t("leads entraram fora do período da campanha")}
+          {fora.antes > 0 ? ` (${fora.antes} ${t("antes do início")})` : ""}
+          {fora.depois > 0 ? ` (${fora.depois} ${t("depois do fim")})` : ""}.{" "}
+          {t("Eles somam nos totais e esses dias aparecem na tabela.")}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <FiltroDePeriodoDaCampanha periodo={periodo} />
         <label className="flex items-center gap-2 text-sm whitespace-nowrap">
