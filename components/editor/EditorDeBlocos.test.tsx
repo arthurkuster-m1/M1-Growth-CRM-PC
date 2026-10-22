@@ -119,4 +119,26 @@ describe("EditorDeBlocos", () => {
     fireEvent.paste(raiz, { clipboardData: { getData: () => guardado } });
     expect(ultimo.map((b) => b.texto)).toEqual(["a", "b", "a", "b"]);
   });
+
+  it("Tab e Shift+Tab valem para a seleção", () => {
+    render(<Casca inicial={"a\nb\nc"} />);
+    const raiz = screen.getByRole("group", { name: "Descrição" });
+    fireEvent.keyDown(campos()[1]!, { key: "Escape" });
+    fireEvent.keyDown(raiz, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(raiz, { key: "Tab" });
+    expect(ultimo).toHaveLength(1);
+    expect(ultimo[0]?.filhos?.map((b) => b.texto)).toEqual(["b", "c"]);
+    fireEvent.keyDown(raiz, { key: "Tab", shiftKey: true });
+    expect(ultimo.map((b) => b.texto)).toEqual(["a", "b", "c"]);
+  });
+
+  it("arrastar o mouse de um bloco a outro seleciona os blocos no caminho", () => {
+    render(<Casca inicial={"a\nb\nc"} />);
+    const linhas = Array.from(document.querySelectorAll<HTMLElement>("[data-linha]"));
+    document.elementFromPoint = () => campos()[2]!;
+    fireEvent.mouseDown(campos()[0]!, { button: 0 });
+    fireEvent.mouseMove(document, { clientX: 5, clientY: 90 });
+    fireEvent.mouseUp(document);
+    expect(linhas.filter((l) => l.className.includes("ring-1"))).toHaveLength(3);
+  });
 });
