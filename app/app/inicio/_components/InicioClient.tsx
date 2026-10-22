@@ -6,8 +6,15 @@ import { compromissosDeTrabalho } from "@/lib/agenda/compromissos-de-trabalho";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { PaginaDoCompromisso } from "@/components/agenda/PaginaDoCompromisso";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
+import { resumoDoAlerta } from "@/lib/ai/alerta-resumo";
+import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorClient";
+
+import { AlertaDialog } from "./AlertaDialog";
+
 import { useAgendamentos } from "@/hooks/agenda/useAgendamentos";
-import { useAgentInbox } from "@/hooks/ai/useAgentInbox";
+import { useAgentInbox, type AgentInboxItem } from "@/hooks/ai/useAgentInbox";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
@@ -55,7 +62,12 @@ const COR_DA_GRAVIDADE = {
   critical: "bg-error",
 } as const;
 
-const CARTAO = "flex min-h-[24rem] flex-col rounded-2xl border bg-card p-5 shadow-sm";
+const CARTAO =
+  "flex min-h-[22rem] min-w-0 flex-col rounded-2xl border bg-card p-4 shadow-sm sm:p-5";
+
+/** O bloco inteiro é clicável: um botão invisível cobre o cartão e os controles internos ficam por cima. */
+const COBERTURA_CLICAVEL =
+  "absolute inset-0 rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40";
 
 type Evento = {
   id: string;
@@ -65,6 +77,8 @@ type Evento = {
   titulo: string;
   detalhe?: string;
   tipo: "agenda" | "tarefa";
+  /** O id de verdade (do compromisso ou da tarefa), para abrir no lugar. */
+  refId: string;
 };
 
 function Vazio({ titulo, texto }: { titulo: string; texto?: string }) {
@@ -91,11 +105,8 @@ function CabecalhoDoCartao({
   children?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-2">
-      <h2
-        id={id}
-        className="flex items-center gap-2 text-base font-semibold tracking-tight whitespace-nowrap"
-      >
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <h2 id={id} className="flex items-center gap-2 text-base font-semibold tracking-tight">
         {icone ? <span className="text-muted-foreground">{icone}</span> : null}
         {titulo}
       </h2>
@@ -130,6 +141,10 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
     }
   };
   const [escopo, setEscopo] = useState<"minhas" | "equipe">("minhas");
+  // O que está aberto no lugar (sem sair do Início): a tarefa, o compromisso ou o alerta.
+  const [tarefaAbertaId, setTarefaAbertaId] = useState<string | null>(null);
+  const [compromissoAbertoId, setCompromissoAbertoId] = useState<string | null>(null);
+  const [alertaAberto, setAlertaAberto] = useState<AgentInboxItem | null>(null);
 
   const semana = useMemo(() => diasDaSemana(selecionada), [selecionada]);
 
@@ -212,6 +227,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         titulo: a.titulo,
         detalhe: a.quemSeraAtendido,
         tipo: "agenda",
+        refId: a.id,
       });
     }
     for (const tarefa of tarefas.tarefas) {
@@ -227,6 +243,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         hora: prazoSemHorario(tarefa.due_date, fuso) ? t("O dia todo") : fmtHora.format(prazo),
         titulo: tarefa.title,
         tipo: "tarefa",
+        refId: tarefa.id,
       });
     }
     return lista.sort((x, y) => x.inicio - y.inicio);
@@ -243,7 +260,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
   const passo = modo === "dia" ? 1 : 7;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-[2000px] flex-col gap-4 p-3 sm:gap-5 sm:p-5 lg:p-6">
       {/* ── saudação ─────────────────────────────────────────────────────── */}
       <section
         aria-labelledby="inicio-saudacao"
@@ -276,7 +293,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         </div>
       </section>
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-4 sm:gap-5">
         {/* ── tarefas do dia ─────────────────────────────────────────────── */}
         <section aria-labelledby="inicio-tarefas" className={CARTAO}>
           <CabecalhoDoCartao
@@ -284,15 +301,16 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
             icone={<ListChecks size={18} aria-hidden />}
             titulo={t("Tarefas do Dia")}
           >
-            <select
-              aria-label={t("Quais tarefas mostrar")}
-              value={escopo}
-              onChange={(e) => setEscopo(e.target.value as "minhas" | "equipe")}
-              className="h-8 rounded-lg border bg-background px-2 text-xs text-muted-foreground"
-            >
-              <option value="minhas">{t("Minha agenda")}</option>
-              <option value="equipe">{t("Toda a equipe")}</option>
-            </select>
+            <SeletorEmPopup
+              rotulo={t("Quais tarefas mostrar")}
+              valor={escopo}
+              aoEscolher={(id) => setEscopo(id as "minhas" | "equipe")}
+              opcoes={[
+                { id: "minhas", rotulo: t("Minha agenda") },
+                { id: "equipe", rotulo: t("Toda a equipe") },
+              ]}
+              className="h-8 w-auto min-w-[9.5rem] rounded-xl text-xs"
+            />
           </CabecalhoDoCartao>
 
           {tarefas.carregando ? (
@@ -315,8 +333,14 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                 return (
                   <li
                     key={tarefa.id}
-                    className="flex items-start gap-3 rounded-xl border bg-background px-3 py-2.5"
+                    className="relative flex items-start gap-3 rounded-xl border bg-background px-3 py-2.5 transition-colors hover:bg-secondary/60"
                   >
+                    <button
+                      type="button"
+                      aria-label={`${t("Abrir tarefa")}: ${tarefa.title}`}
+                      onClick={() => setTarefaAbertaId(tarefa.id)}
+                      className={COBERTURA_CLICAVEL}
+                    />
                     <button
                       type="button"
                       aria-label={t("Concluir tarefa")}
@@ -324,15 +348,10 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                       onClick={() =>
                         void tarefas.editarTarefa(tarefa.id, { status: "done" }, { status: "done" })
                       }
-                      className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-border-strong transition-colors hover:border-primary hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+                      className="relative z-10 mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-border-strong transition-colors hover:border-primary hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
                     />
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/app/tarefas?abrir=${tarefa.id}`}
-                        className="block truncate text-sm font-medium hover:underline"
-                      >
-                        {tarefa.title}
-                      </Link>
+                    <div className="pointer-events-none min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{tarefa.title}</p>
                       <p
                         className={cn(
                           "text-xs",
@@ -376,7 +395,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
             icone={<CalendarBlank size={18} aria-hidden />}
             titulo={t("Calendário")}
           >
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => abrirNovoCompromisso()}
@@ -499,12 +518,22 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                           .map((e) => (
                             <li
                               key={e.id}
-                              className="flex items-center gap-3 rounded-xl border bg-background px-3 py-2"
+                              className="relative flex items-center gap-3 rounded-xl border bg-background px-3 py-2 transition-colors hover:bg-secondary/60"
                             >
-                              <span className="w-11 shrink-0 text-xs font-semibold text-primary">
+                              <button
+                                type="button"
+                                aria-label={`${t(e.tipo === "agenda" ? "Abrir compromisso" : "Abrir tarefa")}: ${e.titulo}`}
+                                onClick={() =>
+                                  e.tipo === "agenda"
+                                    ? setCompromissoAbertoId(e.refId)
+                                    : setTarefaAbertaId(e.refId)
+                                }
+                                className={COBERTURA_CLICAVEL}
+                              />
+                              <span className="pointer-events-none w-11 shrink-0 text-xs font-semibold text-primary">
                                 {e.hora}
                               </span>
-                              <div className="min-w-0 flex-1">
+                              <div className="pointer-events-none min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">{e.titulo}</p>
                                 <p className="truncate text-xs text-muted-foreground">
                                   {e.detalhe || t(e.tipo === "agenda" ? "Agendamento" : "Tarefa")}
@@ -539,26 +568,23 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
               <ul className="flex flex-col gap-2">
                 {itensDeAlerta.slice(0, 6).map((item) => (
                   <li key={item.id}>
-                    <Link
-                      href="/app/ai/inbox"
-                      className="flex items-start gap-3 rounded-xl border bg-background px-3 py-2.5 transition-colors hover:bg-secondary"
+                    <button
+                      type="button"
+                      onClick={() => setAlertaAberto(item)}
+                      className="flex w-full items-center gap-3 rounded-xl border bg-background px-3 py-2.5 text-left transition-colors hover:bg-secondary/60"
                     >
                       <span
                         aria-hidden
                         className={cn(
-                          "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                          "h-2 w-2 shrink-0 rounded-full",
                           COR_DA_GRAVIDADE[item.severity] ?? "bg-info",
                         )}
                       />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{item.title}</span>
-                        {item.body ? (
-                          <span className="line-clamp-2 text-xs text-muted-foreground">
-                            {item.body}
-                          </span>
-                        ) : null}
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {t(resumoDoAlerta(item.kind).curto)}
                       </span>
-                    </Link>
+                      <CaretRight size={14} className="shrink-0 text-text-subtle" aria-hidden />
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -572,6 +598,32 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
           )}
         </section>
       </div>
+
+      {tarefaAbertaId ? (
+        <TarefasMotorClient
+          key={tarefaAbertaId}
+          soPainel
+          abrirInicial={tarefaAbertaId}
+          aoFecharPainel={() => setTarefaAbertaId(null)}
+          fuso={fuso}
+          usuarioId={usuarioId}
+          podeEditar={podeEditar}
+          podeConfigurar={false}
+          agoraIso={agoraIso}
+        />
+      ) : null}
+      {compromissoAbertoId ? (
+        <PaginaDoCompromisso
+          id={compromissoAbertoId}
+          podeEditar={podeEditar}
+          onClose={() => setCompromissoAbertoId(null)}
+        />
+      ) : null}
+      <AlertaDialog
+        item={alertaAberto}
+        podeEditar={podeEditar}
+        aoFechar={() => setAlertaAberto(null)}
+      />
     </div>
   );
 }

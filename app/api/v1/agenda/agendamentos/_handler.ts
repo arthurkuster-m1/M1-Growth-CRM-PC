@@ -117,6 +117,8 @@ export interface AlterarInput {
   starts_at?: string;
   status?: "confirmed" | "completed" | "no_show";
   notes?: string;
+  /** Título do compromisso (o nome que aparece no topo da página e na agenda). */
+  title?: string;
   /** Igual ao de `MarcarInput`: `""` desconvida, ausente não mexe. */
   guest_email?: string;
 }
@@ -468,7 +470,7 @@ async function executarCriacaoDeAgendamento(
     .insert({
       organization_id: ctx.organization_id,
       event_type_id: tipo.id,
-      title: input.title ?? tipo.name,
+      title: input.title ?? (await tituloPadrao(supabase, ctx.organization_id, input.contact_id)) ?? tipo.name,
       starts_at: inicio.toISOString(),
       ends_at: fim.toISOString(),
       // O fuso do compromisso é campo de primeira classe: é o da JORNADA, onde
@@ -540,6 +542,35 @@ async function executarCriacaoDeAgendamento(
  * compromisso NOVO (auto-agendamento), que não existe. Usá-lo aqui seria
  * inventar encadeamento onde há uma linha só.
  */
+/**
+ * O título que o compromisso ganha quando ninguém o escreveu: "R1 · Nome do cliente", onde o
+ * número é a ordem da reunião daquele cliente. Sem cliente, devolve `null` e vale o nome do tipo.
+ */
+async function tituloPadrao(
+  supabase: SB,
+  organizationId: string,
+  contactId: string | undefined,
+): Promise<string | null> {
+  if (!contactId) return null;
+  const [{ data: contato }, { count }] = await Promise.all([
+    supabase
+      .from("contacts")
+      .select("name")
+      .eq("organization_id", organizationId)
+      .eq("id", contactId)
+      .maybeSingle(),
+    supabase
+      .from("calendar_appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .neq("status", "cancelled"),
+  ]);
+  const nome = (contato as { name?: string | null } | null)?.name?.trim();
+  if (!nome) return null;
+  return `R${(count ?? 0) + 1} · ${nome}`.slice(0, 200);
+}
+
 export async function alterarAgendamentoHandler(
   supabase: SB,
   ctx: HandlerCtx,
@@ -576,6 +607,7 @@ export async function alterarAgendamentoHandler(
   }
   if(input.confirmation_next_at) mudanca.confirmation_next_at=input.confirmation_next_at;
   if (input.notes !== undefined) mudanca.notes = input.notes;
+  if (input.title !== undefined) mudanca.title = input.title.trim();
   // Trocar SÓ o convidado não é remarcação nem mudança de situação, então não
   // produz `transicao` — e não deveria: a timeline do lead não ganha notícia
   // por causa de um e-mail digitado. Quem leva a mudança ao Google é a coluna

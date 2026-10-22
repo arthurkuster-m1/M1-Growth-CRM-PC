@@ -111,6 +111,7 @@ const alterarSchema = z
      */
     status: z.enum(["confirmed", "completed", "no_show"]).optional(),
     notes: z.string().max(2000).optional(),
+    title: z.string().trim().min(1).max(200).optional(),
     guest_email: emailDoConvidado.optional(),
   })
   .refine(
@@ -119,6 +120,7 @@ const alterarSchema = z
       c.starts_at !== undefined ||
       c.status !== undefined ||
       c.notes !== undefined ||
+      c.title !== undefined ||
       c.guest_email !== undefined,
     {
       message: "Informe pelo menos um campo para alterar.",
