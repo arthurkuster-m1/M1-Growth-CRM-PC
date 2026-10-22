@@ -93,6 +93,7 @@ Plano completo em `docs/PLANO-MARKETING-M1.md` (menu toggle Marketing + painelz�
 
 ## Padrões do motor (siga-os)
 - Edição otimista (`setQueryData` + rollback) nos hooks; posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guardando só os desvios (`lib/motor/layout.ts`); status = opção (nome/cor por organização) ligada a um grupo fixo (pending/in_progress/done/cancelled) via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas sempre no fuso da organização (`lib/inicio/datas.ts`, `lib/motor/datas-do-campo.ts`).
+- Ctrl+Z é padrão: toda tabela (`lib/motor/desfazer.ts`) e o Editor de Blocos (histórico próprio, `components/editor/EditorDeBlocos.tsx`) desfazem edição, criação e exclusão; Ctrl+Shift+Z refaz no editor. Recurso novo que edita ou apaga dado nasce com Ctrl+Z.
 - i18n: texto da tela = `t("português literal")` + espanhol obrigatório em `lib/i18n/dicionario.ts` (teste `i18n-espanhol-cobre-a-tela`; sem `t(variável)`, sem prosa fora de `t()`; cuidado com chave duplicada no objeto).
 - Rota mutante: `requireRole`/`requireSupportWrite`, `ok()/fail()`, `audit()` com ação enumerada em `lib/audit/actions.ts`. Tela nova precisa de porta em `lib/navigation/catalogo.ts`.
 - Verificação antes de commitar: `tsc` zerado, `eslint` sem erros (warnings aceitos), `prettier`, testes unitários dos arquivos tocados + os guardas de i18n/navegação/sidebar.
