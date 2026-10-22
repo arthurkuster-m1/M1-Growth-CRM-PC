@@ -184,15 +184,57 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
   Apagar de vez as oportunidades de um funil NÃO foi feito (carregam vendas e histórico) — decisão pendente.
 - Hoje só aparecem ao criar o funil de uma campanha; levar para "Novo funil" em Configurações › Funis é o próximo passo natural.
 
-## 1B. PRÓXIMOS PASSOS (atualizado em 17/10/2026)
-1. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google com uma segunda pessoa conectada.
-2. Recomendações da IA ao vivo na reunião de vendas (hoje o espaço aparece como "em breve").
-3. Campo de endereço/local e observação pública no novo compromisso (o painel antigo tinha).
-4. Inbox (frente 5).
-5. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa, compromissos da Agenda).
-6. Hotmart; depois financeiro e CAC real (D5).
-7. D6 metas e alertas; D4 Google Ads.
-8. Último passo: finalizar o app, publicar na VPS e só então tornar o repositório privado (token de leitura no servidor).
+### Funis, Novo lead e Importar — 18 a 20/10/2026
+- **Modelos de funil prontos (correção):** o erro de etapa duplicada vinha de um gatilho do banco do M1
+  (`fn_funil_novo_com_desqualificado`) que cria "Desqualificado" em todo funil novo; a rota agora limpa as
+  etapas automáticas antes de aplicar o modelo.
+- **Novo lead:** "Etiquetas" virou **Tags**; o funil ganhou **Produto principal** (Configurações › Funis,
+  `settings.produto_principal_id`, sem migration) e o Novo lead puxa produto e valor ao escolher o funil;
+  popup sem rolagem lateral no celular.
+- **Importar leads:** tabela visível no celular; **atualiza em massa quem já existe** (mesmo telefone/e-mail:
+  preenche o vazio, soma tags, grava campos); colunas de **links** (Instagram, Site, Google Meu Negócio,
+  Facebook, LinkedIn, TikTok, YouTube, Outro) e atalhos para os campos personalizados dos funis.
+- **Histórico do lead:** todo lead novo grava como entrou (manual, planilha, formulário/integração, assistente,
+  API) e a origem/campanha da importação. O resto (etapa, ciclo de vida, ligações, tarefas, agenda,
+  pagamentos…) já era registrado. Registrar ação virou o seletor "Escolher ação".
+- **Ficha do lead:** Oportunidades e Vendas viram cartões no celular; "Vendas mais urgentes" abre a oportunidade.
+- **Números que cabem** (`NumeroQueCabe`): dashboards, tráfego pago, CRM, ficha e campanhas mostram o número em
+  uma linha (fonte encolhe; de 1 milhão para cima abrevia "3,5 mi").
+
+### Prospecção, Campanhas e Meta Ads — 20 a 22/10/2026
+- **Modo prospecção:** cabeçalho no celular (título numa linha, setas abaixo); **resultados e atalhos
+  editáveis por tipo** (ligação, WhatsApp, Instagram, outro) em "Configurar a prospecção", que ganhou visual novo.
+- **Campanhas:** propriedades **Investido, Leads e CPL** separadas (tabela e cartões); a conta passou a somar o
+  **período inteiro** da campanha (mês vigente se contínua), inclusive gasto lançado antes do início
+  (migration **0650**, já aplicada no Supabase e no baseline). Bloco Investimento com números que cabem.
+- **Funil da campanha:** sai "Configurações avançadas das etapas"; **janela de esfriamento** e **aviso na
+  Central** viram opções de "Configurar a etapa".
+- **Meta Ads** no motor das outras tabelas (filtros, ordem, agrupamento, propriedades, abas salvas); botão
+  "Voltar" alinhado.
+- **Todas as tabelas:** propriedade desligada vai para o fim da lista; **Ctrl+Z** (`lib/motor/desfazer.ts`)
+  desfaz edições em Tarefas, Campanhas (e criativos/abordagens/LPs), Produtos, Clientes e Vendas (status),
+  além de **criar/apagar** tarefas e criativos/abordagens/LPs e **criar** campanha; volta na hora (otimista).
+- **Build:** import acima de `"use client"` derrubou 3 builds (18/10); corrigido. Regra: rodar `next build`
+  antes de mesclar. Teste de Funis quebrado desde 18/10 corrigido.
+
+## 1B. PRÓXIMOS PASSOS (atualizado em 22/10/2026)
+1. **Ctrl+Z que falta:** criar produto, venda e lead; clientes pela lixeira (já restaura). Apagar campanha,
+   oportunidade e venda é apagamento definitivo (sem volta) — decidir se vale ganhar lixeira.
+2. **Conferir ao vivo** o que subiu de 18 a 22/10 (cartões do celular, Importar em massa, resultados da
+   prospecção, Meta Ads no motor): a build roda no GitHub; falta confirmar na VPS.
+3. Pendências oferecidas: apagar de vez oportunidades de um funil (com confirmação forte); levar os modelos
+   fixos para "Novo funil" em Configurações › Funis; campo `qualificado` no formulário/n8n; trocar os
+   `<input type="date">` restantes (Honorários, Antiban, Editar contato); reabrir "demandas sem próximo passo /
+   propostas vencidas" como filtros do CRM; confirmar o cron `risk-watcher` na VPS.
+4. Histórico do lead: "respondido no inbox por X" pode não gravar linha — conferir; leads antigos não ganham
+   a linha de origem.
+5. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google.
+6. Recomendações da IA ao vivo na reunião de vendas (hoje "em breve").
+7. Campo de endereço/local e observação pública no novo compromisso.
+8. Inbox (frente 5).
+9. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa, compromissos da Agenda).
+10. Hotmart; depois financeiro e CAC real (D5). D6 metas e alertas; D4 Google Ads.
+11. Último passo: finalizar o app, publicar na VPS e só então tornar o repositório privado.
 Rotinas desligadas de propósito (~25): disparam mensagens; ligar por pacote, só a pedido.
 
 ## 2. PEQUENOS AJUSTES PENDENTES
