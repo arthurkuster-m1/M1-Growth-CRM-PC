@@ -36,9 +36,9 @@ export default async function GeracaoDeDemandaPage() {
       >
         <AtalhoEmDestaque
           voltarPara={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Campanhas") }}
-          href="/app/marketing/geracao-de-demanda/resultados"
+          href="/app/marketing/dashboards?painel=trafego"
           titulo={t("Resultados das campanhas")}
-          descricao={t("Investido, leads, vendas e faturamento por período")}
+          descricao={t("Dashboard de Tráfego Pago: investido, leads, vendas e faturamento por período")}
           icone={<ChartBar weight="duotone" aria-hidden />}
           tom="blue"
         />

@@ -22,6 +22,12 @@ const CLASSE_DO_STATUS: Record<CampanhaDeDemanda["status"], string> = {
   encerrada: "bg-muted text-muted-foreground border-border",
 };
 
+export interface DatasDaCampanha {
+  start_date: string;
+  end_date: string | null;
+  continuous: boolean;
+}
+
 const COLUNA_DO_NOME = 300;
 /** "Hoje" cai na 7ª coluna: 6 dias para trás e o resto para a frente. */
 const DIAS_ANTES_DE_HOJE = 6;
@@ -59,8 +65,8 @@ export function LinhaDoTempoDeCampanhas({
   escala?: EscalaDaLinha;
   /** Salva a escolha (na aba da visualização); sem isso, os controles não aparecem. */
   aoMudar?: (config: { dias: number; escala: EscalaDaLinha }) => void;
-  /** Grava as datas de uma campanha solta na linha; sem isso, não dá para arrastar. */
-  aoDatas?: (id: string, datas: { start_date: string; end_date: string }) => void;
+  /** Grava as datas de uma campanha (solta na linha, movida ou esticada); sem isso, não dá para arrastar. */
+  aoDatas?: (id: string, datas: DatasDaCampanha) => void;
 }) {
   const t = useT();
   const tag = useTagDeIdioma();
@@ -149,6 +155,68 @@ export function LinhaDoTempoDeCampanhas({
   const aoSoltar = () => {
     arraste.current = null;
     setArrastando(false);
+  };
+
+  // Mover a barra (pelo meio) ou esticar uma ponta: o gesto vive até soltar; só aí as datas gravam.
+  const [gesto, setGesto] = useState<{
+    id: string;
+    modo: "mover" | "inicio" | "fim";
+    delta: number;
+  } | null>(null);
+  const emGesto = useRef<{
+    id: string;
+    modo: "mover" | "inicio" | "fim";
+    x0: number;
+    de: string;
+    ate: string | null;
+    delta: number;
+    moveu: boolean;
+  } | null>(null);
+  const comecarGesto = (
+    e: PointerEvent<HTMLElement>,
+    c: { id: string },
+    modo: "mover" | "inicio" | "fim",
+    de: string,
+    ate: string | null,
+  ) => {
+    if (!aoDatas || e.button !== 0 || e.pointerType === "touch") return;
+    e.stopPropagation();
+    const barra = e.currentTarget.closest("a");
+    barra?.setPointerCapture(e.pointerId);
+    emGesto.current = { id: c.id, modo, x0: e.clientX, de, ate, delta: 0, moveu: false };
+  };
+  const andarGesto = (e: PointerEvent<HTMLElement>) => {
+    const g = emGesto.current;
+    if (!g) return;
+    let delta = Math.round((e.clientX - g.x0) / dw);
+    // Não deixa o início passar do fim, nem o fim ficar antes do início.
+    const fimAtual = g.ate ?? g.de;
+    if (g.modo === "inicio" && g.ate !== null) delta = Math.min(delta, diasEntre(g.de, g.ate));
+    if (g.modo === "fim") delta = Math.max(delta, -diasEntre(g.de, fimAtual));
+    if (g.modo === "inicio" && g.ate === null) delta = Math.min(delta, 3650);
+    if (Math.abs(e.clientX - g.x0) >= 4) g.moveu = true;
+    if (!g.moveu) return;
+    g.delta = delta;
+    setGesto({ id: g.id, modo: g.modo, delta });
+  };
+  const terminarGesto = () => {
+    const g = emGesto.current;
+    setGesto(null);
+    if (!g || !g.moveu || g.delta === 0 || !aoDatas) {
+      // Um clique simples abre a campanha; arrastar não.
+      if (g) window.setTimeout(() => (emGesto.current = null), 0);
+      return;
+    }
+    const novoInicio = g.modo === "fim" ? g.de : somarDias(g.de, g.delta);
+    let novoFim: string | null;
+    if (g.modo === "inicio") novoFim = g.ate;
+    else novoFim = g.ate === null && g.modo === "mover" ? null : somarDias(g.ate ?? g.de, g.delta);
+    aoDatas(g.id, {
+      start_date: novoInicio,
+      end_date: novoFim,
+      continuous: novoFim === null,
+    });
+    window.setTimeout(() => (emGesto.current = null), 0);
   };
 
   // Soltar uma campanha sem datas: o dia sob o ponteiro vira o início.
@@ -276,7 +344,11 @@ export function LinhaDoTempoDeCampanhas({
           setSoltandoEm(null);
           if (!aoDatas || !id || !dia) return;
           e.preventDefault();
-          aoDatas(id, { start_date: dia, end_date: somarDias(dia, DURACAO_PADRAO - 1) });
+          aoDatas(id, {
+            start_date: dia,
+            end_date: somarDias(dia, DURACAO_PADRAO - 1),
+            continuous: false,
+          });
         }}
         className={cn(
           "overflow-x-auto overscroll-x-contain rounded-2xl border bg-card",
@@ -367,20 +439,57 @@ export function LinhaDoTempoDeCampanhas({
                     }}
                   />
                 ) : null}
-                <Link
-                  href={`${base}/${c.id}`}
-                  title={c.name}
-                  draggable={false}
-                  className={cn(
-                    "my-2 flex h-7 items-center overflow-hidden rounded-lg border px-2 text-[11px] font-medium whitespace-nowrap",
-                    CLASSE_DO_STATUS[c.status],
-                  )}
-                  style={{
-                    gridColumn: `${2 + idx(de)} / ${ate === null ? total + 2 : idx(ate) + 3}`,
-                  }}
-                >
-                  {ate === null ? `${c.name} →` : c.name}
-                </Link>
+                {(() => {
+                  const g = gesto?.id === c.id ? gesto : null;
+                  const deV = g && g.modo !== "fim" ? somarDias(de, g.delta) : de;
+                  const ateV =
+                    g && g.modo !== "inicio" && (ate !== null || g.modo === "fim")
+                      ? somarDias(ate ?? de, g.delta)
+                      : ate;
+                  return (
+                    <Link
+                      href={`${base}/${c.id}`}
+                      title={c.name}
+                      draggable={false}
+                      onPointerDown={(e) => comecarGesto(e, c, "mover", de, ate)}
+                      onPointerMove={andarGesto}
+                      onPointerUp={terminarGesto}
+                      onPointerCancel={terminarGesto}
+                      onClick={(e) => {
+                        if (emGesto.current?.moveu) e.preventDefault();
+                      }}
+                      className={cn(
+                        "relative my-2 flex h-7 items-center overflow-hidden rounded-lg border px-2 text-[11px] font-medium whitespace-nowrap",
+                        CLASSE_DO_STATUS[c.status],
+                        aoDatas && "cursor-grab",
+                        g && "z-10 cursor-grabbing opacity-90 ring-2 ring-primary/40",
+                      )}
+                      style={{
+                        gridColumn: `${2 + idx(deV)} / ${ateV === null ? total + 2 : idx(ateV) + 3}`,
+                      }}
+                    >
+                      {aoDatas ? (
+                        <span
+                          aria-hidden
+                          title={t("Arraste para mudar o início")}
+                          onPointerDown={(e) => comecarGesto(e, c, "inicio", de, ate)}
+                          className="absolute inset-y-0 left-0 w-2 cursor-ew-resize hover:bg-foreground/20"
+                        />
+                      ) : null}
+                      <span className="min-w-0 truncate">
+                        {ateV === null ? `${c.name} →` : c.name}
+                      </span>
+                      {aoDatas ? (
+                        <span
+                          aria-hidden
+                          title={t("Arraste para mudar o fim")}
+                          onPointerDown={(e) => comecarGesto(e, c, "fim", de, ate)}
+                          className="absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-foreground/20"
+                        />
+                      ) : null}
+                    </Link>
+                  );
+                })()}
               </div>
             ))
           )}
