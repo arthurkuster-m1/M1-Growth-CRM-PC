@@ -1,5 +1,6 @@
 "use client";
 
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -145,9 +146,9 @@ export function PublicacaoEmMassa() {
                     return (
                       <section key={g.modulo} className="flex flex-col gap-1.5">
                         <label className="flex items-center gap-2 text-sm font-semibold">
-                          <input
-                            type="checkbox"
+                          <CaixaRedonda
                             checked={todasMarcadas}
+                            parcial={!todasMarcadas && chaves.some((k) => marcadas.has(k))}
                             onChange={(e) => alternar(chaves, e.target.checked)}
                           />
                           {textosDoModulo(t, g.modulo)?.titulo ?? g.modulo}
@@ -158,8 +159,7 @@ export function PublicacaoEmMassa() {
                             return (
                               <li key={p.key}>
                                 <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary">
-                                  <input
-                                    type="checkbox"
+                                  <CaixaRedonda
                                     checked={marcadas.has(p.key)}
                                     onChange={(ev) => alternar([p.key], ev.target.checked)}
                                   />

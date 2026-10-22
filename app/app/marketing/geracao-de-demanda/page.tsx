@@ -28,7 +28,6 @@ export default async function GeracaoDeDemandaPage() {
       superior={t("Marketing")}
       titulo={t("Campanhas")}
       descricao={t("As campanhas do cliente, com o funil e os resultados de cada uma.")}
-      voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
       <section
         aria-label={t("Telas relacionadas")}

@@ -44,6 +44,10 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "redirect para /app/connections?aba=oficial desde o PR #105 — conectar canal passou a ter um lugar só. Conexões é a porta; a aba é navegação interna dela",
   "/app/settings/templates":
     "redirect para /app/connections?aba=oficial&sub=templates — template da Meta só existe por causa do canal oficial, e vive como sub-aba dele",
+  "/app/marketing":
+    "redirect para /app/marketing/estrategia: Marketing é só o grupo (interruptor) do menu lateral, sem página própria; mantido por links e favoritos antigos",
+  "/app/agenda/analises":
+    "aba Análises da Agenda (AbasDaAgenda): a Agenda é a porta, a aba é navegação interna dela",
   "/app/design-system":
     "página de consulta do Design System (referência visual do produto): alcançada pelo endereço ou por link na documentação, não é tela de uso diário",
   "/app/vendas":

@@ -35,7 +35,6 @@ export default async function EstrategiaPage() {
         "O diagnóstico do negócio, a construção do produto e da oferta e a geração de demanda, etapa por etapa.",
       )}
       estado={publicados.size > 0 ? undefined : emBreve}
-      voltar={{ href: "/app/marketing", rotulo: t("Marketing") }}
     >
       <PublicacaoEmMassa />
 
