@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import type { Locale } from "date-fns";
 
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
@@ -18,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CaretLeft } from "@/lib/ui/icons";
+
 import { useAdminUser } from "@/hooks/useAdminUser";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -98,12 +99,7 @@ export function UserDetailClient({ id }: UserDetailClientProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
         <p className="text-sm font-medium">{t("Usuário não encontrado")}</p>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/admin/users">
-            <CaretLeft size={14} aria-hidden />
-            {t("Voltar")}
-          </Link>
-        </Button>
+        <LinkVoltar href="/admin/users" />
       </div>
     );
   }
@@ -115,13 +111,7 @@ export function UserDetailClient({ id }: UserDetailClientProps) {
     <div className="space-y-6">
       {/* Back link */}
       <div>
-        <Link
-          href="/admin/users"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <CaretLeft size={14} aria-hidden />
-          {t("Usuários")}
-        </Link>
+        <LinkVoltar href="/admin/users">{t("Usuários")}</LinkVoltar>
       </div>
 
       {/* Header */}

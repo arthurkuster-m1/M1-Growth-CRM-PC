@@ -1,4 +1,5 @@
 "use client";
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter as useNextRouter } from "next/navigation";
@@ -29,7 +30,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import { ArrowRight, CaretLeft, Info, Plus, Trash } from "@/lib/ui/icons";
+import { ArrowRight, Info, Plus, Trash } from "@/lib/ui/icons";
 import { randomId } from "@/lib/random-id";
 import { useAuth, usePermission } from "@/hooks/auth/AuthProvider";
 import {
@@ -293,12 +294,7 @@ export function RouterEditorClient({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <Link
-            href="/app/ai/routers"
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <CaretLeft size={14} aria-hidden /> {t("Roteadores")}
-          </Link>
+          <LinkVoltar href="/app/ai/routers">{t("Roteadores")}</LinkVoltar>
           <Badge variant={router.is_active ? "success" : "neutral"} className="text-xs">
             {router.is_active ? t("ativo") : t("inativo")}
           </Badge>

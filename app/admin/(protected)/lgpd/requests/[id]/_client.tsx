@@ -1,9 +1,10 @@
 "use client";
 
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import Link from "next/link";
 import { format } from "date-fns";
-import { CaretLeft } from "@/lib/ui/icons";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -259,17 +260,7 @@ export function LgpdRequestAdminDetail({ id }: Props) {
     <div className="flex flex-col gap-6">
       {/* Back nav */}
       <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          asChild
-          className="-ml-2 gap-1 text-muted-foreground"
-        >
-          <Link href="/admin/lgpd">
-            <CaretLeft size={14} aria-hidden />
-            {t("LGPD Cross-tenant")}
-          </Link>
-        </Button>
+        <LinkVoltar href="/admin/lgpd">{t("LGPD Cross-tenant")}</LinkVoltar>
       </div>
 
       {/* Header */}

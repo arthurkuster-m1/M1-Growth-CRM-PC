@@ -13,6 +13,7 @@ import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMo
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Switch } from "@/components/ui/switch";
@@ -25,7 +26,6 @@ import {
   ArrowRight,
   Bell,
   CalendarBlank,
-  CaretLeft,
   ChartBar,
   ChatCircle,
   Check,
@@ -292,12 +292,46 @@ function TabelaModelo() {
   );
 }
 
+/** Uma amostra compacta de peças, para ver claro e escuro lado a lado. */
+function AmostraDeTema({ tema, titulo }: { tema: "light" | "dark"; titulo: string }) {
+  return (
+    <div data-theme={tema} className="grid gap-3 rounded-2xl border bg-bg p-4 text-text">
+      <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{titulo}</p>
+      <div className="rounded-2xl border border-l-4 border-l-purple-500 bg-card p-3 shadow-sm">
+        <p className="text-sm font-semibold">Oportunidades</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Cartão com a barra colorida.</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Etiqueta ponto cor="green">Concluída</Etiqueta>
+          <Etiqueta ponto cor="blue">Em andamento</Etiqueta>
+          <Etiqueta ponto cor="red">Crítico</Etiqueta>
+          <Etiqueta cor="yellow">Média</Etiqueta>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" className="rounded-xl">Principal</Button>
+        <Button size="sm" variant="outline" className="rounded-xl">Secundário</Button>
+        <Button size="sm" variant="ghost" className="rounded-xl">Fantasma</Button>
+        <Switch checked aria-label="Exemplo ligado" />
+        <Switch checked={false} aria-label="Exemplo desligado" />
+      </div>
+      <Input placeholder="Campo de texto" className="h-10 rounded-xl" />
+      <p className="flex items-center gap-2 rounded-xl bg-success-bg px-3 py-2 text-sm text-success-fg">
+        <Check size={16} aria-hidden /> Campanha criada com sucesso.
+      </p>
+      <p className="flex items-center gap-2 rounded-xl bg-warning-bg px-3 py-2 text-sm text-warning-fg">
+        <Warning size={16} aria-hidden /> O orçamento passa de 90%.
+      </p>
+    </div>
+  );
+}
+
 /* ─────────────────────────────────── a página ─────────────────────────────────── */
 
 const ICONES = [House, Kanban, CalendarBlank, Megaphone, ChatCircle, Users, ChartBar, Target, Tag, Phone, Bell, Star, Gear, Funnel, Rows];
 
 const INDICE = [
   ["principios", "Princípios"],
+  ["temas", "Claro e escuro"],
   ["cores", "Cores"],
   ["estados", "Estados"],
   ["botoes", "Botões"],
@@ -317,10 +351,34 @@ export function DesignSystemClient() {
   const [toggles, setToggles] = useState({ a: true, b: false, c: true });
   const [chips, setChips] = useState<string[]>(["Ligação"]);
   const [dialogo, setDialogo] = useState(false);
+  const [modo, setModo] = useState<"app" | "light" | "dark">("app");
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-5 pb-16">
       <header className="grid gap-1">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Ver a página em:</span>
+          {(
+            [
+              ["app", "Tema do app"],
+              ["light", "Claro"],
+              ["dark", "Escuro"],
+            ] as const
+          ).map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={modo === id}
+              onClick={() => setModo(id)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                modo === id ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary",
+              )}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
         <h1 className="text-2xl font-semibold tracking-tight">Design System</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
           A linguagem visual do M1 Growth CRM. Tudo aqui são os componentes reais do app: o que estiver nesta página é a
@@ -334,6 +392,7 @@ export function DesignSystemClient() {
           ))}
         </nav>
       </header>
+      <div data-theme={modo === "app" ? undefined : modo} className={cn("grid gap-5", modo !== "app" && "rounded-3xl bg-bg p-4 text-text")}>
 
       <Secao id="principios" titulo="Princípios" descricao="O que decide qualquer dúvida de desenho.">
         <ul className="grid gap-2 text-sm sm:grid-cols-2">
@@ -351,6 +410,16 @@ export function DesignSystemClient() {
             </li>
           ))}
         </ul>
+      </Secao>
+
+      <Secao id="temas" titulo="Claro e escuro" descricao="O app tem os dois temas, com os mesmos tokens: nenhuma tela escolhe cor própria. Alterna no menu do usuário (Cmd/Ctrl+Shift+L). Abaixo, as mesmas peças nos dois.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <AmostraDeTema tema="light" titulo="Claro" />
+          <AmostraDeTema tema="dark" titulo="Escuro" />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Regras: use sempre os tokens (<code className="font-mono">bg-card</code>, <code className="font-mono">text-muted-foreground</code>, <code className="font-mono">border</code>…); nunca <code className="font-mono">bg-white</code> ou cinzas fixos. Etiquetas de cor e barras de cartão usam as cores do Notion, que já funcionam nos dois temas. Janelas e avisos flutuantes seguem o tema do app, não o desta pré-visualização.
+        </p>
       </Secao>
 
       <Secao id="cores" titulo="Cores" descricao="O destaque é o verde-azulado do M1. O 600 é o botão e o link; em áreas grandes, nada passa do 600.">
@@ -433,10 +502,13 @@ export function DesignSystemClient() {
         </div>
         <div className="grid gap-2">
           <Legenda>Voltar (um só desenho para o app inteiro)</Legenda>
-          <span className="inline-flex h-9 w-fit items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium text-muted-foreground shadow-sm">
-            <CaretLeft size={14} weight="bold" aria-hidden />
-            Voltar para [TESTE] TP
-          </span>
+          <div className="flex flex-wrap gap-3">
+            <LinkVoltar href="#botoes">[TESTE] TP</LinkVoltar>
+            <LinkVoltar aoClicar={() => toast.info("Voltou")} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Componente <code className="font-mono">LinkVoltar</code>: pílula com a seta e o destino. Uma só em todo o app — no alto da página, alinhada ao conteúdo.
+          </p>
         </div>
         <div className="grid gap-2">
           <Legenda>Chips que ligam e desligam</Legenda>
@@ -621,6 +693,7 @@ export function DesignSystemClient() {
           ))}
         </div>
       </Secao>
+      </div>
     </div>
   );
 }
