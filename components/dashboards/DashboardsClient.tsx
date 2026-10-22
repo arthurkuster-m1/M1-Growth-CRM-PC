@@ -254,29 +254,41 @@ export function DashboardsClient({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3">
-        <SeletorDePeriodo
-          de={janela.de}
-          ate={janela.ate}
-          rotulo={t("Período")}
-          atalhos={atalhos}
-          aoMudar={setJanela}
-        />
-        {painel === "prospeccao" ? (
-          <SeletorDeCampanhas
-            catalogo={prospeccao.data?.catalogo ?? []}
-            escolhidas={campanhasDeProspeccao}
-            aoMudar={setCampanhasDeProspeccao}
+      {/* No celular os filtros dividem a largura do bloco por igual (sem sobra à direita). */}
+      <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border bg-card p-3 sm:flex sm:flex-wrap">
+        <div
+          className={cn(
+            "min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto",
+            painel !== "prospeccao" && painel !== "trafego" && "col-span-2",
+          )}
+        >
+          <SeletorDePeriodo
+            de={janela.de}
+            ate={janela.ate}
+            rotulo={t("Período")}
+            atalhos={atalhos}
+            aoMudar={setJanela}
           />
+        </div>
+        {painel === "prospeccao" ? (
+          <div className="min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto">
+            <SeletorDeCampanhas
+              catalogo={prospeccao.data?.catalogo ?? []}
+              escolhidas={campanhasDeProspeccao}
+              aoMudar={setCampanhasDeProspeccao}
+            />
+          </div>
         ) : null}
         {painel === "trafego" ? (
-          <SeletorDeCampanhas
-            catalogo={trafego.data?.catalogo ?? []}
-            escolhidas={campanhas}
-            aoMudar={setCampanhas}
-          />
+          <div className="min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto">
+            <SeletorDeCampanhas
+              catalogo={trafego.data?.catalogo ?? []}
+              escolhidas={campanhas}
+              aoMudar={setCampanhas}
+            />
+          </div>
         ) : null}
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="col-span-2 text-center text-xs text-muted-foreground sm:ml-auto sm:text-right">
           {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
         </span>
       </div>

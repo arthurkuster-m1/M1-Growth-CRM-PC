@@ -42,6 +42,8 @@ export interface DadosDeProspeccao extends BaseDaProspeccao {
   ate: string;
   abordagens: Array<{ id: string; nome: string; meio: string; campanha: string }>;
   catalogo: Array<{ id: string; nome: string }>;
+  extracoes: Array<{ id: string; nome: string; dia: string; usd: number; brl: number | null }>;
+  cambio: { taxa: number | null; origem: "automatica" | "manual" | "indisponivel"; iofPct: number };
   /** Abordagens registradas sem resultado (históricas): contam como sem contato. */
   semResultado: number;
 }
@@ -430,6 +432,8 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
             ate={dados.ate}
             fontes={fontes}
             campanhas={dados.catalogo}
+            extracoes={dados.extracoes}
+            cambio={dados.cambio}
           />
         </Painel>
       ) : null}

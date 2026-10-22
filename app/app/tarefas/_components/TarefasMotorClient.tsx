@@ -280,6 +280,7 @@ export function TarefasMotorClient({
           {tarefa.id === ID_DO_RASCUNHO ? null : (
             <button
               type="button"
+              data-abrir-tarefa
               aria-label={t("Abrir tarefa")}
               title={t("Abrir tarefa")}
               onClick={() => setAbertaId(tarefa.id)}

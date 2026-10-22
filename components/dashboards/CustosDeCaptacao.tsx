@@ -33,11 +33,21 @@ export function CustosDeCaptacao({
   ate,
   fontes,
   campanhas,
+  extracoes,
+  cambio,
 }: {
   de: string;
   ate: string;
   fontes: readonly string[];
   campanhas: ReadonlyArray<{ id: string; nome: string }>;
+  extracoes: ReadonlyArray<{
+    id: string;
+    nome: string;
+    dia: string;
+    usd: number;
+    brl: number | null;
+  }>;
+  cambio: { taxa: number | null; origem: "automatica" | "manual" | "indisponivel"; iofPct: number };
 }) {
   const t = useT();
   const qc = useQueryClient();
@@ -47,6 +57,25 @@ export function CustosDeCaptacao({
   const [nota, setNota] = useState("");
   const [campanha, setCampanha] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [taxaManual, setTaxaManual] = useState(
+    cambio.origem === "manual" && cambio.taxa ? String(cambio.taxa).replace(".", ",") : "",
+  );
+  const [iof, setIof] = useState(String(cambio.iofPct).replace(".", ","));
+  const numeroBr = (v: string) => Number(v.replace(/\./g, "").replace(",", "."));
+  const salvarCambio = async () => {
+    const taxa = taxaManual.trim() === "" ? null : numeroBr(taxaManual);
+    const aliquota = numeroBr(iof);
+    if ((taxa !== null && !(taxa > 0)) || !Number.isFinite(aliquota) || aliquota < 0) return;
+    try {
+      await apiClient.put("/api/v1/dashboards/prospeccao/cambio", {
+        usd_brl: taxa,
+        iof_pct: aliquota,
+      });
+      await qc.invalidateQueries({ queryKey: ["dashboard-prospeccao"] });
+    } catch (e) {
+      showApiError(e);
+    }
+  };
 
   const lista = useQuery({
     queryKey: ["dashboard-prospeccao-custos", de, ate],
@@ -194,6 +223,57 @@ export function CustosDeCaptacao({
         <Button type="button" disabled={!pode} onClick={() => void adicionar()}>
           {t("Lançar custo")}
         </Button>
+      </div>
+      <div className="grid gap-2 rounded-xl border bg-background p-3 text-sm">
+        <p className="font-medium">{t("Extrações de leads (custo automático)")}</p>
+        <p className="text-xs text-muted-foreground">
+          {cambio.taxa === null
+            ? t("Sem cotação do dólar: informe uma abaixo para converter o custo das extrações.")
+            : `${t("Dólar a")} ${brl(cambio.taxa)} (${
+                cambio.origem === "automatica" ? t("cotação do dia") : t("cotação informada")
+              }) + IOF ${cambio.iofPct.toLocaleString("pt-BR")}%`}
+        </p>
+        {extracoes.length > 0 ? (
+          <ul className="divide-y rounded-lg border">
+            {extracoes.map((e) => (
+              <li key={e.id} className="flex items-center gap-3 px-3 py-2">
+                <span className="w-24 shrink-0 text-muted-foreground tabular-nums">
+                  {e.dia.slice(8, 10)}/{e.dia.slice(5, 7)}/{e.dia.slice(0, 4)}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{e.nome}</span>
+                <span className="text-muted-foreground tabular-nums">US$ {e.usd.toFixed(2)}</span>
+                <span className="font-semibold tabular-nums">
+                  {e.brl === null ? "—" : brl(e.brl)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {t("Nenhuma extração com custo neste período.")}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={taxaManual}
+            inputMode="decimal"
+            placeholder={t("Dólar (R$) — só se a cotação do dia falhar")}
+            aria-label={t("Cotação do dólar")}
+            className="w-64"
+            onChange={(e) => setTaxaManual(e.target.value)}
+          />
+          <Input
+            value={iof}
+            inputMode="decimal"
+            aria-label={t("IOF (%)")}
+            className="w-20"
+            onChange={(e) => setIof(e.target.value)}
+          />
+          <span className="text-xs text-muted-foreground">% IOF</span>
+          <Button type="button" variant="outline" onClick={() => void salvarCambio()}>
+            {t("Salvar câmbio")}
+          </Button>
+        </div>
       </div>
       {(lista.data ?? []).length > 0 ? (
         <ul className="divide-y rounded-xl border text-sm">

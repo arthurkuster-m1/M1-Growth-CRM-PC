@@ -32,7 +32,7 @@ import {
   periodoDaSemana,
 } from "@/lib/marketing/cronograma";
 import { nomeNovoDeFase } from "@/lib/marketing/cronograma-ordem";
-import { CalendarBlank, CaretDown, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
+import { Archive, CalendarBlank, CaretDown, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +81,7 @@ export function CronogramaDoCliente() {
   const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, cfg.total_semanas);
   const vista: "geral" | "semana" = aba === "semana" ? "semana" : "geral";
 
+  const concluidasAbertas = itens.filter((i) => i.status === "concluido" && !i.arquivado);
   const editandoGeral = podeEditar && editando && aba === "geral";
   const selecao: SelecaoDoCronograma =
     gaveta?.tipo === "meta" || gaveta?.tipo === "acao"
@@ -373,6 +374,21 @@ export function CronogramaDoCliente() {
           className="grid gap-3 rounded-2xl border border-l-4 border-l-green-500 bg-card p-4"
         >
           <h3 className="text-sm font-semibold">{t("Configuração")}</h3>
+          {concluidasAbertas.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-background p-3">
+              <button
+                type="button"
+                onClick={() => void acoes.arquivarItens(concluidasAbertas.map((i) => i.id))}
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+              >
+                <Archive size={14} aria-hidden />
+                {t("Arquivar todas as tarefas concluídas")} ({concluidasAbertas.length})
+              </button>
+              <span className="text-xs text-muted-foreground">
+                {t("Tira do cronograma tudo o que já foi concluído. Dá para desfazer com Ctrl+Z ou em Arquivadas.")}
+              </span>
+            </div>
+          ) : null}
           <FormularioDaConfig
             key={JSON.stringify(cfg)}
             config={cfg}

@@ -55,7 +55,8 @@ export function PainelDaTarefa({
 
   return (
     <Dialog open={tarefa !== null} onOpenChange={(aberto) => !aberto && aoFechar()}>
-      <DialogContent className="max-w-2xl gap-5 overflow-x-hidden p-5 sm:rounded-2xl sm:p-6 [&>*]:min-w-0">
+      {/* A tarefa já está aberta: o botão "Abrir" da linha da tabela fica escondido aqui dentro. */}
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-2xl gap-5 overflow-x-hidden rounded-2xl p-4 sm:p-6 [&>*]:min-w-0">
         {tarefa ? (
           <>
             <DialogTitle className="sr-only">{nova ? t("Nova tarefa") : tarefa.title}</DialogTitle>
@@ -82,7 +83,7 @@ export function PainelDaTarefa({
                 />
               </div>
             ) : (
-              <div className="min-w-0 pr-8 text-xl font-semibold [overflow-wrap:anywhere] [&_button]:text-xl [&_input]:text-lg">
+              <div className="min-w-0 pr-8 text-xl font-semibold [overflow-wrap:anywhere] [&_[data-abrir-tarefa]]:hidden [&_button]:text-xl [&_input]:text-lg">
                 {titulo?.celula(tarefa)}
               </div>
             )}
