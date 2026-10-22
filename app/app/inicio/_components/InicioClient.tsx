@@ -63,7 +63,7 @@ const COR_DA_GRAVIDADE = {
 } as const;
 
 const CARTAO =
-  "flex min-h-[22rem] min-w-0 flex-col rounded-2xl border bg-card p-4 shadow-sm sm:p-5";
+  "flex min-h-[22rem] min-w-0 flex-1 basis-[22rem] flex-col rounded-2xl border bg-card p-4 shadow-sm sm:p-5";
 
 /** O bloco inteiro é clicável: um botão invisível cobre o cartão e os controles internos ficam por cima. */
 const COBERTURA_CLICAVEL =
@@ -293,7 +293,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         </div>
       </section>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-4 sm:gap-5">
+      <div className="flex flex-wrap gap-4 sm:gap-5">
         {/* ── tarefas do dia ─────────────────────────────────────────────── */}
         <section aria-labelledby="inicio-tarefas" className={CARTAO}>
           <CabecalhoDoCartao
@@ -550,10 +550,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         </section>
 
         {/* ── alertas ────────────────────────────────────────────────────── */}
-        <section
-          aria-labelledby="inicio-alertas"
-          className={cn(CARTAO, "md:col-span-2 xl:col-span-1")}
-        >
+        <section aria-labelledby="inicio-alertas" className={CARTAO}>
           <CabecalhoDoCartao id="inicio-alertas" titulo={t("Alertas")} />
           {alertas.isLoading ? (
             <div className="space-y-2" aria-busy="true">

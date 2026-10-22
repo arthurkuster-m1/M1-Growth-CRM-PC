@@ -87,4 +87,36 @@ describe("EditorDeBlocos", () => {
     fireEvent.keyDown(campos()[1]!, { key: "Tab" }); // "a" é o 1º filho: não tem irmão acima
     expect(ultimo[0]?.filhos?.[0]?.texto).toBe("a");
   });
+
+  it("Esc seleciona o bloco, Shift+↓ estende e Delete apaga os selecionados", () => {
+    render(<Casca inicial={"a\nb\nc\nd"} />);
+    const raiz = screen.getByRole("group", { name: "Descrição" });
+    fireEvent.keyDown(campos()[1]!, { key: "Escape" });
+    fireEvent.keyDown(raiz, { key: "ArrowDown", shiftKey: true });
+    expect(document.querySelectorAll("[data-linha].ring-1")).toHaveLength(2);
+    fireEvent.keyDown(raiz, { key: "Delete" });
+    expect(ultimo.map((b) => b.texto)).toEqual(["a", "d"]);
+  });
+
+  it("Shift+↑ no começo do texto começa a selecionar; Ctrl+Shift+5 troca todos", () => {
+    render(<Casca inicial={"a\nb\nc"} />);
+    const raiz = screen.getByRole("group", { name: "Descrição" });
+    const c = campos()[1]!;
+    c.setSelectionRange(0, 0);
+    fireEvent.keyDown(c, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(raiz, { code: "Digit5", ctrlKey: true, shiftKey: true });
+    expect(ultimo.map((b) => b.tipo)).toEqual(["bullet", "bullet", "texto"]);
+  });
+
+  it("copiar e colar blocos selecionados duplica o conteúdo", () => {
+    render(<Casca inicial={"a\nb"} />);
+    const raiz = screen.getByRole("group", { name: "Descrição" });
+    fireEvent.keyDown(campos()[0]!, { key: "Escape" });
+    fireEvent.keyDown(raiz, { key: "ArrowDown", shiftKey: true });
+    let guardado = "";
+    fireEvent.copy(raiz, { clipboardData: { setData: (_t: string, v: string) => (guardado = v) } });
+    expect(guardado).toBe("a\nb");
+    fireEvent.paste(raiz, { clipboardData: { getData: () => guardado } });
+    expect(ultimo.map((b) => b.texto)).toEqual(["a", "b", "a", "b"]);
+  });
 });
