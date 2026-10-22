@@ -239,6 +239,7 @@ export type CodigoDeAlerta =
   | "verificar_lp"
   | "cpl_acima_da_meta"
   | "leads_atrasados"
+  | "leads_fora_do_periodo"
   | "no_ritmo";
 
 export interface Alerta {
@@ -347,16 +348,21 @@ export function resumoDaCampanha(
     metas,
     pace,
     funil,
-    alertas: alertasDaCampanha(c, { periodo, restante, metas, pace, funil }),
+    alertas: alertasDaCampanha(c, { periodo, restante, metas, pace, funil, dias }),
   };
 }
 
 function alertasDaCampanha(
   c: CampanhaDeDemanda,
-  r: Pick<ResumoDaCampanha, "periodo" | "metas" | "pace" | "funil"> & { restante: number | null },
+  r: Pick<ResumoDaCampanha, "periodo" | "metas" | "pace" | "funil"> & {
+    restante: number | null;
+    dias: readonly DiaDaCampanha[];
+  },
 ): Alerta[] {
   const { periodo, metas, pace, funil, restante } = r;
   const a: Alerta[] = [];
+  const fora = leadsForaDoPeriodo(c, r.dias);
+  if (fora) a.push({ codigo: "leads_fora_do_periodo", nivel: "info", valor: fora.total });
   if (c.channel !== "trafego_pago") return a;
   if (!periodo) {
     a.push({ codigo: "sem_periodo", nivel: "info" });
@@ -502,18 +508,19 @@ export function janelaDaSync(
 // ---------------------------------------------------------------------------------------------
 
 /**
- * O período em que os leads do CRM contam: do início da campanha (ou 180 dias atrás, sem
- * início) até hoje — ou até o fim, se já passou. `null` = a campanha ainda não começou.
+ * O período em que os leads do CRM contam: TODOS os da campanha, de qualquer data até hoje. Lead
+ * que entrou antes do início ou depois do fim (acontece: o lead chega um dia depois que o anúncio
+ * parou) soma no total da campanha; o dia a dia mostra esses dias e avisa que são de fora.
  */
 export function janelaDosLeads(
-  c: Pick<CampanhaDeDemanda, "start_date" | "end_date">,
+  _c: Pick<CampanhaDeDemanda, "start_date" | "end_date">,
   agora: Date = new Date(),
-): { de: string; ate: string } | null {
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const hoje = iso(agora);
-  const de = c.start_date ?? iso(new Date(agora.getTime() - 180 * MS_DO_DIA));
-  const ate = c.end_date && c.end_date < hoje ? c.end_date : hoje;
-  return de > ate ? null : { de, ate };
+): { de: string; ate: string } {
+  // Um dia a mais no fim cobre o fuso: "hoje" na empresa pode já ser amanhã em UTC.
+  return {
+    de: "2000-01-01",
+    ate: new Date(agora.getTime() + MS_DO_DIA).toISOString().slice(0, 10),
+  };
 }
 
 /**
@@ -562,7 +569,7 @@ export interface JanelaDoDiaADia {
 
 const MAXIMO_DE_LINHAS_DO_DIA_A_DIA = 400;
 
-const diaTemDados = (d: DiaDaCampanha) =>
+export const diaTemDados = (d: DiaDaCampanha) =>
   d.spend > 0 ||
   d.impressions > 0 ||
   d.reach > 0 ||
@@ -661,4 +668,43 @@ export function somarMeses(mes: string, n: number): string {
   const [a, m] = mes.split("-").map(Number) as [number, number];
   const d = new Date(Date.UTC(a, m - 1 + n, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Os leads que entraram FORA do período da campanha (antes do início ou depois do fim). Só existe
+ * para campanha com início e fim; contínua não tem "fora".
+ */
+export function leadsForaDoPeriodo(
+  c: Pick<CampanhaDeDemanda, "start_date" | "end_date" | "continuous">,
+  dias: readonly DiaDaCampanha[],
+): { total: number; antes: number; depois: number } | null {
+  if (c.continuous || !c.start_date || !c.end_date) return null;
+  let antes = 0;
+  let depois = 0;
+  for (const d of dias) {
+    if (d.leads <= 0) continue;
+    if (d.day < c.start_date) antes += d.leads;
+    else if (d.day > c.end_date) depois += d.leads;
+  }
+  return antes + depois > 0 ? { total: antes + depois, antes, depois } : null;
+}
+
+/**
+ * O período que o dia a dia mostra por padrão: o da campanha, esticado até os dias de fora que
+ * têm dados (lead que chegou depois do fim, gasto antes do início). Sem dados de fora, é o mesmo.
+ */
+export function periodoComDados(
+  padrao: { de: string; ate: string },
+  c: Pick<CampanhaDeDemanda, "start_date" | "end_date" | "continuous">,
+  dias: readonly DiaDaCampanha[],
+): { de: string; ate: string } {
+  if (c.continuous || !c.start_date || !c.end_date) return padrao;
+  let de = padrao.de;
+  let ate = padrao.ate;
+  for (const d of dias) {
+    if (!diaTemDados(d)) continue;
+    if (d.day < de) de = d.day;
+    if (d.day > ate) ate = d.day;
+  }
+  return { de, ate };
 }

@@ -162,6 +162,8 @@ function textoDoAlerta(t: (s: string) => string, a: Alerta): string {
       return t("O CPL está acima da meta.");
     case "leads_atrasados":
       return `${t("Leads atrasados em relação à meta de hoje:")} ${inteiro(a.valor ?? 0)}.`;
+    case "leads_fora_do_periodo":
+      return `${inteiro(a.valor ?? 0)} ${t("leads entraram fora do período da campanha (antes do início ou depois do fim) e já estão somados nos totais.")}`;
     case "no_ritmo":
       return t("Tudo no ritmo: nenhum alerta por enquanto.");
   }

@@ -35,6 +35,8 @@ interface Props {
    * a lista por este conteúdo; `voltar` retorna à lista.
    */
   renderizarEditor?: (voltar: () => void) => ReactNode;
+  /** O botão fica do tamanho da etiqueta (sem esticar nem acolchoar), para usar em linha. */
+  compacto?: boolean;
 }
 
 /**
@@ -51,6 +53,7 @@ export function SeletorDeOpcao({
   aoLimpar,
   secoes,
   renderizarEditor,
+  compacto = false,
 }: Props) {
   const t = useT();
   const [aberto, setAberto] = useState(false);
@@ -88,8 +91,10 @@ export function SeletorDeOpcao({
           disabled={!podeEditar}
           aria-label={rotulo}
           className={cn(
-            "flex w-full items-center rounded-md px-2 py-1.5 text-left",
-            podeEditar && "hover:bg-secondary",
+            compacto
+              ? "inline-flex w-auto shrink-0 items-center rounded-md text-left"
+              : "flex w-full items-center rounded-md px-2 py-1.5 text-left",
+            podeEditar && (compacto ? "hover:opacity-80" : "hover:bg-secondary"),
           )}
         >
           {children}
