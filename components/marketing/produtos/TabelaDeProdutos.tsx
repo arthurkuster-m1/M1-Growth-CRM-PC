@@ -22,13 +22,13 @@ import { apiClient } from "@/lib/api/client";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { lerNumero } from "@/lib/marketing/calculadora";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
+import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import {
   aplicarConsulta,
   consultaAtiva,
   type CampoConsultavel,
-  type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
@@ -203,11 +203,20 @@ export function TabelaDeProdutos({
   );
   const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
-  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
+    ? visaoAtiva.config
+    : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
+  // Filtro, ordem e agrupamento: rascunho sobre o salvo; "Reset" volta, "Salvar" vira o padrão.
+  const { preferencias, mudarConsulta, salvamento } = useConsultaEmRascunho({
+    ativaId,
+    salvas: preferenciasSalvas,
+    atualizar,
+    podeSalvar: podeEditar && (visaoAtiva?.editavel ?? true),
+  });
   const escolherAba = (id: string) =>
     router.replace(id === ID_DA_PADRAO ? caminho : `${caminho}?v=${id}`, { scroll: false });
 
@@ -526,15 +535,6 @@ export function TabelaDeProdutos({
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
 
-  function mudarConsulta(c: ConsultaDaTabela) {
-    atualizar((p) => ({
-      ...p,
-      filtros: c.filtros?.length ? c.filtros : undefined,
-      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
-      agrupar: c.agrupar,
-      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
-    }));
-  }
 
   const abas = [
     {
@@ -561,6 +561,7 @@ export function TabelaDeProdutos({
         aoConfigurar={() => setConfigurando(true)}
       />
       <BarraDeConsulta
+          salvamento={salvamento}
         campos={camposDaBarra}
         consulta={{
           filtros: preferencias.filtros,
