@@ -857,11 +857,7 @@ export function CampanhasDeDemanda() {
                   ? (linhaDoTempo) => atualizar((p) => ({ ...p, linhaDoTempo }))
                   : undefined
               }
-              aoDatas={
-                podeEditar
-                  ? (id, datas) => void editar([id], { ...datas, continuous: false })
-                  : undefined
-              }
+              aoDatas={podeEditar ? (id, datas) => void editar([id], datas) : undefined}
             />
           ) : grupos ? (
             <div className="flex flex-col gap-6">

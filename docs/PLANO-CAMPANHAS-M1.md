@@ -327,7 +327,7 @@ parcerias, aproveitamento de base) trocam 04 e 05 por **Abordagem**.
   (hoje, ontem, últimos 5/7/30 dias, semana, mês, mês passado) e o cálculo (soma ou média por
   dia: "30 leads/dia = média dos últimos 5 dias"). Aparece sozinho no cronograma interno e no
   link público. `lib/marketing/metas-automaticas.ts`, `fn_metricas_do_crm`.
-- **Resultados:** `/app/marketing/geracao-de-demanda/resultados`: todas as campanhas num período,
+- **Resultados** (hoje o Dashboard de Tráfego Pago, `/app/marketing/dashboards`; a rota antiga só redireciona): todas as campanhas num período,
   com investido, leads, CPL, vendas, CAC, recebido, a receber e ROAS (`fn_demand_campaigns_resultados`).
   Faturamento conta só o que caiu no período (parcelas recebidas).
 - **Pop-up da venda em qualquer tela:** `PopupDeVendaPendente` na casca do app: toda venda "a

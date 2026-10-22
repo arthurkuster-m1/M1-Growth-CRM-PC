@@ -19,7 +19,7 @@ function Barra() {
   if (!caminhoSeguro(destino)) return null;
   const nome = parametros.get(PARAM_NOME_DO_VOLTAR)?.slice(0, 80);
   return (
-    <div className="mx-auto mb-3 flex w-full max-w-[1400px]">
+    <div className="mb-3 flex w-full px-4 sm:px-6">
       <LinkVoltar href={destino}>{nome}</LinkVoltar>
     </div>
   );

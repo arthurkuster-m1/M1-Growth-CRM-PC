@@ -53,7 +53,7 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/vendas":
     "redirect para /app/clientes?visao=vendas: Vendas virou uma visão da página CRM",
   "/app/marketing/geracao-de-demanda/resultados":
-    "alcançada pelas abas de Campanhas; o hub já lista a tela-mãe",
+    "redirect para /app/marketing/dashboards?painel=trafego: os resultados das campanhas viraram o Dashboard de Tráfego Pago; mantido por links salvos",
   "/app/settings/atualizacao":
     "porta é o rodapé de versão (VersionFooter), que aparece justamente quando há versão nova — melhor que um card fixo. Além disso é só do dono do servidor (is_platform_admin), papel que o registro não modela",
 };
