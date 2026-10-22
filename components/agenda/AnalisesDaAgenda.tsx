@@ -2,8 +2,6 @@
 
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
-import { AbasDaAgenda } from "./AbasDaAgenda";
-
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
@@ -40,10 +38,16 @@ const ROTULO_DO_PERIODO: Record<Periodo, string> = {
 const pct = (n: number | null) => (n === null ? "—" : `${n.toLocaleString("pt-BR")}%`);
 
 /** As ANÁLISES da Agenda: comparecimento, conversão e quantidades (por atendente, tipo e campanha). */
-export function AnalisesDaAgenda() {
+export function AnalisesDaAgenda({
+  periodo,
+}: {
+  /** Dentro dos Dashboards: usa o período do cabeçalho deles, sem cabeçalho nem seletor próprios. */
+  periodo?: { de: string; ate: string };
+} = {}) {
   const t = useT();
   const hoje = new Intl.DateTimeFormat("en-CA").format(new Date());
-  const [janela, setJanela] = useState(() => janelaDoPeriodo("mes", hoje));
+  const [propria, setJanela] = useState(() => janelaDoPeriodo("mes", hoje));
+  const janela = periodo ?? propria;
   const atalhos: AtalhoDePeriodo[] = PERIODOS.map((p) => ({
     id: p,
     rotulo: t(ROTULO_DO_PERIODO[p]),
@@ -73,7 +77,8 @@ export function AnalisesDaAgenda() {
   const nomeDoAtendente = (id: string) =>
     id === ""
       ? t("Sem responsável")
-      : ((equipe.data ?? []).find((p) => p.user_id === id)?.full_name?.trim() ?? t("Membro da equipe"));
+      : ((equipe.data ?? []).find((p) => p.user_id === id)?.full_name?.trim() ??
+        t("Membro da equipe"));
   const nomeDoTipo = (id: string) =>
     id === "" ? t("Sem tipo") : (dados.data?.tipos.find((x) => x.id === id)?.name ?? "—");
   const nomeDaCampanha = (id: string) =>
@@ -83,11 +88,13 @@ export function AnalisesDaAgenda() {
 
   const d = dados.data;
   const cartao = (rotulo: string, valor: string, apoio?: string, destaque = false) => (
-    <div className={cn("bg-card px-4 py-3", destaque && "ring-2 ring-inset ring-primary/40")}>
+    <div className={cn("bg-card px-4 py-3", destaque && "ring-2 ring-primary/40 ring-inset")}>
       <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
         {rotulo}
       </p>
-      <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{valor}</NumeroQueCabe></p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">
+        <NumeroQueCabe>{valor}</NumeroQueCabe>
+      </p>
       {apoio ? <p className="text-[11px] text-muted-foreground">{apoio}</p> : null}
     </div>
   );
@@ -122,8 +129,12 @@ export function AnalisesDaAgenda() {
                     <td className="px-2 py-1.5 text-right tabular-nums">{g.faltaram}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{g.cancelados}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{g.semDesfecho}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{pct(g.taxaDeComparecimento)}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{pct(g.taxaDeConversao)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {pct(g.taxaDeComparecimento)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {pct(g.taxaDeConversao)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -136,22 +147,31 @@ export function AnalisesDaAgenda() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <AbasDaAgenda ativa="analises" />
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Análises da Agenda")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("Compromissos, comparecimento e conversão. Presença e falta são sempre declaradas por uma pessoa.")}
-          </p>
-        </div>
-        <SeletorDePeriodo
-          de={janela.de}
-          ate={janela.ate}
-          rotulo={t("Período")}
-          atalhos={atalhos}
-          aoMudar={(p) => setJanela({ ...janela, de: p.de, ate: p.ate })}
-        />
-      </header>
+      {periodo ? (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            "Compromissos, comparecimento e conversão. Presença e falta são sempre declaradas por uma pessoa.",
+          )}
+        </p>
+      ) : (
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("Análises da Agenda")}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "Compromissos, comparecimento e conversão. Presença e falta são sempre declaradas por uma pessoa.",
+              )}
+            </p>
+          </div>
+          <SeletorDePeriodo
+            de={janela.de}
+            ate={janela.ate}
+            rotulo={t("Período")}
+            atalhos={atalhos}
+            aoMudar={(p) => setJanela({ ...propria, de: p.de, ate: p.ate })}
+          />
+        </header>
+      )}
 
       {dados.isLoading || !d ? (
         <div className="h-40 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
@@ -175,7 +195,11 @@ export function AnalisesDaAgenda() {
             )}
             {cartao(t("Cancelados"), String(d.totais.cancelados))}
             {cartao(t("Remarcados"), String(d.remarcados), t("Remarcações feitas no período"))}
-            {cartao(t("Sem desfecho"), String(d.totais.semDesfecho), t("Já passaram e ninguém declarou"))}
+            {cartao(
+              t("Sem desfecho"),
+              String(d.totais.semDesfecho),
+              t("Já passaram e ninguém declarou"),
+            )}
             {cartao(
               t("Confirmaram"),
               String(d.totais.confirmaram),
@@ -207,7 +231,9 @@ export function AnalisesDaAgenda() {
                   <tbody>
                     {d.porDia.map((x) => (
                       <tr key={x.dia} className="border-t">
-                        <td className="py-1.5 pr-3 tabular-nums">{x.dia.split("-").reverse().join("/")}</td>
+                        <td className="py-1.5 pr-3 tabular-nums">
+                          {x.dia.split("-").reverse().join("/")}
+                        </td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{x.agendados}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{x.compareceram}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{x.faltaram}</td>

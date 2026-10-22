@@ -156,13 +156,15 @@ export async function GET(req: NextRequest): Promise<Response> {
     .or(filtroDeDonas)
     .limit(5000);
   // A venda é a oportunidade: o id da venda é o do card.
-  const vendas = ((vendasBrutas ?? []) as Array<{
-    id: string;
-    pipeline_id: string | null;
-    demand_campaign_id: string | null;
-    demand_creative_id: string | null;
-    demand_landing_page_id: string | null;
-  }>)
+  const vendas = (
+    (vendasBrutas ?? []) as Array<{
+      id: string;
+      pipeline_id: string | null;
+      demand_campaign_id: string | null;
+      demand_creative_id: string | null;
+      demand_landing_page_id: string | null;
+    }>
+  )
     .map((o) => {
       const dona = donaDa(o);
       // Anúncio e página só recebem o que fechou no PRÓPRIO funil de origem: o lead reaproveitado
@@ -209,7 +211,13 @@ export async function GET(req: NextRequest): Promise<Response> {
   const leadsAnterior = new Map([...leadsDoDia].filter(([d]) => d < de.data));
 
   const dias = montarDias(de.data, ate.data, metaAtual, leadsAtual, pagAtual);
-  const diasAnteriores = montarDias(anterior.de, anterior.ate, metaAnterior, leadsAnterior, pagAnterior);
+  const diasAnteriores = montarDias(
+    anterior.de,
+    anterior.ate,
+    metaAnterior,
+    leadsAnterior,
+    pagAnterior,
+  );
 
   // Por campanha (período atual).
   const campanhas = escolhidas.map((c) => {
@@ -246,7 +254,14 @@ export async function GET(req: NextRequest): Promise<Response> {
   ) => {
     const linhas = new Map<
       string,
-      { id: string; nome: string; leads: Set<string>; desq: Set<string>; vendas: Set<string>; recebido: number }
+      {
+        id: string;
+        nome: string;
+        leads: Set<string>;
+        desq: Set<string>;
+        vendas: Set<string>;
+        recebido: number;
+      }
     >();
     const pegar = (id: string) => {
       let l = linhas.get(id);
@@ -263,10 +278,12 @@ export async function GET(req: NextRequest): Promise<Response> {
       }
       return l;
     };
-    for (const l of ((leadsDeOrigem ?? []) as unknown as Array<{
-      pipeline_id: string | null;
-      demand_campaign_id: string | null;
-    }>).filter((o) => {
+    for (const l of (
+      (leadsDeOrigem ?? []) as unknown as Array<{
+        pipeline_id: string | null;
+        demand_campaign_id: string | null;
+      }>
+    ).filter((o) => {
       const dona = donaDa(o);
       return (
         dona !== null &&
@@ -274,7 +291,9 @@ export async function GET(req: NextRequest): Promise<Response> {
         (o.demand_campaign_id === null || o.demand_campaign_id === dona)
       );
     }) as unknown as Array<
-      Record<string, string | null> & { stage: { tipo: string | null } | { tipo: string | null }[] | null }
+      Record<string, string | null> & {
+        stage: { tipo: string | null } | { tipo: string | null }[] | null;
+      }
     >) {
       const id = l[campo];
       if (!id) continue;
@@ -313,17 +332,47 @@ export async function GET(req: NextRequest): Promise<Response> {
       .limit(3000),
     a.supabase
       .from("demand_campaign_landing_pages")
-      .select("id, name")
+      .select("id, name, campaign_id")
       .eq("organization_id", a.orgId)
       .in("campaign_id", ids)
       .limit(2000),
   ]);
   const nomesDeCriativo = new Map(
-    ((criativos ?? []) as Array<{ id: string; name: string | null }>).map((c) => [c.id, c.name ?? "—"]),
+    ((criativos ?? []) as Array<{ id: string; name: string | null }>).map((c) => [
+      c.id,
+      c.name ?? "—",
+    ]),
   );
-  const nomesDePagina = new Map(
-    ((paginas ?? []) as Array<{ id: string; name: string | null }>).map((c) => [c.id, c.name ?? "—"]),
-  );
+  const listaDePaginas = (paginas ?? []) as Array<{
+    id: string;
+    name: string | null;
+    campaign_id: string | null;
+  }>;
+  const nomesDePagina = new Map(listaDePaginas.map((c) => [c.id, c.name ?? "—"]));
+  // A mídia (gasto, cliques, visitas) é da CAMPANHA. Só dá para entregá-la a uma página quando a
+  // campanha tem exatamente uma; com várias, não inventamos divisão: a tela mostra "—".
+  const paginasPorCampanha = new Map<string, number>();
+  for (const p of listaDePaginas) {
+    if (p.campaign_id) {
+      paginasPorCampanha.set(p.campaign_id, (paginasPorCampanha.get(p.campaign_id) ?? 0) + 1);
+    }
+  }
+  const midiaDaPagina = (paginaId: string) => {
+    const pagina = listaDePaginas.find((p) => p.id === paginaId);
+    const campanha = pagina?.campaign_id
+      ? campanhas.find((c) => c.id === pagina.campaign_id)
+      : undefined;
+    if (!campanha || paginasPorCampanha.get(campanha.id) !== 1) {
+      return { semMidia: true, investido: 0, impressoes: 0, cliques: 0, viewsLP: 0 };
+    }
+    return {
+      semMidia: false,
+      investido: campanha.investido,
+      impressoes: campanha.impressoes,
+      cliques: campanha.cliques,
+      viewsLP: campanha.viewsLP,
+    };
+  };
 
   // ── Por anúncio e por conjunto (base diária por anúncio do Meta) ──────────────────────────────
   // Muitos anúncios têm o mesmo nome: o id do anúncio os separa, e a tela mostra campanha e
@@ -393,9 +442,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     for (let i = 0; i < idsDeAnuncio.length; i += 100) {
       const { data } = await a.supabase
         .from("crm_leads")
-        .select(
-          "id, contact_id, source_metadata, stage:crm_stages!crm_leads_stage_id_fkey(tipo)",
-        )
+        .select("id, contact_id, source_metadata, stage:crm_stages!crm_leads_stage_id_fkey(tipo)")
         .eq("organization_id", a.orgId)
         .in("source_metadata->>ad_id", idsDeAnuncio.slice(i, i + 100))
         .gte("created_at", `${de.data}T00:00:00-03:00`)
@@ -428,7 +475,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     // Vendas e dinheiro: o anúncio do lead da venda.
     const idsDeLeadDasVendas = [
       ...new Set(
-        vendas.filter((v) => v.origem_propria).map((v) => v.lead_id).filter((x): x is string => Boolean(x)),
+        vendas
+          .filter((v) => v.origem_propria)
+          .map((v) => v.lead_id)
+          .filter((x): x is string => Boolean(x)),
       ),
     ];
     const anuncioDoLead = new Map<string, string>();
@@ -473,6 +523,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       investido: number;
       impressoes: number;
       cliques: number;
+      viewsLP: number;
       leads: number;
       desqualificados: number;
       vendas: number;
@@ -489,6 +540,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       investido: 0,
       impressoes: 0,
       cliques: 0,
+      viewsLP: 0,
       leads: 0,
       desqualificados: 0,
       vendas: 0,
@@ -498,6 +550,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     c.investido += x.investido;
     c.impressoes += x.impressoes;
     c.cliques += x.cliques;
+    c.viewsLP += x.viewsLP;
     c.leads += x.leads;
     c.desqualificados += x.desqualificados;
     c.vendas += x.vendas;
@@ -536,7 +589,10 @@ export async function GET(req: NextRequest): Promise<Response> {
       conjuntos: [...conjuntos.values()]
         .map((c) => ({ ...c, investido: arredonda(c.investido), recebido: arredonda(c.recebido) }))
         .sort((x, y) => y.investido - x.investido),
-      paginas: agrupar("demand_landing_page_id", nomesDePagina),
+      paginas: agrupar("demand_landing_page_id", nomesDePagina).map((p) => ({
+        ...p,
+        ...midiaDaPagina(p.id),
+      })),
       catalogo: catalogo.map((c) => ({ id: c.id, nome: c.name })),
     },
     { requestId: a.requestId },

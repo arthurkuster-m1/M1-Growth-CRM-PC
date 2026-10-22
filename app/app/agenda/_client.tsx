@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ConfiguracaoDaAgenda } from "./_components/ConfiguracaoDaAgenda";
 import { BotaoConfirmado, BotaoExcluir, BotaoResultado } from "@/components/agenda/AcoesDoCompromisso";
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
-import { AbasDaAgenda } from "@/components/agenda/AbasDaAgenda";
 import { EntradaDaAgenda } from "@/components/agenda/EntradaDaAgenda";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
@@ -393,7 +392,6 @@ export function AgendaClient({
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <AbasDaAgenda ativa="agenda" />
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}

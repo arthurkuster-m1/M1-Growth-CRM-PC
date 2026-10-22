@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import { COR_DA_MARCA, COR_DO_APOIO } from "@/components/dashboards/base";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
 
 export interface MetricaDoGrafico {
@@ -45,21 +46,16 @@ export function GraficoComparativo({
     [mb.id]: d[mb.id],
   }));
   const seletor = (valor: string, aoMudar: (v: string) => void, cor: string, rotulo: string) => (
-    <label className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5 text-xs">
-      <span className="h-2.5 w-2.5 rounded-full" style={{ background: cor }} aria-hidden />
-      <span className="sr-only">{rotulo}</span>
-      <select
-        value={valor}
-        onChange={(e) => aoMudar(e.target.value)}
-        className="bg-transparent text-xs outline-hidden"
-      >
-        {metricas.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.rotulo}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="flex items-center gap-2">
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: cor }} aria-hidden />
+      <SeletorEmPopup
+        rotulo={rotulo}
+        valor={valor}
+        aoEscolher={aoMudar}
+        opcoes={metricas.map((m) => ({ id: m.id, rotulo: m.rotulo }))}
+        className="h-8 min-h-8 w-44 rounded-xl px-2.5 py-0 text-xs"
+      />
+    </div>
   );
   return (
     <div className="grid gap-3">
