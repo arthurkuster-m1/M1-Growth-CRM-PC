@@ -33,10 +33,13 @@ import {
   acharBloco,
   ATALHO_DO_TIPO,
   clonar,
+  desindentarIds,
   duplicarIds,
+  indentarIds,
   idsVisiveis,
   inserirDepois,
   mapearIds,
+  moverIds,
   novoBloco,
   novoId,
   removerIds,
@@ -130,6 +133,8 @@ interface Contexto {
     trocarTipo: (tipo: TipoDeBloco) => void;
     duplicar: () => void;
     apagar: () => void;
+    /** Arrastar a alça de um bloco selecionado leva a seleção toda. */
+    mover: (alvo: string, depois: boolean) => void;
   };
 }
 
@@ -609,7 +614,13 @@ function ListaDeBlocos({
     if (!e.over || e.active.id === e.over.id) return;
     const de = blocos.findIndex((b) => b.id === e.active.id);
     const para = blocos.findIndex((b) => b.id === e.over!.id);
-    if (de >= 0 && para >= 0) aoMudar(arrayMove(blocos, de, para));
+    if (de < 0 || para < 0) return;
+    // Alça de um bloco que faz parte de uma seleção: a seleção inteira vai junto.
+    if (ctx.selecionados.size > 1 && ctx.selecionados.has(String(e.active.id))) {
+      ctx.emMassa.mover(String(e.over.id), de < para);
+      return;
+    }
+    aoMudar(arrayMove(blocos, de, para));
   };
 
   // O número de cada item numerado: conta os vizinhos numerados logo acima.
@@ -750,6 +761,7 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
         })),
       ),
     duplicar: () => aoMudar(duplicarIds(blocos, sel.ids)),
+    mover: (alvo: string, depois: boolean) => aoMudar(moverIds(blocos, sel.ids, alvo, depois)),
     apagar: () => {
       const ids = sel.ids;
       const primeiro = visiveis.findIndex((v) => ids.has(v));
@@ -820,6 +832,10 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
       return e.shiftKey ? estender(alvo) : selecionarUnico(alvo);
     }
     if (!podeEditar) return;
+    if (e.key === "Tab" && !mod && !e.altKey) {
+      e.preventDefault();
+      return aoMudar(e.shiftKey ? desindentarIds(blocos, sel.ids) : indentarIds(blocos, sel.ids));
+    }
     if (e.key === "Backspace" || e.key === "Delete") {
       e.preventDefault();
       return emMassa.apagar();
@@ -856,6 +872,39 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
     e.preventDefault();
     if (ancora && ancora !== id) estender(id, ancora);
     else selecionarUnico(id);
+  };
+
+  // Arrastar o mouse de um bloco para outro seleciona os blocos no caminho (e não o texto).
+  const [arrastando, setArrastando] = useState(false);
+  const aoPressionar = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || e.shiftKey || !podeEditar) return;
+    const alvo = e.target as HTMLElement;
+    if (alvo.closest("button, [role=checkbox], [data-radix-popper-content-wrapper]")) return;
+    const inicioId = alvo.closest<HTMLElement>("[data-linha]")?.dataset.linha;
+    if (!inicioId) return;
+    let ativo = false;
+    const bloquear = (ev: Event) => ev.preventDefault();
+    const mover = (m: globalThis.MouseEvent) => {
+      const id = document
+        .elementFromPoint(m.clientX, m.clientY)
+        ?.closest<HTMLElement>("[data-linha]")?.dataset.linha;
+      if (!id || (!ativo && id === inicioId)) return;
+      if (!ativo) {
+        ativo = true;
+        setArrastando(true);
+        document.addEventListener("selectstart", bloquear);
+        window.getSelection()?.removeAllRanges();
+      }
+      estender(id, inicioId);
+    };
+    const soltar = () => {
+      document.removeEventListener("mousemove", mover);
+      document.removeEventListener("mouseup", soltar);
+      document.removeEventListener("selectstart", bloquear);
+      setArrastando(false);
+    };
+    document.addEventListener("mousemove", mover);
+    document.addEventListener("mouseup", soltar);
   };
 
   const aoCopiar = (e: ClipboardEvent<HTMLDivElement>, cortar: boolean) => {
@@ -917,6 +966,7 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
       tabIndex={-1}
       onKeyDown={aoTeclarNaSelecao}
       onMouseDownCapture={aoClicarComShift}
+      onMouseDown={aoPressionar}
       onFocusCapture={(e) => {
         if (e.target === e.currentTarget) return;
         if ((e.target as HTMLElement).dataset.bloco !== undefined) {
@@ -927,7 +977,7 @@ export function EditorDeBlocos({ blocos, aoMudar, podeEditar }: Props) {
       onCopy={(e) => aoCopiar(e, false)}
       onCut={(e) => aoCopiar(e, true)}
       onPaste={aoColar}
-      className="min-w-0 outline-hidden"
+      className={cn("min-w-0 outline-hidden", arrastando && "select-none")}
     >
       <ListaDeBlocos blocos={blocos} aoMudar={aoMudar} ctx={ctx} nivel={0} />
       {podeEditar ? (

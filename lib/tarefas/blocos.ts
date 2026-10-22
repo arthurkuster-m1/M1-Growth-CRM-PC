@@ -235,3 +235,89 @@ export function textoDosBlocos(blocos: Bloco[], nivel = 0): string {
     ])
     .join("\n");
 }
+
+// ── mover e aninhar vários blocos de uma vez ─────────────────────────────────────
+
+/** Quantos níveis há DENTRO do bloco (0 = sem filhos). */
+export function profundidade(b: Bloco): number {
+  return b.filhos?.length ? 1 + Math.max(...b.filhos.map(profundidade)) : 0;
+}
+
+/** O limite de níveis que o leitor (`lerBlocos`) aceita: lista no nível 0 até o 6. */
+const NIVEL_MAXIMO_DA_LISTA = 6;
+
+function inserirAntes(blocos: Bloco[], alvo: string, novos: Bloco[]): Bloco[] {
+  const saida: Bloco[] = [];
+  for (const b of blocos) {
+    if (b.id === alvo) saida.push(...novos, b);
+    else saida.push(b.filhos ? comFilhos(b, inserirAntes(b.filhos, alvo, novos)) : b);
+  }
+  return saida;
+}
+
+/**
+ * Leva os blocos escolhidos (com o que há dentro deles) para antes ou depois do bloco `alvo`.
+ * Soltar sobre um dos próprios escolhidos, ou dentro deles, não faz nada.
+ */
+export function moverIds(
+  blocos: Bloco[],
+  ids: ReadonlySet<string>,
+  alvo: string,
+  depois: boolean,
+): Bloco[] {
+  const topo = topoDosEscolhidos(blocos, ids);
+  if (!topo.length) return blocos;
+  if (topo.some((b) => b.id === alvo || acharBloco(b.filhos ?? [], alvo))) return blocos;
+  const topoIds = new Set(topo.map((b) => b.id));
+  const restantes = removerIds(blocos, topoIds);
+  return depois ? inserirDepois(restantes, alvo, topo) : inserirAntes(restantes, alvo, topo);
+}
+
+/**
+ * Tab com vários blocos: cada bloco escolhido passa a ser filho do bloco logo acima dele (que não
+ * esteja escolhido). Uma sequência escolhida vira filha, toda, do bloco que vem antes dela; se a
+ * sequência começa no primeiro bloco da lista, ela fica onde está.
+ */
+export function indentarIds(blocos: Bloco[], ids: ReadonlySet<string>, nivel = 0): Bloco[] {
+  const saida: Bloco[] = [];
+  let semHospedeiro = false;
+  for (const b of blocos) {
+    if (!ids.has(b.id)) {
+      semHospedeiro = false;
+      saida.push(b.filhos ? comFilhos(b, indentarIds(b.filhos, ids, nivel + 1)) : b);
+      continue;
+    }
+    const anfitriao = saida[saida.length - 1];
+    if (
+      semHospedeiro ||
+      !anfitriao ||
+      ids.has(anfitriao.id) ||
+      nivel + 1 + profundidade(b) > NIVEL_MAXIMO_DA_LISTA
+    ) {
+      semHospedeiro = true;
+      saida.push(b);
+      continue;
+    }
+    saida[saida.length - 1] = {
+      ...anfitriao,
+      ...(anfitriao.tipo === "toggle" ? { aberto: true } : {}),
+      filhos: [...(anfitriao.filhos ?? []), b],
+    };
+  }
+  return saida;
+}
+
+/** Shift+Tab com vários blocos: os escolhidos que estão dentro de outro bloco saem para o nível dele. */
+export function desindentarIds(blocos: Bloco[], ids: ReadonlySet<string>): Bloco[] {
+  const saida: Bloco[] = [];
+  for (const b of blocos) {
+    if (ids.has(b.id) || !b.filhos?.length) {
+      saida.push(b);
+      continue;
+    }
+    const saem = b.filhos.filter((f) => ids.has(f.id));
+    const ficam = b.filhos.filter((f) => !ids.has(f.id));
+    saida.push(comFilhos(b, desindentarIds(ficam, ids)), ...saem);
+  }
+  return saida;
+}
