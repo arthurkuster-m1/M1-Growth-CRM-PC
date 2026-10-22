@@ -17,6 +17,14 @@ interface Props {
   aoOcultar?: () => void;
   aoLarguraPadrao?: () => void;
   aoApagar?: () => void;
+  /**
+   * Ordenar pela coluna: a direção em vigor (se for esta coluna) e o que fazer ao escolher.
+   * `null` tira a ordenação.
+   */
+  ordenacao?: {
+    atual: "asc" | "desc" | null;
+    aoEscolher: (direcao: "asc" | "desc" | null) => void;
+  };
   /** Editor de opções (propriedades de seleção); ver `SeletorDeOpcao`. */
   renderizarEditor?: (voltar: () => void) => ReactNode;
 }
@@ -24,10 +32,12 @@ interface Props {
 function Item({
   onClick,
   destrutivo,
+  ativo,
   children,
 }: {
   onClick: () => void;
   destrutivo?: boolean;
+  ativo?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -37,6 +47,7 @@ function Item({
       className={cn(
         "w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-secondary",
         destrutivo ? "text-error-fg" : "text-foreground",
+        ativo && "bg-accent-soft font-medium text-primary",
       )}
     >
       {children}
@@ -60,6 +71,7 @@ export function MenuDaColuna({
   aoOcultar,
   aoLarguraPadrao,
   aoApagar,
+  ordenacao,
   renderizarEditor,
 }: Props) {
   const t = useT();
@@ -71,7 +83,9 @@ export function MenuDaColuna({
     acao();
   };
 
-  const temAcoes = Boolean(renderizarEditor || aoLarguraPadrao || aoOcultar || aoApagar);
+  const temAcoes = Boolean(
+    ordenacao || renderizarEditor || aoLarguraPadrao || aoOcultar || aoApagar,
+  );
   if (!nome && !temAcoes) return <>{titulo}</>;
 
   return (
@@ -87,7 +101,10 @@ export function MenuDaColuna({
           {titulo}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-2">
+      <PopoverContent
+        align="start"
+        className={cn("p-2", editando ? "w-[min(30rem,calc(100vw-2rem))]" : "w-64")}
+      >
         {editando && renderizarEditor ? (
           renderizarEditor(() => setEditando(false))
         ) : (
@@ -102,6 +119,30 @@ export function MenuDaColuna({
             ) : null}
             {tipo ? <p className="px-1 pb-1 text-xs text-text-subtle">{tipo}</p> : null}
             {temAcoes ? <div className="border-t pt-1" /> : null}
+            {ordenacao ? (
+              <>
+                <Item
+                  ativo={ordenacao.atual === "asc"}
+                  onClick={fechando(() => ordenacao.aoEscolher("asc"))}
+                >
+                  {t("Ordenar crescente")}
+                </Item>
+                <Item
+                  ativo={ordenacao.atual === "desc"}
+                  onClick={fechando(() => ordenacao.aoEscolher("desc"))}
+                >
+                  {t("Ordenar decrescente")}
+                </Item>
+                {ordenacao.atual ? (
+                  <Item onClick={fechando(() => ordenacao.aoEscolher(null))}>
+                    {t("Remover ordenação")}
+                  </Item>
+                ) : null}
+                {renderizarEditor || aoLarguraPadrao || aoOcultar || aoApagar ? (
+                  <div className="border-t pt-1" />
+                ) : null}
+              </>
+            ) : null}
             {renderizarEditor ? (
               <Item onClick={() => setEditando(true)}>{t("Editar opções")}</Item>
             ) : null}

@@ -40,7 +40,7 @@ const COLUNAS =
 const edicaoSchema = z
   .object({
     title: z.string().trim().min(1).max(255).optional(),
-    description: z.string().max(5000).nullable().optional(),
+    description: z.string().max(20000).nullable().optional(),
     due_date: z.string().datetime({ offset: true }).nullable().optional(),
     start_date: z.string().datetime({ offset: true }).nullable().optional(),
     priority: z.enum(PRIORIDADES_DA_TAREFA).optional(),
