@@ -295,3 +295,109 @@ export function modeloDoModulo(chave: string, novoId: NovoId): Bloco[] {
       return generico(novoId);
   }
 }
+
+/** Um modelo de página que dá para aplicar a qualquer página (o menu "Modelos" do editor). */
+export interface ModeloDePagina {
+  chave: string;
+  rotulo: string;
+  descricao: string;
+  montar: (novoId: NovoId) => Bloco[];
+}
+
+/**
+ * Todos os modelos que já existem, em um só catálogo. É o MESMO conteúdo que `modeloDoModulo`
+ * entrega ao criar uma página — aqui ele pode ser escolhido depois, e aplicado numa página que já
+ * tem conteúdo (adicionando ao final ou substituindo tudo).
+ */
+export const MODELOS_DE_PAGINA: readonly ModeloDePagina[] = [
+  {
+    chave: "basico",
+    rotulo: "Modelo básico",
+    descricao: "Título, texto e lista de próximos passos",
+    montar: generico,
+  },
+  {
+    chave: "persona",
+    rotulo: "Estudo de persona",
+    descricao: "Quem é o cliente ideal",
+    montar: persona,
+  },
+  {
+    chave: "pesquisa-de-mercado",
+    rotulo: "Pesquisa de mercado",
+    descricao: "O mercado e o que se sabe dele",
+    montar: pesquisaDeMercado,
+  },
+  {
+    chave: "arvore-de-situacoes",
+    rotulo: "Árvore de situações",
+    descricao: "As situações incômodas do cliente",
+    montar: arvoreDeSituacoes,
+  },
+  {
+    chave: "arquitetura-de-premissas",
+    rotulo: "Arquitetura de premissas",
+    descricao: "Premissa e desconstrução de crenças",
+    montar: arquiteturaDePremissas,
+  },
+  {
+    chave: "porques",
+    rotulo: "Os porquês",
+    descricao: "Por que comprar, por que agora",
+    montar: porques,
+  },
+  {
+    chave: "concorrente",
+    rotulo: "Concorrente",
+    descricao: "Análise de um concorrente",
+    montar: concorrente,
+  },
+  {
+    chave: "perguntas-chave",
+    rotulo: "Perguntas-chave",
+    descricao: "Perguntas da análise de concorrência",
+    montar: perguntasChave,
+  },
+  {
+    chave: "oferta",
+    rotulo: "Oferta",
+    descricao: "A oferta, do preço às objeções",
+    montar: oferta,
+  },
+  {
+    chave: "produtos-e-ofertas",
+    rotulo: "Central de produtos",
+    descricao: "O que a empresa oferece",
+    montar: centralDeProdutos,
+  },
+  {
+    chave: "estrategia",
+    rotulo: "Estratégia de marketing",
+    descricao: "O plano de uma estratégia",
+    montar: estrategiaDeMarketing,
+  },
+  {
+    chave: "mapeamento-do-funil",
+    rotulo: "Mapeamento do funil atual",
+    descricao: "Como o cliente chega e compra hoje",
+    montar: mapeamentoDoFunil,
+  },
+  {
+    chave: "planejamento-empresarial",
+    rotulo: "Planejamento empresarial",
+    descricao: "Metas e caminho",
+    montar: planejamentoEmpresarial,
+  },
+  {
+    chave: "identidade-da-marca",
+    rotulo: "Identidade da marca",
+    descricao: "Cores, voz e posicionamento visual",
+    montar: branding,
+  },
+  {
+    chave: "posicionamento-zmot",
+    rotulo: "Mapa de posicionamento",
+    descricao: "Como a marca é vista",
+    montar: posicionamento,
+  },
+];
