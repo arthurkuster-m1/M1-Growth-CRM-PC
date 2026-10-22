@@ -68,6 +68,7 @@ import { ComentariosEmMassaDialog } from "@/components/clientes/ComentariosEmMas
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { apiClient } from "@/lib/api/client";
@@ -348,6 +349,12 @@ export function ClientesCRM({
       ? undefined
       : (visoes.find((v) => v.id === abaPedida) ??
         (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+  const reordenarAbasNaTela = (id: string, antesDeId: string | null) => {
+    for (const { id: alvo, posicao } of reordenarAbas(ordemDasAbas, id, antesDeId)) {
+      if (alvo === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(alvo, { position: posicao });
+    }
+  };
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   // Em Oportunidades o quadro do funil é a visão de abertura; "Tabela" continua a um clique.
   const vista = visaoAtiva
@@ -2932,6 +2939,7 @@ export function ClientesCRM({
         <>
           <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
           <AbasDeVisualizacao
+        aoReordenar={reordenarAbasNaTela}
             abas={abas}
             ativaId={ativaId}
             podeEditar={podeEditar}

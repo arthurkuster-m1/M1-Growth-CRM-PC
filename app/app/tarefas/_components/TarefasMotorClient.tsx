@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
+import { abasNaOrdem, reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { toast } from "sonner";
@@ -52,6 +53,8 @@ import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import {
   aplicarConsulta,
   consultaAtiva,
+  consultasIguais,
+  normalizarConsulta,
   filtrar,
   filtrosQueReprovam,
   valoresDeNascimento,
@@ -60,7 +63,12 @@ import {
 } from "@/lib/motor/consulta";
 import { formatarDiaBr } from "@/lib/motor/calendario";
 import { hojeNoFuso, rotuloDaData } from "@/lib/motor/datas-do-campo";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+import {
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -191,24 +199,18 @@ export function TarefasMotorClient({
   // Na ficha do lead: só as tarefas dele; as novas já nascem com ele como cliente.
   const tarefas = useMemo(
     () =>
-      contatoFixo
-        ? todasAsTarefas.filter((x) => x.contact_id === contatoFixo.id)
-        : todasAsTarefas,
+      contatoFixo ? todasAsTarefas.filter((x) => x.contact_id === contatoFixo.id) : todasAsTarefas,
     [todasAsTarefas, contatoFixo],
   );
   const criarTarefa: typeof criarTarefaBase = (entrada) =>
-    criarTarefaBase(
-      contatoFixo ? { ...entrada, contact_id: contatoFixo.id } : entrada,
-    );
+    criarTarefaBase(contatoFixo ? { ...entrada, contact_id: contatoFixo.id } : entrada);
   // A tarefa que ainda está sendo preenchida no pop-up de "Nova tarefa" (ainda não existe no
   // banco). As MESMAS células editáveis da tabela servem a ela: editar a tarefa-rascunho muda o
   // rascunho, não o servidor — só "Criar tarefa" grava.
   const [rascunho, setRascunho] = useState<Tarefa | null>(null);
   const editarTarefa: typeof editarTarefaBase = (id, enviar, local) => {
     if (id !== ID_DO_RASCUNHO) return editarTarefaBase(id, enviar, local);
-    setRascunho((atual) =>
-      atual ? ({ ...atual, ...enviar, ...local } as Tarefa) : atual,
-    );
+    setRascunho((atual) => (atual ? ({ ...atual, ...enviar, ...local } as Tarefa) : atual));
     return Promise.resolve(undefined);
   };
   const { modelos, criarModelo, editarModelo, apagarModelo } = useModelosDeTarefa();
@@ -450,7 +452,11 @@ export function TarefasMotorClient({
             celula: (tarefa: Tarefa) => {
               const lados = [
                 { id: "agencia", rotulo: t("Agência"), cor: "blue" as CorDaOpcao },
-                { id: "cliente", rotulo: nomeDaOrganizacao || t("Cliente"), cor: "orange" as CorDaOpcao },
+                {
+                  id: "cliente",
+                  rotulo: nomeDaOrganizacao || t("Cliente"),
+                  cor: "orange" as CorDaOpcao,
+                },
               ];
               const atual = lados.find((l) => l.id === tarefa.cronograma_lado);
               return (
@@ -549,10 +555,8 @@ export function TarefasMotorClient({
   // O layout (ordem, largura, visibilidade) é da PESSOA e mora na conta dela.
   const chaveDaTela = contatoFixo ? "tarefas-do-lead" : "tarefas";
   const padrao = useVisualizacao(chaveDaTela);
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
-    chaveDaTela,
-    podeEditar,
-  );
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } =
+    useVisoesSalvas(chaveDaTela, podeEditar);
   const router = useRouter();
   const caminho = usePathname();
   const parametros = useSearchParams();
@@ -563,9 +567,45 @@ export function TarefasMotorClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const ID_DA_PADRAO = "padrao";
-  const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
+  // As abas na ordem da pessoa: a de fábrica guarda a posição dela nas preferências, as salvas em
+  // `position` (arrastar uma aba renumera a fila).
+  const ordemDasAbas = abasNaOrdem([
+    { id: ID_DA_PADRAO, posicao: padrao.preferencias.posicao ?? -1_000_000 },
+    ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
+  ]);
+  const abaPedida = parametros.get("v");
+  const visaoAtiva =
+    abaPedida === ID_DA_PADRAO
+      ? undefined
+      : (visoes.find((v) => v.id === abaPedida) ??
+        (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
-  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+  const reordenarAbasNaTela = (id: string, antesDeId: string | null) => {
+    for (const { id: alvo, posicao } of reordenarAbas(ordemDasAbas, id, antesDeId)) {
+      if (alvo === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(alvo, { position: posicao });
+    }
+  };
+  const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
+    ? visaoAtiva.config
+    : padrao.preferencias;
+  // Filtro, ordem e agrupamento são um RASCUNHO por cima do que está salvo na visualização (como
+  // no Notion): o que se muda vale na tela, e só "Salvar" o torna o padrão. "Reset" volta ao salvo.
+  const [consultasEmRascunho, setConsultasEmRascunho] = useState<Record<string, ConsultaDaTabela>>(
+    {},
+  );
+  const consultaRascunho = consultasEmRascunho[ativaId];
+  const consultaAlterada =
+    consultaRascunho !== undefined && !consultasIguais(consultaRascunho, preferenciasSalvas);
+  const preferencias: PreferenciasDaTabela = consultaRascunho
+    ? {
+        ...preferenciasSalvas,
+        filtros: consultaRascunho.filtros,
+        ordenacao: consultaRascunho.ordenacao,
+        agrupar: consultaRascunho.agrupar,
+        agruparPor: consultaRascunho.agruparPor,
+      }
+    : preferenciasSalvas;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
     if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
@@ -579,16 +619,20 @@ export function TarefasMotorClient({
       config: origem.config,
     }).then((v) => v && escolherAba(v.id));
   }
-  const escolherAba = (id: string) =>
-    router.replace(id === ID_DA_PADRAO ? caminho : `${caminho}?v=${id}`, { scroll: false });
-  const abas = [
-    {
-      id: ID_DA_PADRAO,
-      nome: padrao.preferencias.nome ?? t("Tabela"),
-      tipo: "tabela" as TipoDeVisualizacao,
-    },
-    ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
-  ];
+  const escolherAba = (id: string) => router.replace(`${caminho}?v=${id}`, { scroll: false });
+  const abas = ordemDasAbas.map((a) =>
+    a.id === ID_DA_PADRAO
+      ? {
+          id: ID_DA_PADRAO,
+          nome: padrao.preferencias.nome ?? t("Tabela"),
+          tipo: "tabela" as TipoDeVisualizacao,
+        }
+      : {
+          id: a.id,
+          nome: visoes.find((v) => v.id === a.id)?.name ?? "",
+          tipo: (visoes.find((v) => v.id === a.id)?.type ?? "tabela") as TipoDeVisualizacao,
+        },
+  );
   const resolvidas = resolverColunas(colunas, preferencias);
   const mostradas = resolvidas.filter((c) => c.visivel);
   const visualizacao: TipoDeVisualizacao = visaoAtiva?.type ?? "tabela";
@@ -675,7 +719,9 @@ export function TarefasMotorClient({
   // A busca é só desta tela (não se salva na visualização): olha título e descrição.
   const termo = normalizarBusca(busca);
   const tarefasBuscadas = termo
-    ? tarefas.filter((x) => normalizarBusca(`${x.title} ${textoDaDescricao(x.description)}`).includes(termo))
+    ? tarefas.filter((x) =>
+        normalizarBusca(`${x.title} ${textoDaDescricao(x.description)}`).includes(termo),
+      )
     : tarefas;
   // GARANTIA: a tarefa que a pessoa acabou de criar SEMPRE aparece. Normalmente ela já nasce
   // passando nos filtros; se por qualquer motivo não passar, ela fica à vista (e a tela avisa
@@ -726,13 +772,25 @@ export function TarefasMotorClient({
   });
 
   function mudarConsulta(c: ConsultaDaTabela) {
+    setConsultasEmRascunho((r) => ({ ...r, [ativaId]: normalizarConsulta(c) }));
+  }
+  function resetarConsulta() {
+    setConsultasEmRascunho(({ [ativaId]: _descartado, ...resto }) => {
+      void _descartado;
+      return resto;
+    });
+  }
+  function salvarConsulta() {
+    if (!consultaRascunho) return;
+    const salvar = normalizarConsulta(consultaRascunho);
     atualizar((p) => ({
       ...p,
-      filtros: c.filtros?.length ? c.filtros : undefined,
-      ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
-      agrupar: c.agrupar,
-      agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
+      filtros: salvar.filtros,
+      ordenacao: salvar.ordenacao,
+      agrupar: salvar.agrupar,
+      agruparPor: salvar.agruparPor,
     }));
+    resetarConsulta();
   }
 
   // ── seleção de linhas e ações em massa ──────────────────────────────────────────────
@@ -925,7 +983,9 @@ export function TarefasMotorClient({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t("Apagar tarefa?")}</AlertDialogTitle>
-              <AlertDialogDescription>{t("Esta ação não pode ser desfeita.")}</AlertDialogDescription>
+              <AlertDialogDescription>
+                {t("Esta ação não pode ser desfeita.")}
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
@@ -1032,6 +1092,7 @@ export function TarefasMotorClient({
           ativaId={ativaId}
           podeEditar={podeEditar}
           aoEscolher={escolherAba}
+          aoReordenar={reordenarAbasNaTela}
           aoCriar={(nome, tipo) =>
             void criarVisao({ name: nome, type: tipo }).then((v) => v && escolherAba(v.id))
           }
@@ -1088,7 +1149,16 @@ export function TarefasMotorClient({
             <MagnifyingGlass size={16} aria-hidden />
           </button>
         )}
-        <BarraDeConsulta campos={camposDaBarra} consulta={preferencias} aoMudar={mudarConsulta} />
+        <BarraDeConsulta
+          campos={camposDaBarra}
+          consulta={preferencias}
+          aoMudar={mudarConsulta}
+          salvamento={{
+            alterada: consultaAlterada,
+            aoResetar: resetarConsulta,
+            aoSalvar: podeEditar && (visaoAtiva?.editavel ?? true) ? salvarConsulta : undefined,
+          }}
+        />
       </div>
 
       {visualizacao === "calendario" ? (
@@ -1350,7 +1420,9 @@ export function TarefasMotorClient({
                 ...p,
                 calendario: {
                   propriedades: mostrar
-                    ? resolvidas.filter((c) => c.id !== "titulo" && c.id !== "descricao").map((c) => c.id)
+                    ? resolvidas
+                        .filter((c) => c.id !== "titulo" && c.id !== "descricao")
+                        .map((c) => c.id)
                     : [],
                 },
               }))
@@ -1369,8 +1441,7 @@ export function TarefasMotorClient({
       <PainelDaTarefa
         nova={{
           aoCriar: () => void criarDoRascunho(),
-          aoMudarTitulo: (title) =>
-            setRascunho((atual) => (atual ? { ...atual, title } : atual)),
+          aoMudarTitulo: (title) => setRascunho((atual) => (atual ? { ...atual, title } : atual)),
         }}
         tarefa={rascunho}
         colunas={colunas}

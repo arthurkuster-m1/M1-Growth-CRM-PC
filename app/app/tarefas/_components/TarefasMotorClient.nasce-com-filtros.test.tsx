@@ -237,7 +237,8 @@ async function adicionarFiltroPelaTela(passos: {
   const condicoes = screen.getAllByLabelText("Condição do filtro");
   await escolherNoPopup(condicoes[ultimo]!, passos.condicao);
   if (passos.valor?.hoje) {
-    await userEvent.click(within(painel()).getByRole("button", { name: "Hoje" }));
+    const valores = screen.getAllByLabelText("Valor do filtro");
+    await escolherNoPopup(valores[valores.length - 1]!, "Hoje");
   }
   if (passos.valor?.texto !== undefined) {
     const valores = screen.getAllByLabelText("Valor do filtro");

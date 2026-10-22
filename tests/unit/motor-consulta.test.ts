@@ -5,7 +5,11 @@ import {
   aplicarConsulta,
   consultaAtiva,
   consultaSchema,
+  consultasIguais,
   filtrar,
+  intervaloDoPeriodo,
+  normalizarConsulta,
+  resolverData,
   ordenar,
   valoresDeNascimento,
   type CampoConsultavel,
@@ -531,5 +535,137 @@ describe("filtro de texto ignora espaço nas pontas", () => {
       contexto,
     );
     expect(ids(r)).toEqual(["a"]);
+  });
+});
+
+describe("filtros de data relativos (até hoje, esta semana…)", () => {
+  // 2026-10-22 é uma quinta-feira; a semana vai de segunda 19 a domingo 25.
+  const hoje = "2026-10-22";
+  const contexto = { hoje };
+  const linhas = [
+    L("velha", { prazo: "2026-10-10" }),
+    L("segunda", { prazo: "2026-10-19" }),
+    L("hoje", { prazo: "2026-10-22" }),
+    L("domingo", { prazo: "2026-10-25" }),
+    L("proxima", { prazo: "2026-10-26" }),
+    L("sem"),
+  ];
+  const ids = (r: Linha[]) => r.map((l) => l.id);
+
+  it("resolve as datas relativas a partir de hoje", () => {
+    expect(resolverData("hoje", hoje)).toBe("2026-10-22");
+    expect(resolverData("amanha", hoje)).toBe("2026-10-23");
+    expect(resolverData("inicio_da_semana", hoje)).toBe("2026-10-19");
+    expect(resolverData("fim_da_semana", hoje)).toBe("2026-10-25");
+    expect(resolverData("inicio_do_mes", hoje)).toBe("2026-10-01");
+    expect(resolverData("fim_do_mes", hoje)).toBe("2026-10-31");
+    expect(resolverData("2026-01-05", hoje)).toBe("2026-01-05");
+  });
+
+  it('"vence antes de ou até hoje": prazo até hoje', () => {
+    const r = filtrar(
+      linhas,
+      campos,
+      [{ campo: "prazo", operador: "ate", valor: "hoje" }],
+      contexto,
+    );
+    expect(ids(r)).toEqual(["velha", "segunda", "hoje"]);
+  });
+
+  it('"antes de" continua sendo estrito e "a partir de" inclui o dia', () => {
+    expect(
+      ids(
+        filtrar(linhas, campos, [{ campo: "prazo", operador: "antes", valor: "hoje" }], contexto),
+      ),
+    ).toEqual(["velha", "segunda"]);
+    expect(
+      ids(
+        filtrar(
+          linhas,
+          campos,
+          [{ campo: "prazo", operador: "a_partir", valor: "hoje" }],
+          contexto,
+        ),
+      ),
+    ).toEqual(["hoje", "domingo", "proxima"]);
+  });
+
+  it('"Tarefas da semana": prazo está em esta semana (segunda a domingo)', () => {
+    const r = filtrar(
+      linhas,
+      campos,
+      [{ campo: "prazo", operador: "periodo", valor: "esta_semana" }],
+      contexto,
+    );
+    expect(ids(r)).toEqual(["segunda", "hoje", "domingo"]);
+  });
+
+  it("períodos: semana passada, próxima, mês e janelas móveis", () => {
+    expect(intervaloDoPeriodo("semana_passada", hoje)).toEqual({
+      de: "2026-10-12",
+      ate: "2026-10-18",
+    });
+    expect(intervaloDoPeriodo("proxima_semana", hoje)).toEqual({
+      de: "2026-10-26",
+      ate: "2026-11-01",
+    });
+    expect(intervaloDoPeriodo("mes_passado", hoje)).toEqual({
+      de: "2026-09-01",
+      ate: "2026-09-30",
+    });
+    expect(intervaloDoPeriodo("proximo_mes", "2026-12-15")).toEqual({
+      de: "2027-01-01",
+      ate: "2027-01-31",
+    });
+    expect(intervaloDoPeriodo("ultimos_7_dias", hoje)).toEqual({
+      de: "2026-10-16",
+      ate: "2026-10-22",
+    });
+    expect(intervaloDoPeriodo("nada", hoje)).toBeNull();
+  });
+
+  it("o filtro continua certo no dia seguinte (valor relativo, não o dia fixo)", () => {
+    const f = [{ campo: "prazo", operador: "ate" as const, valor: "hoje" }];
+    expect(ids(filtrar(linhas, campos, f, { hoje: "2026-10-26" }))).toContain("proxima");
+    expect(ids(filtrar(linhas, campos, f, contexto))).not.toContain("proxima");
+  });
+
+  it("a tarefa nova nasce à vista", () => {
+    expect(
+      valoresDeNascimento([{ campo: "prazo", operador: "ate", valor: "hoje" }], campos, contexto),
+    ).toEqual({ prazo: "2026-10-22" });
+    expect(
+      valoresDeNascimento(
+        [{ campo: "prazo", operador: "periodo", valor: "esta_semana" }],
+        campos,
+        contexto,
+      ),
+    ).toEqual({ prazo: "2026-10-22" });
+    expect(
+      valoresDeNascimento(
+        [{ campo: "prazo", operador: "periodo", valor: "proxima_semana" }],
+        campos,
+        contexto,
+      ),
+    ).toEqual({ prazo: "2026-10-26" });
+  });
+
+  it("o esquema da consulta aceita os operadores novos", () => {
+    expect(
+      consultaSchema.safeParse({
+        filtros: [{ campo: "prazo", operador: "periodo", valor: "esta_semana" }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("consultas iguais ignoram o que não pede nada", () => {
+    expect(consultasIguais({ filtros: [] }, {})).toBe(true);
+    expect(consultasIguais({ agrupar: "status", agruparPor: "dia" }, { agrupar: "status" })).toBe(
+      true,
+    );
+    expect(consultasIguais({ filtros: [{ campo: "prazo", operador: "preenchido" }] }, {})).toBe(
+      false,
+    );
+    expect(normalizarConsulta({ ordenacao: [] })).toEqual({});
   });
 });

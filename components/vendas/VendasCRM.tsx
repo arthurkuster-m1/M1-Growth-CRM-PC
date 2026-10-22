@@ -28,6 +28,7 @@ import { useRotuloDaForma } from "@/hooks/financeiro/useTaxasDePagamento";
 import { useT } from "@/hooks/i18n/useT";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useMarcarParcela } from "@/hooks/vendas/useMarcarParcela";
+import { reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -136,6 +137,12 @@ export function VendasCRM() {
       ? undefined
       : (visoes.find((v) => v.id === abaPedida) ??
         (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+  const reordenarAbasNaTela = (id: string, antesDeId: string | null) => {
+    for (const { id: alvo, posicao } of reordenarAbas(ordemDasAbas, id, antesDeId)) {
+      if (alvo === ID_DA_PADRAO) padrao.atualizar((p) => ({ ...p, posicao }));
+      else void editarVisao(alvo, { position: posicao });
+    }
+  };
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
@@ -868,6 +875,7 @@ export function VendasCRM() {
       />
 
       <AbasDeVisualizacao
+        aoReordenar={reordenarAbasNaTela}
         abas={[ID_DA_PADRAO, ...visoes.map((v) => v.id)]
           .map((id) => ordemDasAbas.find((a) => a.id === id))
           .flatMap((a) => (a ? [a] : []))
