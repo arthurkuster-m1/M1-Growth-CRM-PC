@@ -3,6 +3,8 @@
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import type { ReactNode } from "react";
 
+import { Painel } from "@/components/dashboards/base";
+import { FunilEmColunas } from "@/components/dashboards/funil";
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
 import { useT } from "@/hooks/i18n/useT";
 import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
@@ -173,16 +175,32 @@ export function ResumoDaCampanha({
   c,
   dias,
   hoje,
+  coorte,
 }: {
   c: CampanhaDeDemanda;
   dias: DiaDaCampanha[];
   hoje: string;
+  /** O funil dos leads que entraram na campanha (agendaram, fizeram a reunião, compraram). */
+  coorte: {
+    leads: number;
+    agendados: number;
+    feitas: number;
+    vendas: number;
+    faturamento: number;
+  } | null;
 }) {
   const t = useT();
   const r = resumoDaCampanha(c, dias, hoje);
   // O que o CRM sabe do período inteiro (vendas, total, reuniões): os blocos de Venda e Reunião.
   const totalCrm = somarAgregados(dias.map(agregadoDoDia));
-  const comReunioes = totalCrm.agendamentos > 0 || totalCrm.reunioes > 0;
+  const funilCrm = coorte ?? {
+    leads: r.funil.leads,
+    agendados: 0,
+    feitas: 0,
+    vendas: 0,
+    faturamento: 0,
+  };
+  const comReunioes = funilCrm.agendados > 0 || funilCrm.feitas > 0;
   const dinheiro = (n: number | null) => (n === null ? null : moedaDoNumero(n));
   const trafego = c.channel === "trafego_pago";
   const progresso = r.periodo ? (r.periodo.passados / r.periodo.totais) * 100 : null;
@@ -226,75 +244,123 @@ export function ResumoDaCampanha({
       ) : null}
 
       {trafego ? (
-        <Cartao titulo={t("Metas de leads")} tom="blue">
-          <Barra
-            rotulo={t("Leads captados da meta")}
-            detalhe={
-              r.metas.metaDeLeads === null
-                ? undefined
-                : `${inteiro(r.metas.captados)} / ${inteiro(r.metas.metaDeLeads)}`
-            }
-            porcentagem={progressoLeads}
-            tom="blue"
-          />
-          <Numero
-            rotulo={t("Meta de leads")}
-            valor={r.metas.metaDeLeads === null ? null : inteiro(r.metas.metaDeLeads)}
-            fundo="blue"
-          />
-          <Numero
-            rotulo={t("Leads captados")}
-            valor={inteiro(r.metas.captados)}
-            destaque
-            fundo="blue"
-          />
-          <Numero
-            rotulo={t("Faltam")}
-            valor={r.metas.faltam === null ? null : inteiro(r.metas.faltam)}
-            fundo="blue"
-          />
-          <Numero rotulo={t("Meta de CPL")} valor={dinheiro(r.metas.metaDeCpl)} />
-          <Numero
-            rotulo={t("CPL atual")}
-            valor={dinheiro(r.funil.cpl)}
-            tom={
-              r.funil.cpl !== null && r.metas.metaDeCpl !== null
-                ? r.funil.cpl <= r.metas.metaDeCpl
-                  ? "bom"
-                  : "ruim"
-                : undefined
-            }
-          />
-          <Numero rotulo={t("CPL necessário")} valor={dinheiro(r.metas.cplNecessario)} />
-          <Numero
-            rotulo={t("Leads por dia (meta)")}
-            valor={r.metas.porDia === null ? null : decimal(r.metas.porDia)}
-          />
-          <Numero
-            rotulo={t("Leads por dia (média)")}
-            valor={r.metas.mediaPorDia === null ? null : decimal(r.metas.mediaPorDia)}
-            tom={
-              r.metas.mediaPorDia !== null && r.metas.porDia !== null
-                ? r.metas.mediaPorDia >= r.metas.porDia
-                  ? "bom"
-                  : "ruim"
-                : undefined
-            }
-          />
-          <Numero
-            rotulo={t("Meta para hoje")}
-            valor={r.metas.metaParaHoje === null ? null : inteiro(r.metas.metaParaHoje)}
-          />
-          <Numero
-            rotulo={adiant !== null && adiant < 0 ? t("Atrasado em") : t("Adiantado em")}
-            valor={adiant === null ? null : inteiro(Math.abs(adiant))}
-            tom={adiant === null ? undefined : adiant >= 0 ? "bom" : "ruim"}
-          />
-          <Numero
-            rotulo={t("Nova meta diária")}
-            valor={r.metas.novaMetaDiaria === null ? null : decimal(r.metas.novaMetaDiaria)}
-          />
-        </Cartao>
+        <Painel titulo={t("Metas de leads")}>
+          <div className="grid gap-4">
+            <Barra
+              rotulo={t("Leads captados da meta")}
+              detalhe={
+                r.metas.metaDeLeads === null
+                  ? undefined
+                  : `${inteiro(r.metas.captados)} / ${inteiro(r.metas.metaDeLeads)}`
+              }
+              porcentagem={progressoLeads}
+              tom="blue"
+            />
+            <FunilEmColunas
+              colunas={[
+                {
+                  rotulo: t("Meta de leads até hoje"),
+                  valor: r.metas.metaParaHoje === null ? "—" : inteiro(r.metas.metaParaHoje),
+                  itens: [
+                    { rotulo: t("Leads captados"), valor: inteiro(r.metas.captados) },
+                    {
+                      rotulo: t("Quantos faltam"),
+                      valor:
+                        r.metas.metaParaHoje === null
+                          ? "—"
+                          : inteiro(Math.max(0, r.metas.metaParaHoje - r.metas.captados)),
+                    },
+                  ],
+                },
+                {
+                  rotulo: t("Meta de CPL"),
+                  valor: dinheiro(r.metas.metaDeCpl) ?? "—",
+                  itens: [
+                    {
+                      rotulo: t("CPL atual"),
+                      valor: (
+                        <span
+                          className={cn(
+                            r.funil.cpl !== null &&
+                              r.metas.metaDeCpl !== null &&
+                              (r.funil.cpl <= r.metas.metaDeCpl
+                                ? "text-success-fg"
+                                : "text-error-fg"),
+                          )}
+                        >
+                          {dinheiro(r.funil.cpl) ?? "—"}
+                        </span>
+                      ),
+                    },
+                    {
+                      rotulo: t("CPL necessário"),
+                      valor: dinheiro(r.metas.cplNecessario) ?? "—",
+                    },
+                  ],
+                },
+                {
+                  rotulo: t("Meta de leads por dia"),
+                  valor: r.metas.porDia === null ? "—" : decimal(r.metas.porDia),
+                  itens: [
+                    {
+                      rotulo: t("Leads por dia"),
+                      valor: (
+                        <span
+                          className={cn(
+                            r.metas.mediaPorDia !== null &&
+                              r.metas.porDia !== null &&
+                              (r.metas.mediaPorDia >= r.metas.porDia
+                                ? "text-success-fg"
+                                : "text-error-fg"),
+                          )}
+                        >
+                          {r.metas.mediaPorDia === null ? "—" : decimal(r.metas.mediaPorDia)}
+                        </span>
+                      ),
+                    },
+                    {
+                      rotulo: t("Nova meta por dia"),
+                      valor:
+                        r.metas.novaMetaDiaria === null ? "—" : decimal(r.metas.novaMetaDiaria),
+                    },
+                  ],
+                },
+                {
+                  rotulo:
+                    c.continuous || !c.end_date
+                      ? t("Meta de leads do mês")
+                      : t("Meta de leads da campanha"),
+                  valor: r.metas.metaDeLeads === null ? "—" : inteiro(r.metas.metaDeLeads),
+                  itens: [
+                    {
+                      rotulo: t("Previsão de leads"),
+                      valor: r.metas.previsaoTotal === null ? "—" : inteiro(r.metas.previsaoTotal),
+                    },
+                    {
+                      rotulo: t("Meta × previsão"),
+                      valor:
+                        r.metas.diferencaDaPrevisao === null ? (
+                          "—"
+                        ) : (
+                          <span
+                            className={
+                              r.metas.diferencaDaPrevisao >= 0 ? "text-success-fg" : "text-error-fg"
+                            }
+                          >
+                            {r.metas.diferencaDaPrevisao >= 0 ? "+" : "−"}
+                            {inteiro(Math.abs(r.metas.diferencaDaPrevisao))}
+                          </span>
+                        ),
+                    },
+                  ],
+                },
+              ]}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("Previsão = leads captados + verba restante ÷ CPL médio dos 3 últimos dias.")}
+            </p>
+          </div>
+        </Painel>
       ) : null}
 
       <Cartao titulo={t("Dias")} tom="violet">
@@ -323,137 +389,184 @@ export function ResumoDaCampanha({
         />
       </Cartao>
 
-      <Cartao titulo={t("Pace de gastos")} tom="green">
-        <Barra
-          rotulo={t("Orçamento já gasto")}
-          detalhe={
-            r.investimentoLiquido === null
-              ? undefined
-              : `${moedaDoNumero(r.funil.investido)} / ${moedaDoNumero(r.investimentoLiquido)}`
-          }
-          porcentagem={orcamentoGasto}
-          tom={orcamentoGasto !== null && orcamentoGasto > 100 ? "rose" : "green"}
-        />
-        <Numero rotulo={t("Investimento bruto")} valor={dinheiro(r.investimentoBruto)} />
-        <Numero rotulo={t("Investimento líquido")} valor={dinheiro(r.investimentoLiquido)} />
-        <Numero rotulo={t("Valor investido")} valor={moedaDoNumero(r.funil.investido)} destaque />
-        <Numero
-          rotulo={t("Valor restante")}
-          valor={dinheiro(r.valorRestante)}
-          tom={r.valorRestante !== null && r.valorRestante < 0 ? "ruim" : undefined}
-        />
-        <Numero
-          rotulo={t("Valor diário programado")}
-          valor={dinheiro(r.pace.metaDiaria)}
-          fundo="green"
-        />
-        <Numero
-          rotulo={t("Valor diário atual (2 últimos dias)")}
-          valor={dinheiro(r.pace.atualUltimosDias)}
-          fundo="green"
-        />
-        <Numero
-          rotulo={t("Valor diário ideal")}
-          valor={dinheiro(r.pace.ideal)}
-          destaque
-          fundo="green"
-        />
-        {ajuste !== null ? (
-          <p
-            className={cn(
-              "col-span-full rounded-xl px-3 py-2 text-sm font-medium",
-              noRitmo
-                ? "bg-success-bg text-success-fg"
+      <Painel titulo={t("Pace de gastos")}>
+        <div className="grid gap-4">
+          <Barra
+            rotulo={t("Orçamento já gasto")}
+            detalhe={
+              r.investimentoLiquido === null
+                ? undefined
+                : `${moedaDoNumero(r.funil.investido)} / ${moedaDoNumero(r.investimentoLiquido)}`
+            }
+            porcentagem={orcamentoGasto}
+            tom={orcamentoGasto !== null && orcamentoGasto > 100 ? "rose" : "green"}
+          />
+          <FunilEmColunas
+            colunas={[
+              {
+                rotulo: t("Investimento bruto"),
+                valor: dinheiro(r.investimentoBruto) ?? "—",
+                itens: [
+                  {
+                    rotulo: t("Investimento líquido"),
+                    valor: dinheiro(r.investimentoLiquido) ?? "—",
+                  },
+                  { rotulo: t("Valor investido"), valor: moedaDoNumero(r.funil.investido) },
+                ],
+              },
+              {
+                rotulo: t("Verba restante"),
+                valor: dinheiro(r.valorRestante) ?? "—",
+                itens: [
+                  {
+                    rotulo: t("Valor diário atual"),
+                    valor: dinheiro(r.pace.atualUltimosDias) ?? "—",
+                  },
+                  { rotulo: t("Valor diário ideal"), valor: dinheiro(r.pace.ideal) ?? "—" },
+                ],
+              },
+            ]}
+          />
+          {ajuste !== null ? (
+            <p
+              className={cn(
+                "rounded-xl px-3 py-2 text-sm font-medium",
+                noRitmo
+                  ? "bg-success-bg text-success-fg"
+                  : ajuste > 0
+                    ? "bg-warning-bg text-warning-fg"
+                    : "bg-secondary text-foreground",
+              )}
+            >
+              {noRitmo
+                ? t("No ritmo: o gasto diário atual está igual ao ideal.")
                 : ajuste > 0
-                  ? "bg-warning-bg text-warning-fg"
-                  : "bg-secondary text-foreground",
-            )}
-          >
-            {noRitmo
-              ? t("No ritmo: o gasto diário atual está igual ao ideal.")
-              : ajuste > 0
-                ? `${t("Gastar")} ${moedaDoNumero(ajuste)} ${t("a mais por dia para fechar o orçamento.")}`
-                : `${t("Gastar")} ${moedaDoNumero(Math.abs(ajuste))} ${t("a menos por dia para não estourar o orçamento.")}`}
-          </p>
-        ) : null}
-      </Cartao>
+                  ? `${t("Gastar")} ${moedaDoNumero(ajuste)} ${t("a mais por dia para fechar o orçamento.")}`
+                  : `${t("Gastar")} ${moedaDoNumero(Math.abs(ajuste))} ${t("a menos por dia para não estourar o orçamento.")}`}
+            </p>
+          ) : null}
+        </div>
+      </Painel>
 
       {trafego ? (
-        <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-rose-500 bg-card p-4 shadow-sm">
-          <h3 className="text-sm font-semibold">{t("Funil completo")}</h3>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <div className="grid content-start gap-2 rounded-xl bg-blue-500/8 p-3">
-              <p className="text-xs font-semibold tracking-wide text-blue-600 uppercase dark:text-blue-300">
-                {t("Anúncio")}
-              </p>
-              <Numero rotulo={t("Impressões")} valor={inteiro(r.funil.impressoes)} />
-              <Numero rotulo={t("Alcance")} valor={inteiro(r.funil.alcance)} />
-              <Numero rotulo={t("CPM")} valor={dinheiro(r.funil.cpm)} />
-            </div>
-            <div className="grid content-start gap-2 rounded-xl bg-violet-500/8 p-3">
-              <p className="text-xs font-semibold tracking-wide text-violet-600 uppercase dark:text-violet-300">
-                {t("Clique")}
-              </p>
-              <Numero rotulo={t("Cliques no link")} valor={inteiro(r.funil.cliques)} />
-              <Numero rotulo={t("CPC")} valor={dinheiro(r.funil.cpc)} />
-              <Numero rotulo={t("CTR")} valor={r.funil.ctr === null ? null : pct(r.funil.ctr)} />
-            </div>
-            <div className="grid content-start gap-2 rounded-xl bg-amber-500/10 p-3">
-              <p className="text-xs font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-300">
-                {t("Página")}
-              </p>
-              <Numero rotulo={t("Visitas à LP")} valor={inteiro(r.funil.visitas)} />
-              <Numero rotulo={t("Custo por visita")} valor={dinheiro(r.funil.custoPorVisita)} />
-              <Numero
-                rotulo={t("Connection rate")}
-                valor={r.funil.connectionRate === null ? null : pct(r.funil.connectionRate)}
-              />
-            </div>
-            <div className="grid content-start gap-2 rounded-xl bg-emerald-500/8 p-3">
-              <p className="text-xs font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-300">
-                {t("Lead")}
-              </p>
-              <Numero rotulo={t("Leads")} valor={inteiro(r.funil.leads)} />
-              <Numero rotulo={t("CPL")} valor={dinheiro(r.funil.cpl)} />
-              <Numero
-                rotulo={t("Conversão da LP")}
-                valor={r.funil.conversaoDaLp === null ? null : pct(r.funil.conversaoDaLp)}
-              />
-            </div>
-            <div className="grid content-start gap-2 rounded-xl bg-rose-500/8 p-3">
-              <p className="text-xs font-semibold tracking-wide text-rose-700 uppercase dark:text-rose-300">
-                {t("Venda")}
-              </p>
-              <Numero rotulo={t("Vendas")} valor={inteiro(totalCrm.vendas)} />
-              <Numero rotulo={t("Total de vendas")} valor={moedaDoNumero(totalCrm.faturamento)} />
-              <Numero
-                rotulo={t("CAC")}
-                valor={totalCrm.vendas > 0 && totalCrm.investido > 0 ? moedaDoNumero(totalCrm.investido / totalCrm.vendas) : null}
-              />
-              <Numero
-                rotulo={t("Conversão dos leads em venda")}
-                valor={totalCrm.leads > 0 ? pct((totalCrm.vendas / totalCrm.leads) * 100) : null}
-              />
-            </div>
-            {comReunioes ? (
-              <div className="grid content-start gap-2 rounded-xl bg-cyan-500/8 p-3">
-                <p className="text-xs font-semibold tracking-wide text-cyan-700 uppercase dark:text-cyan-300">
-                  {t("Reunião")}
-                </p>
-                <Numero rotulo={t("Agendamentos")} valor={inteiro(totalCrm.agendamentos)} />
-                <Numero rotulo={t("Reuniões feitas")} valor={inteiro(totalCrm.reunioes)} />
-                <Numero
-                  rotulo={t("Custo por reunião")}
-                  valor={totalCrm.reunioes > 0 && totalCrm.investido > 0 ? moedaDoNumero(totalCrm.investido / totalCrm.reunioes) : null}
-                />
-                <Numero
-                  rotulo={t("Taxa de comparecimento")}
-                  valor={totalCrm.agendamentos > 0 ? pct((totalCrm.reunioes / totalCrm.agendamentos) * 100) : null}
-                />
-              </div>
-            ) : null}
-          </div>
-        </section>
+        <Painel titulo={t("Funil completo")} nota={t("Na ordem em que acontece")}>
+          <FunilEmColunas
+            colunas={[
+              {
+                rotulo: t("Impressões"),
+                valor: inteiro(r.funil.impressoes),
+                itens: [
+                  {
+                    rotulo: t("Frequência"),
+                    valor:
+                      r.funil.alcance > 0
+                        ? (r.funil.impressoes / r.funil.alcance).toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : "—",
+                  },
+                  { rotulo: t("CPM"), valor: dinheiro(r.funil.cpm) ?? "—" },
+                ],
+              },
+              {
+                rotulo: t("Cliques no link"),
+                valor: inteiro(r.funil.cliques),
+                itens: [
+                  { rotulo: t("CPC"), valor: dinheiro(r.funil.cpc) ?? "—" },
+                  { rotulo: t("CTR"), valor: r.funil.ctr === null ? "—" : pct(r.funil.ctr) },
+                ],
+              },
+              {
+                rotulo: t("Visitas à LP"),
+                valor: inteiro(r.funil.visitas),
+                itens: [
+                  { rotulo: t("Custo por visita"), valor: dinheiro(r.funil.custoPorVisita) ?? "—" },
+                  {
+                    rotulo: t("Connect rate"),
+                    valor: r.funil.connectionRate === null ? "—" : pct(r.funil.connectionRate),
+                  },
+                ],
+              },
+              {
+                rotulo: t("Leads"),
+                valor: inteiro(r.funil.leads),
+                itens: [
+                  { rotulo: t("CPL"), valor: dinheiro(r.funil.cpl) ?? "—" },
+                  {
+                    rotulo: t("Conversão da LP"),
+                    valor: r.funil.conversaoDaLp === null ? "—" : pct(r.funil.conversaoDaLp),
+                  },
+                ],
+              },
+              ...(comReunioes
+                ? [
+                    {
+                      rotulo: t("Reuniões agendadas"),
+                      valor: inteiro(funilCrm.agendados),
+                      itens: [
+                        {
+                          rotulo: t("Custo por agendamento"),
+                          valor:
+                            funilCrm.agendados > 0 && r.funil.investido > 0
+                              ? moedaDoNumero(r.funil.investido / funilCrm.agendados)
+                              : "—",
+                        },
+                        {
+                          rotulo: t("Taxa de agendamento"),
+                          valor:
+                            funilCrm.leads > 0
+                              ? pct((funilCrm.agendados / funilCrm.leads) * 100)
+                              : "—",
+                        },
+                      ],
+                    },
+                    {
+                      rotulo: t("Reuniões feitas"),
+                      valor: inteiro(funilCrm.feitas),
+                      itens: [
+                        {
+                          rotulo: t("Custo por reunião"),
+                          valor:
+                            funilCrm.feitas > 0 && r.funil.investido > 0
+                              ? moedaDoNumero(r.funil.investido / funilCrm.feitas)
+                              : "—",
+                        },
+                        {
+                          rotulo: t("Taxa de comparecimento"),
+                          valor:
+                            funilCrm.agendados > 0
+                              ? pct((funilCrm.feitas / funilCrm.agendados) * 100)
+                              : "—",
+                        },
+                      ],
+                    },
+                  ]
+                : []),
+              {
+                rotulo: t("Vendas"),
+                valor: inteiro(funilCrm.vendas),
+                itens: [
+                  {
+                    rotulo: t("Total de vendas"),
+                    valor: moedaDoNumero(funilCrm.faturamento),
+                  },
+                  {
+                    rotulo: t("CAC"),
+                    valor:
+                      funilCrm.vendas > 0 && r.funil.investido > 0
+                        ? moedaDoNumero(r.funil.investido / funilCrm.vendas)
+                        : "—",
+                  },
+                  {
+                    rotulo: t("Conversão dos leads"),
+                    valor: funilCrm.leads > 0 ? pct((funilCrm.vendas / funilCrm.leads) * 100) : "—",
+                  },
+                ],
+              },
+            ]}
+          />
+        </Painel>
       ) : (
         <FunilDoCanal c={c} dias={dias} leads={r.funil.leads} investido={r.funil.investido} />
       )}

@@ -385,7 +385,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
       {aba === "visao" ? (
         <>
-          <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} />
+          <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} coorte={dias.coorte} />
           <OrigemDosLeads campanhaId={c.id} campanha={c} />
         </>
       ) : null}

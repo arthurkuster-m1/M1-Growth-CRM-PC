@@ -85,14 +85,19 @@ export function useCampanhasDeDemanda() {
                     ...d,
                     campanhas: d.campanhas.map((c) => {
                       const volta = anteriores.find((a) => a.id === c.id);
-                      return volta ? { ...c, ...valoresAntes(volta, patch as Record<string, unknown>) } : c;
+                      return volta
+                        ? { ...c, ...valoresAntes(volta, patch as Record<string, unknown>) }
+                        : c;
                     }),
                   }
                 : d,
             );
             await Promise.all(
               anteriores.map((c) =>
-                apiClient.patch(`${BASE}/${c.id}`, valoresAntes(c, patch as Record<string, unknown>)),
+                apiClient.patch(
+                  `${BASE}/${c.id}`,
+                  valoresAntes(c, patch as Record<string, unknown>),
+                ),
               ),
             );
             void recarregar();
@@ -184,16 +189,23 @@ export function useDiasDaCampanha(campanhaId: string) {
             dias: DiaDaCampanha[];
             funil_definido: boolean;
             automatico?: { chaves: string[]; investimento: boolean };
+            coorte?: {
+              leads: number;
+              agendados: number;
+              feitas: number;
+              vendas: number;
+              faturamento: number;
+            } | null;
           };
-        }>(
-          `${BASE}/${campanhaId}/days`,
-        )
+        }>(`${BASE}/${campanhaId}/days`)
       ).data,
     staleTime: 10_000,
   });
   const recarregar = () => queryClient.invalidateQueries({ queryKey: chave });
   return {
     dias: consulta.data?.dias ?? [],
+    /** O funil dos leads que entraram na campanha: quantos agendaram, fizeram reunião e compraram. */
+    coorte: consulta.data?.coorte ?? null,
     funilDefinido: consulta.data?.funil_definido ?? true,
     /** Fora do tráfego pago: as colunas calculadas pelo sistema (nada se digita). */
     automatico: consulta.data?.automatico ?? { chaves: [], investimento: false },
@@ -320,7 +332,9 @@ export function useCriativosDaCampanha(campanhaId: string) {
         registrarDesfazer({
           rotulo: (criada as { name?: string }).name,
           desfazer: async () => {
-            queryClient.setQueryData<{ id: string }[]>(chave, (l) => (l ?? []).filter((i) => i.id !== criada.id));
+            queryClient.setQueryData<{ id: string }[]>(chave, (l) =>
+              (l ?? []).filter((i) => i.id !== criada.id),
+            );
             await apiClient.delete(`${BASE}/${campanhaId}/creatives/${criada.id}`);
             void recarregar();
           },
@@ -468,7 +482,9 @@ export function useAbordagensDaCampanha(campanhaId: string) {
         registrarDesfazer({
           rotulo: (criada as { name?: string }).name,
           desfazer: async () => {
-            queryClient.setQueryData<{ id: string }[]>(chave, (l) => (l ?? []).filter((i) => i.id !== criada.id));
+            queryClient.setQueryData<{ id: string }[]>(chave, (l) =>
+              (l ?? []).filter((i) => i.id !== criada.id),
+            );
             await apiClient.delete(`${BASE}/${campanhaId}/approaches/${criada.id}`);
             void recarregar();
           },
@@ -563,7 +579,9 @@ export function useLandingPagesDaCampanha(campanhaId: string) {
         registrarDesfazer({
           rotulo: (criada as { name?: string }).name,
           desfazer: async () => {
-            queryClient.setQueryData<{ id: string }[]>(chave, (l) => (l ?? []).filter((i) => i.id !== criada.id));
+            queryClient.setQueryData<{ id: string }[]>(chave, (l) =>
+              (l ?? []).filter((i) => i.id !== criada.id),
+            );
             await apiClient.delete(`${BASE}/${campanhaId}/landing-pages/${criada.id}`);
             void recarregar();
           },
