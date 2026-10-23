@@ -27,8 +27,7 @@ describe("interface por vínculo é apresentação", () => {
       expect.arrayContaining([
         "/app/inbox",
         "/app/agenda",
-        "/app/contacts",
-        "/app/kanban",
+        "/app/clientes",
         "/app/tarefas",
       ]),
     );
