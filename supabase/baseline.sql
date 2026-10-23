@@ -51152,3 +51152,10 @@ update public.demand_campaigns
  where goal_period is distinct from (case when continuous or end_date is null then 'mensal' else 'total' end);
 
 notify pgrst, 'reload schema';
+
+-- ---- migration 0653 ----
+alter table public.demand_campaign_notes drop constraint if exists demand_campaign_notes_body_check;
+alter table public.demand_campaign_notes add constraint demand_campaign_notes_body_check
+  check (length(btrim(body)) between 1 and 20000);
+
+notify pgrst, 'reload schema';

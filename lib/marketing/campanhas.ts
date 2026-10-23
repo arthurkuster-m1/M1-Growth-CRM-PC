@@ -173,7 +173,7 @@ export const edicaoDeCampanhaSchema = camposSchema
 
 export const novaNotaSchema = z.object({
   kind: z.enum(TIPOS_DE_NOTA),
-  body: z.string().trim().min(1).max(4000),
+  body: z.string().trim().min(1).max(20000),
   note_date: dia.optional(),
 });
 

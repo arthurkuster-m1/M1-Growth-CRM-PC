@@ -18,6 +18,7 @@ import {
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
 import { AcoesDaColecao } from "@/components/marketing/campanhas/AcoesDaColecao";
+import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
@@ -434,6 +435,7 @@ function CartaoDaLp({
   const [vendo, setVendo] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [laudo, setLaudo] = useState<Laudo | null>(null);
+  const { confirmar, dialogo } = useConfirmar();
 
   async function pre() {
     if (vendo) return setVendo(false);
@@ -460,15 +462,7 @@ function CartaoDaLp({
         FAIXA_DO_STATUS[lp.status],
       )}
     >
-      <div className="flex flex-wrap items-center gap-2 pr-20">
-        <Etiqueta cor={COR_DO_STATUS_DO_CRIATIVO[lp.status]}>
-          {rotuloDoStatusDoCriativo(t, lp.status)}
-        </Etiqueta>
-        <span className="text-xs text-muted-foreground">
-          {m.criativos} {t("criativos apontam para ela")}
-        </span>
-      </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_auto]">
+      <div className="grid grid-cols-1 gap-2 pr-20 sm:grid-cols-[2fr_1fr] sm:items-center">
         <Texto
           valor={lp.name}
           aoGravar={(name) => name.trim() && editar({ name })}
@@ -476,26 +470,9 @@ function CartaoDaLp({
           rotulo={t("Nome da LP")}
           max={160}
         />
-        <Texto
-          valor={lp.url}
-          aoGravar={(url) => editar({ url })}
-          desabilitado={!podeEditar}
-          rotulo={t("Link da LP (https://…)")}
-          max={1000}
-        />
-        <SelectDoApp
-          className={cn(CAMPO, "sm:w-36")}
-          disabled={!podeEditar}
-          value={lp.status}
-          aria-label={t("Status")}
-          onChange={(e) => editar({ status: e.target.value as LandingPage["status"] })}
-        >
-          {STATUS_DA_LP.map((s) => (
-            <option key={s} value={s}>
-              {rotuloDoStatusDoCriativo(t, s)}
-            </option>
-          ))}
-        </SelectDoApp>
+        <span className="text-xs text-muted-foreground">
+          {m.criativos} {t("criativos apontam para ela")}
+        </span>
       </div>
       <Texto
         valor={lp.notes}
@@ -505,22 +482,48 @@ function CartaoDaLp({
         max={2000}
       />
       {propriedades ?? (
-      <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-5">
-        <Metrica rotulo={t("Investido")} valor={moedaDoNumero(m.spend)} />
-        <Metrica rotulo={t("Impressões")} valor={inteiro(m.impressions)} />
-        <Metrica rotulo={t("Cliques no link")} valor={inteiro(m.link_clicks)} />
-        <Metrica rotulo={t("Visitas à LP")} valor={inteiro(m.lp_views)} />
-        <Metrica rotulo={t("Connection rate")} valor={pct(m.connectRate)} />
-        <Metrica rotulo={t("CPC")} valor={reais(m.cpc)} />
-        <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leads)} />
-        <Metrica rotulo={t("Conversão da LP")} valor={pct(conversao)} />
-        <Metrica rotulo={t("CPL real")} valor={reais(cplReal)} />
-        <Metrica rotulo={t("Vendas")} valor={inteiro(vendas)} />
-        <Metrica
-          rotulo={t("Faturamento")}
-          valor={faturamento > 0 ? moedaDoNumero(faturamento) : "—"}
-        />
-      </div>
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3 sm:grid-cols-5">
+          <div className="col-span-3 min-w-0 sm:col-span-4">
+            <p className="truncate text-xs text-muted-foreground">{t("Link")}</p>
+            <Texto
+              valor={lp.url}
+              aoGravar={(url) => editar({ url })}
+              desabilitado={!podeEditar}
+              rotulo={t("Link da LP (https://…)")}
+              max={1000}
+            />
+          </div>
+          <div className="col-span-3 min-w-0 sm:col-span-1">
+            <p className="truncate text-xs text-muted-foreground">{t("Status")}</p>
+            <SelectDoApp
+              className={CAMPO}
+              disabled={!podeEditar}
+              value={lp.status}
+              aria-label={t("Status")}
+              onChange={(e) => editar({ status: e.target.value as LandingPage["status"] })}
+            >
+              {STATUS_DA_LP.map((st) => (
+                <option key={st} value={st}>
+                  {rotuloDoStatusDoCriativo(t, st)}
+                </option>
+              ))}
+            </SelectDoApp>
+          </div>
+          <Metrica rotulo={t("Investido")} valor={moedaDoNumero(m.spend)} />
+          <Metrica rotulo={t("Impressões")} valor={inteiro(m.impressions)} />
+          <Metrica rotulo={t("Cliques no link")} valor={inteiro(m.link_clicks)} />
+          <Metrica rotulo={t("Visitas à LP")} valor={inteiro(m.lp_views)} />
+          <Metrica rotulo={t("Connection rate")} valor={pct(m.connectRate)} />
+          <Metrica rotulo={t("CPC")} valor={reais(m.cpc)} />
+          <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leads)} />
+          <Metrica rotulo={t("Conversão da LP")} valor={pct(conversao)} />
+          <Metrica rotulo={t("CPL real")} valor={reais(cplReal)} />
+          <Metrica rotulo={t("Vendas")} valor={inteiro(vendas)} />
+          <Metrica
+            rotulo={t("Faturamento")}
+            valor={faturamento > 0 ? moedaDoNumero(faturamento) : "—"}
+          />
+        </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
         {lp.url ? (
@@ -552,8 +555,8 @@ function CartaoDaLp({
           <button
             type="button"
             aria-label={t("Apagar landing page")}
-            onClick={() => {
-              if (window.confirm(t("Apagar esta landing page?"))) apagar();
+            onClick={async () => {
+              if (await confirmar(t("Apagar esta landing page?"), t("Apagar"))) apagar();
             }}
             className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
           >
@@ -561,6 +564,7 @@ function CartaoDaLp({
           </button>
         ) : null}
       </div>
+      {dialogo}
       {laudo?.pode === false ? <GuiaDeEmbed laudo={laudo} /> : null}
       {vendo && lp.url ? (
         <div className="grid grid-cols-1 gap-1">

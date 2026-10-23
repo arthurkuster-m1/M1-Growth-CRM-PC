@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import type { EtapaDoModelo } from "@/lib/marketing/modelos-de-funil";
@@ -46,6 +47,7 @@ export function GerenciarModelosDeFunil({
   aoMudar: () => Promise<void> | void;
 }) {
   const t = useT();
+  const { confirmar, dialogo } = useConfirmar();
   const [editando, setEditando] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [etapas, setEtapas] = useState<EtapaDoModelo[]>([]);
@@ -78,7 +80,7 @@ export function GerenciarModelosDeFunil({
   }
 
   async function apagar(m: ModeloGerenciavel) {
-    if (!window.confirm(t("Apagar este modelo? Os funis já criados com ele não mudam."))) return;
+    if (!(await confirmar(t("Apagar este modelo? Os funis já criados com ele não mudam."), t("Apagar")))) return;
     try {
       await apiClient.delete(`/api/v1/demand-funnel-templates/${m.id}`);
       await aoMudar();
@@ -106,6 +108,8 @@ export function GerenciarModelosDeFunil({
   ];
 
   return (
+    <>
+    {dialogo}
     <Dialog open onOpenChange={(a) => !a && aoFechar()}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
@@ -198,5 +202,6 @@ export function GerenciarModelosDeFunil({
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }

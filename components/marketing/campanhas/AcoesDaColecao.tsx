@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { AcaoEmMassa } from "@/components/motor/BarraDeSelecao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { useT } from "@/hooks/i18n/useT";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { Trash } from "@/lib/ui/icons";
@@ -35,6 +36,7 @@ export function AcoesDaColecao({
   nomeDoItem: string;
 }) {
   const t = useT();
+  const { confirmar, dialogo } = useConfirmar();
   return (
     <>
       {grupos.map((g) => (
@@ -66,9 +68,10 @@ export function AcoesDaColecao({
         destrutivo
         aoClicar={async () => {
           if (
-            !window.confirm(
+            !(await confirmar(
               `${t("Apagar")} ${ids.length} ${nomeDoItem}? ${t("Isso não pode ser desfeito.")}`,
-            )
+              t("Apagar"),
+            ))
           ) {
             return;
           }
@@ -76,6 +79,7 @@ export function AcoesDaColecao({
           limpar();
         }}
       />
+      {dialogo}
     </>
   );
 }
