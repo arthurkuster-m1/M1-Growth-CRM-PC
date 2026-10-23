@@ -97,7 +97,7 @@ export const NAV_GROUPS: NavGroup[] = [
     // Sem "Ver tudo em Marketing": todas as telas já estão no menu e na página Estratégia.
   },
   { id: "atendimento", label: "Atendimento" },
-  { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
+  { id: "crm", label: "CRM" },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
   { id: "canais", label: "Canais" },
   { id: "analise", label: "Análise", hub: { href: "/app/analise", label: "Ver tudo em Análise" } },
@@ -133,27 +133,6 @@ export const GRUPO_NO_RODAPE: NavGroupId = "organizacao";
  * fechada e por isso não vira `minRole`.
  */
 export const NAV_CATALOG = [
-  {
-    // SEM `sidebar: true`, e a razão não tem nada a ver com a qualidade desta
-    // tela: o menu lateral está no limite medido. Com ela, seriam 20 portas, e
-    // `tests/e2e/navegacao.spec.ts` reprova ("em 900px o menu inteiro tem de
-    // caber sem scroll" · Received: true). O comentário daquela spec já
-    // antecipava o número: "Trocar '17 itens sem hierarquia' por '20 itens que
-    // não cabem' seria recriar o problema em outra forma."
-    //
-    // A porta NÃO sumiu: ela vive no hub do grupo CRM ("Ver tudo em CRM") e no
-    // ⌘K — o mesmo caminho das outras entradas do grupo.
-    // CONDIÇÃO QUE ENCERRA ESTA EXCEÇÃO: quando o menu couber mais uma porta
-    // (ver doc 47), este item volta ao sidebar — é o primeiro da fila, porque
-    // saiu por falta de espaço e não por decisão de produto.
-    href: "/app/prospecting",
-    label: "Prospecção",
-    description: "Busque empresas e conduza abordagens graduais com IA.",
-    icon: "Funnel",
-    group: "crm",
-    minRole: "admin",
-    section: "O dia a dia da venda",
-  },
   // ---- Atendimento — onde o operador passa o dia ----
   {
     href: "/app/inbox",
@@ -274,39 +253,6 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
-    href: "/app/kanban",
-    label: "Funis",
-    description: "Seus funis de venda — clique em um para abrir o quadro de clientes.",
-    icon: "Kanban",
-    group: "crm",
-    section: "O dia a dia da venda",
-    // O CRM do dia a dia agora é "Clientes" (tabela e Kanban por funil); a lista de funis
-    // fica no hub, como as demais telas de preparação.
-  },
-  {
-    // A campanha vive no CRM e não em Conexões: quem a usa está pensando em
-    // QUEM vai falar, não no número que fala. O ritmo (que é de Conexões) ela
-    // herda, e só sabe deixar mais devagar.
-    href: "/app/campaigns",
-    label: "Disparos",
-    description: "Fale com uma lista de contatos que você escolhe, no ritmo do número.",
-    icon: "Megaphone",
-    group: "crm",
-    section: "O dia a dia da venda",
-    // SÓ NO HUB, como as demais telas de preparação: o quinto item do sidebar do
-    // CRM já fez o menu rolar 13px em 900px (e2e `navegacao.spec.ts`), e a
-    // campanha é montada de vez em quando, não aberta todo dia.
-  },
-  {
-    href: "/app/contacts",
-    label: "Contatos",
-    description: "As pessoas do outro lado da conversa e seu histórico.",
-    icon: "Users",
-    group: "crm",
-    section: "O dia a dia da venda",
-    // Hub: o menu diário usa "Clientes" (o CRM final).
-  },
-  {
     href: "/app/companies",
     label: "Empresas",
     description: "Cadastro B2B — razão social, CNPJ e decisores.",
@@ -345,39 +291,6 @@ export const NAV_CATALOG = [
     section: "O dia a dia da venda",
   },
   {
-    // Módulo VoIP (migration 0347). No grupo do CRM pelo mesmo critério de
-    // Tarefas: quem atende confere ligações perdidas e transcrições no dia a
-    // dia, não como revisão deliberada.
-    //
-    // ─── SEM `sidebar`, e a razão não é gosto: a telefonia é MÓDULO OPCIONAL ───
-    //
-    // O dono decidiu (doc 27) que a telefonia por SIP entra desligada por
-    // padrão — quem não liga não tem os contêineres, não tem tronco e não tem
-    // ligação nenhuma para ver. Pôr a porta no sidebar de TODA instalação
-    // custaria a todas elas um item que quase nenhuma usa, e o preço é medido:
-    // `tests/e2e/navegacao.spec.ts` exige que, em 900px, o menu caiba inteiro
-    // sem rolagem, e o vigésimo item o faz rolar.
-    //
-    // O ideal seria mostrá-la SÓ para quem ligou o módulo, e isso hoje não é
-    // possível: "telefonia ligada" é um profile do docker compose (servidor),
-    // não um estado que o aplicativo conheça — o shell não consulta nada de
-    // telefonia, e os dois sinais de banco possíveis (linha em
-    // `voip_trunk_settings`, ou `phone_numbers` ativo) custariam uma consulta
-    // em todo render. Está desenhado na issue do `sidebarSe`.
-    //
-    // A porta NÃO sumiu: ela vive no hub do grupo CRM ("Ver tudo em CRM") e no
-    // ⌘K, que é o mesmo caminho das outras dez entradas de "organizacao".
-    // CONDIÇÃO QUE ENCERRA ESTA EXCEÇÃO: no dia em que o app souber que o
-    // módulo está ligado, o item volta ao sidebar para quem ligou.
-    href: "/app/calls",
-    label: "Chamadas",
-    description: "Histórico de ligações (voz por IA) com transcrição.",
-    icon: "Phone",
-    group: "crm",
-    section: "O dia a dia da venda",
-    minRole: "manager",
-  },
-  {
     href: "/app/imports",
     label: "Importações",
     description: "Lotes CSV/XLSX de empresas, pessoas e telefones.",
@@ -412,32 +325,6 @@ export const NAV_CATALOG = [
     // na navegação" — a porta existia, era outra.
   },
   {
-    // O BALCÃO. Fica em CRM, e não em Configurações, porque é uso diário de quem
-    // está com a cliente na frente — a tela irmã, em Configurações › Financeiro,
-    // é onde o negócio se descreve uma vez.
-    //
-    // `viewer` porque conferir o que foi lançado no dia não é privilégio de
-    // quem lança; o que a RLS impede é ele escrever.
-    href: "/app/comandas",
-    label: "Comandas",
-    description: "O que foi feito, por quem, e quanto o cliente paga.",
-    icon: "Receipt",
-    group: "crm",
-    section: "O dia a dia da venda",
-    // ⚠️ FORA do sidebar, e isto foi MEDIDO, não escolhido por gosto. Com
-    // `sidebar: true` o menu passou a rolar em 1280×900 e o e2e
-    // `navegacao.spec.ts` ("nenhum grupo fica fora da dobra") reprovou — grupo
-    // abaixo da dobra é indistinguível de grupo que não existe. A regra escrita
-    // no comentário de densidade do `Sidebar.tsx` é esta: grupo COM hub não
-    // ganha linha nova no menu, a tela mora dentro do hub. O CRM tem hub desde
-    // Tarefas (PR #546), e raspar 4px de densidade de novo só adiaria a mesma
-    // conversa para a próxima tela.
-    //
-    // O balcão continua a um clique: CRM › Ver tudo em CRM › "O dia a dia da
-    // venda", e pelo ⌘K digitando "comanda".
-    minRole: "viewer",
-  },
-  {
     // O catálogo financeiro: contas, formas de pagamento e plano de contas.
     //
     // Fica em "Sua empresa" pelo mesmo motivo dos tipos de agendamento — é onde
@@ -456,33 +343,6 @@ export const NAV_CATALOG = [
     // dinheiro vai, e esconder a tela não esconde o dado — só torna a
     // conferência impossível.
     minRole: "viewer",
-  },
-  {
-    // Estava enterrado em Configurações e ninguém sabia que existia — o achado
-    // que originou esta reorganização. A URL não muda; só o lugar na navegação.
-    //
-    // ⚠️ ERA "Funis", nome que ele DISPUTAVA com o destino acima: os dois
-    // listavam as mesmas linhas de `crm_pipelines`, lado a lado no mesmo grupo,
-    // com nomes que não diziam qual servia para quê. A diferença real é o VERBO,
-    // e é ela que o nome carrega agora: lá se ABRE o funil, aqui se CONFIGURA o
-    // que ele significa.
-    href: "/app/settings/tenant/pipelines",
-    label: "Etapas do funil",
-    description: "As colunas de cada funil, o vocabulário do negócio e os motivos de perda.",
-    icon: "Funnel",
-    group: "crm",
-    section: "Preparar a venda",
-    minRole: "manager",
-    // SEM `sidebar`: mora atrás de "Ver tudo em CRM".
-    //
-    // ⚠️ O ACHADO ORIGINAL NÃO FOI DESFEITO. Ele era "esta tela está enterrada
-    // em CONFIGURAÇÕES e ninguém sabe que existe" — o problema era o GRUPO
-    // errado, não a profundidade. Ela continua sendo CRM: aparece no hub do
-    // CRM, no ⌘K, e o caminho é "CRM › Ver tudo em CRM", nunca mais
-    // "Configurações". O que muda é a frequência: desenhar as colunas do funil
-    // e escrever os motivos de perda é trabalho de montagem, feito uma vez e
-    // revisitado por `manager` de vez em quando — enquanto Funis, Contatos e
-    // Tarefas se abrem todo dia. É esse o corte que decide quem fica no menu.
   },
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----

@@ -65,6 +65,7 @@ import {
   opcionaisDaCampanha,
   type AbaDaCampanha,
 } from "@/lib/marketing/campanhas-abas";
+import { MotorDaCampanha } from "@/components/marketing/campanhas/MotorDaCampanha";
 import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha";
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
 import { periodoPadraoDaCampanha } from "@/lib/marketing/periodo-da-campanha";
@@ -491,6 +492,9 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           />
         </>
       ) : null}
+
+      {aba === "extracao" ? <MotorDaCampanha motor="extracao" /> : null}
+      {aba === "disparos" ? <MotorDaCampanha motor="disparos" /> : null}
 
       {aba === "abordagem" ? (
         <AbordagensDaCampanha

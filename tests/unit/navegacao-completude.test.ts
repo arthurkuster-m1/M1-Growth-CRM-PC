@@ -31,6 +31,19 @@ const BASE = path.join(RAIZ, "app", "app");
  * e quem revisar o PR a lê.
  */
 const NAV_ALLOWLIST: Record<string, string> = {
+  "/app/prospecting":
+    "a extração de leads virou subpágina da campanha de Prospecção (aba Extração de leads, MotorDaCampanha); a rota segue existindo por enquanto",
+  "/app/campaigns":
+    "os disparos viraram subpágina da campanha de Prospecção (aba Disparos, MotorDaCampanha); a rota segue existindo por enquanto",
+  "/app/kanban":
+    "funis são gerenciados dentro das campanhas; tela a revisar — a página CRM abre o quadro de cada funil",
+  "/app/settings/tenant/pipelines":
+    "etapas do funil são gerenciadas dentro das campanhas; tela a revisar",
+  "/app/contacts":
+    "a lista de contatos virou a visão Clientes da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
+  "/app/calls": "não será usada; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
+  "/app/comandas":
+    "as comandas viraram a visão Vendas da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app": "redirect para /app/inbox — não é tela, é o ponto de entrada",
   "/app/ai/agents/new":
     "sub-fluxo de criar agente, alcançado pelo botão dentro da lista de Agentes",

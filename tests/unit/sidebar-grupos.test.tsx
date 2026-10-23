@@ -85,27 +85,19 @@ describe("Sidebar agrupado", () => {
     expect(titulos).toEqual([
       "Marketing",
       "Atendimento",
-      "CRM",
       "Agente de IA",
       "Canais",
       "Análise",
     ]);
   });
 
-  it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
+  it("o CRM não é grupo: é a página CRM, solta no topo, e não há hub", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
-    // ⚠️ O CAMINHO MUDOU, A PROPRIEDADE NÃO. Etapas do funil saiu do menu para
-    // dentro do hub do CRM quando Tarefas virou o quinto destino do grupo e o
-    // menu passou a rolar. A porta continua sendo CRM — "Ver tudo em CRM" leva
-    // a `/app/crm`, e é lá que a tela aparece —, nunca Configurações, que é o
-    // enterro que originou toda esta reorganização.
-    //
-    // O que este teste prende é a porta EXISTIR no grupo certo do sidebar; que
-    // ela desemboca na tela é o e2e `navegacao.spec.ts` que percorre, clicando.
-    const hub = screen.getByRole("link", { name: /Ver tudo em CRM/ });
-    expect(hub).toHaveAttribute("href", "/app/crm");
+    expect(screen.queryByRole("link", { name: /Ver tudo em CRM/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /CRM/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "CRM" })).toHaveAttribute("href", "/app/clientes");
     expect(screen.queryByRole("link", { name: "Etapas do funil" })).toBeNull();
   });
 
@@ -219,8 +211,8 @@ describe("Sidebar agrupado", () => {
       .map((el) => el.textContent?.trim());
     expect(abertos).toEqual(["Atendimento"]);
     // Os demais existem, fechados — e abrem com um clique.
-    const crm = screen.getByRole("button", { name: /CRM/, expanded: false });
-    fireEvent.click(crm);
-    expect(screen.getByRole("button", { name: /CRM/, expanded: true })).toBeTruthy();
+    const ia = screen.getByRole("button", { name: /Agente de IA/, expanded: false });
+    fireEvent.click(ia);
+    expect(screen.getByRole("button", { name: /Agente de IA/, expanded: true })).toBeTruthy();
   });
 });
