@@ -29,6 +29,7 @@ import {
   diaDaLinha,
   diasComLeadsDoCrm,
   gravarDiasSchema,
+  janelaDoResumo,
   janelaDosLeads,
 } from "@/lib/marketing/campanhas-resumo";
 
@@ -60,7 +61,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
   // do Meta nem os digitados — decisão do Arthur (variação falsa).
   const { data: campanha } = await a.supabase
     .from("demand_campaigns")
-    .select("pipeline_id, start_date, end_date, channel, budget, budget_period")
+    .select("pipeline_id, start_date, end_date, continuous, channel, budget, budget_period")
     .eq("id", id)
     .eq("organization_id", a.orgId)
     .maybeSingle();
@@ -315,7 +316,17 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       (campanha.pipeline_id as string | null) ?? null,
       (todas3 ?? []) as CampanhaDoFunil[],
       (org3?.timezone as string | null) || "America/Sao_Paulo",
-      janela,
+      // Campanha contínua: o funil é o do mês corrente (recomeça todo mês).
+      (() => {
+        const jr = janelaDoResumo(
+          campanha as { start_date: string | null; end_date: string | null; continuous: boolean },
+          diaNoFuso(
+            new Date().toISOString(),
+            (org3?.timezone as string | null) || "America/Sao_Paulo",
+          ),
+        );
+        return jr?.mensal ? { de: jr.de, ate: jr.ate } : janela;
+      })(),
     );
   }
 

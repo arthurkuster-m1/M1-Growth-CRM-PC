@@ -328,10 +328,11 @@ export function ResumoDaCampanha({
                   ],
                 },
                 {
-                  rotulo:
-                    c.continuous || !c.end_date
-                      ? t("Meta de leads do mês")
-                      : t("Meta de leads da campanha"),
+                  rotulo: r.periodo?.mensal
+                    ? r.periodo.fracao < 1
+                      ? `${t("Meta de leads do mês")} (${r.periodo.totais}/${r.periodo.diasDoMes} ${t("dias")})`
+                      : t("Meta de leads do mês")
+                    : t("Meta de leads da campanha"),
                   valor: r.metas.metaDeLeads === null ? "—" : inteiro(r.metas.metaDeLeads),
                   itens: [
                     {
@@ -367,7 +368,11 @@ export function ResumoDaCampanha({
 
       <Cartao titulo={t("Dias")} tom="violet">
         <Barra
-          rotulo={t("Tempo da campanha que já passou")}
+          rotulo={
+            r.periodo?.mensal
+              ? t("Tempo do mês da campanha que já passou")
+              : t("Tempo da campanha que já passou")
+          }
           detalhe={
             r.periodo ? `${inteiro(r.periodo.passados)} / ${inteiro(r.periodo.totais)}` : undefined
           }
