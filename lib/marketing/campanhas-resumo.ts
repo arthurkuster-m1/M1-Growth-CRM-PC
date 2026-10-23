@@ -109,18 +109,70 @@ export function periodoDaCampanha(
 export function investimentoBrutoTotal(
   c: Pick<CampanhaDeDemanda, "budget" | "budget_period">,
   totais: number,
+  /** Campanha contínua: os dias do mês corrente (o orçamento mensal divide por eles, não por 30). */
+  diasDoMes?: number,
 ): number | null {
   if (c.budget === null) return null;
   switch (c.budget_period) {
     case "total":
-      return c.budget;
+      // Na campanha contínua não há "total": o valor vale para o mês e se divide pelos dias dele.
+      return diasDoMes ? (c.budget * totais) / diasDoMes : c.budget;
     case "diario":
       return c.budget * totais;
     case "semanal":
       return (c.budget * totais) / 7;
     case "mensal":
-      return (c.budget * totais) / 30;
+      return (c.budget * totais) / (diasDoMes ?? 30);
   }
+}
+
+/**
+ * A janela que o resumo analisa. Campanha com início e fim: do início ao fim. Campanha CONTÍNUA
+ * (ou sem data final): o MÊS corrente, que recomeça todo mês — no primeiro mês só valem os dias
+ * a partir do início (`fracao` = dias da janela ÷ dias do mês, para ratear meta e orçamento).
+ */
+export interface JanelaDoResumo extends PeriodoDaCampanha {
+  de: string;
+  ate: string;
+  mensal: boolean;
+  diasDoMes: number | null;
+  fracao: number;
+}
+
+export function janelaDoResumo(
+  c: Pick<CampanhaDeDemanda, "start_date" | "end_date" | "continuous">,
+  hoje: string,
+): JanelaDoResumo | null {
+  const fixa = periodoDaCampanha(c, hoje);
+  if (fixa)
+    return {
+      ...fixa,
+      de: c.start_date!,
+      ate: c.end_date!,
+      mensal: false,
+      diasDoMes: null,
+      fracao: 1,
+    };
+  if (!c.continuous && c.end_date && c.start_date) return null;
+  // Contínua: o mês de hoje (ou o do início, se a campanha ainda não começou).
+  const ref = c.start_date && c.start_date > hoje ? c.start_date : hoje;
+  const [a, m] = ref.split("-").map(Number) as [number, number];
+  const mesIni = `${ref.slice(0, 7)}-01`;
+  const diasDoMes = new Date(Date.UTC(a, m, 0)).getUTCDate();
+  const ate = `${ref.slice(0, 7)}-${String(diasDoMes).padStart(2, "0")}`;
+  const de = c.start_date && c.start_date > mesIni ? c.start_date : mesIni;
+  const totais = emDias(ate) - emDias(de) + 1;
+  const passados = Math.min(totais, Math.max(0, emDias(hoje) - emDias(de) + 1));
+  return {
+    totais,
+    passados,
+    restantes: totais - passados,
+    de,
+    ate,
+    mensal: true,
+    diasDoMes,
+    fracao: totais / diasDoMes,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -250,7 +302,7 @@ export interface Alerta {
 }
 
 export interface ResumoDaCampanha {
-  periodo: PeriodoDaCampanha | null;
+  periodo: JanelaDoResumo | null;
   investimentoBruto: number | null;
   investimentoLiquido: number | null;
   valorRestante: number | null;
@@ -278,14 +330,25 @@ export function resumoDaCampanha(
   dias: readonly DiaDaCampanha[],
   hoje: string,
 ): ResumoDaCampanha {
-  const funil = funilDeTrafego(dias);
-  const periodo = periodoDaCampanha(c, hoje);
-  const bruto = periodo ? investimentoBrutoTotal(c, periodo.totais) : null;
+  const periodo = janelaDoResumo(c, hoje);
+  // Campanha contínua: tudo recomeça todo mês — só os dias do mês corrente contam aqui.
+  const diasDaJanela = periodo?.mensal
+    ? dias.filter((d) => d.day >= periodo.de && d.day <= periodo.ate)
+    : dias;
+  const funil = funilDeTrafego(diasDaJanela);
+  const bruto = periodo
+    ? investimentoBrutoTotal(c, periodo.totais, periodo.diasDoMes ?? undefined)
+    : null;
   const liquido = bruto === null ? null : investimentoLiquido(bruto, c.tax_pct);
   const restante = liquido === null ? null : liquido - funil.investido;
 
+  // A meta mensal de uma campanha que começou no meio do mês vale só pela fração dele.
   const metaDeLeads =
-    c.goal_leads ?? (liquido !== null && c.goal_cpl ? Math.floor(liquido / c.goal_cpl) : null);
+    c.goal_leads !== null
+      ? Math.round(c.goal_leads * (periodo?.fracao ?? 1))
+      : liquido !== null && c.goal_cpl
+        ? Math.floor(liquido / c.goal_cpl)
+        : null;
   const faltam = metaDeLeads === null ? null : Math.max(0, metaDeLeads - funil.leads);
   const metaDeCpl = c.goal_cpl ?? (liquido !== null && metaDeLeads ? liquido / metaDeLeads : null);
   const porDia = metaDeLeads !== null && periodo ? metaDeLeads / periodo.totais : null;

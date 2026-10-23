@@ -4,6 +4,8 @@ import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
 import {
   colunasDoDiaAdia,
   funilDeTrafego,
+  investimentoBrutoTotal,
+  janelaDoResumo,
   periodoDaCampanha,
   resumoDaCampanha,
   type DiaDaCampanha,
@@ -74,7 +76,7 @@ describe("resumo da campanha — as contas da planilha", () => {
   const r = resumoDaCampanha(campanha(), dias, "2026-09-11");
 
   it("período", () => {
-    expect(r.periodo).toEqual({ totais: 30, passados: 11, restantes: 19 });
+    expect(r.periodo).toMatchObject({ totais: 30, passados: 11, restantes: 19 });
   });
   it("investimento líquido e valor restante", () => {
     expect(r.investimentoLiquido).toBeCloseTo(533.33, 2);
@@ -580,8 +582,8 @@ describe("origem dos leads (C5)", () => {
     expect(r.porCriativo).toEqual({ k1: 1, k2: 1 });
     expect(r.porLandingPage).toEqual({ l1: 2 });
     expect(r.porConjunto).toEqual([
-      { id: "s1", nome: "Frio", leads: 1 },
-      { id: "s2", nome: null, leads: 1 },
+      { id: "s1", nome: "Frio", leads: 1, desqualificados: 0 },
+      { id: "s2", nome: null, leads: 1, desqualificados: 0 },
     ]);
     expect([r.semCriativo, r.semLandingPage, r.semConjunto]).toEqual([1, 1, 1]);
   });
@@ -705,5 +707,37 @@ describe("períodos das metas (C6)", () => {
   it("média diária usa só os dias que já passaram no mês em andamento", () => {
     expect(diasDecorridos(janelaDoPeriodo("mes", hoje), hoje)).toBe(14);
     expect(diasDecorridos(janelaDoPeriodo("mes_passado", hoje), hoje)).toBe(30);
+  });
+});
+
+describe("campanha contínua: o mês recomeça todo mês", () => {
+  const continua = { start_date: "2026-10-19", end_date: null, continuous: true };
+  it("no primeiro mês só valem os dias a partir do início, rateados pelos dias do mês", () => {
+    const j = janelaDoResumo(continua, "2026-10-22")!;
+    expect(j).toMatchObject({
+      de: "2026-10-19",
+      ate: "2026-10-31",
+      totais: 13,
+      passados: 4,
+      restantes: 9,
+      diasDoMes: 31,
+      mensal: true,
+    });
+    expect(j.fracao).toBeCloseTo(13 / 31);
+  });
+  it("nos meses seguintes vale o mês inteiro", () => {
+    const j = janelaDoResumo(continua, "2026-11-10")!;
+    expect(j).toMatchObject({
+      de: "2026-11-01",
+      ate: "2026-11-30",
+      totais: 30,
+      passados: 10,
+      fracao: 1,
+    });
+  });
+  it("o orçamento mensal divide pelos dias do mês, não por 30", () => {
+    expect(investimentoBrutoTotal({ budget: 3100, budget_period: "mensal" }, 13, 31)).toBeCloseTo(
+      1300,
+    );
   });
 });
