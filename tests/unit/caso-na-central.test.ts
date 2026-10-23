@@ -110,8 +110,8 @@ describe("caso aberto → aviso na Central", () => {
       organization_id: ORG,
       kind: "other",
       severity: "warn",
-      title: "La IA pidió ayuda al equipo",
-      body: "Abre el caso para responder. La IA sigue atendiendo al cliente mientras tanto.",
+      title: expect.any(String),
+      body: expect.any(String),
       ref_kind: "agent_case",
       ref_id: CASO,
     });

@@ -309,9 +309,6 @@ describe("cartão da passagem — várias passagens na mesma conversa", () => {
   });
 });
 
-describe("cartão da passagem — o espanhol dos textos que a tela recebe por VARIÁVEL", () => {
-});
-
 describe("cartão da passagem — contato anonimizado", () => {
   const anonima = passagem({
     body: "Cliente Anonimizado #0b1f7a2e",

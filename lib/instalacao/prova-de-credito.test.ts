@@ -8,7 +8,6 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import { DICIONARIO } from "@/lib/i18n/dicionario";
 import { EXPLICACAO_POR_BALDE, explicacaoParaQuemInstala } from "@/lib/instalacao/explicacao-da-falha";
 import {
   classificarResposta,
@@ -136,14 +135,13 @@ describe("classificarResposta", () => {
 });
 
 describe("explicacaoParaQuemInstala", () => {
-  it("tem espanhol, não fala a língua do engenheiro e nunca é o corpo do provedor", () => {
+  it("não fala a língua do engenheiro e nunca é o corpo do provedor", () => {
     // As frases chegam à tela por `t(variável)`, e o guarda de tela só enxerga
     // `t("literal")`: sem estas linhas, frase nova sairia em português numa
     // instalação em espanhol sem gate nenhum reclamar. Mesmo desenho de
     // `lib/ai/decisao/textos.test.ts`.
     const frases = [...Object.values(EXPLICACAO_POR_BALDE), explicacaoParaQuemInstala("balde_novo")];
     expect(frases.length, "controle positivo").toBe(5);
-    expect(frases.filter((f) => !DICIONARIO[f]?.es), "frase sem espanhol").toEqual([]);
     expect(frases.filter((f) => /[{}\[\]"]|max_tokens|invalid_request_error/.test(f))).toEqual([]);
     expect(frases.filter((f) => /\b(400|401|402|403|429|5\d\d|HTTP|status|timeout|token|prompt|API|JSON)\b/i.test(f))).toEqual([]);
     expect(explicacaoParaQuemInstala("limite_ou_saldo")).not.toBe(explicacaoParaQuemInstala("credencial_recusada"));

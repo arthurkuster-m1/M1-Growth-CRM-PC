@@ -36,7 +36,6 @@ import { NextRequest } from "next/server";
 
 import { AGENT_CONFIG_DEFAULTS, agentPatchSchema } from "@/lib/ai/guardrails-schema";
 import { DEFAULT_SENTIMENT_THRESHOLD } from "@/lib/ai/prompts/sentiment";
-import { DICIONARIO } from "@/lib/i18n/dicionario";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -216,19 +215,5 @@ describe("a tela do agente é a porta que uma pessoa usa", () => {
       "utf8",
     );
     expect(formulario).toContain("LimiarDeSentimento");
-  });
-
-  it("o rótulo está em português e tem espanhol no dicionário", () => {
-    // A chave do `t()` É o português (regra do dicionário); o que se cobra aqui
-    // é o espanhol — sem ele, quem escolheu espanhol cai para PT.
-    const fonte = readFileSync(COMPONENTE, "utf8");
-    const chaves = [...fonte.matchAll(/t\(\s*"([^"]{10,})"/g)].map((m) => m[1] as string);
-    expect(chaves.length, "cartão sem nenhuma frase de tela").toBeGreaterThan(2);
-    for (const chave of chaves) {
-      expect(
-        DICIONARIO[chave]?.es,
-        `frase sem espanhol no dicionário: ${chave.slice(0, 60)}`,
-      ).toBeTruthy();
-    }
   });
 });

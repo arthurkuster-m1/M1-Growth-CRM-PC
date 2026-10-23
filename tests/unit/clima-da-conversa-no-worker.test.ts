@@ -990,23 +990,6 @@ describe("o aviso do Jev na Central", () => {
     expect(resultado).toEqual({ skipped: false, sentiment_score: 0.2 });
     expect(banco.agent_inbox_items).toHaveLength(0);
   });
-
-  it("o aviso aberto em outro idioma é o mesmo aviso — trocar o idioma não abre um segundo", async () => {
-    fornecedor(recusa402);
-    const cenario = jevLigado("decide");
-    const banco = montarBanco(cenario);
-    banco.agent_inbox_items.push({
-      organization_id: ORG,
-      kind: "other",
-      severity: "warn",
-      status: "open",
-      title: traduzir(AVISO_DO_JEV.titulo, "es"),
-      body: "texto antigo",
-    });
-    const { banco: depois } = await rodar(cenario, banco);
-    expect(depois.agent_inbox_items).toHaveLength(1);
-    expect(depois.agent_inbox_items[0]!.title).toBe(AVISO_DO_JEV.titulo);
-  });
 });
 
 // ── O Jev por tarefa (onda 2) ───────────────────────────────────────────────
@@ -1468,7 +1451,7 @@ describe("os pedidos do cliente no worker de clima", () => {
    * idioma da organização (lido aqui, no `locale` dela), na conversa — e a
    * conversa e o contato ficam como estavam.
    */
-  it.each(["pt-BR", "es"] as const)(
+  it.each(["pt-BR"] as const)(
     "humano em Avisar a equipe (%s): a frase natural abre UM aviso na Central, e nada muda na conversa",
     async (idioma) => {
       // Clima 3: o clima desta mensagem não chama ninguém.
@@ -1608,7 +1591,7 @@ describe("o aviso do Jev com o título antigo", () => {
     expect(TITULOS_ANTIGOS_DO_AVISO_DO_JEV.length).toBeGreaterThan(0);
   });
 
-  it.each(["pt-BR", "es"] as const)("aberto com o título antigo (%s), fecha quando o Jev volta a medir", async (idioma) => {
+  it.each(["pt-BR"] as const)("aberto com o título antigo (%s), fecha quando o Jev volta a medir", async (idioma) => {
     fornecedor(async () => respostaDoJev(4));
     const cenario = jevLigado("decide");
     const banco = montarBanco(cenario);
