@@ -4,11 +4,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@/lib/logger";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
+import { nomeComparavel } from "@/lib/marketing/modelos-de-criativo";
 import { createHash, randomUUID } from "node:crypto";
 
 import { extensaoDe, farejarTipo } from "@/lib/branding/logo-arquivo";
 import { comprimirImagem } from "@/lib/marketing/comprimir-imagem";
-import { BUCKET_DE_IMAGENS, TAMANHO_MAXIMO_DA_IMAGEM, caminhoDaImagem } from "@/lib/marketing/imagens";
+import {
+  BUCKET_DE_IMAGENS,
+  TAMANHO_MAXIMO_DA_IMAGEM,
+  caminhoDaImagem,
+} from "@/lib/marketing/imagens";
 import {
   lerAnuncios,
   lerMetricasPorAnuncio,
@@ -176,7 +181,50 @@ export async function importarCriativosDoMeta(
     .eq("campaign_id", c.id)
     .not("ad_id", "is", null);
   const existentes = new Map((ja ?? []).map((r) => [r.ad_id as string, r]));
-  const novos = leitura.dados.filter((a) => !existentes.has(a.id));
+
+  // Criativo PLANEJADO (ainda sem anúncio no Meta) com o mesmo nome do anúncio: o anúncio completa
+  // aquele card (id, status, miniatura, textos que faltam) em vez de criar outro.
+  const { data: planejados } = await admin
+    .from("demand_campaign_creatives")
+    .select("id, name, headlines, bodies, descriptions, link_url")
+    .eq("organization_id", c.organization_id)
+    .eq("campaign_id", c.id)
+    .is("ad_id", null);
+  const porNome = new Map(
+    (planejados ?? []).map((p) => [nomeComparavel(String(p.name)), p] as const),
+  );
+  const statusDoMeta = (st: string | null) =>
+    st === "ACTIVE"
+      ? "ativo"
+      : st === "PAUSED" || st === "CAMPAIGN_PAUSED" || st === "ADSET_PAUSED"
+        ? "pausado"
+        : "encerrado";
+  const casados = new Set<string>();
+  for (const a of leitura.dados) {
+    if (existentes.has(a.id)) continue;
+    const plano = porNome.get(nomeComparavel(a.name));
+    if (!plano) continue;
+    porNome.delete(nomeComparavel(a.name));
+    const vazio = (v: unknown) => !Array.isArray(v) || v.length === 0;
+    const patch: Record<string, unknown> = {
+      ad_id: a.id.slice(0, 40),
+      ad_name: a.name.slice(0, 300),
+      status: statusDoMeta(a.status),
+      format: a.formato,
+      thumbnail_url: (a.miniatura || a.imagem).slice(0, 2000),
+    };
+    if (a.link && !(plano.link_url as string | null)) patch.link_url = a.link;
+    if (vazio(plano.headlines) && a.titulos.length > 0) patch.headlines = a.titulos;
+    if (vazio(plano.bodies) && a.legendas.length > 0) patch.bodies = a.legendas;
+    if (vazio(plano.descriptions) && a.descricoes.length > 0) patch.descriptions = a.descricoes;
+    const { error } = await admin
+      .from("demand_campaign_creatives")
+      .update(patch)
+      .eq("organization_id", c.organization_id)
+      .eq("id", plano.id as string);
+    if (!error) casados.add(a.id);
+  }
+  const novos = leitura.dados.filter((a) => !existentes.has(a.id) && !casados.has(a.id));
 
   // Imagens que o anúncio dinâmico guarda só pelo hash: resolve de uma vez pela conta.
   const hashes = leitura.dados.flatMap((a) => a.hashesDeImagem);
@@ -264,5 +312,5 @@ export async function importarCriativosDoMeta(
       return { ok: false, falha: "erro_ao_gravar" };
     }
   }
-  return { ok: true, criados: novos.length, existentes: existentes.size };
+  return { ok: true, criados: novos.length + casados.size, existentes: existentes.size };
 }

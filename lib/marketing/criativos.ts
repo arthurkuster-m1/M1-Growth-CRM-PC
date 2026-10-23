@@ -10,7 +10,7 @@ import { NOME_DE_IMAGEM } from "@/lib/marketing/blocos";
  * ⚠️ A FORMA de `STATUS_DO_CRIATIVO` e `FORMATOS_DO_CRIATIVO` é requisito de instrumento (o
  * extrator de `vocabulario-banco-x-typescript` lê `const X = [...] as const`).
  */
-export const STATUS_DO_CRIATIVO = ["ativo", "pausado", "encerrado"] as const;
+export const STATUS_DO_CRIATIVO = ["planejado", "ativo", "pausado", "encerrado"] as const;
 export type StatusDoCriativo = (typeof STATUS_DO_CRIATIVO)[number];
 
 export const FORMATOS_DO_CRIATIVO = ["imagem", "video", "carrossel", "outro"] as const;
@@ -27,6 +27,8 @@ export interface Criativo {
   media_url: string;
   thumbnail_url: string;
   link_url: string;
+  /** O design pronto (link do Canva): o arquivo que vai subir no Meta. */
+  design_url: string;
   notes: string;
   /** Arquivos do bucket de imagens do Marketing (até 10). */
   images: string[];
@@ -49,7 +51,7 @@ export interface Criativo {
 }
 
 export const COLUNAS_DO_CRIATIVO =
-  "id, campaign_id, name, status, format, headline, caption, media_url, thumbnail_url, link_url, notes, images, headlines, bodies, descriptions, ad_id, ad_name, spend, impressions, link_clicks, lp_views, metrics_synced_at, position, created_at";
+  "id, campaign_id, name, status, format, headline, caption, media_url, thumbnail_url, link_url, design_url, notes, images, headlines, bodies, descriptions, ad_id, ad_name, spend, impressions, link_clicks, lp_views, metrics_synced_at, position, created_at";
 
 const link = z
   .string()
@@ -65,6 +67,7 @@ const camposSchema = z.object({
   caption: z.string().trim().max(4000),
   media_url: link,
   link_url: link,
+  design_url: link,
   notes: z.string().trim().max(2000),
   images: z.array(z.string().regex(NOME_DE_IMAGEM)).max(10),
   headlines: z.array(z.string().trim().max(300)).max(5),

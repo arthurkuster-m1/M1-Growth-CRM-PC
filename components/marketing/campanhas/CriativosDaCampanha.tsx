@@ -1,6 +1,7 @@
 "use client";
 
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -25,6 +26,10 @@ import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
+import {
+  CriarDoModeloDialog,
+  ModelosDeCriativoDialog,
+} from "@/components/marketing/campanhas/ModelosDeCriativo";
 import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { useT } from "@/hooks/i18n/useT";
 import {
@@ -51,6 +56,7 @@ const AREA =
   "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
 const FAIXA_DO_STATUS: Record<Criativo["status"], string> = {
+  planejado: "border-l-blue-500",
   ativo: "border-l-emerald-500",
   pausado: "border-l-amber-500",
   encerrado: "border-l-slate-400",
@@ -548,6 +554,7 @@ export function CriativosDaCampanha({
     apagar,
     importarDoMeta,
   } = useCriativosDaCampanha(campanhaId);
+  const queryClient = useQueryClient();
   const periodo = usePeriodoDaCampanha(periodoPadrao);
   const { origem } = useOrigemDosLeads(campanhaId, periodo.janela);
   const { dados: meta } = useMetaPorAnuncio(campanhaId, periodo.janela);
@@ -571,6 +578,8 @@ export function CriativosDaCampanha({
   const [vista, setVista] = useState<"conjuntos" | "cards" | "tabela">("conjuntos");
   const [conjuntoSel, setConjuntoSel] = useState<string | null>(null);
   const [mostrarInativos, setMostrarInativos] = useState(false);
+  const [criandoDoModelo, setCriandoDoModelo] = useState(false);
+  const [gerenciandoModelos, setGerenciandoModelos] = useState(false);
 
   const linhas: LinhaDoCriativo[] = criativos.map((c) => {
     const leads = origem?.porCriativo[c.id] ?? 0;
@@ -1050,6 +1059,13 @@ export function CriativosDaCampanha({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
+                onClick={() => setCriandoDoModelo(true)}
+                className="h-9 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+              >
+                {t("Criar de modelo")}
+              </button>
+              <button
+                type="button"
                 disabled={importando}
                 onClick={async () => {
                   setImportando(true);
@@ -1245,6 +1261,30 @@ export function CriativosDaCampanha({
           />
         </>
       )}
+      {podeEditar ? (
+        <>
+          <CriarDoModeloDialog
+            aberto={criandoDoModelo}
+            aoFechar={() => setCriandoDoModelo(false)}
+            campanhaId={campanhaId}
+            aoCriar={() => {
+              setConjuntoSel(null);
+              setVista("cards");
+              void queryClient.invalidateQueries({
+                queryKey: ["demand-campaign-creatives", campanhaId],
+              });
+            }}
+            aoGerenciar={() => {
+              setCriandoDoModelo(false);
+              setGerenciandoModelos(true);
+            }}
+          />
+          <ModelosDeCriativoDialog
+            aberto={gerenciandoModelos}
+            aoFechar={() => setGerenciandoModelos(false)}
+          />
+        </>
+      ) : null}
     </section>
   );
 }

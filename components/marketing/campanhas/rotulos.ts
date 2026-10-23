@@ -148,6 +148,8 @@ import type { FormatoDoCriativo, StatusDoCriativo } from "@/lib/marketing/criati
 
 export function rotuloDoStatusDoCriativo(t: Traduz, s: StatusDoCriativo): string {
   switch (s) {
+    case "planejado":
+      return t("Planejado");
     case "ativo":
       return t("Ativo");
     case "pausado":
@@ -158,6 +160,7 @@ export function rotuloDoStatusDoCriativo(t: Traduz, s: StatusDoCriativo): string
 }
 
 export const COR_DO_STATUS_DO_CRIATIVO: Record<StatusDoCriativo, CorDaOpcao> = {
+  planejado: "blue",
   ativo: "green",
   pausado: "orange",
   encerrado: "gray",
