@@ -41,6 +41,7 @@ const FONTES_TECNICAS: Record<string, string> = {
   webhook: "Integração",
   api: "Integração",
   mcp: "Integração",
+  prospecting: "Extração de leads",
   whatsapp_inbound: "WhatsApp (entrada)",
   inbound: "WhatsApp (entrada)",
 };
@@ -362,7 +363,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const cambio = await resolverCambio(orgCfg?.settings);
   const { data: extracoesBrutas } = await createAdminClient()
     .from("prospecting_campaigns")
-    .select("id, name, cost_usd, config, created_at")
+    .select("id, name, cost_usd, config, created_at, demand_campaign_id")
     .eq("organization_id", a.orgId)
     .eq("search_status", "succeeded")
     .not("cost_usd", "is", null)
@@ -374,14 +375,21 @@ export async function GET(req: NextRequest): Promise<Response> {
     cost_usd: number | string;
     config: { pipeline_id?: string } | null;
     created_at: string;
+    demand_campaign_id: string | null;
   }>) {
     const d = diaNoFuso(e.created_at, fuso);
     if (d < janelaDe || d > ate.data) continue;
     // A extração é da campanha dona do funil dela; sem dona, vale para todas.
-    const dona = e.config?.pipeline_id
-      ? catalogo.find((c) => c.pipeline_id === e.config?.pipeline_id)
-      : undefined;
-    if (dona && !ids.includes(dona.id)) continue;
+    // Com o vínculo direto (a extração feita dentro da campanha), ele manda; o funil é o
+    // caminho das extrações antigas.
+    if (e.demand_campaign_id) {
+      if (!ids.includes(e.demand_campaign_id)) continue;
+    } else {
+      const dona = e.config?.pipeline_id
+        ? catalogo.find((c) => c.pipeline_id === e.config?.pipeline_id)
+        : undefined;
+      if (dona && !ids.includes(dona.id)) continue;
+    }
     const usd = Number(e.cost_usd);
     if (!Number.isFinite(usd) || usd <= 0) continue;
     const brl = dolarEmReais(usd, cambio);

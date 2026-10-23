@@ -48,15 +48,18 @@ export async function GET(req: NextRequest) {
   try {
     const db = getRequestPool();
     const org = auth.organizationId;
+    // Dentro de uma campanha de prospecção, a lista mostra só as extrações dela.
+    const doId = new URL(req.url).searchParams.get("campanha");
+    const campanha = doId && /^[0-9a-f-]{36}$/i.test(doId) ? doId : null;
     const [settings, campaigns, candidates, agents, channels, stages] = await Promise.all([
       db.query("select organization_id from prospecting_settings where organization_id=$1", [org]),
       db.query(
-        "select id,name,search,config,status,search_status,run_id,cost_usd,result_count,skipped_count,error,next_send_at,created_at from prospecting_campaigns where organization_id=$1 order by created_at desc limit 50",
-        [org],
+        "select id,name,search,config,status,search_status,run_id,cost_usd,result_count,skipped_count,error,next_send_at,created_at,demand_campaign_id from prospecting_campaigns where organization_id=$1 and ($2::uuid is null or demand_campaign_id=$2::uuid) order by created_at desc limit 50",
+        [org, campanha],
       ),
       db.query(
-        "select p.id,p.campaign_id,p.data,p.status,p.selected,p.error,p.lead_id,p.conversation_id,p.attempted_at,m.status as message_status,case when l.stage_id::text=c.config->>'qualified_stage_id' then 'qualified' when v.last_inbound_at is not null then 'replied' else p.status end as progress from prospecting_candidates p join prospecting_campaigns c on c.organization_id=p.organization_id and c.id=p.campaign_id left join crm_leads l on l.organization_id=p.organization_id and l.id=p.lead_id left join conversations v on v.organization_id=p.organization_id and v.id=p.conversation_id left join messages m on m.organization_id=p.organization_id and m.id=p.message_id where p.organization_id=$1 order by p.created_at desc limit 5000",
-        [org],
+        "select p.id,p.campaign_id,p.data,p.status,p.selected,p.error,p.lead_id,p.conversation_id,p.attempted_at,m.status as message_status,case when l.stage_id::text=c.config->>'qualified_stage_id' then 'qualified' when v.last_inbound_at is not null then 'replied' else p.status end as progress from prospecting_candidates p join prospecting_campaigns c on c.organization_id=p.organization_id and c.id=p.campaign_id left join crm_leads l on l.organization_id=p.organization_id and l.id=p.lead_id left join conversations v on v.organization_id=p.organization_id and v.id=p.conversation_id left join messages m on m.organization_id=p.organization_id and m.id=p.message_id where p.organization_id=$1 and ($2::uuid is null or c.demand_campaign_id=$2::uuid) order by p.created_at desc limit 5000",
+        [org, campanha],
       ),
       db.query(
         "select id,name from ai_agents where organization_id=$1 and published_version_id is not null and archived_at is null and paused_at is null and operation_mode='automatic' order by name",
@@ -135,9 +138,25 @@ export async function POST(req: NextRequest) {
     if (body.action === "configure") {
       await configureCredential(pool, admin, org, body.api_key);
       result = { configured: true };
-    } else if (body.action === "search")
-      result = await createSearch(pool, admin, org, body.request_id, body.search);
-    else if (body.action === "start")
+    } else if (body.action === "search") {
+      // A campanha dona da extração tem de ser desta organização e do tipo Prospecção.
+      if (body.demand_campaign_id) {
+        const dona = await pool.query(
+          "select id from demand_campaigns where organization_id=$1 and id=$2 and channel='prospeccao'",
+          [org, body.demand_campaign_id],
+        );
+        if (!dona.rows.length)
+          throw new ProspectingError("Campanha de prospecção não encontrada.", 404);
+      }
+      result = await createSearch(
+        pool,
+        admin,
+        org,
+        body.request_id,
+        body.search,
+        body.demand_campaign_id ?? null,
+      );
+    } else if (body.action === "start")
       result = await activateCampaign(pool, admin, org, body.id, body.config);
     else if (body.action === "pause") {
       // Pause does not wait for the worker lock; the delivery guard sees it before sending.
@@ -165,7 +184,10 @@ export async function POST(req: NextRequest) {
           )
         ).rows[0];
         if (!campaign)
-          throw new ProspectingError("A campanha não está em preparação para selecionar empresas.", 409);
+          throw new ProspectingError(
+            "A campanha não está em preparação para selecionar empresas.",
+            409,
+          );
         const { rows } = await db.query<{ id: string }>(
           "update prospecting_candidates set selected=$3,updated_at=now() where organization_id=$1 and campaign_id=$2 and status='new' and id=any($4::uuid[]) returning id",
           [org, body.id, body.selected, body.candidate_ids],

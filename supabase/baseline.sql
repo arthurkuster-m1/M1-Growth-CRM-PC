@@ -51230,3 +51230,14 @@ comment on table public.demand_creative_templates is
   'Modelos de criativo da empresa: textos e design prontos com uma tag que se troca pela cidade do evento. Lidos pela empresa toda; escritos a partir de manager.';
 
 notify pgrst, 'reload schema';
+
+-- ---- extração de leads dentro da campanha de prospecção (migration 0655) ----
+alter table public.prospecting_campaigns
+  add column if not exists demand_campaign_id uuid references public.demand_campaigns(id) on delete set null;
+create index if not exists prospecting_campaigns_demand_idx
+  on public.prospecting_campaigns (organization_id, demand_campaign_id) where demand_campaign_id is not null;
+alter table public.demand_campaigns drop constraint if exists demand_campaigns_optional_tabs_check;
+alter table public.demand_campaigns add constraint demand_campaigns_optional_tabs_check
+  check (optional_tabs is null
+         or optional_tabs <@ array['landing', 'criativos', 'abordagem', 'extracao', 'disparos']::text[]);
+notify pgrst, 'reload schema';

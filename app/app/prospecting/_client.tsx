@@ -89,11 +89,18 @@ const emptyConfig: CampaignConfig = {
   // Campanha nova nasce no modo recomendado; a configuração já gravada manda no que existe.
   funnel_entry: "on_send",
 };
-export function ProspectingClient() {
+export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) {
   const t = useT();
   const query = useQuery({
-    queryKey: ["prospecting"],
-    queryFn: async () => (await apiClient.get<{ data: State }>("/api/v1/prospecting")).data,
+    queryKey: ["prospecting", campanhaId ?? null],
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: State }>(
+          campanhaId
+            ? `/api/v1/prospecting?campanha=${encodeURIComponent(campanhaId)}`
+            : "/api/v1/prospecting",
+        )
+      ).data,
     refetchInterval: 10000,
   });
   const data = query.data;
@@ -358,6 +365,7 @@ export function ProspectingClient() {
                   {
                     action: "search",
                     request_id: searchAttempt.current.id,
+                    ...(campanhaId ? { demand_campaign_id: campanhaId } : {}),
                     search: {
                       name: `${niche} · ${location}`.slice(0, 120),
                       niche,

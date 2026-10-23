@@ -209,7 +209,7 @@ export function SectionComponents() {
       <div className="ds-card ds-row">
         <span className="ds-tooltip-host">
           <button className="ds-btn ds-btn--secondary">Hover para tooltip</button>
-          <span className="ds-tooltip">Atalho: ⌘K</span>
+          <span className="ds-tooltip">Atalho: Ctrl K</span>
         </span>
         <button className="ds-btn ds-btn--primary" onClick={() => setShowModal(true)}>Abrir modal</button>
         <button className="ds-btn ds-btn--secondary" onClick={() => { setShowToast(true); setTimeout(() => setShowToast(false), 2600); }}>

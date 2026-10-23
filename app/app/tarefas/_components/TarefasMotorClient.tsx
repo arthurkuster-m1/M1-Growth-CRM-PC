@@ -83,6 +83,7 @@ import {
 } from "@/lib/tarefas/tipos";
 import {
   ArrowsClockwise,
+  ListChecks,
   CalendarBlank,
   CaretDown,
   DotsThree,
@@ -103,6 +104,8 @@ import { cn } from "@/lib/utils";
 import { textoDaDescricao } from "@/lib/tarefas/blocos";
 import { PainelDaTarefa } from "./PainelDaTarefa";
 import { ModelosDeTarefa } from "./ModelosDeTarefa";
+import { PlanosDeTarefa } from "@/app/app/tasks/planos/_client";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
 import { LinhaDoTempo } from "./LinhaDoTempo";
 import { QuadroKanban } from "./QuadroKanban";
@@ -227,6 +230,7 @@ export function TarefasMotorClient({
   const [abertaId, setAbertaId] = useState<string | null>(abrirInicial ?? aoAbrirDoInicio);
   const [configurando, setConfigurando] = useState(false);
   const [modelosAberto, setModelosAberto] = useState(false);
+  const [planosAberto, setPlanosAberto] = useState(false);
   const [modeloNovo, setModeloNovo] = useState(false);
   const [fixadas, setFixadas] = useState<{ chave: string; ids: ReadonlySet<string> }>({
     chave: "",
@@ -1049,6 +1053,10 @@ export function TarefasMotorClient({
                     <ArrowsClockwise size={14} aria-hidden />
                     {t("Gerenciar modelos e repetições")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onSelect={() => setPlanosAberto(true)}>
+                    <ListChecks size={14} aria-hidden />
+                    {t("Planos de tarefa")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1313,6 +1321,16 @@ export function TarefasMotorClient({
           aoLimpar={() => setSelecionadas(new Set())}
         />
       ) : null}
+
+      <Dialog open={planosAberto} onOpenChange={setPlanosAberto}>
+        <DialogContent className="max-h-[90dvh] max-w-3xl gap-4 overflow-y-auto p-5 sm:rounded-2xl">
+          <DialogTitle className="sr-only">{t("Planos de tarefa")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {t("Sequências reutilizáveis de tarefas.")}
+          </DialogDescription>
+          {planosAberto ? <PlanosDeTarefa embutido /> : null}
+        </DialogContent>
+      </Dialog>
 
       <ModelosDeTarefa
         // `key`: reabrir pelo "Novo modelo" volta ao formulário em branco, e pelo "Gerenciar" à lista.
