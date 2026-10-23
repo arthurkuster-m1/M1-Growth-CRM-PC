@@ -17,7 +17,12 @@ import {
   type ConsultaDaTabela,
 } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+import {
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
@@ -61,6 +66,16 @@ interface Props<T extends { id: string; position: number }> {
    * Recebe os ids selecionados e uma função que limpa a seleção.
    */
   acoesEmMassa?: (ids: string[], limpar: () => void) => ReactNode;
+  /**
+   * Visualização FIXA: a tela é sempre esta (cartões ou tabela), sem abas para criar, trocar ou
+   * apagar. Filtros, ordem, agrupamento e propriedades continuam editáveis e ficam guardados
+   * para esta `tela`.
+   */
+  visaoFixa?: "galeria" | "tabela";
+  /** Sem o botão "Abrir" na coluna do título (o item não tem página própria). */
+  semAbrir?: boolean;
+  /** Controles extras na barra de cima (ex.: o seletor de conjunto). */
+  barraExtra?: ReactNode;
 }
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -85,6 +100,9 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   aoMudarPosicao,
   destacarId,
   acoesEmMassa,
+  visaoFixa,
+  semAbrir = false,
+  barraExtra,
 }: Props<T>) {
   const t = useT();
   const [busca, setBusca] = useState("");
@@ -130,15 +148,26 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
       else void editarVisao(id, { position: posicao });
     });
   };
-  const tipoDaAba: TipoDeVisualizacao = visaoAtiva
-    ? visaoAtiva.type
-    : padrao.preferencias.visualizacao === "tabela"
+  const tipoDaAba: TipoDeVisualizacao = visaoFixa
+    ? visaoFixa
+    : visaoAtiva
+      ? visaoAtiva.type
+      : padrao.preferencias.visualizacao === "tabela"
+        ? "tabela"
+        : "galeria";
+  const vista = visaoFixa
+    ? visaoFixa === "tabela"
       ? "tabela"
-      : "galeria";
-  const vista = forcarCartoes ? "cartoes" : tipoDaAba === "tabela" ? "tabela" : "cartoes";
-  const preferencias: PreferenciasDaTabela = visaoAtiva ? visaoAtiva.config : padrao.preferencias;
+      : "cartoes"
+    : forcarCartoes
+      ? "cartoes"
+      : tipoDaAba === "tabela"
+        ? "tabela"
+        : "cartoes";
+  const preferencias: PreferenciasDaTabela =
+    visaoAtiva && !visaoFixa ? visaoAtiva.config : padrao.preferencias;
   const atualizar = (mudar: (atual: PreferenciasDaTabela) => PreferenciasDaTabela) => {
-    if (visaoAtiva) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
+    if (visaoAtiva && !visaoFixa) salvarConfig(visaoAtiva.id, mudar(visaoAtiva.config));
     else padrao.atualizar(mudar);
   };
 
@@ -169,7 +198,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
   }));
   // A coluna do título ganha "Abrir": o item inteiro num painel no centro da tela.
   const colunasComAbrir: ColunaDoMotor<T>[] = colunas.map((c) =>
-    c.semOcultar
+    c.semOcultar && !semAbrir
       ? {
           ...c,
           largura: c.largura + 70,
@@ -349,26 +378,29 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
     <div className="grid grid-cols-1 gap-3">
       {itens.length > 0 ? (
         <>
-          <AbasDeVisualizacao
-            abas={abas}
-            ativaId={ativaId}
-            podeEditar={podeEditar}
-            tipos={TIPOS}
-            aoEscolher={(id) => {
-              setAba(id);
-              setForcarCartoes(false);
-            }}
-            aoCriar={(nome, tipo) =>
-              void criarVisao({ name: nome, type: tipo, config: preferencias }).then((v) => {
-                if (v) {
-                  setAba(v.id);
-                  setForcarCartoes(false);
-                }
-              })
-            }
-            aoConfigurar={() => setConfigurando(true)}
-          />
+          {visaoFixa ? null : (
+            <AbasDeVisualizacao
+              abas={abas}
+              ativaId={ativaId}
+              podeEditar={podeEditar}
+              tipos={TIPOS}
+              aoEscolher={(id) => {
+                setAba(id);
+                setForcarCartoes(false);
+              }}
+              aoCriar={(nome, tipo) =>
+                void criarVisao({ name: nome, type: tipo, config: preferencias }).then((v) => {
+                  if (v) {
+                    setAba(v.id);
+                    setForcarCartoes(false);
+                  }
+                })
+              }
+              aoConfigurar={() => setConfigurando(true)}
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2">
+            {barraExtra}
             <label className="relative min-w-0 flex-1 basis-56">
               <span className="sr-only">{t("Buscar")}</span>
               <input
@@ -389,8 +421,21 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
               }}
               aoMudar={mudarConsulta}
             />
+            {visaoFixa ? (
+              <button
+                type="button"
+                onClick={() => setConfigurando(true)}
+                className="inline-flex h-10 items-center rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+              >
+                {t("Propriedades")}
+              </button>
+            ) : null}
           </div>
         </>
+      ) : null}
+
+      {itens.length === 0 && barraExtra ? (
+        <div className="flex flex-wrap items-center gap-2">{barraExtra}</div>
       ) : null}
 
       {carregando || carregandoAsVisoes ? (
@@ -466,7 +511,10 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
         </BarraDeSelecao>
       ) : null}
 
-      <Dialog open={itemAberto !== undefined} onOpenChange={(a) => !a && setAbertoId(null)}>
+      <Dialog
+        open={!semAbrir && itemAberto !== undefined}
+        onOpenChange={(a) => !a && setAbertoId(null)}
+      >
         <DialogContent className="max-h-[90vh] w-[min(96vw,820px)] max-w-none overflow-y-auto p-3 sm:max-w-none sm:rounded-2xl">
           <DialogTitle className="sr-only">{rotuloDaTabela}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -483,7 +531,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
         tipo={tipoDaAba}
         tipos={TIPOS}
         podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
-        ehPadrao={!visaoAtiva}
+        ehPadrao={!visaoAtiva || Boolean(visaoFixa)}
         aoArquivar={
           visaoAtiva && visaoAtiva.editavel === false
             ? () => void arquivarVisao(visaoAtiva.id)

@@ -18,9 +18,9 @@ import {
   ColecaoDaCampanha,
   type CampoDaColecao,
 } from "@/components/marketing/campanhas/ColecaoDaCampanha";
-import { ConjuntosDeAnuncios } from "@/components/marketing/campanhas/ConjuntosDeAnuncios";
 import { AcoesDaColecao } from "@/components/marketing/campanhas/AcoesDaColecao";
 import { LinkComVer } from "@/components/marketing/campanhas/LinkComVer";
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
@@ -427,18 +427,18 @@ function CartaoDoCriativo({
       </div>
 
       {propriedades ?? (
-      <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3">
-        <Metrica rotulo={t("Investido")} valor={moedaDoNumero(c.spend)} />
-        <Metrica rotulo={t("Impressões")} valor={inteiro(c.impressions)} />
-        <Metrica rotulo={t("Cliques no link")} valor={inteiro(c.link_clicks)} />
-        <Metrica rotulo={t("CTR")} valor={pct(taxas.ctr)} />
-        <Metrica rotulo={t("CPC")} valor={reais(taxas.cpc)} />
-        <Metrica rotulo={t("Visitas à LP")} valor={inteiro(c.lp_views)} />
-        <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leads)} />
-        <Metrica
-          rotulo={t("CPL real")}
-          valor={leads > 0 && c.spend > 0 ? moedaDoNumero(c.spend / leads) : "—"}
-        />
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl bg-secondary/40 p-3">
+          <Metrica rotulo={t("Investido")} valor={moedaDoNumero(c.spend)} />
+          <Metrica rotulo={t("Impressões")} valor={inteiro(c.impressions)} />
+          <Metrica rotulo={t("Cliques no link")} valor={inteiro(c.link_clicks)} />
+          <Metrica rotulo={t("CTR")} valor={pct(taxas.ctr)} />
+          <Metrica rotulo={t("CPC")} valor={reais(taxas.cpc)} />
+          <Metrica rotulo={t("Visitas à LP")} valor={inteiro(c.lp_views)} />
+          <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(leads)} />
+          <Metrica
+            rotulo={t("CPL real")}
+            valor={leads > 0 && c.spend > 0 ? moedaDoNumero(c.spend / leads) : "—"}
+          />
         </div>
       )}
 
@@ -507,6 +507,21 @@ interface LinhaDoCriativo {
   custoPorMql: number | null;
 }
 
+interface LinhaDoConjunto {
+  id: string;
+  position: number;
+  nome: string;
+  status: string;
+  anuncios: number;
+  criativosAtivos: number;
+  spend: number;
+  impressions: number;
+  link_clicks: number;
+  lp_views: number;
+  leads: number;
+  cpl: number | null;
+}
+
 /**
  * Os CRIATIVOS da campanha: cada anúncio com legenda, mídia, LP e as métricas de entrega do
  * Meta. Importar traz os anúncios das campanhas atreladas (nome, título, legenda, miniatura).
@@ -552,6 +567,10 @@ export function CriativosDaCampanha({
   const [importando, setImportando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [novoId, setNovoId] = useState<string | null>(null);
+  // As 3 visualizações fixas: os conjuntos (a primeira), os criativos em cartões e em tabela.
+  const [vista, setVista] = useState<"conjuntos" | "cards" | "tabela">("conjuntos");
+  const [conjuntoSel, setConjuntoSel] = useState<string | null>(null);
+  const [mostrarInativos, setMostrarInativos] = useState(false);
 
   const linhas: LinhaDoCriativo[] = criativos.map((c) => {
     const leads = origem?.porCriativo[c.id] ?? 0;
@@ -573,6 +592,58 @@ export function CriativosDaCampanha({
       roas: !semDeliveryNoPeriodo && c.spend > 0 && faturamento > 0 ? faturamento / c.spend : null,
     };
   });
+  // A que conjunto pertence cada criativo: pelo anúncio do Meta e, sem ele, pelo nome do conjunto.
+  const conjuntosDoMeta = meta?.base ? meta.conjuntos : [];
+  const conjuntoIdDe = (c: Criativo): string => {
+    const doAnuncio = c.ad_id && meta?.base ? meta.anuncios[c.ad_id]?.adset_id : undefined;
+    if (doAnuncio) return doAnuncio;
+    const porNome = conjuntosDoMeta.find((x) => x.nome !== "" && x.nome === c.meta_conjunto);
+    return porNome ? porNome.adset_id || porNome.nome : "";
+  };
+  const idDoConjunto = (x: { adset_id: string; nome: string }) => x.adset_id || x.nome;
+  const temConjuntos = conjuntosDoMeta.length > 0;
+  const vistaEfetiva = vista === "conjuntos" && !temConjuntos ? "cards" : vista;
+  const conjuntoEscolhido = conjuntoSel
+    ? (conjuntosDoMeta.find((x) => idDoConjunto(x) === conjuntoSel) ?? null)
+    : null;
+  const linhasDoConjunto = conjuntoSel
+    ? linhas.filter((l) => conjuntoIdDe(l.c) === conjuntoSel)
+    : linhas;
+  // O resultado do conjunto: a soma dos criativos ATIVOS dentro dele.
+  const ativosDoConjunto = linhasDoConjunto.filter((l) => l.c.status === "ativo");
+  const totalAtivos = {
+    investido: ativosDoConjunto.reduce((s, l) => s + l.c.spend, 0),
+    impressoes: ativosDoConjunto.reduce((s, l) => s + l.c.impressions, 0),
+    cliques: ativosDoConjunto.reduce((s, l) => s + l.c.link_clicks, 0),
+    visitas: ativosDoConjunto.reduce((s, l) => s + l.c.lp_views, 0),
+    leads: ativosDoConjunto.reduce((s, l) => s + l.leads, 0),
+    faturamento: ativosDoConjunto.reduce((s, l) => s + l.faturamento, 0),
+  };
+  const linhasDeConjuntos: LinhaDoConjunto[] = conjuntosDoMeta
+    .filter((x) => mostrarInativos || x.status === "" || x.status === "ACTIVE")
+    .map((x, i) => {
+      const id = idDoConjunto(x);
+      const leads = origem?.porConjunto.find((c) => c.id === x.adset_id)?.leads ?? 0;
+      const ativos = linhas.filter((l) => conjuntoIdDe(l.c) === id && l.c.status === "ativo");
+      return {
+        id,
+        position: i,
+        nome: x.nome || t("Sem conjunto"),
+        status: x.status,
+        anuncios: x.anuncios,
+        criativosAtivos: ativos.length,
+        spend: x.spend,
+        impressions: x.impressions,
+        link_clicks: x.link_clicks,
+        lp_views: x.lp_views,
+        leads,
+        cpl: !semDeliveryNoPeriodo && leads > 0 && x.spend > 0 ? x.spend / leads : null,
+      };
+    });
+  const abrirConjunto = (id: string) => {
+    setConjuntoSel(id);
+    setVista("cards");
+  };
   const opcoesDeStatus = STATUS_DO_CRIATIVO.map((s) => ({
     id: s,
     rotulo: rotuloDoStatusDoCriativo(t, s),
@@ -827,6 +898,148 @@ export function CriativosDaCampanha({
     },
   ];
 
+  const seletorDeConjunto = temConjuntos ? (
+    <SeletorDeOpcao
+      compacto
+      opcoes={conjuntosDoMeta.map((x) => ({
+        id: idDoConjunto(x),
+        rotulo: x.nome || t("Sem conjunto"),
+        cor: "gray" as const,
+      }))}
+      valorId={conjuntoSel ?? undefined}
+      podeEditar
+      rotulo={t("Filtrar por conjunto")}
+      aoEscolher={(id) => setConjuntoSel(id)}
+      aoLimpar={() => setConjuntoSel(null)}
+    >
+      <span
+        className={cn(
+          "inline-flex h-10 max-w-64 items-center gap-2 rounded-xl border px-3 text-sm font-medium",
+          conjuntoEscolhido ? "border-primary bg-primary/10" : "bg-card",
+        )}
+      >
+        <span className="text-muted-foreground">{t("Conjunto")}:</span>
+        <span className="truncate">{conjuntoEscolhido?.nome ?? t("Todos")}</span>
+      </span>
+    </SeletorDeOpcao>
+  ) : null;
+
+  const nomeDoStatusDoConjunto = (st: string) =>
+    st === "ACTIVE"
+      ? t("Ativo")
+      : st === ""
+        ? "—"
+        : st === "PAUSED" || st.endsWith("_PAUSED")
+          ? t("Pausado")
+          : t("Inativo");
+  const camposDeConjuntos: CampoDaColecao<LinhaDoConjunto>[] = [
+    { id: "nome", titulo: t("Conjunto"), tipo: "texto", valorDe: (l) => l.nome },
+    {
+      id: "status",
+      titulo: t("Status"),
+      tipo: "opcao",
+      valorDe: (l) => l.status,
+      opcoes: [
+        { id: "ACTIVE", rotulo: t("Ativo"), cor: "green" },
+        { id: "PAUSED", rotulo: t("Pausado"), cor: "orange" },
+      ],
+    },
+    { id: "anuncios", titulo: t("Anúncios"), tipo: "numero", valorDe: (l) => l.anuncios },
+    {
+      id: "ativos",
+      titulo: t("Criativos ativos"),
+      tipo: "numero",
+      valorDe: (l) => l.criativosAtivos,
+    },
+    { id: "investido", titulo: t("Investido"), tipo: "numero", valorDe: (l) => l.spend },
+    { id: "impressoes", titulo: t("Impressões"), tipo: "numero", valorDe: (l) => l.impressions },
+    { id: "cliques", titulo: t("Cliques no link"), tipo: "numero", valorDe: (l) => l.link_clicks },
+    { id: "visitas", titulo: t("Visitas à LP"), tipo: "numero", valorDe: (l) => l.lp_views },
+    { id: "leads", titulo: t("Leads (CRM)"), tipo: "numero", valorDe: (l) => l.leads },
+    { id: "cpl", titulo: t("CPL real"), tipo: "numero", valorDe: (l) => l.cpl },
+  ];
+  const numeroDoConjunto = (texto: string) => (
+    <span className="block truncate px-2 text-sm tabular-nums">{texto}</span>
+  );
+  const colunasDeConjuntos: ColunaDoMotor<LinhaDoConjunto>[] = [
+    {
+      id: "nome",
+      titulo: t("Conjunto"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 300,
+      semOcultar: true,
+      celula: (l) => (
+        <button
+          type="button"
+          onClick={() => abrirConjunto(l.id)}
+          title={t("Ver os criativos deste conjunto")}
+          className="block max-w-full truncate px-2 text-left text-sm font-medium hover:text-primary hover:underline"
+        >
+          {l.nome}
+        </button>
+      ),
+    },
+    {
+      id: "status",
+      titulo: t("Status"),
+      icone: <Check size={14} aria-hidden />,
+      largura: 130,
+      celula: (l) => (
+        <Etiqueta ponto cor={l.status === "ACTIVE" ? "green" : "gray"}>
+          {nomeDoStatusDoConjunto(l.status)}
+        </Etiqueta>
+      ),
+    },
+    {
+      id: "anuncios",
+      titulo: t("Anúncios"),
+      largura: 110,
+      celula: (l) => numeroDoConjunto(inteiro(l.anuncios)),
+    },
+    {
+      id: "ativos",
+      titulo: t("Criativos ativos"),
+      largura: 140,
+      celula: (l) => numeroDoConjunto(inteiro(l.criativosAtivos)),
+    },
+    {
+      id: "investido",
+      titulo: t("Investido"),
+      largura: 130,
+      celula: (l) => numeroDoConjunto(moedaDoNumero(l.spend)),
+    },
+    {
+      id: "impressoes",
+      titulo: t("Impressões"),
+      largura: 130,
+      celula: (l) => numeroDoConjunto(inteiro(l.impressions)),
+    },
+    {
+      id: "cliques",
+      titulo: t("Cliques no link"),
+      largura: 140,
+      celula: (l) => numeroDoConjunto(inteiro(l.link_clicks)),
+    },
+    {
+      id: "visitas",
+      titulo: t("Visitas à LP"),
+      largura: 120,
+      celula: (l) => numeroDoConjunto(inteiro(l.lp_views)),
+    },
+    {
+      id: "leads",
+      titulo: t("Leads (CRM)"),
+      largura: 120,
+      celula: (l) => numeroDoConjunto(inteiro(l.leads)),
+    },
+    {
+      id: "cpl",
+      titulo: t("CPL real"),
+      largura: 110,
+      celula: (l) => numeroDoConjunto(reais(l.cpl)),
+    },
+  ];
+
   return (
     <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-violet-500 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -858,6 +1071,8 @@ export function CriativosDaCampanha({
                 onClick={async () => {
                   const novo = await criar({ name: t("Novo criativo") });
                   if (novo) {
+                    setConjuntoSel(null);
+                    setVista("cards");
                     setNovoId(novo.id);
                     toast.success(t("Criativo criado. Preencha os dados dele."));
                   }
@@ -884,61 +1099,152 @@ export function CriativosDaCampanha({
         </p>
       ) : null}
 
-      <ColecaoDaCampanha
-        tela="campanha-criativos"
-        itens={linhas}
-        carregando={carregando}
-        podeEditar={podeEditar}
-        vazio={t("Nenhum criativo ainda. Importe do Meta ou crie um novo.")}
-        rotuloDaTabela={t("Criativos")}
-        campos={campos}
-        colunas={colunas}
-        textoDaBusca={(l) => `${l.c.name} ${l.c.headline} ${l.c.caption} ${l.c.ad_name}`}
-        aoMudarPosicao={(id, position) => void editar(id, { position })}
-        destacarId={novoId}
-        acoesEmMassa={(ids, limpar) => (
-          <AcoesDaColecao
-            ids={ids}
-            limpar={limpar}
-            nomeDoItem={t("criativos")}
-            grupos={[
-              {
-                rotulo: t("Status"),
-                opcoes: opcoesDeStatus,
-                aplicar: async (alvo, status) => {
-                  await Promise.all(
-                    alvo.map((id) => editar(id, { status: status as Criativo["status"] })),
-                  );
-                },
-              },
-              {
-                rotulo: t("Formato"),
-                opcoes: opcoesDeFormato,
-                aplicar: async (alvo, formato) => {
-                  await Promise.all(
-                    alvo.map((id) => editar(id, { format: formato as Criativo["format"] })),
-                  );
-                },
-              },
-            ]}
-            apagar={async (alvo) => {
-              await Promise.all(alvo.map((id) => apagar(id)));
-            }}
-          />
-        )}
-        cartao={(l, propriedades) => (
-          <CartaoDoCriativo
-            propriedades={propriedades}
-            c={l.c}
-            leads={l.leads}
+      <div
+        role="tablist"
+        aria-label={t("Visualização dos criativos")}
+        className="flex max-w-full [scrollbar-width:none] gap-1 overflow-x-auto rounded-xl bg-secondary p-1 [&::-webkit-scrollbar]:hidden"
+      >
+        {(
+          [
+            ["conjuntos", t("Conjuntos de anúncios")],
+            ["cards", t("Criativos (cards)")],
+            ["tabela", t("Criativos (tabela)")],
+          ] as const
+        ).map(([id, rotulo]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={vistaEfetiva === id}
+            onClick={() => setVista(id)}
+            className={cn(
+              "h-9 shrink-0 rounded-lg px-3.5 text-sm font-medium whitespace-nowrap transition-colors",
+              vistaEfetiva === id
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
+
+      {vistaEfetiva === "conjuntos" ? (
+        <ColecaoDaCampanha
+          key="campanha-conjuntos"
+          tela="campanha-conjuntos"
+          visaoFixa="tabela"
+          semAbrir
+          itens={linhasDeConjuntos}
+          carregando={carregando}
+          podeEditar={false}
+          vazio={t("Nenhum conjunto de anúncios ainda. Importe do Meta para ver os conjuntos.")}
+          rotuloDaTabela={t("Conjuntos de anúncios")}
+          campos={camposDeConjuntos}
+          colunas={colunasDeConjuntos}
+          textoDaBusca={(l) => l.nome}
+          cartao={() => null}
+          barraExtra={
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 text-sm whitespace-nowrap">
+              <CaixaRedonda
+                checked={mostrarInativos}
+                onChange={(e) => setMostrarInativos(e.target.checked)}
+              />
+              {t("Mostrar inativos")}
+            </label>
+          }
+        />
+      ) : (
+        <>
+          {conjuntoEscolhido ? (
+            <div className="grid gap-2 rounded-xl border bg-secondary/40 p-3">
+              <p className="text-xs text-muted-foreground">
+                {t("Criativos ativos do conjunto")}{" "}
+                <strong className="text-foreground">{conjuntoEscolhido.nome}</strong> ·{" "}
+                {ativosDoConjunto.length}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4 lg:grid-cols-7">
+                <Metrica rotulo={t("Investido")} valor={moedaDoNumero(totalAtivos.investido)} />
+                <Metrica rotulo={t("Impressões")} valor={inteiro(totalAtivos.impressoes)} />
+                <Metrica rotulo={t("Cliques no link")} valor={inteiro(totalAtivos.cliques)} />
+                <Metrica rotulo={t("Visitas à LP")} valor={inteiro(totalAtivos.visitas)} />
+                <Metrica rotulo={t("Leads (CRM)")} valor={inteiro(totalAtivos.leads)} />
+                <Metrica
+                  rotulo={t("CPL real")}
+                  valor={
+                    totalAtivos.leads > 0 && totalAtivos.investido > 0
+                      ? moedaDoNumero(totalAtivos.investido / totalAtivos.leads)
+                      : "—"
+                  }
+                />
+                <Metrica
+                  rotulo={t("Faturamento")}
+                  valor={totalAtivos.faturamento > 0 ? moedaDoNumero(totalAtivos.faturamento) : "—"}
+                />
+              </div>
+            </div>
+          ) : null}
+          <ColecaoDaCampanha
+            key={vistaEfetiva}
+            tela={
+              vistaEfetiva === "tabela" ? "campanha-criativos-tabela" : "campanha-criativos-cards"
+            }
+            visaoFixa={vistaEfetiva === "tabela" ? "tabela" : "galeria"}
+            barraExtra={seletorDeConjunto}
+            itens={linhasDoConjunto}
+            carregando={carregando}
             podeEditar={podeEditar}
-            editar={(patch) => void editar(l.c.id, patch)}
-            duplicar={() => void duplicar(l.c.id)}
-            apagar={() => void apagar(l.c.id)}
+            vazio={t("Nenhum criativo ainda. Importe do Meta ou crie um novo.")}
+            rotuloDaTabela={t("Criativos")}
+            campos={campos}
+            colunas={colunas}
+            textoDaBusca={(l) => `${l.c.name} ${l.c.headline} ${l.c.caption} ${l.c.ad_name}`}
+            aoMudarPosicao={(id, position) => void editar(id, { position })}
+            destacarId={novoId}
+            acoesEmMassa={(ids, limpar) => (
+              <AcoesDaColecao
+                ids={ids}
+                limpar={limpar}
+                nomeDoItem={t("criativos")}
+                grupos={[
+                  {
+                    rotulo: t("Status"),
+                    opcoes: opcoesDeStatus,
+                    aplicar: async (alvo, status) => {
+                      await Promise.all(
+                        alvo.map((id) => editar(id, { status: status as Criativo["status"] })),
+                      );
+                    },
+                  },
+                  {
+                    rotulo: t("Formato"),
+                    opcoes: opcoesDeFormato,
+                    aplicar: async (alvo, formato) => {
+                      await Promise.all(
+                        alvo.map((id) => editar(id, { format: formato as Criativo["format"] })),
+                      );
+                    },
+                  },
+                ]}
+                apagar={async (alvo) => {
+                  await Promise.all(alvo.map((id) => apagar(id)));
+                }}
+              />
+            )}
+            cartao={(l, propriedades) => (
+              <CartaoDoCriativo
+                propriedades={propriedades}
+                c={l.c}
+                leads={l.leads}
+                podeEditar={podeEditar}
+                editar={(patch) => void editar(l.c.id, patch)}
+                duplicar={() => void duplicar(l.c.id)}
+                apagar={() => void apagar(l.c.id)}
+              />
+            )}
           />
-        )}
-      />
-      <ConjuntosDeAnuncios meta={meta} origem={origem} />
+        </>
+      )}
     </section>
   );
 }
