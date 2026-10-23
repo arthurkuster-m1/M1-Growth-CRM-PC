@@ -61,10 +61,10 @@ describe("portas por empresa (issue #1341)", () => {
   it("o vínculo NÃO abre porta que a empresa não oferece", () => {
     // A empresa oferece um punhado; o vínculo pede tudo. Vale o que a empresa
     // ofereceu — antes desta mudança o vínculo vencia sempre.
-    const daEmpresa = { preset: "completa", destinos: ["/app/inbox", "/app/contacts"] } as const;
+    const daEmpresa = { preset: "completa", destinos: ["/app/inbox", "/app/clientes"] } as const;
     const resultado = hrefs(combinarInterfaces(daEmpresa, completa));
     expect(resultado).toContain("/app/inbox");
-    expect(resultado).toContain("/app/contacts");
+    expect(resultado).toContain("/app/clientes");
     expect(resultado).not.toContain("/app/companies");
     expect(resultado).not.toContain("/app/ai/agents");
   });
@@ -72,7 +72,7 @@ describe("portas por empresa (issue #1341)", () => {
   it("o vínculo estreita DENTRO da empresa, e nunca além dela", () => {
     const daEmpresa = {
       preset: "completa",
-      destinos: ["/app/inbox", "/app/contacts", "/app/companies", "/app/ai/agents"],
+      destinos: ["/app/inbox", "/app/clientes", "/app/companies", "/app/ai/agents"],
     } as const;
     const doVinculo = { preset: "completa", destinos: ["/app/inbox", "/app/companies"] } as const;
     expect(hrefs(combinarInterfaces(daEmpresa, doVinculo)).sort()).toEqual(
@@ -138,7 +138,7 @@ describe("a organização não consegue se trancar do lado de fora", () => {
       { preset: "completa", destinos: ["/app/inbox"] },
       combinarInterfaces(
         { preset: "completa", destinos: ["/app/inbox"] },
-        { preset: "completa", destinos: ["/app/kanban"] },
+        { preset: "completa", destinos: ["/app/clientes"] },
       ),
       combinarInterfaces(
         { preset: "simplificada" },
@@ -183,7 +183,7 @@ describe("a organização não consegue se trancar do lado de fora", () => {
   it("controle: uma porta comum continua ocultável — senão a garantia seria vacuidade", () => {
     // Se TUDO fosse essencial, os casos acima passariam sem medir nada.
     expect(hrefs({ preset: "completa", destinos: ["/app/inbox"] }, "admin")).not.toContain(
-      "/app/kanban",
+      "/app/clientes",
     );
   });
 });
@@ -194,10 +194,10 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
    * vínculo. É o número que o issue publica (15 itens: atendimento 4, CRM 3,
    * IA 3, canais 2, análise 3), medido aqui pelo módulo que alimenta o menu.
    */
-  it("hoje: 17 itens no menu lateral (as propostas saíram em 13/10/2026; os grupos nascem fechados, então a dobra a 1280x900 não pesa)", () => {
-    expect(itensNoMenuLateral(INTERFACE_COMPLETA)).toBe(17);
+  it("hoje: 16 itens no menu lateral (as propostas saíram em 13/10/2026; os grupos nascem fechados, então a dobra a 1280x900 não pesa)", () => {
+    expect(itensNoMenuLateral(INTERFACE_COMPLETA)).toBe(16);
     // `undefined` é o caminho de quem não tem escolha nenhuma gravada
-    expect(itensNoMenuLateral(undefined)).toBe(17);
+    expect(itensNoMenuLateral(undefined)).toBe(16);
   });
 
   /**
@@ -205,14 +205,14 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
    * A escolha da empresa é interseção, então o menu só ENCOLHE — a mudança não
    * tem como empurrar o instrumento de tela para o vermelho.
    */
-  it("configuração COMPLETA (ninguém escolheu): 17 itens — igual a hoje", () => {
-    expect(itensNoMenuLateral(combinarInterfaces(completa, completa))).toBe(17);
+  it("configuração COMPLETA (ninguém escolheu): 16 itens — igual a hoje", () => {
+    expect(itensNoMenuLateral(combinarInterfaces(completa, completa))).toBe(16);
   });
 
-  it("configuração SIMPLIFICADA (empresa escolhe o preset): 4 itens, folga 11", () => {
+  it("configuração SIMPLIFICADA (empresa escolhe o preset): 5 itens, folga 10", () => {
     const itens = itensNoMenuLateral(combinarInterfaces(simplificada, completa));
-    expect(itens).toBe(4);
-    expect(15 - itens).toBe(11);
+    expect(itens).toBe(5);
+    expect(15 - itens).toBe(10);
   });
 
   it("configuração MÍNIMA (empresa escolhe 1 porta): 1 item, folga 14", () => {
@@ -227,7 +227,7 @@ describe("medição da folga (pergunta de aceite da issue #1341)", () => {
     const casos: unknown[] = [
       simplificada,
       { preset: "completa", destinos: ["/app/inbox"] },
-      { preset: "completa", destinos: ["/app/inbox", "/app/contacts", "/app/companies"] },
+      { preset: "completa", destinos: ["/app/inbox", "/app/clientes", "/app/companies"] },
       { preset: "completa", destinos: essenciais() },
     ];
     for (const daEmpresa of casos) {
