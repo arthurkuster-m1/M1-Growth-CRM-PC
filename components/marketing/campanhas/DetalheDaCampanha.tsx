@@ -578,7 +578,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             </div>
 
             <SecaoPequena titulo={t("Investimento")}>
-              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-6">
                 <div className="grid gap-2">
                   <Rotulo texto={t("Investimento bruto")}>
                     <NumeroGravavel
@@ -638,16 +638,16 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                       };
                       return (
                         <div className="grid gap-2">
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <div className="grid grid-cols-1 gap-1.5">
                             {linhas.map((l) => (
                               <div
                                 key={l.periodo}
-                                className="rounded-xl border bg-secondary/40 px-4 py-3"
+                                className="rounded-lg border bg-secondary/40 px-3 py-1.5"
                               >
                                 <p className="text-xs text-muted-foreground">
                                   {rotulos[l.periodo]}
                                 </p>
-                                <p className="text-xl font-semibold tabular-nums">
+                                <p className="text-base font-semibold tabular-nums">
                                   <NumeroQueCabe>{moedaDoNumero(l.bruto)}</NumeroQueCabe>
                                 </p>
                                 <p className="text-xs text-muted-foreground tabular-nums">
