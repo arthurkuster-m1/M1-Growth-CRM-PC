@@ -37,7 +37,7 @@ const campanha = (p: Partial<CampanhaDeDemanda> = {}): CampanhaDeDemanda => ({
   position: 1,
   created_at: "2026-09-01T00:00:00Z",
   ...p,
-});
+} as CampanhaDeDemanda);
 
 const dia = (p: Partial<DiaDaCampanha>): DiaDaCampanha => ({
   day: "2026-09-01",

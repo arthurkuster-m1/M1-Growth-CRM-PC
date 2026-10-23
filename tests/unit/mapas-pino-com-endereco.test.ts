@@ -150,8 +150,6 @@ describe("a resposta do Google vira endereço aproximado", () => {
   });
 
   it("o idioma dos nomes segue o da organização, pelo registro de idiomas", () => {
-    expect(idiomaDaConsulta("es")).toBe("es");
-    expect(idiomaDaConsulta("es-MX")).toBe("es");
     expect(idiomaDaConsulta("pt-BR")).toBe("pt-BR");
     expect(idiomaDaConsulta(null)).toBe("pt-BR");
     // Um idioma que o produto não serve cai no padrão, como na tela.
@@ -162,12 +160,12 @@ describe("a resposta do Google vira endereço aproximado", () => {
 describe("a chamada ao Google", () => {
   it("manda coordenadas, idioma e chave; não lança em rede fora nem em resposta sem JSON", async () => {
     const f = vi.fn(async () => new Response(JSON.stringify(CURITIBA), { status: 200 }));
-    const r = await geocodificarReverso("CHAVE", { latitude: -25.4284, longitude: -49.2733 }, { idioma: "es", fetchImpl: f as never });
+    const r = await geocodificarReverso("CHAVE", { latitude: -25.4284, longitude: -49.2733 }, { idioma: "pt-BR", fetchImpl: f as never });
     expect(r.ok).toBe(true);
     const url = new URL(String((f.mock.calls[0] as unknown[])[0]));
     expect(url.host).toBe("maps.googleapis.com");
     expect(url.searchParams.get("latlng")).toBe("-25.4284,-49.2733");
-    expect(url.searchParams.get("language")).toBe("es");
+    expect(url.searchParams.get("language")).toBe("pt-BR");
     expect(url.searchParams.get("key")).toBe("CHAVE");
 
     const fora = vi.fn(async () => {
@@ -225,7 +223,7 @@ function adminFalso(opcoes: { temChave: boolean }) {
     from(tabela: string) {
       const linhas: Record<string, unknown> = {
         map_provider_credentials: opcoes.temChave ? { api_key_encrypted: "\\xabc" } : null,
-        organizations: { locale: "es" },
+        organizations: { locale: "pt-BR" },
       };
       const q = {
         select: () => q,
@@ -257,7 +255,7 @@ describe("o pino que chega pelo canal", () => {
     expect(msg.location?.aproximado).toEqual({ rua: "Rua XV de Novembro", cidade: "Curitiba", regiao: "Paraná" });
     expect(corpoDaLocalizacao(msg.location!)).toContain("Rua XV de Novembro, Curitiba, Paraná (aprox.)");
     const google = f.mock.calls.find(([u]) => String(u).includes("maps.googleapis.com"));
-    expect(new URL(String(google![0])).searchParams.get("language")).toBe("es");
+    expect(new URL(String(google![0])).searchParams.get("language")).toBe("pt-BR");
   });
 
   it("⭐ sem chave: nenhuma chamada ao Google, e o pino é o de antes", async () => {

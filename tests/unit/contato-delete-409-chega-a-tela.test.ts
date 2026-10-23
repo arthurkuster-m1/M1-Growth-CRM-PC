@@ -70,7 +70,6 @@ describe("DELETE /api/v1/contacts/[id] — 409 por vínculo", () => {
 
 describe("mensagemDeBloqueioPorVinculo", () => {
   const pt = (s: string) => traduzir(s, "pt-BR");
-  const es = (s: string) => traduzir(s, "es");
 
   it("singular com 1 compromisso", () => {
     expect(mensagemDeBloqueioPorVinculo({ por_tabela: { calendar_appointments: 1 } }, pt)).toBe(

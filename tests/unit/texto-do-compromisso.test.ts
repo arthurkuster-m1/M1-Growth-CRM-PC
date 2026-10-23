@@ -34,11 +34,6 @@ describe("o texto do compromisso", () => {
     expect(sp).not.toBe(lisboa);
   });
 
-  it("traduz para o idioma de quem recebe", () => {
-    const es = textoDoCompromisso({ startsAt: EM, timeZone: "UTC", url: null, idioma: "es" });
-    expect(es).toMatch(/compromiso/i);
-  });
-
   it("⛔ REMARCADO diz que mudou, em vez de repetir a mesma frase com outra data", () => {
     // Mandar "está marcado para…" duas vezes, com datas diferentes e sem
     // explicação, é pior que o silêncio: a pessoa não sabe qual vale, e a

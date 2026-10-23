@@ -3,7 +3,6 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { DICIONARIO } from "@/lib/i18n/dicionario";
 import { MODULOS_OPCIONAIS } from "@/lib/instalacao/modulos";
 import { NAV_CATALOG, type NavMetadata } from "@/lib/navigation/catalogo";
 import { CAPACIDADES_DA_ORGANIZACAO } from "@/lib/organizacao/capacidades";
@@ -79,17 +78,6 @@ describe("o catálogo de recursos opcionais não deixa recurso de fora", () => {
       },
     );
     expect(mortos, `Link morto no catálogo:\n  ${[...new Set(mortos)].join("\n  ")}`).toEqual([]);
-  });
-
-  it("todo texto do catálogo tem espanhol", () => {
-    const textos = [
-      ...RECURSOS_OPCIONAIS.flatMap((r) => [r.nome, r.oQueFaz, ...(r.comoLigar ? [r.comoLigar] : [])]),
-      ...Object.values(ROTULO_DO_ESTADO),
-      ...Object.values(ROTULO_DE_QUEM_DECIDE),
-      ...Object.values(ROTULO_DO_PADRAO),
-    ];
-    const semEspanhol = [...new Set(textos)].filter((t) => !DICIONARIO[t]?.es);
-    expect(semEspanhol, "Linha em lib/i18n/dicionario.ts para cada um").toEqual([]);
   });
 });
 

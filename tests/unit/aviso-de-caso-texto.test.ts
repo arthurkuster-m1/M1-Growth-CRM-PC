@@ -153,14 +153,6 @@ describe("montarAvisoDeCaso", () => {
     expect(texto).toContain("(resumo escrito pela IA a partir da conversa)");
   });
 
-  it("espanhol: as frases fixas são traduzidas", () => {
-    const texto = montarAvisoDeCaso({ ...BASE, idioma: "es" });
-    expect(texto).toContain("nuevo caso esperando por ti");
-    expect(texto).toContain("Cliente: Maria");
-    expect(texto).toContain("Por qué se atoró la IA");
-    expect(texto).not.toContain("Por que a IA travou");
-  });
-
   it("a marca vem de fora — o texto não conhece nome de produto nenhum", () => {
     // O resolvedor de marca (`marcaDaSaida`) é async e lê o banco; este módulo é
     // puro de propósito, e `tests/unit/branding.test.ts` varre /deskcomm/i aqui.

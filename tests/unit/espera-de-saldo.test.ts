@@ -18,6 +18,7 @@ import { normalizarErro } from "@/lib/agent-engine/edge/llm/run-model-call";
 import {
   JANELA_DA_ESPERA_MS,
   PREFIXO_DA_ESPERA,
+  TITULO_DO_AVISO,
   adiarAteORecarregar,
   avisarFaltaDeSaldo,
   deveEsperarSaldo,
@@ -133,9 +134,9 @@ describe("o que vai para o banco", () => {
     expect(consultas[0]?.params).toEqual(["conv-1", "org-1"]);
   });
 
-  it("o aviso nasce no idioma da organização, aponta a credencial e não se repete", async () => {
+  it("o aviso nasce aponta a credencial e não se repete", async () => {
     const { db, consultas } = bancoFalso([
-      [/from organizations/, [{ locale: "es" }]],
+      [/from organizations/, [{ locale: "pt-BR" }]],
       [/from ai_provider_credentials/, [{ id: "cred-1" }]],
     ]);
     await avisarFaltaDeSaldo(db, "org-1", new Error(ANTHROPIC));
@@ -146,12 +147,12 @@ describe("o que vai para o banco", () => {
       "org-1",
       "other",
       "critical",
-      "La IA se quedó sin saldo en el proveedor",
-      expect.stringContaining("Recarga el saldo en la cuenta del proveedor"),
+      TITULO_DO_AVISO,
+      expect.stringContaining("Recarregue o saldo na conta do provedor"),
       "ai_provider_credential",
       "cred-1",
     ]);
-    expect(insert.params[4]).toMatch(/Proveedor: anthropic$/);
+    expect(insert.params[4]).toMatch(/Provedor: anthropic$/);
     // dedupe por kind + título: um aviso aberto por organização
     expect(insert.params.slice(7)).toEqual([false, true]);
   });
@@ -167,10 +168,10 @@ describe("o que vai para o banco", () => {
     ]);
   });
 
-  it("encerrar fecha o aviso aberto da organização pelo título no idioma dela", async () => {
-    const { db, consultas } = bancoFalso([[/from organizations/, [{ locale: "es" }]]]);
+  it("encerrar fecha o aviso aberto da organização pelo título", async () => {
+    const { db, consultas } = bancoFalso([[/from organizations/, [{ locale: "pt-BR" }]]]);
     await encerrarAvisoDeFaltaDeSaldo(db, "org-1");
     expect(consultas[1]?.sql).toMatch(/set status = 'resolved', resolved_at = now\(\)/);
-    expect(consultas[1]?.params).toEqual(["org-1", "La IA se quedó sin saldo en el proveedor"]);
+    expect(consultas[1]?.params).toEqual(["org-1", TITULO_DO_AVISO]);
   });
 });

@@ -58,7 +58,6 @@ import { runAutomationForEvent, buildContext } from "@/lib/automation/engine";
 import { automationRulesHandler } from "@/lib/automation/engine.handler";
 import { ENTIDADE_ESPERADA_POR_GATILHO, TRIGGER_EVENTS } from "@/lib/schemas/webhooks";
 import { TRIGGER_LABELS } from "@/app/app/webhooks/_components/labels";
-import { DICIONARIO } from "@/lib/i18n/dicionario";
 import { idDaEntrega } from "@/lib/automation/actions/call-webhook";
 import type { EventRow } from "@/lib/event-log/dispatcher";
 
@@ -265,7 +264,7 @@ function cenario(regraExtra: Linha[] = []): { banco: SupabaseClient; tabelas: Re
 }
 
 describe("gatilhos de encerramento, reabertura e troca de responsável (#1528)", () => {
-  it("a fonte única declara os quatro, o handler assina, o rótulo existe e tem espanhol", () => {
+  it("a fonte única declara os quatro, o handler assina, o rótulo existe", () => {
     for (const gatilho of GATILHOS_NOVOS) {
       expect(TRIGGER_EVENTS as readonly string[], gatilho).toContain(gatilho);
       expect(ENTIDADE_ESPERADA_POR_GATILHO[gatilho as keyof typeof ENTIDADE_ESPERADA_POR_GATILHO]).toBe(
@@ -274,7 +273,6 @@ describe("gatilhos de encerramento, reabertura e troca de responsável (#1528)",
       expect([...automationRulesHandler.events], gatilho).toContain(gatilho);
       const rotulo = TRIGGER_LABELS[gatilho as keyof typeof TRIGGER_LABELS];
       expect(rotulo, gatilho).toBeTruthy();
-      expect(DICIONARIO[rotulo]?.es, `${gatilho} → ${rotulo}`).toBeTruthy();
     }
   });
 

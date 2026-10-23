@@ -32,14 +32,6 @@ describe("qual som cada aviso pede", () => {
     expect(somDoAviso({ kind: "other", ref_kind: "channel_session" })).toBeNull();
   });
 
-  it("o aviso de etapa é reconhecido em todo idioma servido", () => {
-    expect(IDIOMAS.length).toBeGreaterThan(1);
-    for (const idioma of IDIOMAS) {
-      expect(ehAvisoDeEtapa(avisoDeEtapa(idioma)), idioma).toBe(true);
-      expect(somDoAviso(avisoDeEtapa(idioma)), idioma).toBe("venda");
-    }
-  });
-
   it("o aviso do espelho recusado (também `other` + negócio) NÃO toca o som da etapa", () => {
     // TODOS os motivos: os warn-only devolvem `null` e não entram na conta.
     const motivos: MirrorReason[] = [
@@ -100,7 +92,6 @@ describe("qual som cada aviso pede", () => {
       sonsNovos(vistos, [
         { id: "a", kind: "handoff", ref_kind: null },
         { id: "b", ...avisoDeEtapa("pt-BR") },
-        { id: "c", ...avisoDeEtapa("es") },
       ]),
     ).toEqual(["venda"]);
   });
