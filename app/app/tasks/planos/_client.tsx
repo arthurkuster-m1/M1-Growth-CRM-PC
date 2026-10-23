@@ -67,7 +67,7 @@ function novoPasso(): PassoDePlano {
   };
 }
 
-export function PlanosDeTarefa() {
+export function PlanosDeTarefa({ embutido = false }: { embutido?: boolean } = {}) {
   const t = useT();
   const qc = useQueryClient();
   const [rascunho, setRascunho] = useState<PlanoDeTarefas | null>(null);
@@ -132,20 +132,26 @@ export function PlanosDeTarefa() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-6">
-      <div>
-        <Link
-          href="/app/tarefas"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-text"
-        >
-          <ArrowBendUpLeft size={14} aria-hidden />
-          {t("Tarefas")}
-        </Link>
-      </div>
+    <div className={embutido ? "space-y-4" : "mx-auto max-w-3xl space-y-4 p-6"}>
+      {embutido ? null : (
+        <div>
+          <Link
+            href="/app/tarefas"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-text"
+          >
+            <ArrowBendUpLeft size={14} aria-hidden />
+            {t("Tarefas")}
+          </Link>
+        </div>
+      )}
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Planos de tarefa")}</h1>
+          {embutido ? (
+            <h2 className="text-base font-semibold">{t("Planos de tarefa")}</h2>
+          ) : (
+            <h1 className="text-2xl font-semibold tracking-tight">{t("Planos de tarefa")}</h1>
+          )}
           <p className="text-sm text-muted-foreground">
             {t(
               "Monte a sequência uma vez; a ação Aplicar um plano de tarefas aplica o plano ao negócio.",

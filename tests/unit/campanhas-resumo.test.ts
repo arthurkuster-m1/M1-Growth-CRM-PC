@@ -432,7 +432,10 @@ describe("pré-visualização da LP (embed)", () => {
 
 describe("páginas opcionais da campanha", () => {
   it("nulo = padrão do tipo; escolha da agência vale", () => {
-    expect(opcionaisDaCampanha("prospeccao", null)).toEqual(["abordagem"]);
+    expect(opcionaisDaCampanha("prospeccao", null)).toEqual(["abordagem", "extracao", "disparos"]);
+    expect(opcionaisDaCampanha("indicacao", null)).toEqual(["abordagem"]);
+    // Extração e disparos só existem na campanha de Prospecção.
+    expect(opcionaisDaCampanha("trafego_pago", ["landing", "extracao"])).toEqual(["landing"]);
     expect(opcionaisDaCampanha("prospeccao", ["landing", "criativos"])).toEqual([
       "landing",
       "criativos",

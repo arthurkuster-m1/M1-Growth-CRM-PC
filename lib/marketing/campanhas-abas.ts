@@ -18,18 +18,31 @@ export const ABAS_DA_CAMPANHA = [
 ] as const;
 export type AbaDaCampanha = (typeof ABAS_DA_CAMPANHA)[number];
 
-export const ABAS_OPCIONAIS = ["landing", "criativos", "abordagem"] as const;
+export const ABAS_OPCIONAIS = [
+  "landing",
+  "criativos",
+  "abordagem",
+  "extracao",
+  "disparos",
+] as const;
 export type AbaOpcional = (typeof ABAS_OPCIONAIS)[number];
 
 export function ehAbaOpcional(a: string): a is AbaOpcional {
   return (ABAS_OPCIONAIS as readonly string[]).includes(a);
 }
 
-/** O padrão de cada tipo: anúncio tem LPs e criativos; contato direto tem abordagem. */
+/** Os motores da prospecção ativa: só a campanha do tipo Prospecção pode tê-los. */
+const SO_DA_PROSPECCAO: readonly AbaOpcional[] = ["extracao", "disparos"];
+
+/** As opcionais que o tipo da campanha permite oferecer no "+". */
+export function opcionaisPermitidas(canal: CanalDaCampanha): AbaOpcional[] {
+  return ABAS_OPCIONAIS.filter((a) => canal === "prospeccao" || !SO_DA_PROSPECCAO.includes(a));
+}
+
+/** O padrão de cada tipo: anúncio tem LPs e criativos; prospecção tem abordagem, extração e disparos. */
 export function opcionaisPadraoDoCanal(canal: CanalDaCampanha): AbaOpcional[] {
-  return canal === "trafego_pago" || canal === "social_media"
-    ? ["landing", "criativos"]
-    : ["abordagem"];
+  if (canal === "trafego_pago" || canal === "social_media") return ["landing", "criativos"];
+  return canal === "prospeccao" ? ["abordagem", "extracao", "disparos"] : ["abordagem"];
 }
 
 /** As opcionais que a campanha mostra: a escolha dela, ou o padrão do tipo. */
@@ -38,29 +51,14 @@ export function opcionaisDaCampanha(
   escolhidas: readonly string[] | null | undefined,
 ): AbaOpcional[] {
   if (!escolhidas) return opcionaisPadraoDoCanal(canal);
-  return ABAS_OPCIONAIS.filter((a) => escolhidas.includes(a));
-}
-
-/**
- * Os MOTORES da campanha de prospecção — extração de leads e disparos. São fixos (não opcionais:
- * a coluna `optional_tabs` tem CHECK) e só existem no tipo Prospecção.
- */
-export function motoresDaCampanha(canal: CanalDaCampanha): AbaDaCampanha[] {
-  return canal === "prospeccao" ? ["extracao", "disparos"] : [];
+  return opcionaisPermitidas(canal).filter((a) => escolhidas.includes(a));
 }
 
 export function abasDaCampanha(
   canal: CanalDaCampanha,
   escolhidas: readonly string[] | null | undefined,
 ): AbaDaCampanha[] {
-  return [
-    "cadastro",
-    "visao",
-    "dia",
-    ...opcionaisDaCampanha(canal, escolhidas),
-    ...motoresDaCampanha(canal),
-    "funil",
-  ];
+  return ["cadastro", "visao", "dia", ...opcionaisDaCampanha(canal, escolhidas), "funil"];
 }
 
 export function abaValida(

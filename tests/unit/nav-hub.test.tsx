@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 
+import { OrientacoesInstaladas } from "@/components/extensions/OrientacoesInstaladas";
 import { NavHub } from "@/components/shell/NavHub";
 import { DICIONARIO } from "@/lib/i18n/dicionario";
 import type { ExtensionGuideView } from "@/lib/extensions/view";
@@ -151,24 +152,27 @@ describe("NavHub", () => {
     expect(within(ensinar).queryByRole("link", { name: /Credenciais/ })).toBeNull();
   });
 
-  it("expõe falha de leitura das contribuições sem derrubar o hub do CRM", () => {
-    render(
-      <NavHub modulosLigados={[]}
-        group="crm"
-        isPlatformAdmin={false}
-        role="viewer"
-        title="CRM"
-        subtitle=""
-        extensionsUnavailable
-      />,
-    );
+  it("expõe falha de leitura das contribuições instaladas, sem derrubar a página de Extensões", () => {
+    render(<OrientacoesInstaladas extensionGuides={[]} extensionsUnavailable />);
 
     expect(
       screen.getByRole("heading", { name: "Não foi possível conferir as orientações instaladas" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Gerenciar extensões" })).toHaveAttribute(
+  });
+
+  it("mostra o cartão que a extensão contribui, e nada quando não há extensão", () => {
+    render(<OrientacoesInstaladas extensionGuides={[extensionGuide]} extensionsUnavailable={false} />);
+    expect(
+      screen.getByTestId(`extension-contribution-${extensionGuide.installation_id}-primeiro-passo`),
+    ).toHaveAttribute(
       "href",
-      "/app/extensions",
+      `/app/extensions/${extensionGuide.installation_id}?card=primeiro-passo`,
     );
+    cleanup();
+
+    const { container } = render(
+      <OrientacoesInstaladas extensionGuides={[]} extensionsUnavailable={false} />,
+    );
+    expect(container.firstChild).toBeNull();
   });
 });

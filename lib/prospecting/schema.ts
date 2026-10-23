@@ -44,7 +44,13 @@ export const prospectingInputSchema = z.discriminatedUnion("action", [
     .object({ action: z.literal("configure"), api_key: z.string().trim().min(10).max(500) })
     .strict(),
   z
-    .object({ action: z.literal("search"), search: searchSchema, request_id: z.string().uuid() })
+    .object({
+      action: z.literal("search"),
+      search: searchSchema,
+      request_id: z.string().uuid(),
+      /** A campanha de prospecção dona desta extração (a aba Extração de leads). */
+      demand_campaign_id: z.string().uuid().optional(),
+    })
     .strict(),
   z
     .object({ action: z.literal("start"), id: z.string().uuid(), config: campaignConfigSchema })

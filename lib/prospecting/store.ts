@@ -22,10 +22,7 @@ import {
   type Prospect,
 } from "./schema";
 import { ProspectingError } from "./provider";
-import {
-  provedorDaOrganizacao,
-  validarCredencialDaOrganizacao,
-} from "./provedor";
+import { provedorDaOrganizacao, validarCredencialDaOrganizacao } from "./provedor";
 
 export interface Campaign {
   id: string;
@@ -40,6 +37,8 @@ export interface Campaign {
   next_send_at: Date;
   created_at: Date;
   error: string | null;
+  /** A campanha de demanda (prospecção) que fez esta extração; nulo nas extrações antigas. */
+  demand_campaign_id?: string | null;
 }
 export interface Candidate {
   id: string;
@@ -125,6 +124,7 @@ export async function createSearch(
   org: string,
   requestId: string,
   search: SearchInput,
+  demandCampaignId: string | null = null,
 ) {
   return withProspectingLock(pool, org, async (db) => {
     const prior = await db.query<Campaign>(
@@ -139,8 +139,8 @@ export async function createSearch(
     // escolha de uma não vaza para a outra.
     const provedor = await provedorDaOrganizacao(db, org);
     const { rows } = await db.query<Campaign>(
-      "insert into prospecting_campaigns(organization_id,request_id,name,search) values($1,$2,$3,$4) returning *",
-      [org, requestId, search.name, search],
+      "insert into prospecting_campaigns(organization_id,request_id,name,search,demand_campaign_id) values($1,$2,$3,$4,$5) returning *",
+      [org, requestId, search.name, search, demandCampaignId],
     );
     const campaign = rows[0]!;
     try {
@@ -332,7 +332,7 @@ export async function criarPegadaDoCandidato(
   db: pg.PoolClient,
   admin: SupabaseClient,
   org: string,
-  c: Pick<Campaign, "id" | "name">,
+  c: Pick<Campaign, "id" | "name" | "demand_campaign_id">,
   config: CampaignConfig,
   p: Candidate,
   contatoDaCampanha: string | null,
@@ -391,6 +391,16 @@ export async function criarPegadaDoCandidato(
       "update prospecting_candidates set lead_id=$3 where organization_id=$1 and id=$2",
       [org, p.id, leadId],
     );
+    // A ORIGEM do lead: de qual extração e de qual campanha de prospecção ele veio. É o que o
+    // dashboard de Prospecção Ativa lê para separar as fontes e atribuir o lead à campanha.
+    await db.query(
+      `update crm_leads
+          set demand_campaign_id = coalesce($3::uuid, demand_campaign_id),
+              source_metadata = coalesce(source_metadata, '{}'::jsonb)
+                || jsonb_build_object('extracao', jsonb_build_object('id', $4::text, 'nome', $5::text))
+        where organization_id = $1 and id = $2`,
+      [org, leadId, c.demand_campaign_id ?? null, c.id, c.name],
+    );
   }
   await db.query(
     "update prospecting_candidates set contact_id=$3,lead_id=$4 where organization_id=$1 and id=$2",
@@ -421,7 +431,7 @@ export async function criarPegadaDoCandidato(
 export async function prepararCandidatoNoEnvio(
   db: pg.PoolClient,
   admin: SupabaseClient,
-  c: Pick<Campaign, "id" | "name" | "organization_id">,
+  c: Pick<Campaign, "id" | "name" | "organization_id" | "demand_campaign_id">,
   config: CampaignConfig,
   p: Candidate,
 ): Promise<Candidate | null> {

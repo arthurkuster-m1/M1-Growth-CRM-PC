@@ -493,8 +493,8 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         </>
       ) : null}
 
-      {aba === "extracao" ? <MotorDaCampanha motor="extracao" /> : null}
-      {aba === "disparos" ? <MotorDaCampanha motor="disparos" /> : null}
+      {aba === "extracao" ? <MotorDaCampanha motor="extracao" campanhaId={c.id} /> : null}
+      {aba === "disparos" ? <MotorDaCampanha motor="disparos" campanhaId={c.id} /> : null}
 
       {aba === "abordagem" ? (
         <AbordagensDaCampanha

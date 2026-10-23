@@ -2,7 +2,7 @@
 
 import { useT } from "@/hooks/i18n/useT";
 import {
-  ABAS_OPCIONAIS,
+  opcionaisPermitidas,
   abasDaCampanha,
   opcionaisDaCampanha,
   type AbaDaCampanha,
@@ -56,7 +56,7 @@ export function AbasDaCampanha({
 }) {
   const t = useT();
   const ativas = opcionaisDaCampanha(canal, escolhidas);
-  const faltam = ABAS_OPCIONAIS.filter((a) => !ativas.includes(a));
+  const faltam = opcionaisPermitidas(canal).filter((a) => !ativas.includes(a));
   return (
     <div className="relative flex min-w-0 items-center gap-1 rounded-2xl bg-secondary p-1">
       <nav

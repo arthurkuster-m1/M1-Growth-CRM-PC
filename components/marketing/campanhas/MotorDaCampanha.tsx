@@ -9,9 +9,15 @@ import { ROLE_RANK } from "@/lib/auth/types";
 /**
  * Os motores da campanha de prospecção: a extração de leads e os disparos. Eram telas soltas no
  * CRM; agora moram dentro da campanha, como subpáginas. Por enquanto reaproveitam as mesmas telas
- * (ainda sem filtro por campanha) — o vínculo e o registro de cada extração vêm no passo seguinte.
+ * — a extração já é da campanha (lista só as dela e grava a origem no lead); os disparos ainda não.
  */
-export function MotorDaCampanha({ motor }: { motor: "extracao" | "disparos" }) {
+export function MotorDaCampanha({
+  motor,
+  campanhaId,
+}: {
+  motor: "extracao" | "disparos";
+  campanhaId: string;
+}) {
   const t = useT();
   const { activeOrg } = useAuth();
   const papel = activeOrg?.role ?? null;
@@ -25,5 +31,9 @@ export function MotorDaCampanha({ motor }: { motor: "extracao" | "disparos" }) {
       </p>
     );
   }
-  return motor === "extracao" ? <ProspectingClient /> : <ListaDeCampanhas />;
+  return motor === "extracao" ? (
+    <ProspectingClient campanhaId={campanhaId} />
+  ) : (
+    <ListaDeCampanhas />
+  );
 }

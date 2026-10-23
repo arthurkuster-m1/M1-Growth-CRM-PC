@@ -725,7 +725,7 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
       "admin B",
       observacoes,
     );
-    await adminB.goto("/app/crm");
+    await adminB.goto("/app/extensions");
     await expect(
       adminB.getByTestId(`extension-contribution-${installationId}-${catalogo!.pacote.cardId}`),
     ).toHaveCount(0);
@@ -805,7 +805,7 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
       }),
     ).rejects.toThrow();
 
-    await page.goto("/app/crm");
+    await page.goto("/app/extensions");
     const contribution = page.getByTestId(
       `extension-contribution-${installationId}-${catalogo!.pacote.cardId}`,
     );
@@ -955,7 +955,7 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
     expect(managerPage).toBeTruthy();
     await managerPage!.bringToFront();
     await trocarOrganizacao(managerPage!, atores!.organizacaoB);
-    await managerPage!.goto("/app/crm");
+    await managerPage!.goto("/app/extensions");
     await expect(
       managerPage!.getByTestId(
         `extension-contribution-${installationId}-${catalogo!.pacote.cardId}`,
@@ -970,7 +970,7 @@ test("pacote pós-build atravessa catálogo, tenants, guia e Tarefas com recuper
     ).toBe(404);
 
     await trocarOrganizacao(managerPage!, atores!.organizacaoA);
-    await managerPage!.goto("/app/crm");
+    await managerPage!.goto("/app/extensions");
     await expect(
       managerPage!.getByTestId(
         `extension-contribution-${installationId}-${catalogo!.pacote.cardId}`,
