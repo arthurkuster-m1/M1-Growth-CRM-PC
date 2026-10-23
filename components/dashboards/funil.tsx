@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { GrupoDeNumeros, NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { cn } from "@/lib/utils";
 
 /**
@@ -99,7 +100,11 @@ export function FunilComTaxas({
   );
 }
 
-/** As COLUNAS do funil completo: o número principal de cada etapa e, embaixo, as contas dela. */
+/**
+ * As COLUNAS do funil completo: o número principal de cada etapa e, embaixo, as contas dela. Os
+ * números principais têm todos o mesmo tamanho de fonte, e os de baixo também (o do número que
+ * mais aperta): nada de um tamanho por cartão.
+ */
 export function FunilEmColunas({
   colunas,
 }: {
@@ -111,26 +116,41 @@ export function FunilEmColunas({
 }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
-      {colunas.map((c) => (
-        <div key={c.rotulo} className="overflow-hidden rounded-xl border bg-background">
-          <div className="border-b bg-primary/10 px-4 py-3">
-            <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {c.rotulo}
-            </p>
-            <p className="mt-1 text-xl font-bold text-primary tabular-nums">{c.valor}</p>
+      <GrupoDeNumeros>
+        {colunas.map((c) => (
+          <div key={c.rotulo} className="overflow-hidden rounded-xl border bg-background">
+            <div className="border-b bg-primary/10 px-4 py-3">
+              <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                {c.rotulo}
+              </p>
+              <p className="mt-1 text-xl font-bold text-primary tabular-nums">
+                <NumeroQueCabe>{c.valor}</NumeroQueCabe>
+              </p>
+            </div>
+            <GrupoDeNumeros>
+              <dl className="divide-y">
+                {c.itens.map((i) => (
+                  <div
+                    key={i.rotulo}
+                    className="flex items-baseline justify-between gap-3 px-4 py-2.5"
+                  >
+                    <dt className="max-w-[55%] shrink-0 truncate text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                      {i.rotulo}
+                    </dt>
+                    <dd className="min-w-0 flex-1 text-right text-sm font-semibold tabular-nums">
+                      {typeof i.valor === "string" ? (
+                        <NumeroQueCabe className="text-right">{i.valor}</NumeroQueCabe>
+                      ) : (
+                        i.valor
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </GrupoDeNumeros>
           </div>
-          <dl className="divide-y">
-            {c.itens.map((i) => (
-              <div key={i.rotulo} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
-                <dt className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                  {i.rotulo}
-                </dt>
-                <dd className="text-sm font-semibold tabular-nums">{i.valor}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      ))}
+        ))}
+      </GrupoDeNumeros>
     </div>
   );
 }
