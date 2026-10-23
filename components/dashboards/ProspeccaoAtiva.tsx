@@ -11,6 +11,7 @@ import {
   inteiro,
   pct,
   vezes,
+  GradeDeKpis,
 } from "@/components/dashboards/base";
 import { CustosDeCaptacao } from "@/components/dashboards/CustosDeCaptacao";
 import { FunilComTaxas, FunilEmColunas } from "@/components/dashboards/funil";
@@ -220,7 +221,7 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
         </p>
       ) : null}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <GradeDeKpis className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
           rotulo={t("Faturamento recebido")}
           valor={brl(a.recebido)}
@@ -273,7 +274,7 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
           variacao={<Variacao atual={a.cac} anterior={p.cac} menorEMelhor />}
           apoio={t("Investido ÷ vendas")}
         />
-      </section>
+      </GradeDeKpis>
 
       {visao === "geral" ? (
         <>

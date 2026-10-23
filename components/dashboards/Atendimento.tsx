@@ -10,6 +10,7 @@ import {
   Variacao,
   inteiro,
   pct,
+  GradeDeKpis,
 } from "@/components/dashboards/base";
 import { useT } from "@/hooks/i18n/useT";
 import { formatarMinutos } from "@/lib/dashboards/atendimento";
@@ -155,7 +156,7 @@ export function Atendimento({
         </span>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+      <GradeDeKpis className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         <Kpi
           rotulo={t("Conversas iniciadas")}
           valor={inteiro(a.iniciadas)}
@@ -197,7 +198,7 @@ export function Atendimento({
           valor={inteiro(dados.parados7d)}
           apoio={t("Risco de perda")}
         />
-      </section>
+      </GradeDeKpis>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Painel titulo={t("Por atendente")} nota={t("Volume, velocidade e prazo")}>
@@ -293,7 +294,10 @@ export function Atendimento({
         </div>
       </Painel>
 
-      <Painel titulo={t("Leads esperando resposta")} nota={t("Mais de 24 horas, os mais antigos primeiro")}>
+      <Painel
+        titulo={t("Leads esperando resposta")}
+        nota={t("Mais de 24 horas, os mais antigos primeiro")}
+      >
         {dados.lista.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {dados.parados24h > 0
