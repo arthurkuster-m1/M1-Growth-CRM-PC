@@ -54,9 +54,9 @@ describe("CommandPalette", () => {
   it("busca também na descrição, não só no rótulo", async () => {
     const user = userEvent.setup();
     abrir();
-    // Ninguém procura "Radar" por esse nome; procura pelo problema que resolve.
+    // Ninguém procura "Follow-ups" por esse nome; procura pelo problema que resolve.
     await user.type(screen.getByRole("combobox"), "esfriou");
-    expect(screen.getByRole("option", { name: /Radar/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Follow-ups/ })).toBeTruthy();
   });
 
   it("acha o Jev pelo nome, embora ele não tenha tela própria", async () => {
@@ -136,13 +136,13 @@ describe("CommandPalette", () => {
     expect(screen.queryByRole("option", { name: /Contatos/ })).toBeNull();
   });
 
-  it("no catálogo, abre em Atendimento e a seta segue a ordem da tela", async () => {
+  it("no catálogo, abre pelo primeiro grupo da tela e a seta segue a ordem dela", async () => {
     const user = userEvent.setup();
     abrir();
-    // O catálogo começa por Prospecção (CRM): agrupar pela 1ª aparição punha
-    // CRM no topo, e a seta andava pela lista plana, pulando de seção.
+    // A ordem é a dos grupos do menu (Marketing vem primeiro): agrupar pela 1ª aparição no
+    // catálogo punha outro grupo no topo, e a seta andava pela lista plana, pulando de seção.
     const opcoes = screen.getAllByRole("option");
-    expect(opcoes[0]?.getAttribute("data-href")).toBe("/app/inbox");
+    expect(opcoes[0]?.getAttribute("data-href")).toBe("/app/marketing/estrategia");
     await user.keyboard("{ArrowDown}{Enter}");
     expect(push).toHaveBeenCalledWith(opcoes[1]?.getAttribute("data-href"));
   });
