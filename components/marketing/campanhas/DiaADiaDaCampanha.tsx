@@ -7,6 +7,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type Modifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -110,6 +111,9 @@ function colunasDisponiveis(
     ...extras,
   ];
 }
+
+/** A lista de colunas só anda para cima e para baixo: trava o arraste na vertical. */
+const soVertical: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
 function chaveSalva(canal: string) {
   return `m1.diaadia.colunas.v1.${canal}`;
@@ -327,10 +331,11 @@ export function DiaADiaDaCampanha({
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-72 p-2">
-            <div className="max-h-72 overflow-y-auto">
+            <div className="max-h-72 overflow-x-hidden overflow-y-auto">
               <DndContext
                 sensors={sensores}
                 collisionDetection={closestCenter}
+                modifiers={[soVertical]}
                 onDragEnd={(e: DragEndEvent) => {
                   const de = e.active.id as string;
                   const para = e.over?.id as string | undefined;
