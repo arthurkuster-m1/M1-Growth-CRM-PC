@@ -25,6 +25,7 @@ import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
+import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { useT } from "@/hooks/i18n/useT";
 import {
   useCriativosDaCampanha,
@@ -295,6 +296,7 @@ function CartaoDoCriativo({
   apagar: () => void;
 }) {
   const t = useT();
+  const { confirmar, dialogo } = useConfirmar();
   const [imagemFalhou, setImagemFalhou] = useState(false);
   const taxas = taxasDoCriativo(c);
   const imagem =
@@ -452,13 +454,14 @@ function CartaoDoCriativo({
           <button
             type="button"
             aria-label={t("Apagar criativo")}
-            onClick={() => {
-              if (window.confirm(t("Apagar este criativo?"))) apagar();
+            onClick={async () => {
+              if (await confirmar(t("Apagar este criativo?"), t("Apagar"))) apagar();
             }}
             className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
           >
             <Trash size={16} aria-hidden />
           </button>
+          {dialogo}
         </div>
       ) : null}
     </article>

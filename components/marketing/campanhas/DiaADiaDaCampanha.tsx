@@ -12,6 +12,7 @@ import {
   SortableContext,
   arrayMove,
   horizontalListSortingStrategy,
+  verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -22,6 +23,7 @@ import {
   usePeriodoDaCampanha,
 } from "@/components/marketing/campanhas/FiltroDePeriodoDaCampanha";
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
 import {
@@ -111,6 +113,45 @@ function colunasDisponiveis(
 
 function chaveSalva(canal: string) {
   return `m1.diaadia.colunas.v1.${canal}`;
+}
+
+/** Uma coluna na lista do botão "Colunas": caixa redonda para mostrar e alça para mudar a ordem. */
+function LinhaDeColuna({
+  coluna,
+  marcada,
+  aoAlternar,
+}: {
+  coluna: Coluna;
+  marcada: boolean;
+  aoAlternar: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: coluna.id,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-1.5 py-1.5 text-sm hover:bg-secondary",
+        isDragging && "relative z-20 bg-card shadow-md",
+      )}
+    >
+      <button
+        type="button"
+        aria-label={`${coluna.rotulo}: mudar a ordem`}
+        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <DotsSixVertical size={14} aria-hidden />
+      </button>
+      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+        <CaixaRedonda checked={marcada} onChange={aoAlternar} />
+        <span className="truncate">{coluna.rotulo}</span>
+      </label>
+    </div>
+  );
 }
 
 function CabecalhoOrdenavel({
@@ -262,10 +303,6 @@ export function DiaADiaDaCampanha({
 
   return (
     <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{t("Dia a dia")}</h2>
-      </div>
-
       {fora ? (
         <p role="status" className="rounded-xl bg-warning-bg px-3 py-2 text-sm text-warning-fg">
           {fora.total} {t("leads entraram fora do período da campanha")}
@@ -277,11 +314,7 @@ export function DiaADiaDaCampanha({
       <div className="flex flex-wrap items-center gap-2">
         <FiltroDePeriodoDaCampanha periodo={periodo} />
         <label className="flex items-center gap-2 text-sm whitespace-nowrap">
-          <input
-            type="checkbox"
-            checked={soComDados}
-            onChange={(e) => setSoComDados(e.target.checked)}
-          />
+          <CaixaRedonda checked={soComDados} onChange={(e) => setSoComDados(e.target.checked)} />
           {t("Só os dias com dados")}
         </label>
         <Popover>
@@ -295,31 +328,40 @@ export function DiaADiaDaCampanha({
           </PopoverTrigger>
           <PopoverContent align="start" className="w-72 p-2">
             <div className="max-h-72 overflow-y-auto">
-              {ordemIds.map((id) => {
-                const c = disponiveis.find((x) => x.id === id);
-                if (!c) return null;
-                const marcada = visiveisIds.includes(id);
-                return (
-                  <label
-                    key={id}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={marcada}
-                      onChange={() =>
-                        mudarEscolha({
-                          visiveis: marcada
-                            ? visiveisIds.filter((v) => v !== id)
-                            : [...visiveisIds, id],
-                          ordem: ordemIds,
-                        })
-                      }
-                    />
-                    {c.rotulo}
-                  </label>
-                );
-              })}
+              <DndContext
+                sensors={sensores}
+                collisionDetection={closestCenter}
+                onDragEnd={(e: DragEndEvent) => {
+                  const de = e.active.id as string;
+                  const para = e.over?.id as string | undefined;
+                  if (!para || de === para) return;
+                  const nova = arrayMove(ordemIds, ordemIds.indexOf(de), ordemIds.indexOf(para));
+                  mudarEscolha({ visiveis: escolha.visiveis, ordem: nova });
+                }}
+              >
+                <SortableContext items={ordemIds} strategy={verticalListSortingStrategy}>
+                  {ordemIds.map((id) => {
+                    const c = disponiveis.find((x) => x.id === id);
+                    if (!c) return null;
+                    const marcada = visiveisIds.includes(id);
+                    return (
+                      <LinhaDeColuna
+                        key={id}
+                        coluna={c}
+                        marcada={marcada}
+                        aoAlternar={() =>
+                          mudarEscolha({
+                            visiveis: marcada
+                              ? visiveisIds.filter((v) => v !== id)
+                              : [...visiveisIds, id],
+                            ordem: ordemIds,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
             </div>
             <button
               type="button"
@@ -358,7 +400,7 @@ export function DiaADiaDaCampanha({
             <table className="w-full min-w-max text-sm">
               <thead className="bg-secondary/60 text-xs text-muted-foreground">
                 <tr>
-                  <th className="sticky left-0 z-10 bg-secondary px-3 py-2 text-left font-medium">
+                  <th className="bg-secondary px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-10">
                     {t("Dia")}
                   </th>
                   <SortableContext
@@ -383,7 +425,7 @@ export function DiaADiaDaCampanha({
                     className={cn("border-t", d.day === hoje && "bg-primary/5")}
                     aria-current={d.day === hoje ? "date" : undefined}
                   >
-                    <td className="sticky left-0 z-10 bg-card px-3 py-1 text-left whitespace-nowrap tabular-nums">
+                    <td className="bg-card px-3 py-1 text-left whitespace-nowrap tabular-nums md:sticky md:left-0 md:z-10">
                       {dataBr(d.day)}
                     </td>
                     {colunas.map((c) => (
@@ -396,7 +438,7 @@ export function DiaADiaDaCampanha({
               </tbody>
               <tfoot className="border-t-2 bg-secondary/40 font-semibold">
                 <tr>
-                  <td className="sticky left-0 z-10 bg-secondary px-3 py-2 text-left whitespace-nowrap">
+                  <td className="bg-secondary px-3 py-2 text-left whitespace-nowrap md:sticky md:left-0 md:z-10">
                     {t("Total do período")}
                   </td>
                   {colunas.map((c) => (

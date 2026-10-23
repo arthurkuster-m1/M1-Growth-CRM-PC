@@ -16,6 +16,7 @@ import {
   rotuloDoPeriodo,
   rotuloDoStatus,
 } from "@/components/marketing/campanhas/rotulos";
+import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { LandingPagesDaCampanha } from "@/components/marketing/campanhas/LandingPagesDaCampanha";
 import { OrigemDosLeads } from "@/components/marketing/campanhas/OrigemDosLeads";
 import { WebhooksDaCampanha } from "@/components/marketing/campanhas/WebhooksDaCampanha";
@@ -283,6 +284,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
   // A tabela dos dias é longa: começa fechada para chegar logo no diário de bordo.
   const [diaAberto, setDiaAberto] = useState(false);
   const { produtos } = useCatalogoDeProdutos();
+  const { confirmar, dialogo } = useConfirmar();
   const pathname = usePathname();
   const parametros = useSearchParams();
   const aba = abaValida(parametros.get("aba"), c?.channel ?? "trafego_pago", c?.optional_tabs);
@@ -353,6 +355,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {dialogo}
       <AbasDaCampanha
         canal={c.channel}
         escolhidas={c.optional_tabs}
@@ -364,13 +367,14 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           grava({ optional_tabs: [...atuais, nova] });
           irParaAba(nova);
         }}
-        aoRemover={(velha) => {
+        aoRemover={async (velha) => {
           if (
-            !window.confirm(
+            !(await confirmar(
               t(
                 "Tirar esta página da campanha? Os dados ficam guardados e voltam se você adicionar a página de novo.",
               ),
-            )
+              t("Tirar"),
+            ))
           ) {
             return;
           }
@@ -451,13 +455,14 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (
-                !window.confirm(
+                !(await confirmar(
                   t(
                     "Tirar esta página da campanha? Os dados ficam guardados e voltam se você adicionar a página de novo.",
                   ),
-                )
+                  t("Tirar"),
+                ))
               ) {
                 return;
               }
@@ -1124,54 +1129,65 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
   const t = useT();
   const { notas, carregando, adicionar, apagar } = useNotasDaCampanha(campanhaId);
   const [tipo, setTipo] = useState<TipoDeNota>("analise");
-  const [texto, setTexto] = useState("");
+  const [blocos, setBlocos] = useState<BlocoDeTexto[]>(() => lerBlocos(""));
+  // Trocar a chave remonta o editor vazio depois de registrar.
+  const [versao, setVersao] = useState(0);
   const [data, setData] = useState("");
   const [filtro, setFiltro] = useState<TipoDeNota | null>(null);
   const visiveis = filtro === null ? notas : notas.filter((n) => n.kind === filtro);
+  const texto = escreverBlocos(blocos);
+  const grandeDemais = texto !== null && texto.length > LIMITE_DA_DESCRICAO;
 
   return (
     <Bloco titulo={t("Diário de bordo")} tom="rose">
       {podeEditar ? (
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed p-3">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr]">
-            <SelectDoApp
-              className={CAMPO}
-              value={tipo}
-              aria-label={t("Tipo da nota")}
-              onChange={(e) => setTipo(e.target.value as TipoDeNota)}
+          <div className="flex flex-wrap items-center gap-2">
+            <SeletorDeOpcao
+              compacto
+              opcoes={TIPOS_DE_NOTA.map((k) => ({
+                id: k,
+                rotulo: rotuloDaNota(t, k),
+                cor: COR_DA_NOTA[k] as CorDaOpcao,
+              }))}
+              valorId={tipo}
+              podeEditar
+              rotulo={t("Tipo da nota")}
+              aoEscolher={(id) => setTipo(id as TipoDeNota)}
             >
-              {TIPOS_DE_NOTA.map((k) => (
-                <option key={k} value={k}>
-                  {rotuloDaNota(t, k)}
-                </option>
-              ))}
-            </SelectDoApp>
+              <Etiqueta cor={COR_DA_NOTA[tipo]}>{rotuloDaNota(t, tipo)}</Etiqueta>
+            </SeletorDeOpcao>
             <SeletorDeData
               valor={data}
               rotulo={t("Data da nota")}
               placeholder={t("Hoje")}
+              className="h-9 w-[9.5rem] px-2.5 text-sm"
               aoMudar={setData}
             />
           </div>
-          <textarea
-            rows={3}
-            value={texto}
-            maxLength={4000}
-            placeholder={t("Escreva a análise, o feedback, o planejamento ou a otimização…")}
-            aria-label={t("Texto da nota")}
-            onChange={(e) => setTexto(e.target.value)}
-            className={AREA}
-          />
+          <div
+            key={versao}
+            className="rounded-xl border bg-background px-2 py-2 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20"
+          >
+            <EditorDeBlocos blocos={blocos} aoMudar={setBlocos} podeEditar />
+          </div>
+          {grandeDemais ? (
+            <p role="alert" className="text-xs text-error-fg">
+              {t("A nota ficou grande demais para registrar.")}
+            </p>
+          ) : null}
           <button
             type="button"
-            disabled={texto.trim() === ""}
+            disabled={texto === null || grandeDemais}
             onClick={async () => {
+              if (texto === null) return;
               await adicionar({
                 kind: tipo,
-                body: texto.trim(),
+                body: texto,
                 ...(data ? { note_date: data } : {}),
               });
-              setTexto("");
+              setBlocos(lerBlocos(""));
+              setVersao((v) => v + 1);
               setData("");
             }}
             className="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
@@ -1179,16 +1195,19 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
             <Plus size={14} weight="bold" aria-hidden />
             {t("Registrar")}
           </button>
+          <p className="text-xs text-muted-foreground">
+            {t("Depois de registrada, a nota não pode ser alterada (só apagada).")}
+          </p>
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           aria-pressed={filtro === null}
           onClick={() => setFiltro(null)}
           className={cn(
-            "h-8 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+            "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium whitespace-nowrap",
             filtro === null ? "border-primary bg-primary/10" : "hover:bg-secondary",
           )}
         >
@@ -1199,13 +1218,14 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
             key={k}
             type="button"
             aria-pressed={filtro === k}
-            onClick={() => setFiltro(k)}
+            onClick={() => setFiltro(filtro === k ? null : k)}
             className={cn(
-              "h-8 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
-              filtro === k ? "border-primary bg-primary/10" : "hover:bg-secondary",
+              "rounded-md transition-opacity",
+              filtro !== null && filtro !== k && "opacity-50 hover:opacity-100",
+              filtro === k && "ring-2 ring-primary/50",
             )}
           >
-            {rotuloDaNota(t, k)}
+            <Etiqueta cor={COR_DA_NOTA[k]}>{rotuloDaNota(t, k)}</Etiqueta>
           </button>
         ))}
       </div>
@@ -1234,7 +1254,12 @@ function DiarioDeBordo({ campanhaId, podeEditar }: { campanhaId: string; podeEdi
                   </button>
                 ) : null}
               </div>
-              <p className="text-sm whitespace-pre-wrap">{n.body}</p>
+              {/* Publicada, a nota só se lê: o editor abre sem permissão de edição. */}
+              <EditorDeBlocos
+                blocos={lerBlocos(n.body)}
+                aoMudar={() => undefined}
+                podeEditar={false}
+              />
             </li>
           ))}
         </ul>
