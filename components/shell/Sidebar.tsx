@@ -17,6 +17,7 @@ import {
   ListChecks,
   PlugsConnected,
   Robot,
+  Users,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -76,7 +77,10 @@ export function SidebarContent({
   );
   // Configurações sai da área que rola e vai para o rodapé fixo: medido em
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
-  const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE);
+  // O CRM não é mais um grupo com toggle: a página CRM (Clientes) vem solta, logo abaixo de Início,
+  // e o que sobrou do grupo só é alcançado pelo ⌘K.
+  const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE && g.group.id !== "crm");
+  const temCrm = todos.some(({ items }) => items.some((i) => i.href === "/app/clientes"));
   const rodape = todos.find((g) => g.group.id === GRUPO_NO_RODAPE)?.group.hub;
 
   /**
@@ -300,6 +304,7 @@ export function SidebarContent({
             (⌘K e teste de completude); aqui só são desenhadas. */}
         {[
           { href: "/app/inicio", rotulo: t("Início"), Icone: House },
+          ...(temCrm ? [{ href: "/app/clientes", rotulo: t("CRM"), Icone: Users }] : []),
           { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
         ].map(({ href, rotulo, Icone }) => {
           const ativo = pathname === href || pathname.startsWith(href + "/");

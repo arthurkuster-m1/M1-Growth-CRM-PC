@@ -12,6 +12,8 @@ export const ABAS_DA_CAMPANHA = [
   "landing",
   "criativos",
   "abordagem",
+  "extracao",
+  "disparos",
   "funil",
 ] as const;
 export type AbaDaCampanha = (typeof ABAS_DA_CAMPANHA)[number];
@@ -39,11 +41,26 @@ export function opcionaisDaCampanha(
   return ABAS_OPCIONAIS.filter((a) => escolhidas.includes(a));
 }
 
+/**
+ * Os MOTORES da campanha de prospecção — extração de leads e disparos. São fixos (não opcionais:
+ * a coluna `optional_tabs` tem CHECK) e só existem no tipo Prospecção.
+ */
+export function motoresDaCampanha(canal: CanalDaCampanha): AbaDaCampanha[] {
+  return canal === "prospeccao" ? ["extracao", "disparos"] : [];
+}
+
 export function abasDaCampanha(
   canal: CanalDaCampanha,
   escolhidas: readonly string[] | null | undefined,
 ): AbaDaCampanha[] {
-  return ["cadastro", "visao", "dia", ...opcionaisDaCampanha(canal, escolhidas), "funil"];
+  return [
+    "cadastro",
+    "visao",
+    "dia",
+    ...opcionaisDaCampanha(canal, escolhidas),
+    ...motoresDaCampanha(canal),
+    "funil",
+  ];
 }
 
 export function abaValida(
