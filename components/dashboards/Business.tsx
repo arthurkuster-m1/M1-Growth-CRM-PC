@@ -24,6 +24,7 @@ import {
   inteiro,
   pct,
   vezes,
+  GradeDeKpis,
 } from "@/components/dashboards/base";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -63,7 +64,20 @@ export interface DadosDeBusiness {
   produtos: Array<{ nome: string; vendas: number; recebido: number; aReceber: number }>;
 }
 
-const NOME_DO_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const NOME_DO_MES = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
 
 /**
  * BUSINESS: faturamento e saúde da base — o que entrou, o que saiu (por ora, mídia), CAC, LTV,
@@ -98,7 +112,7 @@ export function Business({
 
   return (
     <div className="grid min-w-0 gap-4">
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <GradeDeKpis className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           rotulo={t("Entrou (recebido)")}
           valor={brl(dados.recebido)}
@@ -152,7 +166,7 @@ export function Business({
           }
           apoio={`${dados.vendasPorCliente === null ? "—" : dados.vendasPorCliente.toLocaleString("pt-BR")} ${t("vendas por cliente")}`}
         />
-      </section>
+      </GradeDeKpis>
 
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
         <Painel titulo={t("Entrou × saiu × previsto")} nota={t("Por mês")}>
@@ -184,7 +198,12 @@ export function Business({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="recebido" name={t("Recebido")} fill={COR_DA_MARCA} radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="recebido"
+                  name={t("Recebido")}
+                  fill={COR_DA_MARCA}
+                  radius={[6, 6, 0, 0]}
+                />
                 <Bar
                   dataKey="previsto"
                   name={t("Previsto")}
@@ -192,8 +211,18 @@ export function Business({
                   fillOpacity={0.35}
                   radius={[6, 6, 0, 0]}
                 />
-                <Bar dataKey="saiu" name={t("Saiu (mídia)")} fill={COR_DO_APOIO} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="taxas" name={t("Taxas de pagamento")} fill="var(--warning-fg, #b45309)" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="saiu"
+                  name={t("Saiu (mídia)")}
+                  fill={COR_DO_APOIO}
+                  radius={[6, 6, 0, 0]}
+                />
+                <Bar
+                  dataKey="taxas"
+                  name={t("Taxas de pagamento")}
+                  fill="var(--warning-fg, #b45309)"
+                  radius={[6, 6, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -250,7 +279,11 @@ export function Business({
       >
         <GradeDeNumeros
           itens={[
-            { rotulo: t("Clientes (com compra paga)"), valor: inteiro(dados.clientes), destaque: true },
+            {
+              rotulo: t("Clientes (com compra paga)"),
+              valor: inteiro(dados.clientes),
+              destaque: true,
+            },
             { rotulo: t("Clientes ativos"), valor: inteiro(dados.ativos), destaque: true },
             { rotulo: t("Inativos"), valor: inteiro(dados.clientes - dados.ativos) },
             {
@@ -296,7 +329,9 @@ export function Business({
       <div className="grid gap-4 lg:grid-cols-2">
         <Painel titulo={t("Por produto")} nota={t("Vendas e faturamento do período")}>
           {dados.produtos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("Nenhuma venda de produto no período.")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("Nenhuma venda de produto no período.")}
+            </p>
           ) : (
             <TabelaDeDados
               colunas={[
@@ -318,14 +353,20 @@ export function Business({
           <GradeDeNumeros
             itens={[
               { rotulo: t("Parcelas vencidas"), valor: brl(dados.vencidas) },
-              { rotulo: t("Inadimplência"), valor: inadimplencia === null ? "—" : pct(inadimplencia) },
+              {
+                rotulo: t("Inadimplência"),
+                valor: inadimplencia === null ? "—" : pct(inadimplencia),
+              },
               {
                 rotulo: t("Top 10 clientes"),
                 valor: dados.concentracaoTop10 === null ? "—" : pct(dados.concentracaoTop10, 0),
               },
               {
                 rotulo: t("Payback do CAC"),
-                valor: paybackMeses === null ? "—" : `${paybackMeses.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${t("meses")}`,
+                valor:
+                  paybackMeses === null
+                    ? "—"
+                    : `${paybackMeses.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${t("meses")}`,
               },
             ]}
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
+import { GrupoDeNumeros, NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import type { ReactNode } from "react";
 
@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 /** `null` (conta sem base, ex.: CPL sem leads) mostra "—", nunca "R$ 0,00". */
 export const brl = (v: number | null | undefined) =>
   v === null ? "—" : (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-export const inteiro = (v: number | null | undefined) =>
-  Math.round(v ?? 0).toLocaleString("pt-BR");
+export const inteiro = (v: number | null | undefined) => Math.round(v ?? 0).toLocaleString("pt-BR");
 export const pct = (v: number | null | undefined, casas = 1) =>
   `${(v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`;
 export const vezes = (v: number | null) =>
@@ -46,9 +45,22 @@ export function Variacao({
       )}
       title="Comparado ao período anterior"
     >
-      {subiu ? <ArrowUp size={11} weight="bold" aria-hidden /> : <ArrowDown size={11} weight="bold" aria-hidden />}
+      {subiu ? (
+        <ArrowUp size={11} weight="bold" aria-hidden />
+      ) : (
+        <ArrowDown size={11} weight="bold" aria-hidden />
+      )}
       {Math.abs(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
     </span>
+  );
+}
+
+/** A grade dos cartões de indicador: todos os números dela têm o mesmo tamanho de fonte. */
+export function GradeDeKpis({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <GrupoDeNumeros>
+      <section className={className}>{children}</section>
+    </GrupoDeNumeros>
   );
 }
 
@@ -148,7 +160,9 @@ export function GradeDeNumeros({
           <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
             {i.rotulo}
           </p>
-          <p className={cn("mt-1 text-lg font-semibold tabular-nums", i.destaque && "text-primary")}>
+          <p
+            className={cn("mt-1 text-lg font-semibold tabular-nums", i.destaque && "text-primary")}
+          >
             {i.valor}
           </p>
         </div>
@@ -204,7 +218,7 @@ export function Visoes<T extends string>({
   return (
     <div
       role="tablist"
-      className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-secondary p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex max-w-full [scrollbar-width:none] gap-1 overflow-x-auto rounded-xl bg-secondary p-1 [&::-webkit-scrollbar]:hidden"
     >
       {opcoes.map((o) => (
         <button
@@ -276,7 +290,10 @@ export function TabelaDeDados({
           <tfoot className="border-t bg-secondary/40 font-semibold">
             <tr>
               {rodape.map((cel, i) => (
-                <td key={i} className={cn("px-3 py-2 tabular-nums", i === 0 ? "text-left" : "text-right")}>
+                <td
+                  key={i}
+                  className={cn("px-3 py-2 tabular-nums", i === 0 ? "text-left" : "text-right")}
+                >
                   {cel}
                 </td>
               ))}

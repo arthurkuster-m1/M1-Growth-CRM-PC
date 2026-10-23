@@ -1,6 +1,6 @@
 "use client";
 
-import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
+import { GrupoDeNumeros, NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import type { ReactNode } from "react";
 
 import { Painel } from "@/components/dashboards/base";
@@ -139,7 +139,9 @@ function Cartao({
       )}
     >
       <h3 className="text-sm font-semibold">{titulo}</h3>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{children}</div>
+      <GrupoDeNumeros>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{children}</div>
+      </GrupoDeNumeros>
     </section>
   );
 }

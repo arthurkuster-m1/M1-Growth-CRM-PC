@@ -11,6 +11,7 @@ import {
   inteiro,
   pct,
   vezes,
+  GradeDeKpis,
 } from "@/components/dashboards/base";
 import { FunilComTaxas, FunilEmColunas } from "@/components/dashboards/funil";
 import { GraficoComparativo } from "@/components/dashboards/GraficoComparativo";
@@ -168,7 +169,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
         ]}
       />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <GradeDeKpis className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
           rotulo={t("Faturamento recebido")}
           valor={brl(a.recebido)}
@@ -219,7 +220,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
           variacao={<Variacao atual={a.cac} anterior={p.cac} menorEMelhor />}
           apoio={t("Investido ÷ vendas")}
         />
-      </section>
+      </GradeDeKpis>
 
       {visao === "geral" ? (
         <>
