@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { AntiNoShow } from "@/components/agenda/AntiNoShow";
 import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/hooks/i18n/useT";
@@ -49,6 +50,7 @@ export function ConfiguracaoDaAgenda({
             <TabsTrigger value="regras" className="rounded-xl">{t("Regras da agenda")}</TabsTrigger>
             <TabsTrigger value="tipos" className="rounded-xl">{t("Tipos de atendimento")}</TabsTrigger>
             <TabsTrigger value="equipe" className="rounded-xl">{t("Atendentes e horários")}</TabsTrigger>
+            <TabsTrigger value="antinoshow" className="rounded-xl">{t("Anti no-show")}</TabsTrigger>
           </TabsList>
           <TabsContent value="regras" className="mt-5">
             {regras}
@@ -65,6 +67,9 @@ export function ConfiguracaoDaAgenda({
                 {t("Só gerentes e administradores editam os atendentes e os horários da equipe.")}
               </p>
             )}
+          </TabsContent>
+          <TabsContent value="antinoshow" className="mt-5">
+            <AntiNoShow podeEditar={podeGerenciarEquipe} />
           </TabsContent>
         </Tabs>
       </BlocoRecolhivel>

@@ -29,6 +29,7 @@ import {
   type TipoDoAtendimento,
 } from "@/lib/agenda/aviso-do-compromisso";
 import { coletaOQueOcupa, horariosLivresDaOrg } from "@/lib/agenda/consulta";
+import { aplicarFluxoAntiNoShow } from "@/lib/agenda/anti-no-show";
 import { colide } from "@/lib/agenda/horarios-livres";
 import {
   atividadeDaTransicao,
@@ -705,6 +706,16 @@ export async function alterarAgendamentoHandler(
       nomeDoTipo: await nomeDoTipoDoCompromisso(supabase, ctx, atual.event_type_id as string | null),
       outcome: {revision:salvo.revision,source_kind:salvo.outcome_source_kind,message_id:salvo.outcome_message_id,recorded_at:salvo.outcome_recorded_at},
     });
+
+    if (transicao === "no_show") {
+      await aplicarFluxoAntiNoShow(supabase, {
+        organizationId: ctx.organization_id,
+        appointmentId: atual.id as string,
+        eventTypeId: (atual.event_type_id as string | null) ?? null,
+        contactId: (atual.contact_id as string | null) ?? null,
+        evento: "faltou",
+      });
+    }
 
     void audit({action: transicao === "rescheduled" ? "agenda.appointment_rescheduled" : transicao === "completed" || transicao === "no_show" ? "agenda.appointment_outcome_recorded" : "agenda.appointment_updated",
       actorUserId:ctx.actor.type === "user" ? ctx.actor.id : null,organizationId:ctx.organization_id,

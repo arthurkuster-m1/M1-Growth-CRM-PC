@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { ok, fail } from "@/lib/api/wrappers";
+import { aplicarFluxoAntiNoShow } from "@/lib/agenda/anti-no-show";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -28,7 +29,7 @@ export async function POST(_req: Request, context: { params: Promise<{ id: strin
   const admin = createAdminClient();
   const { data: a } = await admin
     .from("calendar_appointments")
-    .select("id,status,revision,owner_user_id,client_confirmation")
+    .select("id,status,revision,owner_user_id,client_confirmation,event_type_id,contact_id")
     .eq("organization_id", org)
     .eq("id", id)
     .maybeSingle();
@@ -55,6 +56,13 @@ export async function POST(_req: Request, context: { params: Promise<{ id: strin
     .eq("organization_id", org)
     .eq("id", id);
   if (e2) return fail("internal_error", "Não foi possível registrar a confirmação.", 500, { requestId });
+  await aplicarFluxoAntiNoShow(admin, {
+    organizationId: org,
+    appointmentId: id,
+    eventTypeId: (a.event_type_id as string | null) ?? null,
+    contactId: (a.contact_id as string | null) ?? null,
+    evento: "confirmou",
+  });
   void audit({
     action: "agenda.appointment_updated",
     actorUserId: auth.user.id,

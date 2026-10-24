@@ -2252,10 +2252,16 @@ export function ClientesCRM({
     };
     visiveis.sort((x, y) => atraso(y) - atraso(x));
   }
-  const filaDaCadencia = alvos.filter((l) => {
+  // A meta do dia é a mesma da sessão de prospecção: a pessoa define quantos leads por vez.
+  const metaDoDia = configDaProspeccao.quantidade;
+  if (destaque === "cadencia" && metaDoDia > 0 && visiveis.length > metaDoDia) {
+    visiveis.length = metaDoDia;
+  }
+  const doDiaNaCadencia = alvos.filter((l) => {
     const passo = l.participacao ? cadenciaDeHoje.porLead.get(l.participacao.lead_id) : undefined;
     return passo ? venceAteHoje(passo.vence_em, hojeLocal) : false;
   }).length;
+  const filaDaCadencia = metaDoDia > 0 ? Math.min(doDiaNaCadencia, metaDoDia) : doDiaNaCadencia;
   const filaDoDia = alvos.filter(
     (l) => l.participacao && prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null,
   ).length;

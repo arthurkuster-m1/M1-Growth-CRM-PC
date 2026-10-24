@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { aplicarFluxoAntiNoShow } from "@/lib/agenda/anti-no-show";
 import { atividadeDaTransicaoDeConfirmacao } from "@/lib/agenda/confirmacao";
 import {
   JANELA_DA_CONFIRMACAO_HORAS,
@@ -46,7 +47,7 @@ export async function aplicarRespostaDeConfirmacao(
   // O compromisso a que a resposta se refere: o mais próximo que já recebeu lembrete e não tem resposta.
   const { data: candidatos } = await admin
     .from("calendar_appointments")
-    .select("id, starts_at, time_zone, owner_user_id, title, status")
+    .select("id, starts_at, time_zone, owner_user_id, title, status, event_type_id")
     .eq("organization_id", args.org)
     .eq("contact_id", args.contactId)
     .in("status", ["pending", "confirmed"])
@@ -57,7 +58,14 @@ export async function aplicarRespostaDeConfirmacao(
     .order("starts_at", { ascending: true })
     .limit(1);
   const alvo = (candidatos ?? [])[0] as
-    | { id: string; starts_at: string; time_zone: string; owner_user_id: string | null; title: string }
+    | {
+        id: string;
+        starts_at: string;
+        time_zone: string;
+        owner_user_id: string | null;
+        title: string;
+        event_type_id: string | null;
+      }
     | undefined;
   if (!alvo) return { aplicou: false, resposta };
 
@@ -98,6 +106,16 @@ export async function aplicarRespostaDeConfirmacao(
       reason: `${titulo} — ${dia}`,
       payload: { acao: "confirmacao_do_cliente", titulo, resposta },
     }).catch(() => undefined);
+  }
+
+  if (resposta === "confirmed") {
+    await aplicarFluxoAntiNoShow(admin, {
+      organizationId: args.org,
+      appointmentId: alvo.id,
+      eventTypeId: alvo.event_type_id,
+      contactId: args.contactId,
+      evento: "confirmou",
+    });
   }
 
   if (resposta !== "confirmed" && alvo.owner_user_id) {
