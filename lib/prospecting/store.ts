@@ -54,6 +54,8 @@ export interface Candidate {
   conversation_id: string | null;
   service_boundary: unknown;
   message_id: string;
+  /** Se o número tem WhatsApp, conferido antes de abordar; nulo = ainda não verificado. */
+  whatsapp_status?: "exists" | "missing" | "unknown" | null;
 }
 /** Session-scoped PostgreSQL lock shared by commands and worker; no process-local lock. */
 export async function withProspectingLock<T>(
@@ -293,6 +295,7 @@ export async function validateConfig(db: pg.PoolClient, org: string, input: Camp
  * duplicado, que é o que torna a preparação idempotente.
  */
 export const MOTIVO_SO_CELULAR = "Telefone fixo: o WhatsApp não chega neste número.";
+export const MOTIVO_SEM_WHATSAPP = "Este número não tem WhatsApp (verificado antes de abordar).";
 
 export async function triarCandidato(
   db: pg.PoolClient,
@@ -304,6 +307,9 @@ export async function triarCandidato(
   if (!p.phone) return { motivo: "Sem telefone brasileiro válido." };
   if (config?.only_mobile && tipoDoTelefone(p.phone) !== "celular")
     return { motivo: MOTIVO_SO_CELULAR };
+  // Número que a verificação já provou sem WhatsApp: abordar seria mensagem perdida. Quem não foi
+  // verificado (ou ficou incerto) segue o caminho de sempre.
+  if (p.whatsapp_status === "missing") return { motivo: MOTIVO_SEM_WHATSAPP };
   const known = await db.query(
     "select id from contacts where organization_id=$1 and phone_number=any($2::text[])",
     [org, phoneLookupVariants(p.phone)],

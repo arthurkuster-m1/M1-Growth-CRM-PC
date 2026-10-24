@@ -28,6 +28,8 @@ export interface FiltroDeQualidade {
   soComSite: boolean;
   /** Só quem tem celular (WhatsApp chega). */
   soCelular: boolean;
+  /** Só quem a verificação confirmou com WhatsApp (quem não foi verificado não passa). */
+  soComWhatsapp: boolean;
   /** Pedaço do nome da categoria ("clínica", "estética"); vazio = qualquer. */
   categoria: string;
 }
@@ -37,6 +39,7 @@ export const SEM_FILTRO: FiltroDeQualidade = {
   avaliacoesMinimas: null,
   soComSite: false,
   soCelular: false,
+  soComWhatsapp: false,
   categoria: "",
 };
 
@@ -46,6 +49,7 @@ export function filtroEstaAtivo(f: FiltroDeQualidade): boolean {
     f.avaliacoesMinimas !== null ||
     f.soComSite ||
     f.soCelular ||
+    f.soComWhatsapp ||
     f.categoria.trim() !== ""
   );
 }
@@ -58,13 +62,17 @@ const semAcento = (x: string) =>
 
 /** A empresa atende a todos os critérios ligados? Quem não tem o dado (nota, site) não atende. */
 export function atendeAoFiltro(
-  e: Pick<Prospect, "phone" | "website" | "category" | "rating" | "reviews">,
+  e: Pick<Prospect, "phone" | "website" | "category" | "rating" | "reviews"> & {
+    /** O resultado da verificação de WhatsApp da empresa (`exists`, `missing`, `unknown` ou nulo). */
+    whatsapp?: string | null;
+  },
   f: FiltroDeQualidade,
 ): boolean {
   if (f.notaMinima !== null && (e.rating === null || e.rating < f.notaMinima)) return false;
   if (f.avaliacoesMinimas !== null && (e.reviews ?? 0) < f.avaliacoesMinimas) return false;
   if (f.soComSite && !(e.website ?? "").trim()) return false;
   if (f.soCelular && tipoDoTelefone(e.phone) !== "celular") return false;
+  if (f.soComWhatsapp && e.whatsapp !== "exists") return false;
   const categoria = semAcento(f.categoria.trim());
   if (categoria && !semAcento(e.category ?? "").includes(categoria)) return false;
   return true;

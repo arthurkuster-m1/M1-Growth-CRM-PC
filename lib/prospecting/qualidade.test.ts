@@ -51,6 +51,15 @@ describe("atendeAoFiltro", () => {
     expect(atendeAoFiltro(empresa, { ...SEM_FILTRO, categoria: "dentista" })).toBe(false);
   });
 
+  it("só com WhatsApp confirmado: quem não foi verificado ou ficou incerto não passa", () => {
+    const f = { ...SEM_FILTRO, soComWhatsapp: true };
+    expect(filtroEstaAtivo(f)).toBe(true);
+    expect(atendeAoFiltro({ ...empresa, whatsapp: "exists" }, f)).toBe(true);
+    for (const w of ["missing", "unknown", null, undefined]) {
+      expect(atendeAoFiltro({ ...empresa, whatsapp: w }, f)).toBe(false);
+    }
+  });
+
   it("os critérios somam: tem de passar em todos", () => {
     const f = { ...SEM_FILTRO, notaMinima: 4, soCelular: true, soComSite: true };
     expect(atendeAoFiltro(empresa, f)).toBe(true);
