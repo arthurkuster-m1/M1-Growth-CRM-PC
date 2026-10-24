@@ -39,7 +39,7 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { randomId } from "@/lib/random-id";
-import { ArrowBendUpLeft } from "@/lib/ui/icons";
+import { ArrowBendUpLeft, Plus, Trash } from "@/lib/ui/icons";
 import type { PassoDePlano, PlanoDeTarefas } from "@/lib/tarefas/plano";
 import { PRIORIDADES_DA_TAREFA, type PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
 
@@ -159,12 +159,14 @@ export function PlanosDeTarefa({ embutido = false }: { embutido?: boolean } = {}
           </p>
         </div>
         <Button
+          className="rounded-full"
           type="button"
           onClick={() => {
             setErro(null);
             setRascunho(novoPlano());
           }}
         >
+          <Plus size={14} weight="bold" aria-hidden />
           {t("Novo plano")}
         </Button>
       </header>
@@ -172,7 +174,7 @@ export function PlanosDeTarefa({ embutido = false }: { embutido?: boolean } = {}
       {erro ? (
         <p
           role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm"
+          className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
         >
           {erro}
         </p>
@@ -194,13 +196,13 @@ export function PlanosDeTarefa({ embutido = false }: { embutido?: boolean } = {}
       {q.isLoading ? <Skeleton className="h-40 w-full" /> : null}
 
       {!q.isLoading && planos.length === 0 && !rascunho ? (
-        <Card className="p-4 text-sm text-muted-foreground">
+        <Card className="rounded-2xl p-5 text-sm text-muted-foreground">
           {t("Nenhum plano cadastrado ainda.")}
         </Card>
       ) : null}
 
       {planos.map((plano) => (
-        <Card key={plano.id} className="space-y-2 p-4">
+        <Card key={plano.id} className="space-y-3 rounded-2xl p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="truncate font-medium">{plano.nome}</h2>
@@ -210,6 +212,7 @@ export function PlanosDeTarefa({ embutido = false }: { embutido?: boolean } = {}
             </div>
             <div className="flex shrink-0 gap-2">
               <Button
+                className="rounded-full"
                 type="button"
                 variant="ghost"
                 onClick={() => {
@@ -223,7 +226,12 @@ export function PlanosDeTarefa({ embutido = false }: { embutido?: boolean } = {}
               >
                 {t("Editar")}
               </Button>
-              <Button type="button" variant="ghost" onClick={() => excluir(plano)}>
+              <Button
+                className="rounded-full"
+                type="button"
+                variant="ghost"
+                onClick={() => excluir(plano)}
+              >
                 {t("Excluir")}
               </Button>
             </div>
@@ -265,10 +273,11 @@ function Editor({
   }
 
   return (
-    <Card className="space-y-4 p-4">
+    <Card className="space-y-5 rounded-2xl p-5">
       <div className="space-y-1">
         <Label htmlFor="plano-nome">{t("Nome do plano")}</Label>
         <Input
+          className="rounded-xl bg-card"
           id="plano-nome"
           value={plano.nome}
           onChange={(e) => onChange({ ...plano, nome: e.target.value })}
@@ -279,6 +288,7 @@ function Editor({
       <div className="space-y-1">
         <Label htmlFor="plano-descricao">{t("Descrição (opcional)")}</Label>
         <Textarea
+          className="rounded-xl bg-card"
           id="plano-descricao"
           value={plano.descricao ?? ""}
           onChange={(e) => onChange({ ...plano, descricao: e.target.value })}
@@ -288,18 +298,23 @@ function Editor({
       <div className="space-y-3">
         <h3 className="text-sm font-medium">{t("Passos do plano")}</h3>
         {plano.passos.map((passo, indice) => (
-          <div key={indice} className="space-y-2 rounded-md border p-3">
+          <div key={indice} className="space-y-3 rounded-2xl border bg-secondary/30 p-4">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-xs text-primary tabular-nums">
+                  {indice + 1}
+                </span>
                 {t("Passo")} {indice + 1}
               </span>
               <Button
+                className="rounded-full"
                 type="button"
                 variant="ghost"
                 onClick={() =>
                   onChange({ ...plano, passos: plano.passos.filter((_, i) => i !== indice) })
                 }
               >
+                <Trash size={14} aria-hidden />
                 {t("Remover passo")}
               </Button>
             </div>
@@ -307,6 +322,7 @@ function Editor({
             <div className="space-y-1">
               <Label htmlFor={`passo-titulo-${indice}`}>{t("Título")}</Label>
               <Input
+                className="rounded-xl bg-card"
                 id={`passo-titulo-${indice}`}
                 value={passo.titulo}
                 onChange={(e) => mudarPasso(indice, { titulo: e.target.value })}
@@ -318,6 +334,7 @@ function Editor({
               <div className="space-y-1">
                 <Label htmlFor={`passo-prazo-${indice}`}>{t("Vence em (dias)")}</Label>
                 <Input
+                  className="rounded-xl bg-card"
                   id={`passo-prazo-${indice}`}
                   type="number"
                   min={0}
@@ -333,10 +350,10 @@ function Editor({
                   value={passo.prioridade}
                   onValueChange={(v) => mudarPasso(indice, { prioridade: v as PrioridadeDaTarefa })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl bg-card">
                     <SelectValue placeholder={rotuloDaPrioridade(t, passo.prioridade)} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {PRIORIDADES_DA_TAREFA.map((p) => (
                       <SelectItem key={p} value={p}>
                         {rotuloDaPrioridade(t, p)}
@@ -360,10 +377,10 @@ function Editor({
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl bg-card">
                     <SelectValue placeholder={t("Dono do negócio")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     <SelectItem value="dono_do_lead">{t("Dono do negócio")}</SelectItem>
                     {(members ?? []).map((m) => (
                       <SelectItem key={m.user_id} value={m.user_id}>
@@ -378,10 +395,12 @@ function Editor({
         ))}
 
         <Button
+          className="rounded-full"
           type="button"
           variant="outline"
           onClick={() => onChange({ ...plano, passos: [...plano.passos, novoPasso()] })}
         >
+          <Plus size={14} weight="bold" aria-hidden />
           {t("Adicionar passo")}
         </Button>
       </div>
@@ -393,10 +412,10 @@ function Editor({
       </p>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onCancelar}>
+        <Button className="rounded-full" type="button" variant="ghost" onClick={onCancelar}>
           {t("Cancelar")}
         </Button>
-        <Button type="button" onClick={onGuardar} disabled={ocupado}>
+        <Button className="rounded-full" type="button" onClick={onGuardar} disabled={ocupado}>
           {ocupado ? t("Salvando…") : t("Salvar plano")}
         </Button>
       </div>
