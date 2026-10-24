@@ -92,7 +92,7 @@ export type RegraDeRepeticao = Pick<
 >;
 
 /** O instante em que o dia `chave` está em `HH:mm` no relógio do fuso. */
-function momentoDoDia(chave: string, horario: string, fuso: string): Date {
+export function momentoDoDia(chave: string, horario: string, fuso: string): Date {
   const [h, m] = horario.split(":").map(Number);
   return new Date(inicioDoDia(chave, fuso).getTime() + (h! * 60 + m!) * 60_000);
 }
