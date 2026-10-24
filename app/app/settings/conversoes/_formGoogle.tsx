@@ -261,7 +261,7 @@ export function FormularioDeConversoesGoogle({
             <Label htmlFor="google_purchase_category">{t("Categoria da conversão")}</Label>
             <select
               id="google_purchase_category"
-              className="rounded-md border bg-background p-2 text-sm"
+              className="rounded-xl border bg-background p-2 text-sm"
               value={categoriaDaVenda}
               onChange={(e) => setCategoriaDaVenda(e.target.value as CategoriaDeConversao)}
             >
@@ -276,7 +276,7 @@ export function FormularioDeConversoesGoogle({
             <Label htmlFor="google_purchase_value_mode">{t("Valor do negócio")}</Label>
             <select
               id="google_purchase_value_mode"
-              className="rounded-md border bg-background p-2 text-sm"
+              className="rounded-xl border bg-background p-2 text-sm"
               value={modoDeValor}
               onChange={(e) => setModoDeValor(e.target.value as ModoDeValorDaVenda)}
             >

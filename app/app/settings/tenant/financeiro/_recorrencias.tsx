@@ -72,7 +72,7 @@ export function Recorrencias({
         <div className="flex flex-wrap items-end gap-2">
           <input
             aria-label={t("Nome do lançamento")}
-            className="min-h-11 rounded-md border p-2"
+            className="min-h-11 rounded-xl border p-2"
             placeholder={t("Ex.: Aluguel")}
             value={nome}
             onChange={(e) => setNome(e.target.value)}
@@ -80,7 +80,7 @@ export function Recorrencias({
 
           <select
             aria-label={t("Entrada ou saída")}
-            className="min-h-11 rounded-md border p-2"
+            className="min-h-11 rounded-xl border p-2"
             value={direcao}
             onChange={(e) => setDirecao(e.target.value as "in" | "out")}
           >
@@ -90,7 +90,7 @@ export function Recorrencias({
 
           <select
             aria-label={t("Conta")}
-            className="min-h-11 rounded-md border p-2"
+            className="min-h-11 rounded-xl border p-2"
             value={contaId}
             onChange={(e) => setContaId(e.target.value)}
           >
@@ -104,7 +104,7 @@ export function Recorrencias({
 
           <input
             aria-label={t("Valor")}
-            className="min-h-11 w-28 rounded-md border p-2"
+            className="min-h-11 w-28 rounded-xl border p-2"
             placeholder="0,00"
             inputMode="decimal"
             value={valor}
@@ -114,7 +114,7 @@ export function Recorrencias({
           <label className="flex flex-col gap-1 text-xs text-text-muted">
             {t("Dia do mês")}
             <input
-              className="min-h-11 w-20 rounded-md border p-2"
+              className="min-h-11 w-20 rounded-xl border p-2"
               inputMode="numeric"
               value={dia}
               onChange={(e) => setDia(e.target.value)}

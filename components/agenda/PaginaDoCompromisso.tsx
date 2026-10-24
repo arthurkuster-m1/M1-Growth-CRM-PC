@@ -109,7 +109,7 @@ function TituloEditavel({
           e.currentTarget.blur();
         }
       }}
-      className="w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 py-1 -mx-2 text-xl font-semibold outline-hidden transition-colors hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/20"
+      className="w-full min-w-0 rounded-xl border border-transparent bg-transparent px-2 py-1 -mx-2 text-xl font-semibold outline-hidden transition-colors hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/20"
     />
   );
 }

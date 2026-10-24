@@ -248,7 +248,7 @@ export function TemplatesParceiroClient({
               placeholder="nome_do_modelo"
               aria-label={t("Nome do modelo")}
               disabled={!!editando}
-              className="h-9 flex-1 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60"
+              className="h-9 flex-1 rounded-xl border border-input bg-background px-2 text-sm disabled:opacity-60"
             />
             {/* LISTA, e não campo livre. O contrato descreve o formato e não
                 enumera os valores; digitar é onde o erro nasce — `esp`, `ES`,
@@ -259,7 +259,7 @@ export function TemplatesParceiroClient({
               onChange={(e) => setIdioma(e.target.value)}
               aria-label={t("Idioma")}
               disabled={!!editando}
-              className="h-9 w-56 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60"
+              className="h-9 w-56 rounded-xl border border-input bg-background px-2 text-sm disabled:opacity-60"
             >
               {IDIOMAS_DA_DEFINICAO.map((i) => (
                 <option key={i.codigo} value={i.codigo}>
@@ -278,7 +278,7 @@ export function TemplatesParceiroClient({
             onChange={(e) => setCategoria(e.target.value)}
             aria-label={t("Categoria")}
             disabled={!!editando}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60"
+            className="h-9 rounded-xl border border-input bg-background px-2 text-sm disabled:opacity-60"
           >
             <option value="UTILITY">
               {t("Utilidade — aviso de pedido, agendamento, cobrança")}
@@ -299,7 +299,7 @@ export function TemplatesParceiroClient({
               placeholder={t("Cabeçalho de texto (opcional)")}
               aria-label={t("Cabeçalho de texto")}
               disabled={!!midiaUrl}
-              className="h-9 flex-1 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+              className="h-9 flex-1 rounded-xl border border-input bg-background px-2 text-sm disabled:opacity-50"
             />
             {/* SUBIR, e não colar URL. Colar exigia que o operador já tivesse a
                 imagem hospedada em algum lugar público — que é justamente o que
@@ -356,7 +356,7 @@ export function TemplatesParceiroClient({
               onChange={(e) => setCorpo(e.target.value.slice(0, LIMITE_CORPO))}
               placeholder={t("Texto da mensagem. Use {{1}}, {{2}} para os valores que mudam.")}
               aria-label={t("Conteúdo")}
-              className="min-h-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              className="min-h-20 rounded-xl border border-input bg-background px-2 py-1.5 text-sm"
             />
             {/* O contador existe porque passar do limite é RECUSA, e a recusa
                 chega horas depois sem dizer que o problema era o tamanho. */}
@@ -371,7 +371,7 @@ export function TemplatesParceiroClient({
               onChange={(e) => setRodape(e.target.value.slice(0, LIMITE_RODAPE))}
               placeholder={t("Rodapé (opcional) — texto pequeno no fim da mensagem")}
               aria-label={t("Rodapé")}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 rounded-xl border border-input bg-background px-2 text-sm"
             />
             <span className="self-end text-[10px] text-muted-foreground">
               {rodape.length}/{LIMITE_RODAPE}
@@ -393,7 +393,7 @@ export function TemplatesParceiroClient({
                     setBotoes(p);
                   }}
                   aria-label={`${t("Tipo do botão")} ${i + 1}`}
-                  className="h-8 w-40 rounded-md border border-input bg-background px-2 text-sm"
+                  className="h-8 w-40 rounded-xl border border-input bg-background px-2 text-sm"
                 >
                   <option value="quick_reply">{t("Resposta rápida")}</option>
                   <option value="url">{t("Abrir link")}</option>
@@ -412,7 +412,7 @@ export function TemplatesParceiroClient({
                   }}
                   placeholder={t("Texto do botão")}
                   aria-label={`${t("Texto do botão")} ${i + 1}`}
-                  className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                  className="h-8 flex-1 rounded-xl border border-input bg-background px-2 text-sm"
                 />
                 {b.tipo === "url" && (
                   <input
@@ -424,7 +424,7 @@ export function TemplatesParceiroClient({
                     }}
                     placeholder="https://…"
                     aria-label={`${t("URL do botão")} ${i + 1}`}
-                    className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                    className="h-8 flex-1 rounded-xl border border-input bg-background px-2 text-sm"
                   />
                 )}
                 {b.tipo === "phone_number" && (
@@ -437,7 +437,7 @@ export function TemplatesParceiroClient({
                     }}
                     placeholder="+595…"
                     aria-label={`${t("Telefone do botão")} ${i + 1}`}
-                    className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                    className="h-8 flex-1 rounded-xl border border-input bg-background px-2 text-sm"
                   />
                 )}
                 <button
@@ -485,7 +485,7 @@ export function TemplatesParceiroClient({
                     }}
                     placeholder={t("ex.: María")}
                     aria-label={`${t("Exemplo do valor")} ${i + 1}`}
-                    className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                    className="h-8 flex-1 rounded-xl border border-input bg-background px-2 text-sm"
                   />
                 </div>
               ))}

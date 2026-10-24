@@ -804,7 +804,7 @@ function PrecoEmMassa({ aplicar }: { aplicar: (preco: number | null) => void }) 
         placeholder="R$ 0,00"
         aria-label={t("Preço")}
         onChange={(e) => setTexto(e.target.value)}
-        className="h-10 w-full rounded-md border bg-card px-2 text-sm"
+        className="h-10 w-full rounded-xl border bg-card px-2 text-sm"
       />
       <button
         type="button"

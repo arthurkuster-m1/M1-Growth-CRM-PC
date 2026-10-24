@@ -721,7 +721,7 @@ export function FormularioDoBloco({
                 value={item.hex}
                 aria-label={t("Cor")}
                 onChange={(e) => mudar({ ...item, hex: e.target.value })}
-                className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border bg-background p-1"
+                className="h-10 w-12 shrink-0 cursor-pointer rounded-xl border bg-background p-1"
               />
               <CampoDeHex hex={item.hex} aoMudar={(hex) => mudar({ ...item, hex })} />
               <input

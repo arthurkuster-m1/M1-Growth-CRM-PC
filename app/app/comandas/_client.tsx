@@ -370,7 +370,7 @@ function FormularioDeItem({
               setPreco((escolhido.default_price_cents / 100).toFixed(2));
             }
           }}
-          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         >
           <option value="">{t("Avulso")}</option>
           {tipos.map((x) => (
@@ -387,7 +387,7 @@ function FormularioDeItem({
           value={descricao}
           data-testid="item-descricao"
           onChange={(e) => setDescricao(e.target.value)}
-          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 
@@ -399,7 +399,7 @@ function FormularioDeItem({
           placeholder="0,00"
           data-testid="item-valor"
           onChange={(e) => setPreco(e.target.value)}
-          className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="w-28 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 
@@ -442,7 +442,7 @@ function Fechamento({
           value={formaId}
           data-testid="forma-de-pagamento"
           onChange={(e) => setFormaId(e.target.value)}
-          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         >
           <option value="">{t("Escolha")}</option>
           {formas.map((f) => (
@@ -462,7 +462,7 @@ function Fechamento({
             placeholder="0"
             data-testid="pontos-de-fidelidade"
             onChange={(e) => setPontos(e.target.value)}
-            className="w-24 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+            className="w-24 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
           />
         </label>
       ) : null}
@@ -530,7 +530,7 @@ function Estorno({
           value={motivo}
           data-testid="motivo-do-estorno"
           onChange={(e) => setMotivo(e.target.value)}
-          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
       <Button

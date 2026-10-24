@@ -96,7 +96,7 @@ export function CampoNoLugar({
         }
       }}
       className={cn(
-        "block w-full min-w-0 resize-none overflow-hidden rounded-sm border-0 bg-transparent p-0 ring-1 ring-primary/25 outline-hidden transition-shadow placeholder:font-normal placeholder:text-text-subtle focus:ring-2 focus:ring-primary/60",
+        "block w-full min-w-0 resize-none overflow-hidden rounded-xl border-0 bg-transparent p-0 ring-1 ring-primary/25 outline-hidden transition-shadow placeholder:font-normal placeholder:text-text-subtle focus:ring-2 focus:ring-primary/60",
         className,
       )}
     />

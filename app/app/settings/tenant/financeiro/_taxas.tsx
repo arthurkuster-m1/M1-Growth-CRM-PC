@@ -106,7 +106,7 @@ function Linha({ taxa, podeEditar }: { taxa: TaxaDaForma; podeEditar: boolean })
             value={payer}
             disabled={!podeEditar}
             onChange={(e) => setPayer(e.target.value as QuemPaga)}
-            className="h-9 rounded-lg border bg-card px-2 text-sm"
+            className="h-9 rounded-xl border bg-card px-2 text-sm"
           >
             <option value="company">{t("Nós (a empresa)")}</option>
             <option value="client">{t("O cliente final")}</option>
@@ -154,7 +154,7 @@ function Linha({ taxa, podeEditar }: { taxa: TaxaDaForma; podeEditar: boolean })
                       [String(n)]: e.target.value.replace(/[^\d.,]/g, ""),
                     }))
                   }
-                  className="h-9 w-full rounded-lg border bg-card px-2 text-right text-sm tabular-nums"
+                  className="h-9 w-full rounded-xl border bg-card px-2 text-right text-sm tabular-nums"
                 />
               </label>
             ))}
@@ -213,7 +213,7 @@ export function TaxasDePagamento({ podeEditar }: { podeEditar: boolean }) {
               if (e.key === "Enter") void criar();
             }}
             placeholder={t("Nova forma de pagamento (Outra)")}
-            className="h-9 w-64 rounded-lg border bg-card px-2 text-sm"
+            className="h-9 w-64 rounded-xl border bg-card px-2 text-sm"
           />
           <Button size="sm" variant="outline" onClick={() => void criar()} disabled={nome.trim().length < 2}>
             {t("Adicionar forma")}

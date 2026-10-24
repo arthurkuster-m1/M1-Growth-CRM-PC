@@ -105,7 +105,7 @@ export function EnderecoDaMarcacao({
           }}
           onKeyDown={aoTeclar}
           onBlur={() => setAberto(false)}
-          className="mt-1 w-full rounded-md border bg-surface p-2 outline-hidden"
+          className="mt-1 w-full rounded-xl border bg-surface p-2 outline-hidden"
           placeholder={t("Rua, número, sala")}
           aria-describedby="ajuda-do-endereco"
         />

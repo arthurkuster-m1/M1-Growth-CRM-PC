@@ -148,7 +148,7 @@ export function CelulaDeTexto({
                 if ((novo || permitirVazio) && novo !== valor) aoSalvar(novo);
               }
             }}
-            className="max-h-[60vh] min-h-32 w-full resize-y rounded-lg border bg-card px-2.5 py-2 text-sm leading-relaxed outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="max-h-[60vh] min-h-32 w-full resize-y rounded-xl border bg-card px-2.5 py-2 text-sm leading-relaxed outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
           <p className="mt-1 px-0.5 text-[11px] text-muted-foreground">
             {enterSalva ? "Enter salva · Esc cancela" : "Ctrl+Enter salva · Esc cancela"}
@@ -197,7 +197,7 @@ export function CelulaDeTexto({
           e.currentTarget.blur();
         }
       }}
-      className="w-full rounded-md border border-primary/50 bg-background px-2 py-1.5 text-sm ring-2 ring-primary/20 outline-hidden"
+      className="w-full rounded-xl border border-primary/50 bg-background px-2 py-1.5 text-sm ring-2 ring-primary/20 outline-hidden"
     />
   );
 }

@@ -266,7 +266,7 @@ export function Business({
             <select
               value={dados.mesesAtivo}
               onChange={(e) => aoMudarMeses(Number(e.target.value))}
-              className="h-8 rounded-lg border bg-card px-2 text-xs text-foreground"
+              className="h-8 rounded-xl border bg-card px-2 text-xs text-foreground"
             >
               {[1, 3, 6, 12, 24].map((m) => (
                 <option key={m} value={m}>

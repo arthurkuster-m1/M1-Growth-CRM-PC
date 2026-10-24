@@ -232,7 +232,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-medium">{t("Quem está na lista")}</h2>
           <select
-            className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            className="h-9 rounded-xl border border-border bg-surface px-2 text-sm"
             value={filtroDeStatus}
             onChange={(e) => setFiltroDeStatus(e.target.value)}
             aria-label={t("Filtrar destinatários")}

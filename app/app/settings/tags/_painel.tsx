@@ -256,7 +256,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
           <select
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="h-9 rounded-lg border bg-card px-2"
+            className="h-9 rounded-xl border bg-card px-2"
           >
             <option value="">{t("Todas")}</option>
             {config.categorias.map((c) => (
@@ -272,7 +272,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
           <select
             value={ordem}
             onChange={(e) => setOrdem(e.target.value as "padrao" | "nome" | "categoria" | "uso")}
-            className="h-9 rounded-lg border bg-card px-2"
+            className="h-9 rounded-xl border bg-card px-2"
           >
             <option value="padrao">{t("Padrão")}</option>
             <option value="nome">{t("Nome")}</option>
@@ -413,7 +413,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
               <Label htmlFor="destino-da-juncao">{t("Etiqueta de destino")}</Label>
               <select
                 id="destino-da-juncao"
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                className="h-9 rounded-xl border border-input bg-background px-2 text-sm"
                 value={destino}
                 onChange={(evento) => setDestino(evento.target.value)}
               >

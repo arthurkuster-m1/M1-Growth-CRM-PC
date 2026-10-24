@@ -96,7 +96,7 @@ function EscolherLead({
         value={termo}
         onChange={(e) => setTermo(e.target.value)}
         placeholder={t("Procure o lead pelo nome ou telefone")}
-        className="h-9 w-full rounded-lg border bg-card px-2.5 text-sm outline-hidden focus:border-primary/60"
+        className="h-9 w-full rounded-xl border bg-card px-2.5 text-sm outline-hidden focus:border-primary/60"
       />
       <button
         type="button"

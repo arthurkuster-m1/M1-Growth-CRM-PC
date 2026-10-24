@@ -161,7 +161,7 @@ export function EditarCampanha({ id }: { id: string }) {
           <Label htmlFor="e-canal">{t("Enviar pelo número")}</Label>
           <select
             id="e-canal"
-            className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+            className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={canal}
             onChange={(e) => setCanal(e.target.value)}
           >
@@ -278,7 +278,7 @@ export function EditarCampanha({ id }: { id: string }) {
             <Label htmlFor="e-funil">{t("Vira card no funil")}</Label>
             <select
               id="e-funil"
-              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={funil}
               onChange={(ev) => {
                 setFunil(ev.target.value);
@@ -297,7 +297,7 @@ export function EditarCampanha({ id }: { id: string }) {
             <Label htmlFor="e-etapa">{t("Na etapa")}</Label>
             <select
               id="e-etapa"
-              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={etapa}
               onChange={(ev) => setEtapa(ev.target.value)}
               disabled={!funil}
@@ -317,7 +317,7 @@ export function EditarCampanha({ id }: { id: string }) {
           <Label htmlFor="e-agente">{t("Quem atende a resposta")}</Label>
           <select
             id="e-agente"
-            className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+            className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={agente}
             onChange={(ev) => setAgente(ev.target.value)}
           >

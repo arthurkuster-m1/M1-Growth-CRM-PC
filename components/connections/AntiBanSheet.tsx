@@ -472,7 +472,7 @@ export function AntiBanSheet({ item, canWrite, onClose }: Props) {
               onChange={(e) => set({ timezone: e.target.value })}
               disabled={!canWrite}
               aria-label={t("Fuso horário IANA")}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+              className="h-9 w-full rounded-xl border border-input bg-background px-2 text-sm disabled:opacity-50"
             >
               <option value="">
                 {t("Usar o padrão")} ({eff.timezone})

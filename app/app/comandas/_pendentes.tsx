@@ -112,7 +112,7 @@ export function AtendimentosSemComanda({
                 disabled={semPreco || !podeLancar}
                 onChange={() => alternar(p.appointment_id)}
                 data-testid={`pendente-${p.appointment_id}`}
-                className="size-4 rounded-sm border-border accent-accent disabled:opacity-40"
+                className="size-4 rounded-xl border-border accent-accent disabled:opacity-40"
               />
               <span className="flex-1">
                 {p.service_name ?? p.title}
@@ -139,7 +139,7 @@ export function AtendimentosSemComanda({
             value={formaId}
             data-testid="forma-do-lote"
             onChange={(e) => setFormaId(e.target.value)}
-            className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+            className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
           >
             <option value="">{t("Forma de pagamento")}</option>
             {formas.map((f) => (

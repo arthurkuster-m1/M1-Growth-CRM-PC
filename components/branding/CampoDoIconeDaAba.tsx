@@ -144,7 +144,7 @@ export function CampoDoIconeDaAba({ iconeDaCamada }: Props) {
             const arquivo = e.target.files?.[0];
             if (arquivo) void enviar(arquivo);
           }}
-          className="max-w-xs text-sm file:mr-3 file:cursor-pointer file:rounded-sm file:border file:border-border file:bg-surface-elevated file:px-3 file:py-1.5 file:text-sm"
+          className="max-w-xs text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border file:border-border file:bg-surface-elevated file:px-3 file:py-1.5 file:text-sm"
         />
         {iconeGravado ? (
           <Button

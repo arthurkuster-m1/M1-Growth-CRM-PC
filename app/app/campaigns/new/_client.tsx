@@ -134,7 +134,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
           <Label htmlFor="canal">{t("Enviar pelo número")}</Label>
           <select
             id="canal"
-            className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+            className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={canal}
             onChange={(e) => setCanal(e.target.value)}
           >
@@ -266,7 +266,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
             <Label htmlFor="pub-funil">{t("Com negócio no funil")}</Label>
             <select
               id="pub-funil"
-              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={funilDoPublico}
               onChange={(e) => {
                 setFunilDoPublico(e.target.value);
@@ -285,7 +285,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
             <Label htmlFor="pub-etapa">{t("Na etapa")}</Label>
             <select
               id="pub-etapa"
-              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={etapaDoPublico}
               onChange={(e) => setEtapaDoPublico(e.target.value)}
               disabled={!funilDoPublico}
@@ -389,7 +389,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
             <Label htmlFor="funil">{t("Vira card no funil")}</Label>
             <select
               id="funil"
-              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={funil}
               onChange={(e) => {
                 setFunil(e.target.value);
@@ -408,7 +408,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
             <Label htmlFor="etapa">{t("Na etapa")}</Label>
             <select
               id="etapa"
-              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={etapa}
               onChange={(e) => setEtapa(e.target.value)}
               disabled={!funil}
@@ -428,7 +428,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
           <Label htmlFor="agente">{t("Quem atende a resposta")}</Label>
           <select
             id="agente"
-            className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+            className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={agente}
             onChange={(e) => setAgente(e.target.value)}
           >
