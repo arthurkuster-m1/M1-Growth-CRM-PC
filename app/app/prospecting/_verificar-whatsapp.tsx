@@ -89,9 +89,9 @@ export function VerificarWhatsapp({
           disabled={rodando}
           className="h-9 rounded-full border bg-card px-3 text-sm"
         >
-          {canais.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.display_name || c.phone_number || c.id.slice(0, 8)}
+          {canais.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.display_name || session.phone_number || session.id.slice(0, 8)}
             </option>
           ))}
         </select>
