@@ -55,6 +55,24 @@ const PARES: Array<{
     simbolo: "ApiDeConversaoGoogle",
   },
   {
+    tabela: "demand_cadence_enrollments",
+    coluna: "status",
+    arquivo: "lib/cadencia/cadencia.ts",
+    simbolo: "STATUS_DA_INSCRICAO",
+  },
+  {
+    tabela: "demand_cadences",
+    coluna: "end_action",
+    arquivo: "lib/cadencia/cadencia.ts",
+    simbolo: "DESTINOS_DO_FIM",
+  },
+  {
+    tabela: "demand_cadence_steps",
+    coluna: "medium",
+    arquivo: "lib/marketing/abordagens.ts",
+    simbolo: "MEIOS_DA_ABORDAGEM",
+  },
+  {
     tabela: "extension_operations",
     coluna: "kind",
     // O recibo das extensões (0271). Quatro cópias no TypeScript viraram uma; um kind

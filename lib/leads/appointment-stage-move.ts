@@ -181,6 +181,52 @@ export async function moverLeadParaEtapaDeAgendamento(
     return { moveu: false, motivo: "ja_adiante" };
   }
 
+  return moverLeadParaEtapa(admin, {
+    organizationId: input.organizationId,
+    leadRow,
+    etapaRow,
+    origem: origem as { name: string } | null,
+    motivoDoMovimento: `agendamento:${input.transicao}`,
+    sourceModule: "agenda",
+    actorId: "appointment-stage-move",
+    metadataExtra: { transicao: input.transicao },
+  });
+}
+
+/** O que `moverLeadParaEtapa` precisa saber de quem pede o movimento. */
+export interface PedidoDeMovimento {
+  organizationId: string;
+  leadRow: {
+    id: string;
+    pipeline_id: string;
+    stage_id: string;
+    contact_id: string | null;
+    status: string;
+    custom_fields: Record<string, unknown> | null;
+    won_reason: string | null;
+  };
+  etapaRow: { id: string; name: string; is_won?: boolean | null; is_lost?: boolean | null };
+  origem: { name: string } | null;
+  /** Vai no `payload.motivo_do_movimento` da atividade. */
+  motivoDoMovimento: string;
+  /** `source_module` da atividade (agenda, cadencia…). */
+  sourceModule: string;
+  /** Também é o `id` do ator e o `source` do evento. */
+  actorId: string;
+  metadataExtra?: Record<string, unknown>;
+}
+
+/**
+ * O movimento em si, com a régua de campos obrigatórios, a atividade na timeline e o evento
+ * `lead.stage_changed` — o mesmo para a Agenda e para o fim da cadência.
+ */
+export async function moverLeadParaEtapa(
+  admin: SupabaseClient,
+  pedido: PedidoDeMovimento,
+): Promise<ResultadoDoMovimentoDeAgendamento> {
+  const { organizationId, leadRow, etapaRow, origem, motivoDoMovimento, sourceModule, actorId } =
+    pedido;
+  const metadataExtra = pedido.metadataExtra ?? {};
   // ── A RÉGUA DE CAMPOS OBRIGATÓRIOS (issue #1536) ────────────────────────────
   //
   // Agendar também move `stage_id`, então a pergunta é a MESMA do arrasto, do
@@ -202,15 +248,15 @@ export async function moverLeadParaEtapaDeAgendamento(
   if (vereditoDeCampos.faltando.length > 0) {
     const detalhe = recusaDeCamposObrigatorios(vereditoDeCampos.faltando, null).mensagem;
     // Nenhum chamador lê o retorno (só tratam exceção): este warn é o único rastro.
-    logger.warn("[appointment-stage-move] etapa exige campos; card não movido", {
+    logger.warn("[stage-move] etapa exige campos; card não movido", {
       lead_id: leadRow.id,
-      organization_id: input.organizationId,
+      organization_id: organizationId,
       detalhe,
     });
     return { moveu: false, motivo: "campos_obrigatorios", detalhe };
   }
 
-  const serviceOrigin = await observeServiceOrigin(admin, input.organizationId, leadRow.contact_id);
+  const serviceOrigin = await observeServiceOrigin(admin, organizationId, leadRow.contact_id);
   const { data: atualizadas, error: erroUpdate } = await admin
     .from("crm_leads")
     .update({ stage_id: etapaRow.id })
@@ -220,9 +266,9 @@ export async function moverLeadParaEtapaDeAgendamento(
     .eq("stage_id", leadRow.stage_id)
     .select("id");
   if (erroUpdate) {
-    logger.warn("[appointment-stage-move] update de stage_id falhou", {
+    logger.warn("[stage-move] update de stage_id falhou", {
       lead_id: leadRow.id,
-      organization_id: input.organizationId,
+      organization_id: organizationId,
       error: erroUpdate.message,
     });
     return { moveu: false, motivo: "falha_de_escrita" };
@@ -232,19 +278,19 @@ export async function moverLeadParaEtapaDeAgendamento(
   }
 
   const atividade = await emitLeadActivity(admin, {
-    organizationId: input.organizationId,
+    organizationId: organizationId,
     leadId: leadRow.id,
     contactId: leadRow.contact_id,
     type: "stage_changed",
-    sourceModule: "agenda",
+    sourceModule,
     sourceId: leadRow.id,
-    actor: { type: "webhook_source", id: "appointment-stage-move" },
+    actor: { type: "webhook_source", id: actorId },
     reason: stageChangeReason((origem as { name: string } | null)?.name ?? null, etapaRow.name),
-    payload: { motivo_do_movimento: `agendamento:${input.transicao}`, de: leadRow.stage_id, para: etapaRow.id },
+    payload: { motivo_do_movimento: motivoDoMovimento, de: leadRow.stage_id, para: etapaRow.id },
   });
   if (!atividade.ok) {
     await registraFalhaDeAtividade(admin, {
-      organizationId: input.organizationId,
+      organizationId: organizationId,
       leadId: leadRow.id,
       tipo: "stage_changed",
       origem: "lib/leads/appointment-stage-move",
@@ -255,24 +301,27 @@ export async function moverLeadParaEtapaDeAgendamento(
   // Mesmo evento que `agent-stage-sync.ts` e `handoff-stage-move.ts` emitem ao
   // mover o card — para que regras de automação e follow-up que escutam
   // `lead.stage_changed` reajam igual, seja qual for a mão que moveu o card.
-  const { error: erroEvento } = await admin.rpc("emit_event" as never, {
-    p_event_type: "lead.stage_changed",
-    p_entity_kind: "crm_lead",
-    p_entity_id: leadRow.id,
-    p_payload: {
-      service_origin: serviceOrigin,
-      pipeline_id: leadRow.pipeline_id,
-      from_stage_id: leadRow.stage_id,
-      to_stage_id: etapaRow.id,
-      status: leadRow.status,
-    },
-    p_metadata: { actor_kind: "system", source: "appointment-stage-move", transicao: input.transicao },
-    p_organization_id: input.organizationId,
-  } as never);
+  const { error: erroEvento } = await admin.rpc(
+    "emit_event" as never,
+    {
+      p_event_type: "lead.stage_changed",
+      p_entity_kind: "crm_lead",
+      p_entity_id: leadRow.id,
+      p_payload: {
+        service_origin: serviceOrigin,
+        pipeline_id: leadRow.pipeline_id,
+        from_stage_id: leadRow.stage_id,
+        to_stage_id: etapaRow.id,
+        status: leadRow.status,
+      },
+      p_metadata: { actor_kind: "system", source: actorId, ...metadataExtra },
+      p_organization_id: organizationId,
+    } as never,
+  );
   if (erroEvento) {
-    logger.error("[appointment-stage-move] emit_event lead.stage_changed falhou", {
+    logger.error("[stage-move] emit_event lead.stage_changed falhou", {
       lead_id: leadRow.id,
-      organization_id: input.organizationId,
+      organization_id: organizationId,
       error: (erroEvento as { message?: string }).message ?? String(erroEvento),
     });
   }

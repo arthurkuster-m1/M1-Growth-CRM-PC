@@ -12,6 +12,7 @@ export const ABAS_DA_CAMPANHA = [
   "landing",
   "criativos",
   "abordagem",
+  "cadencia",
   "extracao",
   "disparos",
   "funil",
@@ -22,6 +23,7 @@ export const ABAS_OPCIONAIS = [
   "landing",
   "criativos",
   "abordagem",
+  "cadencia",
   "extracao",
   "disparos",
 ] as const;
@@ -32,17 +34,17 @@ export function ehAbaOpcional(a: string): a is AbaOpcional {
 }
 
 /** Os motores da prospecção ativa: só a campanha do tipo Prospecção pode tê-los. */
-const SO_DA_PROSPECCAO: readonly AbaOpcional[] = ["extracao", "disparos"];
+const SO_DA_PROSPECCAO: readonly AbaOpcional[] = ["cadencia", "extracao", "disparos"];
 
 /** As opcionais que o tipo da campanha permite oferecer no "+". */
 export function opcionaisPermitidas(canal: CanalDaCampanha): AbaOpcional[] {
   return ABAS_OPCIONAIS.filter((a) => canal === "prospeccao" || !SO_DA_PROSPECCAO.includes(a));
 }
 
-/** O padrão de cada tipo: anúncio tem LPs e criativos; prospecção tem abordagem, extração e disparos. */
+/** O padrão de cada tipo: anúncio tem LPs e criativos; prospecção tem abordagem, cadência, extração e disparos. */
 export function opcionaisPadraoDoCanal(canal: CanalDaCampanha): AbaOpcional[] {
   if (canal === "trafego_pago" || canal === "social_media") return ["landing", "criativos"];
-  return canal === "prospeccao" ? ["abordagem", "extracao", "disparos"] : ["abordagem"];
+  return canal === "prospeccao" ? ["abordagem", "cadencia", "extracao", "disparos"] : ["abordagem"];
 }
 
 /** As opcionais que a campanha mostra: a escolha dela, ou o padrão do tipo. */
