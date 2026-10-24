@@ -20,6 +20,8 @@ import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
 import { MODELOS_DAS_OPORTUNIDADES } from "@/lib/clientes/modelos-de-visao";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
+import { useCadenciaDeHoje } from "@/hooks/marketing/useCadenciaDeHoje";
+import { atrasoEmDias, venceAteHoje } from "@/lib/cadencia/hoje";
 import { useRadarDasOportunidades } from "@/hooks/leads/useRadarDasOportunidades";
 import { ResultadoRapidoDaLigacao } from "@/components/clientes/ResultadoRapidoDaLigacao";
 import { prioridadeDaFila } from "@/lib/leads/resultados-rapidos";
@@ -266,6 +268,8 @@ export function ClientesCRM({
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
   const hojeIso = new Date(agora).toISOString().slice(0, 10);
+  /** O dia de hoje no relógio de quem olha (o `hojeIso` acima é o dia UTC). */
+  const hojeLocal = new Intl.DateTimeFormat("en-CA").format(new Date(agora));
   // O radar de cada oportunidade aberta (mesma classificação da IA); negócio fora da lista está em dia.
   const radarPorLead = useRadarDasOportunidades().data;
   const baldeDoRadar = (l: Linha): RiskBucket | null => {
@@ -303,8 +307,9 @@ export function ClientesCRM({
   /** A venda aberta no popup (carregada inteira ao clicar). */
   const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
+  const cadenciaDeHoje = useCadenciaDeHoje(modo === "oportunidades");
   const [destaque, setDestaque] = useState<
-    null | "ligarhoje" | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
+    null | "ligarhoje" | "cadencia" | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
   /** O status do ciclo de vida que filtra a lista (clique de novo para soltar). */
@@ -2211,6 +2216,10 @@ export function ClientesCRM({
         return l.participacao
           ? prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null
           : false;
+      case "cadencia": {
+        const passo = l.participacao ? cadenciaDeHoje.porLead.get(l.participacao.lead_id) : undefined;
+        return passo ? venceAteHoje(passo.vence_em, hojeLocal) : false;
+      }
       case "abertas":
         return emAbertoDeVerdade(l);
       case "semcontato":
@@ -2235,6 +2244,18 @@ export function ClientesCRM({
       l.participacao ? (prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) ?? Infinity) : Infinity;
     visiveis.sort((x, y) => peso(x) - peso(y));
   }
+  // Cadência de hoje: do passo mais atrasado ao menos.
+  if (destaque === "cadencia" && !preferencias.ordenacao?.length) {
+    const atraso = (l: Linha) => {
+      const passo = l.participacao ? cadenciaDeHoje.porLead.get(l.participacao.lead_id) : undefined;
+      return passo ? atrasoEmDias(passo.vence_em, hojeLocal) : -Infinity;
+    };
+    visiveis.sort((x, y) => atraso(y) - atraso(x));
+  }
+  const filaDaCadencia = alvos.filter((l) => {
+    const passo = l.participacao ? cadenciaDeHoje.porLead.get(l.participacao.lead_id) : undefined;
+    return passo ? venceAteHoje(passo.vence_em, hojeLocal) : false;
+  }).length;
   const filaDoDia = alvos.filter(
     (l) => l.participacao && prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null,
   ).length;
@@ -2660,6 +2681,21 @@ export function ClientesCRM({
             {t("Ligar hoje")}
             <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">{filaDoDia}</span>
           </button>
+          {cadenciaDeHoje.passos.length > 0 ? (
+            <button
+              type="button"
+              aria-pressed={destaque === "cadencia"}
+              title={t("Leads cujo passo da cadência vence hoje ou já venceu")}
+              onClick={() => setDestaque(destaque === "cadencia" ? null : "cadencia")}
+              className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary ${
+                destaque === "cadencia" ? "border-primary bg-primary/10" : "bg-card"
+              }`}
+            >
+              <Phone size={14} aria-hidden />
+              {t("Cadência de hoje")}
+              <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">{filaDaCadencia}</span>
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setProspectando(true)}
@@ -2785,6 +2821,7 @@ export function ClientesCRM({
         <ModoProspeccao
           itens={itensDaSessao}
           config={configDaProspeccao}
+          passosDeCadencia={cadenciaDeHoje.porLead}
           etapasDe={(funilId) => etapasDoFunil(funilId)}
           aoMoverEtapa={(item, etapaId) => {
             const linha = resultado.linhas.find((x) => x.participacao?.lead_id === item.leadId);
@@ -2848,6 +2885,8 @@ export function ClientesCRM({
             <strong>
               {destaque === "ligarhoje"
                 ? t("Ligar hoje")
+                : destaque === "cadencia"
+                  ? t("Cadência de hoje")
                 : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}
             </strong> · {visiveis.length}{" "}
             {visiveis.length === 1 ? t("lead") : t("leads")}

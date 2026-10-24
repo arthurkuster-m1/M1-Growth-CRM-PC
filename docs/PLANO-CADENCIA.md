@@ -122,5 +122,5 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 |---|---|---|
 | 1 — Funil, tags e no-show | Concluída (24/10/2026) | "Reunião realizada" e "Desqualificado" mantidas no modelo (exigência do sistema); funis existentes não mudam. |
 | 2 — Cadência | Código pronto, em revisão (24/10/2026) | Migration 0659. Entregue: página Cadência (passos, destino do fim, modelos), inscrição por gatilho ao entrar em Abordagem, avanço/encerramento ao registrar abordagem, cron `cadence-sweep` (15 min) e botão "Inscrever quem já está em Abordagem". A etapa do lead NÃO sobe sozinha ao responder (decisão adiada); depois do último passo o lead tem 2 dias para responder. |
-| 3 — "Hoje" | Não iniciada | |
+| 3 — "Hoje" | Código pronto, em revisão (24/10/2026) | Sem migration: o passo de hoje é CALCULADO da inscrição (não grava "próxima ação" no lead, para não duplicar a fonte). Botão "Cadência de hoje" nas oportunidades do CRM + faixa do passo no Modo Prospecção. A lista de hoje só se atualiza ao sair do Modo, para a fila não mudar sob os pés. Limite diário da lista segue em aberto. |
 | 4 — Anti no-show | Não iniciada | |
