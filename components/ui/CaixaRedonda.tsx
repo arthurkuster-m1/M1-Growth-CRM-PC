@@ -41,7 +41,7 @@ export function CaixaRedonda({ parcial = false, className, ...resto }: Props) {
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute hidden h-0.5 w-2 rounded bg-primary-foreground peer-indeterminate:block"
+        className="pointer-events-none absolute hidden h-0.5 w-2 rounded-sm bg-primary-foreground peer-indeterminate:block"
       />
     </span>
   );

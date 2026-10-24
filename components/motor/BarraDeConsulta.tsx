@@ -76,7 +76,7 @@ function Escolha({
       opcoes={opcoes}
       aoEscolher={aoEscolher}
       rotuloVazio={rotuloVazio}
-      className={cn("h-8 min-h-8 min-w-0 gap-1 rounded-lg px-2 py-0 text-sm", largura)}
+      className={cn("h-8 min-h-8 min-w-0 gap-1 rounded-xl px-2 py-0 text-sm", largura)}
     />
   );
 }

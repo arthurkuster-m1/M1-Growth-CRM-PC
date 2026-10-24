@@ -120,7 +120,7 @@ export function VinculoDaMarcacao({
             aria-controls={listaId}
             aria-autocomplete="list"
             aria-activedescendant={aberto ? `${listaId}-${destacado}` : undefined}
-            className="mt-1 w-full rounded-md border bg-surface p-2 outline-hidden"
+            className="mt-1 w-full rounded-xl border bg-surface p-2 outline-hidden"
             value={valor}
             placeholder={t("Compromisso pessoal, sem cliente")}
             autoComplete="off"
@@ -174,7 +174,7 @@ export function VinculoDaMarcacao({
         <label className="block">
           {t("Conversa vinculada (opcional)")}
           <select
-            className="mt-1 w-full rounded-md border bg-surface p-2"
+            className="mt-1 w-full rounded-xl border bg-surface p-2"
             value={conversationId}
             onChange={(e) => onChange(contactId, e.target.value)}
           >

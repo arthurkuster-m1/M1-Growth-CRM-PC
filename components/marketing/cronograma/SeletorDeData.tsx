@@ -142,7 +142,7 @@ export function SeletorDeData({
           }}
           onBlur={() => setDigitado(formatarDiaBr(valor))}
           onKeyDown={(e) => e.key === "Enter" && setAberto(false)}
-          className="mb-2 h-10 w-full rounded-lg border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="mb-2 h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         <div className="mb-1 flex items-center justify-between px-1">
           <span className="text-sm font-semibold capitalize">{nomeDoMes}</span>

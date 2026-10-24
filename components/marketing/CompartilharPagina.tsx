@@ -177,7 +177,7 @@ export function CompartilharPagina({
                         )}
                         aria-label={t("Endereço do link")}
                         onFocus={(e) => e.currentTarget.select()}
-                        className="h-9 min-w-0 flex-1 rounded-lg border bg-card px-2 text-xs"
+                        className="h-9 min-w-0 flex-1 rounded-xl border bg-card px-2 text-xs"
                       />
                       <button
                         type="button"

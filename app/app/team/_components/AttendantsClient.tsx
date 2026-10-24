@@ -283,7 +283,7 @@ export function ScheduleDialog({
               id="tz"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 w-full rounded-xl border border-input bg-background px-2 text-sm"
             >
               {FUSOS_OFERECIDOS.map((f) => (
                 <option key={f.codigo} value={f.codigo}>

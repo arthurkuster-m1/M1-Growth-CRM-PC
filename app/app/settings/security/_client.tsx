@@ -160,7 +160,7 @@ export function SecurityClient({
               {t("Nível mínimo")}
               <select
                 id="mfa-papel-minimo"
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                className="h-9 rounded-xl border border-input bg-background px-2 text-sm"
                 value={novoPapel}
                 disabled={mexendo}
                 onChange={(e) => setNovoPapel(e.target.value as PapelMinimoDeMfa)}
@@ -181,7 +181,7 @@ export function SecurityClient({
                 type="number"
                 min={0}
                 max={30}
-                className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
+                className="h-9 w-24 rounded-xl border border-input bg-background px-2 text-sm"
                 value={novosDias}
                 disabled={mexendo || novoPapel === "none"}
                 onChange={(e) =>

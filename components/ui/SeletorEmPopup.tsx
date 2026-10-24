@@ -74,7 +74,7 @@ export function SeletorEmPopup({
         setAberto(false);
       }}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-secondary",
+        "flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left text-sm hover:bg-secondary",
         o.id === valor && "bg-secondary",
       )}
     >
@@ -136,7 +136,7 @@ export function SeletorEmPopup({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={t("Buscar…")}
-            className="mb-1 h-8 w-full rounded-md border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
+            className="mb-1 h-8 w-full rounded-xl border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
           />
         ) : null}
         <div className="max-h-64 space-y-0.5 overflow-y-auto">
@@ -162,7 +162,7 @@ export function SeletorEmPopup({
                     }
                   }}
                   placeholder={criar.placeholder}
-                  className="h-9 w-full rounded-lg border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
+                  className="h-9 w-full rounded-xl border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
                 />
                 <button
                   type="button"

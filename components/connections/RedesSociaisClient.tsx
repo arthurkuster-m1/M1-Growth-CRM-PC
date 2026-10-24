@@ -235,7 +235,7 @@ export function RedesSociaisClient() {
                 <Label htmlFor="social-profile">{t("Perfil da empresa")}</Label>
                 <select
                   id="social-profile"
-                  className="w-full rounded-md border bg-background p-2"
+                  className="w-full rounded-xl border bg-background p-2"
                   value={profile}
                   onChange={(e) => setProfile(e.target.value)}
                 >
@@ -269,7 +269,7 @@ export function RedesSociaisClient() {
               <Label htmlFor="social-network">{t("Conectar uma rede")}</Label>
               <select
                 id="social-network"
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-xl border bg-background p-2"
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
               >

@@ -1327,7 +1327,7 @@ export function DialogoDaVenda({
                               }
                             }}
                             onBlur={() => aplicarValorDaParcela(i)}
-                            className="h-9 w-28 rounded-lg border bg-card px-2 text-right text-sm tabular-nums"
+                            className="h-9 w-28 rounded-xl border bg-card px-2 text-right text-sm tabular-nums"
                           />
                         </td>
                         <td className="px-3 py-1 text-center">

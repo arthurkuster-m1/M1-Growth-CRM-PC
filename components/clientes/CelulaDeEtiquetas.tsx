@@ -88,7 +88,7 @@ export function CelulaDeEtiquetas({ tags, sugestoes, podeEditar, rotulo, aoMudar
               adicionar(texto);
             }
           }}
-          className="h-8 w-full rounded-lg border bg-card px-2 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="h-8 w-full rounded-xl border bg-card px-2 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
         {livres.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">

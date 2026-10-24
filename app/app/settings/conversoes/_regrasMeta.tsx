@@ -161,7 +161,7 @@ export function RegrasDeConversaoMeta({
                   <Label htmlFor={`evento-meta-${e.id}`}>{t("Evento enviado à Meta")}</Label>
                   <select
                     id={`evento-meta-${e.id}`}
-                    className="rounded-md border bg-background p-2 text-sm"
+                    className="rounded-xl border bg-background p-2 text-sm"
                     value={r.metaEvent}
                     onChange={(ev) => mudar(e.id, { metaEvent: ev.target.value as EventoDaMeta })}
                   >

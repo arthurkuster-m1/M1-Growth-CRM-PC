@@ -60,7 +60,7 @@ const DialogContent = React.forwardRef<
           // `ds-modal` animam a mesma propriedade `translate` e terminam no
           // mesmo `-50% -50%`, então o modal nunca sai do centro — o porquê
           // inteiro está no bloco do modal em `app/globals.css`.
-          "ds-modal fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto border bg-background p-6 shadow-lg sm:rounded-lg",
+          "ds-modal fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto border bg-background p-6 shadow-lg sm:rounded-2xl",
           className,
         )}
         {...props}

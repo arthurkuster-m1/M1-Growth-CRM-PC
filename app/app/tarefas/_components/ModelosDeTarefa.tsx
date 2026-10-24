@@ -412,7 +412,7 @@ function Corpo({
                 value={r.prazoHora}
                 disabled={!podeEditar}
                 onChange={(e) => mudar({ prazoHora: e.target.value || "17:00" })}
-                className="h-9 rounded-lg border bg-card px-2 text-sm"
+                className="h-9 rounded-xl border bg-card px-2 text-sm"
               />
             ) : null}
             <Switch

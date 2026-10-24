@@ -95,7 +95,7 @@ export function HistoricoDeEnvios({
           <select
             name="periodo"
             defaultValue={filtros.periodo}
-            className="rounded-md border bg-background p-2 text-sm"
+            className="rounded-xl border bg-background p-2 text-sm"
           >
             {PERIODOS.map((p) => (
               <option key={p} value={p}>
@@ -109,7 +109,7 @@ export function HistoricoDeEnvios({
           <select
             name="situacao"
             defaultValue={filtros.situacao}
-            className="rounded-md border bg-background p-2 text-sm"
+            className="rounded-xl border bg-background p-2 text-sm"
           >
             {(Object.keys(ROTULO_DA_SITUACAO) as Situacao[]).map((s) => (
               <option key={s} value={s}>
@@ -123,7 +123,7 @@ export function HistoricoDeEnvios({
           <select
             name="evento"
             defaultValue={filtros.evento}
-            className="rounded-md border bg-background p-2 text-sm"
+            className="rounded-xl border bg-background p-2 text-sm"
           >
             <option value="">{t("Todos os eventos")}</option>
             {eventos.map((e) => (
@@ -138,7 +138,7 @@ export function HistoricoDeEnvios({
           <select
             name="plataforma"
             defaultValue={filtros.plataforma}
-            className="rounded-md border bg-background p-2 text-sm"
+            className="rounded-xl border bg-background p-2 text-sm"
           >
             <option value="">{t("Todas")}</option>
             <option value="google_ads">Google Ads</option>
@@ -151,7 +151,7 @@ export function HistoricoDeEnvios({
             name="busca"
             defaultValue={filtros.busca}
             placeholder={t("Nome do negócio")}
-            className="rounded-md border bg-background p-2 text-sm"
+            className="rounded-xl border bg-background p-2 text-sm"
           />
         </label>
         <button

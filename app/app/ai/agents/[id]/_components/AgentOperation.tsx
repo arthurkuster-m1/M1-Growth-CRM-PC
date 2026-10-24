@@ -29,7 +29,7 @@ export function AgentOperation({ agent, readOnly }: { agent: AgentRow; readOnly?
       <label className="text-sm">
         {t("Operação do agente")}{" "}
         <select
-          className="ml-2 rounded-md border bg-background p-2"
+          className="ml-2 rounded-xl border bg-background p-2"
           aria-label={t("Modo de operação")}
           value={agent.operation_mode ?? "automatic"}
           disabled={readOnly || busy}

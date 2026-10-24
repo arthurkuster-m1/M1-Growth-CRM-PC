@@ -130,7 +130,7 @@ export function SeletorDaFormaDePagamento({ valor, aoEscolher, className }: Prop
                     if (e.key === "Enter") void criar();
                   }}
                   placeholder={t("Nome da nova forma de pagamento")}
-                  className="h-9 w-full rounded-lg border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
+                  className="h-9 w-full rounded-xl border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
                 />
                 {erro ? <p className="text-xs text-error-fg">{erro}</p> : null}
                 <button

@@ -86,7 +86,7 @@ export function RegrasDeComissao({
         <div className="flex flex-wrap items-end gap-2">
           <select
             aria-label={t("Pessoa")}
-            className="min-h-11 rounded-md border p-2"
+            className="min-h-11 rounded-xl border p-2"
             value={pessoaId}
             onChange={(e) => setPessoaId(e.target.value)}
           >
@@ -100,7 +100,7 @@ export function RegrasDeComissao({
 
           <select
             aria-label={t("Serviço")}
-            className="min-h-11 rounded-md border p-2"
+            className="min-h-11 rounded-xl border p-2"
             value={servicoId}
             onChange={(e) => setServicoId(e.target.value)}
           >
@@ -114,7 +114,7 @@ export function RegrasDeComissao({
 
           <input
             aria-label={t("Percentual")}
-            className="min-h-11 w-24 rounded-md border p-2"
+            className="min-h-11 w-24 rounded-xl border p-2"
             placeholder="30"
             inputMode="decimal"
             value={percentual}

@@ -183,7 +183,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
             <span className="block text-sm">{t("O que fazer")}</span>
             <select
               aria-label={t("O que fazer")}
-              className="mt-1 rounded-md border p-2"
+              className="mt-1 rounded-xl border p-2"
               data-testid="modo-do-dia"
               value={modo}
               onChange={(e) => setModo(e.target.value === "abrir" ? "abrir" : "fechar")}
@@ -210,7 +210,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
                 <span className="block text-sm">{t("Das")}</span>
                 <input
                   aria-label={t("Das")}
-                  className="mt-1 rounded-md border p-2"
+                  className="mt-1 rounded-xl border p-2"
                   type="time"
                   value={de}
                   onChange={(e) => setDe(e.target.value)}
@@ -220,7 +220,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
                 <span className="block text-sm">{t("Até")}</span>
                 <input
                   aria-label={t("Até")}
-                  className="mt-1 rounded-md border p-2"
+                  className="mt-1 rounded-xl border p-2"
                   type="time"
                   value={ate}
                   onChange={(e) => setAte(e.target.value)}
@@ -232,7 +232,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
             <span className="block text-sm">{t("Motivo (opcional)")}</span>
             <input
               aria-label={t("Motivo (opcional)")}
-              className="mt-1 w-full rounded-md border p-2"
+              className="mt-1 w-full rounded-xl border p-2"
               maxLength={200}
               placeholder={t("Ex.: feriado")}
               value={motivo}

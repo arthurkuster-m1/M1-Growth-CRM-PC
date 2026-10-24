@@ -118,7 +118,7 @@ export function Parcelas({
             value={contaId}
             data-testid="parcela-conta"
             onChange={(e) => setContaId(e.target.value)}
-            className="w-64 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+            className="w-64 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
           >
             <option value="">{t("Escolha")}</option>
             {(contas.data ?? []).map((c) => (
@@ -204,7 +204,7 @@ function FormularioDeParcela({
           min={1}
           data-testid="parcela-numero"
           onChange={(e) => setNumero(e.target.value)}
-          className="w-16 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="w-16 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 
@@ -215,7 +215,7 @@ function FormularioDeParcela({
           value={vencimento}
           data-testid="parcela-vencimento"
           onChange={(e) => setVencimento(e.target.value)}
-          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 
@@ -227,7 +227,7 @@ function FormularioDeParcela({
           placeholder="0,00"
           data-testid="parcela-valor"
           onChange={(e) => setValor(e.target.value)}
-          className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="w-28 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 

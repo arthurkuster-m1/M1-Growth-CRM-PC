@@ -488,7 +488,7 @@ export function BarraDeFunis({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={t("Buscar funil")}
-              className="h-8 w-full rounded-lg border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
+              className="h-8 w-full rounded-xl border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
             />
           </label>
           <div className="mt-2 max-h-72 overflow-y-auto overscroll-contain">

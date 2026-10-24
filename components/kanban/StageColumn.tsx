@@ -323,7 +323,7 @@ function NomeDaEtapaNoQuadro({
           e.currentTarget.blur();
         }
       }}
-      className="min-w-0 flex-1 truncate rounded-sm bg-transparent px-1 py-0.5 text-sm font-semibold text-text outline-hidden hover:bg-surface focus:bg-surface"
+      className="min-w-0 flex-1 truncate rounded-xl bg-transparent px-1 py-0.5 text-sm font-semibold text-text outline-hidden hover:bg-surface focus:bg-surface"
     />
   );
 }

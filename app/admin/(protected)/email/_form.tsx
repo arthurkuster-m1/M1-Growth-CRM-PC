@@ -162,7 +162,7 @@ export function FormularioDeSmtp({
           <select
             id="smtp-security"
             data-testid="smtp-security"
-            className="w-full rounded-md border bg-background p-2 text-sm"
+            className="w-full rounded-xl border bg-background p-2 text-sm"
             value={form.security}
             onChange={(e) => setSeguranca(e.target.value)}
           >

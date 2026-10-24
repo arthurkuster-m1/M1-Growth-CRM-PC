@@ -175,7 +175,7 @@ function FormularioDeContrato({
           value={modelo}
           data-testid="contrato-modelo"
           onChange={(e) => setModelo(e.target.value as Modelo)}
-          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         >
           <option value="fixo">{t("Fixo")}</option>
           <option value="exito">{t("Êxito")}</option>
@@ -192,7 +192,7 @@ function FormularioDeContrato({
             placeholder="0,00"
             data-testid="contrato-valor-fixo"
             onChange={(e) => setValorFixo(e.target.value)}
-            className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+            className="w-28 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
           />
         </label>
       ) : null}
@@ -206,7 +206,7 @@ function FormularioDeContrato({
             placeholder="10"
             data-testid="contrato-percentual-exito"
             onChange={(e) => setPercentual(e.target.value)}
-            className="w-20 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+            className="w-20 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
           />
         </label>
       ) : null}
@@ -219,7 +219,7 @@ function FormularioDeContrato({
           placeholder={t("opcional")}
           data-testid="contrato-repasse"
           onChange={(e) => setRepasse(e.target.value)}
-          className="w-24 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="w-24 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 
@@ -230,7 +230,7 @@ function FormularioDeContrato({
           placeholder={t("cole o ID do lead")}
           data-testid="contrato-lead-id"
           onChange={(e) => setLeadId(e.target.value)}
-          className="w-48 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+          className="w-48 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>
 

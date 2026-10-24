@@ -365,7 +365,7 @@ export function MessageBubble({
                 }
               }}
               maxLength={4096}
-              className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-foreground"
+              className="min-h-20 w-full rounded-xl border border-border bg-background p-2 text-foreground"
             />
             <div className="flex justify-end gap-2">
               <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => setEditando(false)}>{t("Cancelar")}</Button>

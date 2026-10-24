@@ -275,7 +275,7 @@ export function DetalheDoCompromisso({
                 <label className="block">
                   {t("Mensagem do cliente usada como evidência (opcional)")}
                   <select
-                    className="mt-2 w-full rounded-md border bg-surface p-2"
+                    className="mt-2 w-full rounded-xl border bg-surface p-2"
                     aria-label={t("Mensagem de evidência")}
                     value={evidence}
                     onChange={(e) => {
@@ -353,7 +353,7 @@ export function DetalheDoCompromisso({
                 <label className="block">
                   {t("Motivo do cancelamento")}
                   <input
-                    className="mt-2 w-full rounded-md border bg-surface p-2"
+                    className="mt-2 w-full rounded-xl border bg-surface p-2"
                     value={reason}
                     onChange={(e) => {
                       beginDraft();

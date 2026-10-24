@@ -1137,7 +1137,7 @@ function CobrancaParaConfirmar({
             inputMode="decimal"
             onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ""))}
             aria-label={t("Valor recebido")}
-            className="h-9 w-28 rounded-lg border bg-card px-2 text-right text-sm tabular-nums"
+            className="h-9 w-28 rounded-xl border bg-card px-2 text-right text-sm tabular-nums"
           />
         </label>
         <div className="w-48">

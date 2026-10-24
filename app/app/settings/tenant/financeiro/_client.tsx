@@ -102,14 +102,14 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
           <div className="flex flex-wrap items-end gap-2">
             <input
               aria-label={t("Nome da conta")}
-              className="min-h-11 rounded-md border p-2"
+              className="min-h-11 rounded-xl border p-2"
               placeholder={t("Ex.: Caixa")}
               value={nomeConta}
               onChange={(e) => setNomeConta(e.target.value)}
             />
             <select
               aria-label={t("Tipo da conta")}
-              className="min-h-11 rounded-md border p-2"
+              className="min-h-11 rounded-xl border p-2"
               value={tipoConta}
               onChange={(e) => setTipoConta(e.target.value)}
             >
@@ -157,14 +157,14 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
           <div className="flex flex-wrap items-end gap-2">
             <input
               aria-label={t("Nome da forma de pagamento")}
-              className="min-h-11 rounded-md border p-2"
+              className="min-h-11 rounded-xl border p-2"
               placeholder={t("Ex.: Pix")}
               value={nomeForma}
               onChange={(e) => setNomeForma(e.target.value)}
             />
             <select
               aria-label={t("Conta de destino")}
-              className="min-h-11 rounded-md border p-2"
+              className="min-h-11 rounded-xl border p-2"
               value={contaDaForma}
               onChange={(e) => setContaDaForma(e.target.value)}
             >
@@ -221,7 +221,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
           <div className="flex flex-wrap items-end gap-2">
             <input
               aria-label={t("Nome do plano de contas")}
-              className="min-h-11 rounded-md border p-2"
+              className="min-h-11 rounded-xl border p-2"
               placeholder={t("Ex.: Serviços")}
               value={nomePlano}
               onChange={(e) => setNomePlano(e.target.value)}
@@ -234,7 +234,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
             */}
             <select
               aria-label={t("Entrada ou saída")}
-              className="min-h-11 rounded-md border p-2"
+              className="min-h-11 rounded-xl border p-2"
               value={direcaoPlano}
               onChange={(e) => setDirecaoPlano(e.target.value as "in" | "out" | "")}
             >

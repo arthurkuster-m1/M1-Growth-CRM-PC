@@ -261,7 +261,7 @@ export function RegrasDeConversaoGoogle({
                     <Label htmlFor={`categoria-${e.id}`}>{t("Categoria da conversão")}</Label>
                     <select
                       id={`categoria-${e.id}`}
-                      className="rounded-md border bg-background p-2 text-sm"
+                      className="rounded-xl border bg-background p-2 text-sm"
                       value={r.category}
                       onChange={(ev) =>
                         mudar(e.id, { category: ev.target.value as CategoriaDeConversao })
@@ -281,7 +281,7 @@ export function RegrasDeConversaoGoogle({
                     <Label htmlFor={`canal-${e.id}`}>{t("Canal de entrada")}</Label>
                     <select
                       id={`canal-${e.id}`}
-                      className="rounded-md border bg-background p-2 text-sm"
+                      className="rounded-xl border bg-background p-2 text-sm"
                       value={r.channel}
                       onChange={(ev) => mudar(e.id, { channel: ev.target.value as CanalDeEntrada })}
                     >

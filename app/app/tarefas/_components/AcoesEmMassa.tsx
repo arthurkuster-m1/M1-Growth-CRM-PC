@@ -63,7 +63,7 @@ function PainelDeData({
         aria-label={rotulo}
         value={dia}
         onChange={(e) => setDia(e.target.value)}
-        className="h-10 w-full rounded-md border bg-card px-2 text-sm"
+        className="h-10 w-full rounded-xl border bg-card px-2 text-sm"
       />
       <label className="flex min-h-9 items-center justify-between gap-2 px-1 text-sm">
         {t("Incluir hora")}
@@ -79,7 +79,7 @@ function PainelDeData({
           aria-label={t("Horário")}
           value={hora}
           onChange={(e) => setHora(e.target.value || "09:00")}
-          className="h-10 w-full rounded-md border bg-card px-2 text-sm"
+          className="h-10 w-full rounded-xl border bg-card px-2 text-sm"
         />
       ) : null}
       <div className="flex gap-1.5">

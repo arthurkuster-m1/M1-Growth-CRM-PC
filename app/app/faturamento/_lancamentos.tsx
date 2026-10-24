@@ -91,7 +91,7 @@ export function ListaDeLancamentos({
               value={direcao}
               data-testid="lancamento-direcao"
               onChange={(e) => setDirecao(e.target.value as "in" | "out")}
-              className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+              className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
             >
               <option value="out">{t("Saída")}</option>
               <option value="in">{t("Entrada")}</option>
@@ -104,7 +104,7 @@ export function ListaDeLancamentos({
               value={contaId}
               data-testid="lancamento-conta"
               onChange={(e) => setContaId(e.target.value)}
-              className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+              className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
             >
               <option value="">{t("Escolha")}</option>
               {contas.map((c) => (
@@ -121,7 +121,7 @@ export function ListaDeLancamentos({
               value={descricao}
               data-testid="lancamento-descricao"
               onChange={(e) => setDescricao(e.target.value)}
-              className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+              className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
             />
           </label>
 
@@ -133,7 +133,7 @@ export function ListaDeLancamentos({
               placeholder="0,00"
               data-testid="lancamento-valor"
               onChange={(e) => setValor(e.target.value)}
-              className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+              className="w-28 rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
             />
           </label>
 
@@ -153,7 +153,7 @@ export function ListaDeLancamentos({
               checked={jaPago}
               data-testid="lancamento-ja-pago"
               onChange={(e) => setJaPago(e.target.checked)}
-              className="size-4 rounded-sm border-border accent-accent"
+              className="size-4 rounded-xl border-border accent-accent"
             />
             {t("Já pago")}
           </label>
