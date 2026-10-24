@@ -75,7 +75,12 @@ function fazerSupabase(existente: { id: string } | null) {
       return elo;
     };
     elo.single = () => Promise.resolve({ data: { id: `novo-${inseridos.length}` }, error: null });
-    elo.maybeSingle = () => Promise.resolve({ data: existente, error: null });
+    elo.maybeSingle = () =>
+      // A rota confere o funil contra a organização antes de ler a planilha.
+      Promise.resolve({
+        data: tabela === "crm_pipelines" ? { id: FUNIL, settings: {} } : existente,
+        error: null,
+      });
     return elo;
   };
   vi.mocked(createClient).mockResolvedValue({ from } as never);
@@ -150,6 +155,9 @@ function fazerSupabaseComEtapas(etapas: EtapaDoFunil[]) {
     };
     elo.single = () => Promise.resolve({ data: { id: `novo-${inseridos.length}` }, error: null });
     elo.maybeSingle = () => {
+      // A rota confere o funil contra a organização antes de ler a planilha.
+      if (tabela === "crm_pipelines")
+        return Promise.resolve({ data: { id: FUNIL, settings: {} }, error: null });
       if (tabela !== "crm_stages") return Promise.resolve({ data: null, error: null });
       const campo = (linha: EtapaDoFunil, coluna: string) =>
         (linha as unknown as Record<string, unknown>)[coluna];

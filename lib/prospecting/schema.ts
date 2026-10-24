@@ -34,11 +34,19 @@ export const searchSchema = z
     name: z.string().trim().min(2).max(120),
     niche: z.string().trim().min(2).max(120),
     location: z.string().trim().min(2).max(160),
-    limit: z.number().int().min(1).max(100).default(20),
-    budget_usd: z.number().min(0.5).max(10).default(1),
+    // `volume` extrai o máximo de empresas possível, sem enriquecer (nada de e-mails e redes do
+    // site): é mais barato por empresa e por isso o teto de empresas e de gasto é maior.
+    mode: z.enum(["completo", "volume"]).default("completo"),
+    limit: z.number().int().min(1).max(500).default(20),
+    budget_usd: z.number().min(0.5).max(25).default(1),
     enrich: z.boolean().default(true),
   })
-  .strict();
+  .strict()
+  // Só o modo volume vai além de 100 empresas e de US$ 10: a busca completa mantém os tetos de
+  // sempre (o enriquecimento é o que encarece cada empresa).
+  .refine((s) => s.mode === "volume" || (s.limit <= 100 && s.budget_usd <= 10), {
+    message: "A busca completa vai até 100 empresas e US$ 10. Para mais, use o modo volume.",
+  });
 export const prospectingInputSchema = z.discriminatedUnion("action", [
   z
     .object({ action: z.literal("configure"), api_key: z.string().trim().min(10).max(500) })

@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
+import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import {
@@ -113,6 +115,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
   const [selected, setSelected] = useState<string | null>(null);
   const [niche, setNiche] = useState("");
   const [location, setLocation] = useState("");
+  const [modo, setModo] = useState<"completo" | "volume">("completo");
   const [limit, setLimit] = useState(20);
   const [budget, setBudget] = useState(1);
   const [enrich, setEnrich] = useState(true);
@@ -358,7 +361,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
               className="mt-4 space-y-4"
               onSubmit={async (e) => {
                 e.preventDefault();
-                const fingerprint = JSON.stringify([niche, location, limit, budget, enrich]);
+                const fingerprint = JSON.stringify([niche, location, limit, budget, enrich, modo]);
                 if (searchAttempt.current?.fingerprint !== fingerprint)
                   searchAttempt.current = { fingerprint, id: randomId() };
                 const success = await perform(
@@ -370,9 +373,10 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                       name: `${niche} · ${location}`.slice(0, 120),
                       niche,
                       location,
+                      mode: modo,
                       limit,
                       budget_usd: budget,
-                      enrich,
+                      enrich: enrich && modo !== "volume",
                     },
                   },
                   t("Solicitação registrada. Acompanhe o estado da busca nesta tela."),
@@ -409,6 +413,46 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                   className="mt-1"
                 />
               </div>
+              <div
+                role="radiogroup"
+                aria-label={t("Tipo de extração")}
+                className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1"
+              >
+                {(
+                  [
+                    ["completo", t("Completa")],
+                    ["volume", t("Volume")],
+                  ] as const
+                ).map(([valor, rotulo]) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={modo === valor}
+                    onClick={() => {
+                      setModo(valor);
+                      // Cada tipo nasce com os números que fazem sentido para ele.
+                      setLimit(valor === "volume" ? 300 : 20);
+                      setBudget(valor === "volume" ? 5 : 1);
+                    }}
+                    className={cn(
+                      "h-9 rounded-full text-sm font-medium transition-colors",
+                      modo === valor
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+              <p className="-mt-2 text-xs text-muted-foreground">
+                {modo === "volume"
+                  ? t(
+                      "Volume: busca o máximo de empresas possível, sem enriquecer com e-mails e redes. Mais barato por empresa.",
+                    )
+                  : t("Completa: menos empresas, com e-mails e redes encontrados no site.")}
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="prospecting-limit">{t("Até quantas empresas")}</Label>
@@ -416,7 +460,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                     id="prospecting-limit"
                     type="number"
                     min={1}
-                    max={100}
+                    max={modo === "volume" ? 500 : 100}
                     value={limit}
                     onChange={(e) => setLimit(Number(e.target.value))}
                     required
@@ -429,7 +473,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                     id="prospecting-budget"
                     type="number"
                     min={0.5}
-                    max={10}
+                    max={modo === "volume" ? 25 : 10}
                     step={0.5}
                     value={budget}
                     onChange={(e) => setBudget(Number(e.target.value))}
@@ -438,21 +482,26 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                   />
                 </div>
               </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={enrich}
-                  onChange={(e) => setEnrich(e.target.checked)}
-                  className="mt-1"
-                />
-                {t("Enriquecer com e-mails comerciais e redes encontradas no site")}
-              </label>
+              {modo === "volume" ? null : (
+                <label className="flex items-start gap-2 text-sm">
+                  <CaixaRedonda
+                    checked={enrich}
+                    onChange={(e) => setEnrich(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  {t("Enriquecer com e-mails comerciais e redes encontradas no site")}
+                </label>
+              )}
               <p className="text-xs text-muted-foreground">
                 {t(
                   "A pesquisa usa seu saldo da Apify. A quantidade encontrada pode ser menor que o limite. Nenhuma abordagem começa nesta etapa.",
                 )}
               </p>
-              <Button className="w-full" type="submit" disabled={busy || !data?.configured}>
+              <Button
+                className="w-full rounded-full"
+                type="submit"
+                disabled={busy || !data?.configured}
+              >
                 {busy ? t("Aguarde…") : t("Buscar empresas")}
               </Button>
             </form>
@@ -1122,8 +1171,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                           {canSelect && (
                             <th className="p-4">
                               <label className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
+                                <CaixaRedonda
                                   checked={allSelected}
                                   disabled={busy || elegiveis.length === 0}
                                   onChange={() =>
@@ -1150,8 +1198,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                             {canSelect && (
                               <td className="p-4 align-top">
                                 {marcavel(c) && (
-                                  <input
-                                    type="checkbox"
+                                  <CaixaRedonda
                                     checked={c.selected !== false}
                                     disabled={busy}
                                     onChange={() => setSelection([c.id], c.selected === false)}

@@ -81,7 +81,8 @@ export async function startSearch(key: string, input: SearchInput) {
         language: "pt-BR",
         countryCode: "br",
         skipClosedPlaces: true,
-        scrapeContacts: input.enrich,
+        // No modo volume o enriquecimento fica desligado: é o que deixa a busca barata e larga.
+        scrapeContacts: input.enrich && input.mode !== "volume",
         maxReviews: 0,
         maxImages: 0,
         maximumLeadsEnrichmentRecords: 0,
@@ -95,7 +96,7 @@ export async function readSearch(key: string, id: string) {
 export async function readResults(key: string, dataset: string, limit: number) {
   return z
     .array(z.record(z.string(), z.unknown()))
-    .max(100)
+    .max(500)
     .parse(
       await providerRequest(
         key,
