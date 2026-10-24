@@ -2,9 +2,24 @@
 
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from "react";
 
-import { textoDoEstado } from "@/components/marketing/campanhas/rotulos";
+import {
+  COR_DO_CANAL,
+  COR_DO_STATUS,
+  rotuloDoStatus,
+  textoDoEstado,
+} from "@/components/marketing/campanhas/rotulos";
+import { Etiqueta } from "@/components/motor/Etiqueta";
+import { BASE_DA_COR } from "@/lib/motor/cores";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
@@ -15,12 +30,49 @@ import { cn } from "@/lib/utils";
 export const DIAS_PADRAO_DA_LINHA = 91;
 export const OPCOES_DE_DIAS = [14, 30, 60, 91, 180, 365] as const;
 export type EscalaDaLinha = "dia" | "semana";
-const CLASSE_DO_STATUS: Record<CampanhaDeDemanda["status"], string> = {
-  planejada: "bg-secondary border-border-strong text-foreground",
-  ativa: "bg-primary text-primary-foreground border-primary",
-  pausada: "bg-warning-bg text-warning-fg border-warning",
-  encerrada: "bg-muted text-muted-foreground border-border",
-};
+/**
+ * A COR da barra é a do TIPO da campanha (tráfego, prospecção, social…): é o que separa uma da
+ * outra de relance. O ESTADO muda o desenho dela: ativa é cheia; planejada é clara com borda
+ * tracejada; pausada é listrada; encerrada fica apagada.
+ */
+function barraDaCampanha(c: Pick<CampanhaDeDemanda, "channel" | "status">): {
+  className: string;
+  style: CSSProperties;
+} {
+  const base = BASE_DA_COR[COR_DO_CANAL[c.channel]];
+  const claro = `color-mix(in oklab, ${base} 22%, var(--color-surface))`;
+  const texto = `color-mix(in oklab, ${base} 80%, var(--color-text))`;
+  switch (c.status) {
+    case "ativa":
+      return {
+        className: "border-transparent text-white shadow-sm",
+        style: { backgroundColor: base },
+      };
+    case "pausada":
+      return {
+        className: "border-dashed",
+        style: {
+          color: texto,
+          borderColor: base,
+          backgroundColor: claro,
+          backgroundImage: `repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in oklab, ${base} 30%, transparent) 6px 12px)`,
+        },
+      };
+    case "encerrada":
+      return {
+        className: "border-transparent opacity-60",
+        style: {
+          color: texto,
+          backgroundColor: `color-mix(in oklab, ${base} 14%, var(--color-muted))`,
+        },
+      };
+    default:
+      return {
+        className: "border-dashed",
+        style: { color: texto, borderColor: base, backgroundColor: claro },
+      };
+  }
+}
 
 export interface DatasDaCampanha {
   start_date: string;
@@ -28,7 +80,7 @@ export interface DatasDaCampanha {
   continuous: boolean;
 }
 
-const COLUNA_DO_NOME = 300;
+const COLUNA_DO_NOME = 340;
 /** "Hoje" cai na 7ª coluna: 6 dias para trás e o resto para a frente. */
 const DIAS_ANTES_DE_HOJE = 6;
 const DURACAO_PADRAO = 14;
@@ -360,7 +412,9 @@ export function LinhaDoTempoDeCampanhas({
             className="relative grid border-b text-xs text-muted-foreground"
             style={{ gridTemplateColumns: colunas }}
           >
-            <div className="sticky left-0 z-20 bg-card px-3 py-2">{t("Campanha")}</div>
+            <div className="sticky left-0 z-20 border-r-2 border-border bg-card px-3 py-2 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.18)]">
+              {t("Campanha")}
+            </div>
             {escala === "semana"
               ? semanas.map((s, i) => (
                   <div
@@ -408,15 +462,23 @@ export function LinhaDoTempoDeCampanhas({
                 className="relative grid items-center border-b last:border-b-0"
                 style={{ gridTemplateColumns: colunas }}
               >
-                <div className="sticky left-0 z-10 min-w-0 bg-card px-3 py-2">
+                <div
+                  style={{
+                    boxShadow: `inset 4px 0 0 ${BASE_DA_COR[COR_DO_CANAL[c.channel]]}, 6px 0 8px -6px rgba(0,0,0,0.18)`,
+                  }}
+                  className="sticky left-0 z-10 min-w-0 border-r-2 border-border bg-card py-2 pr-3 pl-4"
+                >
                   <Link
                     href={`${base}/${c.id}`}
                     className="block truncate text-sm font-medium hover:text-primary hover:underline"
                   >
                     {c.name}
                   </Link>
+                  <Etiqueta cor={COR_DO_STATUS[c.status]} ponto className="mt-0.5 text-[11px]">
+                    {rotuloDoStatus(t, c.status)}
+                  </Etiqueta>
                   <p
-                    className="truncate text-[11px] text-muted-foreground tabular-nums"
+                    className="text-[11px] leading-snug break-words text-muted-foreground tabular-nums"
                     title={textoDoEstado(t, c.estado)}
                   >
                     {textoDoEstado(t, c.estado)}
@@ -460,11 +522,12 @@ export function LinhaDoTempoDeCampanhas({
                       }}
                       className={cn(
                         "relative my-2 flex h-7 items-center overflow-hidden rounded-lg border px-2 text-[11px] font-medium whitespace-nowrap",
-                        CLASSE_DO_STATUS[c.status],
+                        barraDaCampanha(c).className,
                         aoDatas && "cursor-grab",
                         g && "z-10 cursor-grabbing opacity-90 ring-2 ring-primary/40",
                       )}
                       style={{
+                        ...barraDaCampanha(c).style,
                         gridColumn: `${2 + idx(deV)} / ${ateV === null ? total + 2 : idx(ateV) + 3}`,
                       }}
                     >
@@ -528,9 +591,10 @@ export function LinhaDoTempoDeCampanhas({
                 }}
                 className={cn(
                   "inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium",
-                  CLASSE_DO_STATUS[c.status],
+                  barraDaCampanha(c).className,
                   aoDatas && "cursor-grab active:cursor-grabbing",
                 )}
+                style={barraDaCampanha(c).style}
               >
                 <span className="truncate">{c.name}</span>
                 <Link

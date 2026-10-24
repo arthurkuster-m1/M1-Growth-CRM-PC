@@ -34,6 +34,6 @@ export function MotorDaCampanha({
   return motor === "extracao" ? (
     <ProspectingClient campanhaId={campanhaId} />
   ) : (
-    <ListaDeCampanhas />
+    <ListaDeCampanhas campanhaId={campanhaId} />
   );
 }

@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic";
 const COLUNAS_DA_LISTA =
   "id, name, status, channel_session_id, snapshot_total, snapshot_eligible, snapshot_excluded, " +
   "scheduled_at, started_at, completed_at, cancelled_at, created_at, created_by, " +
-  "pipeline_id, stage_id, agent_id";
+  "pipeline_id, stage_id, agent_id, demand_campaign_id";
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -62,6 +62,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .limit(q.limit + 1);
 
   if (q.status) query = query.eq("status", q.status);
+  if (q.demand_campaign_id) query = query.eq("demand_campaign_id", q.demand_campaign_id);
   if (q.cursor) {
     const c = decodificarCursor(q.cursor);
     if (!c) return fail("invalid_cursor", t("Cursor inválido."), 400, { requestId });
@@ -128,6 +129,25 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 
+  // A campanha de prospecção dona do disparo tem de ser desta organização e do tipo Prospecção.
+  if (entrada.demand_campaign_id) {
+    const { data: dona } = await supabase
+      .from("demand_campaigns")
+      .select("id")
+      .eq("organization_id", org.orgId)
+      .eq("id", entrada.demand_campaign_id)
+      .eq("channel", "prospeccao")
+      .maybeSingle();
+    if (!dona) {
+      return fail(
+        "campanha_de_prospeccao_indisponivel",
+        t("Campanha de prospecção não encontrada."),
+        404,
+        { requestId },
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from("campaigns")
     .insert({
@@ -147,6 +167,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       pipeline_id: entrada.pipeline_id ?? null,
       stage_id: entrada.stage_id ?? null,
       agent_id: entrada.agent_id ?? null,
+      demand_campaign_id: entrada.demand_campaign_id ?? null,
       created_by: user.id,
     })
     .select(COLUNAS_DA_LISTA)

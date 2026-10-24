@@ -44,6 +44,8 @@ const baseDaCampanha = {
   pipeline_id: z.string().uuid().nullable().optional(),
   stage_id: z.string().uuid().nullable().optional(),
   agent_id: z.string().uuid().nullable().optional(),
+  /** A campanha de prospecção dona deste disparo (migration 0656). `null` = disparo avulso. */
+  demand_campaign_id: z.string().uuid().nullable().optional(),
 };
 
 export const criarCampanhaSchema = z
@@ -119,6 +121,8 @@ export const testarSchema = z.object({ contact_id: z.string().uuid() });
 
 export const listarCampanhasSchema = z.object({
   status: z.string().trim().max(20).optional(),
+  /** Só os disparos desta campanha de prospecção. */
+  demand_campaign_id: z.string().uuid().optional(),
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });

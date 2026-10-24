@@ -20,34 +20,50 @@ import { useT } from "@/hooks/i18n/useT";
 import { Megaphone, Plus } from "@/lib/ui/icons";
 import { STATUS_DA_CAMPANHA } from "@/lib/campanhas/tipos";
 
-export function ListaDeCampanhas() {
+export function ListaDeCampanhas({ campanhaId }: { campanhaId?: string } = {}) {
   const t = useT();
   // A data segue quem está lendo, não o idioma de quem escreveu a tela.
   const idioma = useTagDeIdioma();
   const [status, setStatus] = useState<string>("");
-  const filtros = useMemo(() => ({ status: status || undefined, limit: 30 }), [status]);
+  const filtros = useMemo(
+    () => ({ status: status || undefined, limit: 30, demandCampaignId: campanhaId }),
+    [status, campanhaId],
+  );
+  // Dentro de uma campanha de prospecção, o disparo nasce nela e volta para ela.
+  const novoHref = campanhaId
+    ? `/app/campaigns/new?campanha=${encodeURIComponent(campanhaId)}`
+    : "/app/campaigns/new";
   const q = useCampanhas(filtros);
   const campanhas = useMemo(() => q.data?.pages.flatMap((p) => p.data) ?? [], [q.data]);
 
   return (
-    <div className="space-y-4 p-6">
+    <div className={campanhaId ? "space-y-4" : "space-y-4 p-6"}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Disparos")}</h1>
+          {campanhaId ? (
+            <h2 className="text-lg font-semibold tracking-tight">{t("Disparos")}</h2>
+          ) : (
+            <h1 className="text-2xl font-semibold tracking-tight">{t("Disparos")}</h1>
+          )}
           <p className="text-sm text-muted-foreground">
             {t("Escolha o público, escreva a mensagem e acompanhe quem recebeu.")}
+            {campanhaId && campanhas.length > 0 && !q.hasNextPage
+              ? ` ${t("Lotes somados na campanha")}: ${campanhas.reduce((n, c) => n + c.snapshot_eligible, 0)} ${t("contatos")} · ${campanhas.length} ${t("disparos")}.`
+              : ""}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-        <Button variant="outline" asChild>
-          <Link href="/app/campaigns/settings">{t("Configuração")}</Link>
-        </Button>
-        <Button asChild>
-          <Link href="/app/campaigns/new">
-            <Plus size={16} weight="bold" aria-hidden />
-            <span>{t("Novo disparo")}</span>
-          </Link>
-        </Button>
+          {campanhaId ? null : (
+            <Button variant="outline" asChild>
+              <Link href="/app/campaigns/settings">{t("Configuração")}</Link>
+            </Button>
+          )}
+          <Button asChild>
+            <Link href={novoHref}>
+              <Plus size={16} weight="bold" aria-hidden />
+              <span>{t("Novo disparo")}</span>
+            </Link>
+          </Button>
         </div>
       </header>
 
@@ -91,7 +107,7 @@ export function ListaDeCampanhas() {
             subcopy={t(
               "Uma campanha fala com uma lista de contatos que você escolhe, no ritmo do número — nunca em rajada.",
             )}
-            primary={{ label: t("Novo disparo"), href: "/app/campaigns/new" }}
+            primary={{ label: t("Novo disparo"), href: novoHref }}
           />
         </Card>
       ) : (
@@ -154,7 +170,13 @@ function rotulo(status: string): string {
 
 /** A data que importa depende do estado — mostrar "criada em" numa campanha que já terminou é ruído. */
 function quando(
-  c: { status: string; scheduled_at: string | null; started_at: string | null; completed_at: string | null; created_at: string },
+  c: {
+    status: string;
+    scheduled_at: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    created_at: string;
+  },
   t: (s: string) => string,
   idioma: string,
 ): string {

@@ -302,37 +302,39 @@ export function SidebarContent({
       >
         {/* Visual M1: itens SOLTOS, acima dos grupos. As portas também estão no catálogo
             (⌘K e teste de completude); aqui só são desenhadas. */}
-        {[
-          { href: "/app/inicio", rotulo: t("Início"), Icone: House },
-          ...(temCrm ? [{ href: "/app/clientes", rotulo: t("CRM"), Icone: Users }] : []),
-          { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
-        ].map(({ href, rotulo, Icone }) => {
-          const ativo = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? rotulo : undefined}
-              aria-current={ativo ? "page" : undefined}
-              onClick={onNavigate}
-              className={cn(
-                "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                ativo
-                  ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                collapsed && "justify-center px-2",
-              )}
-            >
-              <Icone
-                size={18}
-                weight={ativo ? "fill" : "regular"}
-                className={ativo ? "text-primary" : undefined}
-                aria-hidden
-              />
-              {!collapsed && <span className="truncate">{rotulo}</span>}
-            </Link>
-          );
-        })}{" "}
+        <div className="space-y-0.5">
+          {[
+            { href: "/app/inicio", rotulo: t("Início"), Icone: House },
+            ...(temCrm ? [{ href: "/app/clientes", rotulo: t("CRM"), Icone: Users }] : []),
+            { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
+          ].map(({ href, rotulo, Icone }) => {
+            const ativo = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? rotulo : undefined}
+                aria-current={ativo ? "page" : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                  ativo
+                    ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                  collapsed && "justify-center px-2",
+                )}
+              >
+                <Icone
+                  size={18}
+                  weight={ativo ? "fill" : "regular"}
+                  className={ativo ? "text-primary" : undefined}
+                  aria-hidden
+                />
+                {!collapsed && <span className="truncate">{rotulo}</span>}
+              </Link>
+            );
+          })}
+        </div>
         {grupos.map(({ group, items }) => {
           const tituloId = `nav-grupo-${group.id}`;
           // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra

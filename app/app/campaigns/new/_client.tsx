@@ -26,14 +26,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCriarCampanha, usePreviaDaAudiencia } from "@/hooks/campanhas/useCampanhas";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
 import { useT } from "@/hooks/i18n/useT";
-import {
-  useAgentesPublicados,
-  useEtapas,
-  useFunis,
-} from "@/hooks/campanhas/useDestinoDaCampanha";
+import { useAgentesPublicados, useEtapas, useFunis } from "@/hooks/campanhas/useDestinoDaCampanha";
 import { VARIAVEIS_DA_CAMPANHA, DESCRICAO_DA_VARIAVEL } from "@/lib/campanhas/renderizador";
 
-export function NovaCampanha() {
+export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
   const t = useT();
   const router = useRouter();
   const canais = useChannelSessions();
@@ -109,6 +105,7 @@ export function NovaCampanha() {
       pipeline_id: funil || null,
       stage_id: etapa || null,
       agent_id: agente || null,
+      ...(campanhaId ? { demand_campaign_id: campanhaId } : {}),
     });
     router.push(`/app/campaigns/${criada.id}`);
   }
@@ -232,7 +229,9 @@ export function NovaCampanha() {
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Público")}</h2>
         <p className="text-sm text-muted-foreground">
-          {t("Escolha pelo menos um critério — uma lista sem recorte ninguém confere antes de apertar.")}
+          {t(
+            "Escolha pelo menos um critério — uma lista sem recorte ninguém confere antes de apertar.",
+          )}
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -316,18 +315,14 @@ export function NovaCampanha() {
             type="button"
             variant="outline"
             disabled={!temCriterio || previa.isPending}
-            onClick={() =>
-              previa.mutate({ audience_filter: filtro, message_body: texto })
-            }
+            onClick={() => previa.mutate({ audience_filter: filtro, message_body: texto })}
           >
             {previa.isPending ? t("Contando…") : t("Ver quantas pessoas")}
           </Button>
           {previa.data && (
             <p className="text-sm">
               <strong>{previa.data.elegiveis}</strong> {t("podem receber")}
-              {previa.data.excluidos > 0
-                ? ` · ${previa.data.excluidos} ${t("ficam de fora")}`
-                : ""}
+              {previa.data.excluidos > 0 ? ` · ${previa.data.excluidos} ${t("ficam de fora")}` : ""}
             </p>
           )}
         </div>
@@ -385,7 +380,9 @@ export function NovaCampanha() {
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Quem responder")}</h2>
         <p className="text-sm text-muted-foreground">
-          {t("Em branco, tudo segue como hoje: o card nasce no funil do número e quem atende é o agente publicado nele.")}
+          {t(
+            "Em branco, tudo segue como hoje: o card nasce no funil do número e quem atende é o agente publicado nele.",
+          )}
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -443,7 +440,9 @@ export function NovaCampanha() {
             ))}
           </select>
           <p className="text-sm text-muted-foreground">
-            {t("Vale só para conversas que nascem desta campanha: quem já falava com você continua com quem o atendia. Quem aborda precisa saber dizer de onde veio o contato — essa resposta tem de estar no material do agente escolhido.")}
+            {t(
+              "Vale só para conversas que nascem desta campanha: quem já falava com você continua com quem o atendia. Quem aborda precisa saber dizer de onde veio o contato — essa resposta tem de estar no material do agente escolhido.",
+            )}
           </p>
         </div>
       </Card>
@@ -512,7 +511,16 @@ export function NovaCampanha() {
       </Card>
 
       <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={() => router.push("/app/campaigns")}>
+        <Button
+          variant="outline"
+          onClick={() =>
+            router.push(
+              campanhaId
+                ? `/app/marketing/geracao-de-demanda/campanhas/${campanhaId}?aba=disparos`
+                : "/app/campaigns",
+            )
+          }
+        >
           {t("Cancelar")}
         </Button>
         <Button disabled={!podeSalvar || criar.isPending} onClick={() => void salvar()}>

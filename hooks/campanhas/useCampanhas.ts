@@ -27,6 +27,8 @@ export interface CampanhaDaLista {
   cancelled_at: string | null;
   created_at: string;
   created_by: string | null;
+  /** A campanha de prospecção dona deste disparo; `null` = avulso. */
+  demand_campaign_id?: string | null;
 }
 
 export interface CampanhaDetalhada extends CampanhaDaLista {
@@ -93,13 +95,18 @@ const EM_MOVIMENTO: ReadonlySet<StatusDaCampanha> = new Set([
   "scheduled",
 ]);
 
-export function useCampanhas(filtros: { status?: string; limit?: number }) {
+export function useCampanhas(filtros: {
+  status?: string;
+  limit?: number;
+  demandCampaignId?: string;
+}) {
   return useInfiniteQuery({
     queryKey: ["campanhas", filtros],
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const qs = new URLSearchParams();
       if (filtros.status) qs.set("status", filtros.status);
+      if (filtros.demandCampaignId) qs.set("demand_campaign_id", filtros.demandCampaignId);
       qs.set("limit", String(filtros.limit ?? 30));
       if (pageParam) qs.set("cursor", pageParam);
       try {

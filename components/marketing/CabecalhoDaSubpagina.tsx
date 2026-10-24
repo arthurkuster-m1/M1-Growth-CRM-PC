@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -30,6 +31,7 @@ export function CabecalhoDaSubpagina({
 }) {
   const t = useT();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [nome, setNome] = useState(titulo);
   const [confirmando, setConfirmando] = useState(false);
 
@@ -45,6 +47,14 @@ export function CabecalhoDaSubpagina({
   async function apagar() {
     try {
       await apiClient.delete(`/api/v1/marketing/pages/${chave}`);
+      // A lista da página para onde se volta fica em cache: sem tirar a subpágina apagada dele, o
+      // cartão dela aparecia de novo até a lista recarregar sozinha (era preciso atualizar).
+      queryClient.setQueriesData<{ subpaginas: Array<{ key: string }>; pode_editar: boolean }>(
+        { queryKey: ["marketing-subpaginas"] },
+        (atual) =>
+          atual ? { ...atual, subpaginas: atual.subpaginas.filter((x) => x.key !== chave) } : atual,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["marketing-subpaginas"] });
       router.push(voltar.href);
     } catch (erro) {
       showApiError(erro);
