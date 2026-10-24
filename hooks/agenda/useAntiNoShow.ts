@@ -4,13 +4,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
+import { empacotarLembretes, type PassoDeLembrete } from "@/lib/agenda/lembretes";
 import type { EntradaDoFluxo, FluxoAntiNoShow } from "@/lib/agenda/anti-no-show";
 
 export interface TipoParaOFluxo {
   id: string;
   name: string;
-  /** Antecedência de cada lembrete do tipo, em minutos (do mais distante ao mais próximo). */
-  lembretes: number[];
+  lembrete_ligado: boolean;
+  /** Cada lembrete do tipo (antecedência em minutos + mensagem), do mais distante ao mais próximo. */
+  lembretes: PassoDeLembrete[];
 }
 
 interface Resposta {
@@ -48,5 +50,18 @@ export function useAntiNoShow() {
     salvar: (id: string, entrada: EntradaDoFluxo) =>
       tentar(() => apiClient.put(`${BASE}/${id}`, entrada)),
     apagar: (id: string) => tentar(() => apiClient.delete(`${BASE}/${id}`)),
+    /** Grava as mensagens dos lembretes de UM tipo (a mesma rota da tela de Tipos de atendimento). */
+    salvarMensagens: (tipoId: string, passos: PassoDeLembrete[]) => {
+      const emp = empacotarLembretes(passos);
+      return tentar(() =>
+        apiClient.patch("/api/v1/agenda/tipos", {
+          id: tipoId,
+          reminder_minutes_before: emp.principal,
+          reminder_extra_offsets_minutes: emp.extras,
+          reminder_body: emp.corpoPrincipal,
+          reminder_bodies: emp.corposExtras,
+        }),
+      );
+    },
   };
 }

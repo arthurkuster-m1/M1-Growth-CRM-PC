@@ -14,12 +14,16 @@ const FLUXO: {
   confirm_tag: string;
   no_show_tag: string;
   remarcar_days: number | null;
+  remarcar_attempts: number;
+  remarcar_interval_days: number;
 } = {
   id: "f1",
   call_hours_before: 3,
   confirm_tag: "Confirmou",
   no_show_tag: "No Show",
   remarcar_days: 1,
+  remarcar_attempts: 3,
+  remarcar_interval_days: 2,
 };
 
 function fake(opts: { fluxo: typeof FLUXO | null; tags?: string[]; lead?: string | null }) {
@@ -30,6 +34,10 @@ function fake(opts: { fluxo: typeof FLUXO | null; tags?: string[]; lead?: string
     c.eq = () => c;
     c.order = () => c;
     c.limit = () => c;
+    c.insert = (linha: Record<string, unknown>) => {
+      updates.push({ tabela: `${tabela}+`, patch: linha });
+      return c;
+    };
     c.update = (patch: Record<string, unknown>) => {
       updates.push({ tabela, patch });
       return c;
@@ -78,9 +86,21 @@ describe("aplicarFluxoAntiNoShow", () => {
     const f = fake({ fluxo: FLUXO, tags: ["No Show"], lead: LEAD });
     await aplicarFluxoAntiNoShow(f.admin, { ...base, evento: "faltou" });
     expect(f.updates[0]).toEqual({ tabela: "contacts", patch: { tags: ["No Show: 2x"] } });
+    // A remarcação anterior dá lugar à nova, que guarda tentativas e intervalo do fluxo.
     expect(f.updates[1]).toEqual({
+      tabela: "agenda_noshow_remarcacoes",
+      patch: { status: "cancelada" },
+    });
+    expect(f.updates[2]).toMatchObject({
+      tabela: "agenda_noshow_remarcacoes+",
+      patch: { lead_id: LEAD, max_attempts: 3, interval_days: 2 },
+    });
+    expect(f.updates[3]).toEqual({
       tabela: "crm_leads",
-      patch: { proxima_acao: "Remarcar a reunião (faltou)", proxima_acao_em: "2026-10-27" },
+      patch: {
+        proxima_acao: "Remarcar a reunião (faltou) — tentativa 1 de 3",
+        proxima_acao_em: "2026-10-27",
+      },
     });
   });
 
@@ -99,6 +119,8 @@ describe("fluxoSchema", () => {
       confirm_tag: "",
       no_show_tag: "",
       remarcar_days: 1,
+      remarcar_attempts: 3,
+      remarcar_interval_days: 2,
       event_type_ids: [],
     };
     expect(fluxoSchema.safeParse(ok).success).toBe(true);
