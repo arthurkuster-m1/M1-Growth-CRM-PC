@@ -43,7 +43,9 @@ import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { abasNaOrdem, reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
 
 import { CelulaDeCliente } from "./CelulaDeCliente";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
@@ -78,12 +80,14 @@ import {
   SITUACOES_DA_TAREFA,
   estaAtrasada,
   type EdicaoDaTarefa,
+  type NovaTarefa,
   type PrioridadeDaTarefa,
   type Tarefa,
 } from "@/lib/tarefas/tipos";
 import {
   ArrowsClockwise,
   ListChecks,
+  TreeStructure,
   CalendarBlank,
   CaretDown,
   DotsThree,
@@ -105,6 +109,8 @@ import { textoDaDescricao } from "@/lib/tarefas/blocos";
 import { PainelDaTarefa } from "./PainelDaTarefa";
 import { ModelosDeTarefa } from "./ModelosDeTarefa";
 import { PlanosDeTarefa } from "@/app/app/tasks/planos/_client";
+import { AplicarPlano } from "./AplicarPlano";
+import type { PlanoDeTarefas } from "@/lib/tarefas/plano";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { CalendarioDeTarefas } from "./CalendarioDeTarefas";
 import { LinhaDoTempo } from "./LinhaDoTempo";
@@ -231,6 +237,17 @@ export function TarefasMotorClient({
   const [configurando, setConfigurando] = useState(false);
   const [modelosAberto, setModelosAberto] = useState(false);
   const [planosAberto, setPlanosAberto] = useState(false);
+  // O plano que se está aplicando a um cliente (o popup de cliente e datas).
+  const [planoEmAplicacao, setPlanoEmAplicacao] = useState<PlanoDeTarefas | null>(null);
+  const planosQ = useQuery({
+    queryKey: ["settings", "task-plans"],
+    enabled: podeEditar,
+    staleTime: 30_000,
+    queryFn: async () =>
+      (await apiClient.get<{ data: { planos: PlanoDeTarefas[] } }>("/api/v1/settings/task-plans"))
+        .data.planos,
+  });
+  const planos = planosQ.data ?? [];
   const [modeloNovo, setModeloNovo] = useState(false);
   const [fixadas, setFixadas] = useState<{ chave: string; ids: ReadonlySet<string> }>({
     chave: "",
@@ -818,6 +835,25 @@ export function TarefasMotorClient({
     setModelosAberto(true);
   }
 
+  /** Aplica um plano: cria TODAS as tarefas dele, na ordem, para o cliente escolhido. */
+  async function criarDoPlano(novas: NovaTarefa[]) {
+    const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
+    const base = Math.max(maiorPosicao + 1, relogioEmSegundos());
+    let primeira: Tarefa | undefined;
+    for (const [i, nova] of novas.entries()) {
+      try {
+        const criada = await criarTarefa({ ...nova, position: base + i });
+        if (criada) {
+          garantirQueAparece(criada);
+          primeira ??= criada;
+        }
+      } catch {
+        // O hook já mostrou o erro da API; as próximas ainda são tentadas.
+      }
+    }
+    if (primeira) toast.success(`${novas.length} ${t("tarefas criadas pelo plano")}`);
+  }
+
   /** Cria a tarefa a partir de um modelo: início e prazo contados a partir de HOJE. */
   async function novaDoModelo(modelo: ModeloDeTarefa) {
     const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
@@ -1045,6 +1081,24 @@ export function TarefasMotorClient({
                       <DropdownMenuSeparator />
                     </>
                   ) : null}
+                  {planos.length > 0 ? (
+                    <>
+                      <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {t("Criar a partir de um plano")}
+                      </p>
+                      {planos.map((p) => (
+                        <DropdownMenuItem
+                          key={p.id}
+                          className="gap-2"
+                          onSelect={() => setPlanoEmAplicacao(p)}
+                        >
+                          <TreeStructure size={14} className="shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{p.nome}</span>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
                   <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(true)}>
                     <Plus size={14} aria-hidden />
                     {t("Novo modelo")}
@@ -1055,7 +1109,7 @@ export function TarefasMotorClient({
                   </DropdownMenuItem>
                   <DropdownMenuItem className="gap-2" onSelect={() => setPlanosAberto(true)}>
                     <ListChecks size={14} aria-hidden />
-                    {t("Planos de tarefa")}
+                    {t("Gerenciar planos de tarefa")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1322,7 +1376,23 @@ export function TarefasMotorClient({
         />
       ) : null}
 
-      <Dialog open={planosAberto} onOpenChange={setPlanosAberto}>
+      <AplicarPlano
+        plano={planoEmAplicacao}
+        fuso={fuso}
+        hoje={hojeNoFuso(agora, fuso)}
+        organizacao={nomeDaOrganizacao}
+        aoFechar={() => setPlanoEmAplicacao(null)}
+        aoCriar={criarDoPlano}
+      />
+
+      <Dialog
+        open={planosAberto}
+        onOpenChange={(a) => {
+          setPlanosAberto(a);
+          // Planos novos ou editados aparecem no menu na hora.
+          if (!a) void planosQ.refetch();
+        }}
+      >
         <DialogContent className="max-h-[90dvh] max-w-3xl gap-4 overflow-y-auto p-5 sm:rounded-2xl">
           <DialogTitle className="sr-only">{t("Planos de tarefa")}</DialogTitle>
           <DialogDescription className="sr-only">
