@@ -51237,3 +51237,10 @@ alter table public.prospecting_campaigns
 create index if not exists prospecting_campaigns_demand_idx
   on public.prospecting_campaigns (organization_id, demand_campaign_id) where demand_campaign_id is not null;
 notify pgrst, 'reload schema';
+
+-- ---- disparos dentro da campanha de prospecção (migration 0656) ----
+alter table public.campaigns
+  add column if not exists demand_campaign_id uuid references public.demand_campaigns(id) on delete set null;
+create index if not exists campaigns_demand_idx
+  on public.campaigns (organization_id, demand_campaign_id) where demand_campaign_id is not null;
+notify pgrst, 'reload schema';
