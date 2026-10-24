@@ -197,7 +197,7 @@ export function ConfigDaProspeccaoDialog({
             <div className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-                  {t("Quantos leads nesta sessão (0 = a lista toda)")}
+                  {t("Quantos leads nesta sessão e na Cadência de hoje (0 = a lista toda)")}
                   <input
                     type="number"
                     min={0}
