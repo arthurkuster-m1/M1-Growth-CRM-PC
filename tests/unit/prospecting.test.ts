@@ -36,6 +36,11 @@ describe("native prospecting", () => {
       searchSchema.safeParse({ name: "test", niche: "test", location: "SP", budget_usd: 11 })
         .success,
     ).toBe(false);
+    // O modo volume vai além (até 500 empresas e US$ 25), e tem teto próprio.
+    const volume = { name: "test", niche: "test", location: "SP", mode: "volume" as const };
+    expect(searchSchema.safeParse({ ...volume, limit: 300, budget_usd: 5 }).success).toBe(true);
+    expect(searchSchema.safeParse({ ...volume, limit: 501 }).success).toBe(false);
+    expect(searchSchema.safeParse({ ...volume, budget_usd: 26 }).success).toBe(false);
     expect(
       prospectingInputSchema.safeParse({
         action: "configure",

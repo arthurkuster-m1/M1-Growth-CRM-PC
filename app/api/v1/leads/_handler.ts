@@ -587,6 +587,8 @@ export async function createLeadHandler(
      * lote quem entrou por planilha. Não vem do corpo da requisição.
      */
     via_planilha?: boolean;
+    /** Interno (importação dentro de uma campanha): a campanha de demanda dona do negócio. */
+    demand_campaign_id?: string;
     /**
      * Interno (clone para outro funil, pela tela ou pela automação). O dono veio
      * do negócio de ORIGEM, não de quem pediu: se ele não pode mais ser dono
@@ -779,6 +781,7 @@ export async function createLeadHandler(
       tags: input.tags ?? [],
       source: input.source,
       source_metadata: input.source_metadata ?? {},
+      demand_campaign_id: input.demand_campaign_id ?? null,
       external_id: input.external_id ?? null,
       custom_fields: input.custom_fields ?? {},
       retomado_de_lead_id: input.retomado_de_lead_id ?? null,

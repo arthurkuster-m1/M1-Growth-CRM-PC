@@ -1,6 +1,8 @@
 "use client";
 
 import { ProspectingClient } from "@/app/app/prospecting/_client";
+import { ImportarLeadsDaCampanha } from "@/components/marketing/campanhas/ImportarLeadsDaCampanha";
+import { LotesDaCampanha } from "@/components/marketing/campanhas/LotesDaCampanha";
 import { ListaDeCampanhas } from "@/app/app/campaigns/_client";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
@@ -31,9 +33,12 @@ export function MotorDaCampanha({
       </p>
     );
   }
-  return motor === "extracao" ? (
-    <ProspectingClient campanhaId={campanhaId} />
-  ) : (
-    <ListaDeCampanhas campanhaId={campanhaId} />
+  if (motor === "disparos") return <ListaDeCampanhas campanhaId={campanhaId} />;
+  return (
+    <div className="grid gap-6">
+      <ProspectingClient campanhaId={campanhaId} />
+      <ImportarLeadsDaCampanha campanhaId={campanhaId} />
+      <LotesDaCampanha campanhaId={campanhaId} />
+    </div>
   );
 }
