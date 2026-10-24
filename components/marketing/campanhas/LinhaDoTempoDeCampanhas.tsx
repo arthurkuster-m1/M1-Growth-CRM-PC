@@ -19,11 +19,12 @@ import {
   textoDoEstado,
 } from "@/components/marketing/campanhas/rotulos";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 import { BASE_DA_COR } from "@/lib/motor/cores";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
-import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
+import { STATUS_DA_CAMPANHA, type CampanhaDeDemanda } from "@/lib/marketing/campanhas";
 import { CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +81,13 @@ export interface DatasDaCampanha {
   continuous: boolean;
 }
 
-const COLUNA_DO_NOME = 340;
+/**
+ * A coluna da campanha estica para caber a linha de números por inteiro (sem quebrar): parte do
+ * piso e cresce com o texto mais longo (~6 px por caractere nesse tamanho), até o teto.
+ */
+const COLUNA_MINIMA = 340;
+const COLUNA_MAXIMA = 680;
+const PX_POR_CARACTERE = 6.2;
 /** "Hoje" cai na 7ª coluna: 6 dias para trás e o resto para a frente. */
 const DIAS_ANTES_DE_HOJE = 6;
 const DURACAO_PADRAO = 14;
@@ -107,6 +114,7 @@ export function LinhaDoTempoDeCampanhas({
   escala = "semana",
   aoMudar,
   aoDatas,
+  aoStatus,
 }: {
   campanhas: readonly CampanhaDeDemanda[];
   base: string;
@@ -119,12 +127,26 @@ export function LinhaDoTempoDeCampanhas({
   aoMudar?: (config: { dias: number; escala: EscalaDaLinha }) => void;
   /** Grava as datas de uma campanha (solta na linha, movida ou esticada); sem isso, não dá para arrastar. */
   aoDatas?: (id: string, datas: DatasDaCampanha) => void;
+  /** Grava o status de uma campanha; sem isso, o status só se vê. */
+  aoStatus?: (id: string, status: CampanhaDeDemanda["status"]) => void;
 }) {
   const t = useT();
   const tag = useTagDeIdioma();
   const hoje = chaveDoDia(new Date(), fuso);
   const rolagem = useRef<HTMLDivElement | null>(null);
   const [largura, setLargura] = useState(0);
+  const COLUNA_DO_NOME = useMemo(() => {
+    const maior = campanhas.reduce((m, c) => Math.max(m, textoDoEstado(t, c.estado).length), 0);
+    return Math.min(
+      COLUNA_MAXIMA,
+      Math.max(COLUNA_MINIMA, Math.ceil(maior * PX_POR_CARACTERE) + 56),
+    );
+  }, [campanhas, t]);
+  const opcoesDeStatus = STATUS_DA_CAMPANHA.map((s) => ({
+    id: s,
+    rotulo: rotuloDoStatus(t, s),
+    cor: COR_DO_STATUS[s],
+  }));
 
   // A largura de cada dia vem do "Dias na tela": N dias ocupam a parte visível da linha.
   useLayoutEffect(() => {
@@ -466,23 +488,40 @@ export function LinhaDoTempoDeCampanhas({
                   style={{
                     boxShadow: `inset 4px 0 0 ${BASE_DA_COR[COR_DO_CANAL[c.channel]]}, 6px 0 8px -6px rgba(0,0,0,0.18)`,
                   }}
-                  className="sticky left-0 z-10 min-w-0 border-r-2 border-border bg-card py-2 pr-3 pl-4"
+                  className="group sticky left-0 z-10 min-w-0 border-r-2 border-border bg-card py-2 pr-3 pl-4 transition-colors hover:bg-secondary"
                 >
+                  {/* O bloco INTEIRO leva à campanha: o link cobre a célula, e só o status (que se
+                      edita aqui) fica por cima, clicável por conta própria. */}
                   <Link
                     href={`${base}/${c.id}`}
-                    className="block truncate text-sm font-medium hover:text-primary hover:underline"
-                  >
-                    {c.name}
-                  </Link>
-                  <Etiqueta cor={COR_DO_STATUS[c.status]} ponto className="mt-0.5 text-[11px]">
-                    {rotuloDoStatus(t, c.status)}
-                  </Etiqueta>
-                  <p
-                    className="text-[11px] leading-snug break-words text-muted-foreground tabular-nums"
-                    title={textoDoEstado(t, c.estado)}
-                  >
-                    {textoDoEstado(t, c.estado)}
-                  </p>
+                    aria-label={c.name}
+                    className="absolute inset-0 z-0 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-hidden focus-visible:ring-inset"
+                  />
+                  <div className="pointer-events-none relative z-[1] min-w-0">
+                    <p className="truncate text-sm font-medium group-hover:text-primary">
+                      {c.name}
+                    </p>
+                    <div className="pointer-events-auto mt-0.5 w-fit">
+                      <SeletorDeOpcao
+                        compacto
+                        opcoes={opcoesDeStatus}
+                        valorId={c.status}
+                        podeEditar={Boolean(aoStatus)}
+                        rotulo={t("Status da campanha")}
+                        aoEscolher={(id) => aoStatus?.(c.id, id as CampanhaDeDemanda["status"])}
+                      >
+                        <Etiqueta cor={COR_DO_STATUS[c.status]} ponto className="text-[11px]">
+                          {rotuloDoStatus(t, c.status)}
+                        </Etiqueta>
+                      </SeletorDeOpcao>
+                    </div>
+                    <p
+                      className="text-[11px] leading-snug whitespace-nowrap text-muted-foreground tabular-nums"
+                      title={textoDoEstado(t, c.estado)}
+                    >
+                      {textoDoEstado(t, c.estado)}
+                    </p>
+                  </div>
                 </div>
                 {idxHoje >= 0 && idxHoje < total ? (
                   <span

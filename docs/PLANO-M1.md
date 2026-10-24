@@ -235,6 +235,18 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 9. Dashboards alinhados ao modelo novo (atribuição por funil, Prospecção Ativa, compromissos da Agenda).
 10. Hotmart; depois financeiro e CAC real (D5). D6 metas e alertas; D4 Google Ads.
 11. Último passo: finalizar o app, publicar na VPS e só então tornar o repositório privado.
+12. **Prospecção — o que ficou para depois (24/10/2026):**
+    - **Enriquecimento com CNPJ:** achar o CNPJ pelo site da empresa e trazer porte e sócios de bases
+      públicas (depende de uma fonte externa de dados).
+    - **Disparos dentro da campanha:** hoje a aba lista só os da campanha e cria dentro dela, mas os
+      lotes de leads ainda não se somam (cada disparo escolhe o próprio público).
+    - **Duplicidade mais esperta** (mesmo site, nome com endereço): descartada por ora — o lugar e o
+      telefone já barram, e site em comum derrubaria filiais da mesma rede.
+    - **"Só celular" na triagem** vale só nas campanhas novas; as antigas seguem aceitando fixo.
+    - Custo das extrações em reais (com IOF) no registro da campanha (hoje em dólar).
+    - Provedor extra (Google Places oficial): só depois de conferir os termos de uso dos dados.
+    - Plano de tarefa como "tarefa modelo": hoje o popup pede cliente e datas; pedir mais campos
+      (responsável diferente, observação) se fizer falta.
 Rotinas desligadas de propósito (~25): disparam mensagens; ligar por pacote, só a pedido.
 
 ## 2. PEQUENOS AJUSTES PENDENTES
