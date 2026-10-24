@@ -85,6 +85,20 @@ describe("agregarProspeccao", () => {
     expect(d.custoPorAbordagem).toBeCloseTo(46.67, 1);
     expect(d.taxaDeResposta).toBe(50);
   });
+  it("no-show: conta quem faltou e a taxa é sobre as reuniões agendadas", () => {
+    const comFalta: BaseDaProspeccao = {
+      ...base,
+      reunioes: [
+        { dia: "2026-10-04", leadId: "a", tipo: "agendada" },
+        { dia: "2026-10-04", leadId: "b", tipo: "agendada" },
+        { dia: "2026-10-05", leadId: "b", tipo: "faltou" },
+      ],
+    };
+    const t = agregarProspeccao(comFalta, recorte);
+    expect(t).toMatchObject({ reunioesAgendadas: 2, reunioesFeitas: 0, noShows: 1 });
+    expect(derivarProspeccao(t).taxaDeNoShow).toBe(50);
+    expect(derivarProspeccao(agregarProspeccao(base, recorte)).taxaDeNoShow).toBe(0);
+  });
   it("recorta por tipo sem inventar custo", () => {
     const t = agregarProspeccao(base, recorte, { tipo: "ligacao" });
     expect(t).toMatchObject({ abordagens: 2, leadsAbordados: 1, investimento: 0, leads: 0 });

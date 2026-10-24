@@ -31,10 +31,11 @@ describe("opcoesDeDestinoPosReuniao", () => {
     ]);
   });
 
-  it("a prospecção ativa oferece os mesmos três", () => {
+  it("a prospecção ativa oferece os mesmos três (a perda se chama Perdido)", () => {
     const etapas = etapasDe("prospeccao-ativa");
     const opcoes = opcoesDeDestinoPosReuniao(etapas, idDe(etapas, "Reunião realizada"));
     expect(opcoes.map((o) => o.tipo)).toEqual(["negociacao", "desqualificado", "nao_comprou"]);
+    expect(opcoes.find((o) => o.tipo === "nao_comprou")?.nome).toBe("Perdido");
   });
 
   it("funil sem etapa de negociação não oferece 'Em negociação'", () => {

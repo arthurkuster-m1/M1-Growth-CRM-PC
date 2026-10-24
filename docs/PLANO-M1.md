@@ -247,6 +247,8 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
     - Provedor extra (Google Places oficial): só depois de conferir os termos de uso dos dados.
     - Plano de tarefa como "tarefa modelo": hoje o popup pede cliente e datas; pedir mais campos
       (responsável diferente, observação) se fizer falta.
+    - **Cadência da Prospecção Ativa e anti no-show:** plano em fases em `docs/PLANO-CADENCIA.md`
+      (fase 1 concluída; cadência, lista "Hoje" e anti no-show seguem).
 Rotinas desligadas de propósito (~25): disparam mensagens; ligar por pacote, só a pedido.
 
 ## 2. PEQUENOS AJUSTES PENDENTES

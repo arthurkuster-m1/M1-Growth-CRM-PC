@@ -56,7 +56,7 @@ export interface Interacao {
 export interface ReuniaoDoLead {
   dia: string;
   leadId: string;
-  tipo: "agendada" | "feita";
+  tipo: "agendada" | "feita" | "faltou";
 }
 export interface LeadCaptado {
   id: string;
@@ -109,6 +109,8 @@ export interface BrutoDeProspeccao {
   decisores: number;
   reunioesAgendadas: number;
   reunioesFeitas: number;
+  /** Compromissos em que o lead faltou. */
+  noShows: number;
   vendas: number;
   investimento: number;
   recebido: number;
@@ -122,6 +124,7 @@ export const BRUTO_VAZIO: BrutoDeProspeccao = {
   decisores: 0,
   reunioesAgendadas: 0,
   reunioesFeitas: 0,
+  noShows: 0,
   vendas: 0,
   investimento: 0,
   recebido: 0,
@@ -173,11 +176,14 @@ export function agregarProspeccao(
   }
   const agendadas = new Set<string>();
   const feitas = new Set<string>();
+  const faltaram = new Set<string>();
   const semFiltroDeContato = filtro.tipo === undefined && filtro.abordagemId === undefined;
   if (semFiltroDeContato) {
     for (const r of base.reunioes) {
       if (!okDia(r.dia) || !okLead(r.leadId)) continue;
-      (r.tipo === "agendada" ? agendadas : feitas).add(`${r.leadId}|${r.dia}`);
+      (r.tipo === "agendada" ? agendadas : r.tipo === "faltou" ? faltaram : feitas).add(
+        `${r.leadId}|${r.dia}`,
+      );
     }
   }
   const leads = new Set<string>();
@@ -214,6 +220,7 @@ export function agregarProspeccao(
     decisores: decisores.size,
     reunioesAgendadas: agendadas.size,
     reunioesFeitas: feitas.size,
+    noShows: faltaram.size,
     vendas: vendas.size,
     investimento: Math.round(investimento * 100) / 100,
     recebido: Math.round(recebido * 100) / 100,
@@ -237,6 +244,8 @@ export interface DerivadasDeProspeccao extends BrutoDeProspeccao {
   custoPorReuniaoFeita: number | null;
   /** Reuniões feitas ÷ agendadas, em %. */
   taxaDeComparecimento: number | null;
+  /** No-shows ÷ reuniões agendadas, em %. */
+  taxaDeNoShow: number | null;
   cac: number | null;
   /** Vendas ÷ reuniões feitas, em %. */
   taxaDeConversao: number | null;
@@ -262,6 +271,7 @@ export function derivarProspeccao(b: BrutoDeProspeccao, semCusto = false): Deriv
     taxaDeAgendamento: razao(b.reunioesAgendadas * 100, b.decisores),
     custoPorReuniaoFeita: c(razao(b.investimento, b.reunioesFeitas)),
     taxaDeComparecimento: razao(b.reunioesFeitas * 100, b.reunioesAgendadas),
+    taxaDeNoShow: razao(b.noShows * 100, b.reunioesAgendadas),
     cac: c(razao(b.investimento, b.vendas)),
     taxaDeConversao: razao(b.vendas * 100, b.reunioesFeitas),
     lucro: b.recebido - (semCusto ? 0 : b.investimento),
