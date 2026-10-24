@@ -80,6 +80,14 @@ export const prospectingInputSchema = z.discriminatedUnion("action", [
   z
     .object({ action: z.literal("start"), id: z.string().uuid(), config: campaignConfigSchema })
     .strict(),
+  // Roda de novo uma extração antiga (mesmo termo, cidade, limite e teto); `request_id` é do pedido novo.
+  z
+    .object({
+      action: z.literal("repeat_search"),
+      id: z.string().uuid(),
+      request_id: z.string().uuid(),
+    })
+    .strict(),
   // Pergunta ao WhatsApp, pela conexão escolhida, se o número de cada empresa existe.
   z
     .object({

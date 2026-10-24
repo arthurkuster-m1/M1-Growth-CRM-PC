@@ -12,6 +12,7 @@ import { ProspectingError } from "@/lib/prospecting/provider";
 import { combinacoes, planoDoLote } from "@/lib/prospecting/lote";
 import { idDaBuscaDoLote } from "@/lib/prospecting/lote-id";
 import { prospectingInputSchema, searchSchema } from "@/lib/prospecting/schema";
+import { buscaParaRepetir } from "@/lib/prospecting/repetir";
 import { verificarWhatsappDaCampanha } from "@/lib/prospecting/verificar-whatsapp";
 import {
   activateCampaign,
@@ -214,7 +215,29 @@ export async function POST(req: NextRequest) {
       );
     } else if (body.action === "start")
       result = await activateCampaign(pool, admin, org, body.id, body.config);
-    else if (body.action === "verify_whatsapp") {
+    else if (body.action === "repeat_search") {
+      const original = (
+        await pool.query<{ search: unknown; demand_campaign_id: string | null }>(
+          "select search, demand_campaign_id from prospecting_campaigns where organization_id=$1 and id=$2",
+          [org, body.id],
+        )
+      ).rows[0];
+      if (!original) throw new ProspectingError("Extração não encontrada.", 404);
+      const busca = buscaParaRepetir(original.search);
+      if (!busca)
+        throw new ProspectingError(
+          "Esta extração não pode mais ser repetida como está. Faça uma busca nova.",
+          422,
+        );
+      result = await createSearch(
+        pool,
+        admin,
+        org,
+        body.request_id,
+        busca,
+        original.demand_campaign_id,
+      );
+    } else if (body.action === "verify_whatsapp") {
       const resumo = await verificarWhatsappDaCampanha(
         pool,
         org,

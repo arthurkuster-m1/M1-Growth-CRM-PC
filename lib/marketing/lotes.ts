@@ -11,6 +11,8 @@ export interface LoteDaCampanha {
   limite: number | null;
   /** Extração: quanto o provedor cobrou, em dólar (nulo enquanto roda). */
   custo_usd: number | null;
+  /** Extração: o teto de gasto que a busca tinha, em dólar. */
+  teto_usd: number | null;
   /** Extração: o estado da busca. */
   estado: string | null;
   /** Extração: `volume` (máximo de empresas, sem enriquecer) ou `completo`. */
