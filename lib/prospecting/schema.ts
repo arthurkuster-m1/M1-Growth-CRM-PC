@@ -60,6 +60,20 @@ export const prospectingInputSchema = z.discriminatedUnion("action", [
       demand_campaign_id: z.string().uuid().optional(),
     })
     .strict(),
+  // Uma busca por combinação de termo × local; o teto total se divide entre elas (`lote.ts`).
+  z
+    .object({
+      action: z.literal("search_batch"),
+      request_id: z.string().uuid(),
+      demand_campaign_id: z.string().uuid().optional(),
+      termos: z.array(z.string().trim().min(2).max(120)).min(1).max(20),
+      locais: z.array(z.string().trim().min(2).max(160)).min(1).max(20),
+      mode: z.enum(["completo", "volume"]).default("completo"),
+      limit: z.number().int().min(1).max(500).default(20),
+      budget_total_usd: z.number().min(0.5).max(500),
+      enrich: z.boolean().default(true),
+    })
+    .strict(),
   z
     .object({ action: z.literal("start"), id: z.string().uuid(), config: campaignConfigSchema })
     .strict(),

@@ -52,6 +52,18 @@ describe("native prospecting", () => {
       false,
     );
   });
+  it("aceita a busca em lote, com termos × locais, e recusa o que não faz sentido", () => {
+    const lote = {
+      action: "search_batch" as const,
+      request_id: "11111111-1111-4111-8111-111111111111",
+      termos: ["clínicas", "dentistas"],
+      locais: ["Batel", "Centro"],
+      budget_total_usd: 10,
+    };
+    expect(prospectingInputSchema.safeParse(lote).success).toBe(true);
+    expect(prospectingInputSchema.safeParse({ ...lote, termos: [] }).success).toBe(false);
+    expect(prospectingInputSchema.safeParse({ ...lote, organization_id: "x" }).success).toBe(false);
+  });
   it("sends the cost ceiling to the provider, with credentials only in the header", async () => {
     const fetch = vi
       .fn()

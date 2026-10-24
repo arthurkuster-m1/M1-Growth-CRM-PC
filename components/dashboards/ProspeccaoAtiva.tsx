@@ -29,12 +29,14 @@ import {
   ROTULO_DO_TIPO,
   TIPOS_DE_CONTATO,
   agregarProspeccao,
+  agruparExtracoes,
   derivarProspeccao,
   diasDoRecorte,
   recorteAnterior,
   type BaseDaProspeccao,
   type BrutoDeProspeccao,
   type DerivadasDeProspeccao,
+  type ExtracaoDoPainel,
 } from "@/lib/dashboards/prospeccao";
 
 /** O que a rota `/api/v1/dashboards/prospeccao` devolve. */
@@ -44,12 +46,14 @@ export interface DadosDeProspeccao extends BaseDaProspeccao {
   abordagens: Array<{ id: string; nome: string; meio: string; campanha: string }>;
   catalogo: Array<{ id: string; nome: string }>;
   extracoes: Array<{ id: string; nome: string; dia: string; usd: number; brl: number | null }>;
+  /** Todas as extrações e importações de onde vêm os leads do período. */
+  lotes: ExtracaoDoPainel[];
   cambio: { taxa: number | null; origem: "automatica" | "manual" | "indisponivel"; iofPct: number };
   /** Abordagens registradas sem resultado (históricas): contam como sem contato. */
   semResultado: number;
 }
 
-type Visao = "geral" | "fontes" | "abordagens" | "tipos";
+type Visao = "geral" | "fontes" | "extracoes" | "abordagens" | "tipos";
 type Coluna = ColunaDeMetrica<DerivadasDeProspeccao>;
 
 const m = (
@@ -163,6 +167,32 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
     textos: { nome: f },
     bruto: agregarProspeccao(base, recorte, { fonte: f }),
   }));
+  // Por extração, termo e cidade: cada grupo soma só os leads e os custos das extrações dele.
+  const lotes = dados.lotes ?? [];
+  const nomeDoModo = (e: ExtracaoDoPainel) =>
+    e.tipo === "importacao" ? t("Importação") : e.modo === "volume" ? t("Volume") : t("Completa");
+  const linhasDeExtracoes: LinhaDeMetricas<BrutoDeProspeccao>[] = agruparExtracoes(
+    lotes,
+    "extracao",
+  ).map((g) => {
+    const e = lotes.find((x) => x.id === [...g.ids][0])!;
+    return {
+      chave: g.chave,
+      textos: {
+        nome: g.nome,
+        tipo: nomeDoModo(e),
+        termo: e.termo ?? "",
+        cidade: e.cidade ?? "",
+      },
+      bruto: agregarProspeccao(base, recorte, { extracoes: g.ids }),
+    };
+  });
+  const linhasPor = (por: "termo" | "cidade"): LinhaDeMetricas<BrutoDeProspeccao>[] =>
+    agruparExtracoes(lotes, por).map((g) => ({
+      chave: g.chave,
+      textos: { nome: g.nome },
+      bruto: agregarProspeccao(base, recorte, { extracoes: g.ids }),
+    }));
   const linhasDeAbordagens: LinhaDeMetricas<BrutoDeProspeccao>[] = [
     ...dados.abordagens.map((x) => ({
       chave: x.id,
@@ -199,6 +229,7 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
         opcoes={[
           { id: "geral", rotulo: t("Visão geral") },
           { id: "fontes", rotulo: t("Por fonte de lead") },
+          { id: "extracoes", rotulo: t("Por extração") },
           { id: "abordagens", rotulo: t("Por abordagem") },
           { id: "tipos", rotulo: t("Por tipo de contato") },
         ]}
@@ -437,6 +468,46 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
             cambio={dados.cambio}
           />
         </Painel>
+      ) : null}
+
+      {visao === "extracoes" ? (
+        <>
+          <Painel
+            titulo={t("Por extração")}
+            nota={t(
+              "Cada extração ou importação da campanha, com os leads que trouxe, o custo e o que virou venda",
+            )}
+          >
+            <TabelaDeMetricas
+              id="prospeccao-extracoes"
+              regra={regraComTotal()}
+              colunas={[
+                texto("nome", t("Extração")),
+                texto("tipo", t("Tipo")),
+                texto("termo", t("Termo")),
+                texto("cidade", t("Cidade")),
+                ...COLUNAS_DA_FONTE,
+              ]}
+              linhas={linhasDeExtracoes}
+            />
+          </Painel>
+          <Painel titulo={t("Por termo")} nota={t("Qual segmento buscado rende mais")}>
+            <TabelaDeMetricas
+              id="prospeccao-termos"
+              regra={regraComTotal()}
+              colunas={[texto("nome", t("Termo")), ...COLUNAS_DA_FONTE]}
+              linhas={linhasPor("termo")}
+            />
+          </Painel>
+          <Painel titulo={t("Por cidade")} nota={t("Qual cidade ou bairro rende mais")}>
+            <TabelaDeMetricas
+              id="prospeccao-cidades"
+              regra={regraComTotal()}
+              colunas={[texto("nome", t("Cidade")), ...COLUNAS_DA_FONTE]}
+              linhas={linhasPor("cidade")}
+            />
+          </Painel>
+        </>
       ) : null}
 
       {visao === "abordagens" ? (

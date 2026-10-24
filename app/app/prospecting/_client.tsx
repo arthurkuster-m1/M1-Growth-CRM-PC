@@ -19,6 +19,9 @@ import {
   type CampaignConfig,
   type Prospect,
 } from "@/lib/prospecting/schema";
+import { FiltrosDeQualidade } from "./_filtros-de-qualidade";
+import { tipoDoTelefone } from "@/lib/prospecting/qualidade";
+import { linhasDoCampo, planoDoLote } from "@/lib/prospecting/lote";
 import { ProspectingAgentBuilder, type CreatedProspectingAgent } from "./_create-agent";
 import type { ProspectingAgentSetupInput } from "@/lib/prospecting/agent-setup-schema";
 
@@ -118,6 +121,11 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
   const [modo, setModo] = useState<"completo" | "volume">("completo");
   const [limit, setLimit] = useState(20);
   const [budget, setBudget] = useState(1);
+  // Busca em lote: uma lista de termos × uma lista de locais, com o teto TOTAL dividido entre elas.
+  const [emLote, setEmLote] = useState(false);
+  const [termosTexto, setTermosTexto] = useState("");
+  const [locaisTexto, setLocaisTexto] = useState("");
+  const [tetoDoLote, setTetoDoLote] = useState(10);
   const [enrich, setEnrich] = useState(true);
   const [campaignDrafts, setCampaignDrafts] = useState<Record<string, CampaignConfig>>({});
   const [manualCampaigns, setManualCampaigns] = useState<Record<string, boolean>>({});
@@ -278,6 +286,19 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
       t("Seleção da fila atualizada."),
     );
   }
+  const termosDoLote = linhasDoCampo(termosTexto);
+  const locaisDoLote = linhasDoCampo(locaisTexto);
+  const planoDoLoteAtual = planoDoLote({
+    termos: termosDoLote,
+    locais: locaisDoLote,
+    limitePorBusca: limit,
+    tetoTotalUsd: tetoDoLote,
+  });
+  /** Aplica o filtro de qualidade: tira da fila quem não atende e põe de volta quem atende. */
+  async function aplicarFiltro(marcar: string[], desmarcar: string[]) {
+    if (desmarcar.length > 0) await setSelection(desmarcar, false);
+    if (marcar.length > 0) await setSelection(marcar, true);
+  }
   async function excluirDesmarcadas() {
     if (!campaign) return;
     const excluiu = await perform(
@@ -361,6 +382,41 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
               className="mt-4 space-y-4"
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (emLote) {
+                  if (planoDoLoteAtual.motivoInvalido) {
+                    setError(t(planoDoLoteAtual.motivoInvalido));
+                    return;
+                  }
+                  const impressao = JSON.stringify([
+                    termosDoLote,
+                    locaisDoLote,
+                    limit,
+                    tetoDoLote,
+                    enrich,
+                    modo,
+                  ]);
+                  if (searchAttempt.current?.fingerprint !== impressao)
+                    searchAttempt.current = { fingerprint: impressao, id: randomId() };
+                  const feito = await perform(
+                    {
+                      action: "search_batch",
+                      request_id: searchAttempt.current.id,
+                      ...(campanhaId ? { demand_campaign_id: campanhaId } : {}),
+                      termos: termosDoLote,
+                      locais: locaisDoLote,
+                      mode: modo,
+                      limit,
+                      budget_total_usd: tetoDoLote,
+                      enrich: enrich && modo !== "volume",
+                    },
+                    t("Buscas registradas. Acompanhe o estado de cada uma nesta tela."),
+                  );
+                  if (feito) {
+                    setSelected(null);
+                    searchAttempt.current = null;
+                  }
+                  return;
+                }
                 const fingerprint = JSON.stringify([niche, location, limit, budget, enrich, modo]);
                 if (searchAttempt.current?.fingerprint !== fingerprint)
                   searchAttempt.current = { fingerprint, id: randomId() };
@@ -387,32 +443,91 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                 }
               }}
             >
-              <div>
-                <Label htmlFor="prospecting-niche">{t("Público ou segmento")}</Label>
-                <Input
-                  id="prospecting-niche"
-                  value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
-                  placeholder={t("Ex.: clínicas de estética")}
-                  minLength={2}
-                  maxLength={120}
-                  required
-                  className="mt-1"
-                />
+              <div
+                role="radiogroup"
+                aria-label={t("Quantas buscas")}
+                className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1"
+              >
+                {(
+                  [
+                    [false, t("Uma busca")],
+                    [true, t("Em lote")],
+                  ] as const
+                ).map(([valor, rotulo]) => (
+                  <button
+                    key={String(valor)}
+                    type="button"
+                    role="radio"
+                    aria-checked={emLote === valor}
+                    onClick={() => setEmLote(valor)}
+                    className={cn(
+                      "h-9 rounded-full text-sm font-medium transition-colors",
+                      emLote === valor
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {rotulo}
+                  </button>
+                ))}
               </div>
-              <div>
-                <Label htmlFor="prospecting-location">{t("Cidade ou região")}</Label>
-                <Input
-                  id="prospecting-location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder={t("Ex.: São Paulo, SP")}
-                  minLength={2}
-                  maxLength={160}
-                  required
-                  className="mt-1"
-                />
-              </div>
+              {emLote ? (
+                <>
+                  <div>
+                    <Label htmlFor="prospecting-termos">{t("Termos (um por linha)")}</Label>
+                    <Textarea
+                      id="prospecting-termos"
+                      value={termosTexto}
+                      onChange={(e) => setTermosTexto(e.target.value)}
+                      placeholder={"clínicas de estética\nesteticistas"}
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prospecting-locais">
+                      {t("Bairros ou cidades (um por linha)")}
+                    </Label>
+                    <Textarea
+                      id="prospecting-locais"
+                      value={locaisTexto}
+                      onChange={(e) => setLocaisTexto(e.target.value)}
+                      placeholder={"Batel, Curitiba, PR\nÁgua Verde, Curitiba, PR"}
+                      rows={4}
+                      className="mt-1"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <Label htmlFor="prospecting-niche">{t("Público ou segmento")}</Label>
+                    <Input
+                      id="prospecting-niche"
+                      value={niche}
+                      onChange={(e) => setNiche(e.target.value)}
+                      placeholder={t("Ex.: clínicas de estética")}
+                      minLength={2}
+                      maxLength={120}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prospecting-location">{t("Cidade ou região")}</Label>
+                    <Input
+                      id="prospecting-location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder={t("Ex.: São Paulo, SP")}
+                      minLength={2}
+                      maxLength={160}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                </>
+              )}
               <div
                 role="radiogroup"
                 aria-label={t("Tipo de extração")}
@@ -455,7 +570,9 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="prospecting-limit">{t("Até quantas empresas")}</Label>
+                  <Label htmlFor="prospecting-limit">
+                    {emLote ? t("Empresas por busca") : t("Até quantas empresas")}
+                  </Label>
                   <Input
                     id="prospecting-limit"
                     type="number"
@@ -468,20 +585,41 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="prospecting-budget">{t("Teto da busca (US$)")}</Label>
+                  <Label htmlFor="prospecting-budget">
+                    {emLote ? t("Teto total do lote (US$)") : t("Teto da busca (US$)")}
+                  </Label>
                   <Input
                     id="prospecting-budget"
                     type="number"
                     min={0.5}
-                    max={modo === "volume" ? 25 : 10}
+                    max={emLote ? 500 : modo === "volume" ? 25 : 10}
                     step={0.5}
-                    value={budget}
-                    onChange={(e) => setBudget(Number(e.target.value))}
+                    value={emLote ? tetoDoLote : budget}
+                    onChange={(e) =>
+                      emLote
+                        ? setTetoDoLote(Number(e.target.value))
+                        : setBudget(Number(e.target.value))
+                    }
                     required
                     className="mt-1"
                   />
                 </div>
               </div>
+              {emLote ? (
+                <p
+                  role="status"
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-xs",
+                    planoDoLoteAtual.motivoInvalido
+                      ? "bg-error-bg text-error-fg"
+                      : "bg-secondary/60 text-muted-foreground",
+                  )}
+                >
+                  {planoDoLoteAtual.motivoInvalido
+                    ? t(planoDoLoteAtual.motivoInvalido)
+                    : `${planoDoLoteAtual.buscas} ${t("buscas")} (${termosDoLote.length} ${t("termos")} × ${locaisDoLote.length} ${t("locais")}) · ${t("até")} ${planoDoLoteAtual.empresasNoMaximo} ${t("empresas")} · ${t("gasto máximo")} US$ ${planoDoLoteAtual.gastoNoMaximoUsd.toFixed(2).replace(".", ",")} (US$ ${planoDoLoteAtual.tetoPorBuscaUsd.toFixed(2).replace(".", ",")} ${t("por busca")}). ${t("Cada busca para sozinha ao atingir a sua parte do teto.")}`}
+                </p>
+              ) : null}
               {modo === "volume" ? null : (
                 <label className="flex items-start gap-2 text-sm">
                   <CaixaRedonda
@@ -1164,6 +1302,13 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                       )}
                     </div>
                   </div>
+                  {canSelect && (
+                    <FiltrosDeQualidade
+                      linhas={elegiveis}
+                      ocupado={busy}
+                      aoAplicar={aplicarFiltro}
+                    />
+                  )}
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
@@ -1212,7 +1357,16 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                               <p className="mt-1 text-xs text-muted-foreground">
                                 {c.data.category}
                               </p>
-                              <p className="mt-1 text-xs">{c.data.phone ?? t("Sem telefone")}</p>
+                              <p className="mt-1 text-xs">
+                                {c.data.phone ?? t("Sem telefone")}
+                                {tipoDoTelefone(c.data.phone) ? (
+                                  <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
+                                    {tipoDoTelefone(c.data.phone) === "celular"
+                                      ? t("Celular")
+                                      : t("Fixo")}
+                                  </span>
+                                ) : null}
+                              </p>
                             </td>
                             <td className="max-w-64 p-4 align-top">
                               <p className="text-xs text-muted-foreground">{c.data.address}</p>

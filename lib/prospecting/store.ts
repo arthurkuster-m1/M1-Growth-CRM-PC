@@ -332,7 +332,9 @@ export async function criarPegadaDoCandidato(
   db: pg.PoolClient,
   admin: SupabaseClient,
   org: string,
-  c: Pick<Campaign, "id" | "name" | "demand_campaign_id">,
+  c: Pick<Campaign, "id" | "name" | "demand_campaign_id"> & {
+    search?: { niche?: string; location?: string; mode?: string } | null;
+  },
   config: CampaignConfig,
   p: Candidate,
   contatoDaCampanha: string | null,
@@ -397,9 +399,18 @@ export async function criarPegadaDoCandidato(
       `update crm_leads
           set demand_campaign_id = coalesce($3::uuid, demand_campaign_id),
               source_metadata = coalesce(source_metadata, '{}'::jsonb)
-                || jsonb_build_object('extracao', jsonb_build_object('id', $4::text, 'nome', $5::text))
+                || jsonb_build_object('extracao', jsonb_build_object('id', $4::text, 'nome', $5::text, 'metodo', 'apify', 'termo', $6::text, 'cidade', $7::text, 'modo', $8::text))
         where organization_id = $1 and id = $2`,
-      [org, leadId, c.demand_campaign_id ?? null, c.id, c.name],
+      [
+        org,
+        leadId,
+        c.demand_campaign_id ?? null,
+        c.id,
+        c.name,
+        c.search?.niche ?? null,
+        c.search?.location ?? null,
+        c.search?.mode === "volume" ? "volume" : "completo",
+      ],
     );
   }
   await db.query(
@@ -431,7 +442,9 @@ export async function criarPegadaDoCandidato(
 export async function prepararCandidatoNoEnvio(
   db: pg.PoolClient,
   admin: SupabaseClient,
-  c: Pick<Campaign, "id" | "name" | "organization_id" | "demand_campaign_id">,
+  c: Pick<Campaign, "id" | "name" | "organization_id" | "demand_campaign_id"> & {
+    search?: { niche?: string; location?: string; mode?: string } | null;
+  },
   config: CampaignConfig,
   p: Candidate,
 ): Promise<Candidate | null> {
