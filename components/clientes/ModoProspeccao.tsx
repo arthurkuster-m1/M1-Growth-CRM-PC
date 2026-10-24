@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { rotuloDoMeio } from "@/components/marketing/campanhas/rotulos";
+import { atrasoEmDias, type PassoDeHoje } from "@/lib/cadencia/hoje";
 import { aplicarResultadoRapido } from "@/lib/leads/aplicar-resultado-rapido";
 import type { ConfigDaProspeccao } from "@/lib/leads/config-de-prospeccao";
 import { aplicarVariaveis } from "@/lib/leads/mensagem-de-prospeccao";
@@ -70,6 +72,7 @@ export function ModoProspeccao({
   aoFechar,
   aoPerder,
   aoAbrirOportunidade,
+  passosDeCadencia,
 }: {
   itens: LeadDaProspeccao[];
   config: ConfigDaProspeccao;
@@ -78,6 +81,8 @@ export function ModoProspeccao({
   aoFechar: () => void;
   aoPerder: (item: LeadDaProspeccao) => void;
   aoAbrirOportunidade: (item: LeadDaProspeccao) => void;
+  /** O passo de cadência que cada lead tem para hoje (pelo id do lead). */
+  passosDeCadencia?: ReadonlyMap<string, PassoDeHoje>;
 }) {
   const t = useT();
   const qc = useQueryClient();
@@ -124,6 +129,11 @@ export function ModoProspeccao({
   // A abordagem (roteiro) do lead: a escolhida na configuração, ou a da campanha dele.
   const campanhaDoLead = item?.campanhaId ? [item.campanhaId] : [];
   const abordagens = useAbordagensDasCampanhas(campanhaDoLead);
+  // Registrar mexe na cadência do lead; a lista de hoje só se atualiza ao sair, para a fila
+  // não mudar sob os pés de quem está trabalhando nela.
+  useEffect(() => () => void qc.invalidateQueries({ queryKey: ["cadence-hoje"] }), [qc]);
+  const passoDaCadencia = item ? passosDeCadencia?.get(item.leadId) : undefined;
+  const atrasoDaCadencia = passoDaCadencia ? atrasoEmDias(passoDaCadencia.vence_em, hojeIso()) : 0;
   const abordagem = (() => {
     if (config.abordagemId === "nenhuma") return null;
     const lista = abordagens.data ?? [];
@@ -147,7 +157,7 @@ export function ModoProspeccao({
         resultado: r.resultado?.trim() || r.rotulo,
         comentario,
         meio: config.tipo === "outro" ? "ligacao" : config.tipo,
-        abordagemId: abordagem?.id,
+        abordagemId: passoDaCadencia?.abordagem?.id ?? abordagem?.id,
         proximo: comPasso
           ? { texto: t(r.proximo ?? ""), em: dataEscolhida ?? somarDiasUteis(hojeIso(), dias) }
           : undefined,
@@ -365,6 +375,48 @@ export function ModoProspeccao({
               </p>
             ) : null}
           </section>
+
+          {passoDaCadencia ? (
+            <section className="grid gap-1 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+              <p className="font-semibold">
+                {t("Cadência")} · {t("passo")} {passoDaCadencia.passo} {t("de")} {passoDaCadencia.total}
+                {" · "}
+                {rotuloDoMeio(t, passoDaCadencia.medium)}
+                {atrasoDaCadencia > 0 ? (
+                  <span className="ml-2 font-normal text-error-fg">
+                    {atrasoDaCadencia} {atrasoDaCadencia === 1 ? t("dia de atraso") : t("dias de atraso")}
+                  </span>
+                ) : null}
+              </p>
+              {passoDaCadencia.nota ? (
+                <p className="text-muted-foreground">{passoDaCadencia.nota}</p>
+              ) : null}
+              {passoDaCadencia.abordagem ? (
+                <details>
+                  <summary className="cursor-pointer font-medium">
+                    {t("Abordagem do passo")}: {passoDaCadencia.abordagem.name}
+                  </summary>
+                  <div className="mt-2 grid gap-2">
+                    {passoDaCadencia.abordagem.hook ? (
+                      <p>
+                        <strong>{t("Gancho:")}</strong> {passoDaCadencia.abordagem.hook}
+                      </p>
+                    ) : null}
+                    {passoDaCadencia.abordagem.script ? (
+                      <p className="whitespace-pre-wrap">
+                        {aplicarVariaveis(passoDaCadencia.abordagem.script, {
+                          nome: item.nome,
+                          produto: item.produto,
+                          campanha: item.campanha,
+                          responsavel: item.responsavel,
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
+                </details>
+              ) : null}
+            </section>
+          ) : null}
 
           {abordagem ? (
             <details className="rounded-2xl border px-4 py-2">
