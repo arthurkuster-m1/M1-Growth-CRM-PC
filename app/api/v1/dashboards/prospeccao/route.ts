@@ -23,6 +23,7 @@ import {
   type ReuniaoDoLead,
   type TipoDeContato,
   type VendaDoLead,
+  type ExtracaoDoPainel,
 } from "@/lib/dashboards/prospeccao";
 import { dolarEmReais, resolverCambio, type Cambio } from "@/lib/dashboards/cambio";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -55,6 +56,15 @@ function fonteDoLead(source: string | null, meta: Record<string, unknown> | null
   return FONTES_TECNICAS[bruta.toLowerCase()] ?? bruta.slice(0, 60);
 }
 
+/** A extração ou importação de onde o lead veio (o id gravado na origem dele), se houver. */
+function extracaoDoLead(meta: Record<string, unknown> | null): string | undefined {
+  const id = (chave: string) => {
+    const bloco = meta?.[chave] as { id?: unknown } | undefined;
+    return typeof bloco?.id === "string" ? bloco.id : undefined;
+  };
+  return id("extracao") ?? id("importacao");
+}
+
 /** Uma extração (busca de leads) com o custo que o provedor cobrou, já em reais. */
 interface ExtracaoComCusto {
   id: string;
@@ -62,6 +72,9 @@ interface ExtracaoComCusto {
   dia: string;
   usd: number;
   brl: number | null;
+  termo?: string | null;
+  cidade?: string | null;
+  modo?: "completo" | "volume" | null;
 }
 
 const FONTE_DA_EXTRACAO = "Extração de leads";
@@ -124,6 +137,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     investimentoPorDia: {} as Record<string, number>,
     custos: [] as CustoDeCaptacao[],
     extracoes: [] as ExtracaoComCusto[],
+    lotes: [] as ExtracaoDoPainel[],
     cambio: { taxa: null, origem: "indisponivel", iofPct: 3.5 } as Cambio,
     abordagens: [] as Array<{ id: string; nome: string; meio: string; campanha: string }>,
     catalogo: catalogo.map((c) => ({ id: c.id, nome: c.name })),
@@ -177,6 +191,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       id: o.id,
       dia: diaNoFuso(o.created_at, fuso),
       fonte: fonteDoLead(o.source, o.source_metadata),
+      extracao: extracaoDoLead(o.source_metadata),
     }))
     .filter((l) => l.dia >= janelaDe && l.dia <= ate.data);
 
@@ -363,7 +378,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const cambio = await resolverCambio(orgCfg?.settings);
   const { data: extracoesBrutas } = await createAdminClient()
     .from("prospecting_campaigns")
-    .select("id, name, cost_usd, config, created_at, demand_campaign_id")
+    .select("id, name, cost_usd, config, created_at, demand_campaign_id, search")
     .eq("organization_id", a.orgId)
     .eq("search_status", "succeeded")
     .not("cost_usd", "is", null)
@@ -376,6 +391,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     config: { pipeline_id?: string } | null;
     created_at: string;
     demand_campaign_id: string | null;
+    search: { niche?: string; location?: string; mode?: string } | null;
   }>) {
     const d = diaNoFuso(e.created_at, fuso);
     if (d < janelaDe || d > ate.data) continue;
@@ -393,8 +409,19 @@ export async function GET(req: NextRequest): Promise<Response> {
     const usd = Number(e.cost_usd);
     if (!Number.isFinite(usd) || usd <= 0) continue;
     const brl = dolarEmReais(usd, cambio);
-    extracoes.push({ id: e.id, nome: e.name, dia: d, usd, brl });
-    if (brl !== null) custos.push({ dia: d, fonte: FONTE_DA_EXTRACAO, valor: brl });
+    extracoes.push({
+      id: e.id,
+      nome: e.name,
+      dia: d,
+      usd,
+      brl,
+      termo: e.search?.niche ?? null,
+      cidade: e.search?.location ?? null,
+      modo: e.search?.mode === "volume" ? "volume" : "completo",
+    });
+    if (brl !== null) {
+      custos.push({ dia: d, fonte: FONTE_DA_EXTRACAO, valor: brl, extracao: e.id });
+    }
   }
 
   const { data: abordagens } = await a.supabase
@@ -404,6 +431,54 @@ export async function GET(req: NextRequest): Promise<Response> {
     .in("campaign_id", ids)
     .limit(2000);
   const nomeDaCampanha = new Map(escolhidas.map((c) => [c.id, c.name]));
+
+  // Os lotes (extrações e importações) de onde vêm os leads do período e os custos lançados: é o
+  // que o painel agrupa por extração, termo e cidade.
+  const idsDosLotes = [
+    ...new Set([
+      ...leads.flatMap((l) => (l.extracao ? [l.extracao] : [])),
+      ...extracoes.map((e) => e.id),
+    ]),
+  ];
+  const lotes: ExtracaoDoPainel[] = [];
+  if (idsDosLotes.length > 0) {
+    const [{ data: buscas }, { data: importacoes }] = await Promise.all([
+      createAdminClient()
+        .from("prospecting_campaigns")
+        .select("id, name, search")
+        .eq("organization_id", a.orgId)
+        .in("id", idsDosLotes),
+      a.supabase
+        .from("demand_lead_imports")
+        .select("id, file_name")
+        .eq("organization_id", a.orgId)
+        .in("id", idsDosLotes),
+    ]);
+    for (const b of (buscas ?? []) as Array<{
+      id: string;
+      name: string;
+      search: { niche?: string; location?: string; mode?: string } | null;
+    }>) {
+      lotes.push({
+        id: b.id,
+        nome: b.name,
+        tipo: "extracao",
+        termo: b.search?.niche ?? null,
+        cidade: b.search?.location ?? null,
+        modo: b.search?.mode === "volume" ? "volume" : "completo",
+      });
+    }
+    for (const i of (importacoes ?? []) as Array<{ id: string; file_name: string }>) {
+      lotes.push({
+        id: i.id,
+        nome: i.file_name || "Importação",
+        tipo: "importacao",
+        termo: null,
+        cidade: null,
+        modo: null,
+      });
+    }
+  }
 
   return ok(
     {
@@ -416,6 +491,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       investimentoPorDia,
       custos,
       extracoes,
+      lotes,
       cambio,
       semResultado,
       abordagens: (

@@ -9,7 +9,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { capabilitiesOf } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/types";
 import { ProspectingError } from "@/lib/prospecting/provider";
-import { prospectingInputSchema } from "@/lib/prospecting/schema";
+import { combinacoes, planoDoLote } from "@/lib/prospecting/lote";
+import { idDaBuscaDoLote } from "@/lib/prospecting/lote-id";
+import { prospectingInputSchema, searchSchema } from "@/lib/prospecting/schema";
 import {
   activateCampaign,
   adjustPace,
@@ -138,6 +140,59 @@ export async function POST(req: NextRequest) {
     if (body.action === "configure") {
       await configureCredential(pool, admin, org, body.api_key);
       result = { configured: true };
+    } else if (body.action === "search_batch") {
+      const plano = planoDoLote({
+        termos: body.termos,
+        locais: body.locais,
+        limitePorBusca: body.limit,
+        tetoTotalUsd: body.budget_total_usd,
+      });
+      if (plano.motivoInvalido) throw new ProspectingError(plano.motivoInvalido, 422);
+      if (body.demand_campaign_id) {
+        const dona = await pool.query(
+          "select id from demand_campaigns where organization_id=$1 and id=$2 and channel='prospeccao'",
+          [org, body.demand_campaign_id],
+        );
+        if (!dona.rows.length)
+          throw new ProspectingError("Campanha de prospecção não encontrada.", 404);
+      }
+      // Cada busca passa pela MESMA régua da busca avulsa (limites por modo), com a sua parte do teto.
+      const buscas = combinacoes(body.termos, body.locais).map((par) => {
+        const valida = searchSchema.safeParse({
+          name: `${par.niche} · ${par.location}`.slice(0, 120),
+          niche: par.niche,
+          location: par.location,
+          mode: body.mode,
+          limit: body.limit,
+          budget_usd: plano.tetoPorBuscaUsd,
+          enrich: body.enrich && body.mode !== "volume",
+        });
+        if (!valida.success)
+          throw new ProspectingError(
+            valida.error.issues[0]?.message ?? "Confira os limites da busca em lote.",
+            422,
+          );
+        return valida.data;
+      });
+      const criadas: Campaign[] = [];
+      for (const [i, busca] of buscas.entries()) {
+        criadas.push(
+          await createSearch(
+            pool,
+            admin,
+            org,
+            idDaBuscaDoLote(body.request_id, i),
+            busca,
+            body.demand_campaign_id ?? null,
+          ),
+        );
+      }
+      result = { searches: criadas.length, ids: criadas.map((c) => c.id) };
+      auditMetadata = {
+        operation: body.action,
+        buscas: criadas.length,
+        teto_total_usd: plano.gastoNoMaximoUsd,
+      };
     } else if (body.action === "search") {
       // A campanha dona da extração tem de ser desta organização e do tipo Prospecção.
       if (body.demand_campaign_id) {

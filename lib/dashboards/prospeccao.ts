@@ -62,6 +62,8 @@ export interface LeadCaptado {
   id: string;
   dia: string;
   fonte: string;
+  /** A extração (ou importação) de onde o lead veio — o id gravado na origem dele. */
+  extracao?: string;
 }
 export interface VendaDoLead {
   leadId: string;
@@ -79,6 +81,8 @@ export interface CustoDeCaptacao {
   dia: string;
   fonte: string;
   valor: number;
+  /** Quando o custo é de UMA extração: o id dela. */
+  extracao?: string;
 }
 
 export const mesmaFonte = (a: string, b: string) =>
@@ -140,6 +144,8 @@ export function agregarProspeccao(
   recorte: Recorte,
   filtro: {
     fonte?: string;
+    /** Só os leads (e custos) destas extrações/importações. */
+    extracoes?: ReadonlySet<string>;
     abordagemId?: string | null;
     tipo?: TipoDeContato;
     dia?: string;
@@ -147,8 +153,10 @@ export function agregarProspeccao(
   } = {},
 ): BrutoDeProspeccao {
   const fonteDe = new Map(base.leads.map((l) => [l.id, l.fonte]));
+  const extracaoDe = new Map(base.leads.map((l) => [l.id, l.extracao]));
   const okLead = (id: string) =>
-    filtro.fonte === undefined || mesmaFonte(fonteDe.get(id) ?? "", filtro.fonte);
+    (filtro.fonte === undefined || mesmaFonte(fonteDe.get(id) ?? "", filtro.fonte)) &&
+    (filtro.extracoes === undefined || filtro.extracoes.has(extracaoDe.get(id) ?? ""));
   const okDia = (d: string) => (filtro.dia ? d === filtro.dia : dentro(d, recorte));
   const abordados = new Set<string>();
   const contatados = new Set<string>();
@@ -184,12 +192,16 @@ export function agregarProspeccao(
   }
   let investimento = 0;
   if (semFiltroDeContato) {
-    // O orçamento da campanha não é de nenhuma fonte; o custo lançado é.
-    if (filtro.fonte === undefined) {
+    // O orçamento da campanha não é de nenhuma fonte nem extração; o custo lançado é.
+    if (filtro.fonte === undefined && filtro.extracoes === undefined) {
       for (const [d, v] of Object.entries(base.investimentoPorDia)) if (okDia(d)) investimento += v;
     }
     for (const c of base.custos) {
-      if (okDia(c.dia) && (filtro.fonte === undefined || mesmaFonte(c.fonte, filtro.fonte))) {
+      if (
+        okDia(c.dia) &&
+        (filtro.fonte === undefined || mesmaFonte(c.fonte, filtro.fonte)) &&
+        (filtro.extracoes === undefined || filtro.extracoes.has(c.extracao ?? ""))
+      ) {
         investimento += c.valor;
       }
     }
@@ -276,4 +288,49 @@ export function recorteAnterior(r: Recorte): Recorte {
   const soma = (d: string, k: number) =>
     new Date(Date.parse(`${d}T12:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10);
   return { de: soma(r.de, -n), ate: soma(r.de, -1) };
+}
+
+/** O que o painel sabe de cada extração ou importação da campanha. */
+export interface ExtracaoDoPainel {
+  id: string;
+  nome: string;
+  tipo: "extracao" | "importacao";
+  /** O segmento buscado (só extração). */
+  termo: string | null;
+  /** A cidade ou região buscada (só extração). */
+  cidade: string | null;
+  /** `volume` ou `completo` (só extração). */
+  modo: "completo" | "volume" | null;
+}
+
+export interface GrupoDeExtracoes {
+  /** A chave estável do grupo (minúscula, para juntar "Clínicas" e "clínicas"). */
+  chave: string;
+  /** Como o grupo aparece na tela. */
+  nome: string;
+  ids: ReadonlySet<string>;
+}
+
+/**
+ * Agrupa as extrações para o painel: cada uma sozinha (`extracao`), pelo termo buscado (`termo`)
+ * ou pela cidade (`cidade`). Importação não tem termo nem cidade, então só aparece no primeiro.
+ * É por aqui que se vê qual termo ou cidade rende mais: cada grupo é medido com `agregarProspeccao`
+ * e o filtro `extracoes`, que soma só os leads e os custos daquele conjunto.
+ */
+export function agruparExtracoes(
+  extracoes: readonly ExtracaoDoPainel[],
+  por: "extracao" | "termo" | "cidade",
+): GrupoDeExtracoes[] {
+  const grupos = new Map<string, { nome: string; ids: Set<string> }>();
+  for (const e of extracoes) {
+    const nome = por === "extracao" ? e.nome : por === "termo" ? e.termo : e.cidade;
+    if (!nome?.trim()) continue;
+    const chave = por === "extracao" ? e.id : nome.trim().toLowerCase();
+    const atual = grupos.get(chave);
+    if (atual) atual.ids.add(e.id);
+    else grupos.set(chave, { nome: nome.trim(), ids: new Set([e.id]) });
+  }
+  return [...grupos.entries()]
+    .map(([chave, g]) => ({ chave, nome: g.nome, ids: g.ids }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }

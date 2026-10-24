@@ -190,7 +190,11 @@ export async function importarLinhasDeLeads(
             ? {
                 demand_campaign_id: origem.demandCampaignId,
                 source_metadata: {
-                  importacao: { id: origem.importacaoId, arquivo: origem.arquivo },
+                  importacao: {
+                    id: origem.importacaoId,
+                    arquivo: origem.arquivo,
+                    metodo: "planilha",
+                  },
                 },
               }
             : {}),
