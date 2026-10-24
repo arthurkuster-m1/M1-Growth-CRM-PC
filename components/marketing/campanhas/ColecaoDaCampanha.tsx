@@ -407,7 +407,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder={t("Buscar")}
-                className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <BarraDeConsulta

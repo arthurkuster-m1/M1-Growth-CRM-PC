@@ -107,7 +107,7 @@ export function LiberarContas({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar conta por nome ou número"
-            className="h-10 rounded-xl border bg-background px-3 text-sm"
+            className="h-10 rounded-xl border bg-card px-3 text-sm"
           />
           <ul className="grid max-h-96 gap-1 overflow-y-auto rounded-xl border p-2">
             {visiveis.map((c) => (

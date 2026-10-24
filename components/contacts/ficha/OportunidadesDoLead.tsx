@@ -142,7 +142,7 @@ export function OportunidadesDoLead({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={t("Buscar oportunidade, funil, etapa ou campanha")}
-            className="h-9 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
           {/* Celular: cada oportunidade é um cartão, com tudo à vista e sem rolar para o lado. */}
           <ul className="grid gap-3 md:hidden">

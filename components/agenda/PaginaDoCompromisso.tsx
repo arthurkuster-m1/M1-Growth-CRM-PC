@@ -130,7 +130,7 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
   return (
     <div className="min-w-0">
       <div className="mb-1 text-xs text-text-muted">{rotulo}</div>
-      <div className="min-h-9 rounded-xl border border-border bg-background px-3 py-2 text-sm">{children}</div>
+      <div className="min-h-9 rounded-xl border border-border bg-card px-3 py-2 text-sm">{children}</div>
     </div>
   );
 }
@@ -343,7 +343,7 @@ function PaginaExistente({
                         aoEscolher={(uid) => uid && uid !== a.responsavel_id && trocarResponsavel.mutate(uid)}
                       />
                     ) : (
-                      <div className="min-h-9 rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                      <div className="min-h-9 rounded-xl border border-border bg-card px-3 py-2 text-sm">
                         {nomeDoResponsavel ?? "—"}
                       </div>
                     )}
@@ -568,7 +568,7 @@ function PaginaExistente({
                         <ol className="space-y-1.5">
                           {cfg.roteiro.map((e, i) => (
                             <li key={`${i}-${e.titulo}`}>
-                              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-background px-3 py-2">
+                              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-card px-3 py-2">
                                 <input
                                   type="checkbox"
                                   className="mt-0.5"
@@ -603,7 +603,7 @@ function PaginaExistente({
                       maxLength={2000}
                       onChange={(e) => setAnotacao(e.target.value)}
                       placeholder={t("Escreva aqui o que foi falado, as objeções e o combinado.")}
-                      className="min-h-48 w-full resize-y rounded-2xl border border-border bg-background px-3 py-2.5 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                      className="min-h-48 w-full resize-y rounded-2xl border border-border bg-card px-3 py-2.5 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                   ) : null}

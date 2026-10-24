@@ -54,7 +54,7 @@ export function ComentariosEmMassaDialog({
           autoFocus
           onChange={(e) => setTexto(e.target.value)}
           placeholder={t("Escreva ou cole aqui (pode vir de uma planilha)…")}
-          className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         <div className="grid gap-1.5 text-sm">
           {(

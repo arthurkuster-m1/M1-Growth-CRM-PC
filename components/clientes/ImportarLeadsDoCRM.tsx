@@ -400,7 +400,7 @@ export function ImportarLeadsDoCRM({
                 setNovaColuna("");
               }
             }}
-            className="h-9 w-full rounded-xl sm:w-72 border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full rounded-xl sm:w-72 border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
           <Button
             type="button"

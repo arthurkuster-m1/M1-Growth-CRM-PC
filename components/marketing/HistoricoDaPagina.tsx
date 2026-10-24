@@ -79,7 +79,7 @@ export function HistoricoDaPagina({
                   onChange={(e) => setNota(e.target.value)}
                   placeholder={t("Observação (opcional): o que mudou?")}
                   aria-label={t("Observação do retrato")}
-                  className="h-9 min-w-0 flex-1 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  className="h-9 min-w-0 flex-1 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
                 />
                 <button
                   type="button"

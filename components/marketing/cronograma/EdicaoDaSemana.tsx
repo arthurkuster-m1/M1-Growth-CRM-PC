@@ -16,7 +16,7 @@ import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
 import { Plus, X } from "@/lib/ui/icons";
 
 const CAMPO =
-  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 /** "2026-10-27" → ISO ao meio-dia de Brasília (uma data "só dia", sem virar o dia anterior). */
 export const isoDoDia = (dia: string): string => `${dia}T12:00:00-03:00`;
@@ -138,7 +138,7 @@ export function EdicaoDaSemana({
                   onChange={(e) =>
                     void acoes.editar(x.id, { lado: e.target.value as LadoDaTarefa })
                   }
-                  className="h-9 rounded-lg border bg-background px-2 text-sm"
+                  className="h-9 rounded-lg border bg-card px-2 text-sm"
                 >
                   <option value="agencia">{t("Agência")}</option>
                   <option value="cliente">{empresa || t("Cliente")}</option>
@@ -147,7 +147,7 @@ export function EdicaoDaSemana({
                   value={x.status === "cancelled" ? "pending" : x.status}
                   aria-label={t("Situação")}
                   onChange={(e) => void acoes.editar(x.id, { status: e.target.value })}
-                  className="h-9 rounded-lg border bg-background px-2 text-sm"
+                  className="h-9 rounded-lg border bg-card px-2 text-sm"
                 >
                   <option value="pending">{t("A fazer")}</option>
                   <option value="in_progress">{t("Em andamento")}</option>

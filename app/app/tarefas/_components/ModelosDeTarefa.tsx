@@ -107,7 +107,7 @@ function entradaDe(r: Rascunho): EntradaDeModelo {
 }
 
 const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 /**
  * MODELOS DE TAREFA — a lista dos modelos e o formulário de cada um. Um modelo é a tarefa
@@ -412,7 +412,7 @@ function Corpo({
                 value={r.prazoHora}
                 disabled={!podeEditar}
                 onChange={(e) => mudar({ prazoHora: e.target.value || "17:00" })}
-                className="h-9 rounded-lg border bg-background px-2 text-sm"
+                className="h-9 rounded-lg border bg-card px-2 text-sm"
               />
             ) : null}
             <Switch

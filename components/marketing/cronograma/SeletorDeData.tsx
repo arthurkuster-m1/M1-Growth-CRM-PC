@@ -111,7 +111,7 @@ export function SeletorDeData({
           type="button"
           aria-label={rotulo}
           className={cn(
-            "inline-flex h-10 w-full items-center gap-2 rounded-xl border bg-background px-3 text-left text-sm outline-hidden",
+            "inline-flex h-10 w-full items-center gap-2 rounded-xl border bg-card px-3 text-left text-sm outline-hidden",
             "hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-primary/30",
             !valor && "text-muted-foreground",
             className,
@@ -142,7 +142,7 @@ export function SeletorDeData({
           }}
           onBlur={() => setDigitado(formatarDiaBr(valor))}
           onKeyDown={(e) => e.key === "Enter" && setAberto(false)}
-          className="mb-2 h-10 w-full rounded-lg border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="mb-2 h-10 w-full rounded-lg border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         <div className="mb-1 flex items-center justify-between px-1">
           <span className="text-sm font-semibold capitalize">{nomeDoMes}</span>

@@ -85,7 +85,7 @@ export function RecoveryCodesPanel({ codes, onAcknowledge }: RecoveryCodesPanelP
           {codes.map((c, i) => (
             <div
               key={i}
-              className="rounded-md border border-border bg-background px-3 py-2 text-center font-mono text-sm tracking-widest"
+              className="rounded-md border border-border bg-card px-3 py-2 text-center font-mono text-sm tracking-widest"
             >
               {c}
             </div>

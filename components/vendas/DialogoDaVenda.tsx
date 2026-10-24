@@ -52,7 +52,7 @@ const COR_DO_STATUS: Record<StatusDaVenda, CorDaOpcao> = {
 };
 
 const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
+  "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
 export interface ClienteOpcao {
   contact_id: string;
@@ -851,7 +851,7 @@ export function DialogoDaVenda({
                 maxLength={120}
                 onChange={(e) => setNomeDaVendaTexto(e.target.value)}
                 placeholder={nomePadrao || t("Nome do cliente | Produto")}
-                className="h-10 w-full min-w-0 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full min-w-0 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <div className="grid gap-1">
@@ -905,7 +905,7 @@ export function DialogoDaVenda({
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
                 placeholder={t("Anotações rápidas sobre esta oportunidade…")}
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <label className="grid gap-1 sm:col-span-2">
@@ -916,7 +916,7 @@ export function DialogoDaVenda({
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 placeholder={t("Contexto desta negociação…")}
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
@@ -1327,7 +1327,7 @@ export function DialogoDaVenda({
                               }
                             }}
                             onBlur={() => aplicarValorDaParcela(i)}
-                            className="h-9 w-28 rounded-lg border bg-background px-2 text-right text-sm tabular-nums"
+                            className="h-9 w-28 rounded-lg border bg-card px-2 text-right text-sm tabular-nums"
                           />
                         </td>
                         <td className="px-3 py-1 text-center">

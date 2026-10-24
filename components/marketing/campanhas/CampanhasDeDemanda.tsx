@@ -69,7 +69,7 @@ type Vista = "tabela" | "cards" | "timeline";
 const CHAVE_DA_VISAO = "m1:campanhas:visao-ativa";
 
 const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 /**
  * As CAMPANHAS de demanda: uma tabela com o motor das Tarefas (propriedades que se mostram,
@@ -797,7 +797,7 @@ export function CampanhasDeDemanda() {
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder={t("Buscar campanha")}
-                className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <BarraDeConsulta

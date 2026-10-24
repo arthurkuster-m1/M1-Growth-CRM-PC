@@ -69,7 +69,7 @@ export function CampoDeDataEHora({
       data-testid="campo-de-data-e-hora"
       onClick={celular ? () => abrirOuFechar(true) : undefined}
       className={cn(
-        "flex min-h-9 w-full items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left text-sm",
+        "flex min-h-9 w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-left text-sm",
         !desabilitado && "hover:border-primary/50",
         !valor && "text-text-subtle",
         className,

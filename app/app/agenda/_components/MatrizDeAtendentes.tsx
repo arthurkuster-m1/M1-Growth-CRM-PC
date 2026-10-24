@@ -132,7 +132,7 @@ export function MatrizDeAtendentes({ podeEditar, podeConvidar = false }: { podeE
                       setSujo(true);
                       setPrioridade((x) => ({ ...x, [p.user_id]: Number(e.target.value) || 0 }));
                     }}
-                    className="h-8 w-16 rounded-lg border border-border bg-background px-2 text-center"
+                    className="h-8 w-16 rounded-lg border border-border bg-card px-2 text-center"
                   />
                 </td>
                 <td className="py-2 pl-2">

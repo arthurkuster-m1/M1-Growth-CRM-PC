@@ -58,7 +58,7 @@ export function SeletorDeCampanhas({
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder={t("Buscar campanha")}
-          className="mb-2 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60"
+          className="mb-2 h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60"
         />
         <button
           type="button"

@@ -124,7 +124,7 @@ export function FormularioDeMetaAds({
               id="default_account_id"
               value={conta}
               onChange={(e) => setConta(e.target.value)}
-              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+              className="h-10 w-full rounded-xl border bg-card px-3 text-sm"
             >
               <option value="">{t("Nenhuma (a primeira conta ativa)")}</option>
               {contasDoToken.map((c) => (

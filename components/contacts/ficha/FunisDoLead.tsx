@@ -43,7 +43,7 @@ import { nomeDaVenda, type Venda } from "@/lib/vendas";
 const reais = (c: number) => moedaDoNumero(c / 100);
 const corDoStatusDaVenda = (s: string) =>
   s === "concluida" ? "green" : s === "comprometida" ? "yellow" : s === "cancelada" ? "gray" : "blue";
-const SELECT = "h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60";
+const SELECT = "h-9 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60";
 
 const ROTULO_VENDA: Record<string, string> = {
   interesse: "Interesse",
@@ -215,7 +215,7 @@ export function FunisDoLead({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={t("Buscar funil ou venda")}
-            className="h-9 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
         </label>
         <BarraDeConsulta compacta campos={camposDaBarra} consulta={consulta} aoMudar={setConsulta} />

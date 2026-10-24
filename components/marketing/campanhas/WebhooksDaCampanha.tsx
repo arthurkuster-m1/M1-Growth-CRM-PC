@@ -178,7 +178,7 @@ export function WebhooksDaCampanha({
                   maxLength={120}
                   onChange={(e) => setNome(e.target.value)}
                   aria-label={t("Nome do webhook")}
-                  className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
                 />
                 <button
                   type="button"
@@ -209,7 +209,7 @@ export function WebhooksDaCampanha({
                 {t("Ou ligar um webhook que já existe")}
               </span>
               <SelectDoApp
-                className="h-10 rounded-xl border bg-background px-3 text-sm"
+                className="h-10 rounded-xl border bg-card px-3 text-sm"
                 value=""
                 onChange={(e) => {
                   const f = outras.find((x) => x.id === e.target.value);

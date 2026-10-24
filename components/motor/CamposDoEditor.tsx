@@ -33,7 +33,7 @@ export function CampoDeNome({
       }}
       className={
         className ??
-        "min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+        "min-w-0 flex-1 rounded-md border bg-card px-2 py-1 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
       }
     />
   );

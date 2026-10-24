@@ -328,7 +328,7 @@ export function LinhaDoTempoDeCampanhas({
               <SelectDoApp
                 value={DIAS}
                 onChange={(e) => aoMudar({ dias: Number(e.target.value), escala })}
-                className="h-9 w-20 rounded-lg border bg-background px-2 text-sm text-foreground"
+                className="h-9 w-20 rounded-lg border bg-card px-2 text-sm text-foreground"
               >
                 {[...new Set<number>([...OPCOES_DE_DIAS, DIAS])]
                   .sort((a, b) => a - b)

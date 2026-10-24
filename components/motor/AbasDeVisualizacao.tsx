@@ -290,7 +290,7 @@ export function AbasDeVisualizacao({
               onKeyDown={(e) => {
                 if (e.key === "Enter") criar();
               }}
-              className="h-9 w-full rounded-lg border bg-background px-2.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              className="h-9 w-full rounded-lg border bg-card px-2.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
             <div
               className="mt-2 grid grid-cols-2 gap-1.5"

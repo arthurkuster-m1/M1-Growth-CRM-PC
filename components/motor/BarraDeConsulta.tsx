@@ -51,7 +51,7 @@ interface Props {
 }
 
 const SELECT =
-  "h-8 min-w-0 rounded-lg border bg-background px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40";
+  "h-8 min-w-0 rounded-lg border bg-card px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40";
 
 /** O seletor em popup no tamanho da barra (no lugar do `<select>` do navegador). */
 function Escolha({

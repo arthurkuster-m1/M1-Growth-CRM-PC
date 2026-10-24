@@ -75,7 +75,7 @@ export function ConvidarAtendente() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nome@empresa.com"
-                className="h-10 rounded-xl border border-border bg-background px-3 text-sm font-normal"
+                className="h-10 rounded-xl border border-border bg-card px-3 text-sm font-normal"
               />
             </label>
             <div className="grid gap-1">

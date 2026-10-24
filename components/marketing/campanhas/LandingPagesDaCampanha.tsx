@@ -38,7 +38,7 @@ import { Check, LinkSimple, Plus, TextAa, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
+  "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
 const FAIXA_DO_STATUS: Record<LandingPage["status"], string> = {
   ativo: "border-l-emerald-500",

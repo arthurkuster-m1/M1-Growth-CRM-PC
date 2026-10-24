@@ -84,7 +84,7 @@ export interface DadosDoLead {
 export const chaveDaFicha = (leadId: string) => ["ficha-do-lead", leadId] as const;
 
 const classeDoSelect =
-  "h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60";
+  "h-9 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60";
 
 /** Telefone digitado solto vira E.164: 10–11 dígitos são do Brasil. */
 export function telefoneE164(bruto: string): string {

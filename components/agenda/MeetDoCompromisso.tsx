@@ -173,7 +173,7 @@ export function MeetDoCompromisso({
           </label>
           <select
             id={`meet-destination-${id}`}
-            className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+            className="h-9 w-full rounded-md border bg-card px-2 text-sm"
             value={sendTo}
             onChange={(e) => setDestination(e.target.value)}
             disabled={!meeting.destinations.length || action.isPending}

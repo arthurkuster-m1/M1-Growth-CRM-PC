@@ -113,7 +113,7 @@ export function CabecalhoDaSubpagina({
           <button
             type="button"
             onClick={() => setConfirmando(false)}
-            className="h-8 rounded-lg border bg-background px-3 text-sm hover:bg-secondary"
+            className="h-8 rounded-lg border bg-card px-3 text-sm hover:bg-secondary"
           >
             {t("Cancelar")}
           </button>

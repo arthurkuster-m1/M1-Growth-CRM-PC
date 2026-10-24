@@ -102,7 +102,7 @@ export function SeletorDaFormaDePagamento({ valor, aoEscolher, className }: Prop
           type="button"
           aria-label={t("Forma de pagamento")}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-xl border bg-background px-3 text-left text-sm hover:bg-secondary/50",
+            "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-3 text-left text-sm hover:bg-secondary/50",
             className,
           )}
         >
@@ -130,7 +130,7 @@ export function SeletorDaFormaDePagamento({ valor, aoEscolher, className }: Prop
                     if (e.key === "Enter") void criar();
                   }}
                   placeholder={t("Nome da nova forma de pagamento")}
-                  className="h-9 w-full rounded-lg border bg-background px-2 text-sm outline-hidden focus:border-primary/60"
+                  className="h-9 w-full rounded-lg border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
                 />
                 {erro ? <p className="text-xs text-error-fg">{erro}</p> : null}
                 <button

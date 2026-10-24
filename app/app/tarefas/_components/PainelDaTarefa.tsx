@@ -79,7 +79,7 @@ export function PainelDaTarefa({
                       nova.aoCriar();
                     }
                   }}
-                  className="w-full rounded-xl border bg-background px-3 py-2 text-xl font-semibold outline-hidden placeholder:font-normal focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border bg-card px-3 py-2 text-xl font-semibold outline-hidden placeholder:font-normal focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             ) : (
@@ -194,7 +194,7 @@ function Descricao({
   return (
     <div onBlur={(e) => !aCadaTecla && !e.currentTarget.contains(e.relatedTarget) && gravar()}>
       <p className="mb-1 block text-sm text-muted-foreground">{t("Descrição")}</p>
-      <div className="rounded-xl border bg-background px-2 py-2 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+      <div className="rounded-xl border bg-card px-2 py-2 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
         <EditorDeBlocos blocos={blocos} aoMudar={mudar} podeEditar={podeEditar} />
       </div>
       {grandeDemais ? (

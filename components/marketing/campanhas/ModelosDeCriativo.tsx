@@ -19,9 +19,9 @@ import { Plus, Trash } from "@/lib/ui/icons";
 
 const CHAVE = ["demand-creative-templates"] as const;
 const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 const AREA =
-  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 export function useModelosDeCriativo() {
   const q = useQuery({

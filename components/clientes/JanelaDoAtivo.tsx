@@ -62,7 +62,7 @@ export function JanelaDoAtivo({ podeEditar }: { podeEditar: boolean }) {
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-center text-xs text-foreground"
+        className="h-7 w-14 rounded-md border border-border bg-card px-1.5 text-center text-xs text-foreground"
       />
       {t("meses")}
     </label>

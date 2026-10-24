@@ -1085,7 +1085,7 @@ export function TarefasMotorClient({
           derruba o último botão para a linha de baixo. */}
       <div className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden">
         {buscaAberta ? (
-          <div className="flex h-9 w-56 shrink-0 items-center gap-2 rounded-xl border bg-background px-3">
+          <div className="flex h-9 w-56 shrink-0 items-center gap-2 rounded-xl border bg-card px-3">
             <MagnifyingGlass size={16} className="shrink-0 text-muted-foreground" aria-hidden />
             <input
               autoFocus

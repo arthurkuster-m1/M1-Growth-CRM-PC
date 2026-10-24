@@ -457,7 +457,7 @@ export function ModoProspeccao({
                       if (passo.trim() !== item.proximaAcao.trim()) setConfirmando(passo.trim());
                     }}
                     placeholder={t("Ex.: Ligar na terça com a proposta")}
-                    className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60"
+                    className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60"
                   />
                   <span className="text-xs text-muted-foreground">
                     {item.proximaAcaoEm
@@ -475,7 +475,7 @@ export function ModoProspeccao({
                     onChange={(e) => setComentarios(e.target.value)}
                     onBlur={() => void salvarComentarios()}
                     placeholder={t("Anotações rápidas sobre esta oportunidade…")}
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60"
+                    className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60"
                   />
                 </label>
               ) : null}
@@ -506,7 +506,7 @@ export function ModoProspeccao({
                 }
               }}
               placeholder={t("Impressões, objeções, o que ficou combinado…")}
-              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60"
+              className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60"
             />
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">{t("Ctrl+Enter registra")}</span>

@@ -155,7 +155,7 @@ export function CalendarioDoDia({
           }
         }}
         onBlur={() => setTexto(formatarDiaBr(valor))}
-        className="mb-3 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        className="mb-3 h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
       />
       <GradeDoMes
         mes={mes}
@@ -201,7 +201,7 @@ function Gatilho({
         disabled={desabilitado}
         aria-label={rotulo}
         className={cn(
-          "inline-flex h-10 min-w-0 items-center gap-2 rounded-xl border bg-background px-3 text-sm whitespace-nowrap outline-hidden hover:bg-secondary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-60",
+          "inline-flex h-10 min-w-0 items-center gap-2 rounded-xl border bg-card px-3 text-sm whitespace-nowrap outline-hidden hover:bg-secondary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-60",
           vazio && "text-muted-foreground",
           className,
         )}
@@ -287,7 +287,7 @@ export function CampoDeData({
             }
           }}
           onKeyDown={(e) => e.key === "Enter" && setAberto(false)}
-          className="mb-3 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="mb-3 h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         <GradeDoMes
           mes={mes}
@@ -346,7 +346,7 @@ function CampoDigitavelDoPeriodo({
     setTexto(formatarDiaBr(dia));
   }
   return (
-    <label className="rounded-xl border bg-background px-3 py-1.5">
+    <label className="rounded-xl border bg-card px-3 py-1.5">
       <span className="block text-[10px] text-muted-foreground uppercase">{rotulo}</span>
       <input
         inputMode="numeric"

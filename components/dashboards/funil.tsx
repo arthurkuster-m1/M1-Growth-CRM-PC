@@ -83,7 +83,7 @@ export function FunilComTaxas({
       </ol>
       <div className="flex flex-col justify-around gap-3">
         {taxas.map((x) => (
-          <div key={x.rotulo} className="rounded-xl border bg-background px-4 py-3">
+          <div key={x.rotulo} className="rounded-xl border bg-card px-4 py-3">
             <p className="font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
               {x.rotulo}
             </p>
