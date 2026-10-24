@@ -879,6 +879,7 @@ export function CampanhasDeDemanda() {
                   : undefined
               }
               aoDatas={podeEditar ? (id, datas) => void editar([id], datas) : undefined}
+              aoStatus={podeEditar ? (id, status) => void editar([id], { status }) : undefined}
             />
           ) : grupos ? (
             <div className="flex flex-col gap-6">
