@@ -64,7 +64,7 @@ export function useAbordagensDasCampanhas(campanhaIds: readonly string[]) {
 }
 
 const sel =
-  "h-9 w-24 rounded-lg border bg-background px-2 text-right text-sm tabular-nums outline-hidden focus:border-primary/60";
+  "h-9 w-24 rounded-lg border bg-card px-2 text-right text-sm tabular-nums outline-hidden focus:border-primary/60";
 
 /**
  * A ENGRENAGEM da prospecção: monta a fila "Ligar hoje" do seu jeito e define como o modo
@@ -139,7 +139,7 @@ export function ConfigDaProspeccaoDialog({
   );
 
   const entrada =
-    "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+    "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
   const botaoIcone =
     "grid h-8 w-8 shrink-0 place-items-center rounded-lg border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40";
 

@@ -119,7 +119,7 @@ export function InteligenciaDele({ inicial }: { inicial: EstadoDaChave }) {
               id="provedor_da_ia"
               value={provedor}
               onChange={(e) => setProvedor(e.target.value)}
-              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border bg-card px-3 text-sm"
             >
               {/* A assinatura do ChatGPT nunca: ela não se cola, conecta-se pelo login em Credenciais. */}
               {PROVEDORES.filter((p) => p.id !== PROVEDOR_POR_ASSINATURA || p.id === provedor).map((p) => (

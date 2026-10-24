@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
  * dedo e no teclado, sem depender de arrastar.
  */
 const CAMPO =
-  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 export function useNomesDosTipos() {
   const t = useT();

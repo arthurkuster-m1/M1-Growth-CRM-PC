@@ -117,7 +117,7 @@ export function SeletorEmPopup({
           aria-label={rotulo}
           disabled={desabilitado}
           className={cn(
-            "flex min-h-10 w-full items-center justify-between gap-2 rounded-xl border bg-background px-3 py-1.5 text-left text-sm hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60",
+            "flex min-h-10 w-full items-center justify-between gap-2 rounded-xl border bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60",
             className,
           )}
         >
@@ -136,7 +136,7 @@ export function SeletorEmPopup({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={t("Buscar…")}
-            className="mb-1 h-8 w-full rounded-md border bg-background px-2 text-sm outline-hidden focus:border-primary/60"
+            className="mb-1 h-8 w-full rounded-md border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
           />
         ) : null}
         <div className="max-h-64 space-y-0.5 overflow-y-auto">
@@ -162,7 +162,7 @@ export function SeletorEmPopup({
                     }
                   }}
                   placeholder={criar.placeholder}
-                  className="h-9 w-full rounded-lg border bg-background px-2 text-sm outline-hidden focus:border-primary/60"
+                  className="h-9 w-full rounded-lg border bg-card px-2 text-sm outline-hidden focus:border-primary/60"
                 />
                 <button
                   type="button"

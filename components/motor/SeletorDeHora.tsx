@@ -88,7 +88,7 @@ export function SeletorDeHora({ valor, aoMudar, aoConfirmar }: Props) {
         <button
           type="button"
           aria-label={t("Horário")}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border bg-background px-3 text-sm tabular-nums transition-colors hover:bg-secondary"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-sm tabular-nums transition-colors hover:bg-secondary"
         >
           {hh}:{mm}
           <Clock size={14} className="text-muted-foreground" aria-hidden />

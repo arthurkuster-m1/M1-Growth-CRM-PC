@@ -51,9 +51,9 @@ import { Check, Plus, TextAa, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
-  "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
+  "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 const AREA =
-  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
+  "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
 const FAIXA_DO_STATUS: Record<Criativo["status"], string> = {
   planejado: "border-l-blue-500",
@@ -303,10 +303,15 @@ function CartaoDoCriativo({
 }) {
   const t = useT();
   const { confirmar, dialogo } = useConfirmar();
-  const [imagemFalhou, setImagemFalhou] = useState(false);
+  const [imagemFalhou, setImagemFalhou] = useState("");
   const taxas = taxasDoCriativo(c);
+  // A miniatura é a 1ª imagem que a agência subiu; só sem ela vale a da Meta (que expira e,
+  // quando falha, deixava a miniatura vazia mesmo com imagens no criativo).
+  const primeira = c.images[0] ? `${BASE_DAS_IMAGENS_DO_PAINEL}${c.images[0]}` : "";
   const imagem =
-    c.thumbnail_url || (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(c.media_url) ? c.media_url : "");
+    primeira ||
+    c.thumbnail_url ||
+    (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(c.media_url) ? c.media_url : "");
   const bloqueado = !podeEditar;
   return (
     <article
@@ -317,13 +322,14 @@ function CartaoDoCriativo({
     >
       <div className="flex gap-3">
         <div className="grid h-24 w-24 shrink-0 grid-cols-1 place-items-center overflow-hidden rounded-xl bg-secondary text-xs text-muted-foreground">
-          {imagem && !imagemFalhou ? (
+          {imagem && imagem !== imagemFalhou ? (
             // eslint-disable-next-line @next/next/no-img-element -- miniatura externa (Meta), sem otimização do Next
             <img
+              key={imagem}
               src={imagem}
               alt=""
               className="h-full w-full object-cover"
-              onError={() => setImagemFalhou(true)}
+              onError={() => setImagemFalhou(imagem)}
             />
           ) : (
             rotuloDoFormato(t, c.format)

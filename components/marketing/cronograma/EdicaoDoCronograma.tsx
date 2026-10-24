@@ -37,7 +37,7 @@ import { ArrowDown, ArrowUp, Archive, CaretDown, CaretRight, Plus, Trash } from 
 import { cn } from "@/lib/utils";
 
 export const CAMPO =
-  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 export const BOTAO_ICONE =
   "grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground";
 

@@ -98,7 +98,7 @@ export function Atendimento({
             value={inicio}
             disabled={!dados.podeEditarHorario}
             onChange={(e) => setInicio(e.target.value)}
-            className="h-9 rounded-lg border bg-background px-2 text-sm text-foreground"
+            className="h-9 rounded-lg border bg-card px-2 text-sm text-foreground"
           />
         </label>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -108,7 +108,7 @@ export function Atendimento({
             value={fim}
             disabled={!dados.podeEditarHorario}
             onChange={(e) => setFim(e.target.value)}
-            className="h-9 rounded-lg border bg-background px-2 text-sm text-foreground"
+            className="h-9 rounded-lg border bg-card px-2 text-sm text-foreground"
           />
         </label>
         <div className="flex items-center gap-1" role="group" aria-label={t("Dias de atendimento")}>

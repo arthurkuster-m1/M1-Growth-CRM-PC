@@ -125,7 +125,7 @@ export function CicloDeVidaDoLead({
                 disabled={!podeEditar}
                 value={d.dono_user_id ?? ""}
                 onChange={(e) => void mudarDono(e.target.value)}
-                className="h-9 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60"
+                className="h-9 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60"
               >
                 <option value="">{t("Sem dono")}</option>
                 {(membros.data ?? []).map((m) => (

@@ -24,7 +24,7 @@ import { apiClient } from "@/lib/api/client";
 
 type Dialogo = "tag" | "campanha" | "excluir" | "acao" | null;
 
-const classeDoSelect = "h-9 w-full rounded-lg border bg-background px-2 text-sm";
+const classeDoSelect = "h-9 w-full rounded-lg border bg-card px-2 text-sm";
 const NOVA = "__nova";
 
 /**

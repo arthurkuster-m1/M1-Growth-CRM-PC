@@ -164,7 +164,7 @@ function ChipArrastavel({
             </div>
             <p className="mt-3 mb-1 text-xs font-medium text-muted-foreground">{t("Categoria")}</p>
             <select
-              className="h-8 w-full rounded-lg border bg-background px-2 text-sm disabled:opacity-60"
+              className="h-8 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60"
               disabled={!podeGerir}
               value={categoria?.id ?? SEM_CATEGORIA}
               onChange={(e) => {
@@ -727,7 +727,7 @@ export function TagsDoLead({
             aria-label={t("Filtrar por categoria")}
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="h-8 rounded-lg border bg-background px-2 text-xs"
+            className="h-8 rounded-lg border bg-card px-2 text-xs"
           >
             <option value="">{t("Todas as categorias")}</option>
             {config.categorias.map((c) => (

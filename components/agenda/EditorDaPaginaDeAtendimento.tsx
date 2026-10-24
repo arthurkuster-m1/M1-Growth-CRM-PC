@@ -81,7 +81,7 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
         <ul className="grid gap-2 sm:grid-cols-2">
           {BLOCOS.map((b) => (
             <li key={b.id}>
-              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-background px-3 py-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-card px-3 py-2">
                 <input
                   type="checkbox"
                   className="mt-0.5"

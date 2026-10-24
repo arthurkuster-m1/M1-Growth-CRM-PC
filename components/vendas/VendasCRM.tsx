@@ -907,7 +907,7 @@ export function VendasCRM() {
           onChange={(e) => setBusca(e.target.value)}
           placeholder={t("Buscar por cliente, produto ou campanha")}
           aria-label={t("Buscar venda")}
-          className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         <div className="flex flex-wrap gap-1.5">
           <button
@@ -1137,7 +1137,7 @@ function CobrancaParaConfirmar({
             inputMode="decimal"
             onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ""))}
             aria-label={t("Valor recebido")}
-            className="h-9 w-28 rounded-lg border bg-background px-2 text-right text-sm tabular-nums"
+            className="h-9 w-28 rounded-lg border bg-card px-2 text-right text-sm tabular-nums"
           />
         </label>
         <div className="w-48">

@@ -13,7 +13,7 @@ import { Plus, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
-  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 function Rotulo({ texto, children }: { texto: string; children: ReactNode }) {
   return (

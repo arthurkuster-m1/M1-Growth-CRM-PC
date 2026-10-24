@@ -128,7 +128,7 @@ export function CompartilharPagina({
             <SelectDoApp
               value={validade}
               onChange={(e) => setValidade(e.target.value)}
-              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+              className="h-10 w-full rounded-xl border bg-card px-3 text-sm"
             >
               <option value="">{t("Sem validade")}</option>
               <option value="7">{t("7 dias")}</option>
@@ -177,7 +177,7 @@ export function CompartilharPagina({
                         )}
                         aria-label={t("Endereço do link")}
                         onFocus={(e) => e.currentTarget.select()}
-                        className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"
+                        className="h-9 min-w-0 flex-1 rounded-lg border bg-card px-2 text-xs"
                       />
                       <button
                         type="button"

@@ -31,7 +31,7 @@ function aplicarTipo(e: EtapaDoModelo, tipo: Tipo): EtapaDoModelo {
 }
 
 const CAMPO =
-  "h-9 w-full rounded-lg border bg-background px-2 text-sm outline-hidden focus:border-primary/60";
+  "h-9 w-full rounded-lg border bg-card px-2 text-sm outline-hidden focus:border-primary/60";
 
 /**
  * Editar e apagar os MODELOS DE FUNIL: renomear, mudar as etapas (nome, tipo, ordem) ou excluir.

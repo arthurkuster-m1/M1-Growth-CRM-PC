@@ -86,7 +86,7 @@ export function EstrategiasDeMarketing({ titulo, fase }: { titulo: string; fase:
                     void criar();
                   }
                 }}
-                className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
               />
               <p className="mt-2 text-xs text-muted-foreground">
                 {t(
