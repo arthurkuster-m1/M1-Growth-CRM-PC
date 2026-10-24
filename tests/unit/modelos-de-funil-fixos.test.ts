@@ -57,7 +57,13 @@ describe("modelos de funil fixos", () => {
     );
     expect(nomes("trafego-pago-sem-reuniao").join("|")).not.toMatch(/Reunião/);
     expect(nomes("prospeccao-ativa")).toEqual(
-      expect.arrayContaining(["Primeiro contato", "Contato com o decisor"]),
+      expect.arrayContaining([
+        "Abordagem",
+        "Contato",
+        "Contato com decisor",
+        "Venda realizada",
+        "Perdido",
+      ]),
     );
   });
 

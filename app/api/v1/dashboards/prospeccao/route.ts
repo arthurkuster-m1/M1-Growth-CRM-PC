@@ -206,7 +206,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       .select("lead_id, type, payload, performed_at")
       .eq("organization_id", a.orgId)
       .in("lead_id", idsDosLeads.slice(i, i + LOTE))
-      .in("type", ["note", "appointment_scheduled", "appointment_completed"])
+      .in("type", ["note", "appointment_scheduled", "appointment_completed", "appointment_no_show"])
       .gte("performed_at", inicioIso)
       .limit(10000);
     for (const at of (data ?? []) as Array<{
@@ -225,7 +225,15 @@ export async function GET(req: NextRequest): Promise<Response> {
         reunioes.push({ dia: d, leadId: at.lead_id, tipo: "feita" });
         continue;
       }
+      if (at.type === "appointment_no_show") {
+        reunioes.push({ dia: d, leadId: at.lead_id, tipo: "faltou" });
+        continue;
+      }
       const acao = typeof at.payload?.acao === "string" ? at.payload.acao : "";
+      if (acao === "no_show") {
+        reunioes.push({ dia: d, leadId: at.lead_id, tipo: "faltou" });
+        continue;
+      }
       if (acao === "reuniao") {
         reunioes.push({ dia: d, leadId: at.lead_id, tipo: "feita" });
         continue;

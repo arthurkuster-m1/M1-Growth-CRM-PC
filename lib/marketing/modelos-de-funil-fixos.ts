@@ -60,6 +60,9 @@ const naoComprou: EtapaDoModelo = {
   expected_duration_hours: null,
   qualification: null,
 };
+/** A venda fechada e a perda da prospecção ativa, com os nomes que o time usa. */
+const vendaRealizada: EtapaDoModelo = { ...comprou, name: "Venda realizada" };
+const perdido: EtapaDoModelo = { ...naoComprou, name: "Perdido" };
 const desqualificado = (): EtapaDoModelo => ({
   name: "Desqualificado",
   is_won: false,
@@ -107,17 +110,18 @@ export const MODELOS_DE_FUNIL_FIXOS: readonly ModeloDeFunilFixo[] = [
     chave: "prospeccao-ativa",
     nome: "Prospecção ativa",
     descricao:
-      "Você vai atrás: lista de contatos, primeiro contato, conversa com quem decide, reunião e venda.",
+      "Você vai atrás: abordagens até o lead responder, contato, conversa com quem decide, reunião, negociação e venda.",
     stages: [
-      aberta("Prospectado", 3, 48),
-      aberta("Primeiro contato", 8, 48),
-      aberta("Contato com o decisor", 25, 72, "mql"),
+      // A cadência de abordagens roda DENTRO desta etapa: enquanto o lead não responde, ele fica aqui.
+      aberta("Abordagem", 3, 48),
+      aberta("Contato", 8, 48),
+      aberta("Contato com decisor", 25, 72, "mql"),
       REUNIAO_AGENDADA(),
       REUNIAO_REALIZADA(72),
       aberta("Em negociação", 70, 72, null, "em-negociacao"),
       desqualificado(),
-      comprou,
-      naoComprou,
+      vendaRealizada,
+      perdido,
     ],
   },
 ];

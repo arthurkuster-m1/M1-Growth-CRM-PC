@@ -21,6 +21,11 @@ import {
   somarTagComContador,
   tituloDaAcao,
 } from "@/lib/leads/acoes-do-lead";
+import {
+  aplicarTagsAutomaticas,
+  listarTagsAutomaticas,
+  tagsAutomaticasDaAbordagem,
+} from "@/lib/leads/tags-automaticas";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { categoriaPorRegra, lerConfigDeCategorias } from "@/lib/tags/categorias";
@@ -54,17 +59,18 @@ export async function POST(
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  const contactId = z.string().uuid().safeParse((await ctx.params).id);
-  if (!contactId.success) return fail("not_found", t("Contato não encontrado."), 404, { requestId });
+  const contactId = z
+    .string()
+    .uuid()
+    .safeParse((await ctx.params).id);
+  if (!contactId.success)
+    return fail("not_found", t("Contato não encontrado."), 404, { requestId });
   const corpo = corpoSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success) return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
   if (corpo.data.acao === "outro" && (corpo.data.titulo ?? "").length < 3) {
-    return fail(
-      "validation_failed",
-      t("Escreva um título dizendo qual foi a ação."),
-      422,
-      { requestId },
-    );
+    return fail("validation_failed", t("Escreva um título dizendo qual foi a ação."), 422, {
+      requestId,
+    });
   }
 
   // Ligação, mensagem e e-mail são abordagens: sem resultado não entram no histórico (os
@@ -76,15 +82,23 @@ export async function POST(
   const supabase = await createClient();
   const orgId = authz.org.orgId;
   let abordagemId: string | null = null;
+  let abordagemNome: string | null = null;
   if (corpo.data.abordagem_id) {
     const { data: ab } = await supabase
       .from("demand_campaign_approaches")
-      .select("id")
+      .select("id, name")
       .eq("id", corpo.data.abordagem_id)
       .eq("organization_id", orgId)
       .maybeSingle();
     abordagemId = (ab as { id: string } | null)?.id ?? null;
+    abordagemNome = (ab as { name: string } | null)?.name ?? null;
   }
+  // As tags que a abordagem põe sozinha (contato, decisor, abordagem usada): só para as ações de
+  // abordagem, que têm resultado. O histórico guarda quais foram — a conta por dia sai dele.
+  const automaticas = exigeResultado(corpo.data.acao)
+    ? tagsAutomaticasDaAbordagem({ resultado: corpo.data.resultado, abordagemNome })
+    : { fixas: [], abordagem: null };
+  const postas = listarTagsAutomaticas(automaticas);
 
   const { data: contato } = await supabase
     .from("contacts")
@@ -128,6 +142,7 @@ export async function POST(
       comentario: corpo.data.comentario ?? null,
       ...(corpo.data.meio ? { meio: corpo.data.meio } : {}),
       ...(abordagemId ? { abordagem_id: abordagemId } : {}),
+      ...(postas.length > 0 ? { tags_automaticas: postas } : {}),
     },
   });
   if (!r.ok) return fail("internal_error", t("Erro ao registrar a ação."), 500, { requestId });
@@ -135,20 +150,22 @@ export async function POST(
   // A última atividade do cliente passa a ser esta; e, se pedida, a tag da ação (com contador).
   const atualizacao: Record<string, unknown> = { last_activity_at: new Date().toISOString() };
   let tagFinal: string | null = null;
-  if (corpo.data.tag) {
+  if (corpo.data.tag || postas.length > 0) {
     const { data: atual } = await supabase
       .from("contacts")
       .select("tags")
       .eq("id", contactId.data)
       .eq("organization_id", orgId)
       .maybeSingle();
-    const tags = somarTagComContador(
-      ((atual as { tags: string[] | null } | null)?.tags ?? []) as string[],
-      corpo.data.tag,
-    );
+    let tags = ((atual as { tags: string[] | null } | null)?.tags ?? []) as string[];
+    if (corpo.data.tag) tags = somarTagComContador(tags, corpo.data.tag);
+    tags = aplicarTagsAutomaticas(tags, automaticas);
     atualizacao.tags = tags;
-    tagFinal =
-      tags.find((x) => x.toLowerCase().startsWith(corpo.data.tag!.toLowerCase())) ?? corpo.data.tag;
+    if (corpo.data.tag) {
+      tagFinal =
+        tags.find((x) => x.toLowerCase().startsWith(corpo.data.tag!.toLowerCase())) ??
+        corpo.data.tag;
+    }
   }
   await supabase
     .from("contacts")

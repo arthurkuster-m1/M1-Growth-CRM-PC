@@ -88,6 +88,8 @@ const COLUNAS: Coluna[] = [
   m("reunioesFeitas", "Reuniões Feitas", "inteiro", (d) => d.reunioesFeitas),
   m("custoPorReuniaoFeita", "Custo por Reunião Feita", "brl", (d) => d.custoPorReuniaoFeita),
   m("taxaDeComparecimento", "Taxa de Comparecimento", "pct1", (d) => d.taxaDeComparecimento),
+  m("noShows", "No-Show", "inteiro", (d) => d.noShows),
+  m("taxaDeNoShow", "Taxa de No-Show", "pct1", (d) => d.taxaDeNoShow),
   m("vendas", "Vendas", "inteiro", (d) => d.vendas),
   m("cac", "CAC", "brl", (d) => d.cac),
   m("taxaDeConversao", "Taxa de Conversão", "pct1", (d) => d.taxaDeConversao),
@@ -358,6 +360,7 @@ export function ProspeccaoAtiva({ dados }: { dados: DadosDeProspeccao }) {
                   itens: [
                     item(t("Custo por reunião"), brl(a.custoPorReuniaoFeita)),
                     item(t("Taxa de comparecimento"), p1(a.taxaDeComparecimento)),
+                    item(t("No-show"), `${inteiro(a.noShows)} · ${p1(a.taxaDeNoShow)}`),
                   ],
                 },
                 {

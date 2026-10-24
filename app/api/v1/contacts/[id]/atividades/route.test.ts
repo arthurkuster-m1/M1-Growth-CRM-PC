@@ -17,6 +17,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const CONTATO = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const LEAD = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const ABORDAGEM = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
 function supabaseFake(tagsAtuais: string[] = []) {
   const atividades: Record<string, unknown>[] = [];
@@ -40,6 +41,8 @@ function supabaseFake(tagsAtuais: string[] = []) {
     c.maybeSingle = async () => {
       if (tabela === "contacts") return { data: { id: CONTATO, tags: tagsAtuais }, error: null };
       if (tabela === "crm_leads") return { data: { id: LEAD }, error: null };
+      if (tabela === "demand_campaign_approaches")
+        return { data: { id: ABORDAGEM, name: "Cold call" }, error: null };
       return { data: null, error: null };
     };
     c.then = (ok: (v: unknown) => void) => ok({ data: null, error: null, modo });
@@ -83,6 +86,65 @@ describe("POST /contacts/[id]/atividades", () => {
     expect(f.atividades[0]!.reason).toBe("");
   });
 
+  it("abordagem com o decisor: põe Contato, Contato com decisor e a abordagem usada — e o histórico diz quais", async () => {
+    const f = supabaseFake(["quente"]);
+    vi.mocked(createClient).mockResolvedValue(f.cliente);
+    const r = await POST(
+      pedido({
+        acao: "ligacao",
+        resultado: "Atendeu — falou com o decisor",
+        abordagem_id: ABORDAGEM,
+      }),
+      ctx,
+    );
+    expect(r.status).toBe(201);
+    expect(f.updates.find((u) => u.tags)?.tags).toEqual([
+      "quente",
+      "Contato",
+      "Contato com decisor",
+      "Abordagem: Cold call",
+    ]);
+    expect((f.atividades[0]!.payload as { tags_automaticas: string[] }).tags_automaticas).toEqual([
+      "Contato",
+      "Contato com decisor",
+      "Abordagem: Cold call",
+    ]);
+  });
+
+  it("segunda abordagem igual: o contador da abordagem sobe e 'Contato' não repete", async () => {
+    const f = supabaseFake(["Contato", "Contato com decisor", "Abordagem: Cold call"]);
+    vi.mocked(createClient).mockResolvedValue(f.cliente);
+    await POST(
+      pedido({
+        acao: "ligacao",
+        resultado: "Atendeu — falou com o decisor",
+        abordagem_id: ABORDAGEM,
+      }),
+      ctx,
+    );
+    expect(f.updates.find((u) => u.tags)?.tags).toEqual([
+      "Contato",
+      "Contato com decisor",
+      "Abordagem: Cold call: 2x",
+    ]);
+  });
+
+  it("sem resposta só marca a abordagem usada; ação sem resultado (remarcou, reunião) não põe tag automática", async () => {
+    const f = supabaseFake([]);
+    vi.mocked(createClient).mockResolvedValue(f.cliente);
+    await POST(
+      pedido({ acao: "mensagem", resultado: "Sem resposta", abordagem_id: ABORDAGEM }),
+      ctx,
+    );
+    expect(f.updates.find((u) => u.tags)?.tags).toEqual(["Abordagem: Cold call"]);
+
+    const g = supabaseFake([]);
+    vi.mocked(createClient).mockResolvedValue(g.cliente);
+    await POST(pedido({ acao: "reuniao", resultado: "Atendeu — falou com o decisor" }), ctx);
+    expect(g.updates.some((u) => u.tags)).toBe(false);
+    expect((g.atividades[0]!.payload as Record<string, unknown>).tags_automaticas).toBeUndefined();
+  });
+
   it("a tag da ação soma com contador (segunda vez = 2x)", async () => {
     const f = supabaseFake(["No Show"]);
     vi.mocked(createClient).mockResolvedValue(f.cliente);
@@ -90,6 +152,8 @@ describe("POST /contacts/[id]/atividades", () => {
     expect(r.status).toBe(201);
     const corpo = (await r.json()) as { data: { tag: string } };
     expect(corpo.data.tag).toBe("No Show: 2x");
-    expect(f.updates.some((u) => JSON.stringify(u.tags) === JSON.stringify(["No Show: 2x"]))).toBe(true);
+    expect(f.updates.some((u) => JSON.stringify(u.tags) === JSON.stringify(["No Show: 2x"]))).toBe(
+      true,
+    );
   });
 });
