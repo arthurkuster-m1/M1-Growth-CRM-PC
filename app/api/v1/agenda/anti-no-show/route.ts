@@ -8,6 +8,7 @@ import { type NextRequest } from "next/server";
 
 import { FLUXO_MODELO, fluxoSchema, type FluxoAntiNoShow } from "@/lib/agenda/anti-no-show";
 import { ligarTiposAoFluxo } from "@/lib/agenda/anti-no-show-servidor";
+import { desempacotarLembretes } from "@/lib/agenda/lembretes";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -15,12 +16,6 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-export interface TipoParaOFluxo {
-  id: string;
-  name: string;
-  lembretes: number[];
-}
 
 export async function GET(): Promise<Response> {
   const requestId = randomUUID();
@@ -33,7 +28,9 @@ export async function GET(): Promise<Response> {
   const [{ data: fluxos, error }, { data: ligacoes }, { data: tipos }] = await Promise.all([
     supabase
       .from("agenda_noshow_flows")
-      .select("id, name, call_hours_before, confirm_tag, no_show_tag, remarcar_days")
+      .select(
+        "id, name, call_hours_before, confirm_tag, no_show_tag, remarcar_days, remarcar_attempts, remarcar_interval_days",
+      )
       .eq("organization_id", orgId)
       .order("created_at", { ascending: true })
       .limit(100),
@@ -44,7 +41,9 @@ export async function GET(): Promise<Response> {
       .limit(1000),
     supabase
       .from("calendar_event_types")
-      .select("id, name, reminder_enabled, reminder_minutes_before, reminder_extra_offsets_minutes")
+      .select(
+        "id, name, reminder_enabled, reminder_minutes_before, reminder_extra_offsets_minutes, reminder_body, reminder_bodies",
+      )
       .eq("organization_id", orgId)
       .eq("is_active", true)
       .order("name", { ascending: true })
@@ -60,22 +59,27 @@ export async function GET(): Promise<Response> {
   const lista: FluxoAntiNoShow[] = (
     (fluxos ?? []) as Array<Omit<FluxoAntiNoShow, "event_type_ids">>
   ).map((f) => ({ ...f, event_type_ids: porFluxo.get(f.id) ?? [] }));
-  const tiposDoFluxo: TipoParaOFluxo[] = (
+  const tiposDoFluxo = (
     (tipos ?? []) as Array<{
       id: string;
       name: string;
       reminder_enabled: boolean;
       reminder_minutes_before: number;
       reminder_extra_offsets_minutes: number[] | null;
+      reminder_body: string | null;
+      reminder_bodies: unknown;
     }>
   ).map((x) => ({
     id: x.id,
     name: x.name,
-    lembretes: x.reminder_enabled
-      ? [x.reminder_minutes_before, ...(x.reminder_extra_offsets_minutes ?? [])].sort(
-          (a, b) => b - a,
-        )
-      : [],
+    lembrete_ligado: x.reminder_enabled,
+    // Cada lembrete do tipo com a mensagem dele: a MESMA fonte da tela de Tipos de atendimento.
+    lembretes: desempacotarLembretes({
+      reminder_minutes_before: x.reminder_minutes_before,
+      reminder_extra_offsets_minutes: x.reminder_extra_offsets_minutes,
+      reminder_body: x.reminder_body,
+      reminder_bodies: x.reminder_bodies,
+    }),
   }));
   return ok({ fluxos: lista, tipos: tiposDoFluxo, modelo: FLUXO_MODELO }, { requestId });
 }

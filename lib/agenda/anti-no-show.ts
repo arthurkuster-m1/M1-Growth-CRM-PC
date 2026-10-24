@@ -20,6 +20,10 @@ export const fluxoSchema = z.object({
   no_show_tag: z.string().trim().max(30),
   /** Em quantos dias úteis a oportunidade volta à fila para remarcar. Nulo = não agenda. */
   remarcar_days: z.number().int().min(0).max(30).nullable(),
+  /** Quantas tentativas de remarcar, no total (a primeira no prazo acima). */
+  remarcar_attempts: z.number().int().min(1).max(6),
+  /** Dias úteis entre uma tentativa sem resposta e a seguinte. */
+  remarcar_interval_days: z.number().int().min(1).max(14),
   event_type_ids: z.array(z.string().uuid()).max(100),
 });
 export type EntradaDoFluxo = z.infer<typeof fluxoSchema>;
@@ -35,11 +39,21 @@ export const FLUXO_MODELO: Omit<EntradaDoFluxo, "name" | "event_type_ids"> = {
   confirm_tag: "Confirmou",
   no_show_tag: "No Show",
   remarcar_days: 1,
+  remarcar_attempts: 3,
+  remarcar_interval_days: 2,
 };
+
+/** O que a oportunidade diz que fazer: "Remarcar a reunião (faltou)" ou, com várias tentativas, "— tentativa 2 de 3". */
+export function textoDaTentativa(tentativa: number, total: number): string {
+  return total > 1
+    ? `Remarcar a reunião (faltou) — tentativa ${tentativa} de ${total}`
+    : "Remarcar a reunião (faltou)";
+}
 
 export type EventoDoFluxo = "confirmou" | "faltou";
 
-const COLUNAS_DO_FLUXO = "id, call_hours_before, confirm_tag, no_show_tag, remarcar_days";
+export const COLUNAS_DO_FLUXO =
+  "id, call_hours_before, confirm_tag, no_show_tag, remarcar_days, remarcar_attempts, remarcar_interval_days";
 
 /** O fluxo do tipo de compromisso, ou null (tipo sem fluxo, ou tabela ainda inexistente). */
 export async function fluxoDoTipo(
@@ -69,6 +83,8 @@ export async function fluxoDoTipo(
       confirm_tag: string;
       no_show_tag: string;
       remarcar_days: number | null;
+      remarcar_attempts: number;
+      remarcar_interval_days: number;
     } | null) ?? null
   );
 }
@@ -132,10 +148,25 @@ export async function aplicarFluxoAntiNoShow(
       const leadId = (vinculo as { lead_id?: string } | null)?.lead_id;
       if (leadId) {
         const hoje = input.hoje ?? new Intl.DateTimeFormat("en-CA").format(new Date());
+        // Uma remarcação ativa por lead: a anterior (de uma falta antiga) dá lugar à nova.
+        await admin
+          .from("agenda_noshow_remarcacoes")
+          .update({ status: "cancelada" })
+          .eq("organization_id", input.organizationId)
+          .eq("lead_id", leadId)
+          .eq("status", "ativa");
+        await admin.from("agenda_noshow_remarcacoes").insert({
+          organization_id: input.organizationId,
+          lead_id: leadId,
+          flow_id: fluxo.id,
+          appointment_id: input.appointmentId,
+          max_attempts: fluxo.remarcar_attempts,
+          interval_days: fluxo.remarcar_interval_days,
+        });
         await admin
           .from("crm_leads")
           .update({
-            proxima_acao: "Remarcar a reunião (faltou)",
+            proxima_acao: textoDaTentativa(1, fluxo.remarcar_attempts),
             proxima_acao_em: somarDiasUteis(hoje, fluxo.remarcar_days),
           })
           .eq("organization_id", input.organizationId)

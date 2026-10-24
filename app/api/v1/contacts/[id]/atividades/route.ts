@@ -26,6 +26,8 @@ import {
   listarTagsAutomaticas,
   tagsAutomaticasDaAbordagem,
 } from "@/lib/leads/tags-automaticas";
+import { registrarTentativaNaRemarcacao } from "@/lib/agenda/remarcacao";
+import { subirDeEtapaAoResponder } from "@/lib/cadencia/subir-de-etapa";
 import { registrarTentativaNaCadencia } from "@/lib/cadencia/progresso";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -177,11 +179,26 @@ export async function POST(
   // A cadência do lead: contato encerra, sem contato o passo é dado como feito.
   if (exigeResultado(corpo.data.acao)) {
     try {
-      await registrarTentativaNaCadencia(createAdminClient(), {
+      const admin = createAdminClient();
+      const resultadoDaCadencia = await registrarTentativaNaCadencia(admin, {
         organizationId: orgId,
         leadId: (lead as { id: string }).id,
         respondeu: automaticas.fixas.length > 0,
       });
+      // O lead que faltou e está na mini-cadência de remarcação: a tentativa conta.
+      await registrarTentativaNaRemarcacao(admin, {
+        organizationId: orgId,
+        leadId: (lead as { id: string }).id,
+        respondeu: automaticas.fixas.length > 0,
+      });
+      // Quem respondeu na cadência sobe de etapa (Contato, ou Contato com decisor).
+      if (resultadoDaCadencia === "respondeu") {
+        await subirDeEtapaAoResponder(admin, {
+          organizationId: orgId,
+          leadId: (lead as { id: string }).id,
+          decisor: automaticas.fixas.includes("Contato com decisor"),
+        });
+      }
     } catch {
       // A cadência é acompanhamento: não derruba o registro da ação.
     }

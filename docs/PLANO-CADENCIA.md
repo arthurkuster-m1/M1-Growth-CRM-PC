@@ -109,9 +109,19 @@ Reaproveita o lembrete e a confirmação da Agenda.
 **Aceite.** Um compromisso de um tipo com fluxo vinculado recebe a confirmação e o lembrete nos
 horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a remarcação.
 
+### Fase 5 — Pontas soltas das fases 1 a 4
+**Descrição.** Fecha o que as quatro primeiras fases deixaram de fora.
+- **Etapa ao responder:** o lead que tem cadência ativa e registra contato sobe sozinho de etapa — "Contato" (atendeu) ou "Contato com decisor" (falou com o decisor) —, só para a frente e só se o funil tiver a etapa.
+- **Fim por tempo, provado no banco:** o gatilho de inscrição e a varredura de encerramento são exercitados de verdade no banco de desenvolvimento (dados criados e desfeitos), não só nos testes.
+- **Mini-cadência de remarcação:** o fluxo anti no-show passa a ter N tentativas de remarcar, com intervalo em dias úteis; cada abordagem registrada sem sucesso agenda a próxima, e o ciclo para quando o cliente responde, quando ele já tem novo compromisso ou quando as tentativas acabam.
+- **Mensagens do fluxo:** a aba Anti no-show mostra e edita a mensagem de cada lembrete dos tipos do fluxo (a mesma fonte do tipo de atendimento, sem cópia).
+- Migration: colunas de tentativas no fluxo e tabela das remarcações em andamento.
+
+**Aceite.** Registrar "falou com o decisor" num lead com cadência ativa o leva a "Contato com decisor". Marcar uma falta num tipo com 3 tentativas põe o lead na fila; registrar "sem resposta" agenda a seguinte; na terceira, a remarcação termina. Editar a mensagem de um lembrete na aba Anti no-show muda o lembrete do tipo.
+
 ## 7. Pontos em aberto
 
-- Texto exato das mensagens do fluxo anti no-show (a definir na Fase 4, com o Arthur).
+- Mensagem enviada AUTOMATICAMENTE ao cliente depois da falta ("sentimos sua falta"): exige envio pelo canal (janela de 24h, modelos aprovados, anti-banimento) e fica fora da Fase 5.
 - Se o destino de fim de cadência pode ser "Nutrição" (precisa existir uma etapa/funil de nutrição).
 - Se a cadência também deve existir em campanhas que não são de Prospecção (por ora, só Prospecção).
 - Limite de leads por dia na lista "Hoje" (para não virar fila impossível de zerar).
@@ -121,6 +131,7 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 | Fase | Situação | Observação |
 |---|---|---|
 | 1 — Funil, tags e no-show | Concluída (24/10/2026) | "Reunião realizada" e "Desqualificado" mantidas no modelo (exigência do sistema); funis existentes não mudam. |
-| 2 — Cadência | Código pronto, em revisão (24/10/2026) | Migration 0659. Entregue: página Cadência (passos, destino do fim, modelos), inscrição por gatilho ao entrar em Abordagem, avanço/encerramento ao registrar abordagem, cron `cadence-sweep` (15 min) e botão "Inscrever quem já está em Abordagem". A etapa do lead NÃO sobe sozinha ao responder (decisão adiada); depois do último passo o lead tem 2 dias para responder. |
-| 3 — "Hoje" | Código pronto, em revisão (24/10/2026) | Sem migration: o passo de hoje é CALCULADO da inscrição (não grava "próxima ação" no lead, para não duplicar a fonte). Botão "Cadência de hoje" nas oportunidades do CRM + faixa do passo no Modo Prospecção. A lista de hoje só se atualiza ao sair do Modo, para a fila não mudar sob os pés. Limite diário da lista segue em aberto. |
-| 4 — Anti no-show | Código pronto, em revisão (24/10/2026) | Migration 0660. Aba "Anti no-show" em Configuração da Agenda: fluxos por tipo de compromisso (um fluxo por tipo). Cada fluxo: horas antes para virar tarefa de ligar sem confirmação; tag de confirmou; tag de faltou (com contador); dias úteis para a oportunidade voltar à fila ("Remarcar"). O aviso ao cliente segue sendo o lembrete do tipo (não duplicado). Aplicado nos 3 pontos: confirmação pela equipe, resposta do cliente e registro de falta. Mini-cadência de remarcação e mensagens próprias do fluxo ficam para depois. A meta de leads da sessão de prospecção passou a limitar também a lista "Cadência de hoje". |
+| 2 — Cadência | Concluída (24/10/2026, PR #81) | Migration 0659. Entregue: página Cadência (passos, destino do fim, modelos), inscrição por gatilho ao entrar em Abordagem, avanço/encerramento ao registrar abordagem, cron `cadence-sweep` (15 min) e botão "Inscrever quem já está em Abordagem". A etapa do lead não subia sozinha ao responder (resolvido na Fase 5); depois do último passo o lead tem 2 dias para responder. |
+| 3 — "Hoje" | Concluída (24/10/2026, PR #82) | Sem migration: o passo de hoje é CALCULADO da inscrição (não grava "próxima ação" no lead, para não duplicar a fonte). Botão "Cadência de hoje" nas oportunidades do CRM + faixa do passo no Modo Prospecção. A lista de hoje só se atualiza ao sair do Modo, para a fila não mudar sob os pés. Limite diário da lista segue em aberto. |
+| 4 — Anti no-show | Concluída (24/10/2026, PR #83) | Migration 0660. Aba "Anti no-show" em Configuração da Agenda: fluxos por tipo de compromisso (um fluxo por tipo). Cada fluxo: horas antes para virar tarefa de ligar sem confirmação; tag de confirmou; tag de faltou (com contador); dias úteis para a oportunidade voltar à fila ("Remarcar"). O aviso ao cliente segue sendo o lembrete do tipo (não duplicado). Aplicado nos 3 pontos: confirmação pela equipe, resposta do cliente e registro de falta. Mini-cadência de remarcação e mensagens próprias do fluxo: Fase 5. A meta de leads da sessão de prospecção passou a limitar também a lista "Cadência de hoje". |
+| 5 — Pontas soltas | Código pronto, em revisão (24/10/2026) | Migration 0661. Etapa ao responder (Contato / Contato com decisor, só para a frente). Fim por tempo verificado no banco de desenvolvimento: o gatilho inscreveu, cancelou ao sair da etapa, reinscreveu ao voltar e deixou a inscrição vencida visível para a varredura (dados criados e desfeitos); a rota do cron em si só foi exercitada pelos testes. Mini-cadência de remarcação (até 6 tentativas, intervalo em dias úteis; termina ao responder, remarcar ou esgotar). Mensagens dos lembretes editáveis na aba Anti no-show (mesma fonte do tipo). Fora: mensagem enviada automaticamente depois da falta. |

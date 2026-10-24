@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
 import { registrarTentativaNaCadencia } from "@/lib/cadencia/progresso";
+import { subirDeEtapaAoResponder } from "@/lib/cadencia/subir-de-etapa";
 import { createClient } from "@/lib/supabase/server";
 
 import { POST } from "./route";
@@ -15,6 +16,10 @@ vi.mock("@/lib/impersonate/support", async (importOriginal) => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn(() => ({})) }));
+vi.mock("@/lib/agenda/remarcacao", () => ({ registrarTentativaNaRemarcacao: vi.fn(async () => "sem_remarcacao") }));
+vi.mock("@/lib/cadencia/subir-de-etapa", () => ({
+  subirDeEtapaAoResponder: vi.fn(async () => "movido"),
+}));
 vi.mock("@/lib/cadencia/progresso", () => ({
   registrarTentativaNaCadencia: vi.fn(async () => "avancou"),
 }));
@@ -167,6 +172,31 @@ describe("POST /contacts/[id]/atividades", () => {
     mock.mockClear();
     await POST(pedido({ acao: "reuniao", resultado: "Foi bem" }), ctx);
     expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("quem responde na cadência sobe de etapa; sem cadência ativa, não mexe na etapa", async () => {
+    const sobe = vi.mocked(subirDeEtapaAoResponder);
+    sobe.mockClear();
+    vi.mocked(createClient).mockResolvedValue(supabaseFake([]).cliente);
+    vi.mocked(registrarTentativaNaCadencia).mockResolvedValueOnce("respondeu");
+    await POST(pedido({ acao: "ligacao", resultado: "Atendeu — falou com o decisor" }), ctx);
+    expect(sobe).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ decisor: true }),
+    );
+
+    sobe.mockClear();
+    vi.mocked(registrarTentativaNaCadencia).mockResolvedValueOnce("respondeu");
+    await POST(pedido({ acao: "ligacao", resultado: "Atendeu — não é o decisor" }), ctx);
+    expect(sobe).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ decisor: false }),
+    );
+
+    sobe.mockClear();
+    vi.mocked(registrarTentativaNaCadencia).mockResolvedValueOnce("sem_cadencia");
+    await POST(pedido({ acao: "ligacao", resultado: "Atendeu — falou com o decisor" }), ctx);
+    expect(sobe).not.toHaveBeenCalled();
   });
 
   it("a tag da ação soma com contador (segunda vez = 2x)", async () => {

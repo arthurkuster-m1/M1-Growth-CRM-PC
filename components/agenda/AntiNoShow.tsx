@@ -8,6 +8,7 @@ import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { useAntiNoShow, type TipoParaOFluxo } from "@/hooks/agenda/useAntiNoShow";
 import { useT } from "@/hooks/i18n/useT";
 import type { EntradaDoFluxo } from "@/lib/agenda/anti-no-show";
+import type { PassoDeLembrete } from "@/lib/agenda/lembretes";
 import { Plus, Trash } from "@/lib/ui/icons";
 
 const CAMPO =
@@ -30,6 +31,7 @@ function CartaoDoFluxo({
   podeEditar,
   aoSalvar,
   aoApagar,
+  aoSalvarMensagens,
 }: {
   inicial: EntradaDoFluxo;
   tipos: TipoParaOFluxo[];
@@ -38,9 +40,12 @@ function CartaoDoFluxo({
   podeEditar: boolean;
   aoSalvar: (e: EntradaDoFluxo) => Promise<boolean>;
   aoApagar?: () => Promise<void>;
+  aoSalvarMensagens: (tipoId: string, passos: PassoDeLembrete[]) => Promise<boolean>;
 }) {
   const t = useT();
   const [f, setF] = useState(inicial);
+  /** As mensagens em edição, por tipo (só o que a pessoa mexeu). */
+  const [mensagens, setMensagens] = useState<Record<string, PassoDeLembrete[]>>({});
   const [gravando, setGravando] = useState(false);
   const sujo = JSON.stringify(f) !== JSON.stringify(inicial);
   const bloqueado = !podeEditar;
@@ -84,7 +89,7 @@ function CartaoDoFluxo({
                       <span className="font-medium">{x.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {x.lembretes.length > 0
-                          ? `${t("Lembretes")}: ${x.lembretes.map((m) => antecedencia(t, m)).join(", ")} ${t("antes")}`
+                          ? `${t("Lembretes")}: ${x.lembretes.map((m) => antecedencia(t, m.minutes)).join(", ")} ${t("antes")}`
                           : t("Sem lembrete ao cliente")}
                         {outro && !f.event_type_ids.includes(x.id)
                           ? ` · ${t("hoje no fluxo")} “${outro}”`
@@ -186,7 +191,115 @@ function CartaoDoFluxo({
           />
           {t("dias úteis")}
         </label>
+        {f.remarcar_days !== null ? (
+          <label className="flex flex-wrap items-center gap-2 pl-7 text-sm">
+            {t("Tentar remarcar até")}
+            <input
+              type="number"
+              min={1}
+              max={6}
+              className={`${CAMPO} w-20 tabular-nums`}
+              disabled={bloqueado}
+              aria-label={t("Tentativas de remarcar")}
+              value={f.remarcar_attempts}
+              onChange={(e) =>
+                setF({
+                  ...f,
+                  remarcar_attempts: Math.min(
+                    6,
+                    Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                  ),
+                })
+              }
+            />
+            {t("vezes, a cada")}
+            <input
+              type="number"
+              min={1}
+              max={14}
+              className={`${CAMPO} w-20 tabular-nums`}
+              disabled={bloqueado}
+              aria-label={t("Dias úteis entre as tentativas")}
+              value={f.remarcar_interval_days}
+              onChange={(e) =>
+                setF({
+                  ...f,
+                  remarcar_interval_days: Math.min(
+                    14,
+                    Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                  ),
+                })
+              }
+            />
+            {t("dias úteis sem resposta")}
+          </label>
+        ) : null}
       </section>
+
+      {tipos.some((x) => f.event_type_ids.includes(x.id) && x.lembrete_ligado) ? (
+        <section className="grid gap-3">
+          <h3 className="text-sm font-semibold">{t("Mensagens dos lembretes")}</h3>
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "É o texto que o cliente recebe antes do compromisso, o mesmo de Tipos de atendimento. Vazio usa a mensagem padrão. Use {nome}, {data} e {hora}.",
+            )}
+          </p>
+          {tipos
+            .filter((x) => f.event_type_ids.includes(x.id) && x.lembrete_ligado)
+            .map((x) => {
+              const passos = mensagens[x.id] ?? x.lembretes;
+              const mexeu = mensagens[x.id] !== undefined;
+              return (
+                <div key={x.id} className="grid gap-2 rounded-xl border p-3">
+                  <p className="text-sm font-medium">{x.name}</p>
+                  {passos.map((p, i) => (
+                    <label key={p.minutes} className="grid gap-1 text-xs text-muted-foreground">
+                      {antecedencia(t, p.minutes)} {t("antes")}
+                      <textarea
+                        rows={2}
+                        maxLength={1000}
+                        disabled={bloqueado}
+                        className="w-full rounded-xl border bg-card px-3 py-2 text-sm text-foreground outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                        value={p.body}
+                        onChange={(e) =>
+                          setMensagens({
+                            ...mensagens,
+                            [x.id]: passos.map((q, j) =>
+                              j === i ? { ...q, body: e.target.value } : q,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                  {podeEditar && mexeu ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className={BOTAO_CHEIO}
+                        onClick={async () => {
+                          if (await aoSalvarMensagens(x.id, passos)) {
+                            setMensagens(({ [x.id]: _tirado, ...resto }) => resto);
+                            toast.success(t("Mensagens salvas."));
+                          }
+                        }}
+                      >
+                        {t("Salvar mensagens")}
+                      </button>
+                      <button
+                        type="button"
+                        className={BOTAO}
+                        onClick={() => setMensagens(({ [x.id]: _tirado, ...resto }) => resto)}
+                      >
+                        {t("Descartar")}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+        </section>
+      ) : null}
 
       {podeEditar ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -236,7 +349,7 @@ function CartaoDoFluxo({
 export function AntiNoShow({ podeEditar }: { podeEditar: boolean }) {
   const t = useT();
   const { confirmar, dialogo } = useConfirmar();
-  const { dados, carregando, criar, salvar, apagar } = useAntiNoShow();
+  const { dados, carregando, criar, salvar, apagar, salvarMensagens } = useAntiNoShow();
   const [novo, setNovo] = useState<EntradaDoFluxo | null>(null);
 
   if (carregando || !dados) {
@@ -271,12 +384,15 @@ export function AntiNoShow({ podeEditar }: { podeEditar: boolean }) {
             confirm_tag: fl.confirm_tag,
             no_show_tag: fl.no_show_tag,
             remarcar_days: fl.remarcar_days,
+            remarcar_attempts: fl.remarcar_attempts,
+            remarcar_interval_days: fl.remarcar_interval_days,
             event_type_ids: fl.event_type_ids,
           }}
           tipos={dados.tipos}
           fluxosDosOutrosTipos={nomeDoFluxoDoTipo(fl.id)}
           podeEditar={podeEditar}
           aoSalvar={(e) => salvar(fl.id, e)}
+          aoSalvarMensagens={salvarMensagens}
           aoApagar={async () => {
             if (
               await confirmar(
@@ -293,6 +409,7 @@ export function AntiNoShow({ podeEditar }: { podeEditar: boolean }) {
       {novo ? (
         <CartaoDoFluxo
           inicial={novo}
+          aoSalvarMensagens={salvarMensagens}
           tipos={dados.tipos}
           fluxosDosOutrosTipos={nomeDoFluxoDoTipo(null)}
           podeEditar={podeEditar}

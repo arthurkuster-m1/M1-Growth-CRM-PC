@@ -30,6 +30,7 @@ import {
 } from "@/lib/agenda/aviso-do-compromisso";
 import { coletaOQueOcupa, horariosLivresDaOrg } from "@/lib/agenda/consulta";
 import { aplicarFluxoAntiNoShow } from "@/lib/agenda/anti-no-show";
+import { encerrarRemarcacoesDoContato } from "@/lib/agenda/remarcacao";
 import { colide } from "@/lib/agenda/horarios-livres";
 import {
   atividadeDaTransicao,
@@ -514,6 +515,14 @@ async function executarCriacaoDeAgendamento(
     fusoDoCompromisso: criado.time_zone,
     nomeDoTipo: tipo.name,
   });
+
+  // O cliente marcou de novo: a mini-cadência de remarcação dele, se houver, termina.
+  if (input.contact_id) {
+    await encerrarRemarcacoesDoContato(supabase, {
+      organizationId: ctx.organization_id,
+      contactId: input.contact_id,
+    });
+  }
 
   void audit({
     action: "agenda.appointment_created",
