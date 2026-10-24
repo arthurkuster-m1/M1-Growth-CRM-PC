@@ -27,6 +27,9 @@ export const campaignConfigSchema = z
     // vez de ser abordada. O padrão é `on_start` — configuração gravada antes desta chave
     // existir segue funcionando igual, sem ninguém editar nada.
     funnel_entry: z.enum(["on_start", "on_send"]).default("on_start"),
+    // Só abordar quem tem CELULAR: o WhatsApp não chega em telefone fixo. Ausente vale `false`, para
+    // a configuração gravada antes desta chave seguir igual; a tela liga em toda campanha nova.
+    only_mobile: z.boolean().optional(),
   })
   .strict();
 export const searchSchema = z

@@ -37,6 +37,7 @@ import {
   criarPegadaDoCandidato,
   enfileirarCandidatos,
   prepararCandidatoNoEnvio,
+  MOTIVO_SO_CELULAR,
   triarCandidato,
   type Candidate,
 } from "@/lib/prospecting/store";
@@ -231,6 +232,30 @@ describe("triarCandidato", () => {
       motivo: "Sem telefone brasileiro válido.",
     });
     expect(chamadas).toHaveLength(0);
+  });
+
+  it("só celular: telefone fixo é pulado com o motivo, sem consultar o CRM", async () => {
+    const { db, chamadas } = bancoFalso();
+    const config = { only_mobile: true };
+    expect(
+      await triarCandidato(db, ORG, CAMPANHA, candidato(1, { phone: "+551533334444" }), config),
+    ).toEqual({ motivo: MOTIVO_SO_CELULAR });
+    expect(chamadas).toHaveLength(0);
+    // Celular segue o caminho de sempre.
+    expect(
+      await triarCandidato(db, ORG, CAMPANHA, candidato(2, { phone: "+5515988887777" }), config),
+    ).toEqual({ contatoDaCampanha: null });
+  });
+
+  it("campanha antiga (sem a chave) e `only_mobile: false` seguem aceitando fixo", async () => {
+    const { db } = bancoFalso();
+    const fixo = candidato(1, { phone: "+551533334444" });
+    expect(await triarCandidato(db, ORG, CAMPANHA, fixo)).toEqual({ contatoDaCampanha: null });
+    expect(await triarCandidato(db, ORG, CAMPANHA, fixo, { only_mobile: false })).toEqual({
+      contatoDaCampanha: null,
+    });
+    // A configuração gravada antes da chave existir segue sem ela (vale como `false`).
+    expect(campaignConfigSchema.parse(baseConfig).only_mobile).toBeUndefined();
   });
 });
 

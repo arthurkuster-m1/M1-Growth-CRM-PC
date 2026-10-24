@@ -93,6 +93,8 @@ const emptyConfig: CampaignConfig = {
   legal_basis_ref: "",
   // Campanha nova nasce no modo recomendado; a configuração já gravada manda no que existe.
   funnel_entry: "on_send",
+  // Campanha nova só aborda celular (o WhatsApp não chega em fixo); a já gravada manda no que existe.
+  only_mobile: true,
 };
 export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) {
   const t = useT();
@@ -1111,6 +1113,21 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                               />
                             </div>
                           </div>
+                          <label className="flex items-start gap-2 text-sm">
+                            <CaixaRedonda
+                              checked={config.only_mobile === true}
+                              onChange={(e) => update("only_mobile", e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              {t("Abordar só quem tem celular (recomendado)")}
+                              <span className="block text-xs text-muted-foreground">
+                                {t(
+                                  "O WhatsApp não chega em telefone fixo. Empresas só com fixo ficam de fora da fila, com o motivo registrado.",
+                                )}
+                              </span>
+                            </span>
+                          </label>
                           <fieldset className="space-y-2">
                             <legend className="text-sm font-medium">
                               {t("Quando a empresa entra no funil")}
