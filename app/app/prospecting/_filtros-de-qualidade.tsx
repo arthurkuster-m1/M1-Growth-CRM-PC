@@ -17,6 +17,8 @@ import type { Prospect } from "@/lib/prospecting/schema";
 interface Linha {
   id: string;
   data: Pick<Prospect, "phone" | "website" | "category" | "rating" | "reviews">;
+  /** O resultado da verificação de WhatsApp. */
+  whatsapp?: string | null;
   selected?: boolean;
 }
 
@@ -42,7 +44,8 @@ export function FiltrosDeQualidade({
 }) {
   const t = useT();
   const [filtro, setFiltro] = useState<FiltroDeQualidade>(SEM_FILTRO);
-  const atendem = linhas.filter((l) => atendeAoFiltro(l.data, filtro));
+  const atende = (l: Linha) => atendeAoFiltro({ ...l.data, whatsapp: l.whatsapp }, filtro);
+  const atendem = linhas.filter(atende);
   const ativo = filtroEstaAtivo(filtro);
 
   return (
@@ -106,6 +109,13 @@ export function FiltrosDeQualidade({
             />
             {t("Só celular (WhatsApp não chega em telefone fixo)")}
           </label>
+          <label className="flex items-center gap-2">
+            <CaixaRedonda
+              checked={filtro.soComWhatsapp}
+              onChange={(e) => setFiltro({ ...filtro, soComWhatsapp: e.target.checked })}
+            />
+            {t("Só com WhatsApp confirmado (use “Verificar WhatsApp” antes)")}
+          </label>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
@@ -126,10 +136,10 @@ export function FiltrosDeQualidade({
             onClick={() =>
               void aoAplicar(
                 linhas
-                  .filter((l) => atendeAoFiltro(l.data, filtro) && l.selected === false)
+                  .filter((l) => atende(l) && l.selected === false)
                   .map((l) => l.id),
                 linhas
-                  .filter((l) => !atendeAoFiltro(l.data, filtro) && l.selected !== false)
+                  .filter((l) => !atende(l) && l.selected !== false)
                   .map((l) => l.id),
               )
             }

@@ -80,6 +80,15 @@ export const prospectingInputSchema = z.discriminatedUnion("action", [
   z
     .object({ action: z.literal("start"), id: z.string().uuid(), config: campaignConfigSchema })
     .strict(),
+  // Pergunta ao WhatsApp, pela conexão escolhida, se o número de cada empresa existe.
+  z
+    .object({
+      action: z.literal("verify_whatsapp"),
+      id: z.string().uuid(),
+      channel_session_id: z.string().uuid(),
+      refazer_incertas: z.boolean().optional(),
+    })
+    .strict(),
   z.object({ action: z.literal("pause"), id: z.string().uuid() }).strict(),
   z.object({ action: z.literal("resume"), id: z.string().uuid() }).strict(),
   // O ÚNICO pedaço da configuração que se edita depois de iniciada. Estrito: conexão,

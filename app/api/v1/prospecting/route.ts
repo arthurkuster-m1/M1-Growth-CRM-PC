@@ -12,6 +12,7 @@ import { ProspectingError } from "@/lib/prospecting/provider";
 import { combinacoes, planoDoLote } from "@/lib/prospecting/lote";
 import { idDaBuscaDoLote } from "@/lib/prospecting/lote-id";
 import { prospectingInputSchema, searchSchema } from "@/lib/prospecting/schema";
+import { verificarWhatsappDaCampanha } from "@/lib/prospecting/verificar-whatsapp";
 import {
   activateCampaign,
   adjustPace,
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
         [org, campanha],
       ),
       db.query(
-        "select p.id,p.campaign_id,p.data,p.status,p.selected,p.error,p.lead_id,p.conversation_id,p.attempted_at,m.status as message_status,case when l.stage_id::text=c.config->>'qualified_stage_id' then 'qualified' when v.last_inbound_at is not null then 'replied' else p.status end as progress from prospecting_candidates p join prospecting_campaigns c on c.organization_id=p.organization_id and c.id=p.campaign_id left join crm_leads l on l.organization_id=p.organization_id and l.id=p.lead_id left join conversations v on v.organization_id=p.organization_id and v.id=p.conversation_id left join messages m on m.organization_id=p.organization_id and m.id=p.message_id where p.organization_id=$1 and ($2::uuid is null or c.demand_campaign_id=$2::uuid) order by p.created_at desc limit 5000",
+        "select p.id,p.campaign_id,p.data,p.status,p.selected,p.whatsapp_status,p.error,p.lead_id,p.conversation_id,p.attempted_at,m.status as message_status,case when l.stage_id::text=c.config->>'qualified_stage_id' then 'qualified' when v.last_inbound_at is not null then 'replied' else p.status end as progress from prospecting_candidates p join prospecting_campaigns c on c.organization_id=p.organization_id and c.id=p.campaign_id left join crm_leads l on l.organization_id=p.organization_id and l.id=p.lead_id left join conversations v on v.organization_id=p.organization_id and v.id=p.conversation_id left join messages m on m.organization_id=p.organization_id and m.id=p.message_id where p.organization_id=$1 and ($2::uuid is null or c.demand_campaign_id=$2::uuid) order by p.created_at desc limit 5000",
         [org, campanha],
       ),
       db.query(
@@ -213,7 +214,25 @@ export async function POST(req: NextRequest) {
       );
     } else if (body.action === "start")
       result = await activateCampaign(pool, admin, org, body.id, body.config);
-    else if (body.action === "pause") {
+    else if (body.action === "verify_whatsapp") {
+      const resumo = await verificarWhatsappDaCampanha(
+        pool,
+        org,
+        body.id,
+        body.channel_session_id,
+        {
+          refazerIncertas: body.refazer_incertas,
+        },
+      );
+      result = resumo;
+      auditMetadata = {
+        operation: body.action,
+        verificadas: resumo.verificadas,
+        tem: resumo.tem,
+        nao_tem: resumo.nao_tem,
+        incerto: resumo.incerto,
+      };
+    } else if (body.action === "pause") {
       // Pause does not wait for the worker lock; the delivery guard sees it before sending.
       const changed = await pool.query(
         "update prospecting_campaigns set status='paused',updated_at=now() where organization_id=$1 and id=$2 and status='running' returning id",

@@ -20,6 +20,7 @@ import {
   type Prospect,
 } from "@/lib/prospecting/schema";
 import { FiltrosDeQualidade } from "./_filtros-de-qualidade";
+import { VerificarWhatsapp } from "./_verificar-whatsapp";
 import { tipoDoTelefone } from "@/lib/prospecting/qualidade";
 import { linhasDoCampo, planoDoLote } from "@/lib/prospecting/lote";
 import { ProspectingAgentBuilder, type CreatedProspectingAgent } from "./_create-agent";
@@ -41,6 +42,8 @@ type Candidate = {
   id: string;
   campaign_id: string;
   data: Prospect;
+  /** Se o número tem WhatsApp, conferido antes de abordar. */
+  whatsapp_status?: "exists" | "missing" | "unknown" | null;
   selected?: boolean;
   status?: string;
   lead_id?: string | null;
@@ -59,6 +62,7 @@ type State = {
     display_name: string | null;
     phone_number: string | null;
     status: string;
+    provider?: string;
   }[];
   stages: { id: string; name: string; pipeline_id: string; pipeline_name: string }[];
 };
@@ -1319,9 +1323,30 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                       )}
                     </div>
                   </div>
+                  {canSelect && campaign && (
+                    <VerificarWhatsapp
+                      campanhaId={campaign.id}
+                      canais={(data?.channels ?? []).filter((c) => c.provider === "waha")}
+                      canalInicial={config.channel_session_id}
+                      contagem={{
+                        tem: elegiveis.filter((c) => c.whatsapp_status === "exists").length,
+                        naoTem: elegiveis.filter((c) => c.whatsapp_status === "missing").length,
+                        incerta: elegiveis.filter((c) => c.whatsapp_status === "unknown").length,
+                        pendente: elegiveis.filter(
+                          (c) => c.selected !== false && !c.whatsapp_status && !!c.data.phone,
+                        ).length,
+                      }}
+                      aoTerminar={() => query.refetch()}
+                    />
+                  )}
                   {canSelect && (
                     <FiltrosDeQualidade
-                      linhas={elegiveis}
+                      linhas={elegiveis.map((c) => ({
+                        id: c.id,
+                        data: c.data,
+                        whatsapp: c.whatsapp_status,
+                        selected: c.selected,
+                      }))}
                       ocupado={busy}
                       aoAplicar={aplicarFiltro}
                     />
@@ -1376,6 +1401,19 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                               </p>
                               <p className="mt-1 text-xs">
                                 {c.data.phone ?? t("Sem telefone")}
+                                {c.whatsapp_status === "exists" ? (
+                                  <span className="ml-1.5 rounded-full bg-success-bg px-2 py-0.5 text-[10px] text-success-fg">
+                                    {t("Tem WhatsApp")}
+                                  </span>
+                                ) : c.whatsapp_status === "missing" ? (
+                                  <span className="ml-1.5 rounded-full bg-error-bg px-2 py-0.5 text-[10px] text-error-fg">
+                                    {t("Sem WhatsApp")}
+                                  </span>
+                                ) : c.whatsapp_status === "unknown" ? (
+                                  <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
+                                    {t("Não consegui verificar")}
+                                  </span>
+                                ) : null}
                                 {tipoDoTelefone(c.data.phone) ? (
                                   <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
                                     {tipoDoTelefone(c.data.phone) === "celular"

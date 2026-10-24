@@ -51292,3 +51292,12 @@ comment on table public.demand_lead_imports is
   'Planilhas de leads importadas numa campanha de demanda: o registro de cada lote (arquivo, linhas, novos, já no CRM, inválidos). Lido pela empresa toda; escrito a partir de manager.';
 
 notify pgrst, 'reload schema';
+
+-- ---- verificação de WhatsApp das empresas extraídas (migration 0658) ----
+alter table public.prospecting_candidates
+  add column if not exists whatsapp_status text,
+  add column if not exists whatsapp_checked_at timestamptz;
+alter table public.prospecting_candidates drop constraint if exists prospecting_candidates_whatsapp_status_check;
+alter table public.prospecting_candidates add constraint prospecting_candidates_whatsapp_status_check
+  check (whatsapp_status is null or whatsapp_status in ('exists', 'missing', 'unknown'));
+notify pgrst, 'reload schema';

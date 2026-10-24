@@ -37,6 +37,7 @@ import {
   criarPegadaDoCandidato,
   enfileirarCandidatos,
   prepararCandidatoNoEnvio,
+  MOTIVO_SEM_WHATSAPP,
   MOTIVO_SO_CELULAR,
   triarCandidato,
   type Candidate,
@@ -245,6 +246,19 @@ describe("triarCandidato", () => {
     expect(
       await triarCandidato(db, ORG, CAMPANHA, candidato(2, { phone: "+5515988887777" }), config),
     ).toEqual({ contatoDaCampanha: null });
+  });
+
+  it("número que a verificação provou SEM WhatsApp é pulado; não verificado ou incerto seguem", async () => {
+    const { db, chamadas } = bancoFalso();
+    expect(
+      await triarCandidato(db, ORG, CAMPANHA, candidato(1, { whatsapp_status: "missing" })),
+    ).toEqual({ motivo: MOTIVO_SEM_WHATSAPP });
+    expect(chamadas).toHaveLength(0);
+    for (const status of [null, "unknown", "exists"] as const) {
+      expect(
+        await triarCandidato(db, ORG, CAMPANHA, candidato(2, { whatsapp_status: status })),
+      ).toEqual({ contatoDaCampanha: null });
+    }
   });
 
   it("campanha antiga (sem a chave) e `only_mobile: false` seguem aceitando fixo", async () => {
