@@ -21,6 +21,7 @@ import {
   type SearchInput,
   type Prospect,
 } from "./schema";
+import { tipoDoTelefone } from "./qualidade";
 import { ProspectingError } from "./provider";
 import { provedorDaOrganizacao, validarCredencialDaOrganizacao } from "./provedor";
 
@@ -291,13 +292,18 @@ export async function validateConfig(db: pg.PoolClient, org: string, input: Camp
  * interrompida (mesma origem, mesma campanha, mesmo lugar) — reaproveitado em vez de
  * duplicado, que é o que torna a preparação idempotente.
  */
+export const MOTIVO_SO_CELULAR = "Telefone fixo: o WhatsApp não chega neste número.";
+
 export async function triarCandidato(
   db: pg.PoolClient,
   org: string,
   campaignId: string,
   p: Candidate,
+  config?: Pick<CampaignConfig, "only_mobile">,
 ): Promise<{ motivo: string } | { contatoDaCampanha: string | null }> {
   if (!p.phone) return { motivo: "Sem telefone brasileiro válido." };
+  if (config?.only_mobile && tipoDoTelefone(p.phone) !== "celular")
+    return { motivo: MOTIVO_SO_CELULAR };
   const known = await db.query(
     "select id from contacts where organization_id=$1 and phone_number=any($2::text[])",
     [org, phoneLookupVariants(p.phone)],
@@ -449,7 +455,7 @@ export async function prepararCandidatoNoEnvio(
   p: Candidate,
 ): Promise<Candidate | null> {
   const org = c.organization_id;
-  const triagem = await triarCandidato(db, org, c.id, p);
+  const triagem = await triarCandidato(db, org, c.id, p, config);
   if ("motivo" in triagem) {
     await db.query(
       "update prospecting_candidates set status='skipped',error=$3,updated_at=now() where organization_id=$1 and id=$2 and status='queued'",
@@ -510,7 +516,7 @@ export async function enfileirarCandidatos(
       );
       continue;
     }
-    const triagem = await triarCandidato(db, org, id, p);
+    const triagem = await triarCandidato(db, org, id, p, config);
     if ("motivo" in triagem) {
       await db.query(
         "update prospecting_candidates set status='skipped',error=$3 where organization_id=$1 and id=$2",
