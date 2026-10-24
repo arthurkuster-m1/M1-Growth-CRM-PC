@@ -58,6 +58,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     cidade: null,
     limite: null,
     custo_usd: null,
+    teto_usd: null,
     estado: null,
     modo: null,
     novos: i.created_count,
@@ -71,7 +72,13 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
   try {
     const { rows } = await getRequestPool().query<{
       id: string;
-      search: { niche?: string; location?: string; limit?: number; mode?: string };
+      search: {
+        niche?: string;
+        location?: string;
+        limit?: number;
+        mode?: string;
+        budget_usd?: number;
+      };
       search_status: string;
       cost_usd: string | null;
       result_count: number;
@@ -90,6 +97,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
         cidade: e.search?.location ?? null,
         limite: typeof e.search?.limit === "number" ? e.search.limit : null,
         custo_usd: e.cost_usd === null ? null : Number(e.cost_usd),
+        teto_usd: typeof e.search?.budget_usd === "number" ? e.search.budget_usd : null,
         estado: e.search_status,
         modo: e.search?.mode === "volume" ? "volume" : "completo",
         novos: e.result_count,

@@ -1,13 +1,21 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { ROLE_RANK } from "@/lib/auth/types";
+import { randomId } from "@/lib/random-id";
+import { rendimentoDaBusca } from "@/lib/prospecting/repetir";
 import type { LoteDaCampanha } from "@/lib/marketing/lotes";
 import { ArrowsClockwise, FileText, MagnifyingGlass } from "@/lib/ui/icons";
 
@@ -22,6 +30,45 @@ const usd = { format: (n: number) => `US$ ${n.toFixed(2).replace(".", ",")}` };
 export function LotesDaCampanha({ campanhaId }: { campanhaId: string }) {
   const t = useT();
   const tag = useTagDeIdioma();
+  const qc = useQueryClient();
+  const { activeOrg } = useAuth();
+  // Rodar a busca de novo gasta dinheiro do provedor: é da administração, como a extração.
+  const podeRepetir = activeOrg ? ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin : false;
+  const { confirmar, dialogo } = useConfirmar();
+  const [repetindo, setRepetindo] = useState<string | null>(null);
+
+  async function repetir(l: LoteDaCampanha) {
+    const r = rendimentoDaBusca(l.novos, l.repetidos);
+    const aviso =
+      r.percentualNovo === null
+        ? ""
+        : ` ${t("Da última vez")}: ${l.novos + l.repetidos} ${t("encontradas")}, ${r.percentualNovo}% ${t("eram novas")}.${
+            r.esgotada
+              ? ` ${t("Quase tudo já estava na lista — repetir tende a pagar por pouco. Tente outro bairro ou termo.")}`
+              : ""
+          }`;
+    const teto = l.teto_usd === null ? "" : ` ${t("Gasto máximo")}: ${usd.format(l.teto_usd)}.`;
+    const ok = await confirmar(
+      `${t("Rodar de novo")} “${l.termos}”${l.cidade ? ` ${t("em")} ${l.cidade}` : ""}? ${t("As empresas que já estão na lista entram como repetidas; só as novas vão para a fila, mas o provedor cobra por tudo o que devolve.")}${aviso}${teto}`,
+      t("Repetir extração"),
+    );
+    if (!ok) return;
+    setRepetindo(l.id);
+    try {
+      await apiClient.post("/api/v1/prospecting", {
+        action: "repeat_search",
+        id: l.id,
+        request_id: randomId(),
+      });
+      toast.success(t("Extração repetida. Acompanhe o resultado aqui."));
+      await qc.invalidateQueries({ queryKey: chaveDosLotes(campanhaId) });
+      await qc.invalidateQueries({ queryKey: ["prospecting"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("Não foi possível repetir a extração."));
+    } finally {
+      setRepetindo(null);
+    }
+  }
   const q = useQuery({
     queryKey: chaveDosLotes(campanhaId),
     staleTime: 15_000,
@@ -43,6 +90,7 @@ export function LotesDaCampanha({ campanhaId }: { campanhaId: string }) {
 
   return (
     <Card className="grid gap-3 rounded-2xl p-5">
+      {dialogo}
       <header>
         <h2 className="text-base font-semibold">{t("Extrações e importações")}</h2>
         <p className="text-sm text-muted-foreground">
@@ -66,7 +114,8 @@ export function LotesDaCampanha({ campanhaId }: { campanhaId: string }) {
                 <th className="px-3 py-2 font-medium">{t("Termos / arquivo")}</th>
                 <th className="px-3 py-2 font-medium">{t("Cidade")}</th>
                 <th className="px-3 py-2 font-medium">{t("Resultado")}</th>
-                <th className="py-2 pl-3 text-right font-medium">{t("Custo")}</th>
+                <th className="px-3 py-2 text-right font-medium">{t("Custo")}</th>
+                <th className="py-2 pl-3" aria-label={t("Ações")} />
               </tr>
             </thead>
             <tbody>
@@ -91,8 +140,26 @@ export function LotesDaCampanha({ campanhaId }: { campanhaId: string }) {
                   </td>
                   <td className="px-3 py-2.5">{l.cidade ?? "—"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">{resultado(l, t)}</td>
-                  <td className="py-2.5 pl-3 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-right tabular-nums">
                     {l.custo_usd === null ? "—" : usd.format(l.custo_usd)}
+                  </td>
+                  <td className="py-2.5 pl-3 text-right">
+                    {l.tipo === "extracao" &&
+                    podeRepetir &&
+                    l.estado !== "starting" &&
+                    l.estado !== "running" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={repetindo === l.id}
+                        onClick={() => void repetir(l)}
+                      >
+                        <ArrowsClockwise size={12} aria-hidden />
+                        {repetindo === l.id ? t("Repetindo…") : t("Repetir")}
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
