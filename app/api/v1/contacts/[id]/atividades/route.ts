@@ -26,6 +26,7 @@ import {
   listarTagsAutomaticas,
   tagsAutomaticasDaAbordagem,
 } from "@/lib/leads/tags-automaticas";
+import { registrarTentativaNaCadencia } from "@/lib/cadencia/progresso";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { categoriaPorRegra, lerConfigDeCategorias } from "@/lib/tags/categorias";
@@ -172,6 +173,19 @@ export async function POST(
     .update(atualizacao)
     .eq("id", contactId.data)
     .eq("organization_id", orgId);
+
+  // A cadência do lead: contato encerra, sem contato o passo é dado como feito.
+  if (exigeResultado(corpo.data.acao)) {
+    try {
+      await registrarTentativaNaCadencia(createAdminClient(), {
+        organizationId: orgId,
+        leadId: (lead as { id: string }).id,
+        respondeu: automaticas.fixas.length > 0,
+      });
+    } catch {
+      // A cadência é acompanhamento: não derruba o registro da ação.
+    }
+  }
 
   // A tag de uma ação é da categoria "Ação": as conhecidas já se reconhecem pelo nome; a que a
   // pessoa digitou ganha a categoria aqui (uma vez), para ter a cor da categoria.

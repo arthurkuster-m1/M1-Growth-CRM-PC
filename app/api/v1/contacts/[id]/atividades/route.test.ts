@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
+import { registrarTentativaNaCadencia } from "@/lib/cadencia/progresso";
 import { createClient } from "@/lib/supabase/server";
 
 import { POST } from "./route";
@@ -13,6 +14,10 @@ vi.mock("@/lib/impersonate/support", async (importOriginal) => ({
   requireSupportWrite: vi.fn(async () => null),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn(() => ({})) }));
+vi.mock("@/lib/cadencia/progresso", () => ({
+  registrarTentativaNaCadencia: vi.fn(async () => "avancou"),
+}));
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const CONTATO = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -143,6 +148,25 @@ describe("POST /contacts/[id]/atividades", () => {
     await POST(pedido({ acao: "reuniao", resultado: "Atendeu — falou com o decisor" }), ctx);
     expect(g.updates.some((u) => u.tags)).toBe(false);
     expect((g.atividades[0]!.payload as Record<string, unknown>).tags_automaticas).toBeUndefined();
+  });
+
+  it("a cadência: contato a encerra; sem resposta só avança; ação sem resultado não toca", async () => {
+    const mock = vi.mocked(registrarTentativaNaCadencia);
+    mock.mockClear();
+    vi.mocked(createClient).mockResolvedValue(supabaseFake([]).cliente);
+    await POST(pedido({ acao: "ligacao", resultado: "Atendeu — falou com o decisor" }), ctx);
+    expect(mock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ respondeu: true }),
+    );
+    await POST(pedido({ acao: "mensagem", resultado: "Sem resposta" }), ctx);
+    expect(mock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ respondeu: false }),
+    );
+    mock.mockClear();
+    await POST(pedido({ acao: "reuniao", resultado: "Foi bem" }), ctx);
+    expect(mock).not.toHaveBeenCalled();
   });
 
   it("a tag da ação soma com contador (segunda vez = 2x)", async () => {

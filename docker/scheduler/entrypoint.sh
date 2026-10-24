@@ -63,6 +63,7 @@ CRONS="
 * * * * *|45|api/v1/cron/event-log-drain
 * * * * *|25|api/v1/cron/routing-worker
 */5 * * * *|25|api/v1/cron/recover-stuck-messages
+*/15 * * * *|45|api/v1/cron/cadence-sweep
 * * * * *|45|api/v1/cron/webhook-replay
 */5 * * * *|25|api/v1/cron/storage-redaction?limit=50
 */5 * * * *|25|api/v1/cron/snooze-watcher

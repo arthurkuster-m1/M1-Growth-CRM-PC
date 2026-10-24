@@ -65,6 +65,7 @@ import {
   opcionaisDaCampanha,
   type AbaDaCampanha,
 } from "@/lib/marketing/campanhas-abas";
+import { CadenciaDaCampanha } from "@/components/marketing/campanhas/CadenciaDaCampanha";
 import { MotorDaCampanha } from "@/components/marketing/campanhas/MotorDaCampanha";
 import { AbasDaCampanha } from "@/components/marketing/campanhas/AbasDaCampanha";
 import { hojeIso } from "@/lib/marketing/campanhas-resumo";
@@ -493,6 +494,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
         </>
       ) : null}
 
+      {aba === "cadencia" ? <CadenciaDaCampanha campanhaId={c.id} podeEditar={podeEditar} /> : null}
       {aba === "extracao" ? <MotorDaCampanha motor="extracao" campanhaId={c.id} /> : null}
       {aba === "disparos" ? <MotorDaCampanha motor="disparos" campanhaId={c.id} /> : null}
 

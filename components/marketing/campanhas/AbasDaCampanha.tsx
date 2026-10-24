@@ -27,6 +27,8 @@ function rotuloDaAba(t: (s: string) => string, a: AbaDaCampanha): string {
       return t("Criativos");
     case "abordagem":
       return t("Abordagem");
+    case "cadencia":
+      return t("Cadência");
     case "extracao":
       return t("Extração de leads");
     case "disparos":
