@@ -119,6 +119,33 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 
 **Aceite.** Registrar "falou com o decisor" num lead com cadência ativa o leva a "Contato com decisor". Marcar uma falta num tipo com 3 tentativas põe o lead na fila; registrar "sem resposta" agenda a seguinte; na terceira, a remarcação termina. Editar a mensagem de um lembrete na aba Anti no-show muda o lembrete do tipo.
 
+### Ajustes de 25/10/2026 (feitos)
+- Funil "Prospecção ativa" começa em **Novo lead** e termina em **Perdido** (lead bom que não aderiu agora: revisitar de 3 em 3 meses) e **Desqualificado** (lead ruim: revisitar de 6 meses a 1 ano).
+- O atalho do CRM dentro da campanha abre as oportunidades do funil dela.
+- Tags da abordagem: nome inteiro, categoria **Funil** com cor; **"Abordagem: nome" ganha uma categoria própria por funil** (nome do funil, cor própria). "Contato" e "Contato com decisor" ficam na categoria Funil compartilhada: a categoria de uma tag é da organização inteira, pelo texto, então a mesma tag em dois funis não pode estar em duas categorias. Se for preciso separar, a tag precisa carregar o funil no nome.
+- **Largada da cadência:** o lead em "Novo lead" passa sozinho para "Abordagem" (e a cadência começa) quando (a) um disparo da campanha que o inclui é iniciado — agora ou por agendamento — ou (b) a primeira ação de abordagem (ligação, mensagem, e-mail) é registrada, no Modo Prospecção ou na ficha. Essa primeira ação já conta como o passo 1. Teto de 2.000 leads por disparo; o resto avança na primeira ação sobre ele.
+
+### Fase 6 — Cadência como página principal (etapa A)
+**Descrição.** A Cadência vira a página principal da campanha de Prospecção e absorve a Abordagem.
+- **Linha do tempo horizontal no topo**, no estilo do funil: D0, D+1, D+2… cada passo desenhado (meio e abordagem), com quantos leads estão em cada um. Clicar no passo abre a configuração embaixo.
+- **Abordagem criada dentro do passo** e reutilizável nos outros passos (o mesmo roteiro no D0 e no D+2). Ligação segue sendo só o roteiro.
+- A página "Abordagem" separada deixa de existir como aba; o conteúdo atual é migrado, sem perder o que já foi cadastrado.
+- **Leads em cadência:** o número "N leads em cadência agora" vira link para as oportunidades do CRM já filtradas; no CRM, a propriedade/filtro **Cadência** mostra em que passo cada lead está (e se está atrasado).
+
+**Aceite.** Desenhar D0, D+2 e D+5 na linha do tempo, criar a abordagem no D0 e reaproveitá-la no D+2; clicar no contador abre o CRM só com esses leads; filtrar o CRM por "passo D+2".
+
+### Fase 7 — Fluxo visual da abordagem de WhatsApp (etapa B)
+**Descrição.** Desenhar, no estilo do fluxo de follow-up, a conversa da abordagem: mensagem inicial, **aguardar a resposta**, mensagem seguinte; também áudio, análise da resposta e encaminhar ao atendente se for positiva. Só o desenho e a simulação (nada é enviado), reaproveitando o editor visual de fluxos de follow-up.
+
+### Fase 8 — Execução real da abordagem de WhatsApp (etapa C)
+**Descrição.** Disparo automático do primeiro passo, espera pela resposta, continuação do fluxo e encaminhamento ao atendente, com as regras anti-banimento que já existem e **aprovação manual de cada disparo no começo**.
+
+**Decisões que faltam antes das fases 6 a 8:**
+1. O que acontece com a aba "Abordagem" atual e com as abordagens já cadastradas (proposta: migrar para dentro da Cadência).
+2. Qual número envia no WhatsApp automático, e se começamos com aprovação manual.
+3. O critério de "resposta positiva" (qualquer resposta que não seja recusa/opt-out, ou só quando pede informação ou horário).
+4. O áudio: arquivo gravado e reutilizado, ou voz gerada.
+
 ## 7. Pontos em aberto
 
 - Mensagem enviada AUTOMATICAMENTE ao cliente depois da falta ("sentimos sua falta"): exige envio pelo canal (janela de 24h, modelos aprovados, anti-banimento) e fica fora da Fase 5.
@@ -135,3 +162,7 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 | 3 — "Hoje" | Concluída (24/10/2026, PR #82) | Sem migration: o passo de hoje é CALCULADO da inscrição (não grava "próxima ação" no lead, para não duplicar a fonte). Botão "Cadência de hoje" nas oportunidades do CRM + faixa do passo no Modo Prospecção. A lista de hoje só se atualiza ao sair do Modo, para a fila não mudar sob os pés. Limite diário da lista segue em aberto. |
 | 4 — Anti no-show | Concluída (24/10/2026, PR #83) | Migration 0660. Aba "Anti no-show" em Configuração da Agenda: fluxos por tipo de compromisso (um fluxo por tipo). Cada fluxo: horas antes para virar tarefa de ligar sem confirmação; tag de confirmou; tag de faltou (com contador); dias úteis para a oportunidade voltar à fila ("Remarcar"). O aviso ao cliente segue sendo o lembrete do tipo (não duplicado). Aplicado nos 3 pontos: confirmação pela equipe, resposta do cliente e registro de falta. Mini-cadência de remarcação e mensagens próprias do fluxo: Fase 5. A meta de leads da sessão de prospecção passou a limitar também a lista "Cadência de hoje". |
 | 5 — Pontas soltas | Concluída (24/10/2026, PR #84) | Migration 0661. Etapa ao responder (Contato / Contato com decisor, só para a frente). Fim por tempo verificado no banco de desenvolvimento: o gatilho inscreveu, cancelou ao sair da etapa, reinscreveu ao voltar e deixou a inscrição vencida visível para a varredura (dados criados e desfeitos); a rota do cron em si só foi exercitada pelos testes. Mini-cadência de remarcação (até 6 tentativas, intervalo em dias úteis; termina ao responder, remarcar ou esgotar). Mensagens dos lembretes editáveis na aba Anti no-show (mesma fonte do tipo). Fora: mensagem enviada automaticamente depois da falta. |
+| Ajustes de 25/10 | Concluídos (PR #86 e este) | Novo lead, atalho do CRM, tags por funil, largada da cadência. |
+| 6 — Cadência principal | Planejada | Aguarda as decisões 1 a 4. |
+| 7 — Fluxo visual de WhatsApp | Planejada | |
+| 8 — Execução real | Planejada | |

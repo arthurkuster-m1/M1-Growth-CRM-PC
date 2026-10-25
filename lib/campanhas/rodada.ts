@@ -32,6 +32,7 @@
  *
  * Nunca lança para o cron: uma campanha quebrada não pode derrubar a rodada.
  */
+import { iniciarAbordagemDoDisparo } from "@/lib/cadencia/iniciar-abordagem";
 import { randomUUID } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -193,7 +194,7 @@ async function promoverAgendadas(
 ): Promise<number> {
   const { data: vencidas, error: falhaDaEscolha } = await admin
     .from("campaigns")
-    .select("id, organizations:organization_id!inner(status)")
+    .select("id, organization_id, demand_campaign_id, organizations:organization_id!inner(status)")
     .eq("status", "scheduled")
     .lte("scheduled_at", agora.toISOString())
     .eq("organizations.status", STATUS_OPERANTE)
@@ -203,7 +204,12 @@ async function promoverAgendadas(
     logger.warn("[campanha] promoção de agendadas falhou", { motivo: falhaDaEscolha.message });
     return 0;
   }
-  const ids = ((vencidas ?? []) as Array<{ id: string }>).map((c) => c.id);
+  const promovidas = (vencidas ?? []) as Array<{
+    id: string;
+    organization_id: string;
+    demand_campaign_id: string | null;
+  }>;
+  const ids = promovidas.map((c) => c.id);
   if (ids.length === 0) return 0;
   const { data, error } = await admin
     .from("campaigns")
@@ -214,6 +220,15 @@ async function promoverAgendadas(
   if (error) {
     logger.warn("[campanha] promoção de agendadas falhou", { motivo: error.message });
     return 0;
+  }
+  // Disparo agendado que começou agora: os "Novo lead" dele passam para "Abordagem".
+  const iniciadas = new Set(((data ?? []) as Array<{ id: string }>).map((c) => c.id));
+  for (const c of promovidas.filter((x) => iniciadas.has(x.id) && x.demand_campaign_id)) {
+    await iniciarAbordagemDoDisparo(admin, {
+      organizationId: c.organization_id,
+      disparoId: c.id,
+      demandCampaignId: c.demand_campaign_id,
+    });
   }
   return (data ?? []).length;
 }

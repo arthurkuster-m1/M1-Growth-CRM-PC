@@ -26,6 +26,8 @@ import { prepararCampanha } from "./preparacao";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { camposDoDestinatario } from "./consulta-de-audiencia";
 import { renderizar } from "./renderizador";
+import { iniciarAbordagemDoDisparo } from "@/lib/cadencia/iniciar-abordagem";
+
 import type { StatusDaCampanha } from "./tipos";
 
 export interface CampanhaCarregada {
@@ -258,6 +260,13 @@ export async function iniciarAcao(
     .eq("status", c.status)
     .select("id");
   if ((data ?? []).length === 0) return conflitoDeCorrida();
+  // Disparo de uma campanha de prospecção: quem ainda era "Novo lead" passa para "Abordagem" e a
+  // cadência começa.
+  await iniciarAbordagemDoDisparo(admin, {
+    organizationId: c.organization_id,
+    disparoId: c.id,
+    demandCampaignId: c.demand_campaign_id,
+  });
   return { ok: true, retomada };
 }
 
