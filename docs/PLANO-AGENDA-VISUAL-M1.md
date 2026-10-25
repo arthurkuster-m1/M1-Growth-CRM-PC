@@ -23,6 +23,14 @@ entram aqui, com a mesma estrutura.
 | 3      | Células de horário que não estão na disponibilidade do tipo escolhido (fora da jornada, ocupadas, passadas) ficam cinza; as livres ficam brancas e clicáveis. Nada fica cinza enquanto os horários ainda carregam. **Só aparece para quem pode marcar** (a grade de quem só lê não consulta os horários). |
 | 4      | Dia, 3 dias e semana mostram TODAS as colunas no celular (antes a semana mostrava um dia só); cabeçalho do dia empilha sigla e número; o mês mostra até 3 faixas coloridas por dia.                                                                                                                       |
 
+### Ajuste do celular (26/10/2026, 2º pedido)
+
+- O topo do celular fica só com **Novo agendamento**, **Hoje** (setas e período) e o botão da **visão**;
+  sem título nem subtítulo; o calendário começa logo abaixo.
+- O botão **Sincronizar com Google** passa, no celular, para o cartão "Agenda conectada" no **fim da
+  página**, embaixo de "Configurar suas agendas" e "Desconectar". No computador continua no topo.
+- O **filtro de pessoas** some no celular (decisão provisória). Se precisar dele lá, vai para o fim da página.
+
 ## 3. Decisões e limites
 
 - A lista saiu da página, mas o componente `HistoricoDaAgenda` fica (vitrine e testes) até o
