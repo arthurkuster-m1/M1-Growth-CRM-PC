@@ -4,7 +4,7 @@
  *
  *   Ação        No Show, Remarcou, Compareceu…  (o que aconteceu com o lead)
  *   Tracking    Campanha: …, Ad: …, LP: …, Conjunto: …  (por onde o lead passou)
- *   Funil       Funil: …
+ *   Funil       Funil: …, Contato, Contato com decisor, Abordagem: …
  *   Qualificação MQL
  *
  * As quatro já vêm prontas e se reconhecem pelo NOME da tag (regra por prefixo); a organização
@@ -41,6 +41,9 @@ export function categoriaPorRegra(tag: string): string | null {
   const t = chaveDaEtiqueta(tag);
   if (/^(campanha|ad|lp|conjunto)\s*:/.test(t)) return "tracking";
   if (/^funil\s*:/.test(t)) return "funil";
+  // As tags que a abordagem põe sozinha (lib/leads/tags-automaticas.ts) são do funil.
+  if (t === "contato" || t === "contato com decisor") return "funil";
+  if (/^abordagem\s*:/.test(t)) return "funil";
   if (t === "mql") return "qualificacao";
   const base = t.replace(/:\s*\d+x$/, "").trim();
   if (ACOES_CONHECIDAS.includes(base)) return "acao";

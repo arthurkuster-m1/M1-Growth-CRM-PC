@@ -38,6 +38,7 @@ const PREFIXOS_AUTOMATICOS: Readonly<Record<string, string>> = {
   lp: "LP",
   conjunto: "Conjunto",
   funil: "Funil",
+  abordagem: "Abordagem",
 };
 
 /**
@@ -48,7 +49,10 @@ const PREFIXOS_AUTOMATICOS: Readonly<Record<string, string>> = {
 export function tagAutomaticaCanonica(cru: string): string | null {
   const texto = cru.trim();
   if (/^mql$/i.test(texto)) return "MQL";
-  const m = /^(campanha|ad|lp|conjunto|funil)\s*:\s*(.+)$/i.exec(texto);
+  // As marcas de estado que a abordagem põe sozinha.
+  if (/^contato$/i.test(texto)) return "Contato";
+  if (/^contato com decisor$/i.test(texto)) return "Contato com decisor";
+  const m = /^(campanha|ad|lp|conjunto|funil|abordagem)\s*:\s*(.+)$/i.exec(texto);
   if (!m) return null;
   const nome = m[2]!.trim();
   if (!nome) return null;

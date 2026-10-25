@@ -25,7 +25,7 @@ describe("tagsAutomaticasDaAbordagem", () => {
     const longa = tagsAutomaticasDaAbordagem({
       abordagemNome: "Abordagem com um nome bem comprido demais",
     }).abordagem!;
-    expect(longa.length).toBeLessThanOrEqual(30);
+    expect(longa.length).toBeLessThanOrEqual(54);
     expect(tagsAutomaticasDaAbordagem({ abordagemNome: "  " }).abordagem).toBeNull();
   });
 });
@@ -61,5 +61,16 @@ describe("aplicarTagsAutomaticas", () => {
       "Contato com decisor",
       "Abordagem: Cold call",
     ]);
+  });
+});
+
+describe("o nome da abordagem entra inteiro na tag", () => {
+  it("nome longo não é cortado em 30 e o contador cabe no teto de 60", () => {
+    const nome = "Teste - abordagem completa para clínicas";
+    const auto = tagsAutomaticasDaAbordagem({ resultado: "Atendeu", abordagemNome: nome });
+    expect(auto.abordagem).toBe(`Abordagem: ${nome}`);
+    const duas = aplicarTagsAutomaticas(aplicarTagsAutomaticas([], auto), auto);
+    expect(duas).toContain(`Abordagem: ${nome}: 2x`);
+    expect(duas.every((t) => t.length <= 60)).toBe(true);
   });
 });

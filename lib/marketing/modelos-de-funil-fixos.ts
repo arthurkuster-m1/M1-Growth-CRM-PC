@@ -112,6 +112,9 @@ export const MODELOS_DE_FUNIL_FIXOS: readonly ModeloDeFunilFixo[] = [
     descricao:
       "Você vai atrás: abordagens até o lead responder, contato, conversa com quem decide, reunião, negociação e venda.",
     stages: [
+      // O lead entrou na campanha, mas a cadência ainda não começou: ela começa quando ele passa
+      // para "Abordagem".
+      aberta("Novo lead", 1, 24),
       // A cadência de abordagens roda DENTRO desta etapa: enquanto o lead não responde, ele fica aqui.
       aberta("Abordagem", 3, 48),
       aberta("Contato", 8, 48),
@@ -119,9 +122,11 @@ export const MODELOS_DE_FUNIL_FIXOS: readonly ModeloDeFunilFixo[] = [
       REUNIAO_AGENDADA(),
       REUNIAO_REALIZADA(72),
       aberta("Em negociação", 70, 72, null, "em-negociacao"),
-      desqualificado(),
       vendaRealizada,
+      // Perdido = lead bom que não aderiu agora (revisitar de 3 em 3 meses);
+      // Desqualificado = lead ruim (revisitar de 6 meses a 1 ano), por isso vem por último.
       perdido,
+      desqualificado(),
     ],
   },
 ];
