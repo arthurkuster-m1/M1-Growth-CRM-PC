@@ -1,22 +1,20 @@
 /**
- * A grade da semana no CELULAR mostra um dia por vez.
+ * A grade no CELULAR segue o Google Agenda: Dia (1 coluna), 3 dias (3 colunas), Semana (7
+ * colunas estreitas) e Mês. Nada é escondido por classe — o que muda é quantas colunas existem.
  *
- * Por que isto tem teste: sete colunas em 360px dão ~44px cada, e a célula de
- * meia hora vira um alvo de ~44x24px. Errar o toque passa a ser o caso comum.
- * Quem marca horário está com o cliente na frente, no celular, com uma mão.
- *
- * O teste não mede pixel (jsdom não faz layout): ele prova a REGRA — quais
- * colunas carregam a classe que as esconde abaixo de `md`, e quais não. A prova
- * visual real é a spec de Playwright em 360px.
+ * O teste não mede pixel (jsdom não faz layout): prova a REGRA — quais colunas existem para cada
+ * visão e que nenhuma carrega a classe que a escondia abaixo de `md`. A prova visual real é a
+ * spec de Playwright em 360px.
  */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { GradeDaAgenda } from "./GradeDaAgenda";
+import type { VisaoDaAgenda } from "./tipos";
 
 const QUARTA = new Date("2026-09-16T12:00:00-03:00");
 
-function grade(visao: "dia" | "semana") {
+function grade(visao: VisaoDaAgenda) {
   return render(
     <GradeDaAgenda
       visao={visao}
@@ -29,41 +27,31 @@ function grade(visao: "dia" | "semana") {
   );
 }
 
-function escondeNoCelular(dia: string) {
-  const col = screen.getByTestId(`coluna-dia-${dia}`);
-  return col.className.includes("max-md:hidden");
-}
+const colunas = () => screen.getAllByTestId(/^coluna-dia-/).map((c) => c.dataset.testid);
 
-describe("grade da semana no celular", () => {
-  it("mostra só o dia âncora (quarta) e esconde os outros seis da semana", () => {
+describe("grade no celular e no computador", () => {
+  it("a semana tem as sete colunas, de domingo a sábado, e nenhuma some no celular", () => {
     grade("semana");
-
-    // a âncora fica
-    expect(escondeNoCelular("2026-09-16")).toBe(false);
-
-    // os demais sete-menos-um somem abaixo de md
-    for (const outro of [
-      "2026-09-13",
-      "2026-09-14",
-      "2026-09-15",
-      "2026-09-17",
-      "2026-09-18",
-      "2026-09-19",
-    ]) {
-      expect(escondeNoCelular(outro), `${outro} deveria sumir no celular`).toBe(true);
+    expect(colunas()).toEqual([13, 14, 15, 16, 17, 18, 19].map((d) => `coluna-dia-2026-09-${d}`));
+    for (const c of screen.getAllByTestId(/^coluna-dia-/)) {
+      expect(c.className, "esconder por classe é o que a visão do Google não faz").not.toContain(
+        "max-md:hidden",
+      );
     }
   });
 
-  it("na visão de dia não esconde nada — já é uma coluna só", () => {
-    grade("dia");
-    expect(escondeNoCelular("2026-09-16")).toBe(false);
+  it("3 dias começa no dia da âncora e tem exatamente três colunas", () => {
+    grade("tres_dias");
+    expect(colunas()).toEqual([
+      "coluna-dia-2026-09-16",
+      "coluna-dia-2026-09-17",
+      "coluna-dia-2026-09-18",
+    ]);
+    expect(screen.getByTestId("grade-da-agenda").dataset.visao).toBe("tres_dias");
   });
 
-  it("o desktop continua com a semana inteira", () => {
-    grade("semana");
-    // Todas as sete colunas existem no DOM: o que muda é só a classe de
-    // visibilidade. Esconder por desmontagem quebraria a rolagem e o arraste.
-    const colunas = screen.getAllByTestId(/^coluna-dia-/);
-    expect(colunas).toHaveLength(7);
+  it("o dia tem uma coluna só", () => {
+    grade("dia");
+    expect(colunas()).toEqual(["coluna-dia-2026-09-16"]);
   });
 });

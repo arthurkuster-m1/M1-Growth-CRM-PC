@@ -4,15 +4,7 @@ import * as React from "react";
 
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
-
-import {
-  addDays,
-  differenceInMinutes,
-  format,
-  isSameDay,
-  isSameMonth,
-  startOfWeek,
-} from "date-fns";
+import { addDays, differenceInMinutes, format, isSameMonth, startOfWeek } from "date-fns";
 
 import {
   PASSO_DA_CELULA_MIN,
@@ -25,16 +17,13 @@ import {
   type HorarioPublicado,
   type MotivoDaGradeTravada,
 } from "@/lib/agenda/grade-interativa";
-import {
-  SEMANAS_NA_VISAO_DE_MES,
-  primeiroDiaDaVisaoDeMes,
-} from "@/lib/agenda/recorte-da-grade";
+import { SEMANAS_NA_VISAO_DE_MES, primeiroDiaDaVisaoDeMes } from "@/lib/agenda/recorte-da-grade";
 import { diaLocalISO, instanteDe, partesNoFuso } from "@/lib/agenda/fuso";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/i18n/useT";
 
 import { corDaTrilha, fundoDaTrilha } from "./paleta";
-import type { Agendamento, Pessoa, VisaoDaAgenda } from "./tipos";
+import { DIAS_DA_VISAO, type Agendamento, type Pessoa, type VisaoDaAgenda } from "./tipos";
 
 /**
  * Altura de uma hora, em pixels. É a régua de toda a grade: posição e duração
@@ -51,10 +40,7 @@ const ALTURA_DA_HORA = 48;
 const PRIMEIRA_HORA = 7;
 const ULTIMA_HORA = 21;
 
-const HORAS = Array.from(
-  { length: ULTIMA_HORA - PRIMEIRA_HORA + 1 },
-  (_, i) => PRIMEIRA_HORA + i,
-);
+const HORAS = Array.from({ length: ULTIMA_HORA - PRIMEIRA_HORA + 1 }, (_, i) => PRIMEIRA_HORA + i);
 
 /**
  * O que transforma a grade de DESENHO em AGENDA.
@@ -75,6 +61,8 @@ export interface InteracaoDaGrade {
   horariosPorDia: Record<string, HorarioPublicado[]>;
   /** Por que a grade inteira está travada, quando está. */
   motivo: MotivoDaGradeTravada | null;
+  /** Os horários ainda estão chegando: nada é pintado de cinza antes de saber o que está livre. */
+  carregando?: boolean;
   /** Duração do tipo escolhido — o tamanho do bloco que se está marcando. */
   duracaoMin: number;
   /** Clique num bloco livre. Recebe o instante PUBLICADO, nunca um calculado. */
@@ -174,10 +162,7 @@ function instanteDoMinuto(dia: Date, minuto: number, fuso: string): Date {
   // sem eles dá `number | undefined`. Um `Date` nunca chega aqui sem data, mas
   // o tipo não sabe — e `!` seria trocar uma mentura por outra.
   const [ano = 1970, mes = 1, d = 1] = format(dia, "yyyy-MM-dd").split("-").map(Number);
-  return instanteDe(
-    { ano, mes, dia: d, hora: Math.floor(minuto / 60), minuto: minuto % 60 },
-    fuso,
-  );
+  return instanteDe({ ano, mes, dia: d, hora: Math.floor(minuto / 60), minuto: minuto % 60 }, fuso);
 }
 
 /** Os começos de célula que a camada de marcação desenha, em minutos do dia. */
@@ -231,9 +216,7 @@ function repartirSobrepostos(agendamentos: Agendamento[]): Posicionado[] {
     if (grupo.length > 0 && comeca >= fimDoGrupo) fecharGrupo();
 
     const ocupadas = new Set(
-      grupo
-        .filter((g) => new Date(g.agendamento.termina).getTime() > comeca)
-        .map((g) => g.coluna),
+      grupo.filter((g) => new Date(g.agendamento.termina).getTime() > comeca).map((g) => g.coluna),
     );
     let coluna = 0;
     while (ocupadas.has(coluna)) coluna += 1;
@@ -289,9 +272,7 @@ function CamadaDeMarcacao({
         const fim = instanteDoMinuto(dia, minuto + PASSO_DA_CELULA_MIN, fuso);
         const ocupado = agendamentosDoDia.some(
           (a) =>
-            a.situacao !== "cancelled" &&
-            new Date(a.comeca) < fim &&
-            new Date(a.termina) > inicio,
+            a.situacao !== "cancelled" && new Date(a.comeca) < fim && new Date(a.termina) > inicio,
         );
         const passado = fim.getTime() <= agora.getTime();
         const rotulo = rotuloHora(inicio, fuso);
@@ -321,13 +302,14 @@ function CamadaDeMarcacao({
               "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent-500",
               livre
                 ? "cursor-pointer hover:bg-accent-soft"
-                : // Sem cor de bloqueio: pintar o vazio indisponível encheria a
-                  // grade de faixas cinzas e faria o que ESTÁ livre desaparecer
-                  // no meio. O sinal fica na ausência de resposta ao passar o
-                  // mouse, no cursor e no motivo escrito.
-                  "cursor-default",
+                : // Horário indisponível (fora da jornada, ocupado, no passado ou travado): cinza,
+                  // para o que está LIVRE — branco, clicável — se destacar, como no Google Agenda.
+                  cn("cursor-default", !interacao.carregando && "bg-secondary/60"),
             )}
-            style={{ top: pixelsDe(minuto - PRIMEIRA_HORA * 60), height: pixelsDe(PASSO_DA_CELULA_MIN) }}
+            style={{
+              top: pixelsDe(minuto - PRIMEIRA_HORA * 60),
+              height: pixelsDe(PASSO_DA_CELULA_MIN),
+            }}
           />
         );
       })}
@@ -405,7 +387,13 @@ function BlocoDeAgendamento({
       // arrastar um card para outro horário abriria o painel de remarcação por
       // cima da confirmação que o arraste acabou de pedir — duas perguntas na
       // tela ao mesmo tempo, e a de baixo é a que o usuário pediu.
-      onClick={doGoogle ? undefined : () => { if (!arraste?.moveu()) onAbrir?.(agendamento.id); }}
+      onClick={
+        doGoogle
+          ? undefined
+          : () => {
+              if (!arraste?.moveu()) onAbrir?.(agendamento.id);
+            }
+      }
       onPointerDown={
         arraste && !doGoogle && !cancelado ? (e) => arraste.aoApontar(e, agendamento) : undefined
       }
@@ -432,7 +420,7 @@ function BlocoDeAgendamento({
         // `grab` só quando remarcar é possível: o cursor é a única pista de que
         // o card se move, e prometê-la num card que não se move (ocupação do
         // Google, compromisso cancelado) é o controle decorativo de novo.
-        arraste && !doGoogle && !cancelado && "cursor-grab active:cursor-grabbing touch-none",
+        arraste && !doGoogle && !cancelado && "cursor-grab touch-none active:cursor-grabbing",
         // ⚠️ CANCELADO NÃO INTERCEPTA O PONTEIRO — e isto é conserto de produto,
         // achado pela spec em tela.
         //
@@ -476,11 +464,11 @@ function BlocoDeAgendamento({
         className="absolute inset-y-0 left-0 w-[3px] rounded-l-sm"
         style={{ backgroundColor: doGoogle ? "var(--color-border-strong)" : corDaTrilha(trilha) }}
       />
-      <span className="ml-1 truncate text-[11px] font-semibold leading-4 text-text">
+      <span className="ml-1 truncate text-[11px] leading-4 font-semibold text-text">
         {agendamento.titulo}
       </span>
       {duracao >= 45 && (
-        <span className="ml-1 truncate text-[10px] leading-3 tabular-nums text-text-muted">
+        <span className="ml-1 truncate text-[10px] leading-3 text-text-muted tabular-nums">
           {rotuloHora(comeca, fuso)}
           {agendamento.quemSeraAtendido ? ` · ${agendamento.quemSeraAtendido}` : ""}
         </span>
@@ -512,15 +500,15 @@ function ReguaDoAgora({ agora, fuso }: { agora: Date; fuso: string }) {
 
 function ColunaDeHoras() {
   return (
-    <div className="w-12 shrink-0 select-none border-r border-border" aria-hidden>
-      <div className="h-8 border-b border-border" />
+    <div className="w-10 shrink-0 border-r border-border select-none md:w-12" aria-hidden>
+      <div className="h-12 border-b border-border md:h-8" />
       {HORAS.map((h) => (
         <div
           key={h}
           className="relative border-b border-border/50 text-right"
           style={{ height: ALTURA_DA_HORA }}
         >
-          <span className="absolute -top-1.5 right-1 text-[10px] tabular-nums text-text-subtle">
+          <span className="absolute -top-1.5 right-1 text-[10px] text-text-subtle tabular-nums">
             {String(h).padStart(2, "0")}h
           </span>
         </div>
@@ -568,10 +556,8 @@ function FantasmaDoArraste({
         height: Math.max(pixelsDe(duracaoMin) - 2, 18),
       }}
     >
-      <span className="truncate text-[10px] font-semibold leading-4 text-text">
-        {valido
-          ? rotuloHora(new Date(proposta.instante!), fuso)
-          : t(proposta.razao)}
+      <span className="truncate text-[10px] leading-4 font-semibold text-text">
+        {valido ? rotuloHora(new Date(proposta.instante!), fuso) : t(proposta.razao)}
       </span>
     </div>
   );
@@ -585,7 +571,6 @@ function ColunaDeDia({
   pessoas,
   onAbrir,
   destacado,
-  soNoDesktop,
   interacao,
   proposta,
   arrasteDoCard,
@@ -597,13 +582,6 @@ function ColunaDeDia({
   pessoas: Pessoa[];
   onAbrir?: (id: string) => void;
   destacado: boolean;
-  /**
-   * Some abaixo de `md`. Na semana, o celular mostra UM dia por vez: sete
-   * colunas em 360px dão ~44px cada, e a célula de meia hora vira um alvo de
-   * ~44x24 — errar o toque passa a ser o caso comum, não a exceção. Com uma
-   * coluna só, o mesmo alvo fica com a largura inteira da tela.
-   */
-  soNoDesktop?: boolean;
   interacao?: InteracaoDaGrade;
   proposta?: PropostaDeRemarcacao | null;
   arrasteDoCard?: {
@@ -625,22 +603,23 @@ function ColunaDeDia({
       data-testid={`coluna-dia-${format(dia, "yyyy-MM-dd")}`}
       className={cn(
         "relative min-w-0 flex-1 border-r border-border last:border-r-0",
-        soNoDesktop && "max-md:hidden",
         destacado && "bg-surface-elevated/40",
       )}
     >
       <div
         className={cn(
-          "sticky top-0 z-20 flex h-8 items-center justify-center gap-1.5 border-b border-border bg-surface px-2",
+          // No celular o cabeçalho empilha a sigla e o número, como no Google Agenda; no desktop
+          // continua numa linha só.
+          "sticky top-0 z-20 flex h-12 flex-col items-center justify-center gap-0.5 border-b border-border bg-surface px-1 md:h-8 md:flex-row md:gap-1.5 md:px-2",
         )}
       >
-        <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+        <span className="truncate text-[11px] font-semibold tracking-wide text-text-muted uppercase">
           {format(dia, "EEE", { locale: localeDaData }).replace(".", "")}
         </span>
         <span
           className={cn(
-            "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums",
-            ehHoje ? "bg-accent text-accent-foreground font-semibold" : "text-text",
+            "flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs tabular-nums md:h-5 md:min-w-5 md:text-[11px]",
+            ehHoje ? "bg-accent font-semibold text-accent-foreground" : "text-text",
           )}
         >
           {format(dia, "d")}
@@ -660,11 +639,7 @@ function ColunaDeDia({
         style={{ height: HORAS.length * ALTURA_DA_HORA }}
       >
         {HORAS.map((h) => (
-          <div
-            key={h}
-            className="border-b border-border/50"
-            style={{ height: ALTURA_DA_HORA }}
-          />
+          <div key={h} className="border-b border-border/50" style={{ height: ALTURA_DA_HORA }} />
         ))}
         {interacao && (
           <CamadaDeMarcacao
@@ -737,7 +712,7 @@ function VisaoDeMes({
         {semanas[0]?.map((d) => (
           <div
             key={`cab-${d.toISOString()}`}
-            className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted"
+            className="px-2 py-1.5 text-center text-[11px] font-semibold tracking-wide text-text-muted uppercase"
           >
             {format(d, "EEEEEE", { locale: localeDaData }).replace(".", "")}
           </div>
@@ -754,7 +729,7 @@ function VisaoDeMes({
               key={d.toISOString()}
               data-testid={`celula-mes-${format(d, "yyyy-MM-dd")}`}
               className={cn(
-                "min-h-20 border-b border-r border-border p-1",
+                "min-h-20 min-w-0 border-r border-b border-border p-0.5 md:p-1",
                 !doMes && "bg-surface-elevated/30",
               )}
             >
@@ -771,14 +746,14 @@ function VisaoDeMes({
                 >
                   {format(d, "d")}
                 </span>
-                {doDia.length > 2 && (
-                  <span className="text-[10px] tabular-nums text-text-subtle">
-                    +{doDia.length - 2}
+                {doDia.length > 3 && (
+                  <span className="text-[10px] text-text-subtle tabular-nums">
+                    +{doDia.length - 3}
                   </span>
                 )}
               </div>
               <div className="space-y-0.5">
-                {doDia.slice(0, 2).map((c) => {
+                {doDia.slice(0, 3).map((c) => {
                   const trilha = pessoas.find((p) => p.id === c.responsavelId)?.trilha ?? 1;
                   return (
                     <div
@@ -797,7 +772,7 @@ function VisaoDeMes({
                       // nada.
                       data-origem={c.origem}
                       className="flex items-center gap-1 rounded-sm px-1 py-0.5"
-                      style={{ background: fundoDaTrilha(trilha, 14) }}
+                      style={{ background: fundoDaTrilha(trilha, 22) }}
                     >
                       <span
                         aria-hidden
@@ -857,7 +832,13 @@ export function GradeDaAgenda({
   interacao?: InteracaoDaGrade;
   className?: string;
 }) {
-  const dias = visao === "dia" ? [ancora] : diasDaSemanaDe(ancora);
+  // Dia (1 coluna), 3 dias (a partir da âncora) ou semana (domingo a sábado) — como no Google.
+  const dias =
+    visao === "semana"
+      ? diasDaSemanaDe(ancora)
+      : Array.from({ length: DIAS_DA_VISAO[visao === "mes" ? "dia" : visao] }, (_, i) =>
+          addDays(ancora, i),
+        );
 
   const gradeRef = React.useRef<HTMLDivElement>(null);
   const [proposta, setProposta] = React.useState<PropostaDeRemarcacao | null>(null);
@@ -929,7 +910,8 @@ export function GradeDaAgenda({
           return clientX >= r.left && clientX <= r.right;
         }) ??
         corpos.reduce((melhor, el) => {
-          const d = (r: DOMRect) => Math.min(Math.abs(clientX - r.left), Math.abs(clientX - r.right));
+          const d = (r: DOMRect) =>
+            Math.min(Math.abs(clientX - r.left), Math.abs(clientX - r.right));
           return d(el.getBoundingClientRect()) < d(melhor.getBoundingClientRect()) ? el : melhor;
         });
       const chave = escolhido.dataset.corpoDoDia;
@@ -975,7 +957,9 @@ export function GradeDaAgenda({
         window.removeEventListener("pointerup", soltar);
         window.removeEventListener("pointercancel", soltar);
         const houve = g.moveu;
-        const p = houve ? propostaSobPonto(g.id, ev.clientX, ev.clientY - g.deslocamentoNoCard) : null;
+        const p = houve
+          ? propostaSobPonto(g.id, ev.clientX, ev.clientY - g.deslocamentoNoCard)
+          : null;
         setProposta(null);
         // A ref só zera no tique seguinte: o `click` que o `pointerup` dispara
         // ainda não aconteceu, e é ele que precisa consultar `moveu()`.
@@ -1032,7 +1016,11 @@ export function GradeDaAgenda({
         const base = atual ? atual.minutoBruto : minutoDoInstante(comeca, fuso);
         const diaAtual = new Date(`${atual?.dia ?? chaveDoDiaDoInstante(comeca, fuso)}T12:00:00`);
         setProposta(
-          montarProposta(a.id, chaveDoDia(addDays(diaAtual, e.key === "ArrowRight" ? 1 : -1)), base),
+          montarProposta(
+            a.id,
+            chaveDoDia(addDays(diaAtual, e.key === "ArrowRight" ? 1 : -1)),
+            base,
+          ),
         );
         return;
       }
@@ -1089,8 +1077,9 @@ export function GradeDaAgenda({
                 agendamentos={agendamentos}
                 pessoas={pessoas}
                 onAbrir={onAbrirAgendamento}
-                destacado={visao === "semana" && chaveDoDia(d) === chaveDoDiaDoInstante(agora, fuso)}
-                soNoDesktop={visao === "semana" && !isSameDay(d, ancora)}
+                destacado={
+                  visao === "semana" && chaveDoDia(d) === chaveDoDiaDoInstante(agora, fuso)
+                }
                 interacao={interacao}
                 proposta={proposta}
                 arrasteDoCard={arrasteDoCard}

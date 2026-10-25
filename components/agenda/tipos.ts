@@ -10,8 +10,15 @@
  * origem, não o formato.
  */
 
-/** As três visões da grade. A semana é o padrão de quem atende. */
-export type VisaoDaAgenda = "dia" | "semana" | "mes";
+/** As visões da grade (como no Google Agenda). A semana é o padrão de quem atende. */
+export type VisaoDaAgenda = "dia" | "tres_dias" | "semana" | "mes";
+
+/** Quantos dias cada visão de colunas desenha. */
+export const DIAS_DA_VISAO: Record<Exclude<VisaoDaAgenda, "mes">, number> = {
+  dia: 1,
+  tres_dias: 3,
+  semana: 7,
+};
 
 /**
  * Índice da trilha de cor, 1..8 — casa com `--agenda-pessoa-N` no globals.css.
@@ -51,10 +58,14 @@ export type Pessoa = {
  */
 export type { OrigemDoAgendamento, SituacaoDoAgendamento } from "@/lib/agenda/tipos";
 
-import type { OrigemDoAgendamento, SituacaoDoAgendamento, TrilhaDaAgenda } from "@/lib/agenda/tipos";
+import type {
+  OrigemDoAgendamento,
+  SituacaoDoAgendamento,
+  TrilhaDaAgenda,
+} from "@/lib/agenda/tipos";
 
 export type Agendamento = {
-  revision?:number;
+  revision?: number;
   id: string;
   titulo: string;
   /** Quem vai ser atendido. Ausente em ocupação vinda do Google. */

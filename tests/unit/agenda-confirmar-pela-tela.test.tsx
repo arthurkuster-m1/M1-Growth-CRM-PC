@@ -146,24 +146,9 @@ describe("confirmar um pedido de horário pela tela", () => {
  * Render não alcança isto (a página monta providers, hooks e rede), e o que
  * importa cabe numa leitura do arquivo.
  */
-describe("a página liga o botão ao PATCH certo", () => {
-  const fonte = readFileSync("app/app/agenda/_client.tsx", "utf8");
-
-  it("onConfirmar manda status confirmed com a revision da linha", () => {
-    // Recorta o bloco do Confirmar até o botão seguinte: `onConfirmar` é
-    // homônimo — o diálogo de marcar horário tem uma prop com o mesmo nome, que
-    // recebe um INSTANTE. Casar pelo nome sozinho mede o componente errado.
-    const inicio = fonte.indexOf("onConfirmar={(id)");
-    expect(inicio, "a página parou de ligar o botão — ele volta a nascer cinza").toBeGreaterThan(
-      -1,
-    );
-    const bloco = fonte.slice(inicio, fonte.indexOf("onRealizado={", inicio));
-    expect(bloco).toContain('status: "confirmed"');
-    expect(bloco, "PATCH sem revision perde a corrida com quem mexeu na linha").toContain(
-      "revision",
-    );
-  });
-
+describe("o painel de detalhe liga a confirmação", () => {
+  // A lista "Aguardando confirmação" saiu da página da Agenda em 26/10/2026; o Confirmar vive no
+  // painel de detalhe (e na página do compromisso).
   it("o painel de detalhe também confirma, e só quando o pedido está pendente", () => {
     const detalhe = readFileSync("components/agenda/DetalheDoCompromisso.tsx", "utf8");
     expect(detalhe).toContain('decide({ status: "confirmed" })');

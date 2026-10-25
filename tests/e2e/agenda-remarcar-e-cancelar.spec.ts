@@ -61,7 +61,8 @@ interface Creds {
 
 function lerCreds(): Creds {
   const p = path.join(RAIZ, ".e2e-creds.json");
-  if (!fs.existsSync(p)) throw new Error("`.e2e-creds.json` ausente — rode `scripts/seed-e2e-credentials.ts`");
+  if (!fs.existsSync(p))
+    throw new Error("`.e2e-creds.json` ausente — rode `scripts/seed-e2e-credentials.ts`");
   let c = JSON.parse(fs.readFileSync(p, "utf8")) as Creds;
   if (!c.agenda) {
     execFileSync("npx", ["tsx", "scripts/seed-e2e-agenda.ts"], { stdio: "inherit" });
@@ -118,94 +119,22 @@ async function marcarUm(
 // que é indistinguível de defeito — e foi o que aconteceu na primeira execução.
 test.describe.configure({ timeout: 120_000 });
 
-test("cancelar pela tela: o motivo é exigido, e o compromisso sai dos próximos", async ({ page }) => {
+// A lista "Próximos / Aguardando / Passados / Cancelados" SAIU da página da Agenda em 26/10/2026
+// (pedido do dono: abrir direto no calendário). Remarcar e cancelar passaram a viver só na página
+// do compromisso — que ainda não tem spec própria; está no roteiro de testes manual. O que esta
+// spec prende agora é a metade que dá para afirmar sem a página: marcar continua funcionando e a
+// lista antiga não voltou à tela.
+test("marcar pela tela continua funcionando e a Agenda abre direto na grade, sem a lista antiga", async ({
+  page,
+}) => {
   const creds = lerCreds();
   if (!creds.agenda) throw new Error("sem bloco agenda");
   const diasDaSemana = await entrar(page, creds);
   await marcarUm(page, creds.agenda.tipo_nome, diasDaSemana);
 
-  const historico = page.getByTestId("historico-da-agenda");
-  const cancelarBotao = historico.getByRole("button", { name: /^Cancelar$/ }).first();
-
-  // ── A asserção que nomeia o defeito ────────────────────────────────────
+  await expect(page.getByTestId("grade-da-agenda")).toBeVisible({ timeout: 15_000 });
   await expect(
-    cancelarBotao,
-    "o botão nasceu DESABILITADO — é o estado que existia antes da fiação, com " +
-      "`disabled={!onCancelar}` e nenhuma callback passada",
-  ).toBeEnabled({ timeout: 15_000 });
-
-  // ⚠️ A CONTAGEM É LIDA ANTES DE ABRIR A FOLHA, e isso não é estilo.
-  //
-  // O Sheet do Radix marca o resto da página com `aria-hidden` enquanto está
-  // aberto, e `getByRole` IGNORA subárvore escondida — o locator do `tab` nunca
-  // resolve. A primeira versão lia o contador com o painel aberto e estourava o
-  // teto do teste em `locator.textContent`, o que aparece como "timeout" e é
-  // indistinguível de produto quebrado. Levei duas execuções (30s e 120s) para
-  // ver que o problema não era orçamento.
-  const antesCancelados = await historico.getByRole("tab", { name: /Cancelados/ }).textContent();
-
-  await cancelarBotao.click();
-  await expect(page.getByTestId("painel-de-cancelamento")).toBeVisible({ timeout: 10_000 });
-
-  const confirmar = page.getByTestId("confirmar-cancelamento");
-  // O mínimo de 3 é o da ROTA. A tela o respeita para não produzir um 422 que a
-  // pessoa não tem como prever.
-  await expect(confirmar, "aceitou confirmar sem motivo — a rota devolveria 422").toBeDisabled();
-  await page.getByTestId("motivo-do-cancelamento").fill("ab");
-  await expect(confirmar, "dois caracteres passam, e a rota exige três").toBeDisabled();
-
-  await page.getByTestId("motivo-do-cancelamento").fill("o paciente pediu por telefone");
-  await expect(confirmar).toBeEnabled();
-
-  await confirmar.click();
-
-  // Sem `reload()`: a mutação invalida `["agenda"]` e o histórico repinta.
-  await expect
-    .poll(async () => historico.getByRole("tab", { name: /Cancelados/ }).textContent(), {
-      timeout: 20_000,
-      message: "a aba Cancelados não mudou — a tela não repintou depois do DELETE",
-    })
-    .not.toBe(antesCancelados);
-});
-
-test("remarcar pela tela: o painel abre em modo remarcar e o horário muda", async ({ page }) => {
-  const creds = lerCreds();
-  if (!creds.agenda) throw new Error("sem bloco agenda");
-  const diasDaSemana = await entrar(page, creds);
-  const rotuloOriginal = await marcarUm(page, creds.agenda.tipo_nome, diasDaSemana);
-
-  const historico = page.getByTestId("historico-da-agenda");
-  const remarcarBotao = historico.getByRole("button", { name: /^Remarcar$/ }).first();
-  await expect(
-    remarcarBotao,
-    "o botão nasceu DESABILITADO — mesmo defeito do Cancelar",
-  ).toBeEnabled({ timeout: 15_000 });
-
-  await remarcarBotao.click();
-
-  // O título prova que a tela sabe que é OUTRA operação — reusar o painel sem
-  // dizer qual é faria a pessoa achar que está criando um segundo compromisso.
-  await expect(page.getByRole("heading", { name: /Remarcar agendamento/ })).toBeVisible({
-    timeout: 10_000,
-  });
-
-  await escolherDiaDesenhado(page, diasDaSemana);
-
-  // Um horário DIFERENTE do original — senão "remarcou" e "não mudou nada" são
-  // indistinguíveis, e a asserção passaria pelo motivo errado.
-  const outro = page.locator(`[data-testid^="horario-"]:not([data-testid="horario-${rotuloOriginal}"])`).first();
-  await expect(outro, "só havia um horário livre — o cenário não distingue remarcar de repetir").toBeVisible({
-    timeout: 15_000,
-  });
-  const rotuloNovo = (await outro.getAttribute("data-testid"))!.replace("horario-", "");
-  expect(rotuloNovo).not.toBe(rotuloOriginal);
-  await outro.click();
-  await page.getByTestId("confirmar-marcacao").click();
-
-  await expect
-    .poll(async () => (await historico.textContent()) ?? "", {
-      timeout: 20_000,
-      message: "o histórico não passou a mostrar o horário novo",
-    })
-    .toContain(rotuloNovo);
+    page.getByTestId("historico-da-agenda"),
+    "a lista Próximos/Aguardando/Passados/Cancelados voltou à página da Agenda",
+  ).toHaveCount(0);
 });

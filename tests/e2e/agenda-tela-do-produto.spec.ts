@@ -121,13 +121,13 @@ test.describe("a Agenda como o dono do produto a usa", () => {
     ).toEqual([]);
   });
 
-  test("o histórico está NA TELA DO PRODUTO, com as quatro abas", async () => {
-    // Estava provado só na vitrine. Aqui ele aparece mesmo sem dado: as abas com
-    // contador zero respondem "não há nada" sem gastar um clique.
-    const hist = page.getByTestId("historico-da-agenda");
-    await expect(hist).toBeVisible({ timeout: ESPERA });
+  test("a Agenda abre direto no calendário — sem a lista de Próximos/Aguardando/Passados/Cancelados", async () => {
+    // Pedido do dono (26/10/2026): a página começa na agenda, como o Google Agenda. O que cumpre
+    // a função da lista está no Início e na página do compromisso.
+    await expect(page.getByTestId("grade-da-agenda")).toBeVisible({ timeout: ESPERA });
+    await expect(page.getByTestId("historico-da-agenda")).toHaveCount(0);
     for (const aba of ["proximos", "aguardando", "passados", "cancelados"]) {
-      await expect(page.getByTestId(`aba-${aba}`)).toBeVisible();
+      await expect(page.getByTestId(`aba-${aba}`)).toHaveCount(0);
     }
   });
 
@@ -164,17 +164,25 @@ test.describe("a Agenda como o dono do produto a usa", () => {
     // prova o DESENHO; ela não prova que a tela que o cliente abre desenha.
     await expect(page.getByTestId("grade-da-agenda")).toBeVisible({ timeout: ESPERA });
 
+    // O MENU DE VISÕES (como no Google Agenda): um botão com a visão atual que abre a lista.
     const alternador = page.getByTestId("alternador-de-visao");
-    for (const visao of ["Dia", "Mês", "Semana"]) {
-      await alternador.getByRole("button", { name: visao, exact: true }).click();
+    for (const [id, rotulo] of [
+      ["dia", "Dia"],
+      ["tres_dias", "3 dias"],
+      ["mes", "Mês"],
+      ["semana", "Semana"],
+    ] as const) {
+      await alternador.click();
+      await page.getByTestId(`visao-${id}`).click();
       await expect(
         page.getByTestId("grade-da-agenda"),
-        `a grade sumiu ao trocar para "${visao}"`,
+        `a grade sumiu ao trocar para "${rotulo}"`,
       ).toBeVisible({ timeout: ESPERA });
       await expect(
-        alternador.getByRole("button", { name: visao, exact: true }),
-        `"${visao}" foi clicado e não ficou marcado como a visão atual`,
-      ).toHaveAttribute("aria-pressed", "true");
+        page.getByTestId("grade-da-agenda"),
+        `"${rotulo}" foi escolhida e a grade não passou para essa visão`,
+      ).toHaveAttribute("data-visao", id);
+      await expect(page.getByTestId("visao-atual")).toHaveText(rotulo);
     }
 
     // A régua do agora só existe quando o instante cabe na faixa desenhada.
@@ -213,9 +221,14 @@ test.describe("a Agenda como o dono do produto a usa", () => {
     const horaLida = `${parede.hora}h${String(parede.minuto).padStart(2, "0")} em ${FUSO_DA_ORG}`;
     const regua = page.getByTestId("regua-do-agora");
     if (dentroDaFaixa) {
-      await expect(regua, `dentro da faixa desenhada (${horaLida}) e sem régua do agora`).toBeVisible();
+      await expect(
+        regua,
+        `dentro da faixa desenhada (${horaLida}) e sem régua do agora`,
+      ).toBeVisible();
     } else {
-      await expect(regua, `fora da faixa (${horaLida}) e a régua apareceu mesmo assim`).toHaveCount(0);
+      await expect(regua, `fora da faixa (${horaLida}) e a régua apareceu mesmo assim`).toHaveCount(
+        0,
+      );
     }
   });
 
@@ -225,7 +238,10 @@ test.describe("a Agenda como o dono do produto a usa", () => {
     const filtro = page.getByTestId("filtro-de-pessoas");
     await expect(filtro).toBeVisible({ timeout: ESPERA });
 
-    const cartoes = () => page.getByTestId("grade-da-agenda").getByRole("button", { name: /\d{2}:\d{2} às \d{2}:\d{2}/ });
+    const cartoes = () =>
+      page
+        .getByTestId("grade-da-agenda")
+        .getByRole("button", { name: /\d{2}:\d{2} às \d{2}:\d{2}/ });
     const todos = await cartoes().count();
 
     const primeira = filtro.getByRole("button").first();
@@ -242,7 +258,7 @@ test.describe("a Agenda como o dono do produto a usa", () => {
 
     await page.getByTestId("botao-todos").click();
     await expect
-      .poll(() => cartoes().count(), { message: "\"Todos\" não desfez o isolamento" })
+      .poll(() => cartoes().count(), { message: '"Todos" não desfez o isolamento' })
       .toBe(todos);
   });
 
@@ -252,11 +268,17 @@ test.describe("a Agenda como o dono do produto a usa", () => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/app/agenda");
     await expect(page.getByTestId("tela-agenda")).toBeVisible({ timeout: ESPERA });
-    await page.screenshot({ path: "evidence/calendario/tela-do-produto-claro.png", fullPage: true });
+    await page.screenshot({
+      path: "evidence/calendario/tela-do-produto-claro.png",
+      fullPage: true,
+    });
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByTestId("tela-agenda")).toBeVisible();
-    await page.screenshot({ path: "evidence/calendario/tela-do-produto-celular.png", fullPage: true });
+    await page.screenshot({
+      path: "evidence/calendario/tela-do-produto-celular.png",
+      fullPage: true,
+    });
 
     const estouro = await page.evaluate(
       // ⚠️ `body.scrollWidth`, NÃO `documentElement`. `app/globals.css` põe

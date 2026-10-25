@@ -304,16 +304,16 @@ test.describe("a ocupação do Google na grade da agenda", () => {
 
     // Visão MÊS: outro recorte, outra busca. Aqui nem a semente do servidor
     // chegava, porque `naJanelaDoServidor` vira falso.
+    await page.getByTestId("alternador-de-visao").click();
     await page.getByTestId("visao-mes").click();
     await expect(
       chipDoGoogleNoMes(page),
       "a ocupação do Google não aparece na visão Mês",
     ).toBeVisible({ timeout: 20_000 });
     await expect(chipDoGoogleNoMes(page)).toContainText(/ocupado/i);
-    expect(
-      await page.content(),
-      "o título do evento do Google VAZOU na visão Mês",
-    ).not.toContain(TITULO_SIGILOSO);
+    expect(await page.content(), "o título do evento do Google VAZOU na visão Mês").not.toContain(
+      TITULO_SIGILOSO,
+    );
 
     await page.screenshot({
       path: path.join(RAIZ, "evidence/agenda-ocupacao-google-mes.png"),
