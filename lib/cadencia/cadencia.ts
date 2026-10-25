@@ -50,6 +50,12 @@ export interface CadenciaDaCampanha {
   steps: Array<PassoDaCadencia & { id: string }>;
   /** Inscrições ativas agora. */
   ativos: number;
+  /** Quantos leads estão em cada passo (índice = posição do passo); depois do último, em `aguardando`. */
+  por_passo: number[];
+  /** Leads que deram o último passo e estão no prazo de resposta. */
+  aguardando: number;
+  /** O funil da campanha (para abrir as oportunidades filtradas no CRM). */
+  funil_id: string | null;
 }
 
 export interface ModeloDeCadencia {

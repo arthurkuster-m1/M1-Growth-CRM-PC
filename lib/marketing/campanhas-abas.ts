@@ -36,15 +36,23 @@ export function ehAbaOpcional(a: string): a is AbaOpcional {
 /** Os motores da prospecção ativa: só a campanha do tipo Prospecção pode tê-los. */
 const SO_DA_PROSPECCAO: readonly AbaOpcional[] = ["cadencia", "extracao", "disparos"];
 
+/**
+ * Na Prospecção as abordagens moram DENTRO da Cadência (são criadas no passo): a página
+ * "Abordagem" não existe para ela. Os dados são os mesmos (`demand_campaign_approaches`).
+ */
+const NAO_DA_PROSPECCAO: readonly AbaOpcional[] = ["abordagem"];
+
 /** As opcionais que o tipo da campanha permite oferecer no "+". */
 export function opcionaisPermitidas(canal: CanalDaCampanha): AbaOpcional[] {
-  return ABAS_OPCIONAIS.filter((a) => canal === "prospeccao" || !SO_DA_PROSPECCAO.includes(a));
+  return ABAS_OPCIONAIS.filter((a) =>
+    canal === "prospeccao" ? !NAO_DA_PROSPECCAO.includes(a) : !SO_DA_PROSPECCAO.includes(a),
+  );
 }
 
-/** O padrão de cada tipo: anúncio tem LPs e criativos; prospecção tem abordagem, cadência, extração e disparos. */
+/** O padrão de cada tipo: anúncio tem LPs e criativos; prospecção tem cadência (com as abordagens dentro), extração e disparos. */
 export function opcionaisPadraoDoCanal(canal: CanalDaCampanha): AbaOpcional[] {
   if (canal === "trafego_pago" || canal === "social_media") return ["landing", "criativos"];
-  return canal === "prospeccao" ? ["abordagem", "cadencia", "extracao", "disparos"] : ["abordagem"];
+  return canal === "prospeccao" ? ["cadencia", "extracao", "disparos"] : ["abordagem"];
 }
 
 /** As opcionais que a campanha mostra: a escolha dela, ou o padrão do tipo. */
@@ -68,5 +76,10 @@ export function abaValida(
   canal: CanalDaCampanha,
   escolhidas?: readonly string[] | null,
 ): AbaDaCampanha {
-  return abasDaCampanha(canal, escolhidas).find((a) => a === valor) ?? "cadastro";
+  const abas = abasDaCampanha(canal, escolhidas);
+  const pedida = abas.find((a) => a === valor);
+  if (pedida) return pedida;
+  // A Cadência é a página principal da Prospecção: é onde a campanha abre.
+  if (valor === null && canal === "prospeccao" && abas.includes("cadencia")) return "cadencia";
+  return "cadastro";
 }

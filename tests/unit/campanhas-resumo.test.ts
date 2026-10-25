@@ -391,7 +391,7 @@ describe("landing pages e abas (C-ajustes)", () => {
 });
 
 import { analisarCabecalhosDeEmbed } from "@/lib/marketing/embed-da-lp";
-import { abasDaCampanha, opcionaisDaCampanha } from "@/lib/marketing/campanhas-abas";
+import { abaValida, abasDaCampanha, opcionaisDaCampanha } from "@/lib/marketing/campanhas-abas";
 
 const cab = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null });
 const PAINEL = "https://www.infra-assessoria-m1.cloud";
@@ -432,12 +432,13 @@ describe("pré-visualização da LP (embed)", () => {
 
 describe("páginas opcionais da campanha", () => {
   it("nulo = padrão do tipo; escolha da agência vale", () => {
-    expect(opcionaisDaCampanha("prospeccao", null)).toEqual([
-      "abordagem",
-      "cadencia",
-      "extracao",
-      "disparos",
-    ]);
+    // Na Prospecção as abordagens moram dentro da Cadência: não há página "Abordagem".
+    expect(opcionaisDaCampanha("prospeccao", null)).toEqual(["cadencia", "extracao", "disparos"]);
+    expect(opcionaisDaCampanha("prospeccao", ["abordagem", "cadencia"])).toEqual(["cadencia"]);
+    // A Cadência é onde a Prospecção abre; as demais abrem no cadastro.
+    expect(abaValida(null, "prospeccao", null)).toBe("cadencia");
+    expect(abaValida("funil", "prospeccao", null)).toBe("funil");
+    expect(abaValida(null, "indicacao", null)).toBe("cadastro");
     expect(opcionaisDaCampanha("indicacao", null)).toEqual(["abordagem"]);
     // Extração e disparos só existem na campanha de Prospecção.
     expect(opcionaisDaCampanha("trafego_pago", ["landing", "extracao"])).toEqual(["landing"]);

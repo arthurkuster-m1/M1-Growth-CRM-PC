@@ -83,6 +83,8 @@ describe("as tags que a abordagem põe sozinha são do funil", () => {
       "Contato",
       "contato",
       "Contato com decisor",
+      "Contato · [TESTE] Campanha Prospecção",
+      "Contato com decisor · Funil A",
       "Abordagem: Teste - abordagem completa",
       "abordagem: cold call: 3x",
     ]) {

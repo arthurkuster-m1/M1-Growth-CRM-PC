@@ -25,14 +25,29 @@ export interface TagsAutomaticas {
   abordagem: string | null;
 }
 
+/** O teto das tags automáticas (`lib/contacts/tag-normalizada.ts`). */
+const TETO_DA_TAG = 60;
+
+/**
+ * "Contato · <funil>": a marca de estado leva o funil no nome para entrar na categoria de tags
+ * DELE (a categoria de uma tag é da organização, pelo texto). Sem funil, a forma simples.
+ */
+export function tagDeEstadoDoFunil(base: string, funilNome?: string | null): string {
+  const funil = (funilNome ?? "").trim();
+  if (!funil) return base;
+  const prefixo = `${base} · `;
+  return `${prefixo}${funil.slice(0, TETO_DA_TAG - prefixo.length).trim()}`;
+}
+
 export function tagsAutomaticasDaAbordagem(entrada: {
   resultado?: string | null;
   abordagemNome?: string | null;
+  funilNome?: string | null;
 }): TagsAutomaticas {
   const { contato, decisor } = classificarResultado(entrada.resultado ?? "");
   const fixas: string[] = [];
-  if (contato) fixas.push(TAG_CONTATO);
-  if (decisor) fixas.push(TAG_CONTATO_COM_DECISOR);
+  if (contato) fixas.push(tagDeEstadoDoFunil(TAG_CONTATO, entrada.funilNome));
+  if (decisor) fixas.push(tagDeEstadoDoFunil(TAG_CONTATO_COM_DECISOR, entrada.funilNome));
   const nome = (entrada.abordagemNome ?? "").trim();
   return {
     fixas,

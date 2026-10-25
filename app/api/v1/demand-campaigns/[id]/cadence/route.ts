@@ -63,14 +63,19 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     .maybeSingle();
   const passos = cad ? await carregarPassos(a.supabase, a.orgId, cad.id as string) : [];
   let ativos = 0;
+  const contagem = new Map<number, number>();
   if (cad) {
-    const { count } = await a.supabase
+    const { data: inscritos } = await a.supabase
       .from("demand_cadence_enrollments")
-      .select("id", { count: "exact", head: true })
+      .select("current_step")
       .eq("organization_id", a.orgId)
       .eq("cadence_id", cad.id as string)
-      .eq("status", "ativa");
-    ativos = count ?? 0;
+      .eq("status", "ativa")
+      .limit(10000);
+    for (const i of (inscritos ?? []) as Array<{ current_step: number }>) {
+      ativos += 1;
+      contagem.set(i.current_step, (contagem.get(i.current_step) ?? 0) + 1);
+    }
   }
 
   const pipelineId = (campanha as { pipeline_id: string | null }).pipeline_id;
@@ -114,6 +119,11 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       note: p.note,
     })),
     ativos,
+    por_passo: passos.map((_, i) => contagem.get(i) ?? 0),
+    aguardando: [...contagem.entries()]
+      .filter(([passo]) => passo >= passos.length)
+      .reduce((soma, [, n]) => soma + n, 0),
+    funil_id: (campanha as { pipeline_id: string | null }).pipeline_id,
   };
   return ok(
     {

@@ -98,13 +98,6 @@ export async function POST(
     abordagemId = (ab as { id: string } | null)?.id ?? null;
     abordagemNome = (ab as { name: string } | null)?.name ?? null;
   }
-  // As tags que a abordagem põe sozinha (contato, decisor, abordagem usada): só para as ações de
-  // abordagem, que têm resultado. O histórico guarda quais foram — a conta por dia sai dele.
-  const automaticas = exigeResultado(corpo.data.acao)
-    ? tagsAutomaticasDaAbordagem({ resultado: corpo.data.resultado, abordagemNome })
-    : { fixas: [], abordagem: null };
-  const postas = listarTagsAutomaticas(automaticas);
-
   const { data: contato } = await supabase
     .from("contacts")
     .select("id")
@@ -130,6 +123,23 @@ export async function POST(
       { requestId },
     );
   }
+
+  // As tags que a abordagem põe sozinha (contato, decisor, abordagem usada): só para as ações de
+  // abordagem, que têm resultado. As de contato levam o NOME DO FUNIL ("Contato · Funil"), para
+  // caberem na categoria de tags dele. O histórico guarda quais foram — a conta por dia sai dele.
+  const funilDoLead = (() => {
+    const p = (lead as unknown as { pipeline: { name: string } | { name: string }[] | null })
+      .pipeline;
+    return (Array.isArray(p) ? p[0] : p)?.name ?? null;
+  })();
+  const automaticas = exigeResultado(corpo.data.acao)
+    ? tagsAutomaticasDaAbordagem({
+        resultado: corpo.data.resultado,
+        abordagemNome,
+        funilNome: funilDoLead,
+      })
+    : { fixas: [], abordagem: null };
+  const postas = listarTagsAutomaticas(automaticas);
 
   const r = await emitLeadActivity(supabase, {
     organizationId: orgId,
@@ -178,8 +188,8 @@ export async function POST(
     .eq("id", contactId.data)
     .eq("organization_id", orgId);
 
-  // "Abordagem: <nome>" é própria do funil: ganha a categoria de tags dele (nome do funil e cor).
-  if (automaticas.abordagem) {
+  // As tags automáticas são próprias do funil: ganham a categoria de tags dele (nome do funil e cor).
+  if (postas.length > 0) {
     try {
       const l = lead as unknown as {
         pipeline_id: string;
@@ -190,7 +200,7 @@ export async function POST(
         organizationId: orgId,
         pipelineId: l.pipeline_id,
         nomeDoFunil: funil?.name ?? "",
-        tags: [automaticas.abordagem],
+        tags: postas,
       });
     } catch {
       // É só a cor e o agrupamento da tag: não derruba o registro da ação.
@@ -224,7 +234,7 @@ export async function POST(
         await subirDeEtapaAoResponder(admin, {
           organizationId: orgId,
           leadId: (lead as { id: string }).id,
-          decisor: automaticas.fixas.includes("Contato com decisor"),
+          decisor: automaticas.fixas.some((x) => x.toLowerCase().startsWith("contato com decisor")),
         });
       }
     } catch {

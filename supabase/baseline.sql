@@ -51644,3 +51644,13 @@ comment on table public.agenda_noshow_remarcacoes is
   'A mini-cadência de remarcação de UM lead que faltou: tentativas feitas, máximo e intervalo (dias úteis). Uma ativa por lead. Termina quando o lead responde (respondeu), marca novo compromisso (remarcou), as tentativas acabam (esgotada) ou é cancelada.';
 
 notify pgrst, 'reload schema';
+
+-- ---- a cadência guarda as abordagens da Prospecção (migration 0662) ----
+update public.demand_campaigns
+   set optional_tabs = array(
+     select distinct t from unnest(array_remove(optional_tabs, 'abordagem') || array['cadencia']) as t
+   )
+ where channel = 'prospeccao'
+   and optional_tabs is not null
+   and not ('cadencia' = any (optional_tabs));
+notify pgrst, 'reload schema';

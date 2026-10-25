@@ -140,11 +140,13 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 ### Fase 8 — Execução real da abordagem de WhatsApp (etapa C)
 **Descrição.** Disparo automático do primeiro passo, espera pela resposta, continuação do fluxo e encaminhamento ao atendente, com as regras anti-banimento que já existem e **aprovação manual de cada disparo no começo**.
 
-**Decisões que faltam antes das fases 6 a 8:**
-1. O que acontece com a aba "Abordagem" atual e com as abordagens já cadastradas (proposta: migrar para dentro da Cadência).
-2. Qual número envia no WhatsApp automático, e se começamos com aprovação manual.
-3. O critério de "resposta positiva" (qualquer resposta que não seja recusa/opt-out, ou só quando pede informação ou horário).
-4. O áudio: arquivo gravado e reutilizado, ou voz gerada.
+**Decisões tomadas (25/10/2026):**
+1. A aba "Abordagem" some para a Prospecção; as abordagens já cadastradas foram para dentro da Cadência. **Feito na Fase 6.**
+2. Começar com **aprovação manual de cada disparo**. O **agente de IA escreve a mensagem de cada lead, personalizada, a partir da ideia central da abordagem**. O número que envia é escolhido **na aba de Disparos**, API oficial ou não oficial.
+3. "Resposta positiva" era só um exemplo: fica de fora por enquanto.
+4. Áudio: **arquivo de voz gravado por você e reutilizado** (um arquivo por abordagem).
+
+**Para a Fase 7/8 (já decidido):** a abordagem de WhatsApp passa a ter a "ideia central" (o que o agente usa para personalizar) e passos do fluxo (mensagem, aguardar resposta, mensagem seguinte, áudio gravado). O canal e o número vêm do disparo, então o fluxo da abordagem não escolhe número.
 
 ## 7. Pontos em aberto
 
@@ -163,6 +165,6 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 | 4 — Anti no-show | Concluída (24/10/2026, PR #83) | Migration 0660. Aba "Anti no-show" em Configuração da Agenda: fluxos por tipo de compromisso (um fluxo por tipo). Cada fluxo: horas antes para virar tarefa de ligar sem confirmação; tag de confirmou; tag de faltou (com contador); dias úteis para a oportunidade voltar à fila ("Remarcar"). O aviso ao cliente segue sendo o lembrete do tipo (não duplicado). Aplicado nos 3 pontos: confirmação pela equipe, resposta do cliente e registro de falta. Mini-cadência de remarcação e mensagens próprias do fluxo: Fase 5. A meta de leads da sessão de prospecção passou a limitar também a lista "Cadência de hoje". |
 | 5 — Pontas soltas | Concluída (24/10/2026, PR #84) | Migration 0661. Etapa ao responder (Contato / Contato com decisor, só para a frente). Fim por tempo verificado no banco de desenvolvimento: o gatilho inscreveu, cancelou ao sair da etapa, reinscreveu ao voltar e deixou a inscrição vencida visível para a varredura (dados criados e desfeitos); a rota do cron em si só foi exercitada pelos testes. Mini-cadência de remarcação (até 6 tentativas, intervalo em dias úteis; termina ao responder, remarcar ou esgotar). Mensagens dos lembretes editáveis na aba Anti no-show (mesma fonte do tipo). Fora: mensagem enviada automaticamente depois da falta. |
 | Ajustes de 25/10 | Concluídos (PR #86 e este) | Novo lead, atalho do CRM, tags por funil, largada da cadência. |
-| 6 — Cadência principal | Planejada | Aguarda as decisões 1 a 4. |
+| 6 — Cadência principal | Concluída (25/10/2026) | Migration 0662 (dados: troca `abordagem` por `cadencia` nas páginas escolhidas de Prospecção). A Cadência é a página onde a campanha de Prospecção abre; linha do tempo horizontal (D0, D+2…, com leads por passo e o nó "Fim"); painel do passo; abordagem criada no passo e reaproveitável; as abordagens já cadastradas aparecem dentro da Cadência ("Abordagens da campanha", com onde cada uma é usada) e a aba "Abordagem" não existe mais para a Prospecção (os dados são os mesmos). CRM: o contador vira link para as oportunidades em cadência (`?cadencia=ativa`), coluna "Cadência" e filtro por passo. Tags de contato por funil ("Contato · Funil", "Contato com decisor · Funil") na categoria de tags do funil. |
 | 7 — Fluxo visual de WhatsApp | Planejada | |
 | 8 — Execução real | Planejada | |
