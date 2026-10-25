@@ -679,18 +679,44 @@ function ColunaDeDia({
   );
 }
 
+/**
+ * A janela do dia em que a ocupação VINDA DO GOOGLE aparece no mês (07:00 às 18:00, na hora da
+ * organização). Fora dela (rotina pessoal: acordar, treino…) a faixa "Ocupado" só poluía a célula e
+ * empurrava os compromissos de verdade para fora (pedido de 26/10/2026).
+ */
+const OCUPACAO_NO_MES_DA_HORA = 7;
+const OCUPACAO_NO_MES_ATE_A_HORA = 18;
+
+/** O que o mês mostra num dia: sem a ocupação do Google fora de 07h–18h, em ordem cronológica. */
+export function doDiaNoMes(agendamentos: Agendamento[], dia: Date, fuso: string): Agendamento[] {
+  return agendamentos
+    .filter((c) => chaveDoDiaDoInstante(new Date(c.comeca), fuso) === chaveDoDia(dia))
+    .filter((c) => {
+      if (c.origem !== "google_sync") return true;
+      const hora = partesNoFuso(new Date(c.comeca), fuso).hora;
+      return hora >= OCUPACAO_NO_MES_DA_HORA && hora < OCUPACAO_NO_MES_ATE_A_HORA;
+    })
+    .sort((a, b) => new Date(a.comeca).getTime() - new Date(b.comeca).getTime());
+}
+
 function VisaoDeMes({
   ancora,
   agora,
   fuso,
   agendamentos,
   pessoas,
+  onAbrir,
+  onMarcarNoDia,
 }: {
   ancora: Date;
   agora: Date;
   fuso: string;
   agendamentos: Agendamento[];
   pessoas: Pessoa[];
+  /** Clicar numa faixa abre o compromisso (a ocupação do Google não abre). */
+  onAbrir?: (id: string) => void;
+  /** Duplo clique num dia (de hoje em diante) abre o novo compromisso naquele dia. */
+  onMarcarNoDia?: (instante: string) => void;
 }) {
   const t = useT();
   const localeDaData = useLocaleDeData();
@@ -720,15 +746,35 @@ function VisaoDeMes({
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-[repeat(auto-fit,minmax(0,1fr))]">
         {semanas.flat().map((d) => {
-          const doDia = agendamentos.filter(
-            (c) => chaveDoDiaDoInstante(new Date(c.comeca), fuso) === chaveDoDia(d),
-          );
+          const doDia = doDiaNoMes(agendamentos, d, fuso);
           const doMes = isSameMonth(d, ancora);
+          const hojeDaOrg = chaveDoDiaDoInstante(agora, fuso);
+          const podeMarcarAqui = onMarcarNoDia !== undefined && chaveDoDia(d) >= hojeDaOrg;
           return (
             <div
               key={d.toISOString()}
               data-testid={`celula-mes-${format(d, "yyyy-MM-dd")}`}
+              // Duplo clique no dia cria um compromisso nele (9h, o horário padrão do campo; a
+              // pessoa ajusta na janela). Só de hoje em diante.
+              onDoubleClick={
+                podeMarcarAqui
+                  ? () =>
+                      onMarcarNoDia(
+                        instanteDe(
+                          {
+                            ano: d.getFullYear(),
+                            mes: d.getMonth() + 1,
+                            dia: d.getDate(),
+                            hora: 9,
+                            minuto: 0,
+                          },
+                          fuso,
+                        ).toISOString(),
+                      )
+                  : undefined
+              }
               className={cn(
+                podeMarcarAqui && "cursor-pointer",
                 "min-h-20 min-w-0 border-r border-b border-border p-0.5 md:p-1",
                 !doMes && "bg-surface-elevated/30",
               )}
@@ -755,10 +801,34 @@ function VisaoDeMes({
               <div className="space-y-0.5">
                 {doDia.slice(0, 3).map((c) => {
                   const trilha = pessoas.find((p) => p.id === c.responsavelId)?.trilha ?? 1;
+                  const abre = onAbrir !== undefined && c.origem !== "google_sync";
                   return (
                     <div
                       key={c.id}
                       data-testid={`chip-mes-${c.id}`}
+                      // Clicar numa faixa abre o compromisso; a ocupação do Google é inerte (o id
+                      // dela não é de um compromisso nosso — ver o comentário abaixo).
+                      role={abre ? "button" : undefined}
+                      tabIndex={abre ? 0 : undefined}
+                      onClick={
+                        abre
+                          ? (e) => {
+                              e.stopPropagation();
+                              onAbrir(c.id);
+                            }
+                          : undefined
+                      }
+                      onDoubleClick={abre ? (e) => e.stopPropagation() : undefined}
+                      onKeyDown={
+                        abre
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onAbrir(c.id);
+                              }
+                            }
+                          : undefined
+                      }
                       // A MESMA identidade que o bloco da semana carrega.
                       //
                       // Desde que a ocupação do Google passou a ser lida por
@@ -771,7 +841,10 @@ function VisaoDeMes({
                       // AFIRMA, e um seletor que repete a asserção não prova
                       // nada.
                       data-origem={c.origem}
-                      className="flex items-center gap-1 rounded-sm px-1 py-0.5"
+                      className={cn(
+                        "flex items-center gap-1 rounded-sm px-1 py-0.5",
+                        abre && "cursor-pointer hover:brightness-95",
+                      )}
                       style={{ background: fundoDaTrilha(trilha, 22) }}
                     >
                       <span
@@ -1060,6 +1133,8 @@ export function GradeDaAgenda({
           fuso={fuso}
           agendamentos={agendamentos}
           pessoas={pessoas}
+          onAbrir={onAbrirAgendamento}
+          onMarcarNoDia={interacao ? (instante) => interacao.onMarcarEm(instante) : undefined}
         />
       ) : (
         // A rolagem mora AQUI dentro, e não na página: `html, body` têm

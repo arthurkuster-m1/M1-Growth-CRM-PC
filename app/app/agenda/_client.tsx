@@ -460,7 +460,7 @@ export function AgendaClient({
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex w-full min-w-0 items-center justify-center gap-1.5 sm:w-auto sm:justify-start">
+        <div className="flex min-w-0 flex-1 items-center justify-start gap-1.5 sm:flex-none">
           {/* "Hoje" é o hoje DA ORGANIZAÇÃO. Com `new Date()` o botão desfazia a âncora do servidor
               e devolvia a semana do navegador. Fica ao lado da seleção de data. */}
           <Button
@@ -505,9 +505,10 @@ export function AgendaClient({
             organização de teste tem cinco pessoas), não por estar certa. Com mais
             gente no filtro, ela estoura igual — e o `overflow-x: hidden` corta o
             alternador de visão em silêncio. */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Escondido no celular para o topo ficar limpo (Novo agendamento, Hoje, visão). */}
-          <div className="max-sm:hidden">
+        {/* No celular o grupo "se desmancha" (`contents`): o menu de visões fica na linha do Hoje, e o
+            filtro de atendentes desce para uma linha própria, antes do calendário. */}
+        <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          <div className="order-last w-full sm:order-none sm:w-auto">
             <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
           </div>
           {/* O MENU DE VISÕES, como no Google Agenda: um botão com a visão atual que abre a lista
