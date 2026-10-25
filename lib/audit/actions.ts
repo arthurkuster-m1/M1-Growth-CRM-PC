@@ -973,6 +973,8 @@ export const AUDIT_ACTIONS = [
   "campaign.flow_pular",
   "campaign.flow_reescrever",
   "campaign.flow_parar",
+  "approach_audio.uploaded",
+  "approach_audio.deleted",
   "campaign.test_sent",
   "campaign.scheduled",
   "campaign.started",

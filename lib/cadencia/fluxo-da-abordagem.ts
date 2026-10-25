@@ -24,6 +24,8 @@ export const passoDoFluxoSchema = z.object({
   ai_personalize: z.boolean(),
   /** O nome do arquivo de voz gravado (a gravação em si é anexada na fase de execução). */
   audio_label: z.string().trim().max(120),
+  /** O arquivo da biblioteca de áudios (migration 0667) que o passo envia. */
+  audio_id: z.string().uuid().nullish(),
   /** Quanto esperar a resposta (horas); nulo = sem prazo. Só vale em `aguardar`. */
   wait_hours: z.number().int().min(1).max(720).nullable(),
 });
@@ -38,6 +40,7 @@ export const PASSO_NOVO_DO_FLUXO = (kind: TipoDePassoDoFluxo): PassoDoFluxo => (
   body: "",
   ai_personalize: false,
   audio_label: "",
+  audio_id: null,
   wait_hours: kind === "aguardar" ? 48 : null,
 });
 
@@ -52,8 +55,8 @@ export function avisosDoFluxo(passos: readonly PassoDoFluxo[], ideiaCentral: str
     if (p.kind === "mensagem" && !p.ai_personalize && p.body.trim() === "") {
       avisos.push(`Passo ${n}: escreva a mensagem ou deixe a IA personalizar.`);
     }
-    if (p.kind === "audio" && p.audio_label.trim() === "") {
-      avisos.push(`Passo ${n}: diga qual áudio gravado vai aqui.`);
+    if (p.kind === "audio" && !p.audio_id) {
+      avisos.push(`Passo ${n}: escolha ou envie o arquivo do áudio gravado.`);
     }
   });
   if (passos.some((p) => p.ai_personalize) && ideiaCentral.trim() === "") {

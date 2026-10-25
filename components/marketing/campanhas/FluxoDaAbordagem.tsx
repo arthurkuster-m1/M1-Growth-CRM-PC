@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
+import { useAudiosDaAbordagem } from "@/hooks/marketing/useAudiosDaAbordagem";
 import { useFluxoDaAbordagem } from "@/hooks/marketing/useCadencia";
 import { useT } from "@/hooks/i18n/useT";
 import {
@@ -69,6 +70,7 @@ export function FluxoDaAbordagem({
 }) {
   const t = useT();
   const { passos: salvos, carregando, salvar } = useFluxoDaAbordagem(campanhaId, abordagemId);
+  const { audios, enviar: enviarAudio } = useAudiosDaAbordagem(true);
   const [aberto, setAberto] = useState(false);
   const [rascunho, setRascunho] = useState<PassoEditavel[] | null>(null);
   const [selecionado, setSelecionado] = useState<number | null>(null);
@@ -262,14 +264,66 @@ export function FluxoDaAbordagem({
             </>
           ) : null}
           {passoAberto.kind === "audio" ? (
-            <input
-              className={`${CAMPO} w-full`}
-              maxLength={120}
-              disabled={bloqueado}
-              placeholder={t("Nome do áudio gravado (o arquivo é anexado na execução)")}
-              value={passoAberto.audio_label}
-              onChange={(e) => trocar(passoAberto.k, { audio_label: e.target.value })}
-            />
+            <div className="grid gap-2">
+              <select
+                className={`${CAMPO} w-full`}
+                disabled={bloqueado}
+                aria-label={t("Áudio gravado")}
+                value={passoAberto.audio_id ?? ""}
+                onChange={(e) => {
+                  const escolhido = audios.find((a) => a.id === e.target.value);
+                  trocar(passoAberto.k, {
+                    audio_id: escolhido?.id ?? null,
+                    audio_label: escolhido?.name ?? "",
+                  });
+                }}
+              >
+                <option value="">{t("Escolha um áudio gravado")}</option>
+                {audios.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.aceito_no_oficial === false
+                      ? `${a.name} (${t("não serve na API oficial")})`
+                      : a.name}
+                  </option>
+                ))}
+              </select>
+              {passoAberto.audio_id && !audios.some((a) => a.id === passoAberto.audio_id) ? (
+                <p className="text-xs text-warning-fg">
+                  {t("O arquivo deste passo saiu da biblioteca. Escolha outro ou envie de novo.")}
+                </p>
+              ) : null}
+              {!bloqueado ? (
+                <label className={`${BOTAO} w-fit cursor-pointer`}>
+                  <Microphone size={16} aria-hidden />
+                  {enviarAudio.isPending ? t("Enviando…") : t("Enviar arquivo de voz")}
+                  <input
+                    type="file"
+                    accept="audio/*,.ogg,.opus,.mp3,.m4a,.wav,.aac,.amr"
+                    className="sr-only"
+                    disabled={enviarAudio.isPending}
+                    onChange={(e) => {
+                      const arquivo = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!arquivo) return;
+                      enviarAudio.mutate(
+                        { file: arquivo },
+                        {
+                          onSuccess: (novo) => {
+                            trocar(passoAberto.k, { audio_id: novo.id, audio_label: novo.name });
+                            toast.success(t("Áudio guardado na biblioteca."));
+                          },
+                        },
+                      );
+                    }}
+                  />
+                </label>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "Grave o áudio no celular, envie o arquivo aqui e reutilize em outras abordagens. Vai até 8 MB.",
+                )}
+              </p>
+            </div>
           ) : null}
           {passoAberto.kind === "aguardar" ? (
             <label className="flex flex-wrap items-center gap-2 text-sm">
