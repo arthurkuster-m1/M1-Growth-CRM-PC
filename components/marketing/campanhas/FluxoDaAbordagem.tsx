@@ -281,7 +281,9 @@ export function FluxoDaAbordagem({
                 <option value="">{t("Escolha um áudio gravado")}</option>
                 {audios.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name}
+                    {a.aceito_no_oficial === false
+                      ? `${a.name} (${t("não serve na API oficial")})`
+                      : a.name}
                   </option>
                 ))}
               </select>

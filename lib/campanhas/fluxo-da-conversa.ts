@@ -7,13 +7,19 @@ import { sendMessageHandler } from "@/app/api/v1/messages/_handler";
 import { cerebroDaOrganizacao } from "@/lib/ai/cerebro-da-organizacao";
 import { buildModel } from "@/lib/ai/runtime/agent";
 import type { PassoDoFluxo } from "@/lib/cadencia/fluxo-da-abordagem";
+import { capabilitiesOf, type ChannelProvider } from "@/lib/channels/capabilities";
 import { beginServiceAtOrigin } from "@/lib/atendimento/origem";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { aplicarVariaveis } from "@/lib/leads/mensagem-de-prospeccao";
 import { logger } from "@/lib/logger";
 import { criarTarefaInterna } from "@/lib/tarefas/criar-tarefa";
 
-import { BUCKET_DOS_AUDIOS, caminhoNaConversa } from "./audio-da-abordagem";
+import {
+  AVISO_DO_FORMATO_NO_CANAL_OFICIAL,
+  BUCKET_DOS_AUDIOS,
+  aceitoNoCanalOficial,
+  caminhoNaConversa,
+} from "./audio-da-abordagem";
 import {
   SISTEMA_DA_CONTINUACAO,
   montarPedidoDaContinuacao,
@@ -404,6 +410,24 @@ async function propostaPendente(
   return ctx.dest.flow_state === "proposta_pendente" ? ctx : null;
 }
 
+/** O número que vai enviar segue as regras de formato da API oficial? (pergunta a capacidade, não "quem é") */
+async function numeroExigeFormatoOficial(admin: SupabaseClient, ctx: Contexto): Promise<boolean> {
+  if (!ctx.dest.channel_session_id) return false;
+  const { data } = await admin
+    .from("channel_sessions")
+    .select("provider")
+    .eq("organization_id", ctx.dest.organization_id)
+    .eq("id", ctx.dest.channel_session_id)
+    .maybeSingle();
+  try {
+    return !capabilitiesOf(
+      ((data as { provider?: string } | null)?.provider ?? "") as ChannelProvider,
+    ).freeformOutsideWindow;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * O arquivo de voz do passo, copiado da biblioteca para a pasta da conversa — é lá que o envio de
  * mídia o aceita. Devolve null se o passo não tem arquivo ou ele sumiu da biblioteca.
@@ -413,7 +437,7 @@ async function copiarAudioParaAConversa(
   ctx: Contexto,
   conversationId: string,
   mensagemId: string,
-): Promise<{ caminho: string; mime: string } | null> {
+): Promise<{ caminho: string; mime: string } | { recusa: string } | null> {
   const { passos } = await passosDoDisparo(admin, ctx.dest.organization_id, ctx.campanha);
   const audioId = passos[ctx.dest.flow_step ?? -1]?.audio_id;
   if (!audioId) return null;
@@ -425,6 +449,9 @@ async function copiarAudioParaAConversa(
     .maybeSingle();
   const arquivo = data as { storage_path: string; mime: string } | null;
   if (!arquivo) return null;
+  if (!aceitoNoCanalOficial(arquivo.mime) && (await numeroExigeFormatoOficial(admin, ctx))) {
+    return { recusa: AVISO_DO_FORMATO_NO_CANAL_OFICIAL };
+  }
   const destino = caminhoNaConversa(
     ctx.dest.organization_id,
     conversationId,
@@ -477,6 +504,9 @@ export async function enviarProposta(
     const midia = audio
       ? await copiarAudioParaAConversa(admin, ctx, boundary.conversation_id, mensagemId)
       : null;
+    if (midia && "recusa" in midia) {
+      return { ok: false, mensagem: midia.recusa, status: 422 };
+    }
     if (audio && !midia) {
       return {
         ok: false,

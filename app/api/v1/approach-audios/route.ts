@@ -11,6 +11,7 @@ import {
   BUCKET_DOS_AUDIOS,
   TAMANHO_MAXIMO_DO_AUDIO,
   caminhoDoAudio,
+  aceitoNoCanalOficial,
   farejarAudio,
   nomeDoAudio,
 } from "@/lib/campanhas/audio-da-abordagem";
@@ -31,7 +32,11 @@ export async function GET(): Promise<Response> {
     .eq("organization_id", a.orgId)
     .order("created_at", { ascending: false })
     .limit(200);
-  return ok({ audios: data ?? [] }, { requestId: a.requestId });
+  const audios = ((data ?? []) as Array<{ mime: string }>).map((x) => ({
+    ...x,
+    aceito_no_oficial: aceitoNoCanalOficial(x.mime),
+  }));
+  return ok({ audios }, { requestId: a.requestId });
 }
 
 export async function POST(req: Request): Promise<Response> {

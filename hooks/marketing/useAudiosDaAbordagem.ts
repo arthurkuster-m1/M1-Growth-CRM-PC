@@ -12,6 +12,8 @@ export interface AudioDaBiblioteca {
   name: string;
   mime: string;
   size_bytes: number;
+  /** wav e webm não vão pela API oficial. */
+  aceito_no_oficial?: boolean;
   created_at: string;
 }
 

@@ -40,6 +40,8 @@ interface Cfg {
   passo?: number;
   proposta?: { kind: "mensagem" | "audio"; body: string };
   audioNaBiblioteca?: boolean;
+  mimeDoAudio?: string;
+  provider?: string;
 }
 
 function fake(cfg: Cfg) {
@@ -84,13 +86,18 @@ function fake(cfg: Cfg) {
               ? { name: "Ana Souza", display_name: null, is_blocked: Boolean(cfg.bloqueado) }
               : tabela === "demand_campaign_approaches"
                 ? { id: "ab1", name: "Cold", script: "", central_idea: "agenda cheia" }
-                : tabela === "approach_audios"
-                  ? cfg.audioNaBiblioteca
-                    ? { storage_path: "o1/audios-da-abordagem/a1.ogg", mime: "audio/ogg" }
-                    : null
-                  : tabela === "crm_leads"
-                    ? { id: "l1" }
-                    : null,
+                : tabela === "channel_sessions"
+                  ? { provider: cfg.provider ?? "waha" }
+                  : tabela === "approach_audios"
+                    ? cfg.audioNaBiblioteca
+                      ? {
+                          storage_path: "o1/audios-da-abordagem/a1.ogg",
+                          mime: cfg.mimeDoAudio ?? "audio/ogg",
+                        }
+                      : null
+                    : tabela === "crm_leads"
+                      ? { id: "l1" }
+                      : null,
     });
     c.then = (ok: (v: unknown) => void) => {
       if (tabela === "demand_approach_steps") return ok({ data: cfg.passos });
@@ -246,5 +253,31 @@ describe("enviarProposta — áudio gravado", () => {
     const r = await aprovar(f);
     expect(r).toMatchObject({ ok: false, status: 422 });
     expect(envio.enviar).not.toHaveBeenCalled();
+  });
+
+  it("wav em número da API oficial é recusado antes de copiar e de enviar", async () => {
+    envio.enviar.mockClear();
+    const f = fake({
+      passos: [abertura, PASSO_NOVO_DO_FLUXO("aguardar"), audioDoFluxo],
+      proposta: { kind: "audio", body: "Apresentação" },
+      passo: 2,
+      audioNaBiblioteca: true,
+      mimeDoAudio: "audio/wav",
+      provider: "meta_cloud",
+    });
+    expect(await aprovar(f)).toMatchObject({ ok: false, status: 422 });
+    expect(f.copias).toHaveLength(0);
+    expect(envio.enviar).not.toHaveBeenCalled();
+  });
+
+  it("o mesmo wav em número não oficial segue normalmente", async () => {
+    const f = fake({
+      passos: [abertura, PASSO_NOVO_DO_FLUXO("aguardar"), audioDoFluxo],
+      proposta: { kind: "audio", body: "Apresentação" },
+      passo: 2,
+      audioNaBiblioteca: true,
+      mimeDoAudio: "audio/wav",
+    });
+    expect(await aprovar(f)).toEqual({ ok: true });
   });
 });

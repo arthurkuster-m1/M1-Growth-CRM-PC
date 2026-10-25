@@ -64,3 +64,16 @@ export function nomeDoAudio(bruto: string): string {
     .trim()
     .slice(0, 120);
 }
+
+/**
+ * Os formatos que a API oficial (Meta) não aceita como áudio. O upload os guarda — o número não
+ * oficial os envia —, mas o envio por canal oficial é recusado antes, com a explicação.
+ */
+const FORMATOS_SEM_CANAL_OFICIAL = new Set(["audio/wav", "audio/webm"]);
+
+export function aceitoNoCanalOficial(mime: string): boolean {
+  return !FORMATOS_SEM_CANAL_OFICIAL.has(mime);
+}
+
+export const AVISO_DO_FORMATO_NO_CANAL_OFICIAL =
+  "A API oficial não envia áudio em wav ou webm. Envie de novo o arquivo em ogg, mp3, m4a, aac ou amr, ou use um número não oficial.";
