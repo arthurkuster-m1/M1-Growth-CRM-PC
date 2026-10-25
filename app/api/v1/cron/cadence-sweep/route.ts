@@ -14,6 +14,7 @@ import type { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { autorizaCron } from "@/lib/auth/cron-auth";
+import { encerrarFluxosSemResposta } from "@/lib/campanhas/fluxo-sem-resposta";
 import { moverLeadParaEtapa } from "@/lib/leads/appointment-stage-move";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,13 +27,15 @@ export interface ResultadoDoVarredor {
   concluidas: number;
   movidos: number;
   falhas: number;
+  /** Fluxos de conversa que esperavam resposta e passaram do prazo. */
+  fluxosSemResposta: number;
 }
 
 export async function encerrarCadenciasEsgotadas(
   admin: ReturnType<typeof createAdminClient>,
   agora: Date,
 ): Promise<ResultadoDoVarredor> {
-  const r: ResultadoDoVarredor = { concluidas: 0, movidos: 0, falhas: 0 };
+  const r: ResultadoDoVarredor = { concluidas: 0, movidos: 0, falhas: 0, fluxosSemResposta: 0 };
   const { data: vencidas } = await admin
     .from("demand_cadence_enrollments")
     .select("id, organization_id, cadence_id, lead_id, current_step")
@@ -149,6 +152,7 @@ export async function encerrarCadenciasEsgotadas(
       });
     }
   }
+  r.fluxosSemResposta = await encerrarFluxosSemResposta(admin, agora);
   return r;
 }
 
@@ -166,7 +170,7 @@ async function handle(req: NextRequest): Promise<Response> {
     });
     return fail("internal_error", "Failed to sweep cadences.", 500, { requestId });
   }
-  if (resultado.concluidas > 0) {
+  if (resultado.concluidas > 0 || resultado.fluxosSemResposta > 0) {
     void audit({
       action: "cadence.sweep_run",
       organizationId: null,

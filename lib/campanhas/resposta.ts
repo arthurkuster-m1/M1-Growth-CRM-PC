@@ -30,6 +30,8 @@
  * de um cliente — por isso devolve `skipped`/`error` ao dispatcher em vez de
  * lançar.
  */
+import { aoLeadResponderNoDisparo } from "@/lib/cadencia/ao-responder-no-disparo";
+import { continuarFluxoAoResponder } from "./fluxo-da-conversa";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ATRIBUICAO_PADRAO_HORAS, janelaDeAtribuicaoMs, lerConfiguracao } from "./configuracao";
@@ -168,7 +170,19 @@ export async function aplicarRespostaNaCampanha(
       .is("replied_at", null)
       .select("id");
     atribuiu = (carimbadas ?? []).length > 0;
+    // A resposta ao disparo de prospecção encerra a cadência do lead e o leva a "Contato".
+    if (atribuiu) {
+      await aoLeadResponderNoDisparo(admin, {
+        organizationId,
+        contactId,
+        disparoId: await disparoDoDestinatario(admin, organizationId, alvo.id),
+      });
+    }
   }
+
+  // O fluxo da abordagem anda quando o lead responde — também na segunda e na terceira resposta,
+  // que já não são atribuídas ao disparo (a primeira resposta carimbou `replied_at`).
+  await continuarFluxoAoResponder(admin, { organizationId, contactId, recebidoEm });
 
   const optOut = await fecharPorOptOut(admin, organizationId, contactId, recebidoEm);
   return { atribuiu, optOut };
@@ -213,4 +227,18 @@ async function fecharPorOptOut(
     .in("status", ["pending", "queued", "sent", "delivered", "read", "replied"])
     .select("id");
   return (data ?? []).length;
+}
+
+async function disparoDoDestinatario(
+  admin: SupabaseClient,
+  organizationId: string,
+  recipientId: string,
+): Promise<string> {
+  const { data } = await admin
+    .from("campaign_recipients")
+    .select("campaign_id")
+    .eq("organization_id", organizationId)
+    .eq("id", recipientId)
+    .maybeSingle();
+  return (data as { campaign_id?: string } | null)?.campaign_id ?? "";
 }

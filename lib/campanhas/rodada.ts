@@ -32,6 +32,7 @@
  *
  * Nunca lança para o cron: uma campanha quebrada não pode derrubar a rodada.
  */
+import { iniciarFluxoAposAbertura } from "./fluxo-da-conversa";
 import { registrarEnvioDoDisparo } from "@/lib/cadencia/registrar-envio-do-disparo";
 import { iniciarAbordagemDoDisparo } from "@/lib/cadencia/iniciar-abordagem";
 import { randomUUID } from "node:crypto";
@@ -550,6 +551,12 @@ async function rodarUmaCampanha(
         disparoNome: campanha.name,
         demandCampaignId: campanha.demand_campaign_id,
         approachId: campanha.approach_id,
+      });
+      // A abertura saiu: o fluxo da abordagem passa a esperar a resposta do lead.
+      await iniciarFluxoAposAbertura(admin, {
+        organizationId: campanha.organization_id,
+        recipientId: alvo.id,
+        agora,
       });
     }
 

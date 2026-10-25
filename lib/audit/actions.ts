@@ -969,6 +969,10 @@ export const AUDIT_ACTIONS = [
   // A IA escreveu as mensagens do disparo / a pessoa as aprovou (migration 0665).
   "campaign.ai_messages_generated",
   "campaign.ai_messages_approved",
+  "campaign.flow_enviar",
+  "campaign.flow_pular",
+  "campaign.flow_reescrever",
+  "campaign.flow_parar",
   "campaign.test_sent",
   "campaign.scheduled",
   "campaign.started",
