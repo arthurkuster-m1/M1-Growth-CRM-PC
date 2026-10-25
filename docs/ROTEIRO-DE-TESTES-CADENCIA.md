@@ -109,14 +109,19 @@ Em Configurações › Agenda › aba **Anti no-show**.
 
 ## 5. Áudio gravado (Fase 8e)
 
-| #   | Passo                                                                                                  | Esperado                                               | Resultado |
-| --- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | --------- |
-| 5.1 | No passo de áudio, clique em **Enviar arquivo de voz** com um áudio seu (ogg, mp3, m4a, aac, amr, wav) | "Áudio guardado na biblioteca" e ele já fica escolhido |           |
-| 5.2 | Tente enviar um PDF ou imagem renomeado para `.mp3`                                                    | **Recusado** (o tipo é lido pelos bytes)               |           |
-| 5.3 | Tente um áudio acima de 8 MB                                                                           | Recusado                                               |           |
-| 5.4 | Em **outra abordagem**, escolha o mesmo áudio na lista                                                 | Aparece sem enviar de novo                             |           |
-| 5.5 | Envie um **wav** ou **webm**                                                                           | Na lista aparece **"(não serve na API oficial)"**      |           |
-| 5.6 | Salve o fluxo e reabra                                                                                 | O áudio escolhido continua lá                          |           |
+| #    | Passo                                                                                                  | Esperado                                                                                                             | Resultado |
+| ---- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | --------- |
+| 5.1  | No passo de áudio, clique em **Enviar arquivo de voz** com um áudio seu (ogg, mp3, m4a, aac, amr, wav) | "Áudio guardado na biblioteca" e ele já fica escolhido                                                               |           |
+| 5.2  | Tente enviar um PDF ou imagem renomeado para `.mp3`                                                    | **Recusado** (o tipo é lido pelos bytes)                                                                             |           |
+| 5.3  | Tente um áudio acima de 8 MB                                                                           | Recusado                                                                                                             |           |
+| 5.4  | Em **outra abordagem**, escolha o mesmo áudio na lista                                                 | Aparece sem enviar de novo                                                                                           |           |
+| 5.5  | Envie um **wav** (ou um ogg que não seja Opus)                                                         | Na lista aparece **"(não serve na API oficial)"**                                                                    |           |
+| 5.6  | Salve o fluxo e reabra                                                                                 | O áudio escolhido continua lá                                                                                        |           |
+| 5.7  | Clique em **Ouvir** no áudio escolhido                                                                 | O áudio toca na própria tela                                                                                         |           |
+| 5.8  | Clique em **Gravar agora**, permita o microfone, fale 5 s e **Parar e guardar**                        | A gravação entra na biblioteca (com o nome que você deu ou "Gravação data hora") e já fica escolhida; **Ouvir** toca |           |
+| 5.9  | **Descartar** no meio de uma gravação                                                                  | Nada é guardado e o microfone desliga                                                                                |           |
+| 5.10 | Negue a permissão do microfone                                                                         | Aviso claro, sem quebrar a tela                                                                                      |           |
+| 5.11 | Grave no **Chrome** e olhe a lista                                                                     | A gravação **não** aparece como "não serve na API oficial" (foi convertida para ogg/Opus)                            |           |
 
 ---
 
@@ -170,37 +175,38 @@ e um número **não oficial**.
 
 Abordagem de teste: Mensagem › Aguardar › Mensagem (IA) › Aguardar › Encaminhar.
 
-| #    | Passo                                                                           | Esperado                                                                              | Resultado |
-| ---- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------- |
-| 9.1  | Depois do envio, abra o disparo                                                 | Painel **"Continuação da conversa"**: o lead aparece como **"Esperando a resposta"**  |           |
-| 9.2  | **Responda** do WhatsApp do lead (ex.: "tenho interesse, como funciona?")       | Em até ~15 s o painel mostra uma **mensagem proposta** e o que o lead respondeu       |           |
-| 9.3  | No CRM                                                                          | Cadência do lead **terminou**; ele **subiu** para Contato; tag **"Contato · Funil"**  |           |
-| 9.4  | A proposta é da IA?                                                             | Responde ao que o lead disse e leva a conversa adiante, em até 3 frases, sem inventar |           |
-| 9.5  | **Edite** o texto e clique **Aprovar e enviar**                                 | A mensagem **editada** chega no WhatsApp do lead                                      |           |
-| 9.6  | Aprovar duas vezes seguidas (duplo clique)                                      | Chega **uma** só                                                                      |           |
-| 9.7  | **Pedir outra à IA**                                                            | O texto é reescrito                                                                   |           |
-| 9.8  | **Pular este passo**                                                            | O fluxo segue sem enviar                                                              |           |
-| 9.9  | **Encerrar o fluxo**                                                            | O lead sai do fluxo ("encerrado por você")                                            |           |
-| 9.10 | Responda uma **segunda vez** (depois do segundo "aguardar")                     | O fluxo anda de novo (a 2ª e a 3ª respostas contam)                                   |           |
-| 9.11 | Chegue ao passo **Encaminhar**                                                  | Cria **tarefa** para o dono do lead ("Continuar a conversa com…"), com aviso          |           |
-| 9.12 | Lead **sem dono** no passo Encaminhar                                           | O painel diz que ele não tem responsável                                              |           |
-| 9.13 | O lead responde **"pare"** / "não quero receber"                                | Fluxo **parado** (pediu para não receber mensagens) e **nada** é proposto             |           |
-| 9.14 | Deixe um lead **sem responder** além do prazo do "aguardar"                     | Fluxo **concluído** ("não respondeu no prazo") na próxima varredura (até 15 min)      |           |
-| 9.15 | Aprove uma proposta **mais de 24 h depois** da resposta, num número **oficial** | O canal recusa: "A mensagem não saiu"; o fluxo segue esperando sua decisão            |           |
-| 9.16 | O agente de IA do inbox também pode responder esse lead                         | Verifique se **duas respostas** não chegam ao mesmo tempo (ponto de atenção)          |           |
+| #    | Passo                                                                           | Esperado                                                                                               | Resultado |
+| ---- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------- |
+| 9.0  | Depois que uma proposta da IA for escrita                                       | No painel aparece **"Custo da IA nesta continuação"** (soma das mensagens da IA); texto fixo não gasta |           |
+| 9.1  | Depois do envio, abra o disparo                                                 | Painel **"Continuação da conversa"**: o lead aparece como **"Esperando a resposta"**                   |           |
+| 9.2  | **Responda** do WhatsApp do lead (ex.: "tenho interesse, como funciona?")       | Em até ~15 s o painel mostra uma **mensagem proposta** e o que o lead respondeu                        |           |
+| 9.3  | No CRM                                                                          | Cadência do lead **terminou**; ele **subiu** para Contato; tag **"Contato · Funil"**                   |           |
+| 9.4  | A proposta é da IA?                                                             | Responde ao que o lead disse e leva a conversa adiante, em até 3 frases, sem inventar                  |           |
+| 9.5  | **Edite** o texto e clique **Aprovar e enviar**                                 | A mensagem **editada** chega no WhatsApp do lead                                                       |           |
+| 9.6  | Aprovar duas vezes seguidas (duplo clique)                                      | Chega **uma** só                                                                                       |           |
+| 9.7  | **Pedir outra à IA**                                                            | O texto é reescrito                                                                                    |           |
+| 9.8  | **Pular este passo**                                                            | O fluxo segue sem enviar                                                                               |           |
+| 9.9  | **Encerrar o fluxo**                                                            | O lead sai do fluxo ("encerrado por você")                                                             |           |
+| 9.10 | Responda uma **segunda vez** (depois do segundo "aguardar")                     | O fluxo anda de novo (a 2ª e a 3ª respostas contam)                                                    |           |
+| 9.11 | Chegue ao passo **Encaminhar**                                                  | Cria **tarefa** para o dono do lead ("Continuar a conversa com…"), com aviso                           |           |
+| 9.12 | Lead **sem dono** no passo Encaminhar                                           | O painel diz que ele não tem responsável                                                               |           |
+| 9.13 | O lead responde **"pare"** / "não quero receber"                                | Fluxo **parado** (pediu para não receber mensagens) e **nada** é proposto                              |           |
+| 9.14 | Deixe um lead **sem responder** além do prazo do "aguardar"                     | Fluxo **concluído** ("não respondeu no prazo") na próxima varredura (até 15 min)                       |           |
+| 9.15 | Aprove uma proposta **mais de 24 h depois** da resposta, num número **oficial** | O canal recusa: "A mensagem não saiu"; o fluxo segue esperando sua decisão                             |           |
+| 9.16 | O agente de IA do inbox também pode responder esse lead                         | Verifique se **duas respostas** não chegam ao mesmo tempo (ponto de atenção)                           |           |
 
 ## 10. Áudio na continuação (Fase 8e)
 
 Abordagem com um passo de **áudio** (com arquivo escolhido) depois de um "aguardar".
 
-| #    | Passo                                       | Esperado                                                                                | Resultado |
-| ---- | ------------------------------------------- | --------------------------------------------------------------------------------------- | --------- |
-| 10.1 | O lead responde e o próximo passo é o áudio | A proposta aparece como **áudio** (nome do arquivo), com **"Aprovar e enviar o áudio"** |           |
-| 10.2 | Clique em **Aprovar e enviar o áudio**      | O áudio **chega** no WhatsApp e toca                                                    |           |
-| 10.3 | Passo de áudio **sem arquivo**              | Recusa: "Este passo não tem um arquivo de voz"; resta **"Já mandei à mão"**             |           |
-| 10.4 | Apague da biblioteca um áudio usado         | Os passos ficam sem arquivo e o desenho avisa                                           |           |
-| 10.5 | **Número oficial** com wav/webm             | Recusado **antes** de enviar, dizendo para usar ogg, mp3, m4a, aac ou amr               |           |
-| 10.6 | Número oficial com ogg/mp3/m4a              | Envia (**não testado em lugar nenhum**)                                                 |           |
+| #    | Passo                                               | Esperado                                                                                | Resultado |
+| ---- | --------------------------------------------------- | --------------------------------------------------------------------------------------- | --------- |
+| 10.1 | O lead responde e o próximo passo é o áudio         | A proposta aparece como **áudio** (nome do arquivo), com **"Aprovar e enviar o áudio"** |           |
+| 10.2 | Clique em **Aprovar e enviar o áudio**              | O áudio **chega** no WhatsApp e toca                                                    |           |
+| 10.3 | Passo de áudio **sem arquivo**                      | Recusa: "Este passo não tem um arquivo de voz"; resta **"Já mandei à mão"**             |           |
+| 10.4 | Apague da biblioteca um áudio usado                 | Os passos ficam sem arquivo e o desenho avisa                                           |           |
+| 10.5 | **Número oficial** com wav ou ogg que não seja Opus | Recusado **antes** de enviar, dizendo para usar ogg (Opus), mp3, m4a, aac ou amr        |           |
+| 10.6 | Número oficial com ogg/mp3/m4a                      | Envia (**não testado em lugar nenhum**)                                                 |           |
 
 ## 11. Permissões e segurança
 

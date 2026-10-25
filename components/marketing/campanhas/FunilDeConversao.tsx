@@ -522,9 +522,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       key={`janela-${atual.id}-${atual.expected_duration_hours ?? "padrao"}`}
                       etapa={atual}
                       desabilitado={!podeEditar}
-                      aoConfirmar={(valor) =>
-                        void mexer(atual.id, { expected_duration_hours: valor })
-                      }
+                      aoConfirmar={(valor) => void mexer(atual.id, { expected_duration_hours: valor })}
                     />
                   </div>
                   <label className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm sm:col-span-2">
