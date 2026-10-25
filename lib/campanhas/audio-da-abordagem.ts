@@ -23,8 +23,15 @@ export function caminhoNaConversa(
   return `${organizationId}/${conversationId}/${mensagemId}.${extensaoDoAudio(mime)}`;
 }
 
+/**
+ * Ogg com Opus: o que a API oficial exige (`audio/ogg` puro, sem o codec, é recusado) e o que o
+ * navegador grava quando passa pela conversão do upload. A mesma string de `VOICE_MIME`.
+ */
+export const MIME_OGG_OPUS = "audio/ogg;codecs=opus";
+
 const EXTENSAO: Record<string, string> = {
   "audio/ogg": "ogg",
+  [MIME_OGG_OPUS]: "ogg",
   "audio/mpeg": "mp3",
   "audio/mp4": "m4a",
   "audio/wav": "wav",
@@ -44,7 +51,10 @@ export function extensaoDoAudio(mime: string): string {
 export function farejarAudio(b: Uint8Array): string | null {
   const ascii = (de: number, ate: number) => String.fromCharCode(...b.slice(de, ate));
   if (b.length < 12) return null;
-  if (ascii(0, 4) === "OggS") return "audio/ogg";
+  if (ascii(0, 4) === "OggS") {
+    // O cabeçalho do primeiro pacote diz o codec: só Opus serve ao WhatsApp oficial.
+    return ascii(0, Math.min(b.length, 128)).includes("OpusHead") ? MIME_OGG_OPUS : "audio/ogg";
+  }
   // ADTS (AAC): sincronia 0xFFF e camada 00. Vem antes do MP3, que usa a camada 01/10/11.
   if (b[0] === 0xff && (b[1]! & 0xf6) === 0xf0) return "audio/aac";
   if (ascii(0, 3) === "ID3" || (b[0] === 0xff && (b[1]! & 0xe0) === 0xe0)) return "audio/mpeg";
@@ -66,14 +76,14 @@ export function nomeDoAudio(bruto: string): string {
 }
 
 /**
- * Os formatos que a API oficial (Meta) não aceita como áudio. O upload os guarda — o número não
+ * Os formatos que a API oficial (Meta) não aceita como áudio (ogg só serve com Opus). O upload os guarda — o número não
  * oficial os envia —, mas o envio por canal oficial é recusado antes, com a explicação.
  */
-const FORMATOS_SEM_CANAL_OFICIAL = new Set(["audio/wav", "audio/webm"]);
+const FORMATOS_SEM_CANAL_OFICIAL = new Set(["audio/wav", "audio/webm", "audio/ogg"]);
 
 export function aceitoNoCanalOficial(mime: string): boolean {
   return !FORMATOS_SEM_CANAL_OFICIAL.has(mime);
 }
 
 export const AVISO_DO_FORMATO_NO_CANAL_OFICIAL =
-  "A API oficial não envia áudio em wav ou webm. Envie de novo o arquivo em ogg, mp3, m4a, aac ou amr, ou use um número não oficial.";
+  "A API oficial não envia áudio em wav, webm ou ogg que não seja Opus. Envie de novo o arquivo em ogg (Opus), mp3, m4a, aac ou amr, ou use um número não oficial.";

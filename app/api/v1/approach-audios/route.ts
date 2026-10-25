@@ -11,10 +11,12 @@ import {
   BUCKET_DOS_AUDIOS,
   TAMANHO_MAXIMO_DO_AUDIO,
   caminhoDoAudio,
+  MIME_OGG_OPUS,
   aceitoNoCanalOficial,
   farejarAudio,
   nomeDoAudio,
 } from "@/lib/campanhas/audio-da-abordagem";
+import { transcodificarNotaDeVoz } from "@/lib/messaging/media/voice-transcode";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { autorizarCampanhas } from "@/lib/marketing/campanhas-servidor";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -57,7 +59,7 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
   const bytes = new Uint8Array(await arquivo.arrayBuffer());
-  const mime = farejarAudio(bytes);
+  let mime = farejarAudio(bytes);
   if (!mime) {
     return fail(
       "validation_failed",
@@ -67,6 +69,16 @@ export async function POST(req: Request): Promise<Response> {
       422,
       { requestId: a.requestId },
     );
+  }
+  // O navegador (Chrome) grava em webm, que a API oficial recusa. O codec já é Opus: troca-se só o
+  // contêiner, uma vez, ao guardar — o mesmo arquivo serve a qualquer canal. Se não deu, fica webm.
+  let conteudo = bytes;
+  if (mime === "audio/webm") {
+    const t = await transcodificarNotaDeVoz({ buffer: Buffer.from(bytes), mime });
+    if (t.convertido) {
+      conteudo = new Uint8Array(t.buffer);
+      mime = MIME_OGG_OPUS;
+    }
   }
   const nomeEnviado = form?.get("name");
   const nome = nomeDoAudio(
@@ -81,7 +93,7 @@ export async function POST(req: Request): Promise<Response> {
   const caminho = caminhoDoAudio(a.orgId, id, mime);
   const { error: erroDoArquivo } = await admin.storage
     .from(BUCKET_DOS_AUDIOS)
-    .upload(caminho, bytes, { contentType: mime, upsert: false });
+    .upload(caminho, conteudo, { contentType: mime, upsert: false });
   if (erroDoArquivo) {
     return fail("internal_error", a.t("Erro ao guardar o áudio."), 500, { requestId: a.requestId });
   }
@@ -93,7 +105,7 @@ export async function POST(req: Request): Promise<Response> {
       name: nome,
       storage_path: caminho,
       mime,
-      size_bytes: arquivo.size,
+      size_bytes: conteudo.byteLength,
       created_by: a.userId,
     })
     .select(COLUNAS)

@@ -247,8 +247,10 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
     - Provedor extra (Google Places oficial): só depois de conferir os termos de uso dos dados.
     - Plano de tarefa como "tarefa modelo": hoje o popup pede cliente e datas; pedir mais campos
       (responsável diferente, observação) se fizer falta.
-    - **Cadência da Prospecção Ativa e anti no-show:** plano em fases em `docs/PLANO-CADENCIA.md`
-      (fase 1 concluída; cadência, lista "Hoje" e anti no-show seguem).
+    - **Cadência da Prospecção Ativa, anti no-show e execução do WhatsApp (24 a 26/10/2026):** fases 1 a 8e e
+      os ajustes finais **no código e na `main`**; plano e pontos opcionais em `docs/PLANO-CADENCIA.md`.
+      **Em pausa até o teste do aplicativo completo** (roteiro em `docs/ROTEIRO-DE-TESTES-CADENCIA.md`);
+      depois, uma ou duas rodadas de ajuste.
 Rotinas desligadas de propósito (~25): disparam mensagens; ligar por pacote, só a pedido.
 
 ## 2. PEQUENOS AJUSTES PENDENTES
@@ -274,7 +276,7 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 | 4 | **Geração de demanda** | Campanhas, criativos e textos com status; você já tem uma base | **Em andamento.** Cadastro, tabela, cards e linha do tempo; criativos do Meta com todas as variações; dia a dia automático; origem rastreável. Plano em `docs/PLANO-CAMPANHAS-M1.md` | Mande a base atual. Quais campos e quais status? |
 | 5 | **Inbox** | Ajustes visuais e conexões com "outros bancos" | **A fazer** | O que são esses "outros bancos"? Que ajustes visuais incomodam? |
 | 6 | **Equipe** | Pessoas, papéis e interface por empresa | **A fazer** (a equipe já aparece como responsável por lead e por venda) | Quais papéis existem de fato na agência e no cliente? |
-| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **Parcial** (prospecção ativa por ligação e WhatsApp feita; scraping e disparos em massa a fazer) (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? |
+| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **Parcial, avançado** (prospecção ativa por ligação e WhatsApp, extração de leads, cadência, disparos com IA e continuação da conversa: código pronto, **aguardando teste** — ver PLANO-CADENCIA) (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? |
 | 8 | **CRM** (o maior) | Visualizações, funis, base de leads e de vendas, ligação com dashboards, rastreamento, CAPI e movimentação automática estilo Tintim | **Em andamento, avançado.** Faltam Hotmart, contas a receber, Lead Ads nativo, CAPI/movimentação automática (ver `docs/PLANO-CRM-M1.md`) | Já está no `PLANO-CRM-M1.md` do fork |
 | 9 | **Conexões e webhooks** | Formulários e LPs entrando como leads | **Parcial.** Receber lead já tratado (n8n/sistema próprio) e importação feitos; falta Lead Ads nativo e os eventos de CAPI | Quais LPs e formulários? Quais campos chegam? Que eventos viram CAPI? |
 | 10 | **Agenda** | Ajustes visuais e de UX | **Em andamento** (Google, oportunidade, análises e anti no-show feitos; falta validar lembretes) | Liste o que incomoda hoje |

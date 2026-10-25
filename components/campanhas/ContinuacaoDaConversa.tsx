@@ -165,6 +165,15 @@ export function ContinuacaoDaConversa({ campanhaId }: { campanhaId: string }) {
             .map((e) => `${dados.resumo[e]} ${t(ROTULO_DO_ESTADO[e]).toLowerCase()}`)
             .join(" · ")}
         </p>
+        {dados.custo_cents > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {t("Custo da IA nesta continuação")}:{" "}
+            {(dados.custo_cents / 100).toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })}
+          </p>
+        ) : null}
       </header>
       {propostas.length > 0 ? (
         <div className="grid gap-3 md:grid-cols-2">

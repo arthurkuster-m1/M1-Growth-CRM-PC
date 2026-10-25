@@ -64,5 +64,12 @@ export function useAudiosDaAbordagem(ativo: boolean) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: KEY }),
     onError: (e) => showApiError(e),
   });
-  return { audios: consulta.data ?? [], carregando: consulta.isLoading, enviar, remover };
+  /** O endereço de vida curta para ouvir um áudio da biblioteca. */
+  const ouvir = useMutation({
+    mutationFn: async (audioId: string) =>
+      (await apiClient.get<{ data: { url: string } }>(`/api/v1/approach-audios/${audioId}/url`))
+        .data.url,
+    onError: (e) => showApiError(e),
+  });
+  return { audios: consulta.data ?? [], carregando: consulta.isLoading, enviar, remover, ouvir };
 }
