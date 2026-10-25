@@ -9,6 +9,7 @@
  * Paginação: keyset sobre (created_at DESC, id DESC), o mesmo formato de
  * `lead-captures`.
  */
+import { recusaDaAbordagemDoDisparo } from "@/lib/campanhas/abordagem-do-disparo";
 import { randomUUID } from "node:crypto";
 
 import type { NextRequest } from "next/server";
@@ -34,7 +35,7 @@ export const dynamic = "force-dynamic";
 const COLUNAS_DA_LISTA =
   "id, name, status, channel_session_id, snapshot_total, snapshot_eligible, snapshot_excluded, " +
   "scheduled_at, started_at, completed_at, cancelled_at, created_at, created_by, " +
-  "pipeline_id, stage_id, agent_id, demand_campaign_id";
+  "pipeline_id, stage_id, agent_id, demand_campaign_id, approach_id";
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -148,6 +149,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
   }
 
+  const recusaDaAbordagem = await recusaDaAbordagemDoDisparo(supabase, {
+    organizationId: org.orgId,
+    abordagemId: entrada.approach_id,
+    demandCampaignId: entrada.demand_campaign_id,
+  });
+  if (recusaDaAbordagem) {
+    return fail("validation_failed", t(recusaDaAbordagem), 422, { requestId });
+  }
+
   const { data, error } = await supabase
     .from("campaigns")
     .insert({
@@ -168,6 +178,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       stage_id: entrada.stage_id ?? null,
       agent_id: entrada.agent_id ?? null,
       demand_campaign_id: entrada.demand_campaign_id ?? null,
+      approach_id: entrada.approach_id ?? null,
       created_by: user.id,
     })
     .select(COLUNAS_DA_LISTA)

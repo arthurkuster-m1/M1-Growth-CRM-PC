@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AbordagemDoDisparo } from "@/components/marketing/campanhas/AbordagemDoDisparo";
 import { Textarea } from "@/components/ui/textarea";
 import { useCampanha, useEditarCampanha, usePreviaDaAudiencia } from "@/hooks/campanhas/useCampanhas";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
@@ -49,6 +50,7 @@ export function EditarCampanha({ id }: { id: string }) {
   const [semInteracao, setSemInteracao] = useState("");
   const [limite, setLimite] = useState("100");
   const [texto, setTexto] = useState("");
+  const [abordagemId, setAbordagemId] = useState("");
   const [funil, setFunil] = useState("");
   const [etapa, setEtapa] = useState("");
   const [agente, setAgente] = useState("");
@@ -73,6 +75,7 @@ export function EditarCampanha({ id }: { id: string }) {
     setSemInteracao(f.sem_interacao_ha_dias == null ? "" : String(f.sem_interacao_ha_dias));
     setLimite(f.limite == null ? "100" : String(f.limite));
     setTexto(c.message_body ?? "");
+    setAbordagemId(c.approach_id ?? "");
     setFunil(c.pipeline_id ?? "");
     setEtapa(c.stage_id ?? "");
     setAgente(c.agent_id ?? "");
@@ -333,6 +336,14 @@ export function EditarCampanha({ id }: { id: string }) {
 
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Mensagem")}</h2>
+        {campanha.data?.demand_campaign_id ? (
+          <AbordagemDoDisparo
+            campanhaId={campanha.data.demand_campaign_id}
+            valor={abordagemId}
+            aoMudar={(id) => setAbordagemId(id)}
+            sugerirSozinho={false}
+          />
+        ) : null}
         <Textarea
           rows={6}
           value={texto}
@@ -372,6 +383,7 @@ export function EditarCampanha({ id }: { id: string }) {
               pipeline_id: funil || null,
               stage_id: etapa || null,
               agent_id: agente || null,
+              ...(campanha.data?.demand_campaign_id ? { approach_id: abordagemId || null } : {}),
             });
             router.push(`/app/campaigns/${id}`);
           }}

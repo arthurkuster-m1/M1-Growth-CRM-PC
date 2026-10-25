@@ -51709,3 +51709,12 @@ comment on table public.demand_approach_steps is
   'O fluxo de conversa de uma abordagem de WhatsApp: mensagem, áudio, aguardar a resposta e encaminhar ao atendente, em ordem. Fase 7 só desenha e simula; a execução vem depois.';
 
 notify pgrst, 'reload schema';
+
+-- ---- a abordagem do disparo (migration 0664) ----
+alter table public.campaigns
+  add column if not exists approach_id uuid references public.demand_campaign_approaches(id) on delete set null;
+create index if not exists campaigns_approach_idx
+  on public.campaigns (organization_id, approach_id) where approach_id is not null;
+comment on column public.campaigns.approach_id is
+  'A abordagem (e, por ela, o fluxo de conversa) que este disparo executa; nulo = disparo só com o texto.';
+notify pgrst, 'reload schema';
