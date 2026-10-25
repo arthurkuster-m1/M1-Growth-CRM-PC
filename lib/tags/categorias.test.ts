@@ -76,3 +76,19 @@ describe("categoriaDaTag / corDaCategoria", () => {
     expect(corDaCategoria("vip", config)).toBeNull();
   });
 });
+
+describe("as tags que a abordagem põe sozinha são do funil", () => {
+  it("Contato, Contato com decisor e Abordagem: … (com ou sem contador) caem em Funil e ganham a cor dele", () => {
+    for (const tag of [
+      "Contato",
+      "contato",
+      "Contato com decisor",
+      "Abordagem: Teste - abordagem completa",
+      "abordagem: cold call: 3x",
+    ]) {
+      expect(categoriaPorRegra(tag), tag).toBe("funil");
+      expect(categoriaDaTag(tag, null)?.nome, tag).toBe("Funil");
+      expect(corDaCategoria(tag, null), tag).toBe("#00655a");
+    }
+  });
+});

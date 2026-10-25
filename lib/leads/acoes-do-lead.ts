@@ -79,8 +79,12 @@ const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * A tag da ação com contador: a primeira vez é "No Show"; a segunda, "No Show: 2x"; e assim por
  * diante. Compara sem diferenciar maiúsculas; mantém o resto das tags como estão.
  */
-export function somarTagComContador(tags: readonly string[], base: string): string[] {
-  const nome = base.trim().slice(0, 30);
+export function somarTagComContador(
+  tags: readonly string[],
+  base: string,
+  tamanhoMaximo = 30,
+): string[] {
+  const nome = base.trim().slice(0, tamanhoMaximo);
   if (!nome) return [...tags];
   const re = new RegExp(`^${escapar(nome)}(?:: (\\d+)x)?$`, "i");
   let achou = false;

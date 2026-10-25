@@ -67,6 +67,24 @@ describe("modelos de funil fixos", () => {
     );
   });
 
+  it("a prospecção ativa começa em Novo lead e termina em Perdido e Desqualificado, nessa ordem", () => {
+    const nomes = MODELOS_DE_FUNIL_FIXOS.find((m) => m.chave === "prospeccao-ativa")!.stages.map(
+      (e) => e.name,
+    );
+    expect(nomes).toEqual([
+      "Novo lead",
+      "Abordagem",
+      "Contato",
+      "Contato com decisor",
+      "Reunião agendada",
+      "Reunião realizada",
+      "Em negociação",
+      "Venda realizada",
+      "Perdido",
+      "Desqualificado",
+    ]);
+  });
+
   it("as etapas de reunião nascem com o slug que a Agenda reconhece", () => {
     for (const chave of ["trafego-pago-com-reuniao", "prospeccao-ativa"]) {
       const etapas = MODELOS_DE_FUNIL_FIXOS.find((m) => m.chave === chave)!.stages;

@@ -15,23 +15,26 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const nome = UUID.test(id) ? await nomeDaCampanha(id) : null;
+  const nome = UUID.test(id) ? (await nomeDaCampanha(id)).nome : null;
   return { title: nome ?? "Campanha" };
 }
 
-/** O nome da campanha (a RLS e o filtro da empresa garantem que é da empresa de quem olha). */
-async function nomeDaCampanha(id: string): Promise<string | null> {
+/** O nome e o funil da campanha (a RLS e o filtro da empresa garantem que é da empresa de quem olha). */
+async function nomeDaCampanha(id: string): Promise<{ nome: string | null; funilId: string | null }> {
   const user = await requireAuth();
   const org = await resolveActiveOrg(user);
-  if (!org) return null;
+  if (!org) return { nome: null, funilId: null };
   const supabase = await createClient();
   const { data } = await supabase
     .from("demand_campaigns")
-    .select("name")
+    .select("name, pipeline_id")
     .eq("id", id)
     .eq("organization_id", org.orgId)
     .maybeSingle();
-  return (data?.name as string | undefined)?.trim() || null;
+  return {
+    nome: (data?.name as string | undefined)?.trim() || null,
+    funilId: (data?.pipeline_id as string | null | undefined) ?? null,
+  };
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,7 +47,7 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
   const org = await resolveActiveOrg(user);
   if (!org) notFound();
   const t = (texto: string) => traduzir(texto, user.idioma);
-  const nome = await nomeDaCampanha(id);
+  const { nome, funilId } = await nomeDaCampanha(id);
 
   return (
     <PaginaDeMarketing
@@ -65,9 +68,14 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
             href: `/app/marketing/geracao-de-demanda/campanhas/${id}`,
             rotulo: nome ?? t("a campanha"),
           }}
-          href="/app/clientes"
-          titulo={t("Clientes (CRM)")}
-          descricao={t("Os leads de todos os funis")}
+          // As oportunidades do funil DESTA campanha; sem funil ainda, todas as oportunidades.
+          href={
+            funilId
+              ? `/app/clientes?visao=oportunidades&funil=${funilId}`
+              : "/app/clientes?visao=oportunidades"
+          }
+          titulo={t("CRM")}
+          descricao={t("As oportunidades desta campanha")}
           icone={<Users weight="duotone" aria-hidden />}
           tom="green"
         />

@@ -10,6 +10,11 @@ import { somarTagComContador } from "@/lib/leads/acoes-do-lead";
  *  - "Abordagem: X": marca de USO — com contador ("Abordagem: X: 3x"), que mostra quantas vezes
  *    aquela abordagem foi usada naquele contato.
  */
+/**
+ * O nome da abordagem inteiro cabe na tag: o teto das tags automáticas (60) menos o contador
+ * (": 99x"), para o contador nunca ser cortado.
+ */
+export const TAMANHO_MAXIMO_DA_TAG_DE_ABORDAGEM = 54;
 export const TAG_CONTATO = "Contato";
 export const TAG_CONTATO_COM_DECISOR = "Contato com decisor";
 
@@ -29,7 +34,12 @@ export function tagsAutomaticasDaAbordagem(entrada: {
   if (contato) fixas.push(TAG_CONTATO);
   if (decisor) fixas.push(TAG_CONTATO_COM_DECISOR);
   const nome = (entrada.abordagemNome ?? "").trim();
-  return { fixas, abordagem: nome ? `Abordagem: ${nome}`.slice(0, 30).trim() : null };
+  return {
+    fixas,
+    abordagem: nome
+      ? `Abordagem: ${nome}`.slice(0, TAMANHO_MAXIMO_DA_TAG_DE_ABORDAGEM).trim()
+      : null,
+  };
 }
 
 /** Soma as tags automáticas às do contato: fixas uma vez (sem diferenciar caixa), abordagem com contador. */
@@ -38,7 +48,8 @@ export function aplicarTagsAutomaticas(tags: readonly string[], auto: TagsAutoma
   for (const fixa of auto.fixas) {
     if (!saida.some((t) => t.trim().toLowerCase() === fixa.toLowerCase())) saida.push(fixa);
   }
-  if (auto.abordagem) saida = somarTagComContador(saida, auto.abordagem);
+  if (auto.abordagem)
+    saida = somarTagComContador(saida, auto.abordagem, TAMANHO_MAXIMO_DA_TAG_DE_ABORDAGEM);
   return saida;
 }
 
