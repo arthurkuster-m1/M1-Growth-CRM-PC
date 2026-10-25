@@ -109,7 +109,8 @@ function atende(linha: Record<string, unknown>, termo: string): boolean {
  */
 function aplicarOr<T extends Record<string, unknown>>(linhas: T[], ors: string[]): T[] {
   return ors.reduce((acc, orParam) => {
-    const filtro = orParam.startsWith("(") && orParam.endsWith(")") ? orParam.slice(1, -1) : orParam;
+    const filtro =
+      orParam.startsWith("(") && orParam.endsWith(")") ? orParam.slice(1, -1) : orParam;
     const termos = termosDoOr(filtro);
     return acc.filter((l) => termos.some((t) => atende(l, t)));
   }, linhas);
@@ -259,8 +260,18 @@ describe("negócios dos contatos para {{lead.x}}", () => {
       custom_fields: { gancho: `a ${i}` },
     }));
     negocios.push(
-      { id: uuid(1, "4444"), contact_id: b, created_at: quando(5), custom_fields: { gancho: "b velho" } },
-      { id: uuid(2, "4444"), contact_id: b, created_at: quando(6), custom_fields: { gancho: "b novo" } },
+      {
+        id: uuid(1, "4444"),
+        contact_id: b,
+        created_at: quando(5),
+        custom_fields: { gancho: "b velho" },
+      },
+      {
+        id: uuid(2, "4444"),
+        contact_id: b,
+        created_at: quando(6),
+        custom_fields: { gancho: "b novo" },
+      },
     );
     const banco = bancoFalso([a, b], negocios);
 
@@ -289,9 +300,12 @@ describe("recorte de funil grande não estoura a URL (#2358)", () => {
     const contatos = Array.from({ length: 500 }, (_, i) => uuid(i));
     // Os negócios vêm EMBARALHADOS de propósito: a ordem da resposta só pode
     // vir da ordenação global da consulta, não da ordem dos lotes.
-    const negocios = [...contatos]
-      .reverse()
-      .map((c, i) => ({ id: uuid(i, "2222"), contact_id: c, created_at: quando(i), custom_fields: {} }));
+    const negocios = [...contatos].reverse().map((c, i) => ({
+      id: uuid(i, "2222"),
+      contact_id: c,
+      created_at: quando(i),
+      custom_fields: {},
+    }));
     const banco = bancoFalso(contatos, negocios);
 
     const { candidatos: lista } = await buscarCandidatos(banco.sb, {
@@ -316,9 +330,12 @@ describe("recorte de funil grande não estoura a URL (#2358)", () => {
     contatos.forEach((c, i) => {
       criados[c] = quando((i * 97) % n);
     });
-    const negocios = [...contatos]
-      .reverse()
-      .map((c, i) => ({ id: uuid(i, "2222"), contact_id: c, created_at: quando(i), custom_fields: {} }));
+    const negocios = [...contatos].reverse().map((c, i) => ({
+      id: uuid(i, "2222"),
+      contact_id: c,
+      created_at: quando(i),
+      custom_fields: {},
+    }));
     const banco = bancoFalso(contatos, negocios, criados);
 
     const { candidatos: lista } = await buscarCandidatos(banco.sb, {
@@ -364,7 +381,12 @@ describe("recorte de funil grande não estoura a URL (#2358)", () => {
 
     const { candidatos: lista } = await buscarCandidatos(banco.sb, {
       organizationId: ORG,
-      filtro: { ...FILTRO_VAZIO, com_alguma_tag: ["vip"], limite: 50, excluir_contatos: contatos.slice(0, 40) },
+      filtro: {
+        ...FILTRO_VAZIO,
+        com_alguma_tag: ["vip"],
+        limite: 50,
+        excluir_contatos: contatos.slice(0, 40),
+      },
       agora: new Date(Date.UTC(2026, 5, 1)),
     });
 

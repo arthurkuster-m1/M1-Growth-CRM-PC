@@ -53,7 +53,10 @@ export const filtroDeAudienciaSchema = z
     /** ...com algum destes donos. */
     responsaveis: z.array(z.string().uuid()).max(50).default([]),
     /** Situação do negócio: `open`, `won`, `lost`. */
-    situacoes_do_negocio: z.array(z.enum(["open", "won", "lost"])).max(3).default([]),
+    situacoes_do_negocio: z
+      .array(z.enum(["open", "won", "lost"]))
+      .max(3)
+      .default([]),
 
     /** Sem interação há N dias (silêncio) — o filtro de reativação. */
     sem_interacao_ha_dias: z.number().int().min(1).max(3650).nullable().default(null),

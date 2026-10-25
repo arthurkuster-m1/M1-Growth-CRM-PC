@@ -2,23 +2,23 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { carregarCampanha, type CampanhaCarregada } from "@/lib/campanhas/acoes";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * A porta das rotas da revisão das mensagens da IA: papel de gestão, a campanha da empresa da
  * sessão e o cliente admin (a escrita não passa pelo papel `authenticated`). Escrever só vale com a
  * campanha PREPARADA (`ready`): antes não há lista, depois a mensagem já foi congelada para o envio.
  */
-export async function autorizarRevisao(id: string, escrita: boolean) {
+export async function autorizarRevisao(admin: SupabaseClient, id: string, escrita: boolean) {
   const requestId = randomUUID();
   const authz = await requireRole("manager", { requestId, resource: "campaigns" });
   if (!authz.ok) return { ok: false as const, response: authz.response };
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
-  const admin = createAdminClient();
   const carregada = await carregarCampanha(admin, authz.org.orgId, id);
   if (!carregada.ok) {
     return {

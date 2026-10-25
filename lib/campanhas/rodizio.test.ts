@@ -78,7 +78,10 @@ describe("rodízio de números", () => {
     // Tratar `null` como infinito faria o número sem configuração ganhar
     // sempre — concentrando nele o volume que o rodízio existe para espalhar.
     const escolha = escolherNumero(
-      [numero({ sessionId: "sem-teto", folgaDoDia: null }), numero({ sessionId: "com-teto", folgaDoDia: 3 })],
+      [
+        numero({ sessionId: "sem-teto", folgaDoDia: null }),
+        numero({ sessionId: "com-teto", folgaDoDia: 3 }),
+      ],
       null,
     );
     expect(escolha?.sessionId).toBe("com-teto");

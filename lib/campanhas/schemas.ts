@@ -53,15 +53,12 @@ const baseDaCampanha = {
 export const criarCampanhaSchema = z
   .object({ ...baseDaCampanha })
   .merge(ritmoSchema)
-  .refine(
-    (c) => c.base_legal !== "legitimate_interest" || (c.lia_ref ?? "").trim() !== "",
-    {
-      message:
-        "Interesse legítimo exige a referência da avaliação (LIA) — é ela que responde a quem " +
-        "perguntar com base em quê recebeu a mensagem.",
-      path: ["lia_ref"],
-    },
-  )
+  .refine((c) => c.base_legal !== "legitimate_interest" || (c.lia_ref ?? "").trim() !== "", {
+    message:
+      "Interesse legítimo exige a referência da avaliação (LIA) — é ela que responde a quem " +
+      "perguntar com base em quê recebeu a mensagem.",
+    path: ["lia_ref"],
+  })
   .refine((c) => c.stage_id == null || c.pipeline_id != null, {
     message: "Escolha o funil antes da etapa — etapa sem funil seria um card sem coluna.",
     path: ["stage_id"],

@@ -78,7 +78,9 @@ describe("ritmo próprio da campanha", () => {
       expect(r.detalhe).toContain("200s");
     }
     const ha400s = new Date(DEZ_DA_MANHA.getTime() - 400_000);
-    expect(podeMandarAgora(ritmo, { ...PARADO, ultimoEnvio: ha400s }, DEZ_DA_MANHA, FUSO).pode).toBe(true);
+    expect(
+      podeMandarAgora(ritmo, { ...PARADO, ultimoEnvio: ha400s }, DEZ_DA_MANHA, FUSO).pode,
+    ).toBe(true);
   });
 
   it("primeiro envio do dia não espera intervalo nenhum", () => {

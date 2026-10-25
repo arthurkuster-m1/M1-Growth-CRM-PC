@@ -5,6 +5,8 @@
  */
 import { z } from "zod";
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
 import { fail, ok } from "@/lib/api/wrappers";
 import { autorizarRevisao } from "@/lib/campanhas/autorizar-revisao";
 import { revisaoDasMensagens } from "@/lib/campanhas/mensagens-da-ia";
@@ -21,7 +23,7 @@ export async function GET(
       requestId: "sem-id",
     });
   }
-  const a = await autorizarRevisao(id, false);
+  const a = await autorizarRevisao(createAdminClient(), id, false);
   if (!a.ok) return a.response;
   return ok(await revisaoDasMensagens(a.admin, a.campanha), { requestId: a.requestId });
 }

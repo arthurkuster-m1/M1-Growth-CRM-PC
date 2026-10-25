@@ -141,6 +141,10 @@ export function MensagensDaIA({
         )}
       </p>
 
+      {r.canal.aviso ? (
+        <p className="rounded-xl bg-error/10 px-3 py-2 text-sm text-error-fg">{t(r.canal.aviso)}</p>
+      ) : null}
+
       {acimaDoTeto ? (
         <p className="rounded-xl bg-error/10 px-3 py-2 text-sm text-error-fg">
           {t(
