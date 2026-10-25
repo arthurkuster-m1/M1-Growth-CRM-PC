@@ -14,6 +14,7 @@
  * É a pergunta que o operador faz primeiro quando 500 viram 80. Sem o motivo ao
  * lado do número, ele conclui que o sistema comeu a lista.
  */
+import { ResumoDoFluxo } from "@/components/marketing/campanhas/AbordagemDoDisparo";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -104,6 +105,17 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           {c.demand_campaign_id ? t("Campanha") : t("Disparos")}
         </Link>
       </div>
+
+      {c.demand_campaign_id && c.approach_id ? (
+        <div className="max-w-2xl space-y-1">
+          <p className="text-sm text-muted-foreground">{t("Abordagem deste disparo")}</p>
+          <ResumoDoFluxo
+            campanhaId={c.demand_campaign_id}
+            abordagemId={c.approach_id}
+            ideiaCentral=""
+          />
+        </div>
+      ) : null}
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

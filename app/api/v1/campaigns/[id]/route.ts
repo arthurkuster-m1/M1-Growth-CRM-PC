@@ -7,6 +7,7 @@
  * mostrar um texto e a fila enviar outro. Para editar, volta-se ao rascunho
  * (o que invalida a lista) — e isso só vale enquanto nada saiu.
  */
+import { recusaDaAbordagemDoDisparo } from "@/lib/campanhas/abordagem-do-disparo";
 import { randomUUID } from "node:crypto";
 
 import type { NextRequest } from "next/server";
@@ -29,7 +30,7 @@ const COLUNAS =
   "audience_filter, audience_version, content_version, snapshot_total, snapshot_eligible, " +
   "snapshot_excluded, scheduled_at, prepared_at, started_at, paused_at, completed_at, " +
   "cancelled_at, failure_code, intervalo_segundos, janela_inicio_hora, janela_fim_hora, " +
-  "teto_diario, teto_horario, pipeline_id, stage_id, agent_id, demand_campaign_id, created_at, created_by";
+  "teto_diario, teto_horario, pipeline_id, stage_id, agent_id, demand_campaign_id, approach_id, created_at, created_by";
 
 export async function GET(
   _req: NextRequest,
@@ -154,6 +155,7 @@ export async function PATCH(
     "pipeline_id",
     "stage_id",
     "agent_id",
+    "approach_id",
   ] as const) {
     if (entrada[campo] !== undefined) mudanca[campo] = entrada[campo];
   }
@@ -163,6 +165,17 @@ export async function PATCH(
   // e é por ela que se sabe se a mensagem preparada é a mensagem de hoje.
   if (entrada.message_body !== undefined && entrada.message_body !== campanha.message_body) {
     mudanca.content_version = campanha.content_version + 1;
+  }
+
+  if (entrada.approach_id !== undefined) {
+    const recusaDaAbordagem = await recusaDaAbordagemDoDisparo(supabase, {
+      organizationId: authz.org.orgId,
+      abordagemId: entrada.approach_id,
+      demandCampaignId: campanha.demand_campaign_id,
+    });
+    if (recusaDaAbordagem) {
+      return fail("validation_failed", t(recusaDaAbordagem), 422, { requestId });
+    }
   }
 
   if (entrada.channel_session_id !== undefined) {

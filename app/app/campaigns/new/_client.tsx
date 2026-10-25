@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AbordagemDoDisparo } from "@/components/marketing/campanhas/AbordagemDoDisparo";
 import { Textarea } from "@/components/ui/textarea";
 import { useCriarCampanha, usePreviaDaAudiencia } from "@/hooks/campanhas/useCampanhas";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
@@ -45,6 +46,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
   const [semInteracao, setSemInteracao] = useState("");
   const [limite, setLimite] = useState("100");
   const [texto, setTexto] = useState("");
+  const [abordagemId, setAbordagemId] = useState("");
   const [intervalo, setIntervalo] = useState("");
   const [janelaInicio, setJanelaInicio] = useState("");
   const [janelaFim, setJanelaFim] = useState("");
@@ -106,6 +108,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
       stage_id: etapa || null,
       agent_id: agente || null,
       ...(campanhaId ? { demand_campaign_id: campanhaId } : {}),
+      ...(campanhaId && abordagemId ? { approach_id: abordagemId } : {}),
     });
     router.push(`/app/campaigns/${criada.id}`);
   }
@@ -346,6 +349,14 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
 
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Mensagem")}</h2>
+        {campanhaId ? (
+          <AbordagemDoDisparo
+            campanhaId={campanhaId}
+            valor={abordagemId}
+            aoMudar={(id) => setAbordagemId(id)}
+            aoSugerirTexto={(abertura) => setTexto((atual) => (atual.trim() ? atual : abertura))}
+          />
+        ) : null}
         <Textarea
           rows={6}
           value={texto}

@@ -50,6 +50,7 @@ export interface CampanhaCarregada {
   teto_horario: number | null;
   description: string | null;
   demand_campaign_id?: string | null;
+  approach_id?: string | null;
 }
 
 export type Recusa = { ok: false; codigo: ApiErrorCode; mensagem: string; status: number };
@@ -58,7 +59,7 @@ export type Desfecho<T = unknown> = ({ ok: true } & T) | Recusa;
 const COLUNAS =
   "id, organization_id, name, status, channel_session_id, message_body, base_legal, lia_ref, " +
   "audience_filter, audience_version, content_version, scheduled_at, description, " +
-  "intervalo_segundos, janela_inicio_hora, janela_fim_hora, teto_diario, teto_horario, demand_campaign_id";
+  "intervalo_segundos, janela_inicio_hora, janela_fim_hora, teto_diario, teto_horario, demand_campaign_id, approach_id";
 
 export async function carregarCampanha(
   admin: SupabaseClient,

@@ -46,6 +46,8 @@ const baseDaCampanha = {
   agent_id: z.string().uuid().nullable().optional(),
   /** A campanha de prospecção dona deste disparo (migration 0656). `null` = disparo avulso. */
   demand_campaign_id: z.string().uuid().nullable().optional(),
+  /** A abordagem de WhatsApp (e o fluxo dela) que o disparo executa (migration 0664). */
+  approach_id: z.string().uuid().nullable().optional(),
 };
 
 export const criarCampanhaSchema = z
@@ -86,6 +88,7 @@ export const editarCampanhaSchema = z
     pipeline_id: baseDaCampanha.pipeline_id,
     stage_id: baseDaCampanha.stage_id,
     agent_id: baseDaCampanha.agent_id,
+    approach_id: baseDaCampanha.approach_id,
   })
   .merge(ritmoSchema);
 

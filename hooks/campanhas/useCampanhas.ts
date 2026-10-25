@@ -29,6 +29,8 @@ export interface CampanhaDaLista {
   created_by: string | null;
   /** A campanha de prospecção dona deste disparo; `null` = avulso. */
   demand_campaign_id?: string | null;
+  /** A abordagem de WhatsApp (e o fluxo dela) que o disparo executa; `null` = só o texto. */
+  approach_id?: string | null;
 }
 
 export interface CampanhaDetalhada extends CampanhaDaLista {
