@@ -138,7 +138,44 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 **Descrição.** Desenhar, no estilo do fluxo de follow-up, a conversa da abordagem: mensagem inicial, **aguardar a resposta**, mensagem seguinte; também áudio, análise da resposta e encaminhar ao atendente se for positiva. Só o desenho e a simulação (nada é enviado), reaproveitando o editor visual de fluxos de follow-up.
 
 ### Fase 8 — Execução real da abordagem de WhatsApp (etapa C)
-**Descrição.** Disparo automático do primeiro passo, espera pela resposta, continuação do fluxo e encaminhamento ao atendente, com as regras anti-banimento que já existem e **aprovação manual de cada disparo no começo**.
+**Descrição.** O fluxo de conversa desenhado na Fase 7 passa a rodar de verdade, em partes pequenas, cada uma entregável e segura sozinha. Princípio: **nada sai sem aprovação humana** no começo, e o que já existe no motor de Disparos (ritmo, janela de horário, teto diário, opt-out, canal, métricas) é **reaproveitado, não reescrito** — o disparo já congela a mensagem de cada destinatário na preparação (`rendered_body`) e o envio é do cron.
+
+**Pontos de apoio que já existem:** `lib/campanhas/preparacao.ts` (a lista congelada, com a mensagem renderizada por destinatário), `rodada.ts` (o envio com ritmo, janela e tetos), `resposta.handler.ts` (a resposta do lead volta para o disparo, janela de 72 h), `lib/opt-out/deteccao.ts` (a única regra de "parar"), o escolhedor de número/canal da aba Disparos e o encaminhamento ao atendente já usado pelos agentes.
+
+#### 8a — Ligar a abordagem ao disparo (sem enviar nada novo)
+- O disparo ganha a escolha da **abordagem** (e, por ela, do fluxo de conversa); sugerida a do passo D0 da cadência da campanha.
+- O **número que envia** continua sendo o escolhido na aba Disparos (oficial ou não).
+- Aceite: criar um disparo, escolher a abordagem e ver o fluxo dela resumido na tela do disparo.
+
+#### 8b — A IA escreve a mensagem de cada lead, e você aprova
+- Na **preparação**, cada destinatário recebe a mensagem escrita pela IA (a partir da **ideia central** e dos dados do lead), **congelada** como as demais.
+- Tela de **revisão**: amostra de 3 a 5 mensagens, com abrir/editar/regerar cada uma, tirar um lead da lista e ver o **custo de IA** estimado. O **Iniciar** só libera depois de a amostra ser aprovada.
+- Passos de texto fixo seguem o texto fixo; só o passo marcado "A IA escreve" usa a IA. Falha da IA num lead não derruba a lista: o lead fica marcado para revisão e não sai.
+- Aceite: preparar um disparo de 10 leads, ver 10 mensagens diferentes e coerentes com a ideia central, editar uma, aprovar, e nada ser enviado ainda.
+
+#### 8c — Enviar a primeira mensagem pelo canal escolhido
+- O envio usa o motor de disparos como está (ritmo, janela, teto, opt-out). **Aprovação por disparo**, com limite pequeno no começo (por exemplo 20 leads por disparo) para provar com poucos antes de abrir.
+- **Canal não oficial (WAHA):** mensagem livre. **Canal oficial:** fora da janela de 24 h só vai **modelo aprovado**; a IA escreve só depois que o lead responde. A tela diz isso antes de iniciar.
+- O lead enviado conta como a primeira abordagem (já move "Novo lead" → "Abordagem" e dá o passo 1 da cadência).
+- Aceite: um disparo de 3 leads de teste sai pelo número escolhido, com a mensagem aprovada, respeitando a janela; o histórico e a cadência refletem.
+
+#### 8d — O fluxo continua quando o lead responde
+- A resposta do lead (já atribuída ao disparo) **destrava o passo seguinte do fluxo**: nova mensagem (fixa ou da IA), áudio, ou **encaminhar ao atendente** (o mesmo encaminhamento que os agentes usam).
+- A resposta **encerra a cadência** e sobe o lead de etapa (já existe); pedido de parar (opt-out) interrompe o fluxo na hora.
+- Política de aprovação da continuação: começa em **"aprovar cada mensagem"** (a IA propõe, a pessoa libera), com o automático como opção por abordagem, só depois de provado.
+- Prazo do "aguardar": sem resposta no prazo, o lead segue a cadência normalmente.
+- Aceite: um lead de teste responde, o passo seguinte é proposto, aprovado e enviado; "pare" interrompe; "encaminhar" cai no atendente.
+
+#### 8e — Áudio gravado e reutilizável
+- Anexar o **arquivo de voz gravado por você** à abordagem (um arquivo por abordagem, no armazenamento de mídia privado), e enviá-lo como mídia nos passos de áudio — a mesma regra do repositório: subir primeiro, passar a URL assinada ao provedor.
+- Aceite: o áudio gravado sai num passo de áudio e o mesmo arquivo serve em outra abordagem.
+
+**Riscos e como cada um é tratado:** banimento do número (ritmo, janela, tetos e aprovação manual já existentes; começar com poucos leads); custo de IA (estimativa antes de aprovar, teto por disparo); mensagem ruim da IA (amostra, edição e aprovação; nada sai sem revisão); canal oficial com regra própria (a tela explica e bloqueia o que não pode); pedido de parar (regra única do repositório, interrompe o fluxo); LGPD (as mesmas exclusões e base legal do disparo).
+
+**Perguntas que ainda decidem o desenho (responder antes de 8b/8d):**
+1. A aprovação da 8b é **por amostra** (3 a 5, com a lista aprovada de uma vez) ou **lead a lead**? Proposta: por amostra, com a opção de abrir cada uma.
+2. A continuação da 8d começa **sempre aprovada à mão**? Proposta: sim, e liberar o automático por abordagem depois.
+3. Teto de leads por disparo no começo (proposta: 20) e o modelo de IA a usar (proposta: o mesmo do gateway já configurado, escolhido nas configurações).
 
 **Decisões tomadas (25/10/2026):**
 1. A aba "Abordagem" some para a Prospecção; as abordagens já cadastradas foram para dentro da Cadência. **Feito na Fase 6.**
@@ -167,4 +204,4 @@ horários; confirmar marca "confirmou"; faltar marca a oportunidade e inicia a r
 | Ajustes de 25/10 | Concluídos (PR #86 e este) | Novo lead, atalho do CRM, tags por funil, largada da cadência. |
 | 6 — Cadência principal | Concluída (25/10/2026) | Migration 0662 (dados: troca `abordagem` por `cadencia` nas páginas escolhidas de Prospecção). A Cadência é a página onde a campanha de Prospecção abre; linha do tempo horizontal (D0, D+2…, com leads por passo e o nó "Fim"); painel do passo; abordagem criada no passo e reaproveitável; as abordagens já cadastradas aparecem dentro da Cadência ("Abordagens da campanha", com onde cada uma é usada) e a aba "Abordagem" não existe mais para a Prospecção (os dados são os mesmos). CRM: o contador vira link para as oportunidades em cadência (`?cadencia=ativa`), coluna "Cadência" e filtro por passo. Tags de contato por funil ("Contato · Funil", "Contato com decisor · Funil") na categoria de tags do funil. |
 | 7 — Fluxo visual de WhatsApp | Concluída (25/10/2026, PR #89) | Migration 0663. Dentro da Cadência, cada abordagem de WhatsApp tem o **Fluxo de conversa**: cartões ligados por setas (mensagem, áudio gravado, aguardar a resposta com prazo, encaminhar ao atendente), a **ideia central** que a IA usa para personalizar a mensagem de cada lead e uma **simulação** (o lead "responde" e a conversa segue; nada é enviado). Avisos do que falta no desenho. Fluxo linear, um caminho só; ramificações (resposta positiva/negativa) ficam para a execução. O áudio guarda só o nome: o arquivo gravado é anexado na Fase 8. |
-| 8 — Execução real | Planejada | |
+| 8 — Execução real | Planejada (25/10/2026) | Dividida em 8a (ligar abordagem ao disparo), 8b (IA escreve + aprovação), 8c (envio), 8d (continuação ao responder) e 8e (áudio gravado). Aguarda as 3 perguntas da seção da Fase 8. |
