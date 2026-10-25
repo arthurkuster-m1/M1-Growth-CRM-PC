@@ -614,7 +614,8 @@ function ColunaDeDia({
         )}
       >
         <span className="truncate text-[11px] font-semibold tracking-wide text-text-muted uppercase">
-          {format(dia, "EEE", { locale: localeDaData }).replace(".", "")}
+          {/* Três letras sempre ("dom", "seg"…): o nome inteiro estoura a coluna estreita do celular. */}
+          {format(dia, "EEEE", { locale: localeDaData }).replace(".", "").slice(0, 3)}
         </span>
         <span
           className={cn(

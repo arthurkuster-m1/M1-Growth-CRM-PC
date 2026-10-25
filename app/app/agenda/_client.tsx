@@ -351,6 +351,18 @@ export function AgendaClient({
           ? `${format(startOfWeek(ancora, { weekStartsOn: 0 }), t("d 'de' MMM"), { locale: localeDaData })} — ${format(addDays(startOfWeek(ancora, { weekStartsOn: 0 }), 6), t("d 'de' MMM"), { locale: localeDaData })}`
           : format(ancora, t("EEEE, d 'de' MMMM"), { locale: localeDaData });
 
+  // O título CURTO do celular (uma linha só, sem "de"): "25 out — 31 out", "out 2026", "sáb, 25 out".
+  // O completo fica para a tela larga; os dois nunca aparecem juntos.
+  const curto = (d: Date, padrao: string) => format(d, t(padrao), { locale: localeDaData });
+  const periodoCurto =
+    visao === "mes"
+      ? curto(ancora, "MMM yyyy")
+      : visao === "tres_dias"
+        ? `${curto(ancora, "d MMM")} — ${curto(addDays(ancora, 2), "d MMM")}`
+        : visao === "semana"
+          ? `${curto(startOfWeek(ancora, { weekStartsOn: 0 }), "d MMM")} — ${curto(addDays(startOfWeek(ancora, { weekStartsOn: 0 }), 6), "d MMM")}`
+          : curto(ancora, "EEE, d MMM");
+
   // A cópia do celular do botão de sincronizar: mora no cartão do Google, no fim da página.
   const botaoDeSincronizarNoCelular =
     contaConectada && podeMarcar ? (
@@ -485,9 +497,15 @@ export function AgendaClient({
               palavra, e o date-fns em pt-br devolve "23 de ago" — virava "23 De Ago". */}
           <span
             data-testid="periodo"
-            className="min-w-0 flex-1 text-center text-sm font-semibold text-balance first-letter:uppercase sm:min-w-[11rem] sm:flex-none"
+            className="hidden min-w-[11rem] text-center text-sm font-semibold text-balance first-letter:uppercase sm:inline"
           >
             {periodo}
+          </span>
+          <span
+            data-testid="periodo-curto"
+            className="min-w-0 flex-1 text-center text-xs font-semibold whitespace-nowrap first-letter:uppercase sm:hidden"
+          >
+            {periodoCurto}
           </span>
           <Button
             variant="ghost"
