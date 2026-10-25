@@ -54,4 +54,12 @@ describe("grade no celular e no computador", () => {
     grade("dia");
     expect(colunas()).toEqual(["coluna-dia-2026-09-16"]);
   });
+
+  it("o nome do dia no cabeçalho tem no máximo três letras (o nome inteiro estoura a coluna do celular)", () => {
+    grade("semana");
+    for (const col of screen.getAllByTestId(/^coluna-dia-/)) {
+      const nome = col.querySelector("span")?.textContent ?? "";
+      expect(nome.length, `"${nome}" não cabe numa coluna de celular`).toBeLessThanOrEqual(3);
+    }
+  });
 });
