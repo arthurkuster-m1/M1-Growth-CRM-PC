@@ -36,11 +36,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { FILTRO_VAZIO, filtroDeAudienciaSchema, type FiltroDeAudiencia } from "./audiencia";
 import { buscarCandidatos, contatosJaEmCampanha } from "./consulta-de-audiencia";
 import { hashDoEndereco, hashesExcluidos } from "./exclusoes";
-import {
-  classificarAudiencia,
-  contarExclusoes,
-  type CandidatoDaAudiencia,
-} from "./elegibilidade";
+import { classificarAudiencia, contarExclusoes, type CandidatoDaAudiencia } from "./elegibilidade";
 import { renderizar } from "./renderizador";
 import type { MotivoDeExclusao } from "./tipos";
 
@@ -147,7 +143,9 @@ export async function prepararCampanha(
 ): Promise<ResumoDoSnapshot> {
   const filtro = filtroDeAudienciaSchema.safeParse(entrada.filtro);
   if (!filtro.success) {
-    throw new Error(`Filtro de audiência inválido: ${filtro.error.issues[0]?.message ?? "sem critério"}`);
+    throw new Error(
+      `Filtro de audiência inválido: ${filtro.error.issues[0]?.message ?? "sem critério"}`,
+    );
   }
 
   const { linhas } = await classificar(admin, {

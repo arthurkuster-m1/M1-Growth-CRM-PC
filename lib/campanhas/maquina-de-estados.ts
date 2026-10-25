@@ -45,9 +45,7 @@ const PERMITIDO: Record<StatusDaCampanha, readonly StatusDaCampanha[]> = {
   failed: ["draft"],
 };
 
-export type ResultadoDaTransicao =
-  | { pode: true }
-  | { pode: false; motivo: string };
+export type ResultadoDaTransicao = { pode: true } | { pode: false; motivo: string };
 
 /** Uma string qualquer é um estado conhecido? (o banco pode ter valor legado) */
 export function ehStatusDaCampanha(valor: string): valor is StatusDaCampanha {

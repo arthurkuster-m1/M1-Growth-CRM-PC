@@ -25,7 +25,10 @@ function candidato(over: Partial<CandidatoDaAudiencia> = {}): CandidatoDaAudienc
   };
 }
 
-const RENDER_OK = (c: CandidatoDaAudiencia) => ({ texto: `Oi ${c.nome}`, faltando: [] as string[] });
+const RENDER_OK = (c: CandidatoDaAudiencia) => ({
+  texto: `Oi ${c.nome}`,
+  faltando: [] as string[],
+});
 
 /** O contexto mínimo: sem exclusão, sem compromisso, hash previsível. */
 function ctx(over: Partial<Parameters<typeof classificarAudiencia>[1]> = {}) {
@@ -108,7 +111,10 @@ describe("classificação da lista", () => {
   });
 
   it("quem está em campanha viva fica de fora — três variantes não vão para a mesma pessoa", () => {
-    const linhas = classificarAudiencia([candidato({ contactId: "a" })], ctx({ jaEmCampanha: new Set(["a"]) }));
+    const linhas = classificarAudiencia(
+      [candidato({ contactId: "a" })],
+      ctx({ jaEmCampanha: new Set(["a"]) }),
+    );
     expect(linhas[0]!.motivo).toBe("ja_em_campanha");
   });
 
@@ -121,7 +127,10 @@ describe("classificação da lista", () => {
   });
 
   it("excluído à mão vence tudo — foi uma decisão explícita do operador", () => {
-    const linhas = classificarAudiencia([candidato({ contactId: "a" })], ctx({ excluidosAMao: new Set(["a"]) }));
+    const linhas = classificarAudiencia(
+      [candidato({ contactId: "a" })],
+      ctx({ excluidosAMao: new Set(["a"]) }),
+    );
     expect(linhas[0]!.motivo).toBe("excluido_manualmente");
   });
 

@@ -12,7 +12,7 @@ describe("renderizador da campanha", () => {
   it("substitui nome e primeiro nome", () => {
     const r = renderizar("Olá {{nome}}, tudo bem? Posso te chamar de {{primeiro_nome}}?", {
       nome: "Maria da Glória Prandini",
-      });
+    });
     expect(r.texto).toBe("Olá Maria da Glória Prandini, tudo bem? Posso te chamar de Maria?");
     expect(r.faltando).toEqual([]);
   });
@@ -29,7 +29,6 @@ describe("renderizador da campanha", () => {
     // virar "Olá , tudo bem?" na conversa de um cliente.
     expect(r.texto).toBe("Olá {{nome}}, tudo bem?");
   });
-
 
   it("token desconhecido fica literal e é reportado, nunca vira vazio", () => {
     const r = renderizar("Oi {{sobrenome}}", { nome: "Ana Souza" });
@@ -161,16 +160,25 @@ describe("campos personalizados na campanha", () => {
   });
 
   it("lista as variáveis do texto incluindo o caminho do campo personalizado", () => {
-    expect(variaveisUsadas("{{nome}} {{lead.gancho}} {{lead.gancho}} {{contato.link_previa}}").sort()).toEqual(
-      ["contato.link_previa", "lead.gancho", "nome"],
-    );
+    expect(
+      variaveisUsadas("{{nome}} {{lead.gancho}} {{lead.gancho}} {{contato.link_previa}}").sort(),
+    ).toEqual(["contato.link_previa", "lead.gancho", "nome"]);
     expect(variaveisUsadas("{{sobrenome}}")).toEqual([]);
   });
 
   it("só puxa campo personalizado do banco quando o TEXTO usa a raiz", () => {
-    expect(camposUsadosNoTexto("Olá {{nome}}, {{saudacao}}!")).toEqual({ lead: false, contato: false });
-    expect(camposUsadosNoTexto("Olá {{nome}}, {{lead.gancho}}")).toEqual({ lead: true, contato: false });
-    expect(camposUsadosNoTexto("{{  contato.link_previa  }}")).toEqual({ lead: false, contato: true });
+    expect(camposUsadosNoTexto("Olá {{nome}}, {{saudacao}}!")).toEqual({
+      lead: false,
+      contato: false,
+    });
+    expect(camposUsadosNoTexto("Olá {{nome}}, {{lead.gancho}}")).toEqual({
+      lead: true,
+      contato: false,
+    });
+    expect(camposUsadosNoTexto("{{  contato.link_previa  }}")).toEqual({
+      lead: false,
+      contato: true,
+    });
     // `{{lead}}` sem ponto não é campo: não vale uma coluna de jsonb.
     expect(camposUsadosNoTexto("oi {{lead}}")).toEqual({ lead: false, contato: false });
   });
@@ -184,7 +192,10 @@ describe("o valor do cadastro sai LITERAL, mesmo com o corpo renderizado duas ve
     renderizar(congelado, { nome: "Ana Souza" }, { agora: TARDE, fuso: FUSO });
 
   it("campo com sintaxe de token chega ao contato como foi gravado", () => {
-    const prep = renderizar("Oi {{nome}}, {{lead.gancho}}", { nome: "Ana Souza", lead: { gancho: VALOR } });
+    const prep = renderizar("Oi {{nome}}, {{lead.gancho}}", {
+      nome: "Ana Souza",
+      lead: { gancho: VALOR },
+    });
     expect(prep.faltando).toEqual([]);
     const saida = envio(prep.texto);
     expect(saida.texto).toBe(`Oi Ana Souza, ${VALOR}`);
@@ -202,11 +213,17 @@ describe("o valor do cadastro sai LITERAL, mesmo com o corpo renderizado duas ve
 
   it("nome do cadastro com sintaxe de token também sai literal", () => {
     const prep = renderizar("Oi {{nome}}!", { nome: "{{saudacao}}" });
-    expect(renderizar(prep.texto, { nome: null }, { agora: TARDE, fuso: FUSO }).texto).toBe("Oi {{saudacao}}!");
+    expect(renderizar(prep.texto, { nome: null }, { agora: TARDE, fuso: FUSO }).texto).toBe(
+      "Oi {{saudacao}}!",
+    );
   });
 
   it("no envio de teste (uma passada só, com instante) o valor também sai literal", () => {
-    const r = renderizar("{{lead.gancho}}", { nome: null, lead: { gancho: VALOR } }, { agora: TARDE, fuso: FUSO });
+    const r = renderizar(
+      "{{lead.gancho}}",
+      { nome: null, lead: { gancho: VALOR } },
+      { agora: TARDE, fuso: FUSO },
+    );
     expect(r.texto).toBe(VALOR);
   });
 });

@@ -72,7 +72,8 @@ interface LinhaDeContato {
 }
 
 /** As colunas de sempre, mais os campos personalizados quando o TEXTO os usa. */
-const COLUNAS_DO_CONTATO = "id, name, display_name, phone_number, is_blocked, is_personal, is_anonymized, consent";
+const COLUNAS_DO_CONTATO =
+  "id, name, display_name, phone_number, is_blocked, is_personal, is_anonymized, consent";
 
 /**
  * Os candidatos do recorte, e o recibo de truncamento.
@@ -115,7 +116,8 @@ export async function buscarCandidatos(
         .order("id", { ascending: true });
       if (filtro.funis.length > 0) consulta = consulta.in("pipeline_id", filtro.funis);
       if (filtro.etapas.length > 0) consulta = consulta.in("stage_id", filtro.etapas);
-      if (filtro.responsaveis.length > 0) consulta = consulta.in("owner_user_id", filtro.responsaveis);
+      if (filtro.responsaveis.length > 0)
+        consulta = consulta.in("owner_user_id", filtro.responsaveis);
       if (filtro.situacoes_do_negocio.length > 0) {
         consulta = consulta.in("status", filtro.situacoes_do_negocio);
       }
@@ -144,7 +146,12 @@ export async function buscarCandidatos(
         linhasDeNegocio.length = TETO_DE_IDS_DE_NEGOCIO;
         const ultimaDoTeto = linhasDeNegocio[linhasDeNegocio.length - 1]!;
         const { data: sobra, error: erroSobra } = await consultaDeNegocios()
-          .or(filtroDepoisDoCursor({ created_at: ultimaDoTeto.created_at, id: ultimaDoTeto.id }, "asc"))
+          .or(
+            filtroDepoisDoCursor(
+              { created_at: ultimaDoTeto.created_at, id: ultimaDoTeto.id },
+              "asc",
+            ),
+          )
           .limit(1);
         if (erroSobra) throw new Error(`audiência: negócios — ${erroSobra.message}`);
         truncado = (sobra ?? []).length > 0;
@@ -179,8 +186,10 @@ export async function buscarCandidatos(
       .is("is_merged_into", null)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true });
-    if (filtro.com_todas_tags.length > 0) consulta = consulta.contains("tags", filtro.com_todas_tags);
-    if (filtro.com_alguma_tag.length > 0) consulta = consulta.overlaps("tags", filtro.com_alguma_tag);
+    if (filtro.com_todas_tags.length > 0)
+      consulta = consulta.contains("tags", filtro.com_todas_tags);
+    if (filtro.com_alguma_tag.length > 0)
+      consulta = consulta.overlaps("tags", filtro.com_alguma_tag);
     if (filtro.sem_tags.length > 0) {
       consulta = consulta.not("tags", "ov", `{${filtro.sem_tags.map(citar).join(",")}}`);
     }
@@ -281,7 +290,11 @@ export async function buscarCandidatos(
   // devolve "o mais novo de cada contato", então a ordem decrescente resolve —
   // o primeiro visto de cada contato é o negócio mais recente dele.
   const leads = camposDoTexto.lead
-    ? await leadsMaisRecentes(admin, organizationId, linhas.map((l) => l.id))
+    ? await leadsMaisRecentes(
+        admin,
+        organizationId,
+        linhas.map((l) => l.id),
+      )
     : null;
 
   return {
@@ -404,7 +417,6 @@ function mapaDeJson(valor: unknown): CamposPersonalizados | null {
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
   return valor as CamposPersonalizados;
 }
-
 
 /**
  * Quem já está em campanha VIVA desta organização.

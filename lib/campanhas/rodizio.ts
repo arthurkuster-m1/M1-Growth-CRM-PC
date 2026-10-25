@@ -86,9 +86,6 @@ export function escolherNumero(
 }
 
 /** O pool efetivo: o número principal da campanha mais os vinculados, sem repetir. */
-export function poolDaCampanha(
-  principal: string,
-  vinculados: readonly string[],
-): string[] {
+export function poolDaCampanha(principal: string, vinculados: readonly string[]): string[] {
   return [...new Set([principal, ...vinculados])];
 }

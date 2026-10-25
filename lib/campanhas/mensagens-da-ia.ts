@@ -7,6 +7,8 @@ import { buildModel } from "@/lib/ai/runtime/agent";
 import type { PassoDoFluxo } from "@/lib/cadencia/fluxo-da-abordagem";
 import { logger } from "@/lib/logger";
 
+import { AVISO_DO_CANAL_OFICIAL, canalDoDisparo } from "./canal-do-disparo";
+
 import {
   CONCORRENCIA_DA_IA,
   SISTEMA_DA_MENSAGEM,
@@ -21,6 +23,7 @@ import {
 export interface DisparoComIA {
   id: string;
   organization_id: string;
+  channel_session_id?: string | null;
   approach_id?: string | null;
   demand_campaign_id?: string | null;
   ai_approved_at?: string | null;
@@ -81,11 +84,19 @@ export async function recusaPorMensagensDaIA(
   admin: SupabaseClient,
   disparo: DisparoComIA,
 ): Promise<{
-  codigo: "campanha_mensagens_nao_aprovadas" | "campanha_ia_acima_do_teto";
+  codigo:
+    | "campanha_mensagens_nao_aprovadas"
+    | "campanha_ia_acima_do_teto"
+    | "campanha_canal_indisponivel";
   mensagem: string;
   status: number;
 } | null> {
   if (!(await exigeAprovacaoDaIA(admin, disparo))) return null;
+  // A abertura livre da IA não cabe em número oficial: o canal a recusaria depois do "enviado".
+  const canal = await canalDoDisparo(admin, disparo);
+  if (!canal.aceitaMensagemLivre) {
+    return { codigo: "campanha_canal_indisponivel", mensagem: AVISO_DO_CANAL_OFICIAL, status: 409 };
+  }
   const elegiveis = await contarElegiveis(admin, disparo);
   if (elegiveis > TETO_DE_LEADS_COM_IA) {
     return {
@@ -117,6 +128,8 @@ export interface RevisaoDasMensagens {
   aprovada_em: string | null;
   elegiveis: number;
   teto: number;
+  /** O canal aceita a abertura livre? Se não, a frase que explica (número da API oficial). */
+  canal: { aceita_mensagem_livre: boolean; aviso: string | null };
   resumo: { geradas: number; editadas: number; falhas: number; pendentes: number };
   custo_cents: number;
   itens: ItemDaRevisao[];
@@ -136,11 +149,17 @@ export async function revisaoDasMensagens(
     aprovada_em: disparo.ai_approved_at ?? null,
     elegiveis: 0,
     teto: TETO_DE_LEADS_COM_IA,
+    canal: { aceita_mensagem_livre: true, aviso: null },
     resumo: { geradas: 0, editadas: 0, falhas: 0, pendentes: 0 },
     custo_cents: 0,
     itens: [],
   };
   if (!precisa) return vazio;
+  const canal = await canalDoDisparo(admin, disparo);
+  vazio.canal = {
+    aceita_mensagem_livre: canal.aceitaMensagemLivre,
+    aviso: canal.aceitaMensagemLivre ? null : AVISO_DO_CANAL_OFICIAL,
+  };
   const { data } = await admin
     .from("campaign_recipients")
     .select("id, rendered_body, ai_status, ai_error, ai_cost_cents, contacts(name, display_name)")

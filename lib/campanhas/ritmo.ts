@@ -42,9 +42,7 @@ export interface EstadoDoEnvio {
 
 export type MotivoDeEspera = "intervalo" | "fora_da_janela" | "teto_diario" | "teto_horario";
 
-export type VetoDeRitmo =
-  | { pode: true }
-  | { pode: false; motivo: MotivoDeEspera; detalhe: string };
+export type VetoDeRitmo = { pode: true } | { pode: false; motivo: MotivoDeEspera; detalhe: string };
 
 /** A hora local (0-23) do instante, no fuso dado. Reexportada por conveniência. */
 export { horaNoFuso as horaLocal };
@@ -97,7 +95,11 @@ export function podeMandarAgora(
     const decorrido = (agora.getTime() - estado.ultimoEnvio.getTime()) / 1000;
     if (decorrido < ritmo.intervaloSegundos) {
       const faltam = Math.ceil(ritmo.intervaloSegundos - decorrido);
-      return { pode: false, motivo: "intervalo", detalhe: `Faltam ${faltam}s para o próximo envio.` };
+      return {
+        pode: false,
+        motivo: "intervalo",
+        detalhe: `Faltam ${faltam}s para o próximo envio.`,
+      };
     }
   }
 

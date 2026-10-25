@@ -43,10 +43,16 @@ describe("a qual envio esta resposta responde", () => {
 
   it("só promove quem SAIU: pendente, falho, pulado e cancelado não viram resposta", () => {
     for (const status of ["pending", "queued", "sending", "failed", "skipped", "cancelled"]) {
-      expect(destinatarioQueEssaRespostaFecha([enviado({ hAtras: 1, status })], AGORA), status).toBeNull();
+      expect(
+        destinatarioQueEssaRespostaFecha([enviado({ hAtras: 1, status })], AGORA),
+        status,
+      ).toBeNull();
     }
     for (const status of ["sent", "delivered", "read"]) {
-      expect(destinatarioQueEssaRespostaFecha([enviado({ hAtras: 1, status })], AGORA), status).not.toBeNull();
+      expect(
+        destinatarioQueEssaRespostaFecha([enviado({ hAtras: 1, status })], AGORA),
+        status,
+      ).not.toBeNull();
     }
   });
 
@@ -58,8 +64,18 @@ describe("a qual envio esta resposta responde", () => {
   });
 
   it("linha sem carimbo de envio, ou com data corrompida, é ignorada em vez de explodir", () => {
-    const semData: DestinatarioCandidato = { id: "x", status: "sent", sent_at: null, replied_at: null };
-    const lixo: DestinatarioCandidato = { id: "y", status: "sent", sent_at: "ontem", replied_at: null };
+    const semData: DestinatarioCandidato = {
+      id: "x",
+      status: "sent",
+      sent_at: null,
+      replied_at: null,
+    };
+    const lixo: DestinatarioCandidato = {
+      id: "y",
+      status: "sent",
+      sent_at: "ontem",
+      replied_at: null,
+    };
     expect(destinatarioQueEssaRespostaFecha([semData, lixo], AGORA)).toBeNull();
   });
 

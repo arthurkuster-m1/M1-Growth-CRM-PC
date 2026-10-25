@@ -46,6 +46,7 @@ interface Cfg {
   passos?: unknown[];
   elegiveis?: number;
   recipients?: Array<Record<string, unknown>>;
+  sessoes?: Array<Record<string, unknown>>;
 }
 
 function fake(cfg: Cfg = {}) {
@@ -74,6 +75,7 @@ function fake(cfg: Cfg = {}) {
     c.then = (ok: (v: unknown) => void) => {
       if (tabela === "campaign_recipients" && head) return ok({ count: cfg.elegiveis ?? 2 });
       if (tabela === "demand_approach_steps") return ok({ data: cfg.passos ?? [ia] });
+      if (tabela === "channel_sessions") return ok({ data: cfg.sessoes ?? [] });
       if (tabela === "campaign_recipients") return ok({ data: cfg.recipients ?? [] });
       return ok({ data: [], error: null });
     };
@@ -160,6 +162,21 @@ describe("recusaPorMensagensDaIA", () => {
         ai_approved_at: "x",
       }),
     ).toMatchObject({ codigo: "campanha_ia_acima_do_teto" });
+  });
+});
+
+describe("canal oficial", () => {
+  it("a abertura livre da IA não inicia em número da API oficial", async () => {
+    const f = fake({
+      sessoes: [{ id: "s1", display_name: "Oficial", phone_number: "1", provider: "meta_cloud" }],
+    });
+    const r = await recusaPorMensagensDaIA(f.admin, {
+      ...disparo,
+      channel_session_id: "s1",
+      ai_approved_at: "2026-10-25T00:00:00Z",
+    });
+    expect(r).toMatchObject({ codigo: "campanha_canal_indisponivel", status: 409 });
+    expect(r!.mensagem).toMatch(/modelo aprovado/);
   });
 });
 

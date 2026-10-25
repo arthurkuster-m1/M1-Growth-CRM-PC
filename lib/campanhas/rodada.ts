@@ -32,6 +32,7 @@
  *
  * Nunca lança para o cron: uma campanha quebrada não pode derrubar a rodada.
  */
+import { registrarEnvioDoDisparo } from "@/lib/cadencia/registrar-envio-do-disparo";
 import { iniciarAbordagemDoDisparo } from "@/lib/cadencia/iniciar-abordagem";
 import { randomUUID } from "node:crypto";
 
@@ -43,7 +44,12 @@ import { decidePacing, dayStartInTz } from "@/lib/agent-engine/pacing/engine";
 import { loadChannelKnobs, loadPacingState, recordSend } from "@/lib/agent-engine/pacing/store";
 import { beginServiceAtOrigin } from "@/lib/atendimento/origem";
 import { logger } from "@/lib/logger";
-import { OrgNaoOperanteError, STATUS_OPERANTE, ehOperante, statusDaOrgEmbutida } from "@/lib/organizacao/operante";
+import {
+  OrgNaoOperanteError,
+  STATUS_OPERANTE,
+  ehOperante,
+  statusDaOrgEmbutida,
+} from "@/lib/organizacao/operante";
 
 import { motivoParaExcluir, recusouMarketing, statusDaSaida } from "./elegibilidade";
 import { hashDoEndereco } from "./exclusoes";
@@ -92,11 +98,14 @@ interface CampanhaRow {
   janela_fim_hora: number | null;
   teto_diario: number | null;
   teto_horario: number | null;
+  demand_campaign_id: string | null;
+  approach_id: string | null;
 }
 
 const COLUNAS_DA_CAMPANHA =
   "id, organization_id, channel_session_id, name, message_body, content_version, " +
-  "intervalo_segundos, janela_inicio_hora, janela_fim_hora, teto_diario, teto_horario";
+  "intervalo_segundos, janela_inicio_hora, janela_fim_hora, teto_diario, teto_horario, " +
+  "demand_campaign_id, approach_id";
 
 /**
  * O status da organização embutido com `!inner` no `select`, e filtrado na
@@ -130,7 +139,9 @@ export async function rodarUmaRodadaDeCampanha(
     .limit(NUMEROS_POR_RODADA * 3);
   if (falhaDaBusca) {
     // Sem isto a falha virava "nada_a_fazer": indistinguível de rodada vazia.
-    logger.warn("[campanha] busca das campanhas em andamento falhou", { motivo: falhaDaBusca.message });
+    logger.warn("[campanha] busca das campanhas em andamento falhou", {
+      motivo: falhaDaBusca.message,
+    });
     return { ...VAZIA, promovidas, detalhe: "busca_falhou" };
   }
   // `as unknown as`: a lista de colunas é montada por concatenação, e o tipo
@@ -138,9 +149,13 @@ export async function rodarUmaRodadaDeCampanha(
   // `lib/asaas/*` já usa para tabela que ainda não está em `database.types.ts`.
   // ponytail: o `ehOperante` aqui é cinto — o banco já cortou; ele só segura o
   // dia em que alguém tirar o filtro da consulta.
-  const emExecucao = ((campanhas ?? []) as unknown as Array<
-    CampanhaRow & { organizations?: { status?: string | null } | Array<{ status?: string | null }> | null }
-  >).filter((campanha) => ehOperante(statusDaOrgEmbutida(campanha.organizations)));
+  const emExecucao = (
+    (campanhas ?? []) as unknown as Array<
+      CampanhaRow & {
+        organizations?: { status?: string | null } | Array<{ status?: string | null }> | null;
+      }
+    >
+  ).filter((campanha) => ehOperante(statusDaOrgEmbutida(campanha.organizations)));
   if (emExecucao.length === 0) {
     return promovidas > 0 ? { ...VAZIA, promovidas, detalhe: "promovidas" } : VAZIA;
   }
@@ -188,10 +203,7 @@ export async function rodarUmaRodadaDeCampanha(
  * rodada concorrente não promove duas vezes). A lista que vai na URL é a das
  * campanhas a promover, com teto — nunca a das orgs paradas, que não tem teto.
  */
-async function promoverAgendadas(
-  admin: SupabaseClient,
-  agora: Date,
-): Promise<number> {
+async function promoverAgendadas(admin: SupabaseClient, agora: Date): Promise<number> {
   const { data: vencidas, error: falhaDaEscolha } = await admin
     .from("campaigns")
     .select("id, organization_id, demand_campaign_id, organizations:organization_id!inner(status)")
@@ -362,7 +374,11 @@ async function rodarUmaCampanha(
   // O fuso da janela da campanha é o do número PRINCIPAL: ela é uma decisão da
   // campanha, e precisa de um relógio só — três números em fusos diferentes
   // fariam a mesma campanha abrir e fechar a janela três vezes.
-  const knobsDoPrincipal = await loadChannelKnobs(pool, campanha.organization_id, campanha.channel_session_id);
+  const knobsDoPrincipal = await loadChannelKnobs(
+    pool,
+    campanha.organization_id,
+    campanha.channel_session_id,
+  );
   // ⚠️ O estado do ritmo é lido DEPOIS dos knobs porque precisa do MESMO fuso
   // que a janela usa. Com `setUTCHours`, o "dia" virava 21h no horário de
   // Brasília — DENTRO da janela de envio —, e uma campanha que já tinha batido
@@ -426,7 +442,10 @@ async function rodarUmaCampanha(
     });
   }
 
-  const escolha = escolherNumero(disponiveis, await numeroDoHistorico(admin, campanha, alvo.contact_id));
+  const escolha = escolherNumero(
+    disponiveis,
+    await numeroDoHistorico(admin, campanha, alvo.contact_id),
+  );
   if (!escolha) {
     // Nenhum número pode agora. Não é falha do destinatário: é o ritmo dos
     // números. Volta para a fila e tenta no próximo tique.
@@ -521,6 +540,19 @@ async function rodarUmaCampanha(
       .eq("id", alvo.id)
       .eq("status", "sending");
 
+    // Disparo de uma campanha de prospecção: a mensagem que saiu é a abordagem do lead — vai para a
+    // linha do tempo e dá o passo da cadência. Só quando saiu de fato (o ack pode ter chegado antes).
+    if (!falhou) {
+      await registrarEnvioDoDisparo(admin, {
+        organizationId: campanha.organization_id,
+        contactId: alvo.contact_id,
+        disparoId: campanha.id,
+        disparoNome: campanha.name,
+        demandCampaignId: campanha.demand_campaign_id,
+        approachId: campanha.approach_id,
+      });
+    }
+
     return {
       enviadas: falhou ? 0 : 1,
       pulados: 0,
@@ -529,7 +561,12 @@ async function rodarUmaCampanha(
     };
   } catch (err) {
     logger.warn("[campanha] envio falhou", { campanha: campanha.id, destinatario: alvo.id });
-    return { enviadas: 0, pulados: 0, concluidas: 0, detalhe: await registrarExcecaoDoEnvio(admin, alvo.id, err) };
+    return {
+      enviadas: 0,
+      pulados: 0,
+      concluidas: 0,
+      detalhe: await registrarExcecaoDoEnvio(admin, alvo.id, err),
+    };
   }
 }
 

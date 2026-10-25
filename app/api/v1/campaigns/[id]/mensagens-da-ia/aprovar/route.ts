@@ -4,6 +4,8 @@
  */
 import { z } from "zod";
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
@@ -24,8 +26,15 @@ export async function POST(
       requestId: "sem-id",
     });
   }
-  const a = await autorizarRevisao(id, true);
+  const a = await autorizarRevisao(createAdminClient(), id, true);
   if (!a.ok) return a.response;
+  // Defesa em profundidade: o client admin ignora RLS, então a campanha carregada tem de ser da
+  // organização da sessão antes de qualquer escrita.
+  if (a.campanha.organization_id !== a.orgId) {
+    return fail("campanha_nao_encontrada", a.t("Campanha não encontrada."), 404, {
+      requestId: a.requestId,
+    });
+  }
   const r = await aprovarMensagensDaIA(a.admin, a.campanha, a.userId, new Date());
   if (!r.ok)
     return fail("campanha_mensagens_nao_aprovadas", a.t(r.mensagem), r.status, {

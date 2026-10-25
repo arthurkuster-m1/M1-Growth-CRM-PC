@@ -50,19 +50,39 @@ describe("taxas da campanha", () => {
   });
 
   it("o excluído fica fora do denominador — lista suja não vira 'baixa entrega'", () => {
-    const c: ContagemDaCampanha = { ...ZERO, total: 200, elegiveis: 100, excluidos: 100, enviados: 100, entregues: 100 };
+    const c: ContagemDaCampanha = {
+      ...ZERO,
+      total: 200,
+      elegiveis: 100,
+      excluidos: 100,
+      enviados: 100,
+      entregues: 100,
+    };
     expect(taxasDaCampanha(c).entrega).toBe(1);
   });
 
   it("a taxa de falha usa o TENTADO (saiu ou falhou), não o snapshot", () => {
-    const c: ContagemDaCampanha = { ...ZERO, elegiveis: 100, enviados: 80, falharam: 20, pendentes: 0 };
+    const c: ContagemDaCampanha = {
+      ...ZERO,
+      elegiveis: 100,
+      enviados: 80,
+      falharam: 20,
+      pendentes: 0,
+    };
     expect(taxasDaCampanha(c).falha).toBeCloseTo(0.2);
   });
 });
 
 describe("progresso", () => {
   it("mede contra o ELEGÍVEL: o excluído nunca vai andar e travaria a barra", () => {
-    const c: ContagemDaCampanha = { ...ZERO, total: 150, elegiveis: 100, excluidos: 50, pendentes: 25, enviados: 75 };
+    const c: ContagemDaCampanha = {
+      ...ZERO,
+      total: 150,
+      elegiveis: 100,
+      excluidos: 50,
+      pendentes: 25,
+      enviados: 75,
+    };
     expect(progresso(c)).toBeCloseTo(0.75);
   });
 
@@ -83,7 +103,9 @@ describe("progresso", () => {
     const c: ContagemDaCampanha = { ...ZERO, total: 5, elegiveis: 5, cancelados: 5 };
     expect(progresso(c)).toBe(0);
     // E a campanha que enviou metade antes de ser cancelada mostra a metade.
-    expect(progresso({ ...ZERO, total: 4, elegiveis: 4, enviados: 2, cancelados: 2 })).toBeCloseTo(0.5);
+    expect(progresso({ ...ZERO, total: 4, elegiveis: 4, enviados: 2, cancelados: 2 })).toBeCloseTo(
+      0.5,
+    );
   });
 
   it("nunca passa de 1 nem cai abaixo de 0, mesmo com contador fora de sincronia", () => {

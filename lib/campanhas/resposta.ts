@@ -122,7 +122,8 @@ export async function aplicarRespostaNaCampanha(
     .eq("organization_id", organizationId)
     .eq("id", contactId)
     .maybeSingle();
-  if (contatoErro) throw new Error(`resposta de campanha: leitura do contato — ${contatoErro.message}`);
+  if (contatoErro)
+    throw new Error(`resposta de campanha: leitura do contato — ${contatoErro.message}`);
   if ((contato as { is_personal?: boolean } | null)?.is_personal === true) {
     return { atribuiu: false, optOut: 0 };
   }
@@ -135,7 +136,9 @@ export async function aplicarRespostaNaCampanha(
     .select("settings")
     .eq("id", organizationId)
     .maybeSingle();
-  const janelaMs = janelaDeAtribuicaoMs(lerConfiguracao((org as { settings?: unknown } | null)?.settings));
+  const janelaMs = janelaDeAtribuicaoMs(
+    lerConfiguracao((org as { settings?: unknown } | null)?.settings),
+  );
   const piso = new Date(recebidoEm.getTime() - janelaMs).toISOString();
 
   const { data, error } = await admin

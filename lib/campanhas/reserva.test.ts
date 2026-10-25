@@ -68,7 +68,11 @@ describe("reserva do destinatário", () => {
     // Se um dia alguém voltar a colapsar os dois num `false` só, este caso fica
     // vermelho — que é a única coisa que impede o defeito de voltar calado.
     const concorrencia = await reservarDestinatario(fakeAdmin({ data: [] }), "r1", AGORA);
-    const falha = await reservarDestinatario(fakeAdmin({ error: { message: "boom" } }), "r1", AGORA);
+    const falha = await reservarDestinatario(
+      fakeAdmin({ error: { message: "boom" } }),
+      "r1",
+      AGORA,
+    );
     expect(concorrencia.erro).toBeUndefined();
     expect(falha.erro).toBe("boom");
   });
