@@ -49,7 +49,7 @@ export async function carregarAbertura(
   if (!ab) return null;
   const { data: passos } = await admin
     .from("demand_approach_steps")
-    .select("kind, body, ai_personalize, audio_label, wait_hours")
+    .select("kind, body, ai_personalize, audio_label, audio_id, wait_hours")
     .eq("organization_id", disparo.organization_id)
     .eq("approach_id", disparo.approach_id)
     .order("position", { ascending: true })

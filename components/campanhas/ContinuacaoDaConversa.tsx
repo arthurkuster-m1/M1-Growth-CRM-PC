@@ -66,7 +66,7 @@ function CartaoDaProposta({
       {audio ? (
         <p className="text-sm">
           🎙️ {item.corpo || t("Áudio gravado")} —{" "}
-          {t("o envio de áudio chega na próxima etapa. Mande à mão e use “Já mandei”.")}
+          {t("o arquivo de voz do fluxo vai como áudio, ao aprovar.")}
         </p>
       ) : (
         <textarea
@@ -81,16 +81,14 @@ function CartaoDaProposta({
         />
       )}
       <div className="flex flex-wrap gap-2">
-        {audio ? null : (
-          <button
-            type="button"
-            className={BOTAO_CHEIO}
-            disabled={ocupado || texto.trim() === ""}
-            onClick={() => aoDecidir("enviar", texto)}
-          >
-            {t("Aprovar e enviar")}
-          </button>
-        )}
+        <button
+          type="button"
+          className={BOTAO_CHEIO}
+          disabled={ocupado || (!audio && texto.trim() === "")}
+          onClick={() => aoDecidir("enviar", audio ? undefined : texto)}
+        >
+          {audio ? t("Aprovar e enviar o áudio") : t("Aprovar e enviar")}
+        </button>
         {audio ? null : (
           <button
             type="button"
@@ -107,7 +105,7 @@ function CartaoDaProposta({
           disabled={ocupado}
           onClick={() => aoDecidir("pular")}
         >
-          {audio ? t("Já mandei") : t("Pular este passo")}
+          {audio ? t("Já mandei à mão") : t("Pular este passo")}
         </button>
         <button
           type="button"

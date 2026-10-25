@@ -62,7 +62,7 @@ describe("avisosDoFluxo", () => {
       "",
     );
     expect(av.join("|")).toMatch(/Passo 1: escreva/);
-    expect(av.join("|")).toMatch(/Passo 2: diga qual áudio/);
+    expect(av.join("|")).toMatch(/Passo 2: escolha ou envie o arquivo do áudio/);
     expect(av.join("|")).toMatch(/ideia central/);
     expect(av.join("|")).toMatch(/duas esperas seguidas/);
     expect(av.join("|")).toMatch(/termina esperando/);

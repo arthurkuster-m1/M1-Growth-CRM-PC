@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; approachId: string }> };
 
 const uuid = z.string().uuid();
-const COLUNAS = "id, position, kind, body, ai_personalize, audio_label, wait_hours";
+const COLUNAS = "id, position, kind, body, ai_personalize, audio_label, audio_id, wait_hours";
 
 type Cliente = Extract<Awaited<ReturnType<typeof autorizarCampanhas>>, { ok: true }>["supabase"];
 
@@ -44,11 +44,12 @@ async function lerPassos(supabase: Cliente, orgId: string, approachId: string) {
     .order("position", { ascending: true })
     .limit(50);
   return ((data ?? []) as Array<PassoDoFluxo & { id: string; position: number }>).map(
-    ({ kind, body, ai_personalize, audio_label, wait_hours }) => ({
+    ({ kind, body, ai_personalize, audio_label, audio_id, wait_hours }) => ({
       kind,
       body,
       ai_personalize,
       audio_label,
+      audio_id,
       wait_hours,
     }),
   );
@@ -86,6 +87,24 @@ export async function PUT(req: NextRequest, ctx: Ctx): Promise<Response> {
   if (!(await abordagemDaCampanha(a.supabase, a.orgId, id, approachId))) {
     return fail("not_found", a.t("Abordagem não encontrada."), 404, { requestId: a.requestId });
   }
+  // O arquivo de voz de um passo tem de ser da biblioteca DESTA empresa.
+  const audiosPedidos = [
+    ...new Set(
+      corpo.data.steps.flatMap((s) => (s.kind === "audio" && s.audio_id ? [s.audio_id] : [])),
+    ),
+  ];
+  if (audiosPedidos.length > 0) {
+    const { data: achados } = await a.supabase
+      .from("approach_audios")
+      .select("id")
+      .eq("organization_id", a.orgId)
+      .in("id", audiosPedidos);
+    if ((achados ?? []).length !== audiosPedidos.length) {
+      return fail("validation_failed", a.t("Áudio não encontrado na biblioteca."), 422, {
+        requestId: a.requestId,
+      });
+    }
+  }
   // Grava os passos novos primeiro e só então tira os antigos: falha no meio não apaga o desenho.
   const { data: antigos } = await a.supabase
     .from("demand_approach_steps")
@@ -96,6 +115,7 @@ export async function PUT(req: NextRequest, ctx: Ctx): Promise<Response> {
     ...s,
     wait_hours: s.kind === "aguardar" ? s.wait_hours : null,
     ai_personalize: s.kind === "mensagem" ? s.ai_personalize : false,
+    audio_id: s.kind === "audio" ? (s.audio_id ?? null) : null,
     organization_id: a.orgId,
     approach_id: approachId,
     position: i,

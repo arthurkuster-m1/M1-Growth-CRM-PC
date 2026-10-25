@@ -13,6 +13,7 @@ import { aplicarVariaveis } from "@/lib/leads/mensagem-de-prospeccao";
 import { logger } from "@/lib/logger";
 import { criarTarefaInterna } from "@/lib/tarefas/criar-tarefa";
 
+import { BUCKET_DOS_AUDIOS, caminhoNaConversa } from "./audio-da-abordagem";
 import {
   SISTEMA_DA_CONTINUACAO,
   montarPedidoDaContinuacao,
@@ -403,6 +404,38 @@ async function propostaPendente(
   return ctx.dest.flow_state === "proposta_pendente" ? ctx : null;
 }
 
+/**
+ * O arquivo de voz do passo, copiado da biblioteca para a pasta da conversa — é lá que o envio de
+ * mídia o aceita. Devolve null se o passo não tem arquivo ou ele sumiu da biblioteca.
+ */
+async function copiarAudioParaAConversa(
+  admin: SupabaseClient,
+  ctx: Contexto,
+  conversationId: string,
+  mensagemId: string,
+): Promise<{ caminho: string; mime: string } | null> {
+  const { passos } = await passosDoDisparo(admin, ctx.dest.organization_id, ctx.campanha);
+  const audioId = passos[ctx.dest.flow_step ?? -1]?.audio_id;
+  if (!audioId) return null;
+  const { data } = await admin
+    .from("approach_audios")
+    .select("storage_path, mime")
+    .eq("organization_id", ctx.dest.organization_id)
+    .eq("id", audioId)
+    .maybeSingle();
+  const arquivo = data as { storage_path: string; mime: string } | null;
+  if (!arquivo) return null;
+  const destino = caminhoNaConversa(
+    ctx.dest.organization_id,
+    conversationId,
+    mensagemId,
+    arquivo.mime,
+  );
+  const { error } = await admin.storage.from(BUCKET_DOS_AUDIOS).copy(arquivo.storage_path, destino);
+  if (error) throw new Error(`áudio da abordagem: cópia falhou — ${error.message}`);
+  return { caminho: destino, mime: arquivo.mime };
+}
+
 /** A pessoa aprovou (com o texto que viu, editado ou não): a mensagem sai e o fluxo segue. */
 export async function enviarProposta(
   admin: SupabaseClient,
@@ -421,16 +454,10 @@ export async function enviarProposta(
     input.recipientId,
   );
   if (!ctx) return NAO_ACHEI;
-  if (ctx.dest.proposal_kind !== "mensagem") {
-    return {
-      ok: false,
-      mensagem:
-        "O envio de áudio chega na próxima etapa. Por enquanto, mande à mão e use “Já mandei”.",
-      status: 422,
-    };
-  }
-  const corpo = limparMensagemDaIA(input.corpo ?? ctx.dest.proposal_body ?? "");
-  if (!corpo) return { ok: false, mensagem: "Escreva a mensagem antes de enviar.", status: 422 };
+  const audio = ctx.dest.proposal_kind === "audio";
+  const corpo = audio ? "" : limparMensagemDaIA(input.corpo ?? ctx.dest.proposal_body ?? "");
+  if (!audio && !corpo)
+    return { ok: false, mensagem: "Escreva a mensagem antes de enviar.", status: 422 };
   if (ctx.contato.is_blocked) {
     await parar(admin, input.organizationId, input.recipientId, "opt_out", ["proposta_pendente"]);
     return { ok: false, mensagem: "Este contato pediu para não receber mensagens.", status: 409 };
@@ -446,6 +473,18 @@ export async function enviarProposta(
       ctx.dest.contact_id,
       ctx.dest.channel_session_id,
     );
+    const mensagemId = randomUUID();
+    const midia = audio
+      ? await copiarAudioParaAConversa(admin, ctx, boundary.conversation_id, mensagemId)
+      : null;
+    if (audio && !midia) {
+      return {
+        ok: false,
+        mensagem:
+          "Este passo não tem um arquivo de voz na biblioteca. Escolha o áudio no fluxo da abordagem, ou mande à mão e use “Já mandei”.",
+        status: 422,
+      };
+    }
     const mensagem = await sendMessageHandler(
       admin,
       {
@@ -454,12 +493,14 @@ export async function enviarProposta(
         proactiveContext: { organizationId: input.organizationId, contactId: ctx.dest.contact_id },
         actor: { type: "webhook_source", id: `campaign:${ctx.campanha.id}` },
         requestId: `campaign-flow:${ctx.dest.id}:${passo}`,
-        internalMessageId: randomUUID(),
+        internalMessageId: mensagemId,
       } as Parameters<typeof sendMessageHandler>[1],
       {
         conversation_id: boundary.conversation_id,
-        type: "text",
-        body: corpo,
+        type: midia ? "audio" : "text",
+        ...(midia
+          ? { media_storage_path: midia.caminho, media_mime: midia.mime }
+          : { body: corpo }),
         metadata: {
           source: "campaign_flow",
           campaign_id: ctx.campanha.id,
