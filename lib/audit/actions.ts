@@ -966,6 +966,9 @@ export const AUDIT_ACTIONS = [
   // saiu nada dela.
   "campaign.created",
   "campaign.prepared",
+  // A IA escreveu as mensagens do disparo / a pessoa as aprovou (migration 0665).
+  "campaign.ai_messages_generated",
+  "campaign.ai_messages_approved",
   "campaign.test_sent",
   "campaign.scheduled",
   "campaign.started",

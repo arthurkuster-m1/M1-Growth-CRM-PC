@@ -272,6 +272,8 @@ export const ApiErrorCodes = {
   campanha_agenda_invalida: "campanha_agenda_invalida", // 422: data no passado
   campanha_conteudo_invalido: "campanha_conteudo_invalido", // 422: texto vazio ou variável que não existe
   campanha_base_legal_invalida: "campanha_base_legal_invalida", // 422: interesse legítimo sem referência da LIA
+  campanha_mensagens_nao_aprovadas: "campanha_mensagens_nao_aprovadas", // 409: disparo com mensagem da IA sem a aprovação da pessoa
+  campanha_ia_acima_do_teto: "campanha_ia_acima_do_teto", // 422: mais leads do que o teto inicial de mensagens da IA
 
   // 500 / upstream
   internal_error: "internal_error",

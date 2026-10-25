@@ -79,6 +79,12 @@ const PARES: Array<{
     simbolo: "TIPOS_DE_PASSO_DO_FLUXO",
   },
   {
+    tabela: "campaign_recipients",
+    coluna: "ai_status",
+    arquivo: "lib/campanhas/mensagem-da-ia.ts",
+    simbolo: "STATUS_DA_MENSAGEM_DA_IA",
+  },
+  {
     tabela: "extension_operations",
     coluna: "kind",
     // O recibo das extensões (0271). Quatro cópias no TypeScript viraram uma; um kind

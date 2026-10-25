@@ -26,6 +26,7 @@ import { prepararCampanha } from "./preparacao";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { camposDoDestinatario } from "./consulta-de-audiencia";
 import { renderizar } from "./renderizador";
+import { recusaPorMensagensDaIA } from "@/lib/campanhas/mensagens-da-ia";
 import { iniciarAbordagemDoDisparo } from "@/lib/cadencia/iniciar-abordagem";
 
 import type { StatusDaCampanha } from "./tipos";
@@ -51,6 +52,7 @@ export interface CampanhaCarregada {
   description: string | null;
   demand_campaign_id?: string | null;
   approach_id?: string | null;
+  ai_approved_at?: string | null;
 }
 
 export type Recusa = { ok: false; codigo: ApiErrorCode; mensagem: string; status: number };
@@ -59,7 +61,7 @@ export type Desfecho<T = unknown> = ({ ok: true } & T) | Recusa;
 const COLUNAS =
   "id, organization_id, name, status, channel_session_id, message_body, base_legal, lia_ref, " +
   "audience_filter, audience_version, content_version, scheduled_at, description, " +
-  "intervalo_segundos, janela_inicio_hora, janela_fim_hora, teto_diario, teto_horario, demand_campaign_id, approach_id";
+  "intervalo_segundos, janela_inicio_hora, janela_fim_hora, teto_diario, teto_horario, demand_campaign_id, approach_id, ai_approved_at";
 
 export async function carregarCampanha(
   admin: SupabaseClient,
@@ -94,7 +96,9 @@ export async function carregarCampanha(
 
 function recusaDeTransicao(de: StatusDaCampanha, para: StatusDaCampanha): Recusa | null {
   const r = podeTransitar(de, para);
-  return r.pode ? null : { ok: false, codigo: "campanha_estado_invalido", mensagem: r.motivo, status: 409 };
+  return r.pode
+    ? null
+    : { ok: false, codigo: "campanha_estado_invalido", mensagem: r.motivo, status: 409 };
 }
 
 /** O que toda campanha precisa ter antes de qualquer envio — inclusive o de teste. */
@@ -149,7 +153,8 @@ export async function prepararAcao(
   // Compare-and-set: dois cliques simultâneos, e só um entra em `preparing`.
   const { data: entrou } = await admin
     .from("campaigns")
-    .update({ status: "preparing" })
+    // Preparar de novo refaz a lista: a aprovação das mensagens da IA vale para a lista antiga.
+    .update({ status: "preparing", ai_approved_at: null, ai_approved_by: null })
     .eq("id", c.id)
     .eq("status", "draft")
     .select("id");
@@ -248,6 +253,9 @@ export async function iniciarAcao(
     };
   }
 
+  const semAprovacao = await recusaPorMensagensDaIA(admin, c);
+  if (semAprovacao) return { ok: false, ...semAprovacao };
+
   const retomada = c.status === "paused";
   const { data } = await admin
     .from("campaigns")
@@ -287,6 +295,8 @@ export async function agendarAcao(
       status: 422,
     };
   }
+  const semAprovacao = await recusaPorMensagensDaIA(admin, c);
+  if (semAprovacao) return { ok: false, ...semAprovacao };
   const { data } = await admin
     .from("campaigns")
     .update({ status: "scheduled", scheduled_at: quando.toISOString(), paused_at: null })
@@ -467,7 +477,12 @@ export async function testarAcao(
     };
   }
 
-  const boundary = await beginServiceAtOrigin(admin, c.organization_id, linha.id, c.channel_session_id);
+  const boundary = await beginServiceAtOrigin(
+    admin,
+    c.organization_id,
+    linha.id,
+    c.channel_session_id,
+  );
   const mensagem = await sendMessageHandler(
     admin,
     {
@@ -490,7 +505,8 @@ export async function testarAcao(
     return {
       ok: false,
       codigo: "campanha_canal_indisponivel",
-      mensagem: "O envio de teste falhou no canal. Verifique a conexão antes de iniciar a campanha.",
+      mensagem:
+        "O envio de teste falhou no canal. Verifique a conexão antes de iniciar a campanha.",
       status: 409,
     };
   }
