@@ -31,6 +31,7 @@ export function CartaoDaConexaoGoogle({
   contaConectada,
   enderecoDeRetorno,
   linkDeConfiguracao,
+  acaoDeSincronizar,
 }: {
   configurado: boolean;
   /**
@@ -44,6 +45,11 @@ export function CartaoDaConexaoGoogle({
   contaConectada?: string | null;
   /** O endereço EXATO que o Google exige registrado. Ver o bloco no JSX. */
   enderecoDeRetorno?: string;
+  /**
+   * O botão "Sincronizar com o Google", que no CELULAR mora aqui, embaixo de "Configurar suas
+   * agendas" e "Desconectar" (no computador ele fica no topo). Só aparece abaixo de `sm`.
+   */
+  acaoDeSincronizar?: React.ReactNode;
 }) {
   const t = useT();
   const router = useRouter();
@@ -55,7 +61,9 @@ export function CartaoDaConexaoGoogle({
         data-testid="google-nao-configurado"
         className="rounded-2xl border border-border bg-surface-elevated/50 p-4"
       >
-        <p className="text-sm font-medium text-text">{t("Sincronizar com o Google ainda não está disponível")}</p>
+        <p className="text-sm font-medium text-text">
+          {t("Sincronizar com o Google ainda não está disponível")}
+        </p>
         {/*
           DUAS FRASES, porque são duas pessoas.
           
@@ -67,11 +75,15 @@ export function CartaoDaConexaoGoogle({
         */}
         {linkDeConfiguracao ? (
           <p className="mt-1 text-xs leading-4 text-text-muted">
-            {t("Falta cadastrar o aplicativo do Google desta instalação. Leva um minuto e você faz por aqui mesmo.")}
+            {t(
+              "Falta cadastrar o aplicativo do Google desta instalação. Leva um minuto e você faz por aqui mesmo.",
+            )}
           </p>
         ) : (
           <p className="mt-1 text-xs leading-4 text-text-muted">
-            {t("Esta instalação não tem as credenciais do Google cadastradas — não é nada que você tenha feito. Quem instalou o sistema precisa configurar")}
+            {t(
+              "Esta instalação não tem as credenciais do Google cadastradas — não é nada que você tenha feito. Quem instalou o sistema precisa configurar",
+            )}
             {falta.length > 0 ? (
               <>
                 {" "}
@@ -88,7 +100,7 @@ export function CartaoDaConexaoGoogle({
           <a
             href={linkDeConfiguracao}
             data-testid="ir-configurar-google"
-            className="mt-2 inline-block text-xs font-medium text-accent underline underline-offset-2 hover:text-accent-strong"
+            className="hover:text-accent-strong mt-2 inline-block text-xs font-medium text-accent underline underline-offset-2"
           >
             {t("Cadastrar as credenciais do Google")}
           </a>
@@ -105,7 +117,7 @@ export function CartaoDaConexaoGoogle({
             <span className="font-medium">{t("exatamente assim")}</span>:{" "}
             <code
               data-testid="endereco-de-retorno"
-              className="select-all break-all font-mono text-[11px] text-text"
+              className="font-mono text-[11px] break-all text-text select-all"
             >
               {enderecoDeRetorno}
             </code>
@@ -122,14 +134,16 @@ export function CartaoDaConexaoGoogle({
     return (
       <div
         data-testid="google-conectado"
-        className="flex items-center gap-2 rounded-2xl border border-border bg-surface p-4"
+        className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface p-4"
       >
         <GoogleLogo size={16} weight="bold" className="shrink-0 text-text-muted" aria-hidden />
         <p className="min-w-0 flex-1 truncate text-sm">
           <span className="text-text-muted">{t("Agenda conectada:")} </span>
           <span className="font-medium">{contaConectada}</span>
         </p>
-        <a href="/app/settings/tenant/agenda" className="text-xs underline">{t("Configurar suas agendas")}</a>
+        <a href="/app/settings/tenant/agenda" className="text-xs underline">
+          {t("Configurar suas agendas")}
+        </a>
         <Button
           variant="outline"
           size="sm"
@@ -150,6 +164,9 @@ export function CartaoDaConexaoGoogle({
         >
           {desconectando ? t("Desconectando…") : t("Desconectar")}
         </Button>
+        {acaoDeSincronizar ? (
+          <div className="flex w-full justify-center sm:hidden">{acaoDeSincronizar}</div>
+        ) : null}
       </div>
     );
   }
@@ -157,7 +174,9 @@ export function CartaoDaConexaoGoogle({
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4">
       <p className="min-w-0 flex-1 text-sm text-text-muted">
-        {t("Conecte sua agenda do Google para ver aqui o que já está marcado lá — e enviar para lá o que for marcado aqui.")}
+        {t(
+          "Conecte sua agenda do Google para ver aqui o que já está marcado lá — e enviar para lá o que for marcado aqui.",
+        )}
       </p>
       <Button variant="outline" size="sm" data-testid="conectar-google" asChild>
         <a href="/api/v1/agenda/google/connect">

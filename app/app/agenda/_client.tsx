@@ -351,12 +351,28 @@ export function AgendaClient({
           ? `${format(startOfWeek(ancora, { weekStartsOn: 0 }), t("d 'de' MMM"), { locale: localeDaData })} — ${format(addDays(startOfWeek(ancora, { weekStartsOn: 0 }), 6), t("d 'de' MMM"), { locale: localeDaData })}`
           : format(ancora, t("EEEE, d 'de' MMMM"), { locale: localeDaData });
 
+  // A cópia do celular do botão de sincronizar: mora no cartão do Google, no fim da página.
+  const botaoDeSincronizarNoCelular =
+    contaConectada && podeMarcar ? (
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-10 w-full max-w-xs gap-2 rounded-xl px-4 text-sm"
+        data-testid="sincronizar-google-celular"
+        disabled={sincronizando}
+        onClick={sincronizarComGoogle}
+      >
+        <ArrowsClockwise size={14} weight="bold" aria-hidden />
+        <span>{sincronizando ? t("Sincronizando…") : t("Sincronizar com Google")}</span>
+      </Button>
+    ) : null;
+
   return (
     <div
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full w-full max-w-full min-w-0 flex-col gap-6 overflow-x-clip p-4 sm:p-6"
+      className="flex h-full w-full max-w-full min-w-0 flex-col gap-3 overflow-x-clip p-4 sm:gap-6 sm:p-6"
     >
       {/*
         Em Suspense porque `useSearchParams` obriga: sem a fronteira, o Next
@@ -410,7 +426,7 @@ export function AgendaClient({
             <Button
               variant="outline"
               size="sm"
-              className="h-10 w-full max-w-xs gap-2 rounded-xl px-4 text-sm sm:h-9 sm:w-auto sm:max-w-none sm:px-3 sm:text-xs lg:h-8"
+              className="hidden h-9 gap-2 rounded-xl px-3 text-xs sm:inline-flex lg:h-8"
               data-testid="sincronizar-google"
               disabled={sincronizando}
               onClick={sincronizarComGoogle}
@@ -490,7 +506,10 @@ export function AgendaClient({
             gente no filtro, ela estoura igual — e o `overflow-x: hidden` corta o
             alternador de visão em silêncio. */}
         <div className="flex flex-wrap items-center gap-3">
-          <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
+          {/* Escondido no celular para o topo ficar limpo (Novo agendamento, Hoje, visão). */}
+          <div className="max-sm:hidden">
+            <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
+          </div>
           {/* O MENU DE VISÕES, como no Google Agenda: um botão com a visão atual que abre a lista
               (Dia, 3 dias, Semana, Mês). Vale no celular e no computador. */}
           <DropdownMenu>
@@ -575,6 +594,7 @@ export function AgendaClient({
         linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
         contaConectada={contaConectada}
         enderecoDeRetorno={enderecoDeRetorno}
+        acaoDeSincronizar={botaoDeSincronizarNoCelular}
       />
 
       {configuracaoDosTipos ? (
