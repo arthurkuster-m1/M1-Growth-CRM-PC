@@ -14,6 +14,7 @@
  * É a pergunta que o operador faz primeiro quando 500 viram 80. Sem o motivo ao
  * lado do número, ele conclui que o sistema comeu a lista.
  */
+import { MensagensDaIA } from "@/components/campanhas/MensagensDaIA";
 import { ResumoDoFluxo } from "@/components/marketing/campanhas/AbordagemDoDisparo";
 import Link from "next/link";
 import { useState } from "react";
@@ -155,6 +156,11 @@ export function DetalheDaCampanha({ id }: { id: string }) {
           ))}
         </div>
       </header>
+
+      {c.approach_id ? (
+        <MensagensDaIA campanhaId={c.id} status={c.status} podeEditar />
+      ) : null}
+
 
       {confirmando && (
         <Card className="space-y-3 border-warning-fg p-4">

@@ -30,7 +30,7 @@ const COLUNAS =
   "audience_filter, audience_version, content_version, snapshot_total, snapshot_eligible, " +
   "snapshot_excluded, scheduled_at, prepared_at, started_at, paused_at, completed_at, " +
   "cancelled_at, failure_code, intervalo_segundos, janela_inicio_hora, janela_fim_hora, " +
-  "teto_diario, teto_horario, pipeline_id, stage_id, agent_id, demand_campaign_id, approach_id, created_at, created_by";
+  "teto_diario, teto_horario, pipeline_id, stage_id, agent_id, demand_campaign_id, approach_id, ai_approved_at, created_at, created_by";
 
 export async function GET(
   _req: NextRequest,
@@ -158,6 +158,11 @@ export async function PATCH(
     "approach_id",
   ] as const) {
     if (entrada[campo] !== undefined) mudanca[campo] = entrada[campo];
+  }
+  // Mudar o conteúdo, o público ou a abordagem invalida a aprovação das mensagens da IA.
+  if (mexeEmConteudo) {
+    mudanca.ai_approved_at = null;
+    mudanca.ai_approved_by = null;
   }
   if (entrada.base_legal !== undefined) mudanca.base_legal = entrada.base_legal;
   if (entrada.lia_ref !== undefined) mudanca.lia_ref = entrada.lia_ref;
