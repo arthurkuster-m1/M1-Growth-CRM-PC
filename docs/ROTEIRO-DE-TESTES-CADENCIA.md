@@ -237,3 +237,28 @@ no oficial).
 - Fluxo com ramificações (resposta positiva/negativa); hoje o fluxo é uma linha só.
 - Mensagem automática ao cliente depois da falta.
 - Destino "Nutrição" no fim da cadência; cadência fora de campanhas de Prospecção.
+
+---
+
+## 14. Agenda — visual estilo Google Agenda (26/10/2026)
+
+Em **Agenda**. Teste no computador e no celular.
+
+| #     | Passo                                      | Esperado                                                                                                                       | Resultado |
+| ----- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| 14.1  | Abra a Agenda                              | Abre **direto no calendário**; não há mais "Próximos / Aguardando confirmação / Passados / Cancelados"                         |           |
+| 14.2  | Clique no botão da visão (mostra "Semana") | Abre um menu com **Dia, 3 dias, Semana, Mês**; a visão atual está em destaque                                                  |           |
+| 14.3  | Escolha **3 dias**                         | Três colunas, a partir do dia escolhido; as setas andam de 3 em 3 dias; o título mostra o intervalo                            |           |
+| 14.4  | Escolha Dia, Semana e Mês                  | Cada uma desenha certo; o botão passa a mostrar o nome da visão                                                                |           |
+| 14.5  | Na grade, olhe os horários                 | **Disponíveis em branco**; indisponíveis (fora da jornada, ocupados, passados) em **cinza**; compromissos com o bloco colorido |           |
+| 14.6  | Clique num horário branco                  | Abre o novo compromisso naquele horário                                                                                        |           |
+| 14.7  | Clique num horário cinza                   | Nada acontece                                                                                                                  |           |
+| 14.8  | Troque o tipo de atendimento               | A grade recalcula o que é branco e o que é cinza                                                                               |           |
+| 14.9  | Recarregue a página                        | Nada pisca todo em cinza antes de carregar                                                                                     |           |
+| 14.10 | **Celular — Dia**                          | Uma coluna, com a data no topo e as horas à esquerda                                                                           |           |
+| 14.11 | **Celular — 3 dias**                       | Três colunas, com a sigla do dia e o número empilhados                                                                         |           |
+| 14.12 | **Celular — Semana**                       | As **sete colunas** juntas (antes só aparecia um dia); texto dos compromissos cortado, mas legível ao tocar                    |           |
+| 14.13 | **Celular — Mês**                          | Grade do mês com até 3 faixas coloridas por dia e "+N" quando há mais                                                          |           |
+| 14.14 | Toque num compromisso (qualquer visão)     | Abre a página do compromisso                                                                                                   |           |
+| 14.15 | **Remarcar / Cancelar / Resultado**        | Agora só pela **página do compromisso** (não há lista); confira que funcionam                                                  |           |
+| 14.16 | Quem **só lê** (viewer)                    | Vê a grade sem cinza e sem poder marcar (ver pendência 3b do plano da Agenda)                                                  |           |

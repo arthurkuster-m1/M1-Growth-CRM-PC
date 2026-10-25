@@ -1,6 +1,6 @@
 import { addDays, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 
-import type { VisaoDaAgenda } from "@/components/agenda/tipos";
+import { DIAS_DA_VISAO, type VisaoDaAgenda } from "@/components/agenda/tipos";
 
 /**
  * O PERÍODO QUE A GRADE DESENHA — e, por ser a mesma função, o que ela BUSCA.
@@ -35,6 +35,7 @@ export function recorteDaGrade(visao: VisaoDaAgenda, ancora: Date): { de: Date; 
     const de = primeiroDiaDaVisaoDeMes(ancora);
     return { de, ate: addDays(de, SEMANAS_NA_VISAO_DE_MES * 7) };
   }
+  // Dia e 3 dias começam no dia da âncora; a semana, no domingo que a contém.
   const de = visao === "semana" ? startOfWeek(ancora, { weekStartsOn: 0 }) : startOfDay(ancora);
-  return { de, ate: addDays(de, visao === "semana" ? 7 : 1) };
+  return { de, ate: addDays(de, DIAS_DA_VISAO[visao]) };
 }

@@ -229,6 +229,10 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 4. Histórico do lead: "respondido no inbox por X" pode não gravar linha — conferir; leads antigos não ganham
    a linha de origem.
 5. **Equipe da Agenda:** conferir ao vivo os dois sentidos, o "qualquer atendente" e a troca de agenda no Google.
+   **Agenda visual (26/10/2026, feito no código, aguardando teste):** a página abre direto no calendário
+   (sem a lista Próximos/Aguardando/Passados/Cancelados); menu de visões Dia / 3 dias / Semana / Mês; horários
+   indisponíveis em cinza; no celular, visões parecidas com o Google Agenda. Pontos seguintes que o Arthur
+   está levantando ficam registrados em `docs/PLANO-AGENDA-VISUAL-M1.md`.
 6. Recomendações da IA ao vivo na reunião de vendas (hoje "em breve").
 7. Campo de endereço/local e observação pública no novo compromisso.
 8. Inbox (frente 5).
@@ -316,7 +320,7 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 1. Limpeza total do que veio do projeto original (docs, testes e2e, instalador, imagem Docker,
    pastas e volumes antigos, linhas de cron apontando para pasta inexistente) **e de todas as
    telas que não usamos mais** — entre elas a tela antiga "Novo agendamento" (painel lateral da
-   Agenda, `app/app/agenda/_client.tsx`), substituída pelo pop-up "Novo compromisso".
+   Agenda, `app/app/agenda/_client.tsx`), substituída pelo pop-up "Novo compromisso". Também sai o componente `HistoricoDaAgenda` (e a vitrine da Agenda, que é a única que ainda o usa), junto com as quatro linhas de `JUSTIFICADOS` em `tests/unit/controle-decorativo.test.ts`.
 2. Instalador (`instalar-vps.sh`) e roteiro de migração para a VPS nova; testar em VPS limpa;
    migrar com o atual no ar. Antes: cópia segura do `.env.local` (chaves que cifram dados do banco).
 

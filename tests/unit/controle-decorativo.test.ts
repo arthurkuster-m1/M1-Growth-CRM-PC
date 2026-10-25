@@ -160,7 +160,16 @@ const LIGADAS = propsLigadasNoProduto();
  * ENCOLHE — e entrada nova precisa dizer POR QUE a tela do produto legitimamente
  * não liga aquele botão.
  */
-const JUSTIFICADOS: Record<string, string> = {};
+const JUSTIFICADOS: Record<string, string> = {
+  // A lista Próximos/Aguardando/Passados/Cancelados saiu da página da Agenda em 26/10/2026
+  // (pedido do dono: abrir direto no calendário). O componente `HistoricoDaAgenda` segue só na
+  // vitrine e nos testes, SEM botão visível ao usuário do produto. Entra na limpeza do
+  // "Fechamento do projeto" (PLANO-M1 §4): apagar o componente e estas quatro linhas juntos.
+  onConfirmar: "HistoricoDaAgenda fora da tela do produto (26/10/2026) — remover no Fechamento",
+  onRemarcar: "HistoricoDaAgenda fora da tela do produto (26/10/2026) — remover no Fechamento",
+  onRealizado: "HistoricoDaAgenda fora da tela do produto (26/10/2026) — remover no Fechamento",
+  onFaltou: "HistoricoDaAgenda fora da tela do produto (26/10/2026) — remover no Fechamento",
+};
 
 describe("nenhum botão fica cinza por falta de fiação", () => {
   it("a varredura enxerga os dois lados (senão ela mede o vazio)", () => {
@@ -185,7 +194,7 @@ describe("nenhum botão fica cinza por falta de fiação", () => {
       mudos.map((b) => b.onde),
       "Botão sem `onClick` não fica cinza: ele parece ATIVO, o cursor vira mãozinha, e o " +
         "clique não faz nada — o usuário conclui que o produto está quebrado e não tem o " +
-        "que reportar além de \"não acontece nada\". Foi o \"Ver na agenda\" da v1.8.0. " +
+        'que reportar além de "não acontece nada". Foi o "Ver na agenda" da v1.8.0. ' +
         "Ligue o handler, ou desabilite COM o motivo à vista (`disabled` + `title`), que é " +
         "o padrão desta casa.",
     ).toEqual([]);
@@ -196,7 +205,7 @@ describe("nenhum botão fica cinza por falta de fiação", () => {
     // exclusões a varredura acusaria 19 botões corretos e ninguém a manteria —
     // gate que grita demais é gate que se desliga.
     expect(ehMudo('<Button size="sm">Ver</Button>', "")).toBe(true);
-    expect(ehMudo('<Button onClick={x}>Ver</Button>', "")).toBe(false);
+    expect(ehMudo("<Button onClick={x}>Ver</Button>", "")).toBe(false);
     expect(ehMudo('<Button asChild><Link href="/x">Ver</Link></Button>', "")).toBe(false);
     expect(ehMudo('<Button type="submit">Salvar</Button>', "")).toBe(false);
     // `disabled` com o motivo à vista é o padrão CORRETO — o controle diz por
@@ -204,13 +213,15 @@ describe("nenhum botão fica cinza por falta de fiação", () => {
     expect(ehMudo('<Button disabled title="ainda não implementado">X</Button>', "")).toBe(false);
     // E o gatilho que dá o comportamento mora no PAI (`<DropdownMenuTrigger
     // asChild>`), não nos atributos do próprio botão.
-    expect(ehMudo('<Button size="sm">Mover…</Button>', "<DropdownMenuTrigger asChild>")).toBe(false);
+    expect(ehMudo('<Button size="sm">Mover…</Button>', "<DropdownMenuTrigger asChild>")).toBe(
+      false,
+    );
   });
 
   it("toda callback que apaga um botão é passada por alguma tela do produto", () => {
-    const mortos = CONTROLES.filter(
-      (c) => !LIGADAS.has(c.prop) && !(c.prop in JUSTIFICADOS),
-    ).map((c) => `${c.onde} → ${c.prop}`);
+    const mortos = CONTROLES.filter((c) => !LIGADAS.has(c.prop) && !(c.prop in JUSTIFICADOS)).map(
+      (c) => `${c.onde} → ${c.prop}`,
+    );
 
     expect(
       mortos,

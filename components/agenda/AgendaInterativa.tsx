@@ -109,9 +109,11 @@ export function AgendaInterativa({
 }) {
   const localeDaData = useLocaleDeData();
   const t = useT();
-  const { data: horarios, isError: horariosFalharam } = useHorariosLivres(
-    tipo ? { event_type_id: tipo.id, de: recorte.de, ate: recorte.ate } : null,
-  );
+  const {
+    data: horarios,
+    isError: horariosFalharam,
+    isLoading: horariosCarregando,
+  } = useHorariosLivres(tipo ? { event_type_id: tipo.id, de: recorte.de, ate: recorte.ate } : null);
 
   const horariosPorDia = React.useMemo(() => {
     const mapa: Record<string, Array<{ instante: string; rotulo: string }>> = {};
@@ -196,7 +198,10 @@ export function AgendaInterativa({
     if (!pendente) return;
     const alvo = agendamentos.find((a) => a.id === pendente.id);
     if (!alvo) return;
-    const duracao = Math.max(differenceInMinutes(new Date(alvo.termina), new Date(alvo.comeca)), 15);
+    const duracao = Math.max(
+      differenceInMinutes(new Date(alvo.termina), new Date(alvo.comeca)),
+      15,
+    );
     const comeca = new Date(pendente.instante);
     const antes = { comeca: alvo.comeca, termina: alvo.termina };
     setOtimista({
@@ -228,7 +233,11 @@ export function AgendaInterativa({
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-2", className)}>
-      {horarios?.google_cobertura_parcial && <p role="status" className="text-xs text-warning">{t("Ocupação do Google ainda não verificada neste período.")}</p>}
+      {horarios?.google_cobertura_parcial && (
+        <p role="status" className="text-xs text-warning">
+          {t("Ocupação do Google ainda não verificada neste período.")}
+        </p>
+      )}
       {tipos.length > 1 && (
         <div
           data-testid="tipo-da-grade"
@@ -268,7 +277,7 @@ export function AgendaInterativa({
           data-testid="motivo-da-grade"
           data-motivo={motivo}
           role="status"
-          className="rounded-sm border border-border bg-surface-sunken px-3 py-2 text-xs leading-4 text-text-muted"
+          className="bg-surface-sunken rounded-sm border border-border px-3 py-2 text-xs leading-4 text-text-muted"
         >
           {motivo === "sem-jornada" ? (
             <>
@@ -282,11 +291,19 @@ export function AgendaInterativa({
             </>
           ) : motivo === "erro" ? (
             <>
-              <span className="font-semibold text-text">{t("Não consegui carregar os horários.")}</span> {t("Os blocos ficam bloqueados até eu conseguir — é mais seguro que oferecer um horário que talvez não exista.")}
+              <span className="font-semibold text-text">
+                {t("Não consegui carregar os horários.")}
+              </span>{" "}
+              {t(
+                "Os blocos ficam bloqueados até eu conseguir — é mais seguro que oferecer um horário que talvez não exista.",
+              )}
             </>
           ) : (
             <>
-              <span className="font-semibold text-text">{t("Nenhum horário livre neste período.")}</span> {t("Os blocos vazios continuam aqui, e o que estiver publicado fica clicável.")}
+              <span className="font-semibold text-text">
+                {t("Nenhum horário livre neste período.")}
+              </span>{" "}
+              {t("Os blocos vazios continuam aqui, e o que estiver publicado fica clicável.")}
             </>
           )}
         </div>
@@ -304,9 +321,13 @@ export function AgendaInterativa({
           <p className="text-xs leading-4 text-text">
             {t("Remarcar")} <span className="font-semibold">{nomeDoPendente}</span> {t("para")}{" "}
             <span className="font-semibold">
-              {format(dataDeParede(new Date(pendente.instante), fuso), t("EEEE, d 'de' MMMM 'às' HH:mm"), {
-                locale: localeDaData,
-              })}
+              {format(
+                dataDeParede(new Date(pendente.instante), fuso),
+                t("EEEE, d 'de' MMMM 'às' HH:mm"),
+                {
+                  locale: localeDaData,
+                },
+              )}
             </span>
             {t("? Quem foi atendido recebe o aviso da mudança.")}
           </p>
@@ -352,6 +373,7 @@ export function AgendaInterativa({
             ? {
                 horariosPorDia,
                 motivo,
+                carregando: horariosCarregando,
                 duracaoMin: tipo.duracaoMin,
                 onMarcarEm,
                 onArrastarPara: ({ instante, razao, id }) => {
@@ -360,7 +382,12 @@ export function AgendaInterativa({
                     // está na disponibilidade publicada. Remarcar assim mesmo
                     // criaria um compromisso que o motor não teria oferecido.
                     setPendente(null);
-                    setRecusa(t("Não dá para remarcar para esse horário — {motivo}.").replace("{motivo}", t(razao)));
+                    setRecusa(
+                      t("Não dá para remarcar para esse horário — {motivo}.").replace(
+                        "{motivo}",
+                        t(razao),
+                      ),
+                    );
                     return;
                   }
                   setRecusa(null);
