@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
 import { registrarTentativaNaCadencia } from "@/lib/cadencia/progresso";
+import { iniciarAbordagemDosLeads } from "@/lib/cadencia/iniciar-abordagem";
 import { subirDeEtapaAoResponder } from "@/lib/cadencia/subir-de-etapa";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,7 +17,15 @@ vi.mock("@/lib/impersonate/support", async (importOriginal) => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn(() => ({})) }));
-vi.mock("@/lib/agenda/remarcacao", () => ({ registrarTentativaNaRemarcacao: vi.fn(async () => "sem_remarcacao") }));
+vi.mock("@/lib/agenda/remarcacao", () => ({
+  registrarTentativaNaRemarcacao: vi.fn(async () => "sem_remarcacao"),
+}));
+vi.mock("@/lib/cadencia/iniciar-abordagem", () => ({
+  iniciarAbordagemDosLeads: vi.fn(async () => ({ movidos: 0, recusados: 0 })),
+}));
+vi.mock("@/lib/tags/categoria-do-funil", () => ({
+  garantirCategoriaDoFunil: vi.fn(async () => undefined),
+}));
 vi.mock("@/lib/cadencia/subir-de-etapa", () => ({
   subirDeEtapaAoResponder: vi.fn(async () => "movido"),
 }));
@@ -197,6 +206,20 @@ describe("POST /contacts/[id]/atividades", () => {
     vi.mocked(registrarTentativaNaCadencia).mockResolvedValueOnce("sem_cadencia");
     await POST(pedido({ acao: "ligacao", resultado: "Atendeu — falou com o decisor" }), ctx);
     expect(sobe).not.toHaveBeenCalled();
+  });
+
+  it("a primeira ação de abordagem dá a largada (Novo lead → Abordagem); ação sem resultado não", async () => {
+    const inicia = vi.mocked(iniciarAbordagemDosLeads);
+    inicia.mockClear();
+    vi.mocked(createClient).mockResolvedValue(supabaseFake([]).cliente);
+    await POST(pedido({ acao: "ligacao", resultado: "Não atendeu" }), ctx);
+    expect(inicia).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ leadIds: [LEAD], motivo: "cadencia:primeira_acao" }),
+    );
+    inicia.mockClear();
+    await POST(pedido({ acao: "reuniao", resultado: "Foi bem" }), ctx);
+    expect(inicia).not.toHaveBeenCalled();
   });
 
   it("a tag da ação soma com contador (segunda vez = 2x)", async () => {

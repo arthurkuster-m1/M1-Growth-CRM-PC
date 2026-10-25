@@ -27,10 +27,12 @@ import {
   tagsAutomaticasDaAbordagem,
 } from "@/lib/leads/tags-automaticas";
 import { registrarTentativaNaRemarcacao } from "@/lib/agenda/remarcacao";
+import { iniciarAbordagemDosLeads } from "@/lib/cadencia/iniciar-abordagem";
 import { subirDeEtapaAoResponder } from "@/lib/cadencia/subir-de-etapa";
 import { registrarTentativaNaCadencia } from "@/lib/cadencia/progresso";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { garantirCategoriaDoFunil } from "@/lib/tags/categoria-do-funil";
 import { categoriaPorRegra, lerConfigDeCategorias } from "@/lib/tags/categorias";
 import { chaveDaEtiqueta } from "@/lib/tags/cor-da-etiqueta";
 
@@ -113,7 +115,7 @@ export async function POST(
 
   let query = supabase
     .from("crm_leads")
-    .select("id")
+    .select("id, pipeline_id, pipeline:crm_pipelines(name)")
     .eq("organization_id", orgId)
     .eq("contact_id", contactId.data)
     .order("created_at", { ascending: false })
@@ -176,10 +178,36 @@ export async function POST(
     .eq("id", contactId.data)
     .eq("organization_id", orgId);
 
+  // "Abordagem: <nome>" é própria do funil: ganha a categoria de tags dele (nome do funil e cor).
+  if (automaticas.abordagem) {
+    try {
+      const l = lead as unknown as {
+        pipeline_id: string;
+        pipeline: { name: string } | { name: string }[] | null;
+      };
+      const funil = Array.isArray(l.pipeline) ? l.pipeline[0] : l.pipeline;
+      await garantirCategoriaDoFunil(createAdminClient(), {
+        organizationId: orgId,
+        pipelineId: l.pipeline_id,
+        nomeDoFunil: funil?.name ?? "",
+        tags: [automaticas.abordagem],
+      });
+    } catch {
+      // É só a cor e o agrupamento da tag: não derruba o registro da ação.
+    }
+  }
+
   // A cadência do lead: contato encerra, sem contato o passo é dado como feito.
   if (exigeResultado(corpo.data.acao)) {
     try {
       const admin = createAdminClient();
+      // A primeira ação sobre o lead (ligação, mensagem, e-mail) é a largada: quem ainda era
+      // "Novo lead" passa para "Abordagem" e a cadência começa — esta ação já conta como o passo 1.
+      await iniciarAbordagemDosLeads(admin, {
+        organizationId: orgId,
+        leadIds: [(lead as { id: string }).id],
+        motivo: "cadencia:primeira_acao",
+      });
       const resultadoDaCadencia = await registrarTentativaNaCadencia(admin, {
         organizationId: orgId,
         leadId: (lead as { id: string }).id,
