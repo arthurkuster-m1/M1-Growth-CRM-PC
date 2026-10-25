@@ -14,7 +14,13 @@ import { traduzir } from "@/lib/i18n/dicionario";
  * sessão e o cliente admin (a escrita não passa pelo papel `authenticated`). Escrever só vale com a
  * campanha PREPARADA (`ready`): antes não há lista, depois a mensagem já foi congelada para o envio.
  */
-export async function autorizarRevisao(admin: SupabaseClient, id: string, escrita: boolean) {
+export async function autorizarRevisao(
+  admin: SupabaseClient,
+  id: string,
+  escrita: boolean,
+  /** A continuação da conversa age com o disparo já rodando: não exige a campanha preparada. */
+  exigePreparada = true,
+) {
   const requestId = randomUUID();
   const authz = await requireRole("manager", { requestId, resource: "campaigns" });
   if (!authz.ok) return { ok: false as const, response: authz.response };
@@ -27,7 +33,7 @@ export async function autorizarRevisao(admin: SupabaseClient, id: string, escrit
     };
   }
   const campanha: CampanhaCarregada = carregada.campanha;
-  if (escrita && campanha.status !== "ready") {
+  if (escrita && exigePreparada && campanha.status !== "ready") {
     return {
       ok: false as const,
       response: fail(
