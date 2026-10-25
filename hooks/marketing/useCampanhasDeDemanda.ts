@@ -448,6 +448,7 @@ export type EdicaoDeAbordagem = Partial<
     | "script"
     | "follow_up"
     | "notes"
+    | "central_idea"
     | "position"
   >
 >;

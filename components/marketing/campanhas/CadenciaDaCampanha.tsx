@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CartaoDaAbordagem } from "@/components/marketing/campanhas/AbordagensDaCampanha";
+import { FluxoDaAbordagem } from "@/components/marketing/campanhas/FluxoDaAbordagem";
 import { rotuloDoMeio } from "@/components/marketing/campanhas/rotulos";
 import { useConfirmar } from "@/components/marketing/campanhas/useConfirmar";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
@@ -443,7 +444,7 @@ export function CadenciaDaCampanha({
         <h3 className="text-sm font-semibold">{t("Abordagens da campanha")}</h3>
         <p className="text-xs text-muted-foreground">
           {t(
-            "O roteiro de cada abordagem. A mesma abordagem pode ser usada em vários passos. Ligação é só o roteiro; o fluxo de conversa do WhatsApp vem na próxima etapa.",
+            "O roteiro de cada abordagem. A mesma abordagem pode ser usada em vários passos. Ligação é só o roteiro; no WhatsApp você também desenha o fluxo de conversa.",
           )}
         </p>
         {abordagens.length === 0 ? (
@@ -465,6 +466,15 @@ export function CadenciaDaCampanha({
                   editar={(patch) => void editarAbordagem(a.id, patch)}
                   apagar={() => void apagarAbordagem(a.id)}
                 />
+                {a.medium === "whatsapp" ? (
+                  <FluxoDaAbordagem
+                    campanhaId={campanhaId}
+                    abordagemId={a.id}
+                    ideiaCentral={a.central_idea ?? ""}
+                    podeEditar={podeEditar}
+                    aoEditarIdeia={(central_idea) => void editarAbordagem(a.id, { central_idea })}
+                  />
+                ) : null}
               </div>
             ))}
           </div>

@@ -32,12 +32,14 @@ export interface Abordagem {
   script: string;
   follow_up: string;
   notes: string;
+  /** A ideia central: o que a IA usa para escrever a mensagem de cada lead. */
+  central_idea: string;
   position: number;
   created_at: string;
 }
 
 export const COLUNAS_DA_ABORDAGEM =
-  "id, campaign_id, name, status, medium, audience, hook, script, follow_up, notes, position, created_at";
+  "id, campaign_id, name, status, medium, audience, hook, script, follow_up, notes, central_idea, position, created_at";
 
 const camposSchema = z.object({
   name: z.string().trim().min(1).max(160),
@@ -48,6 +50,7 @@ const camposSchema = z.object({
   script: z.string().trim().max(6000),
   follow_up: z.string().trim().max(6000),
   notes: z.string().trim().max(2000),
+  central_idea: z.string().trim().max(1500),
   position: z.number().finite(),
 });
 
