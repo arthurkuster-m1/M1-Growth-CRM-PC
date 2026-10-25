@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { GravadorDeAudio, OuvirAudio } from "@/components/marketing/campanhas/GravadorDeAudio";
 import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { useAudiosDaAbordagem } from "@/hooks/marketing/useAudiosDaAbordagem";
 import { useFluxoDaAbordagem } from "@/hooks/marketing/useCadencia";
@@ -70,7 +71,7 @@ export function FluxoDaAbordagem({
 }) {
   const t = useT();
   const { passos: salvos, carregando, salvar } = useFluxoDaAbordagem(campanhaId, abordagemId);
-  const { audios, enviar: enviarAudio } = useAudiosDaAbordagem(true);
+  const { audios, enviar: enviarAudio, ouvir: ouvirAudio } = useAudiosDaAbordagem(true);
   const [aberto, setAberto] = useState(false);
   const [rascunho, setRascunho] = useState<PassoEditavel[] | null>(null);
   const [selecionado, setSelecionado] = useState<number | null>(null);
@@ -292,6 +293,28 @@ export function FluxoDaAbordagem({
                   {t("O arquivo deste passo saiu da biblioteca. Escolha outro ou envie de novo.")}
                 </p>
               ) : null}
+              {passoAberto.audio_id && audios.some((a) => a.id === passoAberto.audio_id) ? (
+                <OuvirAudio
+                  audioId={passoAberto.audio_id}
+                  buscarUrl={(id) => ouvirAudio.mutateAsync(id)}
+                />
+              ) : null}
+              {!bloqueado ? (
+                <GravadorDeAudio
+                  ocupado={enviarAudio.isPending}
+                  aoGravar={(arquivo, nome) =>
+                    enviarAudio.mutate(
+                      { file: arquivo, name: nome },
+                      {
+                        onSuccess: (novo) => {
+                          trocar(passoAberto.k, { audio_id: novo.id, audio_label: novo.name });
+                          toast.success(t("Gravação guardada na biblioteca."));
+                        },
+                      },
+                    )
+                  }
+                />
+              ) : null}
               {!bloqueado ? (
                 <label className={`${BOTAO} w-fit cursor-pointer`}>
                   <Microphone size={16} aria-hidden />
@@ -320,7 +343,7 @@ export function FluxoDaAbordagem({
               ) : null}
               <p className="text-xs text-muted-foreground">
                 {t(
-                  "Grave o áudio no celular, envie o arquivo aqui e reutilize em outras abordagens. Vai até 8 MB.",
+                  "Grave aqui mesmo ou envie um arquivo gravado no celular, e reutilize em outras abordagens. Vai até 8 MB.",
                 )}
               </p>
             </div>

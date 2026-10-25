@@ -51790,3 +51790,13 @@ comment on table public.approach_audios is
   'Arquivos de voz gravados pela organização, reutilizáveis nos passos de áudio das abordagens. O arquivo mora no bucket whatsapp-media; só o servidor escreve.';
 
 notify pgrst, 'reload schema';
+
+-- ---- custo da IA da continuação da conversa (migration 0668) ----
+alter table public.campaign_recipients
+  add column if not exists flow_cost_cents numeric,
+  add column if not exists flow_tokens integer;
+
+comment on column public.campaign_recipients.flow_cost_cents is
+  'Custo acumulado da IA nas mensagens da continuação da conversa deste lead (a abertura fica em ai_cost_cents).';
+
+notify pgrst, 'reload schema';

@@ -228,8 +228,6 @@ no oficial).
 ## 13. O que ainda **não existe** (não é falha)
 
 - Enviar sozinho (sem aprovação) a continuação — por enquanto é sempre aprovada à mão.
-- Gravar o áudio direto no navegador e ouvi-lo na tela (hoje só se envia o arquivo).
 - Fluxo com ramificações (resposta positiva/negativa); hoje o fluxo é uma linha só.
 - Mensagem automática ao cliente depois da falta.
 - Destino "Nutrição" no fim da cadência; cadência fora de campanhas de Prospecção.
-- Custo da IA da continuação guardado (o da abertura já é guardado por lead).

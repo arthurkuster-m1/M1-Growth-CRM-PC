@@ -4,8 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import { PASSO_NOVO_DO_FLUXO } from "@/lib/cadencia/fluxo-da-abordagem";
 
 vi.mock("ai", () => ({
-  generateText: vi.fn(async () => ({ text: '"Que bom, Ana! Qual o melhor horário?"' })),
+  generateText: vi.fn(async () => ({
+    text: '"Que bom, Ana! Qual o melhor horário?"',
+    usage: { inputTokens: 80, outputTokens: 20 },
+  })),
 }));
+vi.mock("@/lib/ai/cost", () => ({ computeCost: vi.fn(async () => 0.4) }));
 vi.mock("@/lib/ai/cerebro-da-organizacao", () => ({
   cerebroDaOrganizacao: vi.fn(async () => ({ provider: "anthropic", model: "m", apiKey: "k" })),
 }));
@@ -171,6 +175,21 @@ describe("continuarFluxoAoResponder", () => {
       proposal_body: "Que bom, Ana! Qual o melhor horário?",
       proposal_ai: true,
     });
+  });
+
+  it("guarda o custo e os tokens da IA na continuação, somando ao que já havia", async () => {
+    const f = fake({ passos: [abertura, PASSO_NOVO_DO_FLUXO("aguardar"), ia] });
+    await continuarFluxoAoResponder(f.admin, resposta);
+    expect(f.updates[f.updates.length - 1]).toMatchObject({
+      flow_cost_cents: 0.4,
+      flow_tokens: 100,
+    });
+  });
+
+  it("texto fixo não gasta IA: não grava custo", async () => {
+    const f = fake({ passos: [abertura, PASSO_NOVO_DO_FLUXO("aguardar"), fixa] });
+    await continuarFluxoAoResponder(f.admin, resposta);
+    expect(f.updates[f.updates.length - 1]).not.toHaveProperty("flow_cost_cents");
   });
 
   it("áudio vira proposta de áudio, sem envio", async () => {

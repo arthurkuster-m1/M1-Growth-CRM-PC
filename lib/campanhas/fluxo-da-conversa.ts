@@ -5,6 +5,7 @@ import { generateText } from "ai";
 
 import { sendMessageHandler } from "@/app/api/v1/messages/_handler";
 import { cerebroDaOrganizacao } from "@/lib/ai/cerebro-da-organizacao";
+import { computeCost } from "@/lib/ai/cost";
 import { buildModel } from "@/lib/ai/runtime/agent";
 import type { PassoDoFluxo } from "@/lib/cadencia/fluxo-da-abordagem";
 import { capabilitiesOf, type ChannelProvider } from "@/lib/channels/capabilities";
@@ -47,11 +48,13 @@ export interface DestinatarioDoFluxo {
   proposal_kind: "mensagem" | "audio" | null;
   proposal_body: string | null;
   proposal_ai: boolean;
+  flow_cost_cents: number | null;
+  flow_tokens: number | null;
 }
 
 const COLUNAS =
   "id, organization_id, campaign_id, contact_id, conversation_id, channel_session_id, rendered_body, sent_at, " +
-  "flow_state, flow_step, flow_wait_until, proposal_kind, proposal_body, proposal_ai";
+  "flow_state, flow_step, flow_wait_until, proposal_kind, proposal_body, proposal_ai, flow_cost_cents, flow_tokens";
 
 interface Contexto {
   dest: DestinatarioDoFluxo;
@@ -135,12 +138,28 @@ async function respostasDoLead(admin: SupabaseClient, ctx: Contexto): Promise<st
     .reverse();
 }
 
+/** O texto que a IA escreveu e o que ele custou. */
+interface TextoDaContinuacao {
+  texto: string;
+  custo: number;
+  tokens: number;
+}
+
+/** O custo acumulado do lead depois de mais uma mensagem da IA. */
+function somarCusto(dest: DestinatarioDoFluxo, gasto: TextoDaContinuacao | null) {
+  if (!gasto) return {};
+  return {
+    flow_cost_cents: Number(dest.flow_cost_cents ?? 0) + gasto.custo,
+    flow_tokens: Number(dest.flow_tokens ?? 0) + gasto.tokens,
+  };
+}
+
 /** A IA escreve a continuação a partir da resposta do lead. Devolve null se não conseguiu. */
 async function escreverContinuacao(
   admin: SupabaseClient,
   ctx: Contexto,
   passo: PassoDoFluxo,
-): Promise<string | null> {
+): Promise<TextoDaContinuacao | null> {
   try {
     const cerebro = await cerebroDaOrganizacao(admin, ctx.dest.organization_id);
     if ("erro" in cerebro) return null;
@@ -158,7 +177,16 @@ async function escreverContinuacao(
       }),
       maxOutputTokens: 300,
     });
-    return limparMensagemDaIA(r.text) || null;
+    const texto = limparMensagemDaIA(r.text);
+    if (!texto) return null;
+    const entrada = r.usage?.inputTokens ?? 0;
+    const saida = r.usage?.outputTokens ?? 0;
+    const custo = await computeCost({
+      model: cerebro.model,
+      promptTokens: entrada,
+      completionTokens: saida,
+    }).catch(() => 0);
+    return { texto, custo, tokens: entrada + saida };
   } catch (e) {
     logger.warn("[campanha] a IA não escreveu a continuação", {
       recipient_id: ctx.dest.id,
@@ -221,8 +249,9 @@ async function avancar(
       flow_stop_reason: null,
       proposal_kind: "mensagem",
       // Se a IA não conseguiu, o texto do passo (se houver) é o ponto de partida; vazio, a pessoa escreve.
-      proposal_body: daIA ?? fixa,
+      proposal_body: daIA?.texto ?? fixa,
       proposal_ai: daIA !== null,
+      ...somarCusto(ctx.dest, daIA),
     });
     return;
   }
@@ -609,8 +638,8 @@ export async function reescreverProposta(
   const { passos } = await passosDoDisparo(admin, input.organizationId, ctx.campanha);
   const passo = passos[ctx.dest.flow_step ?? -1];
   if (!passo || passo.kind !== "mensagem") return NAO_ACHEI;
-  const texto = await escreverContinuacao(admin, ctx, passo);
-  if (!texto) {
+  const nova = await escreverContinuacao(admin, ctx, passo);
+  if (!nova) {
     return {
       ok: false,
       mensagem: "A IA não conseguiu escrever agora. Escreva à mão.",
@@ -619,7 +648,7 @@ export async function reescreverProposta(
   }
   await admin
     .from("campaign_recipients")
-    .update({ proposal_body: texto, proposal_ai: true })
+    .update({ proposal_body: nova.texto, proposal_ai: true, ...somarCusto(ctx.dest, nova) })
     .eq("organization_id", input.organizationId)
     .eq("id", input.recipientId)
     .eq("flow_state", "proposta_pendente");
@@ -642,6 +671,8 @@ export interface ItemDaContinuacao {
 
 export interface ContinuacoesDoDisparo {
   resumo: Record<EstadoDoFluxo, number>;
+  /** O que a IA gastou nas mensagens da continuação deste disparo. */
+  custo_cents: number;
   itens: ItemDaContinuacao[];
 }
 
@@ -710,5 +741,6 @@ export async function listarContinuacoes(
       motivo: l.flow_stop_reason,
     });
   }
-  return { resumo, itens };
+  const custo_cents = linhas.reduce((t, l) => t + Number(l.flow_cost_cents ?? 0), 0);
+  return { resumo, custo_cents, itens };
 }
