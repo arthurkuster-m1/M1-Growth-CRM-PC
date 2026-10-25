@@ -29,7 +29,15 @@ entram aqui, com a mesma estrutura.
   sem título nem subtítulo; o calendário começa logo abaixo.
 - O botão **Sincronizar com Google** passa, no celular, para o cartão "Agenda conectada" no **fim da
   página**, embaixo de "Configurar suas agendas" e "Desconectar". No computador continua no topo.
-- O **filtro de pessoas** some no celular (decisão provisória). Se precisar dele lá, vai para o fim da página.
+- O **filtro de pessoas** (decisão revista no mesmo dia: **fica**) aparece no celular numa linha própria, logo abaixo do Hoje/visão e antes da agenda.
+
+### Visão Mês no computador (26/10/2026, 3º pedido)
+
+- A **ocupação vinda do Google fora de 07h–18h** (rotina pessoal: acordar, treino…) **não aparece** no mês. Compromissos nossos aparecem a qualquer hora.
+- Tudo em **ordem cronológica** (antes o das 9h aparecia antes do das 5h).
+- **Clicar numa faixa abre o compromisso** (a ocupação do Google não abre).
+- **Duplo clique num dia** (de hoje em diante) abre o novo compromisso naquele dia, às 9h (a pessoa ajusta na janela). Duplo clique numa faixa não cria nada.
+- A janela de 07h–18h vale só para o **mês**; semana/dia já desenham de 07h a 21h.
 
 ## 3. Decisões e limites
 
@@ -45,6 +53,7 @@ entram aqui, com a mesma estrutura.
 - Abrir no celular direto no **Dia** (hoje) ou na **Semana**? Hoje: Dia.
 - Arrastar para remarcar no celular (toque e segura) — já existe no computador.
 - Mostrar a grade cinza também para quem só lê.
+- Duplo clique no celular (no mês) — o gesto de dois toques costuma dar zoom; avaliar um toque longo.
 
 ## 4. Pendências novas (Arthur vai passando)
 
