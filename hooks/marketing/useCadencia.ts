@@ -9,6 +9,7 @@ import type {
   EntradaDaCadencia,
   ModeloDeCadencia,
 } from "@/lib/cadencia/cadencia";
+import type { PassoDoFluxo } from "@/lib/cadencia/fluxo-da-abordagem";
 import { registrarDesfazer } from "@/lib/motor/desfazer";
 
 const BASE = "/api/v1/demand-campaigns";
@@ -116,6 +117,44 @@ export function useCadenciaDaCampanha(campanhaId: string) {
       } catch (e) {
         showApiError(e);
         return null;
+      }
+    },
+  };
+}
+
+/** O fluxo de conversa de UMA abordagem de WhatsApp (desenho; nada é enviado). */
+export function useFluxoDaAbordagem(campanhaId: string, abordagemId: string) {
+  const queryClient = useQueryClient();
+  const chave = ["demand-approach-flow", abordagemId] as const;
+  const base = `${BASE}/${campanhaId}/approaches/${abordagemId}/flow`;
+  const consulta = useQuery({
+    queryKey: chave,
+    queryFn: async () =>
+      (await apiClient.get<{ data: { steps: PassoDoFluxo[] } }>(base)).data.steps,
+    staleTime: 10_000,
+  });
+  return {
+    passos: consulta.data ?? null,
+    carregando: consulta.isLoading,
+    salvar: async (steps: PassoDoFluxo[]): Promise<boolean> => {
+      const antes = consulta.data ?? null;
+      try {
+        await apiClient.put(base, { steps });
+        await queryClient.invalidateQueries({ queryKey: chave });
+        // Ctrl+Z: volta ao desenho de antes.
+        if (antes) {
+          registrarDesfazer({
+            rotulo: "fluxo da abordagem",
+            desfazer: async () => {
+              await apiClient.put(base, { steps: antes });
+              await queryClient.invalidateQueries({ queryKey: chave });
+            },
+          });
+        }
+        return true;
+      } catch (e) {
+        showApiError(e);
+        return false;
       }
     },
   };

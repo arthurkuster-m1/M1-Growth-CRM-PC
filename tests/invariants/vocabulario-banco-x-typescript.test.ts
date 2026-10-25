@@ -73,6 +73,12 @@ const PARES: Array<{
     simbolo: "MEIOS_DA_ABORDAGEM",
   },
   {
+    tabela: "demand_approach_steps",
+    coluna: "kind",
+    arquivo: "lib/cadencia/fluxo-da-abordagem.ts",
+    simbolo: "TIPOS_DE_PASSO_DO_FLUXO",
+  },
+  {
     tabela: "extension_operations",
     coluna: "kind",
     // O recibo das extensões (0271). Quatro cópias no TypeScript viraram uma; um kind
