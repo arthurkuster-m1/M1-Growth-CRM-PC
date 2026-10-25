@@ -52,6 +52,12 @@ export function tagAutomaticaCanonica(cru: string): string | null {
   // As marcas de estado que a abordagem põe sozinha.
   if (/^contato$/i.test(texto)) return "Contato";
   if (/^contato com decisor$/i.test(texto)) return "Contato com decisor";
+  // "Contato · <funil>" e "Contato com decisor · <funil>": o funil mantém a caixa que tem.
+  const estado = /^(contato com decisor|contato)\s·\s(.+)$/i.exec(texto);
+  if (estado && estado[2]!.trim()) {
+    const base = /^contato com decisor/i.test(estado[1]!) ? "Contato com decisor" : "Contato";
+    return `${base} · ${estado[2]!.trim()}`.slice(0, TAMANHO_MAXIMO_DA_TAG_AUTOMATICA);
+  }
   const m = /^(campanha|ad|lp|conjunto|funil|abordagem)\s*:\s*(.+)$/i.exec(texto);
   if (!m) return null;
   const nome = m[2]!.trim();

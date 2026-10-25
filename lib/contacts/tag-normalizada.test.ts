@@ -10,6 +10,13 @@ describe("as tags da abordagem mantêm a caixa e o nome inteiro", () => {
     expect(normalizarTag(longa)).toBe(longa.slice(0, 60));
   });
 
+  it("'Contato · Funil' mantém a caixa do nome do funil", () => {
+    expect(normalizarTag("contato · [TESTE] Campanha Prospecção")).toBe(
+      "Contato · [TESTE] Campanha Prospecção",
+    );
+    expect(normalizarTag("CONTATO COM DECISOR · Funil A")).toBe("Contato com decisor · Funil A");
+  });
+
   it("tag digitada à mão segue em minúsculas e cortada em 40", () => {
     expect(normalizarTag("  VIP  ")).toBe("vip");
   });

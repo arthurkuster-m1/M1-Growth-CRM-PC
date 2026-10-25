@@ -20,6 +20,8 @@ import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
 import { MODELOS_DAS_OPORTUNIDADES } from "@/lib/clientes/modelos-de-visao";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
+import { useCadenciaAtiva } from "@/hooks/marketing/useCadenciaAtiva";
+import { rotuloDaCadencia } from "@/lib/cadencia/hoje";
 import { useCadenciaDeHoje } from "@/hooks/marketing/useCadenciaDeHoje";
 import { atrasoEmDias, venceAteHoje } from "@/lib/cadencia/hoje";
 import { useRadarDasOportunidades } from "@/hooks/leads/useRadarDasOportunidades";
@@ -212,6 +214,7 @@ const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "posicionamento",
   "resultado-rapido",
   "tentativas",
+  "cadencia",
 ]);
 /** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
 const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
@@ -308,6 +311,9 @@ export function ClientesCRM({
   const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const cadenciaDeHoje = useCadenciaDeHoje(modo === "oportunidades");
+  const cadenciaAtiva = useCadenciaAtiva(modo === "oportunidades");
+  /** `?cadencia=ativa` (todos em cadência) ou `?cadencia=2` (os que estão no passo 2). */
+  const cadenciaFiltro = parametros.get("cadencia");
   const [destaque, setDestaque] = useState<
     null | "ligarhoje" | "cadencia" | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
   >(null);
@@ -1747,6 +1753,23 @@ export function ClientesCRM({
       },
     },
     {
+      id: "cadencia",
+      titulo: t("Cadência"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 200,
+      padrao: false,
+      celula: (l) => {
+        const c = l.participacao ? cadenciaAtiva.porLead.get(l.participacao.lead_id) : undefined;
+        if (!c) return <span className="block px-2 text-sm text-muted-foreground">—</span>;
+        return (
+          <span className="block truncate px-2 text-sm">
+            {t(rotuloDaCadencia(c))}
+            {c.atrasado ? <span className="ml-1 text-error-fg">· {t("atrasado")}</span> : null}
+          </span>
+        );
+      },
+    },
+    {
       id: "origem-campanha",
       titulo: t("Campanha"),
       icone: <TextAa size={14} aria-hidden />,
@@ -2035,6 +2058,18 @@ export function ClientesCRM({
           : null,
     },
     {
+      id: "cadencia",
+      titulo: t("Cadência (passo)"),
+      tipo: "opcao",
+      valorDe: (l) => {
+        const c = l.participacao ? cadenciaAtiva.porLead.get(l.participacao.lead_id) : undefined;
+        return c ? String(c.passo) : "";
+      },
+      opcoes: [...new Set(cadenciaAtiva.leads.map((c) => c.passo))]
+        .sort((a, b) => a - b)
+        .map((n) => ({ id: String(n), rotulo: `${t("Passo")} ${n}` })),
+    },
+    {
       id: "origem-campanha",
       titulo: t("Campanha (origem)"),
       tipo: "texto",
@@ -2230,11 +2265,18 @@ export function ClientesCRM({
         return true;
     }
   };
+  const passaNaCadencia = (l: Linha): boolean => {
+    if (!cadenciaFiltro) return true;
+    const c = l.participacao ? cadenciaAtiva.porLead.get(l.participacao.lead_id) : undefined;
+    if (!c) return false;
+    return cadenciaFiltro === "ativa" || String(c.passo) === cadenciaFiltro;
+  };
   const comVendaNoFiltro = (l: Linha) => statusDasVendas.size === 0 || vendasVisiveis(l).length > 0;
   const visiveis = buscadas.filter(
     (l) =>
       comVendaNoFiltro(l) &&
       (!destaque || passaNoDestaque(l)) &&
+      passaNaCadencia(l) &&
       (!cicloFiltro || l.ciclo_de_vida === cicloFiltro) &&
       (!etapasFiltro || etapasFiltro.includes(l.participacao?.etapa_id ?? "")),
   );
@@ -2882,6 +2924,30 @@ export function ClientesCRM({
             }
           }}
         />
+      ) : null}
+
+      {cadenciaFiltro ? (
+        <p className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            {t("Mostrando só quem está em")}{" "}
+            <strong>
+              {cadenciaFiltro === "ativa" ? t("cadência") : `${t("cadência")} · ${t("passo")} ${cadenciaFiltro}`}
+            </strong>{" "}
+            · {visiveis.length} {visiveis.length === 1 ? t("lead") : t("leads")}
+          </span>
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => {
+              const p = new URLSearchParams(parametros.toString());
+              p.delete("cadencia");
+              const qs = p.toString();
+              router.replace(qs ? `${caminho}?${qs}` : caminho, { scroll: false });
+            }}
+          >
+            {t("Limpar")}
+          </button>
+        </p>
       ) : null}
 
       {destaque ? (

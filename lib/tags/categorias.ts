@@ -43,6 +43,7 @@ export function categoriaPorRegra(tag: string): string | null {
   if (/^funil\s*:/.test(t)) return "funil";
   // As tags que a abordagem põe sozinha (lib/leads/tags-automaticas.ts) são do funil.
   if (t === "contato" || t === "contato com decisor") return "funil";
+  if (/^contato( com decisor)?\s·\s/.test(t)) return "funil";
   if (/^abordagem\s*:/.test(t)) return "funil";
   if (t === "mql") return "qualificacao";
   const base = t.replace(/:\s*\d+x$/, "").trim();

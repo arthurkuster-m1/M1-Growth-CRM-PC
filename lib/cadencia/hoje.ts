@@ -29,3 +29,22 @@ export function atrasoEmDias(venceEm: string, hojeIso: string): number {
 /** Vence hoje ou já venceu. */
 export const venceAteHoje = (venceEm: string, hojeIso: string) =>
   atrasoEmDias(venceEm, hojeIso) >= 0;
+
+/** Onde um lead está na cadência (para a coluna e o filtro "Cadência" do CRM). */
+export interface LeadEmCadencia {
+  lead_id: string;
+  /** 1-based; no prazo de resposta fica no último. */
+  passo: number;
+  total: number;
+  /** O dia do passo (D+N); nulo quando está só aguardando a resposta. */
+  dia: number | null;
+  aguardando: boolean;
+  atrasado: boolean;
+}
+
+/** "D+2 · passo 2 de 3", "D0 · passo 1 de 3" ou "aguardando resposta". */
+export function rotuloDaCadencia(l: LeadEmCadencia): string {
+  if (l.aguardando) return "aguardando resposta";
+  const dia = l.dia === 0 ? "D0" : `D+${l.dia}`;
+  return `${dia} · passo ${l.passo} de ${l.total}`;
+}

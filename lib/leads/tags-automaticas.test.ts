@@ -74,3 +74,27 @@ describe("o nome da abordagem entra inteiro na tag", () => {
     expect(duas.every((t) => t.length <= 60)).toBe(true);
   });
 });
+
+describe("as tags de contato levam o funil no nome", () => {
+  it("'Contato · Funil' e 'Contato com decisor · Funil', cabendo no teto de 60", () => {
+    const auto = tagsAutomaticasDaAbordagem({
+      resultado: "Atendeu — falou com o decisor",
+      funilNome: "[TESTE] Campanha Prospecção",
+    });
+    expect(auto.fixas).toEqual([
+      "Contato · [TESTE] Campanha Prospecção",
+      "Contato com decisor · [TESTE] Campanha Prospecção",
+    ]);
+    const longo = tagsAutomaticasDaAbordagem({
+      resultado: "Atendeu — falou com o decisor",
+      funilNome: "Um funil com um nome absurdamente comprido para estourar o teto das tags",
+    });
+    expect(longo.fixas.every((t) => t.length <= 60)).toBe(true);
+  });
+
+  it("não repete: o mesmo contato no mesmo funil não ganha 'Contato' duas vezes", () => {
+    const auto = tagsAutomaticasDaAbordagem({ resultado: "Atendeu", funilNome: "Funil A" });
+    const duas = aplicarTagsAutomaticas(aplicarTagsAutomaticas([], auto), auto);
+    expect(duas.filter((t) => t === "Contato · Funil A")).toHaveLength(1);
+  });
+});

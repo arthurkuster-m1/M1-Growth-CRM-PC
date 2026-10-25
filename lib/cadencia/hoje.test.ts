@@ -12,3 +12,19 @@ describe("atrasoEmDias", () => {
     expect(venceAteHoje(vence, "2026-10-19")).toBe(false);
   });
 });
+
+describe("rotuloDaCadencia", () => {
+  it("diz o dia e o passo, ou que aguarda a resposta", async () => {
+    const { rotuloDaCadencia } = await import("./hoje");
+    const base = { lead_id: "l", total: 3, atrasado: false };
+    expect(rotuloDaCadencia({ ...base, passo: 1, dia: 0, aguardando: false })).toBe(
+      "D0 · passo 1 de 3",
+    );
+    expect(rotuloDaCadencia({ ...base, passo: 2, dia: 2, aguardando: false })).toBe(
+      "D+2 · passo 2 de 3",
+    );
+    expect(rotuloDaCadencia({ ...base, passo: 3, dia: null, aguardando: true })).toBe(
+      "aguardando resposta",
+    );
+  });
+});

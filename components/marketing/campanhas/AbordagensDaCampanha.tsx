@@ -88,7 +88,7 @@ function Texto({
   );
 }
 
-function Cartao({
+export function CartaoDaAbordagem({
   a,
   podeEditar,
   editar,
@@ -425,7 +425,7 @@ export function AbordagensDaCampanha({
           />
         )}
         cartao={(l) => (
-          <Cartao
+          <CartaoDaAbordagem
             a={l.a}
             podeEditar={podeEditar}
             editar={(p) => void editar(l.a.id, p)}
