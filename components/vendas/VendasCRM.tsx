@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
+import { SeletorDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
@@ -177,7 +177,12 @@ export function VendasCRM() {
     router.replace(`${caminho}?${p.toString()}`, { scroll: false });
   }
   // ── Funis (como em Clientes): ver as vendas de cada funil/campanha ──
-  const funilEscolhido = parametros.get("funil") ?? "todos";
+  // `?funil=` aceita um id, vários separados por vírgula, ou nada (= todos os funis).
+  const idsEscolhidos = (parametros.get("funil") ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x && x !== "todos");
+  const funilEscolhido = idsEscolhidos.join(",") || "todos";
   const barraDeFunis = useVisualizacao("vendas-funis");
   const dadosDeFunis = useQuery({
     queryKey: ["clientes", "todos"],
@@ -216,10 +221,10 @@ export function VendasCRM() {
         canal: campanha.get(f.id)?.channel ?? null,
       }));
   }, [dadosDeFunis.data, barraDeFunis.preferencias.funis?.ordem]);
-  function escolherFunil(id: string) {
+  function escolherFunis(ids: string[]) {
     const p = new URLSearchParams(parametros.toString());
-    if (id === "todos") p.delete("funil");
-    else p.set("funil", id);
+    if (ids.length === 0) p.delete("funil");
+    else p.set("funil", ids.join(","));
     const qs = p.toString();
     router.replace(qs ? `${caminho}?${qs}` : caminho, { scroll: false });
   }
@@ -319,7 +324,7 @@ export function VendasCRM() {
     () =>
       vendas.filter(
         (v) =>
-          (funilEscolhido === "todos" || v.pipeline_id === funilEscolhido) &&
+          (idsEscolhidos.length === 0 || (v.pipeline_id !== null && idsEscolhidos.includes(v.pipeline_id))) &&
           (filtroStatus === null || v.status === filtroStatus) &&
           (!soComRecebimento || recebeuNoMes(v, mes)) &&
           (termo === "" ||
@@ -707,7 +712,8 @@ export function VendasCRM() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      {/* No celular o título, o subtítulo e o atalho para Clientes saem: a barra de abas do CRM já diz onde você está. */}
+      <header className="flex flex-wrap items-start justify-between gap-3 max-sm:hidden">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("Vendas")}</h1>
           <p className="text-sm text-muted-foreground">
@@ -834,10 +840,13 @@ export function VendasCRM() {
 
       <section
         aria-label={t("Resumo")}
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-5"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-5 max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
       >
         {numeros.map(([rotulo, valor]) => (
-          <div key={rotulo} className="bg-card px-4 py-3">
+          <div
+            key={rotulo}
+            className="bg-card px-4 py-3 max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2"
+          >
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {rotulo}
             </p>
@@ -847,7 +856,7 @@ export function VendasCRM() {
       </section>
 
 
-      <BarraDeFunis
+      <SeletorDeFunis
         funis={funisNaOrdem}
         arquivados={arquivadosDeFunis}
         filtros={{
@@ -857,10 +866,9 @@ export function VendasCRM() {
         aoFiltrar={(f) =>
           salvarFunis((atual) => ({ ...atual, status: f.status, canais: f.canais }))
         }
-        escolhido={funilEscolhido}
-        todosId="todos"
+        escolhidos={idsEscolhidos}
         podeOrganizar={podeEditarVisoes}
-        aoEscolher={escolherFunil}
+        aoEscolher={escolherFunis}
         aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
         aoArquivar={(ids, arquivar) =>
           salvarFunis((f) => {
@@ -909,14 +917,15 @@ export function VendasCRM() {
           aria-label={t("Buscar venda")}
           className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
-        <div className="flex flex-wrap gap-1.5">
+        {/* Os chips de situação: no celular, uma fila que rola de lado (sem quebrar em várias linhas). */}
+        <div className="flex flex-wrap gap-1.5 max-sm:order-last max-sm:w-full max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             aria-pressed={soComRecebimento}
             onClick={() => setSoComRecebimento((x) => !x)}
             title={t("Só as vendas com algum pagamento recebido no mês escolhido (mesmo comprometidas)")}
             className={cn(
-              "h-9 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+              "h-9 shrink-0 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
               soComRecebimento ? "border-green-600 bg-green-600/10" : "hover:bg-secondary",
             )}
           >
@@ -927,7 +936,7 @@ export function VendasCRM() {
             aria-pressed={filtroStatus === null}
             onClick={() => setFiltroStatus(null)}
             className={cn(
-              "h-9 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+              "h-9 shrink-0 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
               filtroStatus === null ? "border-primary bg-primary/10" : "hover:bg-secondary",
             )}
           >
@@ -940,7 +949,7 @@ export function VendasCRM() {
               aria-pressed={filtroStatus === s}
               onClick={() => setFiltroStatus(s)}
               className={cn(
-                "h-9 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
+                "h-9 shrink-0 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
                 filtroStatus === s ? "border-primary bg-primary/10" : "hover:bg-secondary",
               )}
             >
