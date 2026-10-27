@@ -166,6 +166,7 @@ export function VendasDoCliente({
       {editando ? (
         <DialogoDaVenda
           key={editando === "nova" ? "nova" : editando.id}
+          modo={editando === "nova" ? "oportunidade" : "venda"}
           venda={editando === "nova" ? null : editando}
           contatoInicial={{ contact_id: contactId, nome: nome ?? "" }}
           clientes={[]}

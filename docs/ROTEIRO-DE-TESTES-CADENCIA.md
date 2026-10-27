@@ -428,3 +428,22 @@ Em **Agenda**. Teste no computador e no celular.
 | 21.15 | **3 dias / Semana / Dia**: dia com ocupação do Google às **05:40**           | Nada aparece em cima do cabeçalho do dia (nome e número); o evento só aparece dentro da janela de horas da grade |           |
 | 21.16 | Escolha **Mês**, saia da Agenda e volte (ou atualize a página)              | A Agenda volta no **Mês**; o mesmo vale para Dia, 3 dias e Semana                                                |           |
 
+---
+
+## 23. Página da venda e status único (28/10/2026)
+
+| #    | Passo                                                                                  | Esperado                                                                                                              | Resultado |
+| ---- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------- |
+| 23.1 | **CRM**: na coluna **Venda**, clique no nome da venda                                  | Abre a **página da venda**: Título da oportunidade, Status da venda, Produtos e ticket médio, Pagamento, Anotações    |           |
+| 23.2 | Na mesma página, procure funil, cliente, origem, previsão, lembrete                    | **Não aparecem** (são da oportunidade); não há botão de apagar                                                        |           |
+| 23.3 | Mude o **título** na página da venda e salve                                           | O título da **oportunidade** muda junto (e o contrário também)                                                         |           |
+| 23.4 | Escreva uma **anotação** na venda                                                      | Aparece em **Comentários** na página da oportunidade (e vice-versa)                                                    |           |
+| 23.5 | **Produtos e ticket médio**: venda com 2 ou mais produtos                              | Mostra o total e o **ticket médio por produto**                                                                       |           |
+| 23.6 | **Pagamento**: forma, parcelas, recebidas e pendentes, recorrência                      | Funciona como antes; o status muda conforme as parcelas                                                               |           |
+| 23.7 | Abra a **oportunidade** (nome da oportunidade no CRM / quadro)                          | Continua a página **completa** de sempre                                                                              |           |
+| 23.8 | **Compromisso**: clique no status da venda                                              | Lista as **seis** opções, com os mesmos nomes e cores da página da venda: Possível venda, Comprometido, Pago, Recorrência ativa, Recorrência encerrada, Cancelado |           |
+| 23.9 | No compromisso, escolha **Pago**                                                       | Abre a **página da venda** para registrar o pagamento                                                                 |           |
+| 23.10| No compromisso, escolha **Cancelado**                                                  | Abre a página da venda já pedindo o **motivo** do cancelamento                                                        |           |
+| 23.11| No compromisso, escolha **Comprometido** ou **Recorrência ativa**                      | Grava na hora e o status muda também na página da venda e da oportunidade                                             |           |
+| 23.12| **Celular**: seção Oportunidade e Venda do compromisso                                  | Tudo cabe na largura da tela (nada some pelo lado direito)                                                            |           |
+

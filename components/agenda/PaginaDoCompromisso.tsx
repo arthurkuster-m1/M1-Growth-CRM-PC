@@ -24,7 +24,12 @@ import type { Bloco } from "@/lib/marketing/blocos";
 import { EditorDoCompromisso } from "./EditorDoCompromisso";
 import { pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useRouter } from "next/navigation";
-import type { Venda } from "@/lib/vendas";
+import {
+  ROTULO_DO_STATUS_DA_VENDA,
+  STATUS_DA_VENDA,
+  type StatusDaVenda,
+  type Venda,
+} from "@/lib/vendas";
 
 import { AtalhosDaOportunidade } from "./AtalhosDaOportunidade";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
@@ -107,21 +112,14 @@ const VENDIDAS = new Set([
   "recorrencia_encerrada",
 ]);
 
-const STATUS_DA_VENDA: Record<string, string> = {
-  interesse: "Em interesse",
-  comprometida: "Comprometida",
-  concluida: "Paga",
-  recorrencia_ativa: "Recorrência ativa",
-  recorrencia_encerrada: "Recorrência encerrada",
-  cancelada: "Não comprou",
-};
+/** As mesmas cores do status na página da venda (roxo, laranja, verde, azul, marrom, cinza). */
 const COR_DA_VENDA: Record<string, CorDaTag> = {
-  interesse: "azul",
-  comprometida: "amarelo",
+  interesse: "roxo",
+  comprometida: "laranja",
   concluida: "verde",
-  recorrencia_ativa: "verde",
-  recorrencia_encerrada: "cinza",
-  cancelada: "vermelho",
+  recorrencia_ativa: "azul",
+  recorrencia_encerrada: "marrom",
+  cancelada: "cinza",
 };
 
 type EtapaDoFunil = {
@@ -200,7 +198,9 @@ function PaginaExistente({
   const t = useT();
   const tag = useTagDeIdioma();
   const qc = useQueryClient();
-  const [editandoVenda, setEditandoVenda] = React.useState(false);
+  const [editandoVenda, setEditandoVenda] = React.useState<false | { status?: StatusDaVenda }>(
+    false,
+  );
 
   const consulta = useQuery({
     queryKey: ["agenda", "detalhe", id],
@@ -328,7 +328,7 @@ function PaginaExistente({
     onError: showApiError,
   });
   const mudarVenda = useMutation({
-    mutationFn: async (status: "comprometida" | "cancelada") =>
+    mutationFn: async (status: StatusDaVenda) =>
       apiClient.patch(`/api/v1/vendas/${a?.lead_id}`, { status }),
     onSuccess: () => {
       toast.success(t("Venda atualizada."));
@@ -510,7 +510,7 @@ function PaginaExistente({
               </div>
             </header>
 
-            <div className="grid min-w-0 gap-4 px-4 pb-4 sm:px-6">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 px-4 pb-4 sm:px-6">
               <Campo rotulo={t("Data e hora")}>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <div className="min-w-0 sm:w-64">
@@ -709,9 +709,9 @@ function PaginaExistente({
             </div>
 
             {cfg.blocos.oportunidade ? (
-              <div className="grid min-w-0 gap-4 px-4 pb-4 sm:px-6">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 px-4 pb-4 sm:px-6">
                 <section
-                  className="rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
+                  className="min-w-0 rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
                   data-testid="secao-oportunidade"
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
@@ -820,7 +820,7 @@ function PaginaExistente({
 
                 {venda ? (
                   <section
-                    className="rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
+                    className="min-w-0 rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
                     data-testid="secao-venda"
                   >
                     <h3 className="mb-2 text-base font-semibold">{t("Venda")}</h3>
@@ -840,28 +840,27 @@ function PaginaExistente({
                               cor={COR_DA_VENDA[venda.status] ?? "cinza"}
                               editavel
                             >
-                              {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
+                              {t(ROTULO_DO_STATUS_DA_VENDA[venda.status] ?? venda.status)}
                             </Tag>
                           }
-                          opcoes={(
-                            [
-                              ["comprometida", "Comprometida"],
-                              ["concluida", "Paga"],
-                              ["cancelada", "Não comprou"],
-                            ] as const
-                          ).map(([novo, rotulo]) => ({
+                          // O MESMO campo e as MESMAS opções da página da venda. Pago, Cancelado e
+                          // Recorrência encerrada abrem a página da venda (pagamento ou motivo); os
+                          // demais gravam na hora.
+                          opcoes={STATUS_DA_VENDA.map((novo) => ({
                             id: novo,
-                            rotulo: t(rotulo),
+                            rotulo: t(ROTULO_DO_STATUS_DA_VENDA[novo]),
                             desabilitado: mudarVenda.isPending || venda.status === novo,
                             aoEscolher: () =>
-                              novo === "concluida"
-                                ? pedirPagamentoDaOportunidade(a.lead_id!)
+                              novo === "concluida" ||
+                              novo === "cancelada" ||
+                              novo === "recorrencia_encerrada"
+                                ? setEditandoVenda({ status: novo })
                                 : mudarVenda.mutate(novo),
                           }))}
                         />
                       ) : (
                         <Tag cor={COR_DA_VENDA[venda.status] ?? "cinza"}>
-                          {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
+                          {t(ROTULO_DO_STATUS_DA_VENDA[venda.status] ?? venda.status)}
                         </Tag>
                       )}
                     </div>
@@ -911,7 +910,7 @@ function PaginaExistente({
                             size="sm"
                             variant="outline"
                             className="rounded-xl"
-                            onClick={() => setEditandoVenda(true)}
+                            onClick={() => setEditandoVenda({})}
                           >
                             {t("Editar venda e parcelas")}
                           </Button>
@@ -974,6 +973,8 @@ function PaginaExistente({
         {editandoVenda && venda ? (
           <DialogoDaVenda
             key={venda.id}
+            modo="venda"
+            abrirComStatus={editandoVenda.status}
             venda={venda}
             contatoInicial={{ contact_id: venda.contact_id, nome: venda.cliente?.nome ?? "" }}
             clientes={[]}

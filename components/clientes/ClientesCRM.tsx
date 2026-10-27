@@ -317,7 +317,11 @@ export function ClientesCRM({
   /** Status de venda que a tabela mostra (vazio = todos): "só abertas", "só concluídas"… */
   // (guardado na visualização: ver `statusDasVendas` logo depois de `preferencias`)
   /** A venda aberta no popup (carregada inteira ao clicar). */
-  const [vendaAberta, setVendaAberta] = useState<{ venda: Venda; nome: string } | null>(null);
+  const [vendaAberta, setVendaAberta] = useState<{
+    venda: Venda;
+    nome: string;
+    modo: "oportunidade" | "venda";
+  } | null>(null);
   /** O número do topo que está "aberto": a lista mostra só quem compõe aquele número. */
   const cadenciaDeHoje = useCadenciaDeHoje(modo === "oportunidades");
   const cadenciaAtiva = useCadenciaAtiva(modo === "oportunidades");
@@ -574,13 +578,17 @@ export function ClientesCRM({
     return { pago, comprometido, aReceber: Math.max(0, comprometido - pago), interesse };
   };
   /** Abre o popup da venda (carrega a venda inteira: itens, parcelas, origem…). */
-  async function abrirVenda(l: Linha, vendaId: string) {
+  async function abrirVenda(
+    l: Linha,
+    vendaId: string,
+    modo: "oportunidade" | "venda" = "oportunidade",
+  ) {
     try {
       const r = await apiClient.get<{ data: { vendas: Venda[] } }>(
         `/api/v1/vendas?contato=${l.contact_id}`,
       );
       const venda = r.data.vendas.find((v) => v.id === vendaId);
-      if (venda) setVendaAberta({ venda, nome: l.nome });
+      if (venda) setVendaAberta({ venda, nome: l.nome, modo });
     } catch (e) {
       showApiError(e);
     }
@@ -757,7 +765,7 @@ export function ClientesCRM({
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
     } catch (e) {
       if ((e as { code?: string }).code === "comprou_exige_pagamento") {
-        await abrirVenda(l, p.lead_id);
+        await abrirVenda(l, p.lead_id, "venda");
         return;
       }
       showApiError(e);
@@ -1712,7 +1720,7 @@ export function ClientesCRM({
             <button
               key={venda!.id}
               type="button"
-              onClick={() => void abrirVenda(l, venda!.id)}
+              onClick={() => void abrirVenda(l, venda!.id, "venda")}
               title={t("Abrir a venda")}
               className="flex min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-sm hover:bg-secondary"
             >
@@ -2966,6 +2974,7 @@ export function ClientesCRM({
       {vendaAberta ? (
         <DialogoDaVenda
           key={vendaAberta.venda.id}
+          modo={vendaAberta.modo}
           venda={vendaAberta.venda}
           contatoInicial={{ contact_id: vendaAberta.venda.contact_id, nome: vendaAberta.nome }}
           clientes={[]}

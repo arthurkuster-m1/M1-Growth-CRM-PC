@@ -1,3 +1,5 @@
+import type { StatusDaVenda } from "@/lib/vendas";
+
 /**
  * Comprou só vale com dinheiro recebido: quando uma tela tenta levar a oportunidade a Comprou sem
  * pagamento, o servidor recusa (`comprou_exige_pagamento`) e a tela pede o pagamento — este
@@ -5,9 +7,9 @@
  */
 export const EVENTO_PAGAMENTO_PEDIDO = "m1:pagamento-pedido";
 
-export function pedirPagamentoDaOportunidade(leadId: string): void {
+export function pedirPagamentoDaOportunidade(leadId: string, status?: StatusDaVenda): void {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(EVENTO_PAGAMENTO_PEDIDO, { detail: { leadId } }));
+  window.dispatchEvent(new CustomEvent(EVENTO_PAGAMENTO_PEDIDO, { detail: { leadId, status } }));
 }
 
 export function ehComprouSemPagamento(erro: unknown): boolean {
