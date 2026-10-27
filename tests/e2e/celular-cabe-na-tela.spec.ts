@@ -91,7 +91,7 @@ const SUPERFICIES = [
   { rota: "/app/inbox", nome: "inbox" },
   { rota: "/app/kanban", nome: "funis" },
   { rota: "/app/agenda", nome: "agenda" },
-  { rota: "/app/metrics", nome: "painel" },
+  { rota: "/app/marketing/dashboards?painel=atendimento", nome: "painel" },
 ] as const;
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -167,7 +167,7 @@ test("nenhum controle do painel fica abaixo de 44px de altura em 360px", async (
   // uma superfície limpa e uma catraca: se o painel regredir, reprova.
   await loginComoAdmin(page, creds);
   await page.setViewportSize({ width: 360, height: 844 });
-  await abrir(page, "/app/metrics");
+  await abrir(page, "/app/marketing/dashboards?painel=atendimento");
 
   const curtos = await page.evaluate((piso) => {
     const fora: Array<{ marca: string; texto: string; w: number; h: number }> = [];

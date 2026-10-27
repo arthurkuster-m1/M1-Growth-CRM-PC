@@ -63,6 +63,12 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "redirect para /app/marketing/dashboards?painel=comercial: as análises da Agenda viraram a aba Comercial dos Dashboards; mantido por links salvos",
   "/app/design-system":
     "página de consulta do Design System (referência visual do produto): alcançada pelo endereço ou por link na documentação, não é tela de uso diário",
+  "/app/metrics":
+    "redirect para /app/marketing/dashboards?painel=atendimento: a página Desempenho acabou e seus números vivem nos Dashboards; mantido por links salvos",
+  "/app/activities":
+    "redirect para /app/marketing/dashboards?painel=atividades: Atividades virou uma aba dos Dashboards; mantido por links salvos",
+  "/app/ads/meta":
+    "a leitura de Meta Ads saiu do menu de Análise; só se chega a ela pelo atalho em Marketing › Campanhas (geracao-de-demanda), a pedido do dono do produto",
   "/app/vendas":
     "redirect para /app/clientes?visao=vendas: Vendas virou uma visão da página CRM",
   "/app/marketing/geracao-de-demanda/resultados":

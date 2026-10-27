@@ -274,7 +274,7 @@ test.describe("Relatório de atividades — o período, pela tela", () => {
     await limparFixtures();
   });
 
-  test("a porta existe na barra lateral, no grupo Análise, e leva à tela", async ({ page }) => {
+  test("a porta é a aba Atividades dos Dashboards, e leva à tela", async ({ page }) => {
     const errosDeConsole: string[] = [];
     page.on("console", (m) => {
       if (m.type() === "error") errosDeConsole.push(m.text());
@@ -282,29 +282,14 @@ test.describe("Relatório de atividades — o período, pela tela", () => {
 
     await login(page, creds.users.manager!.email, creds.password);
 
-    const sidebar = page.getByRole("navigation", { name: "Navegação principal" });
-    const item = sidebar.getByRole("link", { name: "Atividades", exact: true });
-    await expect(item, "tela sem porta é tela que só existe para quem digita a URL").toBeVisible({
+    // Atividades virou uma aba dos Dashboards: a porta é a aba, e a URL antiga redireciona.
+    await page.goto("/app/marketing/dashboards");
+    const aba = page.getByRole("tab", { name: "Atividades", exact: true });
+    await expect(aba, "tela sem porta é tela que só existe para quem digita a URL").toBeVisible({
       timeout: 30_000,
     });
-    expect(await item.getAttribute("href")).toBe("/app/activities");
-
-    // O grupo importa: "Atividades" é irmã de Desempenho e Audit Log, não de
-    // Inbox. Ir parar no grupo errado é a diferença entre achar e caçar.
-    const grupo = await item.evaluate((a) => {
-      let el: Element | null = a;
-      while (el && el.previousElementSibling === null) el = el.parentElement;
-      // sobe até achar o cabeçalho de grupo mais próximo acima
-      const titulos = [...document.querySelectorAll('nav[aria-label="Navegação principal"] h2')];
-      const y = a.getBoundingClientRect().top;
-      const acima = titulos.filter((h) => h.getBoundingClientRect().top < y);
-      return (acima[acima.length - 1]?.textContent ?? "").trim();
-    });
-    expect(grupo, "Atividades pertence ao grupo Análise").toMatch(/an[áa]lise/i);
-
-    await item.click();
-    await page.waitForURL(/\/app\/activities/, { timeout: 30_000 });
-    await expect(page.getByRole("heading", { name: "Atividades", level: 1 })).toBeVisible();
+    await aba.click();
+    await expect(page.getByTestId("total-de-atividades")).toBeVisible({ timeout: 30_000 });
     await captura(page, "01-tela-de-atividades");
 
     // Sem transbordo horizontal, sem erro de console novo.
@@ -322,7 +307,7 @@ test.describe("Relatório de atividades — o período, pela tela", () => {
     page,
   }) => {
     await login(page, creds.users.manager!.email, creds.password);
-    await page.goto("/app/activities");
+    await page.goto("/app/marketing/dashboards?painel=atividades");
     await expect(page.getByTestId("total-de-atividades")).toBeVisible({ timeout: 30_000 });
 
     const total = await totalNaTela(page);
@@ -370,7 +355,7 @@ test.describe("Relatório de atividades — o período, pela tela", () => {
     });
 
     await login(page, creds.users.manager!.email, creds.password);
-    await page.goto("/app/activities");
+    await page.goto("/app/marketing/dashboards?painel=atividades");
     await expect(page.getByTestId("total-de-atividades")).toBeVisible({ timeout: 30_000 });
 
     const totalEm7 = await totalNaTela(page);
@@ -412,7 +397,7 @@ test.describe("Relatório de atividades — o período, pela tela", () => {
 
   test("da linha do relatório se chega ao negócio — a lista não é decorativa", async ({ page }) => {
     await login(page, creds.users.manager!.email, creds.password);
-    await page.goto("/app/activities");
+    await page.goto("/app/marketing/dashboards?painel=atividades");
     await expect(page.getByTestId("total-de-atividades")).toBeVisible({ timeout: 30_000 });
 
     const lista = page.getByTestId("lista-de-atividades");
@@ -439,7 +424,7 @@ test.describe("Relatório de atividades — o período, pela tela", () => {
       timeout: 30_000,
     });
 
-    await page.goto("/app/activities");
+    await page.goto("/app/marketing/dashboards?painel=atividades");
     await expect(page.getByRole("heading", { name: "Atividades", level: 1 })).toBeVisible({
       timeout: 30_000,
     });

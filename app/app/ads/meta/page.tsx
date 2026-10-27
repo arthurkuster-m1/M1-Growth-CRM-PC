@@ -1,6 +1,6 @@
 /**
- * Análise → Meta Ads. O que a mídia paga está entregando, ao lado do resto da
- * análise, em vez de numa aba separada do Gerenciador de Anúncios.
+ * Meta Ads. O que a mídia paga está entregando, sem sair do app. Só se chega aqui pelo atalho de
+ * Marketing › Campanhas — a entrada no menu de Análise saiu em outubro/2026.
  *
  * ─── Por que `manager`, e não `viewer` como Desempenho ──────────────────────
  *

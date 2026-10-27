@@ -35,7 +35,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-import { Relatorios } from "@/app/app/activities/_components/Relatorios";
+import { Relatorios } from "@/components/dashboards/atividades/Relatorios";
 import { apiClient } from "@/lib/api/client";
 
 const VIP = {
