@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/empty";
+import { AbrirOportunidade } from "@/components/vendas/AbrirOportunidade";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -86,6 +86,7 @@ function SerieDiaria({ dias }: { dias: LinhaDoDia[] }) {
 export function ActivityReportClient() {
   const t = useT();
   const [dias, setDias] = useState<number>(7);
+  const [oportunidadeAberta, setOportunidadeAberta] = useState<string | null>(null);
   const { data, isLoading, isError } = useActivityReport(dias);
 
   const relatorio = data?.data;
@@ -235,12 +236,13 @@ export function ActivityReportClient() {
                     {/* O "e daí" da linha: daqui se chega ao negócio. Um
                         relatório que só lista é decorativo. */}
                     {i.negocioId && (
-                      <Link
-                        href={`/app/leads/${i.negocioId}`}
+                      <button
+                        type="button"
+                        onClick={() => setOportunidadeAberta(i.negocioId)}
                         className="text-xs text-accent underline underline-offset-2"
                       >
                         {i.negocioTitulo ?? `${vocabulario.deal} ${i.negocioId.slice(0, 8)}`}
-                      </Link>
+                      </button>
                     )}
                     {i.contatoNome && (
                       <span className="text-xs text-muted-foreground">· {i.contatoNome}</span>
@@ -266,6 +268,12 @@ export function ActivityReportClient() {
           </Card>
         </>
       )}
+      {oportunidadeAberta ? (
+        <AbrirOportunidade
+          leadId={oportunidadeAberta}
+          aoFechar={() => setOportunidadeAberta(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -2,10 +2,10 @@
 
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import * as React from "react";
-import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AbrirOportunidade } from "@/components/vendas/AbrirOportunidade";
 import {
   Sheet,
   SheetContent,
@@ -59,6 +59,7 @@ export function CapturaDetail({ captura, onOpenChange }: Props) {
   const t = useT();
   // Antes do `return null`: hook não pode ficar depois de retorno condicional.
   const funil = useCampoDoFunilDaCaptacao(captura?.webhook_source_id ?? null);
+  const [oportunidadeAberta, setOportunidadeAberta] = React.useState(false);
   if (!captura) return null;
   const campos = Object.entries(captura.fields ?? {});
   const utms = Object.entries(captura.utm ?? {});
@@ -162,11 +163,17 @@ export function CapturaDetail({ captura, onOpenChange }: Props) {
           </section>
 
           {captura.lead_id ? (
-            <Button asChild variant="secondary">
-              <Link href={`/app/leads/${captura.lead_id}`}>
+            <>
+              <Button variant="secondary" onClick={() => setOportunidadeAberta(true)}>
                 <ArrowSquareOut /> {t("Ver o lead no funil")}
-              </Link>
-            </Button>
+              </Button>
+              {oportunidadeAberta ? (
+                <AbrirOportunidade
+                  leadId={captura.lead_id}
+                  aoFechar={() => setOportunidadeAberta(false)}
+                />
+              ) : null}
+            </>
           ) : null}
         </div>
       </SheetContent>
