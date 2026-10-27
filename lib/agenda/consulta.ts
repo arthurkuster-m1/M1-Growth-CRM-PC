@@ -363,8 +363,11 @@ export async function horariosLivresDaOrg(
     agora: params.agora,
   });
 
+  // Só o futuro precisa de cobertura: não se marca em dia passado, e o sync do Google começa ontem.
+  // Pedir o mês inteiro (que começa antes de hoje) acusava "não verificada" à toa.
+  const inicioDaCobertura = new Date(Math.max(params.de.getTime(), params.agora.getTime()));
   let googleCoberturaParcial = true;
-  try { googleCoberturaParcial = Boolean(await googleRpc(supabase, "fn_google_coverage", { p_org: organizationId, p_owner: donoId, p_start: params.de.toISOString(), p_end: params.ate.toISOString() })); } catch { /* leitura incerta não afirma cobertura */ }
+  try { googleCoberturaParcial = Boolean(await googleRpc(supabase, "fn_google_coverage", { p_org: organizationId, p_owner: donoId, p_start: inicioDaCobertura.toISOString(), p_end: params.ate.toISOString() })); } catch { /* leitura incerta não afirma cobertura */ }
   return {
     ok: true,
     googleCoberturaParcial,
