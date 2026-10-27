@@ -1,7 +1,7 @@
 /**
- * O relatório do faturamento.
+ * O relatório das Finanças (pelas vendas).
  *
- * ⚠️ A ROTA NÃO SOMA NADA. Quem agrega é `fn_relatorio_financeiro`, no banco, e a
+ * ⚠️ A ROTA NÃO SOMA NADA. Quem agrega é `fn_relatorio_financas`, no banco, e a
  * razão está escrita no cabeçalho da migration 0244: o PostgREST corta em 1000
  * linhas sem avisar, e somar aqui devolveria um número menor que o verdadeiro,
  * com cara de certo. Nesta mesma base a primeira medição do saldo deu
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("fn_relatorio_financeiro", {
+  const { data, error } = await supabase.rpc("fn_relatorio_financas", {
     p_org: authz.org.orgId,
     p_de: lido.data.de,
     p_ate: lido.data.ate,

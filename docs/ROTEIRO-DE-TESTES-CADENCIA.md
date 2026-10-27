@@ -484,4 +484,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.43| **Régua do abandono no Atendimento** | O painel "Atrito do atendimento" mostra a régua (editável para gerente/admin) que antes ficava no Desempenho; /app/metrics e /app/activities redirecionam para os Dashboards |           |
 | 23.44| **Finanças solta no menu** | O menu lateral tem "Finanças" junto de Início, CRM e Tarefas (ícone de dinheiro); Análise não lista mais Faturamento; a página mostra o título Finanças e os mesmos números; /app/faturamento redireciona |           |
 | 23.45| **Sem Análise, Audit Log e Honorários no menu** | O menu lateral e a busca (⌘K) não têm mais o grupo Análise, o Audit Log nem Honorários; /app/analise redireciona para os Dashboards; o selo "mudado pelo assistente" aparece sem link; a agência ainda vê o histórico em /admin/audit |           |
+| 23.46| **Finanças pelas vendas** | Em Finanças, escolha um período: "Entrou" soma as parcelas recebidas (e lançamentos avulsos pagos), "Saiu" as saídas lançadas, e aparecem vendas fechadas/canceladas, faturado, a receber no período, formas de pagamento, produtos, clientes e vendas por pessoa; nada vem de comanda |           |
 
