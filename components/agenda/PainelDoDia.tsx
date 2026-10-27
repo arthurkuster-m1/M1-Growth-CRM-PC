@@ -3,7 +3,12 @@
 import Link from "next/link";
 import * as React from "react";
 
+import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { apiClient } from "@/lib/api/client";
 import { useDetalhesDosCompromissos } from "@/hooks/agenda/useDetalhesDosCompromissos";
 import { useT } from "@/hooks/i18n/useT";
 import { ROTULO_DA_SITUACAO } from "@/lib/agenda/tipos";
@@ -23,6 +28,8 @@ import { formatCents } from "@/lib/money";
 import { Gear } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
+import { useAcoesDoCompromisso } from "./AcoesDoCompromisso";
+import { MenuDeOpcoes } from "./CamposDoCompromisso";
 import { corDaTrilha, fundoDaTrilha } from "./paleta";
 import type { Agendamento, Pessoa } from "./tipos";
 
@@ -283,6 +290,64 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   );
 }
 
+/** O status do compromisso no painel: tocar nele abre as mesmas opções da página do compromisso. */
+function StatusEditavel({ c }: { c: Agendamento }) {
+  const t = useT();
+  const qc = useQueryClient();
+  const acoes = useAcoesDoCompromisso();
+  const confirmar = useMutation({
+    mutationFn: async () => {
+      // Volta para "Confirmado" a partir de outro estado: lê a revisão atual antes de gravar.
+      const atual = await apiClient.get<{ data: { revision: number } }>(
+        `/api/v1/agenda/agendamentos/${c.id}`,
+      );
+      await apiClient.patch("/api/v1/agenda/agendamentos", {
+        id: c.id,
+        revision: atual.data.revision,
+        status: "confirmed",
+      });
+    },
+    onSuccess: () => {
+      toast.success(t("Status atualizado."));
+      void qc.invalidateQueries({ queryKey: ["agenda"] });
+    },
+    onError: showApiError,
+  });
+  const [agora] = React.useState(() => Date.now());
+  const comecou = Date.parse(c.comeca) <= agora;
+  const ocupado = acoes.resultado.isPending || acoes.confirmar.isPending || confirmar.isPending;
+  return (
+    <MenuDeOpcoes
+      gatilho={
+        <span data-testid={`status-do-dia-${c.id}`}>
+          <Etiqueta classe={COR_DA_SITUACAO[c.situacao]}>
+            {t(ROTULO_DA_SITUACAO[c.situacao] ?? c.situacao)}
+          </Etiqueta>
+        </span>
+      }
+      opcoes={(
+        [
+          ["confirmed", "Confirmado", false],
+          ["comprou", "Compareceu e Comprou", true],
+          ["nao_comprou", "Compareceu e Não comprou", true],
+          ["no_show", "Não compareceu", true],
+        ] as const
+      ).map(([opcao, rotulo, soDepois]) => ({
+        id: opcao,
+        rotulo: t(rotulo),
+        desabilitado: ocupado || (soDepois && !comecou),
+        dica: soDepois && !comecou ? t("Disponível quando a reunião começar") : undefined,
+        aoEscolher: () =>
+          opcao === "confirmed"
+            ? c.situacao === "pending"
+              ? acoes.confirmar.mutate(c.id)
+              : confirmar.mutate()
+            : acoes.resultado.mutate({ id: c.id, opcao }),
+      }))}
+    />
+  );
+}
+
 export function Propriedades({
   c,
   d,
@@ -334,9 +399,13 @@ export function Propriedades({
   add(
     "status",
     "Status",
-    <Etiqueta classe={COR_DA_SITUACAO[c.situacao]}>
-      {t(ROTULO_DA_SITUACAO[c.situacao] ?? c.situacao)}
-    </Etiqueta>,
+    soTexto || c.situacao === "cancelled" || c.origem === "google_sync" ? (
+      <Etiqueta classe={COR_DA_SITUACAO[c.situacao]}>
+        {t(ROTULO_DA_SITUACAO[c.situacao] ?? c.situacao)}
+      </Etiqueta>
+    ) : (
+      <StatusEditavel c={c} />
+    ),
   );
   add("responsavel", "Responsável", pessoas.find((p) => p.id === c.responsavelId)?.nome ?? vazio);
   add("cliente", "Cliente", c.quemSeraAtendido ?? vazio);

@@ -2,11 +2,21 @@
  * Semana e 3 dias ganham o painel do dia embaixo (como o mês); a visão Dia não tem painel: só o
  * seletor de propriedades, e a hora cresce para o bloco caber com elas sem empilhar.
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render as renderRtl, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 import { GradeDaAgenda, alturaDaHoraParaPropriedades } from "./GradeDaAgenda";
 import type { Agendamento, VisaoDaAgenda } from "./tipos";
+
+// O status do painel é editável e usa as mutações do react-query.
+const render = (ui: ReactElement) =>
+  renderRtl(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+    ),
+  });
 
 const FUSO = "America/Sao_Paulo";
 const QUARTA = new Date("2026-09-16T15:00:00Z"); // 12:00 em São Paulo
@@ -46,6 +56,15 @@ describe("painel do dia na semana e nos 3 dias", () => {
       expect(painel.textContent).toContain("Reunião");
     },
   );
+
+  it("o status no painel é editável: tocar nele abre as opções", () => {
+    grade("semana");
+    fireEvent.click(screen.getByTestId("cabecalho-dia-2026-09-17"));
+    expect(screen.getByTestId("status-do-dia-r1")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("status-do-dia-r1"));
+    expect(screen.getByText("Não compareceu")).toBeTruthy();
+    expect(screen.getByText("Compareceu e Comprou")).toBeTruthy();
+  });
 
   it("sem escolher, o painel abre no dia de hoje", () => {
     grade("semana");
