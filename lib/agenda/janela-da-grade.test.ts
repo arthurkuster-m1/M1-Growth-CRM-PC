@@ -26,10 +26,10 @@ describe("janelaComCompromissos", () => {
     const j = janelaComCompromissos(base, [c("2026-10-27T10:00:00Z", "2026-10-27T11:00:00Z")], hm);
     expect(j).toEqual(base);
   });
-  it("reunião às 18:30 estica até as 19h; às 07:15 puxa o começo", () => {
+  it("reunião às 18:30 estica até as 19:00 (última linha = 18h); às 07:15 puxa o começo", () => {
     expect(
       janelaComCompromissos(base, [c("2026-10-27T18:30:00Z", "2026-10-27T19:00:00Z")], hm).ultima,
-    ).toBe(19);
+    ).toBe(18);
     expect(
       janelaComCompromissos(base, [c("2026-10-27T07:15:00Z", "2026-10-27T07:45:00Z")], hm).primeira,
     ).toBe(7);
