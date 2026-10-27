@@ -7,6 +7,7 @@
  * `financial_entry_id`. Por isso pagar pede uma CONTA, a mesma lista do
  * catálogo financeiro usada em Faturamento.
  */
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -210,13 +211,14 @@ function FormularioDeParcela({
 
       <label className="flex flex-col gap-1 text-xs text-text-muted">
         {t("Vencimento")}
-        <input
-          type="date"
-          value={vencimento}
-          data-testid="parcela-vencimento"
-          onChange={(e) => setVencimento(e.target.value)}
-          className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
-        />
+        <div data-testid="parcela-vencimento">
+          <CampoDeData
+            valor={vencimento}
+            rotulo={t("Vencimento")}
+            limpavel={false}
+            aoMudar={setVencimento}
+          />
+        </div>
       </label>
 
       <label className="flex flex-col gap-1 text-xs text-text-muted">

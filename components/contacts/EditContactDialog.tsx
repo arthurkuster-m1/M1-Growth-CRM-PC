@@ -1,4 +1,5 @@
 "use client";
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ export function EditContactDialog({ contact, open, onOpenChange, customFieldDefs
   });
 
   const customFields = useWatch({ control: form.control, name: "custom_fields" });
+  const birthdate = useWatch({ control: form.control, name: "birthdate" });
 
   useEffect(() => {
     if (open) {
@@ -131,7 +133,12 @@ export function EditContactDialog({ contact, open, onOpenChange, customFieldDefs
           </div>
           <div className="space-y-2">
             <Label htmlFor="ec-birthdate">{t("Data de nascimento")}</Label>
-            <Input id="ec-birthdate" type="date" {...form.register("birthdate")} />
+            <CampoDeData
+              valor={birthdate ?? ""}
+              rotulo={t("Data de nascimento")}
+              max={new Date().toISOString().slice(0, 10)}
+              aoMudar={(dia) => form.setValue("birthdate", dia, { shouldDirty: true })}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="ec-tags">{t("Tags")}</Label>

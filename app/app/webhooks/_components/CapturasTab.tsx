@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeDataEHoraLocal } from "@/components/motor/CampoDeDataEHoraLocal";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import * as React from "react";
 
@@ -168,23 +169,13 @@ export function CapturasTab() {
             <label className="block text-xs text-muted-foreground" htmlFor="captura-de">
               {t("De")}
             </label>
-            <Input
-              id="captura-de"
-              type="datetime-local"
-              value={de}
-              onChange={(e) => setDe(e.target.value)}
-            />
+            <CampoDeDataEHoraLocal valor={de} rotulo={t("De")} aoMudar={setDe} />
           </div>
           <div className="space-y-1">
             <label className="block text-xs text-muted-foreground" htmlFor="captura-ate">
               {t("Até")}
             </label>
-            <Input
-              id="captura-ate"
-              type="datetime-local"
-              value={ate}
-              onChange={(e) => setAte(e.target.value)}
-            />
+            <CampoDeDataEHoraLocal valor={ate} rotulo={t("Até")} aoMudar={setAte} />
           </div>
         </div>
       </Card>

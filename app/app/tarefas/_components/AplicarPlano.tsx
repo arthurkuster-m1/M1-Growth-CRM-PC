@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useState } from "react";
 
 import { CelulaDeCliente } from "./CelulaDeCliente";
@@ -12,8 +13,6 @@ import type { PlanoDeTarefas } from "@/lib/tarefas/plano";
 import type { NovaTarefa } from "@/lib/tarefas/tipos";
 import { TreeStructure } from "@/lib/ui/icons";
 
-const CAMPO =
-  "h-9 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
 
 /**
  * APLICAR UM PLANO a um cliente: o plano é um "modelo parrudo" — várias tarefas de uma vez, todas
@@ -132,16 +131,16 @@ function Corpo({
         </div>
         <label className="grid gap-1">
           <span className="text-xs text-muted-foreground">{t("Início do plano")}</span>
-          <input
-            type="date"
-            value={inicio}
-            onChange={(e) => {
-              if (!e.target.value) return;
-              setInicio(e.target.value);
+          <CampoDeData
+            valor={inicio}
+            rotulo={t("Início do plano")}
+            limpavel={false}
+            aoMudar={(dia) => {
+              if (!dia) return;
+              setInicio(dia);
               // Mudar o início recalcula todos os prazos.
               setPrazos({});
             }}
-            className={CAMPO}
           />
         </label>
       </div>
@@ -163,14 +162,11 @@ function Corpo({
                 <p className="truncate text-xs text-muted-foreground">{p.descricao}</p>
               ) : null}
             </div>
-            <input
-              type="date"
-              aria-label={`${t("Prazo")}: ${p.titulo}`}
-              value={prazoDe(p.ordem, p.vence_em_dias)}
-              onChange={(e) =>
-                e.target.value && setPrazos((a) => ({ ...a, [p.ordem]: e.target.value }))
-              }
-              className={CAMPO}
+            <CampoDeData
+              rotulo={`${t("Prazo")}: ${p.titulo}`}
+              valor={prazoDe(p.ordem, p.vence_em_dias)}
+              limpavel={false}
+              aoMudar={(dia) => dia && setPrazos((a) => ({ ...a, [p.ordem]: dia }))}
             />
           </li>
         ))}

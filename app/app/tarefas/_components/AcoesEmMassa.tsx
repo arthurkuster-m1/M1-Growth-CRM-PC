@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useState } from "react";
 
 import { AcaoEmMassa, BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
@@ -58,13 +59,7 @@ function PainelDeData({
 
   return (
     <div className="space-y-2 p-1.5">
-      <input
-        type="date"
-        aria-label={rotulo}
-        value={dia}
-        onChange={(e) => setDia(e.target.value)}
-        className="h-10 w-full rounded-xl border bg-card px-2 text-sm"
-      />
+      <CampoDeData valor={dia} rotulo={rotulo} limpavel={false} aoMudar={setDia} className="w-full" />
       <label className="flex min-h-9 items-center justify-between gap-2 px-1 text-sm">
         {t("Incluir hora")}
         <Switch

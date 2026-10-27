@@ -60,9 +60,11 @@ describe("AplicarPlano", () => {
 
     fireEvent.click(screen.getByText("escolher cliente"));
     // O prazo de cada tarefa nasce do início (hoje + dias do passo) e pode ser mudado à mão.
-    expect(screen.getByLabelText("Prazo: Ligar")).toHaveValue("2026-10-27");
-    expect(screen.getByLabelText("Prazo: Enviar caso")).toHaveValue("2026-10-31");
-    fireEvent.change(screen.getByLabelText("Prazo: Ligar"), { target: { value: "2026-11-03" } });
+    // O seletor de data do app: o botão mostra o dia em dd/mm/aaaa; o calendário traz o campo de digitação.
+    expect(screen.getByLabelText("Prazo: Ligar").textContent).toContain("27/10/2026");
+    expect(screen.getByLabelText("Prazo: Enviar caso").textContent).toContain("31/10/2026");
+    fireEvent.click(screen.getByLabelText("Prazo: Ligar"));
+    fireEvent.change(screen.getAllByLabelText("Prazo: Ligar")[1]!, { target: { value: "03/11/2026" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Criar 2 tarefas" }));
     await waitFor(() => expect(aoCriar).toHaveBeenCalledTimes(1));

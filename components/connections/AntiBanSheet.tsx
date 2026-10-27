@@ -5,6 +5,7 @@
  * honesto com o motor: campo vazio = padrão conservador do engine (placeholder
  * mostra o valor); preenchido = override desta conexão.
  */
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FUSOS_OFERECIDOS } from "@/lib/tempo/fusos";
@@ -202,15 +203,14 @@ export function AntiBanSheet({ item, canWrite, onClose }: Props) {
         <div className="flex flex-col gap-5 px-4 py-2" data-testid="anti-ban-form">
           <fieldset className="flex flex-col gap-2" data-testid="aquecimento">
             <Label htmlFor="numero-em-uso-desde">{t("Este número é usado desde")}</Label>
-            <Input
-              id="numero-em-uso-desde"
-              type="date"
+            <CampoDeData
               // O dia LOCAL, que é o que este campo fala. Com o dia UTC, às 21h
               // em São Paulo o limite já oferecia amanhã.
               max={diaDeHojeLocal()}
-              value={form.numero_em_uso_desde}
-              onChange={(e) => set({ numero_em_uso_desde: e.target.value })}
-              disabled={!canWrite || form.pular_aquecimento}
+              valor={form.numero_em_uso_desde}
+              rotulo={t("Este número é usado desde")}
+              aoMudar={(dia) => set({ numero_em_uso_desde: dia })}
+              desabilitado={!canWrite || form.pular_aquecimento}
               className="w-48"
             />
             <p className="text-xs text-muted-foreground">

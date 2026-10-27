@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -194,12 +195,7 @@ export function CustosDeCaptacao({
           aria-label={t("Valor")}
           onChange={(e) => setValor(e.target.value)}
         />
-        <Input
-          type="date"
-          value={dia}
-          aria-label={t("Dia")}
-          onChange={(e) => setDia(e.target.value)}
-        />
+        <CampoDeData valor={dia} rotulo={t("Dia")} limpavel={false} aoMudar={setDia} />
         <Input
           value={nota}
           maxLength={300}
