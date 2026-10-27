@@ -401,3 +401,13 @@ export const MODELOS_DE_PAGINA: readonly ModeloDePagina[] = [
     montar: posicionamento,
   },
 ];
+
+/**
+ * O modelo que pertence a ESTA página, no catálogo — `null` quando o tipo de página não tem
+ * modelo próprio (o menu mostra então só a página em branco). A chave é a mesma que
+ * `modeloDoModulo` usa para escolher o conteúdo.
+ */
+export function modeloDaPagina(chave: string): ModeloDePagina | null {
+  const tipo = lerChaveDePagina(chave)?.tipo ?? chave;
+  return MODELOS_DE_PAGINA.find((m) => m.chave === tipo && m.chave !== "basico") ?? null;
+}

@@ -33,6 +33,23 @@ export async function PATCH(
 
   // O prazo passa pela função que anota o motivo no histórico (a RLS de quem chama vale).
   if (due_date !== undefined) {
+    // Regra: nenhuma tarefa é adiada sem motivo. Dar prazo a uma tarefa que ainda não tinha
+    // (ou tirá-lo) não é adiamento; mudar um prazo que já existia é.
+    const { data: atual } = await a.supabase
+      .from("crm_tasks")
+      .select("due_date")
+      .eq("id", id)
+      .eq("organization_id", a.orgId)
+      .maybeSingle();
+    if (!atual) return naoEncontrado(a.t, a.requestId);
+    const eAdiamento =
+      atual.due_date !== null &&
+      due_date !== null &&
+      new Date(atual.due_date).getTime() !== new Date(due_date).getTime();
+    if (eAdiamento && !(motivo ?? "").trim())
+      return fail("validation_failed", a.t("Informe o motivo do adiamento."), 422, {
+        requestId: a.requestId,
+      });
     const { error } = await a.supabase.rpc("fn_cronograma_mudar_prazo", {
       p_task: id,
       p_novo: due_date,
