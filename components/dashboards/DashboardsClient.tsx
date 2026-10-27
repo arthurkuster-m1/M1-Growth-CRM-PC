@@ -4,6 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Atendimento, type DadosDeAtendimento } from "@/components/dashboards/Atendimento";
+import { PerdasPanel } from "@/app/app/metrics/_components/PerdasPanel";
+import { PrevisaoPanel } from "@/app/app/metrics/_components/PrevisaoPanel";
+import { useActiveOrg } from "@/hooks/auth/AuthProvider";
+import { ROLE_RANK } from "@/lib/auth/types";
 import { Business, type DadosDeBusiness } from "@/components/dashboards/Business";
 import { AnalisesDaAgenda } from "@/components/agenda/AnalisesDaAgenda";
 import { ProspeccaoAtiva, type DadosDeProspeccao } from "@/components/dashboards/ProspeccaoAtiva";
@@ -40,6 +44,8 @@ export function DashboardsClient({
       : "trafego",
   );
   const { atalhos, hoje } = useAtalhosDePeriodo();
+  const papel = useActiveOrg()?.role;
+  const podeVerPerdas = papel !== undefined && ROLE_RANK[papel] >= ROLE_RANK.manager;
   const [janela, setJanela] = useState(() => ({ de: `${hoje.slice(0, 7)}-01`, ate: hoje }));
   const [campanhas, setCampanhas] = useState<string[]>([]);
   const [campanhasDeProspeccao, setCampanhasDeProspeccao] = useState<string[]>([]);
@@ -331,13 +337,20 @@ export function DashboardsClient({
             )}
           </p>
         ) : (
-          <Atendimento
-            dados={atendimento.data}
-            aoSalvarHorario={async (h) => {
-              await apiClient.put("/api/v1/dashboards/atendimento", h);
-              await queryClient.invalidateQueries({ queryKey: ["dashboard-atendimento"] });
-            }}
-          />
+          <div className="grid min-w-0 gap-4">
+            <Atendimento
+              dados={atendimento.data}
+              aoSalvarHorario={async (h) => {
+                await apiClient.put("/api/v1/dashboards/atendimento", h);
+                await queryClient.invalidateQueries({ queryKey: ["dashboard-atendimento"] });
+              }}
+            />
+            {/* Vindos da página Desempenho: a previsão do que ainda vai ser vendido (funil aberto,
+                ponderado pela chance de fechar) e o porquê de cada perda no período escolhido.
+                Perdas é do gerente para cima (o funil inteiro). */}
+            <PrevisaoPanel />
+            {podeVerPerdas ? <PerdasPanel periodo={janela} /> : null}
+          </div>
         )
       ) : null}
       {painel === "comercial" ? <AnalisesDaAgenda periodo={janela} /> : null}

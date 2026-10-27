@@ -15,7 +15,7 @@
 import { useT } from "@/hooks/i18n/useT";
 import { rotuloDoMotivoDePerda } from "@/lib/schemas/leads";
 import { SEM_CATEGORIA, SEM_ETAPA, SEM_MOEDA, SEM_MOTIVO } from "@/lib/metrics/perdas";
-import { usePerdasMetrics } from "@/hooks/metrics/usePerdasMetrics";
+import { usePerdasMetrics, type PeriodoDePerdas } from "@/hooks/metrics/usePerdasMetrics";
 import { formatValorDoNegocio } from "@/lib/money";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -77,9 +77,9 @@ function Bloco({
   );
 }
 
-export function PerdasPanel() {
+export function PerdasPanel({ periodo }: { periodo?: PeriodoDePerdas } = {}) {
   const t = useT();
-  const { data, isLoading, isError } = usePerdasMetrics();
+  const { data, isLoading, isError } = usePerdasMetrics(true, periodo);
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("Carregando…")}</p>;
   if (isError || !data)
     return <p className="text-sm text-destructive">{t("Erro ao carregar o relatório de perdas.")}</p>;
