@@ -70,7 +70,7 @@ export async function definirAgendaDosColegas(
   if (supportWriteError(user.support)) return { ok: false, erro: "somente_leitura" };
   const org = await resolveActiveOrg(user);
   if (!org) return { ok: false, erro: "sem_empresa" };
-  if (ROLE_RANK[org.role] < ROLE_RANK.manager) return { ok: false, erro: "sem_permissao" };
+  if (ROLE_RANK[org.role] < ROLE_RANK.admin) return { ok: false, erro: "sem_permissao" };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_definir_colegas_podem_mexer_na_agenda", {

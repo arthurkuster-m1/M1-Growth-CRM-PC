@@ -20,7 +20,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
 vi.mock("@/components/agenda/AgendasConectadas", () => ({ AgendasConectadas: () => null }));
 vi.mock("@/components/agenda/PrazosDePresenca", () => ({ PrazosDePresenca: () => null }));
-vi.mock("@/components/agenda/ClientePelaAgenda", () => ({ ClientePelaAgenda: () => null }));
 vi.mock("@/components/agenda/DiasBloqueados", () => ({ DiasBloqueados: () => null }));
 // A página de atendimento de cada tipo tem tela e teste próprios.
 vi.mock("@/components/agenda/EditorDaPaginaDeAtendimento", () => ({ EditorDasPaginasDeAtendimento: () => null }));
@@ -60,10 +59,9 @@ describe("edição do tipo — lembretes dinâmicos", () => {
         podeEditar
         usuarioAtualId="user-1"
         podeConfigurarGoogle={false}
-        clientePelaAgendaLigado={false}
-        colegasPodemMexerNaAgendaLigado={true}
+        colegasPodemVerAgendaLigado
+          colegasPodemMexerNaAgendaLigado={true}
         podeMudarAgendaDosColegas={false}
-        podeLigarClientePelaAgenda={false}
       />,
     );
 
@@ -86,10 +84,9 @@ describe("edição do tipo — lembretes dinâmicos", () => {
         podeEditar
         usuarioAtualId="user-1"
         podeConfigurarGoogle={false}
-        clientePelaAgendaLigado={false}
-        colegasPodemMexerNaAgendaLigado={true}
+        colegasPodemVerAgendaLigado
+          colegasPodemMexerNaAgendaLigado={true}
         podeMudarAgendaDosColegas={false}
-        podeLigarClientePelaAgenda={false}
       />,
     );
 

@@ -8,6 +8,7 @@ import {
   origemLocalDosCabecalhos,
 } from "@/lib/agenda/google/config";
 import { donosDaAgenda } from "@/lib/agenda/donos-da-agenda";
+import { recorteDeVisibilidadeDaAgenda } from "@/lib/agenda/visibilidade";
 import { lerOcupacaoExterna } from "@/lib/agenda/ocupacao-externa";
 import { PROVEDOR_GOOGLE } from "@/lib/agenda/tipos";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -128,6 +129,13 @@ export default async function AgendaPage() {
   // organizações via seis tipos onde há três — e clicar no da outra org dava
   // "Tipo de agendamento não encontrado", porque a rota que marca ESCAPA a org
   // certa e não achava o tipo que esta tela ofereceu.
+  // "Atendentes podem ver a agenda dos colegas" desligado: o atendente só recebe a própria agenda.
+  const soDoDono = await recorteDeVisibilidadeDaAgenda(
+    supabase,
+    activeOrg.orgId,
+    activeOrg.role,
+    user.id,
+  );
   const [{ data: tipos }, { data: linhas }] = await Promise.all([
     supabase
       .from("calendar_event_types")
@@ -145,6 +153,7 @@ export default async function AgendaPage() {
       .eq("organization_id", activeOrg.orgId)
       .gte("starts_at", inicio.toISOString())
       .lt("starts_at", fim.toISOString())
+      .match(soDoDono ? { owner_user_id: soDoDono } : {})
       .order("starts_at"),
   ]);
 
@@ -208,7 +217,8 @@ export default async function AgendaPage() {
   // precisa da ocupação da dona da agenda — antes, a leitura pela sessão
   // escondia a conexão dela dele e a grade desenhava livre o que o motor recusa
   // (#896, item 3).
-  const { donos, erro: erroDosDonos } = await donosDaAgenda(activeOrg.orgId);
+  const { donos: todosOsDonos, erro: erroDosDonos } = await donosDaAgenda(activeOrg.orgId);
+  const donos = soDoDono ? todosOsDonos.filter((d) => d === soDoDono) : todosOsDonos;
   if (erroDosDonos) {
     logger.warn("[agenda.page] donos da agenda não vieram", { erro: erroDosDonos });
   }

@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import type { DetalheDoCompromisso } from "@/lib/agenda/propriedades-do-compromisso";
 import { corDoTipo } from "@/lib/agenda/cor-do-tipo";
+import { recorteDeVisibilidadeDaAgenda } from "@/lib/agenda/visibilidade";
 import { ALVO_DE_VINCULO_DO_AGENDAMENTO } from "@/lib/agenda/tipos";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
@@ -41,13 +42,15 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (!ids.success) return fail("validation_failed", t("Consulta inválida."), 422, { requestId });
 
   const supabase = await createClient();
+  const soDoDono = await recorteDeVisibilidadeDaAgenda(supabase, orgId, authz.org.role, authz.user.id);
   const { data: compromissos, error } = await supabase
     .from("calendar_appointments")
     .select(
       "id, event_type_id, contact_id, conversation_id, notes, meeting_url, meeting_state, location_kind, location_details, outcome_recorded_at, cancelled_at, cancellation_reason, rescheduled_from_id, reminder_sent_at, google_synced_at, google_sync_error",
     )
     .eq("organization_id", orgId)
-    .in("id", ids.data);
+    .in("id", ids.data)
+    .match(soDoDono ? { owner_user_id: soDoDono } : {});
   if (error)
     return fail("internal_error", t("Erro ao carregar os compromissos."), 500, { requestId });
   const linhas = (compromissos ?? []) as Linha[];

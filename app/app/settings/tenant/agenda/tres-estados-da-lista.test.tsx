@@ -71,9 +71,8 @@ function montar(props: Partial<React.ComponentProps<typeof TiposDeAgendamentoCli
       podeEditar
       usuarioAtualId="22222222-2222-4222-8222-222222222222"
       podeConfigurarGoogle={false}
-      clientePelaAgendaLigado={false}
-      podeLigarClientePelaAgenda={false}
       colegasPodemMexerNaAgendaLigado={false}
+      colegasPodemVerAgendaLigado
       podeMudarAgendaDosColegas={false}
       {...props}
     />
