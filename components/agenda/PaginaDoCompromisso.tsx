@@ -201,6 +201,7 @@ function PaginaExistente({
   const [editandoVenda, setEditandoVenda] = React.useState<false | { status?: StatusDaVenda }>(
     false,
   );
+  const [abrindoOportunidade, setAbrindoOportunidade] = React.useState(false);
 
   const consulta = useQuery({
     queryKey: ["agenda", "detalhe", id],
@@ -717,13 +718,18 @@ function PaginaExistente({
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <h3 className="text-base font-semibold">{t("Oportunidade")}</h3>
                     {a.lead_id ? (
-                      <Link
-                        href={`/app/leads/${a.lead_id}`}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+                      // O popup da oportunidade abre POR CIMA do compromisso (a página antiga do funil
+                      // não existe mais): fechar volta exatamente para cá.
+                      <button
+                        type="button"
+                        data-testid="abrir-oportunidade"
+                        disabled={!venda}
+                        onClick={() => setAbrindoOportunidade(true)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
                       >
                         <ArrowSquareOut size={14} aria-hidden />
                         {t("Abrir oportunidade")}
-                      </Link>
+                      </button>
                     ) : null}
                   </div>
                   {!a.contact_id ? (
@@ -968,6 +974,44 @@ function PaginaExistente({
               />
             </DialogContent>
           </Dialog>
+        ) : null}
+
+        {abrindoOportunidade && venda ? (
+          <DialogoDaVenda
+            key={`oportunidade-${venda.id}`}
+            modo="oportunidade"
+            venda={venda}
+            contatoInicial={{ contact_id: venda.contact_id, nome: venda.cliente?.nome ?? "" }}
+            clientes={[]}
+            negocio={
+              etapasDoFunil.length > 0
+                ? {
+                    etapas: etapasDoFunil.map((e) => ({ id: e.id, nome: e.name })),
+                    etapaId: oport.data?.lead?.stage_id ?? null,
+                    aoMoverEtapa: async (etapaId: string) => {
+                      const etapa = etapasDoFunil.find((e) => e.id === etapaId);
+                      if (etapa) await mudarEtapa.mutateAsync(etapa);
+                    },
+                  }
+                : undefined
+            }
+            aoFechar={() => {
+              setAbrindoOportunidade(false);
+              recarregar();
+            }}
+            aoSalvar={async (v: DadosDaVenda) => {
+              try {
+                const { id: vid, contact_id: _c, ...resto } = v;
+                await apiClient.patch(`/api/v1/vendas/${vid ?? venda.id}`, resto);
+                await qc.invalidateQueries();
+                setAbrindoOportunidade(false);
+                return true;
+              } catch (e) {
+                showApiError(e);
+                return false;
+              }
+            }}
+          />
         ) : null}
 
         {editandoVenda && venda ? (

@@ -446,4 +446,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.10| No compromisso, escolha **Cancelado**                                                  | Abre a página da venda já pedindo o **motivo** do cancelamento                                                        |           |
 | 23.11| No compromisso, escolha **Comprometido** ou **Recorrência ativa**                      | Grava na hora e o status muda também na página da venda e da oportunidade                                             |           |
 | 23.12| **Celular**: seção Oportunidade e Venda do compromisso                                  | Tudo cabe na largura da tela (nada some pelo lado direito)                                                            |           |
+| 23.13| **Compromisso › Oportunidade › Abrir oportunidade**                                    | Abre o **popup da oportunidade por cima** do compromisso (sem trocar de página); ao fechar, volta ao compromisso no mesmo ponto |           |
 
