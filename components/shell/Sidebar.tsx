@@ -10,6 +10,7 @@ import {
   CaretDoubleRight,
   CaretDown,
   ChartBar,
+  CurrencyDollar,
   Gear,
   House,
   Inbox,
@@ -307,6 +308,7 @@ export function SidebarContent({
             { href: "/app/inicio", rotulo: t("Início"), Icone: House },
             ...(temCrm ? [{ href: "/app/clientes", rotulo: t("CRM"), Icone: Users }] : []),
             { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
+            { href: "/app/financas", rotulo: t("Finanças"), Icone: CurrencyDollar },
           ].map(({ href, rotulo, Icone }) => {
             const ativo = pathname === href || pathname.startsWith(href + "/");
             return (

@@ -22,7 +22,7 @@ vi.mock("@/lib/api/client", () => ({
 vi.mock("@/components/feedback/ApiErrorToast", () => ({ showApiError: vi.fn() }));
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (s: string) => s }));
 
-import { Faturamento } from "@/app/app/faturamento/_client";
+import { Faturamento } from "@/app/app/financas/_client";
 import { apiClient } from "@/lib/api/client";
 
 /** O `Intl` separa símbolo e número com espaço inseparável; o teste lê espaço. */

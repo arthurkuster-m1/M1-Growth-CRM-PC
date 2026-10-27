@@ -482,4 +482,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.41| **Meta Ads só por Campanhas** | Em Marketing › Campanhas o atalho Meta Ads abre a página; ela não aparece mais no menu nem em Análise |           |
 | 23.42| **Evolução da IA em IA** | "Ver tudo em IA" lista Evolução da IA em "Acompanhar o agente"; Análise não a lista mais |           |
 | 23.43| **Régua do abandono no Atendimento** | O painel "Atrito do atendimento" mostra a régua (editável para gerente/admin) que antes ficava no Desempenho; /app/metrics e /app/activities redirecionam para os Dashboards |           |
+| 23.44| **Finanças solta no menu** | O menu lateral tem "Finanças" junto de Início, CRM e Tarefas (ícone de dinheiro); Análise não lista mais Faturamento; a página mostra o título Finanças e os mesmos números; /app/faturamento redireciona |           |
 
