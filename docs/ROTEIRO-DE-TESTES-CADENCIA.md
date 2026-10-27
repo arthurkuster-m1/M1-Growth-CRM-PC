@@ -464,4 +464,8 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.23| **Clientes pela agenda removido** | Configurações › Agenda não mostra mais "Clientes pela agenda"; novo agendamento não etiqueta o contato como cliente |           |
 | 23.24| **Registro do resultado da reunião** | O texto explica que vale depois da reunião e o que cada prazo faz; o campo "Soltar o horário…" não existe mais e pedido não confirmado não é cancelado sozinho |           |
 | 23.25| **Ver a agenda dos colegas** (como administrador) | Desligar "Atendentes podem ver a agenda dos colegas": um atendente passa a ver só os próprios compromissos (grade, resumo do dia e lista de pessoas); gerente/administrador seguem vendo todos; só administrador consegue mudar as duas opções |           |
+| 23.26| **Filtro da Agenda** (gerente/administrador) | O botão "Filtrar" abre a lista de atendentes e de tipos com caixas; escolher um, vários ou todos muda a grade e o resumo do dia; o bloco "Ocupado" do Google segue só a pessoa; o botão resume o que está valendo |           |
+| 23.27| **Tipos de atendimento** (celular) | Os seletores abrem o popup do app; não há campo de preço; dá para trocar Onde acontece e o endereço/link; o lembrete tem o botão "Inserir o link da reunião online (Meet)" e, numa reunião online com link pronto, a mensagem chega com o link |           |
+| 23.28| **Página de atendimento do tipo** | O roteiro está dentro do editor de blocos (sem lista de passos nem caixa "Roteiro"); nada passa da borda no celular |           |
+| 23.29| **Atendentes e horários** | Cada atendente é um cartão (status, carga, capacidade, horário e botão Editar); nada é cortado no celular |           |
 

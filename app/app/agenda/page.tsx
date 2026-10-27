@@ -326,6 +326,8 @@ export default async function AgendaPage() {
           comeca: a.starts_at,
           termina: a.ends_at,
           origem: "ui" as const,
+          // O nome do tipo, para o filtro por tipo de compromisso do gestor.
+          tipo: (tipos ?? []).find((t) => t.id === a.event_type_id)?.name ?? undefined,
           situacao: a.status as "confirmed",
           // "com quem" é a promessa do subtítulo desta tela, e era a única parte
           // dela que o servidor não entregava: `contact_id` vinha no select e

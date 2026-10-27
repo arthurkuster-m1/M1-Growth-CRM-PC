@@ -6,8 +6,8 @@ import { PrazosDePresenca } from "@/components/agenda/PrazosDePresenca";
 import { AgendaDosColegas } from "@/components/agenda/AgendaDosColegas";
 import { DiasBloqueados } from "@/components/agenda/DiasBloqueados";
 
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
-import { parseReaisToCents } from "@/lib/money";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -76,6 +76,40 @@ const LOCAIS = LOCAIS_DE_ATENDIMENTO;
 
 const rotuloDe = (lista: ReadonlyArray<{ valor: string; rotulo: string }>, valor: string) =>
   lista.find((c) => c.valor === valor)?.rotulo ?? valor;
+
+/**
+ * O seletor do app (o mesmo popup do formulário de novo compromisso) dentro de um `<form>` não
+ * controlado: guarda a escolha num `<input type="hidden" name=...>` para o `FormData` enxergá-la.
+ */
+function CampoSeletor({
+  name,
+  rotulo,
+  inicial,
+  opcoes,
+  rotuloVazio,
+  testId,
+}: {
+  name: string;
+  rotulo: string;
+  inicial: string;
+  opcoes: Array<{ id: string; rotulo: string }>;
+  rotuloVazio?: string;
+  testId?: string;
+}) {
+  const [valor, setValor] = React.useState(inicial);
+  return (
+    <div data-testid={testId}>
+      <input type="hidden" name={name} value={valor} />
+      <SeletorEmPopup
+        rotulo={rotulo}
+        valor={valor}
+        opcoes={opcoes}
+        rotuloVazio={rotuloVazio}
+        aoEscolher={setValor}
+      />
+    </div>
+  );
+}
 
 interface Rascunho {
   name: string;
@@ -217,23 +251,17 @@ function LembreteDoCompromisso({ tipo }: { tipo: TipoRow }) {
                 </label>
                 <label className="flex min-w-28 flex-col gap-1 text-xs text-text-muted">
                   <span className="sr-only">{t("Unidade")}</span>
-                  <select
-                    disabled={!ligado}
-                    value={c.unidade}
-                    onChange={(e) =>
-                      mudarUnidade(c.id, e.target.value as UnidadeDeAntecedencia)
-                    }
-                    data-testid={
-                      i === 0
-                        ? `editar-lembrete-unidade-${tipo.id}`
-                        : `editar-lembrete-unidade-${tipo.id}-${i}`
-                    }
-                    className="rounded-xl border border-border bg-surface p-2 text-sm text-text disabled:opacity-50"
-                  >
-                    <option value="minutos">{t("minutos")}</option>
-                    <option value="horas">{t("horas")}</option>
-                    <option value="dias">{t("dias")}</option>
-                  </select>
+<SeletorEmPopup
+                    rotulo={t("Unidade")}
+                    desabilitado={!ligado}
+                    valor={c.unidade}
+                    opcoes={[
+                      { id: "minutos", rotulo: t("minutos") },
+                      { id: "horas", rotulo: t("horas") },
+                      { id: "dias", rotulo: t("dias") },
+                    ]}
+                    aoEscolher={(v) => mudarUnidade(c.id, v as UnidadeDeAntecedencia)}
+                  />
                 </label>
                 <span className="pb-2 text-xs text-text-muted">{t("antes")}</span>
                 {ligado && cartoes.length > 1 ? (
@@ -268,6 +296,19 @@ function LembreteDoCompromisso({ tipo }: { tipo: TipoRow }) {
                   className="rounded-xl border border-border bg-surface p-2 text-sm text-text disabled:opacity-50"
                 />
               </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                disabled={!ligado}
+                data-testid={`editar-lembrete-inserir-link-${tipo.id}-${i}`}
+                onClick={() =>
+                  atualizar(c.id, { body: `${c.body}${c.body && !c.body.endsWith(" ") ? " " : ""}{{link}}` })
+                }
+              >
+                {t("Inserir o link da reunião online (Meet)")}
+              </Button>
             </li>
           );
         })}
@@ -296,7 +337,7 @@ function LembreteDoCompromisso({ tipo }: { tipo: TipoRow }) {
         </Button>
       ) : null}
       <p className="text-[11px] text-text-muted">
-        {t("Deixe a mensagem em branco para o texto padrão. Variáveis: {{nome}}, {{titulo}}, {{dia}}, {{hora}}, {{endereco}}.")}
+        {t("Deixe a mensagem em branco para o texto padrão. Variáveis: {{nome}}, {{titulo}}, {{dia}}, {{hora}}, {{endereco}}, {{link}} (o link do Meet, quando a reunião é online e o link já está pronto).")}
       </p>
     </div>
   );
@@ -443,18 +484,14 @@ export function TiposDeAgendamentoClient({
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted">
                 {t("Categoria")}
-                <select
-                  data-testid="novo-tipo-categoria"
-                  value={rascunho.category}
-                  onChange={(e) => setRascunho((r) => ({ ...r, category: e.target.value }))}
-                  className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
-                >
-                  {CATEGORIAS.map((c) => (
-                    <option key={c.valor} value={c.valor}>
-                      {t(c.rotulo)}
-                    </option>
-                  ))}
-                </select>
+<div data-testid="novo-tipo-categoria">
+                  <SeletorEmPopup
+                    rotulo={t("Categoria")}
+                    valor={rascunho.category}
+                    opcoes={CATEGORIAS.map((c) => ({ id: c.valor, rotulo: t(c.rotulo) }))}
+                    aoEscolher={(v) => setRascunho((r) => ({ ...r, category: v }))}
+                  />
+                </div>
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted">
                 {t("Duração (minutos)")}
@@ -472,18 +509,14 @@ export function TiposDeAgendamentoClient({
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted">
                 {t("Onde acontece")}
-                <select
-                  data-testid="novo-tipo-local"
-                  value={rascunho.location_kind}
-                  onChange={(e) => setRascunho((r) => ({ ...r, location_kind: e.target.value }))}
-                  className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
-                >
-                  {LOCAIS.map((l) => (
-                    <option key={l.valor} value={l.valor}>
-                      {t(l.rotulo)}
-                    </option>
-                  ))}
-                </select>
+<div data-testid="novo-tipo-local">
+                  <SeletorEmPopup
+                    rotulo={t("Onde acontece")}
+                    valor={rascunho.location_kind}
+                    opcoes={LOCAIS.map((l) => ({ id: l.valor, rotulo: t(l.rotulo) }))}
+                    aoEscolher={(v) => setRascunho((r) => ({ ...r, location_kind: v }))}
+                  />
+                </div>
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted sm:col-span-2">
                 {/* ⚠️ SEM RESPONSÁVEL NÃO HÁ AGENDA. `lib/agenda/consulta.ts` exige
@@ -491,21 +524,15 @@ export function TiposDeAgendamentoClient({
                     `sem_responsavel` e a tela de marcar não oferece horário nenhum.
                     Era exatamente o estado dos três tipos semeados. */}
                 {t("Quem atende (sem isto, não há horário para oferecer)")}
-                <select
-                  data-testid="novo-tipo-dono"
-                  value={rascunho.default_owner_user_id}
-                  onChange={(e) =>
-                    setRascunho((r) => ({ ...r, default_owner_user_id: e.target.value }))
-                  }
-                  className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
-                >
-                  <option value="">{t("Definir depois")}</option>
-                  {pessoas.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+<div data-testid="novo-tipo-dono">
+                  <SeletorEmPopup
+                    rotulo={t("Quem atende")}
+                    valor={rascunho.default_owner_user_id}
+                    rotuloVazio={t("Definir depois")}
+                    opcoes={pessoas.map((p) => ({ id: p.id, rotulo: p.nome }))}
+                    aoEscolher={(v) => setRascunho((r) => ({ ...r, default_owner_user_id: v }))}
+                  />
+                </div>
               </label>
               <div className="flex justify-end gap-2 sm:col-span-2">
                 <Button type="button" variant="ghost" size="sm" onClick={() => setCriando(false)}>
@@ -699,17 +726,10 @@ export function TiposDeAgendamentoClient({
                         // voltar — que é o laço de retorno correto.
                         default_owner_user_id:
                           String(dados.get("default_owner_user_id") ?? "") || null,
-                        // Caixa desmarcada não aparece no `FormData` — daí a
-                        // comparação, e não um `Boolean(...)` do valor ausente.
-                        // Vazio é uma ESCOLHA (voltar a digitar na hora), e
-                        // por isso vira `null` em vez de sumir do corpo: omitir
-                        // deixaria o preço antigo gravado e a tela mentindo.
-                        default_price_cents: (() => {
-                          const bruto = String(dados.get("default_price_cents") ?? "").trim();
-                          if (bruto === "") return null;
-                          const cents = parseReaisToCents(bruto);
-                          return cents === null ? null : cents;
-                        })(),
+                        // O local PADRÃO do tipo: o compromisso nasce com ele e dá para mudar
+                        // em cada um. O preço padrão saiu: o valor vem da oportunidade e da venda.
+                        location_kind: String(dados.get("location_kind") ?? tipo.location_kind),
+                        location_details: String(dados.get("location_details") ?? "").trim() || null,
                         reminder_enabled: dados.get("reminder_enabled") === "on",
                         // O campo desabilitado também não aparece, e omitir é o
                         // certo: desligar o aviso não pode apagar a lista que
@@ -735,7 +755,7 @@ export function TiposDeAgendamentoClient({
                   if (feito) setEditandoId(null);
                 }}
               >
-                <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,18rem)]">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                   <label className="flex flex-col gap-1 text-xs text-text-muted">
                     Nome
                     <input
@@ -759,36 +779,35 @@ export function TiposDeAgendamentoClient({
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-text-muted">
                     {t("Quem atende")}
-                    <select
+<CampoSeletor
                       name="default_owner_user_id"
-                      defaultValue={tipo.default_owner_user_id ?? ""}
-                      data-testid={`editar-dono-${tipo.id}`}
-                      className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
-                    >
-                      <option value="">{t("Sem responsável")}</option>
-                      {pessoas.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}
-                        </option>
-                      ))}
-                    </select>
+                      rotulo={t("Quem atende")}
+                      inicial={tipo.default_owner_user_id ?? ""}
+                      rotuloVazio={t("Sem responsável")}
+                      opcoes={pessoas.map((p) => ({ id: p.id, rotulo: p.nome }))}
+                      testId={`editar-dono-${tipo.id}`}
+                    />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-text-muted">
-                  {t("Preço padrão")}
-                  <input
-                    name="default_price_cents"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder={t("digite na hora")}
-                    defaultValue={
-                      tipo.default_price_cents === null ? "" : (tipo.default_price_cents / 100).toFixed(2)
-                    }
-                    data-testid={`editar-preco-${tipo.id}`}
-                    className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
-                  />
-                  <span className="text-[11px] text-text-muted">
-                    {t("Opcional. Vira o valor sugerido na comanda, e pode ser mudado lá.")}
-                  </span>
+                    {t("Onde acontece (padrão)")}
+                    <CampoSeletor
+                      name="location_kind"
+                      rotulo={t("Onde acontece (padrão)")}
+                      inicial={tipo.location_kind}
+                      opcoes={LOCAIS.map((l) => ({ id: l.valor, rotulo: t(l.rotulo) }))}
+                      testId={`editar-local-${tipo.id}`}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-text-muted sm:col-span-2">
+                    {t("Endereço ou link padrão (opcional)")}
+                    <input
+                      name="location_details"
+                      defaultValue={tipo.location_details ?? ""}
+                      maxLength={300}
+                      placeholder={t("Ex.: Sala 2, ou o link da reunião")}
+                      data-testid={`editar-local-detalhe-${tipo.id}`}
+                      className="rounded-xl border border-border bg-surface-elevated p-2 text-sm text-text"
+                    />
                   </label>
                 </div>
                 <LembreteDoCompromisso tipo={tipo} />

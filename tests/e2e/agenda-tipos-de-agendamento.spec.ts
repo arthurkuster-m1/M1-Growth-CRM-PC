@@ -111,15 +111,19 @@ test("crio um tipo COM responsável, e ele passa a ser marcável na Agenda", asy
   await page.getByTestId("abrir-novo-tipo").click();
   await expect(page.getByTestId("form-novo-tipo")).toBeVisible();
   await page.getByTestId("novo-tipo-nome").fill(nome);
-  await page.getByTestId("novo-tipo-categoria").selectOption("retorno");
+  // O seletor é o popup do app (o mesmo de novo compromisso), não mais um <select> do navegador.
+  await page.getByTestId("novo-tipo-categoria").getByRole("button").click();
+  await page.getByRole("button", { name: "Retorno", exact: true }).click();
   await page.getByTestId("novo-tipo-duracao").fill("15");
 
   // ⚠️ O RESPONSÁVEL É O PONTO DESTA SPEC. Sem ele o tipo nasce igual aos três
   // semeados: existe na lista e não produz horário nenhum.
   const dono = page.getByTestId("novo-tipo-dono");
-  const opcoes = await dono.locator("option").count();
+  await dono.getByRole("button").click();
+  const opcoes = await page.locator("[data-radix-popper-content-wrapper] button").count();
   expect(opcoes, "o seletor de responsável não listou ninguém — não há o que escolher").toBeGreaterThan(1);
-  await dono.selectOption({ index: 1 });
+  // Índice 0 é "Definir depois"; a pessoa vem logo depois.
+  await page.locator("[data-radix-popper-content-wrapper] button").nth(1).click();
 
   await page.getByTestId("salvar-novo-tipo").click();
 
@@ -192,7 +196,9 @@ test("o tipo NASCE com responsável — e quem escolhe 'Definir depois' recebe a
   await linhaComDono.getByRole("button", { name: "Editar" }).click();
   const seletor = page.getByTestId(/^editar-dono-/).first();
   await expect(seletor).toBeVisible({ timeout: 15_000 });
-  const rotulos = await seletor.locator("option").allInnerTexts();
+  await seletor.getByRole("button").click();
+  const rotulos = await page.locator("[data-radix-popper-content-wrapper] button").allInnerTexts();
+  await page.keyboard.press("Escape");
   const dePessoa = rotulos.filter((r) => r !== "Sem responsável");
   expect(dePessoa.length, "o seletor não oferece pessoa nenhuma").toBeGreaterThan(0);
   expect(
@@ -207,7 +213,8 @@ test("o tipo NASCE com responsável — e quem escolhe 'Definir depois' recebe a
   await page.getByTestId("novo-tipo-nome").fill(semDono);
   // Índice 0 é "Definir depois", e a ordem importa: o outro caso desta spec faz
   // `selectOption({ index: 1 })` contando que a ausência seja a primeira opção.
-  await page.getByTestId("novo-tipo-dono").selectOption({ index: 0 });
+  await page.getByTestId("novo-tipo-dono").getByRole("button").click();
+  await page.locator("[data-radix-popper-content-wrapper] button").nth(0).click();
   await page.getByTestId("salvar-novo-tipo").click();
 
   const linhaSemDono = page
@@ -228,7 +235,8 @@ test("o tipo NASCE com responsável — e quem escolhe 'Definir depois' recebe a
     "cliquei no aviso e ele não abriu nada — continua acusando sem oferecer caminho",
   ).toBeVisible({ timeout: 15_000 });
 
-  await seletorDoOrfao.selectOption({ index: 1 });
+  await seletorDoOrfao.getByRole("button").click();
+  await page.locator("[data-radix-popper-content-wrapper] button").nth(1).click();
   await linhaSemDono.getByTestId(/^salvar-/).first().click();
   await expect(
     linhaSemDono.getByText("sem responsável"),
@@ -365,7 +373,8 @@ test("ligo o aviso do compromisso pela tela, e ele fica ligado", async ({ page }
 
   await caixa.check();
   await expect(minutos, "marquei o aviso e o campo continuou travado").toBeEnabled();
-  await linha.getByTestId(/^editar-lembrete-unidade-/).first().selectOption("minutos");
+  await linha.getByRole("button", { name: "Unidade" }).first().click();
+  await page.getByRole("button", { name: "minutos", exact: true }).click();
   await minutos.fill("60");
   await linha.getByTestId(/^salvar-/).first().click();
 

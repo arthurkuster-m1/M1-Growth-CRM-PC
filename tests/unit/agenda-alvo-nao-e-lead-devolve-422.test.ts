@@ -96,7 +96,8 @@ function db(opts: { ehLead: boolean; vinculos?: string[]; falhaAoConsultarVincul
     };
     return enc;
   };
-  return { from: (t: string) => q(t) } as never;
+  // `rpc`: a leitura de "atendentes veem a agenda dos colegas" (ligado = data true).
+  return { from: (t: string) => q(t), rpc: async () => ({ data: true, error: null }) } as never;
 }
 
 function pedido(query = ""): NextRequest {

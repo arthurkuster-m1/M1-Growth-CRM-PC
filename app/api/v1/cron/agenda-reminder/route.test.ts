@@ -150,6 +150,24 @@ describe("montarLembrete", () => {
   });
 });
 
+describe("montarLembrete — o link da reunião online", () => {
+  const quando = new Date("2026-09-03T12:45:00Z");
+  const base = { nomeDoContato: "Rose", titulo: "Reunião", quando, timezone: "America/Sao_Paulo", local: null };
+
+  it("{{link}} no molde vira o link do Meet; sem link fica vazio", () => {
+    const comLink = montarLembrete({ ...base, molde: "Entre em: {{link}}", link: "https://meet.google.com/abc" });
+    expect(comLink).toBe("Entre em: https://meet.google.com/abc");
+    expect(montarLembrete({ ...base, molde: "Entre em: {{link}}", link: null })).toBe("Entre em: ");
+  });
+
+  it("na frase padrão, o link entra quando existe", () => {
+    expect(montarLembrete({ ...base, link: "https://meet.google.com/abc" })).toContain(
+      "https://meet.google.com/abc",
+    );
+    expect(montarLembrete({ ...base })).not.toContain("meet.google.com");
+  });
+});
+
 describe("isolamento entre organizações (estrutural)", () => {
   const fonte = readFileSync(join(__dirname, "route.ts"), "utf8");
 

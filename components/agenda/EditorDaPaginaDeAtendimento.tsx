@@ -10,7 +10,6 @@ import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
 import { EditorVisualDeBlocos } from "@/components/marketing/EditorVisualDeBlocos";
 import {
-  LIMITE_DE_PASSOS,
   blocosDoModelo,
   padraoDoModelo,
   type ModeloDeAtendimentoDoTipo,
@@ -18,7 +17,6 @@ import {
 import { randomId } from "@/lib/random-id";
 import { ROTULO_DO_MODELO } from "@/lib/agenda/atendimentos";
 import { apiClient } from "@/lib/api/client";
-import { ArrowDown, ArrowUp, Plus, Trash } from "@/lib/ui/icons";
 
 import { BlocoRecolhivel } from "./BlocoRecolhivel";
 import { useMatrizDeAtendentes } from "./equipe-hooks";
@@ -29,11 +27,6 @@ const BLOCOS: Array<{
   rotulo: string;
   dica: string;
 }> = [
-  {
-    id: "roteiro",
-    rotulo: "Roteiro",
-    dica: "Os passos que o atendente segue, com dica de cada um.",
-  },
   { id: "anotacoes", rotulo: "Anotações", dica: "O espaço para escrever o que foi falado." },
   {
     id: "oportunidade",
@@ -47,6 +40,15 @@ const BLOCOS: Array<{
   },
 ];
 
+/**
+ * O roteiro vive DENTRO do editor de blocos: o que antes era uma lista de passos com checkbox separado
+ * passa a ser os próprios blocos do modelo. Sem modelo de blocos gravado, o editor já abre com os
+ * blocos que saem do roteiro padrão do tipo.
+ */
+function comBlocos(m: ModeloDeAtendimentoDoTipo): ModeloDeAtendimentoDoTipo {
+  return m.blocos_do_modelo ? m : { ...m, blocos_do_modelo: blocosDoModelo(m, randomId) };
+}
+
 function EditorDoTipo({
   tipoId,
   atual,
@@ -58,7 +60,7 @@ function EditorDoTipo({
 }) {
   const t = useT();
   const qc = useQueryClient();
-  const [m, setM] = React.useState<ModeloDeAtendimentoDoTipo>(atual);
+  const [m, setM] = React.useState<ModeloDeAtendimentoDoTipo>(() => comBlocos(atual));
   const [sujo, setSujo] = React.useState(false);
   const mudar = (f: (x: ModeloDeAtendimentoDoTipo) => ModeloDeAtendimentoDoTipo) => {
     setM((x) => f(x));
@@ -81,17 +83,8 @@ function EditorDoTipo({
     onError: showApiError,
   });
 
-  const mover = (i: number, d: -1 | 1) =>
-    mudar((x) => {
-      const r = [...x.roteiro];
-      const j = i + d;
-      if (j < 0 || j >= r.length) return x;
-      [r[i], r[j]] = [r[j]!, r[i]!];
-      return { ...x, roteiro: r };
-    });
-
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
       <div className="grid gap-1 sm:max-w-sm">
         <p className="text-sm font-medium">{t("Modelo da página")}</p>
         <SeletorEmPopup
@@ -105,7 +98,7 @@ function EditorDoTipo({
           aoEscolher={(id) => {
             if (id === m.modelo) return;
             // Trocar de modelo traz o padrão dele (blocos e roteiro); dá para ajustar depois.
-            setM(padraoDoModelo(id as ModeloDeAtendimentoDoTipo["modelo"]));
+            setM(comBlocos(padraoDoModelo(id as ModeloDeAtendimentoDoTipo["modelo"])));
             setSujo(true);
           }}
         />
@@ -136,144 +129,35 @@ function EditorDoTipo({
         </ul>
       </div>
 
-      {m.blocos.roteiro ? (
-        <div>
-          <p className="mb-2 text-sm font-medium">{t("Roteiro de atendimento")}</p>
-          <ol className="grid gap-2">
-            {m.roteiro.map((p, i) => (
-              <li
-                key={i}
-                className="grid gap-2 rounded-xl border border-border bg-background p-3 sm:grid-cols-[1fr_2fr_auto]"
-              >
-                <input
-                  aria-label={`${t("Título do passo")} ${i + 1}`}
-                  value={p.titulo}
-                  maxLength={80}
-                  disabled={!podeEditar}
-                  placeholder={t("Título do passo")}
-                  onChange={(e) =>
-                    mudar((x) => ({
-                      ...x,
-                      roteiro: x.roteiro.map((q, k) =>
-                        k === i ? { ...q, titulo: e.target.value } : q,
-                      ),
-                    }))
-                  }
-                  className="h-9 rounded-xl border border-border bg-surface px-3 text-sm"
-                />
-                <input
-                  aria-label={`${t("Dica do passo")} ${i + 1}`}
-                  value={p.dica}
-                  maxLength={300}
-                  disabled={!podeEditar}
-                  placeholder={t("Dica: o que fazer ou perguntar")}
-                  onChange={(e) =>
-                    mudar((x) => ({
-                      ...x,
-                      roteiro: x.roteiro.map((q, k) =>
-                        k === i ? { ...q, dica: e.target.value } : q,
-                      ),
-                    }))
-                  }
-                  className="h-9 rounded-xl border border-border bg-surface px-3 text-sm"
-                />
-                {podeEditar ? (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("Subir passo")}
-                      disabled={i === 0}
-                      onClick={() => mover(i, -1)}
-                    >
-                      <ArrowUp size={16} aria-hidden />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("Descer passo")}
-                      disabled={i === m.roteiro.length - 1}
-                      onClick={() => mover(i, 1)}
-                    >
-                      <ArrowDown size={16} aria-hidden />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("Remover passo")}
-                      onClick={() =>
-                        mudar((x) => ({ ...x, roteiro: x.roteiro.filter((_, k) => k !== i) }))
-                      }
-                    >
-                      <Trash size={16} aria-hidden />
-                    </Button>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-          {podeEditar && m.roteiro.length < LIMITE_DE_PASSOS ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2 gap-1.5 rounded-xl"
-              onClick={() =>
-                mudar((x) => ({ ...x, roteiro: [...x.roteiro, { titulo: "", dica: "" }] }))
-              }
-            >
-              <Plus size={14} aria-hidden />
-              {t("Adicionar passo")}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div>
-        <p className="mb-1 text-sm font-medium">{t("Modelo de blocos do compromisso")}</p>
+      <div className="min-w-0">
+        <p className="mb-1 text-sm font-medium">{t("Roteiro e modelo da página")}</p>
         <p className="mb-2 text-xs text-muted-foreground">
           {t(
-            "O editor da página do compromisso já abre com este modelo. Cada compromisso pode adaptá-lo, mas a adaptação vale só para ele.",
+            "O roteiro de atendimento fica aqui dentro: escreva os passos, perguntas e anotações como blocos. A página do compromisso já abre com este modelo; cada compromisso pode adaptá-lo, mas a adaptação vale só para ele.",
           )}
         </p>
-        {m.blocos_do_modelo ? (
-          <>
-            <EditorVisualDeBlocos
-              blocos={m.blocos_do_modelo}
-              aoMudar={(novos) => podeEditar && mudar((x) => ({ ...x, blocos_do_modelo: novos }))}
-              novoId={randomId}
-              rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
-            />
-            {podeEditar ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="mt-2 rounded-xl"
-                onClick={() => mudar((x) => ({ ...x, blocos_do_modelo: undefined }))}
-              >
-                {t("Voltar ao modelo gerado pelo roteiro")}
-              </Button>
-            ) : null}
-          </>
-        ) : podeEditar ? (
+        <div className="min-w-0 overflow-x-hidden">
+          <EditorVisualDeBlocos
+            blocos={m.blocos_do_modelo ?? []}
+            aoMudar={(novos) => podeEditar && mudar((x) => ({ ...x, blocos_do_modelo: novos }))}
+            novoId={randomId}
+            rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
+          />
+        </div>
+        {podeEditar ? (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="rounded-xl"
-            onClick={() => mudar((x) => ({ ...x, blocos_do_modelo: blocosDoModelo(x, randomId) }))}
+            className="mt-2 rounded-xl"
+            onClick={() => {
+              setM((x) => comBlocos({ ...padraoDoModelo(x.modelo), blocos: x.blocos }));
+              setSujo(true);
+            }}
           >
-            {t("Editar o modelo de blocos")}
+            {t("Restaurar o modelo padrão")}
           </Button>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {t("O modelo vem do roteiro deste tipo.")}
-          </p>
-        )}
+        ) : null}
       </div>
 
       {podeEditar ? (
@@ -284,7 +168,7 @@ function EditorDoTipo({
             className="rounded-xl"
             disabled={!sujo}
             onClick={() => {
-              setM(atual);
+              setM(comBlocos(atual));
               setSujo(false);
             }}
           >
@@ -314,12 +198,12 @@ export function EditorDasPaginasDeAtendimento({ podeEditar }: { podeEditar: bool
   const tipos = matriz.data?.tipos ?? [];
   if (!modelos.data || tipos.length === 0) return null;
   return (
-    <div className="grid gap-3" data-testid="paginas-de-atendimento">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3" data-testid="paginas-de-atendimento">
       <div>
         <h3 className="text-sm font-semibold">{t("Página de atendimento de cada tipo")}</h3>
         <p className="text-xs text-muted-foreground">
           {t(
-            "O que o atendente vê ao abrir o compromisso: o roteiro, as anotações e a venda. Cada tipo pode ter a sua página.",
+            "O que o atendente vê ao abrir o compromisso: o roteiro (dentro do editor de blocos), as anotações e a venda. Cada tipo pode ter a sua página.",
           )}
         </p>
       </div>
