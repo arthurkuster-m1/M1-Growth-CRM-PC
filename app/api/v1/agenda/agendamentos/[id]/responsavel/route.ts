@@ -35,16 +35,21 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   const admin = createAdminClient();
   const { data: a } = await admin
     .from("calendar_appointments")
-    .select("id,status,starts_at,ends_at,owner_user_id,google_event_id,google_connection_id,google_calendar_id")
+    .select(
+      "id,status,starts_at,ends_at,owner_user_id,google_event_id,google_connection_id,google_calendar_id",
+    )
     .eq("organization_id", org)
     .eq("id", id)
     .maybeSingle();
   if (!a) return fail("not_found", "Compromisso indisponível.", 404, { requestId });
   if (a.owner_user_id !== auth.user.id && (RANK[auth.org.role] ?? 0) < RANK.manager!)
-    return fail("forbidden", "Só o responsável atual ou um gerente troca o responsável.", 403, { requestId });
+    return fail("forbidden", "Só o responsável atual ou um gerente troca o responsável.", 403, {
+      requestId,
+    });
   if (["cancelled", "completed", "no_show"].includes(a.status as string))
     return fail("conflict", "Este compromisso já foi encerrado.", 409, { requestId });
-  if (a.owner_user_id === body.data.user_id) return ok({ id, responsavel_id: a.owner_user_id }, { requestId });
+  if (a.owner_user_id === body.data.user_id)
+    return ok({ id, responsavel_id: a.owner_user_id }, { requestId });
 
   const { data: membro } = await admin
     .from("user_organizations")

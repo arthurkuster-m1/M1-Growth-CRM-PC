@@ -32,7 +32,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     .maybeSingle();
   if (!a) return fail("not_found", "Compromisso indisponível.", 404, { requestId });
   if (a.owner_user_id !== auth.user.id && (RANK[auth.org.role] ?? 0) < RANK.manager!)
-    return fail("forbidden", "Só o responsável ou um gerente muda a oportunidade.", 403, { requestId });
+    return fail("forbidden", "Só o responsável ou um gerente muda a oportunidade.", 403, {
+      requestId,
+    });
 
   if (body.data.lead_id) {
     const { data: lead } = await admin
@@ -42,7 +44,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       .eq("id", body.data.lead_id)
       .maybeSingle();
     if (!lead || lead.contact_id !== a.contact_id)
-      return fail("validation_failed", "Essa oportunidade não é deste cliente.", 422, { requestId });
+      return fail("validation_failed", "Essa oportunidade não é deste cliente.", 422, {
+        requestId,
+      });
   }
   await admin
     .from("crm_lead_links")
@@ -59,7 +63,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       link_kind: "scheduled",
       created_by_user_id: auth.user.id,
     });
-    if (error) return fail("internal_error", "Não foi possível ligar a oportunidade.", 500, { requestId });
+    if (error)
+      return fail("internal_error", "Não foi possível ligar a oportunidade.", 500, { requestId });
   }
   return ok({ id, lead_id: body.data.lead_id }, { requestId });
 }
