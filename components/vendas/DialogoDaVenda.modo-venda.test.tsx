@@ -125,6 +125,10 @@ describe("página da venda × página da oportunidade", () => {
     // lembrete e lixeira no cabeçalho; descrição e comentários são um bloco só
     expect(screen.getByLabelText("Lembrete")).toBeTruthy();
     expect(screen.getByLabelText("Apagar oportunidade")).toBeTruthy();
+    // registro de ação no cabeçalho do funil; atividade em toggle no fim; sem o campo Referência
+    expect(screen.getByTestId("registro-de-acao")).toBeTruthy();
+    expect(screen.getByText("Atividade")).toBeTruthy();
+    expect(screen.queryByText(/Referência/)).toBeNull();
     expect(screen.queryByText("Descrição da oportunidade")).toBeNull();
     // o título editável fica em cima, nas duas páginas
     expect(screen.getByLabelText("Título da oportunidade")).toBeTruthy();

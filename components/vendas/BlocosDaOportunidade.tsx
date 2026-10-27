@@ -14,6 +14,8 @@ import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorCl
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
 import { useAuth } from "@/hooks/auth/AuthProvider";
+import { LeadTimeline } from "@/components/kanban/LeadTimeline";
+import { useLeadTimeline } from "@/hooks/leads/useLeadTimeline";
 import { useContact } from "@/hooks/contacts/useContact";
 import { useT } from "@/hooks/i18n/useT";
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
@@ -532,5 +534,37 @@ export function TagsDoCliente({ contactId }: { contactId: string }) {
     <BlocoRecolhivel titulo={t("Tags")} resumo={tags.length > 0 ? tags.join(", ") : undefined}>
       <ContactTagsEditor contactId={contactId} orgId={activeOrg.orgId} tags={tags} />
     </BlocoRecolhivel>
+  );
+}
+
+/**
+ * A ATIVIDADE da oportunidade: tudo o que aconteceu nela — mudança de etapa, reunião marcada ou
+ * cancelada, conversa com o cliente e cada ação registrada. É o mesmo registro do histórico do lead,
+ * filtrado só por esta oportunidade. Em toggle, e só carrega quando abre.
+ */
+export function AtividadeDaOportunidade({
+  leadId,
+  contactId,
+}: {
+  leadId: string;
+  contactId: string | null;
+}) {
+  const t = useT();
+  return (
+    <BlocoRecolhivel titulo={t("Atividade")}>
+      <AtividadeAberta leadId={leadId} contactId={contactId} />
+    </BlocoRecolhivel>
+  );
+}
+
+function AtividadeAberta({ leadId, contactId }: { leadId: string; contactId: string | null }) {
+  const tl = useLeadTimeline(leadId, contactId);
+  return (
+    <LeadTimeline
+      itens={tl.itens}
+      chegouAoVivo={tl.chegouAoVivo}
+      isLoading={tl.isLoading}
+      isError={tl.isError}
+    />
   );
 }
