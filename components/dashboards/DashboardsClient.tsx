@@ -339,6 +339,8 @@ export function DashboardsClient({
         ) : (
           <div className="grid min-w-0 gap-4">
             <Atendimento
+              periodo={janela}
+              podeVerAtrito={papel !== undefined && ROLE_RANK[papel] >= ROLE_RANK.agent}
               dados={atendimento.data}
               aoSalvarHorario={async (h) => {
                 await apiClient.put("/api/v1/dashboards/atendimento", h);

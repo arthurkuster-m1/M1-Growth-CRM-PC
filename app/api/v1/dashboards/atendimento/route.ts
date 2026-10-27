@@ -184,15 +184,36 @@ export async function GET(req: NextRequest): Promise<Response> {
     x.conversas.push(c);
     porAtendente.set(chave, x);
   }
-  const atendentes = [...porAtendente.values()]
-    .map((x) => {
+  // Resultado por atendente: negócios ganhos e perdidos que ele fechou no período (o dono do negócio).
+  // Pela sessão: a RLS recorta o que cada papel pode ver, como nas demais leituras desta rota.
+  const { data: fechados } = await supabase
+    .from("crm_leads")
+    .select("owner_user_id, status")
+    .eq("organization_id", orgId)
+    .in("status", ["won", "lost"])
+    .gte("closed_at", new Date(inicioAtual).toISOString())
+    .lt("closed_at", ateInstante)
+    .limit(LIMITE);
+  const ganhosPor = new Map<string, number>();
+  const perdidosPor = new Map<string, number>();
+  for (const l of (fechados ?? []) as Array<{ owner_user_id: string | null; status: string }>) {
+    if (!l.owner_user_id) continue;
+    const mapa = l.status === "won" ? ganhosPor : perdidosPor;
+    mapa.set(l.owner_user_id, (mapa.get(l.owner_user_id) ?? 0) + 1);
+  }
+  const atendentes = [...porAtendente.entries()]
+    .map(([chave, x]) => {
       const r = resumir(x.conversas);
+      const pessoa = chave !== "ia" && chave !== "sem";
       return {
         nome: x.nome,
         conversas: r.iniciadas,
         respondidas: r.respondidas,
         tempoMedio: r.tempoMedio,
         noPrazoPct: r.noPrazoPct,
+        // A IA e "sem responsável" não são donos de negócio: ficam sem o par ganhos/perdidos.
+        ganhos: pessoa ? (ganhosPor.get(chave) ?? 0) : null,
+        perdidos: pessoa ? (perdidosPor.get(chave) ?? 0) : null,
       };
     })
     .sort((a, b) => b.conversas - a.conversas);

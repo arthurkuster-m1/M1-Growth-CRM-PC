@@ -15,6 +15,8 @@ import {
 } from "@/components/dashboards/base";
 import { useT } from "@/hooks/i18n/useT";
 import { formatarMinutos } from "@/lib/dashboards/atendimento";
+import { useAtritoMetrics } from "@/hooks/metrics/useAtritoMetrics";
+import { formatarMedida } from "@/lib/metrics/atrito";
 import { cn } from "@/lib/utils";
 
 interface Resumo {
@@ -41,6 +43,9 @@ export interface DadosDeAtendimento {
     respondidas: number;
     tempoMedio: number | null;
     noPrazoPct: number | null;
+    /** Negócios ganhos e perdidos no período; ausentes na linha da IA e em "sem responsável". */
+    ganhos?: number | null;
+    perdidos?: number | null;
   }>;
   calor: number[][];
   parados24h: number;
@@ -56,6 +61,56 @@ export interface DadosDeAtendimento {
   podeEditarHorario: boolean;
 }
 
+/**
+ * Três números do Índice de Atrito (página Desempenho) que dizem se o atendimento funciona de
+ * verdade: conversas que morreram no silêncio, clientes que repetiram depois da passagem para
+ * humano e a espera na fila humana. Seguem o período do dashboard; sem dado, mostram "—".
+ */
+function AtritoDoAtendimento({ periodo }: { periodo?: { de: string; ate: string } }) {
+  const t = useT();
+  const { data, isLoading, isError } = useAtritoMetrics(periodo);
+  if (isError) return null;
+  const pares = data?.data.pares ?? [];
+  const medida = (par: string, chave: string) =>
+    pares.find((p) => p.chave === par)?.danos.find((m) => m.chave === chave);
+  const silencio = medida("conversao", "taxa_de_abandono");
+  const repetiu = medida("automacao", "repeticao_pos_passagem");
+  const espera = medida("custo_humano", "espera_humana_p50_s");
+  const itens = [
+    { rotulo: t("Conversas que morreram no silêncio"), m: silencio },
+    { rotulo: t("Repetiram depois da passagem para humano"), m: repetiu },
+    { rotulo: t("Espera na fila humana (mediana)"), m: espera },
+  ];
+  return (
+    <Painel
+      titulo={t("Atrito do atendimento")}
+      nota={t("O que o cliente sente além da velocidade")}
+    >
+      {isLoading ? (
+        <div className="h-16 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
+      ) : (
+        <>
+          <GradeDeNumeros
+            itens={itens.map((i) => ({
+              rotulo: i.rotulo,
+              valor: i.m ? formatarMedida(i.m) : "—",
+            }))}
+          />
+          <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+            {itens.map((i) =>
+              i.m?.nota ? (
+                <li key={i.rotulo}>
+                  <span className="font-medium">{i.rotulo}:</span> {i.m.nota}
+                </li>
+              ) : null,
+            )}
+          </ul>
+        </>
+      )}
+    </Painel>
+  );
+}
+
 const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function tempoParado(horas: number): string {
@@ -69,9 +124,15 @@ function tempoParado(horas: number): string {
 export function Atendimento({
   dados,
   aoSalvarHorario,
+  periodo,
+  podeVerAtrito = false,
 }: {
   dados: DadosDeAtendimento;
   aoSalvarHorario: (h: { inicio: string; fim: string; dias: number[] }) => Promise<void>;
+  /** O período escolhido no topo do dashboard (`YYYY-MM-DD`): o atrito segue ele. */
+  periodo?: { de: string; ate: string };
+  /** O atrito é de quem atende (agente ou acima): abaixo disso o painel nem aparece. */
+  podeVerAtrito?: boolean;
 }) {
   const t = useT();
   const [inicio, setInicio] = useState(dados.horario.inicio);
@@ -200,7 +261,7 @@ export function Atendimento({
       </GradeDeKpis>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Painel titulo={t("Por atendente")} nota={t("Volume, velocidade e prazo")}>
+        <Painel titulo={t("Por atendente")} nota={t("Volume, velocidade, prazo e resultado")}>
           {dados.atendentes.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Nenhuma conversa no período.")}</p>
           ) : (
@@ -211,6 +272,8 @@ export function Atendimento({
                 { titulo: t("Respondidas") },
                 { titulo: t("Tempo médio") },
                 { titulo: t("No prazo") },
+                { titulo: t("Ganhos") },
+                { titulo: t("Perdidos") },
               ]}
               linhas={dados.atendentes.map((x) => [
                 x.nome,
@@ -234,6 +297,8 @@ export function Atendimento({
                     {pct(x.noPrazoPct, 0)}
                   </span>
                 ),
+                x.ganhos == null ? "—" : inteiro(x.ganhos),
+                x.perdidos == null ? "—" : inteiro(x.perdidos),
               ])}
             />
           )}
@@ -259,6 +324,8 @@ export function Atendimento({
           />
         </Painel>
       </div>
+
+      {podeVerAtrito ? <AtritoDoAtendimento periodo={periodo} /> : null}
 
       <Painel titulo={t("Quando chegam as conversas")} nota={t("Dia da semana × hora (08h–20h)")}>
         <div className="overflow-x-auto">
