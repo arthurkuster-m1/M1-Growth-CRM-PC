@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
-import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
+import { SeletorDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
 import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
@@ -271,7 +271,17 @@ export function ClientesCRM({
   const rotuloDaFormaDe = useRotuloDaForma();
   const ehOportunidades = modo === "oportunidades";
   const tela = ehOportunidades ? "oportunidades" : "clientes";
-  const funilEscolhido = parametros.get("funil") ?? TODOS;
+  // `?funil=` aceita um id, vários separados por vírgula, ou "todos"/nada (= todos). Com UM só, a tela
+  // se comporta como o funil aberto; com vários, a lista mostra a soma dos funis marcados.
+  const idsEscolhidos = (parametros.get("funil") ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x && x !== TODOS);
+  const funilEscolhido = idsEscolhidos.length === 1 ? idsEscolhidos[0]! : TODOS;
+  const multiplosFunis: ReadonlySet<string> | null =
+    idsEscolhidos.length > 1 ? new Set(idsEscolhidos) : null;
+  const funilPermitido = (funilId: string | null) =>
+    !multiplosFunis || (funilId !== null && multiplosFunis.has(funilId));
   const [busca, setBusca] = useState("");
   // "Agora" fixado na montagem: a tela não recalcula o relógio a cada render.
   const [agora] = useState(() => Date.now());
@@ -511,7 +521,7 @@ export function ClientesCRM({
     if (ehOportunidades) {
       return base.flatMap((c) =>
         c.participacoes
-          .filter((p) => !funilAtual || p.funil_id === funilAtual.id)
+          .filter((p) => (!funilAtual || p.funil_id === funilAtual.id) && funilPermitido(p.funil_id))
           .map((p) => ({
             ...c,
             participacao: p,
@@ -530,7 +540,8 @@ export function ClientesCRM({
             null);
       return { ...c, participacao: doFunil, chave: c.contact_id };
     });
-  }, [dados, funilAtual, ehOportunidades]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dados, funilAtual, ehOportunidades, parametros]);
 
   /** Uma participação por funil, na mesma ordem nas colunas Funis e Etapa (uma linha por funil). */
   const porFunil = (l: Linha): ParticipacaoDoCliente[] => {
@@ -565,6 +576,7 @@ export function ClientesCRM({
     let interesse = 0;
     for (const v of l.vendas_ativas ?? []) {
       if (funilAtual && v.funil_id !== funilAtual.id) continue;
+      if (!funilPermitido(v.funil_id)) continue;
       if (v.status === "interesse") interesse += v.valor_cents;
       else {
         // Venda recorrente: as parcelas pagas podem passar do valor da venda (uma por mês).
@@ -632,6 +644,7 @@ export function ClientesCRM({
     (l.vendas_ativas ?? []).filter(
       (v) =>
         (!funilAtual || v.funil_id === funilAtual.id) &&
+        funilPermitido(v.funil_id) &&
         (statusDasVendas.size === 0 || statusDasVendas.has(v.status)),
     );
   /**
@@ -825,7 +838,7 @@ export function ClientesCRM({
   const semValor = <span className="block px-2 text-sm text-muted-foreground">—</span>;
 
   const opcoesDeEtapa = (dados?.etapas ?? [])
-    .filter((e) => !funilAtual || e.pipeline_id === funilAtual.id)
+    .filter((e) => (!funilAtual || e.pipeline_id === funilAtual.id) && funilPermitido(e.pipeline_id))
     .map((e) => ({ id: e.id, rotulo: e.name, cor: corDaEtapa(e), pipeline_id: e.pipeline_id }));
 
   const colunas: ColunaDoMotor<Linha>[] = [
@@ -2270,7 +2283,11 @@ export function ClientesCRM({
   );
   // VENDAS = as vendas realizadas (com pagamento recebido), no funil escolhido ou em todos.
   const vendasDoLead = (l: Linha) =>
-    funilAtual ? (l.vendas_por_funil?.[funilAtual.id] ?? 0) : l.vendas;
+    funilAtual
+      ? (l.vendas_por_funil?.[funilAtual.id] ?? 0)
+      : multiplosFunis
+        ? [...multiplosFunis].reduce((soma, id) => soma + (l.vendas_por_funil?.[id] ?? 0), 0)
+        : l.vendas;
   const totalDeVendas = alvos.reduce((s, l) => s + vendasDoLead(l), 0);
   // TAXA DE CONVERSÃO = leads com ao menos uma venda paga ÷ total de leads (não é a contagem de
   // vendas: um lead com três vendas conta uma vez).
@@ -2668,7 +2685,10 @@ export function ClientesCRM({
 
   return (
     <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      {/* No celular, Oportunidades não repete o título (a aba já diz onde você está); o botão de nova vai para a linha de ações. */}
+      <header
+        className={`flex flex-wrap items-start justify-between gap-3 ${ehOportunidades ? "max-sm:hidden" : ""}`}
+      >
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             {ehOportunidades ? t("Oportunidades") : t("Clientes")}
@@ -2737,6 +2757,10 @@ export function ClientesCRM({
         aria-label={t("Resumo")}
         className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
           ehOportunidades ? "xl:grid-cols-4" : "xl:grid-cols-5"
+        } ${
+          ehOportunidades
+            ? "max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
+            : ""
         }`}
       >
         {(ehOportunidades ? numerosDeOportunidades : numerosDaBase).map((n) => {
@@ -2760,6 +2784,10 @@ export function ClientesCRM({
               }
               className={`bg-card px-4 py-3 text-left transition-colors hover:bg-secondary/60 ${
                 ativo ? "ring-2 ring-primary ring-inset" : ""
+              } ${
+                ehOportunidades
+                  ? "max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2"
+                  : ""
               }`}
             >
               <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -2768,20 +2796,37 @@ export function ClientesCRM({
               <p className="mt-1 text-xl font-semibold tabular-nums">
                 <NumeroQueCabe>{n.valor}</NumeroQueCabe>
               </p>
-              {n.detalhe ? <p className="text-[11px] text-muted-foreground">{n.detalhe}</p> : null}
+              {n.detalhe ? (
+                <p
+                  className={`text-[11px] text-muted-foreground ${ehOportunidades ? "max-sm:hidden" : ""}`}
+                >
+                  {n.detalhe}
+                </p>
+              ) : null}
             </button>
           );
         })}
       </section>
 
       {ehOportunidades ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:flex-wrap">
+          {dados?.pode_editar ? (
+            <button
+              type="button"
+              onClick={() => setNovaOportunidade(true)}
+              aria-label={t("Nova oportunidade")}
+              title={t("Nova oportunidade")}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-card hover:bg-secondary sm:hidden"
+            >
+              <Plus size={16} weight="bold" aria-hidden />
+            </button>
+          ) : null}
           <button
             type="button"
             aria-pressed={destaque === "ligarhoje"}
             title={t("Próxima ação vencida ou de hoje, e sem resposta há mais de 24h")}
             onClick={() => setDestaque(destaque === "ligarhoje" ? null : "ligarhoje")}
-            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary ${
+            className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
               destaque === "ligarhoje" ? "border-primary bg-primary/10" : "bg-card"
             }`}
           >
@@ -2797,7 +2842,7 @@ export function ClientesCRM({
               aria-pressed={destaque === "cadencia"}
               title={t("Leads cujo passo da cadência vence hoje ou já venceu")}
               onClick={() => setDestaque(destaque === "cadencia" ? null : "cadencia")}
-              className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors hover:bg-secondary ${
+              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
                 destaque === "cadencia" ? "border-primary bg-primary/10" : "bg-card"
               }`}
             >
@@ -2812,17 +2857,18 @@ export function ClientesCRM({
             type="button"
             onClick={() => setProspectando(true)}
             title={t("Trabalha a lista que está filtrada, um lead de cada vez")}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary"
           >
             <Phone size={14} aria-hidden />
-            {t("Modo prospecção")}
+            <span className="max-sm:hidden">{t("Modo prospecção")}</span>
+            <span className="sm:hidden">{t("Prospecção")}</span>
           </button>
           <button
             type="button"
             onClick={() => setConfigProspeccao(true)}
             aria-label={t("Configurar a prospecção")}
             title={t("Configurar a prospecção")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-card transition-colors hover:bg-secondary"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-card transition-colors hover:bg-secondary"
           >
             <Gear size={16} aria-hidden />
           </button>
@@ -3042,7 +3088,7 @@ export function ClientesCRM({
       ) : null}
 
       {ehOportunidades ? (
-        <BarraDeFunis
+        <SeletorDeFunis
           funis={funisNaOrdem}
           arquivados={arquivados}
           filtros={{
@@ -3052,13 +3098,11 @@ export function ClientesCRM({
           aoFiltrar={(f) =>
             salvarFunis((atual) => ({ ...atual, status: f.status, canais: f.canais }))
           }
-          escolhido={funilEscolhido}
-          todosId={TODOS}
-          rotuloTodos={ehOportunidades ? t("Todas") : undefined}
+          escolhidos={idsEscolhidos}
           podeOrganizar
-          aoEscolher={(id) => {
+          aoEscolher={(ids) => {
             setEtapasFiltro(null);
-            ir({ funil: id });
+            ir({ funil: ids.length === 0 ? TODOS : ids.join(",") });
           }}
           aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
           aoArquivar={(ids, arquivar) =>
@@ -3074,12 +3118,13 @@ export function ClientesCRM({
         />
       ) : null}
 
-      {ehOportunidades ? (
+      {/* Os desenhos das etapas só aparecem com UM funil escolhido, e abrem em toggle. */}
+      {ehOportunidades && funilAtual ? (
         <QuadroDeEtapas
           grupos={gruposDeEtapas}
           escolhidas={etapasFiltro ? new Set(etapasFiltro) : null}
           aoEscolher={setEtapasFiltro}
-          emToggle={!funilAtual && gruposDeEtapas.length > 1}
+          emToggle
         />
       ) : null}
 

@@ -24,6 +24,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { CANAIS_DA_CAMPANHA, type CanalDaCampanha } from "@/lib/marketing/campanhas";
 import {
   Archive,
+  CaretDown,
   DotsSixVertical,
   Funnel,
   MagnifyingGlass,
@@ -601,5 +602,362 @@ export function BarraDeFunis({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function LinhaDeSelecao({
+  funil,
+  marcado,
+  arquivado,
+  podeOrganizar,
+  arrastavel,
+  aoMarcar,
+  aoArquivar,
+}: {
+  funil: FunilDaBarra;
+  marcado: boolean;
+  arquivado: boolean;
+  podeOrganizar: boolean;
+  arrastavel: boolean;
+  aoMarcar: () => void;
+  aoArquivar: () => void;
+}) {
+  const t = useT();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: funil.id, disabled: !arrastavel });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-secondary",
+        isDragging && "bg-secondary shadow-md",
+      )}
+    >
+      {arrastavel ? (
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          aria-label={t("Arrastar para mudar a ordem")}
+          {...attributes}
+          {...listeners}
+          className="grid h-8 w-6 shrink-0 cursor-grab touch-none place-items-center text-muted-foreground"
+        >
+          <DotsSixVertical size={14} aria-hidden />
+        </button>
+      ) : (
+        <span className="w-1 shrink-0" aria-hidden />
+      )}
+      <label className="flex min-h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={marcado}
+          onChange={aoMarcar}
+          className="h-4 w-4 shrink-0 accent-primary"
+        />
+        <span className="min-w-0 flex-1 truncate" title={funil.nome}>
+          {funil.nome}
+        </span>
+      </label>
+      <EtiquetaDeStatus funil={funil} />
+      {podeOrganizar ? (
+        <button
+          type="button"
+          onClick={aoArquivar}
+          aria-label={arquivado ? t("Tirar do arquivo") : t("Arquivar")}
+          title={arquivado ? t("Tirar do arquivo") : t("Arquivar")}
+          className={cn(
+            "grid h-8 w-8 shrink-0 place-items-center rounded-md hover:bg-card",
+            arquivado ? "text-primary" : "text-muted-foreground",
+          )}
+        >
+          <Archive size={14} weight={arquivado ? "fill" : "regular"} aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+interface PropsDoSeletor {
+  funis: readonly FunilDaBarra[];
+  arquivados: ReadonlySet<string>;
+  filtros: FiltrosDaBarra;
+  /** Os funis marcados; vazio = todos. */
+  escolhidos: readonly string[];
+  podeOrganizar: boolean;
+  aoEscolher: (ids: string[]) => void;
+  aoReordenar: (ids: string[]) => void;
+  aoArquivar: (ids: string[], arquivar: boolean) => void;
+  aoFiltrar: (filtros: FiltrosDaBarra) => void;
+}
+
+/**
+ * O SELETOR DE FUNIS (campanhas): um botão que abre um popup de múltipla seleção — todos, um só ou
+ * vários. Os arquivados ficam num toggle dentro do popup, junto do filtro por status e canal e da
+ * ordem (arrastar). Substitui a fila de pílulas, que ocupava a tela inteira no celular.
+ */
+export function SeletorDeFunis({
+  funis,
+  arquivados,
+  filtros,
+  escolhidos,
+  podeOrganizar,
+  aoEscolher,
+  aoReordenar,
+  aoArquivar,
+  aoFiltrar,
+}: PropsDoSeletor) {
+  const t = useT();
+  const rotuloDoStatus = useRotuloDoStatus();
+  const sensores = useSensors(useSensor(PointerSensor, SENSOR));
+  const [busca, setBusca] = useState("");
+  const [arquivadosAbertos, setArquivadosAbertos] = useState(false);
+  const [filtroAberto, setFiltroAberto] = useState(false);
+
+  const passaNoFiltro = (f: FunilDaBarra) => {
+    if (filtros.status.length > 0 && !filtros.status.includes(f.statusDaCampanha ?? "sem_campanha"))
+      return false;
+    if (filtros.canais.length > 0 && (!f.canal || !filtros.canais.includes(f.canal))) return false;
+    return true;
+  };
+  const filtrando = filtros.status.length + filtros.canais.length;
+  const termo = busca.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  const bate = (f: FunilDaBarra) =>
+    termo === "" || f.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(termo);
+
+  const ativos = funis.filter((f) => !arquivados.has(f.id));
+  const doArquivo = funis.filter((f) => arquivados.has(f.id));
+  const ativosDaLista = ativos.filter((f) => passaNoFiltro(f) && bate(f));
+  const arquivadosDaLista = doArquivo.filter(bate);
+  const pausadas = ativos.filter(
+    (f) => f.statusDaCampanha === "pausada" || f.statusDaCampanha === "encerrada",
+  );
+  const marcados = new Set(escolhidos);
+
+  const alternarFunil = (id: string) =>
+    aoEscolher(marcados.has(id) ? escolhidos.filter((x) => x !== id) : [...escolhidos, id]);
+
+  const rotulo =
+    escolhidos.length === 0
+      ? t("Todas")
+      : escolhidos.length === 1
+        ? (funis.find((f) => f.id === escolhidos[0])?.nome ?? t("1 funil"))
+        : `${escolhidos.length} ${t("funis")}`;
+
+  function terminou(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = ativosDaLista.map((f) => f.id);
+    const de = ids.indexOf(String(active.id));
+    const para = ids.indexOf(String(over.id));
+    if (de < 0 || para < 0) return;
+    const fora = funis.map((f) => f.id).filter((id) => !ids.includes(id));
+    aoReordenar([...arrayMove(ids, de, para), ...fora]);
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="seletor-de-funis"
+          className={cn(
+            "inline-flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap",
+            escolhidos.length > 0 ? "border-primary bg-primary/10" : "bg-card",
+          )}
+        >
+          <Funnel size={14} className="shrink-0" aria-hidden />
+          <span className="text-muted-foreground">{t("Funis")}:</span>
+          <span className="truncate">{rotulo}</span>
+          <CaretDown size={12} className="shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(92vw,400px)] p-2">
+        <label className="relative block">
+          <span className="sr-only">{t("Buscar funil")}</span>
+          <MagnifyingGlass
+            size={14}
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={t("Buscar funil")}
+            className="h-9 w-full rounded-xl border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
+          />
+        </label>
+        <div className="mt-2 max-h-80 overflow-y-auto overscroll-contain">
+          <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium hover:bg-secondary">
+            <input
+              type="checkbox"
+              checked={escolhidos.length === 0}
+              onChange={() => aoEscolher([])}
+              className="h-4 w-4 accent-primary"
+            />
+            {t("Todas")}
+          </label>
+          <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={terminou}>
+            <SortableContext
+              items={ativosDaLista.map((f) => f.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {ativosDaLista.map((f) => (
+                <LinhaDeSelecao
+                  key={f.id}
+                  funil={f}
+                  marcado={marcados.has(f.id)}
+                  arquivado={false}
+                  podeOrganizar={podeOrganizar}
+                  arrastavel={podeOrganizar && termo === "" && filtrando === 0}
+                  aoMarcar={() => alternarFunil(f.id)}
+                  aoArquivar={() => aoArquivar([f.id], true)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+          {ativosDaLista.length === 0 ? (
+            <p className="px-2 py-3 text-xs text-muted-foreground">
+              {t("Nenhum funil encontrado.")}
+            </p>
+          ) : null}
+
+          {doArquivo.length > 0 ? (
+            <div className="mt-1 border-t pt-1">
+              <button
+                type="button"
+                aria-expanded={arquivadosAbertos}
+                onClick={() => setArquivadosAbertos((a) => !a)}
+                className="flex min-h-9 w-full items-center justify-between rounded-md px-2 text-sm font-medium hover:bg-secondary"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Archive size={14} aria-hidden />
+                  {t("Arquivados")} · {doArquivo.length}
+                </span>
+                <CaretDown
+                  size={12}
+                  aria-hidden
+                  className={cn("transition-transform", !arquivadosAbertos && "-rotate-90")}
+                />
+              </button>
+              {arquivadosAbertos
+                ? arquivadosDaLista.map((f) => (
+                    <LinhaDeSelecao
+                      key={f.id}
+                      funil={f}
+                      marcado={marcados.has(f.id)}
+                      arquivado
+                      podeOrganizar={podeOrganizar}
+                      arrastavel={false}
+                      aoMarcar={() => alternarFunil(f.id)}
+                      aoArquivar={() => aoArquivar([f.id], false)}
+                    />
+                  ))
+                : null}
+            </div>
+          ) : null}
+
+          <div className="mt-1 border-t pt-1">
+            <button
+              type="button"
+              aria-expanded={filtroAberto}
+              onClick={() => setFiltroAberto((a) => !a)}
+              className="flex min-h-9 w-full items-center justify-between rounded-md px-2 text-sm font-medium hover:bg-secondary"
+            >
+              <span className="inline-flex items-center gap-2">
+                <SlidersHorizontal size={14} aria-hidden />
+                {t("Filtrar por status e canal")}
+                {filtrando > 0 ? ` · ${filtrando}` : ""}
+              </span>
+              <CaretDown
+                size={12}
+                aria-hidden
+                className={cn("transition-transform", !filtroAberto && "-rotate-90")}
+              />
+            </button>
+            {filtroAberto ? (
+              <div className="px-2 pb-2">
+                <p className="mt-1 mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("Status da campanha")}
+                </p>
+                <div className="grid gap-0.5">
+                  {STATUS.map((s) => (
+                    <label
+                      key={s}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-secondary"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filtros.status.includes(s)}
+                        onChange={() => aoFiltrar({ ...filtros, status: alternar(filtros.status, s) })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      {rotuloDoStatus(s === "sem_campanha" ? null : s)}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("Canal")}
+                </p>
+                <div className="grid gap-0.5">
+                  {CANAIS_DA_CAMPANHA.map((c: CanalDaCampanha) => (
+                    <label
+                      key={c}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-secondary"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filtros.canais.includes(c)}
+                        onChange={() => aoFiltrar({ ...filtros, canais: alternar(filtros.canais, c) })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      {rotuloDoCanal(t, c)}
+                    </label>
+                  ))}
+                </div>
+                {filtrando > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => aoFiltrar({ status: [], canais: [] })}
+                    className="mt-2 h-9 w-full rounded-lg border text-sm font-medium hover:bg-secondary"
+                  >
+                    {t("Limpar filtros")}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {podeOrganizar && (pausadas.length > 0 || doArquivo.length > 0) ? (
+          <div className="mt-2 grid gap-1.5 border-t pt-2">
+            <button
+              type="button"
+              disabled={pausadas.length === 0}
+              onClick={() =>
+                aoArquivar(
+                  pausadas.map((f) => f.id),
+                  true,
+                )
+              }
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
+            >
+              <Archive size={14} aria-hidden />
+              {t("Arquivar funis de campanhas pausadas ou encerradas")}
+              {pausadas.length > 0 ? ` (${pausadas.length})` : ""}
+            </button>
+            <p className="px-1 text-[11px] text-muted-foreground">
+              {t("Arquivar só tira o funil da lista de cima: as oportunidades continuam em Todas.")}
+            </p>
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
