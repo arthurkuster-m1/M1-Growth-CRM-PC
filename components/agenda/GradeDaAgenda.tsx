@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
+import { useLocaleDeData, useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
 import { addDays, differenceInMinutes, format, isSameMonth, startOfWeek } from "date-fns";
 
@@ -22,6 +22,7 @@ import { diaLocalISO, instanteDe, partesNoFuso } from "@/lib/agenda/fuso";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/i18n/useT";
 
+import { PainelDoDia } from "./PainelDoDia";
 import { corDaTrilha, fundoDaTrilha } from "./paleta";
 import { DIAS_DA_VISAO, type Agendamento, type Pessoa, type VisaoDaAgenda } from "./tipos";
 
@@ -719,8 +720,10 @@ function VisaoDeMes({
   /** Duplo clique num dia (de hoje em diante) abre o novo compromisso naquele dia. */
   onMarcarNoDia?: (instante: string) => void;
 }) {
-  const t = useT();
   const localeDaData = useLocaleDeData();
+  const tag = useTagDeIdioma();
+  // O dia aberto no painel de baixo (como no calendário das Tarefas): tocar no dia o escolhe.
+  const [escolhido, setEscolhido] = React.useState(() => chaveDoDiaDoInstante(agora, fuso));
   // O mesmo período que `_client.tsx` BUSCA — ver `lib/agenda/recorte-da-grade.ts`.
   const primeiro = primeiroDiaDaVisaoDeMes(ancora);
   // SEIS semanas sempre, mesmo quando o mês cabe em cinco.
@@ -734,7 +737,7 @@ function VisaoDeMes({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto">
       <div className="grid grid-cols-7 border-b border-border">
         {semanas[0]?.map((d) => (
           <div
@@ -745,7 +748,7 @@ function VisaoDeMes({
           </div>
         ))}
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-[repeat(auto-fit,minmax(0,1fr))]">
+      <div className="grid grid-cols-7">
         {semanas.flat().map((d) => {
           const doDia = doDiaNoMes(agendamentos, d, fuso);
           const doMes = isSameMonth(d, ancora);
@@ -755,6 +758,7 @@ function VisaoDeMes({
             <div
               key={d.toISOString()}
               data-testid={`celula-mes-${format(d, "yyyy-MM-dd")}`}
+              onClick={() => setEscolhido(chaveDoDia(d))}
               // Duplo clique no dia cria um compromisso nele (9h, o horário padrão do campo; a
               // pessoa ajusta na janela). Só de hoje em diante.
               onDoubleClick={
@@ -775,9 +779,10 @@ function VisaoDeMes({
                   : undefined
               }
               className={cn(
-                podeMarcarAqui && "cursor-pointer",
-                "min-h-20 min-w-0 border-r border-b border-border p-0.5 md:p-1",
+                "cursor-pointer",
+                "min-h-14 min-w-0 border-r border-b border-border p-0.5 md:min-h-24 md:p-1",
                 !doMes && "bg-surface-elevated/30",
+                chaveDoDia(d) === escolhido && "bg-accent/10 ring-1 ring-accent/50 ring-inset",
               )}
             >
               <div className="mb-1 flex items-center justify-between px-0.5">
@@ -799,7 +804,20 @@ function VisaoDeMes({
                   </span>
                 )}
               </div>
-              <div className="space-y-0.5">
+              <div className="flex flex-wrap justify-center gap-0.5 md:hidden" aria-hidden>
+                {doDia.slice(0, 3).map((c) => (
+                  <span
+                    key={c.id}
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{
+                      backgroundColor: corDaTrilha(
+                        pessoas.find((p) => p.id === c.responsavelId)?.trilha ?? 1,
+                      ),
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="hidden space-y-0.5 md:block">
                 {doDia.slice(0, 3).map((c) => {
                   const trilha = pessoas.find((p) => p.id === c.responsavelId)?.trilha ?? 1;
                   const abre = onAbrir !== undefined && c.origem !== "google_sync";
@@ -864,6 +882,33 @@ function VisaoDeMes({
           );
         })}
       </div>
+      <PainelDoDia
+        rotuloDoDia={new Intl.DateTimeFormat(tag, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          timeZone: "UTC",
+        }).format(new Date(`${escolhido}T12:00:00Z`))}
+        chaveDoDia={escolhido}
+        compromissos={doDiaNoMes(agendamentos, new Date(`${escolhido}T12:00:00`), fuso)}
+        pessoas={pessoas}
+        fuso={fuso}
+        tag={tag}
+        onAbrir={onAbrir}
+        onNovo={
+          onMarcarNoDia !== undefined && escolhido >= chaveDoDiaDoInstante(agora, fuso)
+            ? () => {
+                const [ano, mes, dia] = escolhido.split("-").map(Number);
+                onMarcarNoDia(
+                  instanteDe(
+                    { ano: ano!, mes: mes!, dia: dia!, hora: 9, minuto: 0 },
+                    fuso,
+                  ).toISOString(),
+                );
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }
