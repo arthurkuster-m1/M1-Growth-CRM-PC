@@ -16,7 +16,7 @@ import {
 import { useT } from "@/hooks/i18n/useT";
 import { formatarMinutos } from "@/lib/dashboards/atendimento";
 import { useAtritoMetrics } from "@/hooks/metrics/useAtritoMetrics";
-import { formatarMedida } from "@/lib/metrics/atrito";
+import { formatarMedida, type Medida } from "@/lib/metrics/atrito";
 import { cn } from "@/lib/utils";
 
 interface Resumo {
@@ -62,52 +62,100 @@ export interface DadosDeAtendimento {
 }
 
 /**
- * Três números do Índice de Atrito (página Desempenho) que dizem se o atendimento funciona de
- * verdade: conversas que morreram no silêncio, clientes que repetiram depois da passagem para
- * humano e a espera na fila humana. Seguem o período do dashboard; sem dado, mostram "—".
+ * Números do Índice de Atrito (página Desempenho) que dizem se o atendimento funciona de verdade, em
+ * três painéis: o atrito em si (silêncio, repetição depois da passagem, espera na fila humana), a
+ * automação (quanto a IA resolve) e a insistência do agente com as demandas sem próximo passo.
+ * Seguem o período do dashboard; sem dado, mostram "—".
  */
 function AtritoDoAtendimento({ periodo }: { periodo?: { de: string; ate: string } }) {
   const t = useT();
   const { data, isLoading, isError } = useAtritoMetrics(periodo);
   if (isError) return null;
   const pares = data?.data.pares ?? [];
-  const medida = (par: string, chave: string) =>
-    pares.find((p) => p.chave === par)?.danos.find((m) => m.chave === chave);
-  const silencio = medida("conversao", "taxa_de_abandono");
-  const repetiu = medida("automacao", "repeticao_pos_passagem");
-  const espera = medida("custo_humano", "espera_humana_p50_s");
-  const itens = [
-    { rotulo: t("Conversas que morreram no silêncio"), m: silencio },
-    { rotulo: t("Repetiram depois da passagem para humano"), m: repetiu },
-    { rotulo: t("Espera na fila humana (mediana)"), m: espera },
+  const par = (chave: string) => pares.find((p) => p.chave === chave);
+  // Eficiência e danos de um par, achados pela chave da medida.
+  const medida = (chaveDoPar: string, chave: string): Medida | undefined => {
+    const p = par(chaveDoPar);
+    if (!p) return undefined;
+    return p.eficiencia.chave === chave ? p.eficiencia : p.danos.find((m) => m.chave === chave);
+  };
+  type Item = { rotulo: string; m: Medida | undefined };
+  const grupos: Array<{ titulo: string; nota: string; itens: Item[] }> = [
+    {
+      titulo: t("Atrito do atendimento"),
+      nota: t("O que o cliente sente além da velocidade"),
+      itens: [
+        { rotulo: t("Conversas que morreram no silêncio"), m: medida("conversao", "taxa_de_abandono") },
+        {
+          rotulo: t("Repetiram depois da passagem para humano"),
+          m: medida("automacao", "repeticao_pos_passagem"),
+        },
+        {
+          rotulo: t("Espera na fila humana (mediana)"),
+          m: medida("custo_humano", "espera_humana_p50_s"),
+        },
+      ],
+    },
+    {
+      titulo: t("Automação"),
+      nota: t("Quanto a IA realmente resolve"),
+      itens: [
+        { rotulo: t("Respostas dadas pelo agente"), m: medida("automacao", "taxa_automacao") },
+        { rotulo: t("Passagens para humano"), m: medida("automacao", "pedidos_de_humano") },
+        {
+          rotulo: t("Respostas humanas fora do sistema"),
+          m: medida("automacao", "taxa_de_contorno"),
+        },
+        {
+          rotulo: t("Perguntas que a pessoa teve de repetir"),
+          m: medida("automacao", "taxa_de_repergunta"),
+        },
+      ],
+    },
+    {
+      titulo: t("Insistência e demandas abertas"),
+      nota: t("O custo de o agente voltar ao cliente e o que ficou sem dono"),
+      itens: [
+        {
+          rotulo: t("Insistência do agente (média de retornos)"),
+          m: medida("conversao", "insistencia_media"),
+        },
+        { rotulo: t("Insistência no pior caso"), m: medida("conversao", "insistencia_max") },
+        {
+          rotulo: t("Demandas abertas sem próximo passo"),
+          m: medida("custo_humano", "demandas_sem_proximo_passo"),
+        },
+      ],
+    },
   ];
   return (
-    <Painel
-      titulo={t("Atrito do atendimento")}
-      nota={t("O que o cliente sente além da velocidade")}
-    >
-      {isLoading ? (
-        <div className="h-16 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
-      ) : (
-        <>
-          <GradeDeNumeros
-            itens={itens.map((i) => ({
-              rotulo: i.rotulo,
-              valor: i.m ? formatarMedida(i.m) : "—",
-            }))}
-          />
-          <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-            {itens.map((i) =>
-              i.m?.nota ? (
-                <li key={i.rotulo}>
-                  <span className="font-medium">{i.rotulo}:</span> {i.m.nota}
-                </li>
-              ) : null,
-            )}
-          </ul>
-        </>
-      )}
-    </Painel>
+    <>
+      {grupos.map((g) => (
+        <Painel key={g.titulo} titulo={g.titulo} nota={g.nota}>
+          {isLoading ? (
+            <div className="h-16 animate-pulse rounded-xl bg-secondary" aria-busy="true" />
+          ) : (
+            <>
+              <GradeDeNumeros
+                itens={g.itens.map((i) => ({
+                  rotulo: i.rotulo,
+                  valor: i.m ? formatarMedida(i.m) : "—",
+                }))}
+              />
+              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {g.itens.map((i) =>
+                  i.m?.nota ? (
+                    <li key={i.rotulo}>
+                      <span className="font-medium">{i.rotulo}:</span> {i.m.nota}
+                    </li>
+                  ) : null,
+                )}
+              </ul>
+            </>
+          )}
+        </Painel>
+      ))}
+    </>
   );
 }
 
