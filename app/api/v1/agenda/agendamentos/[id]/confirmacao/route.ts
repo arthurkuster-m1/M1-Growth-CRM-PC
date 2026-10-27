@@ -35,9 +35,14 @@ export async function POST(_req: Request, context: { params: Promise<{ id: strin
     .maybeSingle();
   if (!a) return fail("not_found", "Compromisso indisponível.", 404, { requestId });
   if (a.owner_user_id !== auth.user.id && (RANK[auth.org.role] ?? 0) < RANK.manager!)
-    return fail("forbidden", "Só o responsável ou um gerente pode confirmar este compromisso.", 403, {
-      requestId,
-    });
+    return fail(
+      "forbidden",
+      "Só o responsável ou um gerente pode confirmar este compromisso.",
+      403,
+      {
+        requestId,
+      },
+    );
   if (a.status === "cancelled" || a.status === "completed" || a.status === "no_show")
     return fail("conflict", "Este compromisso já foi encerrado.", 409, { requestId });
   if (a.status === "pending") {
@@ -48,14 +53,17 @@ export async function POST(_req: Request, context: { params: Promise<{ id: strin
       p_patch: { status: "confirmed" },
     });
     if (error)
-      return fail("conflict", "O compromisso mudou. Recarregue e tente de novo.", 409, { requestId });
+      return fail("conflict", "O compromisso mudou. Recarregue e tente de novo.", 409, {
+        requestId,
+      });
   }
   const { error: e2 } = await admin
     .from("calendar_appointments")
     .update({ client_confirmation: "confirmed", client_confirmed_at: new Date().toISOString() })
     .eq("organization_id", org)
     .eq("id", id);
-  if (e2) return fail("internal_error", "Não foi possível registrar a confirmação.", 500, { requestId });
+  if (e2)
+    return fail("internal_error", "Não foi possível registrar a confirmação.", 500, { requestId });
   await aplicarFluxoAntiNoShow(admin, {
     organizationId: org,
     appointmentId: id,

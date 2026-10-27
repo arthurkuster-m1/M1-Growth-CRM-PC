@@ -678,6 +678,8 @@ export const AUDIT_ACTIONS = [
   "agenda.settings_updated",
   "agenda.endereco_salvo",
   "agenda.appointment_rescheduled",
+  "agenda.appointment_type_changed",
+  "agenda.appointment_client_changed",
   "agenda.appointment_cancelled",
   // Relógio HTTP (Hobby / sem contêiner scheduler): uma batida que alguém
   // de fora chama. Só audita quando alguma tarefa mexeu em dado.
