@@ -115,7 +115,7 @@ function rotuloDoStatus(t: (s: string) => string, st: StatusDaVenda): string {
 
 function Fase({
   titulo,
-  cor,
+  cor: _cor,
   children,
 }: {
   titulo: string;
@@ -123,10 +123,8 @@ function Fase({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`grid gap-3 rounded-2xl border border-l-4 bg-card p-4 ${BARRAS[cor]}`}>
-      <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {titulo}
-      </h3>
+    <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:p-4">
+      <h3 className="text-base font-semibold">{titulo}</h3>
       {children}
     </section>
   );
@@ -786,11 +784,20 @@ export function DialogoDaVenda({
       />
     ) : null}
     <Dialog open onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-h-[92vh] max-w-3xl gap-4 overflow-y-auto bg-background p-5 sm:rounded-2xl">
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6">
         <div className="flex items-start justify-between gap-2 pr-8">
-          <DialogTitle className="min-w-0 text-base font-semibold break-words">
+          <DialogTitle className="sr-only">
             {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
           </DialogTitle>
+          {/* O título, editável em cima — o MESMO da oportunidade e da venda (muda um, muda o outro). */}
+          <input
+            value={nomeDaVendaTexto}
+            maxLength={120}
+            aria-label={t("Título da oportunidade")}
+            onChange={(e) => setNomeDaVendaTexto(e.target.value)}
+            placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
+            className="-mx-2 min-w-0 flex-1 rounded-xl border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-hidden transition-colors hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/20"
+          />
           {ehVenda ? null : (
           <Popover>
             <PopoverTrigger asChild>
@@ -847,9 +854,11 @@ export function DialogoDaVenda({
           )}
         </div>
         <DialogDescription className="text-sm text-muted-foreground">
-          {ehVenda
-            ? t("A venda desta oportunidade: produtos, pagamento e anotações.")
-            : t(
+          {titulo
+            ? titulo
+            : ehVenda
+              ? t("A venda desta oportunidade: produtos, pagamento e anotações.")
+              : t(
                 "Informe os produtos, o valor real e como o cliente vai pagar. Só entra no mês o que de fato cair na conta.",
               )}
         </DialogDescription>
@@ -857,20 +866,9 @@ export function DialogoDaVenda({
         {ehVenda ? (
           <>
             {/* 1 e 2 · o título (o MESMO da oportunidade) e o status da venda (o MESMO campo do status). */}
-            <Fase titulo={t("Venda")} cor="purple">
-              <label className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Título da oportunidade")}</span>
-                <input
-                  value={nomeDaVendaTexto}
-                  maxLength={120}
-                  onChange={(e) => setNomeDaVendaTexto(e.target.value)}
-                  placeholder={nomePadrao || t("Nome do cliente | Produto")}
-                  className="h-10 w-full min-w-0 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-                />
-              </label>
+            <Fase titulo={t("Status da venda")} cor="purple">
               {venda && venda.lead_id ? (
                 <div className="grid gap-1">
-                  <span className="text-xs text-muted-foreground">{t("Status da venda")}</span>
                   <SeletorEmPopup
                     rotulo={t("Status da venda")}
                     valor={statusAtual}
@@ -895,16 +893,6 @@ export function DialogoDaVenda({
         <>
         <Fase titulo={t("Negócio")} cor="purple">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Nome da oportunidade")}</span>
-              <input
-                value={nomeDaVendaTexto}
-                maxLength={120}
-                onChange={(e) => setNomeDaVendaTexto(e.target.value)}
-                placeholder={nomePadrao || t("Nome do cliente | Produto")}
-                className="h-10 w-full min-w-0 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
             <div className="grid gap-1">
               <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
               <CampoDeData
@@ -1088,8 +1076,9 @@ export function DialogoDaVenda({
 
         <Fase titulo={ehVenda ? t("Produtos e ticket médio") : t("Produtos e serviços")} cor="orange">
           {itens.map((it, i) => (
-            <div key={i} className="grid grid-cols-[1fr_8rem_auto] items-center gap-2">
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[1fr_8rem_auto]">
               <SeletorEmPopup
+                className="col-span-2 sm:col-span-1"
                 rotulo={`${t("Produto")} ${i + 1}`}
                 valor={it.produtoId}
                 opcoes={produtos.map((p) => ({ id: p.id, rotulo: p.nome }))}

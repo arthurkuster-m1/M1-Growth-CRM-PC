@@ -59,7 +59,7 @@ afterEach(cleanup);
 describe("página da venda × página da oportunidade", () => {
   it("modo venda: título, status, produtos, pagamento e anotações — e nada da oportunidade", () => {
     abrir("venda");
-    expect(screen.getByText("Título da oportunidade")).toBeTruthy();
+    expect(screen.getByLabelText("Título da oportunidade")).toBeTruthy();
     expect(screen.getByText("Status da venda")).toBeTruthy();
     expect(screen.getByText("Produtos e ticket médio")).toBeTruthy();
     expect(screen.getByText("Pagamento")).toBeTruthy();
@@ -83,6 +83,7 @@ describe("página da venda × página da oportunidade", () => {
     abrir("oportunidade");
     expect(screen.getByText("Cliente, funil e status")).toBeTruthy();
     expect(screen.getByText("Detalhes da oportunidade")).toBeTruthy();
-    expect(screen.queryByText("Título da oportunidade")).toBeNull();
+    // o título editável fica em cima, nas duas páginas
+    expect(screen.getByLabelText("Título da oportunidade")).toBeTruthy();
   });
 });
