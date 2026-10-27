@@ -335,9 +335,8 @@ test("atualiza, desfaz com o catálogo fora do ar, remove e reinstala sem decidi
         metadata: expect.objectContaining({ reason: "installation_removed" }),
       }),
     ]);
-    await page.goto("/app/audit");
-    await expect(page.getByText("extension.deactivated_by_removal").first()).toBeVisible({ timeout: 30_000 });
-    await page.screenshot({ path: `${EVIDENCE}/6-auditoria-da-organizacao.png`, fullPage: true });
+    // A tela de auditoria do cliente saiu (a agência lê o histórico em /admin/audit): a prova é a
+    // linha acima, lida do banco.
   });
 
   await test.step("religa o catálogo e reinstala: A precisa ativar de novo", async () => {

@@ -87,7 +87,6 @@ describe("Sidebar agrupado", () => {
       "Atendimento",
       "Agente de IA",
       "Canais",
-      "Análise",
     ]);
   });
 
@@ -128,25 +127,15 @@ describe("Sidebar agrupado", () => {
     expect(screen.queryByRole("link", { name: "Funis" })).toBeNull();
   });
 
-  it("desenterra Audit Log — e Nuvemshop ficou de fora, por escolha", () => {
+  it("Análise e Audit Log saíram do menu — e Nuvemshop ficou de fora, por escolha", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
-    // ⚠️ O CAMINHO MUDOU, A PROPRIEDADE NÃO. O que esta linha sempre prendeu é
-    // que Audit Log deixou de existir só como card enterrado em Configurações.
-    // Quando Atividades (PR #583) virou o quinto destino do grupo Análise e o
-    // menu passou a rolar em 900px, a resposta foi o hub do grupo — como o
-    // comentário de densidade do `Sidebar.tsx` já mandava. Audit Log foi para
-    // dentro dele: a porta agora é "Ver tudo em Análise", nunca Configurações.
-    //
-    // Que a porta desemboca na tela é o e2e `navegacao.spec.ts` que percorre,
-    // clicando; aqui prende-se que ela EXISTE, no grupo certo do sidebar.
-    //
-    // Canal oficial não está aqui de propósito: virou aba de Conexões no PR
-    // #105, e Conexões é a porta.
-    const hubAnalise = screen.getByRole("link", { name: /Ver tudo em Análise/ });
-    expect(hubAnalise).toHaveAttribute("href", "/app/analise");
+    // O grupo Análise acabou (outubro/2026): os números vivem nos Dashboards, e o Audit Log deixou de
+    // ser tela do cliente (a agência o lê em /admin/audit). Nenhum dos dois volta ao menu do cliente.
+    expect(screen.queryByRole("link", { name: /Ver tudo em Análise/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Audit Log/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Honorários/ })).toBeNull();
 
     // NUVEMSHOP SAIU, e esta linha é a reversão explícita de uma decisão que
     // este mesmo teste travava: a integração tinha sido "desenterrada" para o

@@ -58,8 +58,8 @@ describe("integridade do registro", () => {
 
 describe("canSee", () => {
   it("nega quem está abaixo do minRole", () => {
-    expect(canSee(dest("/app/audit"), MANAGER.platform, MANAGER.role)).toBe(true);
-    expect(canSee(dest("/app/audit"), AGENT.platform, AGENT.role)).toBe(false);
+    expect(canSee(dest("/app/ai/usage"), MANAGER.platform, MANAGER.role)).toBe(true);
+    expect(canSee(dest("/app/ai/usage"), AGENT.platform, AGENT.role)).toBe(false);
   });
 
   it("destino sem minRole é visível até para viewer", () => {
@@ -216,6 +216,6 @@ describe("searchable", () => {
 
   it("respeita o papel", () => {
     const hrefs = searchable(AGENT.platform, AGENT.role).map((d) => d.href);
-    expect(hrefs).not.toContain("/app/audit");
+    expect(hrefs).not.toContain("/app/ai/usage");
   });
 });

@@ -1,7 +1,6 @@
 "use client";
 
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
-import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { Robot, Gear } from "@/lib/ui/icons";
@@ -52,21 +51,19 @@ export function SeloDeAutoria({
     : "";
 
   return (
-    <Link
-      href="/app/audit"
+    <span
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-sm text-xs underline-offset-2 hover:underline",
+        "inline-flex w-fit items-center gap-1 rounded-sm text-xs",
         doAgente ? "font-medium text-accent" : "text-muted-foreground",
         className,
       )}
       data-autoria={kind ?? "desconhecida"}
-      title={t("Ver no histórico o que foi alterado")}
     >
       <Icone className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span>
         {t(texto)}
-        {quando} {t("— ver o que mudou")}
+        {quando}
       </span>
-    </Link>
+    </span>
   );
 }

@@ -18,7 +18,7 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  */
 
 export type NavGroupId =
-  "atendimento" | "marketing" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+  "atendimento" | "marketing" | "crm" | "ia" | "canais" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -100,7 +100,6 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "crm", label: "CRM" },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
   { id: "canais", label: "Canais" },
-  { id: "analise", label: "Análise", hub: { href: "/app/analise", label: "Ver tudo em Análise" } },
   {
     id: "organizacao",
     label: "Organização",
@@ -606,37 +605,12 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
 
-  // ---- Análise — dinheiro de honorários e auditoria ----
+  // ---- Análise saiu do menu (outubro/2026) ----
   //
-  // Desempenho, Atividades e a leitura do tráfego (Meta Ads) saíram daqui (outubro/2026): os números do
-  // período vivem nos Dashboards (Tráfego Pago, Prospecção Ativa, Comercial, Atendimento, Business e
-  // Atividades). A página de Meta Ads continua existindo, mas só se chega a ela por Marketing ›
-  // Campanhas. A Evolução da IA foi para o grupo de IA ("Ver tudo em IA"). Sobraram aqui as duas
-  // consultas de dinheiro e o Audit Log, todas visitas deliberadas — por isso ficam no hub.
-  {
-    // Módulo opcional (ADR-0002), fonte `modulos_instalados` — a porta só existe
-    // depois que o administrador da instalação instala `honorarios` em
-    // `/admin/modulos`. Mesmo mecanismo genérico de `banco_externo` acima, só
-    // que a fonte é a TABELA, não a flag de `platform_config`; `deModuloDesligado`
-    // e este filtro não sabem a diferença, e não precisam saber.
-    href: "/app/honorarios",
-    label: "Honorários",
-    description: "O modelo de cobrança de cada caso e o calendário de parcelas.",
-    icon: "ChartBar",
-    group: "analise",
-    section: "Dinheiro",
-    minRole: "viewer",
-    modulo: "honorarios",
-  },
-  {
-    href: "/app/audit",
-    label: "Audit Log",
-    description: "Quem fez o quê, quando — o histórico que não se apaga.",
-    icon: "ClockCounterClockwise",
-    group: "analise",
-    section: "O histórico que se consulta",
-    minRole: "manager",
-  },
+  // Os números do negócio vivem nos Dashboards; Finanças é página solta; Evolução da IA está no grupo
+  // de IA; Meta Ads só se abre por Campanhas. O Audit Log deixou de ser tela do cliente (o histórico
+  // segue sendo gravado e é lido pela agência em /admin/audit). Honorários (módulo opcional) também
+  // saiu do menu e da busca: a rota segue de pé, sem porta de navegação, por decisão do dono.
 
   // ---- Organização — conta, empresa, acesso ----
   {

@@ -43,9 +43,7 @@ const TELAS: ReadonlyArray<readonly [string, string]> = [
   ["/app/settings", "Configurações"],
   ["/app/templates", "Respostas rápidas"],
   ["/app/webhooks", "Webhooks"],
-  ["/app/audit", "Audit Log"],
   ["/app/ai", "Agente de IA"],
-  ["/app/analise", "Análise"],
   ["/app/products", "Produtos"],
   ["/app/connections", "Conexões"],
   // A tela do aviso de caso (onda 8). Entra aqui porque a lista é FIXA: rota
