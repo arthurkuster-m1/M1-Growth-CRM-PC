@@ -628,7 +628,7 @@ export function TabelaDoMotor<T>({
                             }
                           >
                             {colunas.map((c) => (
-                              <div key={c.id} role="cell" className="min-w-0 px-0.5 py-1">
+                              <div key={c.id} role="cell" className="min-w-0 overflow-x-clip px-0.5 py-1">
                                 {c.celula(linha)}
                               </div>
                             ))}
