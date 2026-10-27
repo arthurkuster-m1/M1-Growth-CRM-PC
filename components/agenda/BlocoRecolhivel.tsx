@@ -31,7 +31,7 @@ export function BlocoRecolhivel({
     <section
       id={id}
       className={cn(
-        "rounded-2xl border border-border bg-surface",
+        "min-w-0 max-w-full rounded-2xl border border-border bg-surface",
         grande && "rounded-3xl",
       )}
     >
@@ -53,7 +53,7 @@ export function BlocoRecolhivel({
         <CaretDown size={18} weight="bold" aria-hidden className={cn("shrink-0 transition-transform", aberto && "rotate-180")} />
       </button>
       {aberto ? (
-        <div id={corpoId} className={cn("border-t border-border p-4", grande && "p-5")}>
+        <div id={corpoId} className={cn("min-w-0 border-t border-border p-4", grande && "p-5")}>
           {children}
         </div>
       ) : null}

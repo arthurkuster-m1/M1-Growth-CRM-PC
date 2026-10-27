@@ -166,6 +166,9 @@ interface CompromissoAVencer {
    */
   starts_at_marked_at: string | null;
   location_details: string | null;
+  /** O link da reunião online; só vale com `meeting_state = ready`. */
+  meeting_url?: string | null;
+  meeting_state?: string | null;
   reminder_sent_offsets_minutes: number[] | null;
   /**
    * `reminder_sent_at` — instante do ÚLTIMO carimbo de envio (#2243): a
@@ -192,7 +195,8 @@ function tipoDe(linha: CompromissoAVencer): TipoDoCompromisso | null {
  *
  * Sem molde, sai a frase abaixo — o quê, quando e onde. Com molde, as
  * variáveis `{{nome}}`, `{{primeiro_nome}}`, `{{titulo}}`, `{{tipo}}`,
- * `{{dia}}`, `{{hora}}`, `{{endereco}}` e `{{quando}}` são preenchidas com
+ * `{{dia}}`, `{{hora}}`, `{{endereco}}`, `{{link}}` (o link do Meet/vídeo, quando já está pronto;
+ * vazio caso contrário) e `{{quando}}` são preenchidas com
  * os mesmos dados; chave desconhecida fica no texto, para quem digitou
  * `{{foo}}` ver o erro em vez de uma mensagem manca.
  *
@@ -234,6 +238,8 @@ export function montarLembrete(input: {
   molde?: string | null;
   /** Nome do tipo de atendimento, para `{{tipo}}`. Cai no título se faltar. */
   tipoNome?: string | null;
+  /** O link da reunião online (Meet/vídeo), para `{{link}}`. Nulo = ainda não existe. */
+  link?: string | null;
 }): string {
   const idioma = input.idioma ?? IDIOMA_PADRAO;
   const t = (texto: string) => traduzir(texto, idioma);
@@ -261,6 +267,8 @@ export function montarLembrete(input: {
     dia,
     hora,
     endereco: input.local?.trim() ?? "",
+    link: input.link?.trim() ?? "",
+    meet: input.link?.trim() ?? "",
     quando: `${dia} ${t("às")} ${hora}`,
   };
 
@@ -275,9 +283,10 @@ export function montarLembrete(input: {
   // i18n existe para impedir.
   const saudacao = nome ? `${t("Oi,")} ${nome}!` : t("Oi!");
   const onde = pecas.endereco ? ` ${t("Endereço")}: ${pecas.endereco}.` : "";
+  const online = pecas.link ? ` ${t("Link da reunião")}: ${pecas.link}` : "";
   return (
     `${saudacao} ${t("Passando pra lembrar do seu compromisso:")} ` +
-    `${input.titulo}, ${dia} ${t("às")} ${hora}.${onde}`
+    `${input.titulo}, ${dia} ${t("às")} ${hora}.${onde}${online}`
   );
 }
 
@@ -507,7 +516,7 @@ async function handle(req: NextRequest): Promise<Response> {
   const { data, error } = await admin
     .from("calendar_appointments")
     .select(
-      "id, organization_id, contact_id, title, starts_at, created_at, starts_at_marked_at, location_details, reminder_sent_offsets_minutes, reminder_sent_at, " +
+      "id, organization_id, contact_id, title, starts_at, created_at, starts_at_marked_at, location_details, meeting_url, meeting_state, reminder_sent_offsets_minutes, reminder_sent_at, " +
         "calendar_event_types!inner(name, reminder_enabled, reminder_minutes_before, reminder_extra_offsets_minutes, reminder_template_name, reminder_body, reminder_bodies, location_details), organizations:organization_id!inner(status)",
     )
     .eq("status", "confirmed")
@@ -666,6 +675,7 @@ async function handle(req: NextRequest): Promise<Response> {
       idioma: normalizarIdioma(organizacao?.locale),
       molde,
       tipoNome: tipo.name,
+      link: linha.meeting_state === "ready" ? (linha.meeting_url ?? null) : null,
     });
 
     // ─── O CARIMBO ANTES DO ENVIO (issue #2223) ────────────────────────────

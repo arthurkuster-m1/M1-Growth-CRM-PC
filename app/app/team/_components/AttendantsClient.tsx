@@ -46,14 +46,6 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Clock, Copy, Plus, Trash } from "@/lib/ui/icons";
 import {
   copiarParaDiasUteis,
@@ -601,42 +593,51 @@ export function AttendantsClient({ canManage, organizationTimezone }: Props) {
             {t("Nenhum atendente na organização. Convide membros com papel de atendente ou superior.")}
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("Atendente")}</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>{t("Carga")}</TableHead>
-                <TableHead>{t("Capacidade")}</TableHead>
-                <TableHead>{t("Horário")}</TableHead>
-                {canManage ? <TableHead className="w-[120px]">{t("Disponível")}</TableHead> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attendants.map((a) => {
-                const capacity = a.availability?.capacity ?? 5;
-                const load = a.availability?.current_load ?? 0;
-                const windows = a.availability?.schedule?.windows ?? [];
-                return (
-                  <TableRow key={a.userId}>
-                    <TableCell>
-                      <div className="font-medium">{a.name}</div>
+          <ul className="grid min-w-0 gap-3 p-3 lg:grid-cols-2" data-testid="lista-de-atendentes">
+            {attendants.map((a) => {
+              const capacity = a.availability?.capacity ?? 5;
+              const load = a.availability?.current_load ?? 0;
+              const windows = a.availability?.schedule?.windows ?? [];
+              return (
+                <li
+                  key={a.userId}
+                  className="grid min-w-0 gap-3 rounded-2xl border border-border bg-card p-4"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{a.name}</div>
                       {a.email ? (
-                        <div className="text-xs text-muted-foreground">{a.email}</div>
+                        <div className="truncate text-xs text-muted-foreground">{a.email}</div>
                       ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-start gap-1.5">
-                        <StatusBadge attendant={a} now={now} />
-                        <PresenceBadge attendant={a} />
-                      </div>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                    {canManage ? (
+                      <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                        {t("Disponível")}
+                        <Switch
+                          checked={!!a.availability?.is_available}
+                          aria-label={`Disponibilidade de ${a.name}`}
+                          onCheckedChange={(v) =>
+                            patch.mutate({ userId: a.userId, patch: { is_available: v } })
+                          }
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge attendant={a} now={now} />
+                    <PresenceBadge attendant={a} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs text-muted-foreground">{t("Carga")}</div>
                       <span className={load >= capacity ? "font-medium text-destructive" : ""}>
                         {load}
                       </span>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">{t("Capacidade")}</div>
                       {canManage ? (
                         <Input
                           type="number"
@@ -655,44 +656,36 @@ export function AttendantsClient({ canManage, organizationTimezone }: Props) {
                       ) : (
                         capacity
                       )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <span>{summarizeSchedule(windows, t)}</span>
-                        {canManage ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            aria-label={`Editar horário de ${a.name}`}
-                            onClick={() => setScheduleFor(a)}
-                          >
-                            {/* Rótulo visível (item opcional da #2312): achar o
-                                editor era o primeiro problema — ele era só um
-                                ícone solto na coluna. O `aria-label` fica, é ele
-                                que a automação e o leitor de tela usam. */}
-                            <Clock size={16} />
-                            <span className="ml-1 hidden lg:inline">{t("Editar")}</span>
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    {canManage ? (
-                      <TableCell>
-                        <Switch
-                          checked={!!a.availability?.is_available}
-                          aria-label={`Disponibilidade de ${a.name}`}
-                          onCheckedChange={(v) =>
-                            patch.mutate({ userId: a.userId, patch: { is_available: v } })
-                          }
-                        />
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-1 border-t border-border pt-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">{t("Horário")}</span>
+                      {canManage ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 rounded-xl"
+                          aria-label={`Editar horário de ${a.name}`}
+                          onClick={() => setScheduleFor(a)}
+                        >
+                          {/* Rótulo visível (item opcional da #2312): achar o editor era o primeiro
+                              problema — ele era só um ícone solto. O `aria-label` fica: é ele que a
+                              automação e o leitor de tela usam. */}
+                          <Clock size={14} />
+                          {t("Editar")}
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                      {summarizeSchedule(windows, t)}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
