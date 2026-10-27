@@ -105,7 +105,7 @@ export function WebhooksDaCampanha({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{t("Webhooks desta campanha")}</h2>
         <Link
-          href="/app/webhooks"
+          href="/app/connections?aba=webhooks"
           className="text-xs font-medium text-primary underline-offset-2 hover:underline"
         >
           {t("Gerir todos os webhooks em Conexões")}

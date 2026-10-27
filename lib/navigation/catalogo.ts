@@ -564,7 +564,7 @@ export const NAV_CATALOG = [
     // e "Meta" de propósito — é por esses nomes que se procura no ⌘K, e a busca
     // varre a descrição além do rótulo.
     description:
-      "Seus números de WhatsApp: por QR ou canal oficial da Meta, com saúde, reconexão e templates.",
+      "Seus números de WhatsApp (por QR ou canal oficial da Meta, com saúde, reconexão e templates) e os webhooks que avisam outros sistemas.",
     icon: "PlugsConnected",
     group: "canais",
     minRole: "admin",
@@ -594,15 +594,6 @@ export const NAV_CATALOG = [
     //
     // ⚠️ O grupo "canais" não tem hub, então o ⌘K passa a ser a ÚNICA porta
     // navegável. Para voltar a mostrá-la, basta devolver `sidebar: true`.
-  },
-  {
-    href: "/app/webhooks",
-    label: "Webhooks",
-    description: "Avise outros sistemas quando algo acontecer aqui dentro.",
-    icon: "WebhooksLogo",
-    group: "canais",
-    minRole: "manager",
-    sidebar: true,
   },
 
   // ---- Análise saiu do menu (outubro/2026) ----

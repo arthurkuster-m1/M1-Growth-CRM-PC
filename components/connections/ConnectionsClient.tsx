@@ -580,8 +580,10 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       </p>
                     )}
                   </div>
-                  <Badge variant={info.variant}>{info.label}</Badge>
-                  {pausado && <Badge variant="neutral">{t("Pausado")}</Badge>}
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant={info.variant}>{info.label}</Badge>
+                    {pausado && <Badge variant="neutral">{t("Pausado")}</Badge>}
+                  </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {c.last_health_check_at

@@ -86,7 +86,6 @@ describe("Sidebar agrupado", () => {
       "Marketing",
       "Atendimento",
       "Agente de IA",
-      "Canais",
     ]);
   });
 
@@ -159,14 +158,28 @@ describe("Sidebar agrupado", () => {
     expect(nav.contains(config)).toBe(false);
   });
 
+  it("Conexões é uma porta solta, a última do menu, e Webhooks não tem porta própria", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
+    expect(screen.queryAllByRole("heading").map((h) => h.textContent?.trim())).not.toContain(
+      "Canais",
+    );
+    expect(screen.queryByRole("link", { name: /Webhooks/ })).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
+    const links = [...nav.querySelectorAll("a")];
+    expect(links[links.length - 1]).toHaveAttribute("href", "/app/connections");
+  });
+
   it("não deixa cabeçalho órfão quando a permissão esvazia o grupo", () => {
-    // CANAIS é todo manager+/admin. Um agent não pode ver o título sozinho.
+    // Canais acabou como grupo, mas Conexões (admin) não aparece para quem não é admin.
     comoPapel("agent");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
     expect(titulos).not.toContain("Canais");
     expect(titulos).toContain("Atendimento");
+    expect(screen.queryByRole("link", { name: "Conexões" })).toBeNull();
   });
 
   it("oferece o hub dos grupos que têm um", () => {

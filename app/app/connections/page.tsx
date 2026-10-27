@@ -23,10 +23,9 @@ export default async function ConnectionsPage() {
   const wahaConfigured = Boolean(
     process.env.WAHA_API_BASE_URL && key && key !== "dev_plaintext_change_me",
   );
-  const wacallsConfigured = Boolean(process.env.WACALLS_API_BASE_URL);
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="flex h-full flex-col gap-5 p-4 sm:gap-6 sm:p-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Conexões", idioma)}</h1>
         <p className="text-sm text-muted-foreground">
@@ -38,7 +37,6 @@ export default async function ConnectionsPage() {
       </header>
       <ConexoesShell
         wahaConfigured={wahaConfigured}
-        wacallsConfigured={wacallsConfigured}
         graphParceiro={canalGraphParceiroLigado() ? { label: GRAPH_PARTNER_LABEL } : null}
       />
     </div>

@@ -296,19 +296,21 @@ export function RedesSociaisClient() {
             {state.accounts.map((account) => (
               <Card key={account.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                       {state.networks.find((n) => n.id === account.platform)?.label ??
                         account.platform}
                     </p>
                     <h3 className="font-semibold">{account.username}</h3>
                   </div>
-                  <Badge variant={account.active ? "secondary" : "outline"}>
-                    {account.active ? t("Vinculada") : t("Reconectar")}
-                  </Badge>
-                  {account.channel && canalDesativado(account.channel.metadata) && (
-                    <Badge variant="neutral">{t("Pausado")}</Badge>
-                  )}
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant={account.active ? "secondary" : "outline"}>
+                      {account.active ? t("Vinculada") : t("Reconectar")}
+                    </Badge>
+                    {account.channel && canalDesativado(account.channel.metadata) && (
+                      <Badge variant="neutral">{t("Pausado")}</Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button

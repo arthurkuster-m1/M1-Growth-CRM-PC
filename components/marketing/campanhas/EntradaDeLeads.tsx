@@ -196,7 +196,7 @@ export function EntradaDeLeads({
             ) : fontes.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t("Nenhuma fonte de leads cadastrada ainda.")}{" "}
-                <Link className="text-primary underline" href="/app/webhooks">
+                <Link className="text-primary underline" href="/app/connections?aba=webhooks">
                   {t("Criar uma fonte de leads")}
                 </Link>
               </p>
