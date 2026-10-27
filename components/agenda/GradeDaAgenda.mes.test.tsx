@@ -3,7 +3,9 @@
  * numa faixa abre o compromisso e duplo clique num dia cria um compromisso nele.
  * (Pedido de 26/10/2026, depois de ver a célula cheia de "05:00 Ocupado".)
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render as renderRtl, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const avisar = vi.hoisted(() => vi.fn());
@@ -11,6 +13,14 @@ vi.mock("sonner", () => ({ toast: { message: avisar, success: vi.fn(), error: vi
 
 import { GradeDaAgenda, doDiaNoMes } from "./GradeDaAgenda";
 import type { Agendamento } from "./tipos";
+
+// O status do painel é editável e usa as mutações do react-query.
+const render = (ui: ReactElement) =>
+  renderRtl(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+    ),
+  });
 
 const FUSO = "America/Sao_Paulo";
 const AGORA = new Date("2026-10-25T15:00:00Z"); // 12:00 em São Paulo

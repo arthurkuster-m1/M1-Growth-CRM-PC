@@ -458,4 +458,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.17| **Abrir a oportunidade** pelo relatório de atividades e pela captação                        | Clicar no nome da oportunidade (Atividades) ou em "Ver o lead no funil" (Captações) abre o popup por cima; fechar volta à tela |           |
 | 23.18| **Parcelas automáticas** na página da venda | Com valor preenchido, a parcela 1 já aparece (vencimento, valor, recebida); mudar o total ou a data refaz a tabela; editar uma parcela na mão para de refazer |           |
 | 23.19| **Abrir sem teclado** no celular | Abrir uma venda ou oportunidade existente não levanta o teclado nem seleciona o título; tocar no título edita |           |
+| 23.20| **Status editável** no resumo do dia da Agenda | Tocar no status de um compromisso embaixo do calendário abre as opções; escolher atualiza na hora; resultado só vale depois do início da reunião |           |
 
