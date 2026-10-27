@@ -7,7 +7,6 @@ import { OrigemEmCascata, type ValorDaOrigem } from "@/components/contacts/ficha
 import { corpoDaOrigem, valorDaOrigemDoCard } from "@/components/contacts/ficha/origem-do-card";
 import type { DadosDoLead } from "@/components/leads/FichaDoLead";
 import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
-import Link from "next/link";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +23,16 @@ import { taxaDoRecebimento } from "@/lib/financeiro/taxas";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { Bell, Plus, Trash } from "@/lib/ui/icons";
 import { ConfirmarDataDaProximaAcao } from "@/components/clientes/ConfirmarDataDaProximaAcao";
-import { CompromissosDoLead } from "@/components/agenda/CompromissosDoLead";
+import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
+import { MenuDeOpcoes, Tag } from "@/components/agenda/CamposDoCompromisso";
+import {
+  ClienteDaOportunidade,
+  CompromissosDaOportunidade,
+  ScoreDaOportunidade,
+  TagsDoCliente,
+  TarefasDaOportunidade,
+} from "@/components/vendas/BlocosDaOportunidade";
+import { Funnel } from "@/lib/ui/icons";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
@@ -211,13 +219,15 @@ export function DialogoDaVenda({
   const [mesesRascunho, setMesesRascunho] = useState(venda?.recurrence_ahead ?? 1);
   const [valorRascunho, setValorRascunho] = useState<string | null>(null);
   const [referencia, setReferencia] = useState(venda?.reference ?? "");
-  const [notas, setNotas] = useState(venda?.notes ?? "");
+  // Comentários e descrição são um bloco só: o que havia nos dois vira um texto.
+  const [notas, setNotas] = useState(
+    [venda?.description, venda?.notes].filter((x) => x && x.trim()).join("\n\n"),
+  );
   const [proximoPasso, setProximoPasso] = useState(venda?.proxima_acao ?? "");
   const [proximoPassoEm, setProximoPassoEm] = useState(venda?.proxima_acao_em ?? "");
   const [confirmandoPasso, setConfirmandoPasso] = useState<string | null>(null);
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
-  const [descricao, setDescricao] = useState(venda?.description ?? "");
-  const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
+    const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
   const [etapaId, setEtapaId] = useState(negocioProp?.etapaId ?? "");
   const responsavelInicial = venda?.responsavel_id ?? negocioProp?.responsavelId ?? "";
   const [responsavel, setResponsavel] = useState(responsavelInicial);
@@ -612,6 +622,10 @@ export function DialogoDaVenda({
   }, []);
 
   const ehVenda = modo === "venda";
+  const etapaDoFunil = (dadosDoLead?.negocio.etapas ?? []).find((e) => e.id === etapaAtualId);
+  const oportunidadePerdida = dadosDoLead?.negocio.status === "lost";
+  const corDaEtapaTag = (e?: { ganho?: boolean; perdido?: boolean }) =>
+    e?.ganho ? ("verde" as const) : e?.perdido ? ("vermelho" as const) : ("azul" as const);
   const itensValidos = itens.filter((i) => i.produtoId !== "");
   const valido =
     contato !== "" &&
@@ -702,7 +716,7 @@ export function DialogoDaVenda({
       reference: referencia.trim(),
       notes: notas.trim(),
       expected_close_date: previsao || null,
-      description: descricao.trim(),
+      description: "",
       name: nomeDaVendaTexto.trim(),
       ...(responsavel !== responsavelInicial ? { responsavel_id: responsavel || null } : {}),
       ...(!venda && funilNovo ? { pipeline_id: funilNovo } : {}),
@@ -811,6 +825,7 @@ export function DialogoDaVenda({
         onOpenAutoFocus={venda ? (e) => e.preventDefault() : undefined}
         className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6"
       >
+        {ehVenda ? (
         <div className="flex items-start justify-between gap-2 pr-8">
           <DialogTitle className="sr-only">
             {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
@@ -821,7 +836,14 @@ export function DialogoDaVenda({
             aoMudar={setNomeDaVendaTexto}
             placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
           />
-          {ehVenda ? null : (
+        </div>
+        ) : (
+        <>
+          <DialogTitle className="sr-only">
+            {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
+          </DialogTitle>
+          {/* 1.1 · lembrete e lixeira no canto, acima do título (o X do painel vem logo depois). */}
+          <div className="flex min-h-9 items-center justify-end gap-1 pr-9">
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -874,9 +896,33 @@ export function DialogoDaVenda({
               ) : null}
             </PopoverContent>
           </Popover>
-          )}
-        </div>
-        <DialogDescription className="text-sm text-muted-foreground">
+            {venda ? (
+              <button
+                type="button"
+                aria-label={t("Apagar oportunidade")}
+                title={t("Apagar oportunidade")}
+                onClick={() => {
+                  if (
+                    window.confirm(t("Apagar esta oportunidade? Os totais do cliente serão recalculados."))
+                  ) {
+                    void apagarOportunidade();
+                  }
+                }}
+                className="grid h-9 w-9 place-items-center rounded-lg text-error-fg hover:bg-error-bg"
+              >
+                <Trash size={16} aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          {/* 1 · o título (Cliente + Produto): o MESMO da oportunidade e da venda. */}
+          <TituloDaOportunidade
+            valor={nomeDaVendaTexto}
+            aoMudar={setNomeDaVendaTexto}
+            placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
+          />
+        </>
+        )}
+        <DialogDescription className={ehVenda ? "text-sm text-muted-foreground" : "sr-only"}>
           {titulo
             ? titulo
             : ehVenda
@@ -911,189 +957,154 @@ export function DialogoDaVenda({
           </>
         ) : null}
 
-        {/* O NEGÓCIO da venda: previsão, descrição e campos do funil. */}
         {ehVenda ? null : (
         <>
-        <Fase titulo={t("Negócio")} cor="purple">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Previsão de fechamento")}</span>
-              <CampoDeData
-                valor={previsao}
-                aoMudar={setPrevisao}
-                rotulo={t("Previsão de fechamento")}
-                className="w-full"
-              />
-            </div>
-            <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Responsável")}</span>
-              <SeletorEmPopup
-                rotulo={t("Responsável pela oportunidade")}
-                valor={responsavel}
-                opcoes={equipe.map((p) => ({ id: p.id, rotulo: p.nome }))}
-                rotuloVazio={t("Sem responsável")}
-                aoEscolher={setResponsavel}
-              />
-            </div>
-            <label className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Próximos passos")}</span>
-              <input
-                value={proximoPasso}
-                maxLength={300}
-                onChange={(e) => setProximoPasso(e.target.value)}
-                // Escreveu a ação: confirma a data (a atual já vem escolhida).
-                onBlur={() => {
-                  if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
-                    setConfirmandoPasso(proximoPasso.trim());
-                  }
-                }}
-                placeholder={t("Ex.: Ligar na terça com a proposta")}
-                className={CAMPO}
-              />
-            </label>
-            <div className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Próxima ação em")}</span>
-              <CampoDeData
-                valor={proximoPassoEm}
-                aoMudar={setProximoPassoEm}
-                rotulo={t("Próxima ação em")}
-                className="w-full"
-              />
-            </div>
-            <label className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Comentários")}</span>
-              <textarea
-                rows={3}
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                placeholder={t("Anotações rápidas sobre esta oportunidade…")}
-                className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <label className="grid gap-1 sm:col-span-2">
-              <span className="text-xs text-muted-foreground">{t("Descrição da oportunidade")}</span>
-              <textarea
-                rows={2}
-                maxLength={2000}
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder={t("Contexto desta negociação…")}
-                className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
-              <div className="grid gap-1 sm:col-span-2">
-                <span className="text-xs text-muted-foreground">{t("Campos do funil")}</span>
-                <CustomFieldsEditor
-                  fields={negocio.camposDoFunil}
-                  value={camposDoNegocio}
-                  onChange={setCamposDoNegocio}
-                  mode="lead"
-                />
-              </div>
-            ) : null}
-            {negocio?.fichaHref ? (
-              <Link
-                href={negocio.fichaHref}
-                className="text-xs font-medium text-primary hover:underline sm:col-span-2"
-              >
-                {t("Abrir a ficha do lead (cadastro, atendimento, linha do tempo)")}
-              </Link>
-            ) : null}
-          </div>
-        </Fase>
-
-        <Fase titulo={t("Cliente, funil e status")} cor="blue">
+        {/* 2 · o cliente: um toggle com celular, e-mail e campos; atalhos de ícone no fim do campo. */}
         <div className="grid grid-cols-1 gap-1">
-          <span className="text-xs text-muted-foreground">{t("Cliente")}</span>
           {venda || (contatoInicial && contato === contatoInicial.contact_id) ? (
-            <p className="text-sm font-medium">
-              {venda?.cliente?.nome ?? contatoInicial?.nome ?? "—"}
-            </p>
-          ) : clienteEscolhido ? (
-            <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-sm">
-              <span>{clienteEscolhido.nome}</span>
-              <button
-                type="button"
-                className="text-xs text-primary underline"
-                onClick={() => setContato("")}
-              >
-                {t("Trocar")}
-              </button>
-            </div>
+            <ClienteDaOportunidade
+              contactId={venda?.contact_id ?? contatoInicial!.contact_id}
+              nome={venda?.cliente?.nome ?? contatoInicial?.nome ?? ""}
+            />
           ) : (
             <>
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder={t("Buscar cliente por nome ou telefone")}
-                aria-label={t("Buscar cliente")}
-                className={CAMPO}
-              />
-              {sugestoes.length > 0 ? (
-                <ul className="grid grid-cols-1 gap-1 rounded-xl border p-1">
-                  {sugestoes.map((c) => (
-                    <li key={c.contact_id}>
-                      <button
-                        type="button"
-                        onClick={() => setContato(c.contact_id)}
-                        className="flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-secondary"
-                      >
-                        <span className="truncate">{c.nome}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground">{c.telefone}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <span className="text-xs text-muted-foreground">{t("Cliente")}</span>
+              {clienteEscolhido ? (
+                <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-sm">
+                  <span>{clienteEscolhido.nome}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-primary underline"
+                    onClick={() => setContato("")}
+                  >
+                    {t("Trocar")}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder={t("Buscar cliente por nome ou telefone")}
+                    aria-label={t("Buscar cliente")}
+                    className={CAMPO}
+                  />
+                  {sugestoes.length > 0 ? (
+                    <ul className="grid grid-cols-1 gap-1 rounded-xl border p-1">
+                      {sugestoes.map((c) => (
+                        <li key={c.contact_id}>
+                          <button
+                            type="button"
+                            onClick={() => setContato(c.contact_id)}
+                            className="flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-secondary"
+                          >
+                            <span className="truncate">{c.nome}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{c.telefone}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              )}
             </>
           )}
         </div>
 
-
-          <div className="grid grid-cols-1 gap-3">
-            {!venda && funis && funis.length > 0 ? (
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Funil")}</span>
-                <SeletorEmPopup
-                  rotulo={t("Funil")}
-                  valor={funilNovo}
-                  opcoes={funis.map((f) => ({ id: f.id, rotulo: f.nome }))}
-                  aoEscolher={setFunilNovo}
+        {/* 3 · funil, etapa (tag colorida e editável), score e, se perdida, o motivo. */}
+        <Fase titulo={t("Funil e status")} cor="blue">
+          {!venda && funis && funis.length > 0 ? (
+            <div className="grid gap-1">
+              <span className="text-xs text-muted-foreground">{t("Funil")}</span>
+              <SeletorEmPopup
+                rotulo={t("Funil")}
+                valor={funilNovo}
+                opcoes={funis.map((f) => ({ id: f.id, rotulo: f.nome }))}
+                aoEscolher={setFunilNovo}
+              />
+            </div>
+          ) : null}
+          {venda?.funil || negocio ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Funnel size={14} aria-hidden />
+                {venda?.funil ?? "—"}
+              </span>
+              {negocio ? (
+                <MenuDeOpcoes
+                  alinhar="start"
+                  gatilho={
+                    <Tag data-testid="etapa-da-oportunidade" cor={corDaEtapaTag(etapaDoFunil)} editavel>
+                      {negocio.etapas.find((e) => e.id === etapaAtualId)?.nome ?? t("Escolher etapa")}
+                    </Tag>
+                  }
+                  opcoes={negocio.etapas.map((e) => ({
+                    id: e.id,
+                    rotulo: e.nome,
+                    desabilitado: e.id === etapaAtualId,
+                    aoEscolher: () => {
+                      setEtapaId(e.id);
+                      void negocio.aoMoverEtapa(e.id);
+                    },
+                  }))}
                 />
-              </div>
-            ) : null}
-            {venda?.funil ? (
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Funil")}</span>
-                <p className="rounded-xl border bg-secondary/40 px-3 py-2 text-sm font-medium break-words">
-                  {venda.funil}
-                </p>
-              </div>
-            ) : null}
-            {negocio ? (
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Status no funil")}</span>
-                <SeletorEmPopup
-                  rotulo={t("Status no funil")}
-                  valor={etapaAtualId}
-                  opcoes={negocio.etapas.map((e) => ({ id: e.id, rotulo: e.nome, cor: e.cor ?? "gray" }))}
-                  aoEscolher={(id) => {
-                    if (!id || id === etapaAtualId) return;
-                    setEtapaId(id);
-                    void negocio.aoMoverEtapa(id);
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
+          {venda?.lead_id ? (
+            <ScoreDaOportunidade
+              pipelineId={venda.pipeline_id ?? dadosDoLead?.negocio.pipeline_id}
+              etapaId={etapaAtualId}
+              ganho={Boolean(etapaDoFunil?.ganho)}
+              perdido={Boolean(etapaDoFunil?.perdido) || oportunidadePerdida}
+            />
+          ) : null}
+          {oportunidadePerdida ? (
+            <p className="text-sm" data-testid="motivo-da-perda">
+              <span className="text-xs font-medium text-muted-foreground">{t("Motivo da perda")}: </span>
+              {dadosDoLead?.sistema.motivo_da_perda?.trim() || t("Não informado")}
+            </p>
+          ) : null}
         </Fase>
 
+        {/* 4 · o responsável. */}
+        <Fase titulo={t("Responsável")} cor="purple">
+          <SeletorEmPopup
+            rotulo={t("Responsável pela oportunidade")}
+            valor={responsavel}
+            opcoes={equipe.map((p) => ({ id: p.id, rotulo: p.nome }))}
+            rotuloVazio={t("Sem responsável")}
+            aoEscolher={setResponsavel}
+          />
+        </Fase>
+
+        {/* 5 e 6 · compromissos e tarefas, como no Início; o que nasce aqui já leva cliente e oportunidade. */}
         {venda?.lead_id ? (
-          <Fase titulo={t("Compromissos")} cor="blue">
-            <CompromissosDoLead contactId={venda.contact_id} leadId={venda.lead_id} />
-          </Fase>
+          <>
+            <Fase titulo={t("Compromissos")} cor="blue">
+              <CompromissosDaOportunidade
+                contactId={venda.contact_id}
+                leadId={venda.lead_id}
+                vendeu={["comprometida", "concluida", "recorrencia_ativa", "recorrencia_encerrada"].includes(
+                  statusAtual,
+                )}
+              />
+            </Fase>
+            <Fase titulo={t("Tarefas")} cor="yellow">
+              <TarefasDaOportunidade contactId={venda.contact_id} leadId={venda.lead_id} />
+            </Fase>
+          </>
         ) : null}
+
+        {/* 7 · previsão de fechamento (a venda — produtos, serviços e pagamento — vem logo abaixo). */}
+        <Fase titulo={t("Previsão de fechamento")} cor="purple">
+          <CampoDeData
+            valor={previsao}
+            aoMudar={setPrevisao}
+            rotulo={t("Previsão de fechamento")}
+            className="w-full"
+          />
+        </Fase>
         </>
         )}
 
@@ -1428,8 +1439,83 @@ export function DialogoDaVenda({
           </Fase>
         ) : null}
 
-        {leadDaVenda && !ehVenda ? (
-          <Fase titulo={t("Origem")} cor="pink">
+        {/* 7 · números principais da venda. */}
+        {ehVenda ? null : (
+          <div className="grid grid-cols-3 gap-2 text-center" data-testid="numeros-da-oportunidade">
+            {[
+              [t("Valor pago"), reais(recebidoCents)],
+              [t("Em interesse"), reais(parcelas.length === 0 ? total : 0)],
+              [t("Valor comprometido"), reais(previstoCents)],
+            ].map(([r, v]) => (
+              <div key={r} className="rounded-2xl border border-border bg-card/50 px-2 py-3">
+                <div className="text-[11px] text-muted-foreground">{r}</div>
+                <div className="text-sm font-semibold tabular-nums sm:text-base">{v}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {ehVenda ? (
+          <Fase titulo={t("Anotações da oportunidade")} cor="gray">
+            <textarea
+              rows={4}
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder={t("Anotações rápidas sobre esta oportunidade…")}
+              aria-label={t("Anotações da oportunidade")}
+              className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("As mesmas anotações aparecem na página da oportunidade.")}
+            </p>
+          </Fase>
+        ) : (
+        <>
+        {/* 8 · próximos passos e a data. */}
+        <Fase titulo={t("Próximos passos")} cor="purple">
+          <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+            <input
+              value={proximoPasso}
+              maxLength={300}
+              onChange={(e) => setProximoPasso(e.target.value)}
+              // Escreveu a ação: confirma a data (a atual já vem escolhida).
+              onBlur={() => {
+                if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
+                  setConfirmandoPasso(proximoPasso.trim());
+                }
+              }}
+              placeholder={t("Ex.: Ligar na terça com a proposta")}
+              aria-label={t("Próximos passos")}
+              className={CAMPO}
+            />
+            <CampoDeData
+              valor={proximoPassoEm}
+              aoMudar={setProximoPassoEm}
+              rotulo={t("Próxima ação em")}
+              className="w-full"
+            />
+          </div>
+        </Fase>
+
+        {/* 9 · comentários: a descrição e os comentários são um bloco só. */}
+        <Fase titulo={t("Comentários")} cor="gray">
+          <textarea
+            rows={4}
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            placeholder={t("Anotações e contexto desta oportunidade…")}
+            aria-label={t("Comentários")}
+            className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          />
+        </Fase>
+
+        {/* 10 · tags: do cliente (o lead), com o mesmo editor do Inbox. */}
+        {venda ? <TagsDoCliente contactId={venda.contact_id} /> : null}
+
+        {/* 11 · origem, em toggle. */}
+        {leadDaVenda ? (
+          <BlocoRecolhivel titulo={t("Origem")}>
+            <div className="grid gap-3 p-4 pt-0">
             {origemAtual ? (
               <>
                 <p className="text-xs text-muted-foreground">
@@ -1449,25 +1535,25 @@ export function DialogoDaVenda({
             ) : (
               <div className="h-16 animate-pulse rounded-lg bg-secondary" />
             )}
-          </Fase>
+            </div>
+          </BlocoRecolhivel>
         ) : null}
 
-        {ehVenda ? (
-          <Fase titulo={t("Anotações da oportunidade")} cor="gray">
-            <textarea
-              rows={4}
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder={t("Anotações rápidas sobre esta oportunidade…")}
-              aria-label={t("Anotações da oportunidade")}
-              className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("As mesmas anotações aparecem na página da oportunidade.")}
-            </p>
-          </Fase>
-        ) : (
-        <Fase titulo={t("Detalhes da oportunidade")} cor="gray">
+        {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
+          <BlocoRecolhivel titulo={t("Campos do funil")}>
+            <div className="p-4 pt-0">
+              <CustomFieldsEditor
+                fields={negocio.camposDoFunil}
+                value={camposDoNegocio}
+                onChange={setCamposDoNegocio}
+                mode="lead"
+              />
+            </div>
+          </BlocoRecolhivel>
+        ) : null}
+
+        <BlocoRecolhivel titulo={t("Detalhes da oportunidade")}>
+          <div className="p-4 pt-0">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid grid-cols-1 gap-1">
               <span className="text-xs text-muted-foreground">
@@ -1502,7 +1588,9 @@ export function DialogoDaVenda({
               </dl>
             ) : null}
           </div>
-        </Fase>
+          </div>
+        </BlocoRecolhivel>
+        </>
         )}
 
         {erro ? (
@@ -1512,24 +1600,7 @@ export function DialogoDaVenda({
         ) : null}
 
         <div className="flex flex-wrap justify-between gap-2 pt-1">
-          {venda && !ehVenda ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (
-                  window.confirm(t("Apagar esta oportunidade? Os totais do cliente serão recalculados."))
-                ) {
-                  void apagarOportunidade();
-                }
-              }}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium text-error-fg hover:bg-error-bg"
-            >
-              <Trash size={14} aria-hidden />
-              {t("Apagar")}
-            </button>
-          ) : (
-            <span />
-          )}
+          <span />
           <div className="flex gap-2">
             <button
               type="button"
