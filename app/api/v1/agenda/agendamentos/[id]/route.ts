@@ -12,6 +12,7 @@ import { reconcileAppointment } from "@/lib/agenda/google/sync-executor";
 import { audit } from "@/lib/audit";
 import { tagDeIdioma } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { corDoTipo } from "@/lib/agenda/cor-do-tipo";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
@@ -198,7 +199,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
       .limit(1),
     db
       .from("calendar_appointments")
-      .select("calendar_event_types(id,name,slug,color)")
+      .select("calendar_event_types(id,name,slug)")
       .eq("organization_id", org)
       .eq("id", id)
       .maybeSingle(),
@@ -214,7 +215,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   const tipoRaw = (tipoLinha.data as { calendar_event_types?: unknown } | null)
     ?.calendar_event_types;
   const tipoDoCompromisso = (Array.isArray(tipoRaw) ? tipoRaw[0] : tipoRaw) as
-    { id: string; name: string; slug: string; color: string | null } | null | undefined;
+    { id: string; name: string; slug: string } | null | undefined;
   const leadDoCompromisso =
     ((vinc.data ?? [])[0] as { lead_id?: string } | undefined)?.lead_id ?? null;
   const { data: leadRow } = leadDoCompromisso
@@ -263,7 +264,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
           id: tipoDoCompromisso.id,
           nome: tipoDoCompromisso.name,
           slug: tipoDoCompromisso.slug,
-          cor: tipoDoCompromisso.color,
+          cor: corDoTipo(tipoDoCompromisso.id),
         }
       : null,
     remarcado_para: (sucessor.data as { id?: string } | null)?.id ?? null,

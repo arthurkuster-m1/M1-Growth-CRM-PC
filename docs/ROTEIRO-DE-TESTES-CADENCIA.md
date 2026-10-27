@@ -400,3 +400,25 @@ Em **Agenda**. Teste no computador e no celular.
 | 21.13 | **Celular**: olhe o topo da Agenda                                         | O título **"Agenda"** aparece em cima do botão "Novo agendamento"                                          |           |
 | 21.14 | **Mês**: duplo clique num dia que **já passou**                            | Aparece um aviso do app: "Não é possível agendar em um dia que já passou."; nada abre                       |           |
 
+---
+
+## 22. Página do compromisso — ajustes de 28/10/2026
+
+| #    | Passo                                                                       | Esperado                                                                                                           | Resultado |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------- |
+| 22.1 | Abra um compromisso e olhe o topo                                           | Da esquerda para a direita: **tag colorida do tipo**, **lixeira vermelha**, **X**; o título logo abaixo            |           |
+| 22.2 | O tipo mostra o nome certo (ex.: "Reunião de vendas"), e não "Atendimento"  | Sim; compromisso com tipo mostra a cor própria                                                                     |           |
+| 22.3 | Clique na tag do tipo e escolha outro                                       | O tipo muda e o fim acompanha a duração do novo tipo                                                               |           |
+| 22.4 | Clique na lixeira                                                           | Pede confirmação ("Excluir de vez?") antes de apagar                                                               |           |
+| 22.5 | **Data e hora**                                                             | Uma linha só: data/hora e "até HH:mm"; **sem** texto de aviso embaixo; no celular não quebra                       |           |
+| 22.6 | Status e Responsável                                                        | Lado a lado no computador, um embaixo do outro no celular; o status é uma tag colorida                             |           |
+| 22.7 | **Reunião — presencial**: edite o endereço e saia do campo                  | Grava ("Local atualizado") e continua ao reabrir                                                                   |           |
+| 22.8 | **Reunião**: troque a tag para **Link** e escreva um link                   | Grava; o botão "abrir" abre o link; o botão de copiar copia                                                        |           |
+| 22.9 | Reunião com **Google Meet**                                                 | Mostra o link do Meet (ou "Gerando o link…" / "Falha ao gerar o link"); só se troca mudando o tipo                 |           |
+| 22.10| **Oportunidade — computador**                                               | Nome, **etapa (tag colorida)** e funil na **mesma linha**                                                          |           |
+| 22.11| **Oportunidade — celular**                                                  | O nome fica numa linha, e etapa e funil quebram embaixo, legíveis                                                  |           |
+| 22.12| Botão **Abrir oportunidade**                                                | Abre a página padrão da oportunidade no CRM                                                                        |           |
+| 22.13| Clique na **etapa** e escolha outra                                         | A etapa muda aqui e **também no funil/CRM**; etapa de perda pede o motivo; etapa de ganho pede o pagamento         |           |
+| 22.14| **Venda**: produto, valor e status                                          | Numa linha no computador; quebra em linhas no celular; o status é uma etiqueta colorida editável                   |           |
+| 22.15| Mude o status da venda (Comprometida / Paga / Não comprou)                  | Reflete na página da oportunidade e no CRM                                                                         |           |
+

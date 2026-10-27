@@ -5,10 +5,8 @@ import Link from "next/link";
 import * as React from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SeletorDeContato } from "@/components/kanban/SeletorDeContato";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { toast } from "sonner";
@@ -18,31 +16,20 @@ import { useT } from "@/hooks/i18n/useT";
 import { modeloDoAtendimento } from "@/lib/agenda/atendimentos";
 import { padraoDoModelo } from "@/lib/agenda/modelos-de-atendimento";
 import { apiClient } from "@/lib/api/client";
-import { rotuloDoLocal } from "@/lib/agenda/locais";
 import { formatCents as formatMoney } from "@/lib/money";
-import {
-  ArrowSquareOut,
-  CalendarBlank,
-  ChatCircle,
-  Copy,
-  Flag,
-  Funnel,
-  LinkSimple,
-  PencilSimple,
-  Phone,
-  Users,
-} from "@/lib/ui/icons";
+import { ArrowSquareOut, ChatCircle, Funnel, PencilSimple, Phone } from "@/lib/ui/icons";
 import { blocosDoModelo } from "@/lib/agenda/modelos-de-atendimento";
 import { randomId } from "@/lib/random-id";
 import type { Bloco } from "@/lib/marketing/blocos";
 import { EditorDoCompromisso } from "./EditorDoCompromisso";
-import { ROTULO_DO_LOCAL } from "@/lib/agenda/propriedades-do-compromisso";
 import { pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useRouter } from "next/navigation";
 import type { Venda } from "@/lib/vendas";
-import { cn } from "@/lib/utils";
 
+import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
+import { corDoTipo } from "@/lib/agenda/cor-do-tipo";
 import { BotaoExcluir, useAcoesDoCompromisso } from "./AcoesDoCompromisso";
+import { Campo, LocalEditavel, MenuDeOpcoes, Tag, type CorDaTag } from "./CamposDoCompromisso";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import type { PedidoDeNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { CampoDeDataEHora } from "./CampoDeDataEHora";
@@ -86,8 +73,6 @@ type Detalhe = {
   client_confirmation?: "confirmed" | "reschedule" | "cancel" | null;
 };
 
-type VarianteDeTag = "default" | "warning" | "success" | "error" | "neutral";
-
 /**
  * O STATUS ÚNICO do compromisso: o que a situação do banco e o resultado da reunião diziam em dois
  * lugares agora é uma tag só. Quem compareceu mostra se comprou ou não pela venda da oportunidade;
@@ -96,21 +81,21 @@ type VarianteDeTag = "default" | "warning" | "success" | "error" | "neutral";
 export function statusDoCompromisso(
   a: Pick<Detalhe, "status" | "remarcado_para">,
   vendeu: boolean,
-): { rotulo: string; variante: VarianteDeTag } {
-  if (a.remarcado_para) return { rotulo: "Remarcado", variante: "neutral" };
+): { rotulo: string; cor: CorDaTag } {
+  if (a.remarcado_para) return { rotulo: "Remarcado", cor: "roxo" };
   switch (a.status) {
     case "pending":
-      return { rotulo: "Aguardando confirmação", variante: "warning" };
+      return { rotulo: "Aguardando confirmação", cor: "amarelo" };
     case "confirmed":
-      return { rotulo: "Confirmado", variante: "default" };
+      return { rotulo: "Confirmado", cor: "azul" };
     case "completed":
       return vendeu
-        ? { rotulo: "Compareceu e Comprou", variante: "success" }
-        : { rotulo: "Compareceu e Não comprou", variante: "warning" };
+        ? { rotulo: "Compareceu e Comprou", cor: "verde" }
+        : { rotulo: "Compareceu e Não comprou", cor: "amarelo" };
     case "no_show":
-      return { rotulo: "Não compareceu", variante: "error" };
+      return { rotulo: "Não compareceu", cor: "vermelho" };
     default:
-      return { rotulo: "Cancelado", variante: "neutral" };
+      return { rotulo: "Cancelado", cor: "cinza" };
   }
 }
 
@@ -129,14 +114,26 @@ const STATUS_DA_VENDA: Record<string, string> = {
   recorrencia_encerrada: "Recorrência encerrada",
   cancelada: "Não comprou",
 };
-const VARIANTE_DA_VENDA: Record<string, VarianteDeTag> = {
-  interesse: "neutral",
-  comprometida: "warning",
-  concluida: "success",
-  recorrencia_ativa: "success",
-  recorrencia_encerrada: "neutral",
-  cancelada: "error",
+const COR_DA_VENDA: Record<string, CorDaTag> = {
+  interesse: "azul",
+  comprometida: "amarelo",
+  concluida: "verde",
+  recorrencia_ativa: "verde",
+  recorrencia_encerrada: "cinza",
+  cancelada: "vermelho",
 };
+
+type EtapaDoFunil = {
+  id: string;
+  name: string;
+  color: string | null;
+  is_won: boolean;
+  is_lost: boolean;
+  qualification: "mql" | "disqualified" | null;
+};
+/** Sem cor própria, a etapa de ganho é verde, a de perda vermelha, e as demais azuis. */
+const corDaEtapa = (e: Pick<EtapaDoFunil, "is_won" | "is_lost">): CorDaTag =>
+  e.is_won ? "verde" : e.is_lost ? "vermelho" : "azul";
 
 /**
  * O título do compromisso, no topo da página: um campo que se edita no lugar (grava ao sair
@@ -177,26 +174,6 @@ function TituloEditavel({
       }}
       className="-mx-2 w-full min-w-0 rounded-xl border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-hidden transition-colors hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/20"
     />
-  );
-}
-
-function Prop({
-  icone: Icone,
-  rotulo,
-  children,
-}: {
-  icone: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
-  rotulo: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid min-h-9 grid-cols-[7rem_minmax(0,1fr)] items-start gap-x-2 py-0.5 text-sm sm:grid-cols-[9rem_minmax(0,1fr)]">
-      <div className="flex min-h-9 items-center gap-2 text-text-muted">
-        <Icone size={16} aria-hidden />
-        <span className="truncate">{rotulo}</span>
-      </div>
-      <div className="min-w-0 self-center">{children}</div>
-    </div>
   );
 }
 
@@ -375,6 +352,73 @@ function PaginaExistente({
     }
   }
 
+  const oport = useQuery({
+    queryKey: ["agenda", "oportunidade-do-compromisso", id, a?.lead_id],
+    enabled: !!id && !!a?.lead_id,
+    staleTime: 10_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: {
+            lead: {
+              id: string;
+              pipeline_id: string;
+              stage_id: string;
+              status: string;
+              updated_at: string;
+            } | null;
+            etapas: EtapaDoFunil[];
+          };
+        }>(`/api/v1/agenda/agendamentos/${id}/oportunidade`)
+      ).data,
+  });
+  const [perdendo, setPerdendo] = React.useState<{
+    leadId: string;
+    funilId: string;
+    etapaId?: string;
+  } | null>(null);
+  const mudarEtapa = useMutation({
+    mutationFn: async (etapa: EtapaDoFunil) => {
+      const lead = oport.data?.lead;
+      if (!lead) return;
+      // As mesmas regras do CRM: perda e desqualificação pedem o motivo; ganho exige o pagamento.
+      if (etapa.is_lost) return setPerdendo({ leadId: lead.id, funilId: lead.pipeline_id });
+      if (etapa.qualification === "disqualified")
+        return setPerdendo({ leadId: lead.id, funilId: lead.pipeline_id, etapaId: etapa.id });
+      if (etapa.is_won) {
+        try {
+          await apiClient.post(`/api/v1/leads/${lead.id}/win`, {});
+        } catch (e) {
+          if ((e as { code?: string }).code === "comprou_exige_pagamento")
+            return pedirPagamentoDaOportunidade(lead.id);
+          throw e;
+        }
+        return;
+      }
+      await apiClient.post(`/api/v1/leads/${lead.id}/move`, {
+        stage_id: etapa.id,
+        position_in_stage: new Date().getTime(),
+        expected_updated_at: lead.updated_at,
+      });
+    },
+    onSuccess: () => {
+      toast.success(t("Etapa da oportunidade atualizada."));
+      recarregar();
+      void qc.invalidateQueries({ queryKey: ["clientes"] });
+      void qc.invalidateQueries({ queryKey: ["board"] });
+    },
+    onError: showApiError,
+  });
+  const trocarLocal = useMutation({
+    mutationFn: async (corpo: { location_kind: string; location_details: string }) =>
+      apiClient.patch(`/api/v1/agenda/agendamentos/${id}/local`, corpo),
+    onSuccess: () => {
+      toast.success(t("Local atualizado."));
+      recarregar();
+    },
+    onError: showApiError,
+  });
+
   if (!id) return null;
   // A página de atendimento do TIPO (configurada na Agenda); sem configuração, o padrão do modelo.
   const cfg =
@@ -388,10 +432,10 @@ function PaginaExistente({
     .filter((p) => p.status === "recebida")
     .reduce((s, p) => s + p.amount_cents, 0);
   const total = parcelas.reduce((s, p) => s + p.amount_cents, 0);
+  const etapasDoFunil = oport.data?.etapas ?? [];
+  const etapaAtual = etapasDoFunil.find((e) => e.id === oport.data?.lead?.stage_id) ?? null;
   const vendeu = !!venda && VENDIDAS.has(venda.status);
-  const statusUnico = a
-    ? statusDoCompromisso(a, vendeu)
-    : { rotulo: "", variante: "neutral" as VarianteDeTag };
+  const statusUnico = a ? statusDoCompromisso(a, vendeu) : { rotulo: "", cor: "cinza" as CorDaTag };
   const fimDoCompromisso = a
     ? new Intl.DateTimeFormat(tag, {
         timeZone: a.time_zone,
@@ -400,29 +444,6 @@ function PaginaExistente({
         hourCycle: "h23",
       }).format(new Date(a.ends_at))
     : "";
-  // O local: link da reunião (Meet/vídeo) ou endereço; com o link pendente ou falho, diz isso no lugar.
-  const ehVideo = a?.location_kind === "google_meet" || a?.location_kind === "video_link";
-  const estadoDoLink = a?.meeting?.state ?? null;
-  const valorDoLocal: string | null = !a
-    ? null
-    : ehVideo
-      ? (link ??
-        (estadoDoLink === "failed"
-          ? t("Falha ao gerar o link")
-          : estadoDoLink === "pending"
-            ? t("Gerando o link…")
-            : (a.location_details ?? null)))
-      : (a.location_details ?? null);
-  const destinoParaAbrir: string | null = !a
-    ? null
-    : link
-      ? link
-      : !ehVideo && a.location_details && a.location_kind === "in_person"
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.location_details)}`
-        : ehVideo && a.location_details && /^https?:\/\//i.test(a.location_details)
-          ? a.location_details
-          : null;
-
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
@@ -443,59 +464,35 @@ function PaginaExistente({
           </div>
         ) : (
           <>
-            <header className="flex min-w-0 flex-col gap-2 px-4 pt-12 pb-2 sm:px-8 sm:pt-6 sm:pr-14">
-              {/* o TIPO, em tag editável, no canto superior direito acima do título */}
-              <div className="flex min-h-7 items-center justify-between gap-2">
-                {podeEditar ? <BotaoExcluir id={a.id} aoExcluir={onClose} /> : <span />}
+            <header className="flex min-w-0 flex-col gap-3 px-4 pt-4 pb-2 sm:px-6">
+              {/* O TIPO em tag colorida e editável, depois a lixeira; o X da página fica logo depois. */}
+              <div className="flex min-h-9 items-center justify-end gap-1 pr-11">
                 {podeEditar && !encerrado && (tipos.data?.length ?? 0) > 0 ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
+                  <MenuDeOpcoes
+                    alinhar="end"
+                    gatilho={
+                      <Tag
                         data-testid="tipo-do-compromisso"
-                        aria-label={t("Tipo do compromisso")}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border bg-secondary/60 px-2.5 py-1 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+                        hex={a.tipo ? corDoTipo(a.tipo.id) : null}
+                        cor="azul"
+                        editavel
                       >
-                        {a.tipo?.cor ? (
-                          <span
-                            aria-hidden
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: a.tipo.cor }}
-                          />
-                        ) : null}
-                        <span className="truncate">{a.tipo?.nome ?? t("Atendimento")}</span>
-                        <PencilSimple size={12} aria-hidden />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-64 p-1.5">
-                      {(tipos.data ?? []).map((x) => (
-                        <button
-                          key={x.id}
-                          type="button"
-                          disabled={trocarTipo.isPending}
-                          onClick={() => x.id !== a.tipo?.id && trocarTipo.mutate(x.id)}
-                          className={cn(
-                            "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-secondary",
-                            x.id === a.tipo?.id && "bg-secondary font-medium",
-                          )}
-                        >
-                          {x.color ? (
-                            <span
-                              aria-hidden
-                              className="h-2 w-2 shrink-0 rounded-full"
-                              style={{ backgroundColor: x.color }}
-                            />
-                          ) : null}
-                          <span className="truncate">{x.name}</span>
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
+                        {a.tipo?.nome ?? t("Atendimento")}
+                      </Tag>
+                    }
+                    opcoes={(tipos.data ?? []).map((x) => ({
+                      id: x.id,
+                      rotulo: x.name,
+                      desabilitado: x.id === a.tipo?.id || trocarTipo.isPending,
+                      aoEscolher: () => trocarTipo.mutate(x.id),
+                    }))}
+                  />
                 ) : (
-                  <Badge variant="neutral" className="rounded-lg">
+                  <Tag hex={a.tipo ? corDoTipo(a.tipo.id) : null} cor="azul">
                     {a.tipo?.nome ?? t("Atendimento")}
-                  </Badge>
+                  </Tag>
                 )}
+                {podeEditar ? <BotaoExcluir id={a.id} aoExcluir={onClose} soIcone /> : null}
               </div>
               <div className="max-w-full min-w-0">
                 <TituloEditavel
@@ -509,9 +506,8 @@ function PaginaExistente({
               </div>
             </header>
 
-            {/* As propriedades, como numa página do Notion: nome à esquerda, valor à direita. */}
-            <div className="grid min-w-0 gap-0.5 px-4 pb-4 sm:px-8">
-              <Prop icone={CalendarBlank} rotulo={t("Data e Hora")}>
+            <div className="grid min-w-0 gap-4 px-4 pb-4 sm:px-6">
+              <Campo rotulo={t("Data e hora")}>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <div className="min-w-0 sm:w-64">
                     <CampoDeDataEHora
@@ -521,7 +517,7 @@ function PaginaExistente({
                       rotulo={t("Reagendar o compromisso")}
                       desabilitado={!podeEditar || encerrado || reagendar.isPending}
                       aoEscolher={(iso) => reagendar.mutate(iso)}
-                      className="border-transparent bg-transparent hover:border-border"
+                      className="min-h-9 border-transparent bg-transparent px-1 hover:border-border"
                       horariosLivres={
                         a.tipo
                           ? { eventTypeId: a.tipo.id, ownerId: a.responsavel_id, ignorarId: a.id }
@@ -533,116 +529,89 @@ function PaginaExistente({
                     {t("até")} {fimDoCompromisso}
                   </span>
                 </div>
-                {podeEditar && !encerrado ? (
-                  <p className="mt-0.5 text-[11px] text-text-muted">
-                    {t(
-                      "Trocar o horário remarca: o compromisso antigo fica como não compareceu e nasce um novo.",
-                    )}
-                  </p>
-                ) : null}
-              </Prop>
+              </Campo>
 
-              <Prop icone={Flag} rotulo={t("Status")}>
-                <div className="flex flex-wrap items-center gap-2">
-                  {podeEditar && a.status !== "cancelled" && !a.remarcado_para ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          data-testid="status-do-compromisso"
-                          className="rounded-lg"
-                        >
-                          <Badge
-                            variant={statusUnico.variante}
-                            className="cursor-pointer gap-1 rounded-lg"
-                          >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Campo rotulo={t("Status")}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {podeEditar && a.status !== "cancelled" && !a.remarcado_para ? (
+                      <MenuDeOpcoes
+                        gatilho={
+                          <Tag data-testid="status-do-compromisso" cor={statusUnico.cor} editavel>
                             {t(statusUnico.rotulo)}
-                            <PencilSimple size={11} aria-hidden />
-                          </Badge>
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" className="w-64 p-1.5">
-                        {(
+                          </Tag>
+                        }
+                        opcoes={(
                           [
                             ["confirmed", "Confirmado", false],
                             ["comprou", "Compareceu e Comprou", true],
                             ["nao_comprou", "Compareceu e Não comprou", true],
                             ["no_show", "Não compareceu", true],
                           ] as const
-                        ).map(([opcao, rotulo, soDepois]) => (
-                          <button
-                            key={opcao}
-                            type="button"
-                            disabled={
-                              salvar.isPending ||
-                              acoes.resultado.isPending ||
-                              (soDepois && !comecou)
-                            }
-                            title={
-                              soDepois && !comecou
-                                ? t("Disponível quando a reunião começar")
-                                : undefined
-                            }
-                            onClick={() =>
-                              opcao === "confirmed"
-                                ? a.status === "pending"
-                                  ? acoes.confirmar.mutate(a.id)
-                                  : salvar.mutate({ status: "confirmed" })
-                                : acoes.resultado.mutate({ id: a.id, opcao, leadId: a.lead_id })
-                            }
-                            className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm hover:bg-secondary disabled:opacity-50"
-                          >
-                            {t(rotulo)}
-                          </button>
-                        ))}
-                      </PopoverContent>
-                    </Popover>
+                        ).map(([opcao, rotulo, soDepois]) => ({
+                          id: opcao,
+                          rotulo: t(rotulo),
+                          desabilitado:
+                            salvar.isPending || acoes.resultado.isPending || (soDepois && !comecou),
+                          dica:
+                            soDepois && !comecou
+                              ? t("Disponível quando a reunião começar")
+                              : undefined,
+                          aoEscolher: () =>
+                            opcao === "confirmed"
+                              ? a.status === "pending"
+                                ? acoes.confirmar.mutate(a.id)
+                                : salvar.mutate({ status: "confirmed" })
+                              : acoes.resultado.mutate({ id: a.id, opcao, leadId: a.lead_id }),
+                        }))}
+                      />
+                    ) : (
+                      <Tag cor={statusUnico.cor}>{t(statusUnico.rotulo)}</Tag>
+                    )}
+                    {a.client_confirmation === "confirmed" && (
+                      <Tag cor="verde">{t("Cliente confirmou")}</Tag>
+                    )}
+                  </div>
+                </Campo>
+
+                <div className="min-w-0">
+                  <div className="mb-1 text-xs font-medium text-text-muted">{t("Responsável")}</div>
+                  {podeEditar && !encerrado ? (
+                    <SeletorEmPopup
+                      rotulo={t("Responsável pela reunião")}
+                      valor={a.responsavel_id ?? ""}
+                      opcoes={(() => {
+                        const doTipo = a.tipo
+                          ? atendentesDoTipoNaMatriz(matriz.data, a.tipo.id)
+                          : [];
+                        const livres = new Set((livresNoHorario.data ?? []).map((l) => l.user_id));
+                        return (pessoas.data ?? [])
+                          .filter(
+                            (p) =>
+                              p.user_id === a.responsavel_id ||
+                              ((doTipo.length === 0 || doTipo.includes(p.user_id)) &&
+                                (!livresNoHorario.isSuccess || livres.has(p.user_id))),
+                          )
+                          .map((p) => ({
+                            id: p.user_id,
+                            rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
+                          }));
+                      })()}
+                      desabilitado={trocarResponsavel.isPending}
+                      aoEscolher={(uid) =>
+                        uid && uid !== a.responsavel_id && trocarResponsavel.mutate(uid)
+                      }
+                    />
                   ) : (
-                    <Badge variant={statusUnico.variante} className="rounded-lg">
-                      {t(statusUnico.rotulo)}
-                    </Badge>
-                  )}
-                  {a.client_confirmation === "confirmed" && (
-                    <Badge variant="success" className="rounded-lg">
-                      {t("Cliente confirmou")}
-                    </Badge>
+                    <div className="flex min-h-10 items-center rounded-xl border border-border bg-card px-3 text-sm">
+                      {nomeDoResponsavel ?? "—"}
+                    </div>
                   )}
                 </div>
-              </Prop>
+              </div>
 
-              <Prop icone={Users} rotulo={t("Responsável")}>
-                {podeEditar && !encerrado ? (
-                  <SeletorEmPopup
-                    rotulo={t("Responsável pela reunião")}
-                    valor={a.responsavel_id ?? ""}
-                    className="border-transparent bg-transparent hover:border-border"
-                    opcoes={(() => {
-                      const doTipo = a.tipo ? atendentesDoTipoNaMatriz(matriz.data, a.tipo.id) : [];
-                      const livres = new Set((livresNoHorario.data ?? []).map((l) => l.user_id));
-                      return (pessoas.data ?? [])
-                        .filter(
-                          (p) =>
-                            p.user_id === a.responsavel_id ||
-                            ((doTipo.length === 0 || doTipo.includes(p.user_id)) &&
-                              (!livresNoHorario.isSuccess || livres.has(p.user_id))),
-                        )
-                        .map((p) => ({
-                          id: p.user_id,
-                          rotulo: (p.full_name ?? "").trim() || t("Pessoa da equipe"),
-                        }));
-                    })()}
-                    desabilitado={trocarResponsavel.isPending}
-                    aoEscolher={(uid) =>
-                      uid && uid !== a.responsavel_id && trocarResponsavel.mutate(uid)
-                    }
-                  />
-                ) : (
-                  <span>{nomeDoResponsavel ?? "—"}</span>
-                )}
-              </Prop>
-
-              <Prop icone={Users} rotulo={t("Cliente")}>
-                <div className="flex min-h-9 items-center gap-1">
+              <Campo rotulo={t("Cliente")}>
+                <div className="flex min-h-8 items-center gap-1">
                   {a.contact_id ? (
                     <Link
                       href={`/app/contacts/${a.contact_id}`}
@@ -691,53 +660,24 @@ function PaginaExistente({
                     ) : null}
                   </span>
                 </div>
-              </Prop>
+              </Campo>
 
-              <Prop icone={LinkSimple} rotulo={ehVideo ? t("Link da Reunião") : t("Endereço")}>
-                <div className="flex min-h-9 items-center gap-2">
-                  <Badge variant="neutral" className="shrink-0 rounded-md px-1.5 py-0 text-[11px]">
-                    {t(
-                      ROTULO_DO_LOCAL[a.location_kind ?? ""] ??
-                        rotuloDoLocal(a.location_kind, null) ??
-                        "—",
-                    )}
-                  </Badge>
-                  <span
-                    className={cn("min-w-0 flex-1 truncate", !valorDoLocal && "text-text-muted")}
-                  >
-                    {valorDoLocal ?? t("Sem link ou endereço")}
-                  </span>
-                  {valorDoLocal ? (
-                    <>
-                      <button
-                        type="button"
-                        aria-label={t("Copiar")}
-                        title={t("Copiar")}
-                        className="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-secondary"
-                        onClick={() => {
-                          void navigator.clipboard?.writeText(valorDoLocal);
-                          toast.success(t("Copiado."));
-                        }}
-                      >
-                        <Copy size={15} aria-hidden />
-                      </button>
-                      {destinoParaAbrir ? (
-                        <a
-                          href={destinoParaAbrir}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={t("Abrir")}
-                          title={t("Abrir")}
-                          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-secondary"
-                        >
-                          <ArrowSquareOut size={15} aria-hidden />
-                        </a>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
+              <div className="min-w-0">
+                <Campo rotulo={t("Reunião")}>
+                  <LocalEditavel
+                    key={`${a.id}-${a.location_kind}-${a.location_details}`}
+                    tipo={a.location_kind}
+                    detalhes={a.location_details}
+                    linkDoMeet={link}
+                    estadoDoLink={a.meeting?.state ?? null}
+                    podeEditar={podeEditar && a.status !== "cancelled"}
+                    aoSalvar={(kind, texto) =>
+                      trocarLocal.mutate({ location_kind: kind, location_details: texto })
+                    }
+                  />
+                </Campo>
                 {a.google_sync || a.meeting ? (
-                  <details className="mt-1 rounded-xl border border-border px-3 py-2 text-sm">
+                  <details className="mt-2 rounded-xl border border-border px-3 py-2 text-sm">
                     <summary className="cursor-pointer text-text-muted">
                       {t("Google Agenda e Meet")}
                     </summary>
@@ -761,22 +701,35 @@ function PaginaExistente({
                     </div>
                   </details>
                 ) : null}
-              </Prop>
+              </div>
             </div>
 
             {cfg.blocos.oportunidade ? (
-              <div className="grid min-w-0 gap-4 px-4 pb-4 sm:px-8">
-                {/* Oportunidade: nome + etapa do funil na mesma linha, e o funil; sempre do cliente */}
-                <section>
-                  <h3 className="mb-1 text-lg font-semibold">{t("Oportunidade")}</h3>
+              <div className="grid min-w-0 gap-4 px-4 pb-4 sm:px-6">
+                <section
+                  className="rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
+                  data-testid="secao-oportunidade"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold">{t("Oportunidade")}</h3>
+                    {a.lead_id ? (
+                      <Link
+                        href={`/app/leads/${a.lead_id}`}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+                      >
+                        <ArrowSquareOut size={14} aria-hidden />
+                        {t("Abrir oportunidade")}
+                      </Link>
+                    ) : null}
+                  </div>
                   {!a.contact_id ? (
                     <p className="text-sm text-text-muted">{t("Sem cliente, sem oportunidade.")}</p>
                   ) : (
-                    <div className="grid gap-0.5">
+                    <div className="grid gap-2">
                       {podeEditar &&
                       !encerrado &&
                       (contexto.data?.oportunidades ?? []).length > 1 ? (
-                        <div className="mb-1 sm:max-w-md">
+                        <div className="sm:max-w-md">
                           <SeletorEmPopup
                             rotulo={t("Oportunidade do compromisso")}
                             valor={a.lead_id ?? ""}
@@ -801,89 +754,97 @@ function PaginaExistente({
                       ) : !venda ? (
                         <p className="text-sm text-text-muted">{t("Oportunidade indisponível.")}</p>
                       ) : (
-                        <>
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="min-w-0 truncate font-medium">
-                              {a.oportunidade_titulo ||
-                                venda.name ||
-                                venda.product_name ||
-                                t("Oportunidade")}
-                            </span>
-                            {venda.etapa ? (
-                              <Badge variant="neutral" className="rounded-lg">
-                                {venda.etapa}
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-text-muted">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
+                          <span className="min-w-0 basis-full truncate font-medium sm:flex-1 sm:basis-auto">
+                            {a.oportunidade_titulo ||
+                              venda.name ||
+                              venda.product_name ||
+                              t("Oportunidade")}
+                          </span>
+                          {etapaAtual ? (
+                            podeEditar && etapasDoFunil.length > 0 ? (
+                              <MenuDeOpcoes
+                                alinhar="end"
+                                gatilho={
+                                  <Tag
+                                    data-testid="etapa-da-oportunidade"
+                                    hex={etapaAtual.color}
+                                    cor={corDaEtapa(etapaAtual)}
+                                    editavel
+                                  >
+                                    {etapaAtual.name}
+                                  </Tag>
+                                }
+                                opcoes={etapasDoFunil.map((e) => ({
+                                  id: e.id,
+                                  rotulo: e.name,
+                                  desabilitado: e.id === etapaAtual.id || mudarEtapa.isPending,
+                                  aoEscolher: () => mudarEtapa.mutate(e),
+                                }))}
+                              />
+                            ) : (
+                              <Tag hex={etapaAtual.color} cor={corDaEtapa(etapaAtual)}>
+                                {etapaAtual.name}
+                              </Tag>
+                            )
+                          ) : venda.etapa ? (
+                            <Tag cor="azul">{venda.etapa}</Tag>
+                          ) : null}
+                          <span className="inline-flex items-center gap-1.5 text-text-muted">
                             <Funnel size={14} aria-hidden />
                             {venda.funil ?? "—"}
-                          </div>
-                        </>
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}
                 </section>
 
-                {/* Venda: produto de interesse + valor + status na mesma linha; o pagamento abre embaixo */}
                 {venda ? (
-                  <section>
-                    <h3 className="mb-1 text-lg font-semibold">{t("Venda")}</h3>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
-                      <span className="min-w-0 flex-1 truncate">
+                  <section
+                    className="rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
+                    data-testid="secao-venda"
+                  >
+                    <h3 className="mb-2 text-base font-semibold">{t("Venda")}</h3>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
+                      <span className="min-w-0 basis-full truncate sm:flex-1 sm:basis-auto">
                         {venda.product_name || venda.name || t("Produto de interesse")}
                       </span>
-                      <span className="font-semibold tabular-nums">
+                      <span className="text-base font-semibold tabular-nums">
                         {formatMoney(venda.amount_cents, venda.currency)}
                       </span>
                       {podeEditar && a.lead_id ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
+                        <MenuDeOpcoes
+                          alinhar="end"
+                          gatilho={
+                            <Tag
                               data-testid="status-da-venda"
-                              className="rounded-lg"
+                              cor={COR_DA_VENDA[venda.status] ?? "cinza"}
+                              editavel
                             >
-                              <Badge
-                                variant={VARIANTE_DA_VENDA[venda.status] ?? "neutral"}
-                                className="cursor-pointer gap-1 rounded-lg"
-                              >
-                                {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
-                                <PencilSimple size={11} aria-hidden />
-                              </Badge>
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-56 p-1.5">
-                            {(
-                              [
-                                ["comprometida", "Comprometida"],
-                                ["concluida", "Paga"],
-                                ["cancelada", "Não comprou"],
-                              ] as const
-                            ).map(([novo, rotulo]) => (
-                              <button
-                                key={novo}
-                                type="button"
-                                disabled={mudarVenda.isPending || venda.status === novo}
-                                onClick={() =>
-                                  novo === "concluida"
-                                    ? pedirPagamentoDaOportunidade(a.lead_id!)
-                                    : mudarVenda.mutate(novo)
-                                }
-                                className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm hover:bg-secondary disabled:opacity-50"
-                              >
-                                {t(rotulo)}
-                              </button>
-                            ))}
-                          </PopoverContent>
-                        </Popover>
+                              {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
+                            </Tag>
+                          }
+                          opcoes={(
+                            [
+                              ["comprometida", "Comprometida"],
+                              ["concluida", "Paga"],
+                              ["cancelada", "Não comprou"],
+                            ] as const
+                          ).map(([novo, rotulo]) => ({
+                            id: novo,
+                            rotulo: t(rotulo),
+                            desabilitado: mudarVenda.isPending || venda.status === novo,
+                            aoEscolher: () =>
+                              novo === "concluida"
+                                ? pedirPagamentoDaOportunidade(a.lead_id!)
+                                : mudarVenda.mutate(novo),
+                          }))}
+                        />
                       ) : (
-                        <Badge
-                          variant={VARIANTE_DA_VENDA[venda.status] ?? "neutral"}
-                          className="rounded-lg"
-                        >
+                        <Tag cor={COR_DA_VENDA[venda.status] ?? "cinza"}>
                           {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
-                        </Badge>
+                        </Tag>
                       )}
                     </div>
                     {venda.status === "concluida" ||
@@ -919,12 +880,9 @@ function PaginaExistente({
                                 <span className="tabular-nums">
                                   {formatMoney(p.amount_cents, venda.currency)}
                                 </span>
-                                <Badge
-                                  variant={p.status === "recebida" ? "success" : "warning"}
-                                  className="rounded-lg"
-                                >
+                                <Tag cor={p.status === "recebida" ? "verde" : "amarelo"}>
                                   {p.status === "recebida" ? t("Pago") : t("Comprometido")}
-                                </Badge>
+                                </Tag>
                               </li>
                             ))}
                           </ul>
@@ -964,6 +922,21 @@ function PaginaExistente({
             </div>
           </>
         )}
+
+        {perdendo ? (
+          <LoseLeadDialog
+            open
+            leadId={perdendo.leadId}
+            pipelineId={perdendo.funilId}
+            stageId={perdendo.etapaId}
+            onOpenChange={(aberto) => {
+              if (aberto) return;
+              setPerdendo(null);
+              recarregar();
+              void qc.invalidateQueries({ queryKey: ["clientes"] });
+            }}
+          />
+        ) : null}
 
         {trocandoCliente ? (
           <Dialog open onOpenChange={(o) => !o && setTrocandoCliente(false)}>
