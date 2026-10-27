@@ -35,7 +35,7 @@ const VENDIDAS = new Set([
 ]);
 
 /** A escolha de propriedades fica neste navegador (o calendário das Tarefas guarda na visualização). */
-function usePropriedades(): [IdDePropriedade[], (x: IdDePropriedade[]) => void] {
+export function usePropriedades(): [IdDePropriedade[], (x: IdDePropriedade[]) => void] {
   const [ids, setIds] = React.useState<IdDePropriedade[]>([...PROPRIEDADES_PADRAO]);
   React.useEffect(() => {
     try {
@@ -133,6 +133,47 @@ type PropsComEscolha = PropsDoPainel & {
   gravar: (x: IdDePropriedade[]) => void;
 };
 
+/** O botão "Propriedades": a lista de caixas para escolher o que aparece sob cada compromisso. */
+export function SeletorDePropriedades({
+  escolhidas,
+  gravar,
+}: {
+  escolhidas: IdDePropriedade[];
+  gravar: (x: IdDePropriedade[]) => void;
+}) {
+  const t = useT();
+  const tem = (id: IdDePropriedade) => escolhidas.includes(id);
+  const alternar = (id: IdDePropriedade) =>
+    gravar(
+      PROPRIEDADES_DO_COMPROMISSO.map((p) => p.id).filter((x) => (x === id ? !tem(id) : tem(x))),
+    );
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="escolher-propriedades"
+          className="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-medium whitespace-nowrap text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          <Gear size={13} aria-hidden />
+          {t("Propriedades")}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="max-h-80 w-64 overflow-y-auto p-1.5">
+        {PROPRIEDADES_DO_COMPROMISSO.map((p) => (
+          <label
+            key={p.id}
+            className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-secondary"
+          >
+            <input type="checkbox" checked={tem(p.id)} onChange={() => alternar(p.id)} />
+            {t(p.rotulo)}
+          </label>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function PainelComDetalhes(props: PropsComEscolha) {
   const nossos = props.compromissos.filter((c) => c.origem !== "google_sync");
   const consulta = useDetalhesDosCompromissos(
@@ -160,12 +201,6 @@ function PainelVisual({
   carregando?: boolean;
 }) {
   const t = useT();
-  const tem = (id: IdDePropriedade) => escolhidas.includes(id);
-  const alternar = (id: IdDePropriedade) =>
-    gravar(
-      PROPRIEDADES_DO_COMPROMISSO.map((p) => p.id).filter((x) => (x === id ? !tem(id) : tem(x))),
-    );
-
   return (
     <section
       data-testid="painel-do-dia"
@@ -178,29 +213,7 @@ function PainelVisual({
           {rotuloDoDia}
         </h3>
         <div className="flex items-center justify-between gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                data-testid="escolher-propriedades"
-                className="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-medium whitespace-nowrap text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <Gear size={13} aria-hidden />
-                {t("Propriedades")}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="max-h-80 w-64 overflow-y-auto p-1.5">
-              {PROPRIEDADES_DO_COMPROMISSO.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-secondary"
-                >
-                  <input type="checkbox" checked={tem(p.id)} onChange={() => alternar(p.id)} />
-                  {t(p.rotulo)}
-                </label>
-              ))}
-            </PopoverContent>
-          </Popover>
+          <SeletorDePropriedades escolhidas={escolhidas} gravar={gravar} />
           {onNovo ? (
             <button
               type="button"
@@ -270,7 +283,7 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   );
 }
 
-function Propriedades({
+export function Propriedades({
   c,
   d,
   carregando,
@@ -278,7 +291,10 @@ function Propriedades({
   pessoas,
   fuso,
   tag,
+  soTexto = false,
 }: {
+  /** Dentro de um bloco clicável (visão Dia): nada de link nem botão aninhado, só o texto. */
+  soTexto?: boolean;
   c: Agendamento;
   d: DetalheDoCompromisso | undefined;
   carregando: boolean;
@@ -362,9 +378,13 @@ function Propriedades({
       "link_reuniao",
       "Reunião",
       d.link_reuniao ? (
-        <a href={d.link_reuniao} target="_blank" rel="noopener noreferrer" className={botao}>
-          {t("Abrir link")}
-        </a>
+        soTexto ? (
+          <span className="truncate">{d.link_reuniao}</span>
+        ) : (
+          <a href={d.link_reuniao} target="_blank" rel="noopener noreferrer" className={botao}>
+            {t("Abrir link")}
+          </a>
+        )
       ) : (
         vazio
       ),
@@ -388,9 +408,13 @@ function Propriedades({
       "ligar",
       "Telefone",
       d.telefone ? (
-        <a href={`tel:${d.telefone}`} className={botao}>
-          {t("Ligar")}
-        </a>
+        soTexto ? (
+          <span>{d.telefone}</span>
+        ) : (
+          <a href={`tel:${d.telefone}`} className={botao}>
+            {t("Ligar")}
+          </a>
+        )
       ) : (
         vazio
       ),
@@ -400,9 +424,13 @@ function Propriedades({
       "conversa",
       "Conversa",
       d.conversa_id ? (
-        <Link href={`/app/inbox?id=${d.conversa_id}`} className={botao}>
-          {t("Abrir no Inbox")}
-        </Link>
+        soTexto ? (
+          <span>{t("Conversa no Inbox")}</span>
+        ) : (
+          <Link href={`/app/inbox?id=${d.conversa_id}`} className={botao}>
+            {t("Abrir no Inbox")}
+          </Link>
+        )
       ) : (
         vazio
       ),
