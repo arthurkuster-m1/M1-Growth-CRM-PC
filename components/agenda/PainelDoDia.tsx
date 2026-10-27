@@ -27,6 +27,12 @@ import { corDaTrilha, fundoDaTrilha } from "./paleta";
 import type { Agendamento, Pessoa } from "./tipos";
 
 const CHAVE = "m1.agenda.propriedades";
+const VENDIDAS = new Set([
+  "comprometida",
+  "concluida",
+  "recorrencia_ativa",
+  "recorrencia_encerrada",
+]);
 
 /** A escolha de propriedades fica neste navegador (o calendário das Tarefas guarda na visualização). */
 function usePropriedades(): [IdDePropriedade[], (x: IdDePropriedade[]) => void] {
@@ -63,6 +69,12 @@ const COR_DA_VENDA: Record<string, string> = {
   concluida: "border-green-500/60 bg-green-500/10 text-green-700 dark:text-green-300",
   cancelada: "border-gray-400/70 bg-gray-500/10 text-muted-foreground",
 };
+
+/** A categoria é vocabulário FIXO do produto (não nome dado pelo operador): só ela passa por `t()`. */
+function rotuloDaCategoria(categoria: string, t: (s: string) => string): string {
+  const conhecido = ROTULO_DA_CATEGORIA[categoria];
+  return conhecido ? t(conhecido) : categoria;
+}
 
 function Etiqueta({ children, classe }: { children: React.ReactNode; classe?: string }) {
   return (
@@ -343,11 +355,7 @@ function Propriedades({
     add(
       "categoria",
       "Categoria",
-      d.tipo ? (
-        <Etiqueta>{t(ROTULO_DA_CATEGORIA[d.tipo.categoria] ?? d.tipo.categoria)}</Etiqueta>
-      ) : (
-        vazio
-      ),
+      d.tipo ? <Etiqueta>{rotuloDaCategoria(d.tipo.categoria, t)}</Etiqueta> : vazio,
     );
     add("observacoes", "Observações", d.observacoes ?? vazio);
     add(
@@ -416,9 +424,16 @@ function Propriedades({
     add(
       "resultado",
       "Resultado",
-      c.situacao === "completed" || c.situacao === "no_show" ? (
+      c.situacao === "no_show" ? (
         <>
-          {c.situacao === "completed" ? t("Compareceu") : t("Faltou")}
+          {t("Não compareceu")}
+          {d.resultado_registrado_em ? ` · ${diaHora(d.resultado_registrado_em, fuso, tag)}` : ""}
+        </>
+      ) : c.situacao === "completed" ? (
+        <>
+          {d.venda && VENDIDAS.has(d.venda.status)
+            ? t("Compareceu e vendeu")
+            : t("Compareceu e não vendeu")}
           {d.resultado_registrado_em ? ` · ${diaHora(d.resultado_registrado_em, fuso, tag)}` : ""}
         </>
       ) : (

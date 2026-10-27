@@ -168,7 +168,20 @@ function dadoDaTabela(tabela: string): unknown {
 function cliente(): SupabaseClient {
   const leitura = (tabela: string) => {
     const cadeia: Record<string, unknown> = {};
-    for (const m of ["eq", "neq", "in", "is", "not", "or", "gte", "lte", "lt", "gt", "order", "limit"]) {
+    for (const m of [
+      "eq",
+      "neq",
+      "in",
+      "is",
+      "not",
+      "or",
+      "gte",
+      "lte",
+      "lt",
+      "gt",
+      "order",
+      "limit",
+    ]) {
       cadeia[m] = () => cadeia;
     }
     const resposta = () => ({ data: dadoDaTabela(tabela), error: null });
@@ -210,9 +223,13 @@ function cliente(): SupabaseClient {
     }),
     rpc: async (fn: string, args: Linha) => {
       banco.rpc.push({ fn, args });
-      if(fn==="fn_appointment_change") {
-        expect(args.p_org).toBe(ORG);expect(args.p_id).toBe(AGENDAMENTO);
-        return {data:{...banco.agendamento,...args.p_patch as Linha,revision:2},error:null};
+      if (fn === "fn_appointment_change") {
+        expect(args.p_org).toBe(ORG);
+        expect(args.p_id).toBe(AGENDAMENTO);
+        return {
+          data: { ...banco.agendamento, ...(args.p_patch as Linha), revision: 2 },
+          error: null,
+        };
       }
       return { data: null, error: null };
     },
@@ -321,11 +338,15 @@ describe("a agenda grava na timeline", () => {
     const TOKEN_ID = "99999999-9999-4999-8999-999999999999";
     const token = { type: "api_token" as const, id: TOKEN_ID };
 
-    await marcarAgendamentoHandler(cliente(), { ...ctx, actor: token }, {
-      event_type_id: TIPO,
-      starts_at: HORARIO,
-      contact_id: CONTATO,
-    });
+    await marcarAgendamentoHandler(
+      cliente(),
+      { ...ctx, actor: token },
+      {
+        event_type_id: TIPO,
+        starts_at: HORARIO,
+        contact_id: CONTATO,
+      },
+    );
 
     const gravado = banco.inserido["calendar_appointments"]?.[0];
     expect(
@@ -395,14 +416,29 @@ describe("a agenda grava na timeline", () => {
     ).toEqual(["appointment_cancelled"]);
   });
 
-  it("remarcar nasce como `appointment_rescheduled`, não como cancelamento seguido de marcação", async () => {
+  it("remarcar conta o antigo como remarcado e o novo como marcado — nunca como cancelamento", async () => {
     horarioOfertado = OUTRO_HORARIO;
     await alterarAgendamentoHandler(cliente(), ctx, { id: AGENDAMENTO, starts_at: OUTRO_HORARIO });
 
+    const tipos = atividades().map((l) => l.type);
     expect(
-      atividades().map((l) => l.type),
-      "remarcar contou outra história: a timeline diz que o cliente desistiu e voltou, quando ele só mudou de horário",
-    ).toEqual(["appointment_rescheduled"]);
+      tipos,
+      "remarcar virou cancelamento: a timeline diria que o cliente desistiu, e ele só mudou de horário",
+    ).not.toContain("appointment_cancelled");
+    // Remarcar cria um compromisso NOVO (decisão de 27/10/2026): nasce marcado, e o antigo
+    // fica registrado como remarcado (e como "não compareceu" no status).
+    expect(tipos).toEqual(
+      expect.arrayContaining(["appointment_scheduled", "appointment_rescheduled"]),
+    );
+  });
+
+  it("remarcar cria o compromisso novo ligado ao antigo (`rescheduled_from_id`)", async () => {
+    horarioOfertado = OUTRO_HORARIO;
+    await alterarAgendamentoHandler(cliente(), ctx, { id: AGENDAMENTO, starts_at: OUTRO_HORARIO });
+
+    const novos = banco.inserido["calendar_appointments"] ?? [];
+    expect(novos).toHaveLength(1);
+    expect(novos[0]?.rescheduled_from_id).toBe(AGENDAMENTO);
   });
 });
 
@@ -489,9 +525,10 @@ describe("quando a gravação da timeline falha", () => {
 describe("marcar grava local e observação neste compromisso", () => {
   function linhaDoCompromisso(): Linha {
     const linhas = banco.inserido["calendar_appointments"] ?? [];
-    expect(linhas, "o compromisso nem chegou a nascer — a sonda está no caminho errado").toHaveLength(
-      1,
-    );
+    expect(
+      linhas,
+      "o compromisso nem chegou a nascer — a sonda está no caminho errado",
+    ).toHaveLength(1);
     return linhas[0]!;
   }
 

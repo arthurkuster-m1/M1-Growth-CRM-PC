@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { concluirCompromissosDaVenda } from "@/lib/agenda/concluir-compromissos-da-venda";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -91,6 +92,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
         .eq("ref_id", leadId)
         .eq("status", "open")
         .like("title", "Cobrança:%");
+      // O pagamento entrou: quem pagou compareceu (a venda puxa o compromisso).
+      if (c.acao === "receber") await concluirCompromissosDaVenda(supabase, orgId, leadId);
     }
   }
   return ok({ id }, { requestId });

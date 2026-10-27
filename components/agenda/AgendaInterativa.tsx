@@ -179,7 +179,13 @@ export function AgendaInterativa({
   React.useEffect(() => {
     if (!otimista) return;
     const real = agendamentos.find((a) => a.id === otimista.id);
-    if (real && new Date(real.comeca).getTime() === new Date(otimista.comeca).getTime()) {
+    // Remarcar cria OUTRO compromisso e deixa o antigo como "não compareceu": o card antigo não vai
+    // chegar ao novo horário, então o otimista termina quando ele aparece como falta.
+    if (
+      real &&
+      (new Date(real.comeca).getTime() === new Date(otimista.comeca).getTime() ||
+        real.situacao === "no_show")
+    ) {
       setOtimista(null);
     }
   }, [agendamentos, otimista]);

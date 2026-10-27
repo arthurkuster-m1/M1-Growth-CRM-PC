@@ -139,7 +139,20 @@ function dadoDaTabela(tabela: string): unknown {
 function cliente(): SupabaseClient {
   const leitura = (tabela: string) => {
     const cadeia: Record<string, unknown> = {};
-    for (const m of ["eq", "neq", "in", "is", "not", "or", "gte", "lte", "lt", "gt", "order", "limit"]) {
+    for (const m of [
+      "eq",
+      "neq",
+      "in",
+      "is",
+      "not",
+      "or",
+      "gte",
+      "lte",
+      "lt",
+      "gt",
+      "order",
+      "limit",
+    ]) {
       cadeia[m] = () => cadeia;
     }
     const resposta = () => ({ data: dadoDaTabela(tabela), error: null });
@@ -192,7 +205,10 @@ function cliente(): SupabaseClient {
     }),
     rpc: async (fn: string, args: Linha) => {
       if (fn === "fn_appointment_change") {
-        return { data: { ...banco.agendamento, ...(args.p_patch as Linha), revision: 2 }, error: null };
+        return {
+          data: { ...banco.agendamento, ...(args.p_patch as Linha), revision: 2 },
+          error: null,
+        };
       }
       if (fn === "emit_event") {
         if (banco.recusaDoEmit) return { data: null, error: banco.recusaDoEmit };
@@ -296,13 +312,14 @@ describe("os quatro gatilhos de agenda levam o tipo de atendimento real", () => 
     ).toBe(NOME_DO_TIPO);
   });
 
-  it("appointment.rescheduled — remarcar também diz do que é o horário", async () => {
+  it("remarcar — o compromisso NOVO anuncia appointment.created com o tipo real, e o antigo não anuncia nada", async () => {
     horarioOfertado = OUTRO_HORARIO;
 
     await alterarAgendamentoHandler(cliente(), ctx, { id: AGENDAMENTO, starts_at: OUTRO_HORARIO });
 
+    // Um gatilho só: os dois (criado + remarcado) mandariam duas mensagens para o mesmo cliente.
     const { event_type, payload } = oGatilho();
-    expect(event_type).toBe("appointment.rescheduled");
+    expect(event_type).toBe("appointment.created");
     expect(
       payload.event_type_name,
       "a remarcação anuncia um nome genérico: quem quis avisar só a cliente de um tipo específico recebe uma regra que não dispara nunca",

@@ -13,10 +13,12 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import type { DetalheDoCompromisso } from "@/lib/agenda/propriedades-do-compromisso";
+import { ALVO_DE_VINCULO_DO_AGENDAMENTO } from "@/lib/agenda/tipos";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
+import { SELECAO_DA_OPORTUNIDADE, vendaDaOportunidade } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +58,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const contatosIds = idsDe("contact_id");
   const origemIds = idsDe("rescheduled_from_id");
 
-  const [tipos, contatos, leads, vendas, origens] = await Promise.all([
+  const [tipos, contatos, vinculos, origens] = await Promise.all([
     tiposIds.length
       ? supabase
           .from("calendar_event_types")
@@ -71,22 +73,15 @@ export async function GET(req: NextRequest): Promise<Response> {
           .eq("organization_id", orgId)
           .in("id", contatosIds)
       : { data: [] as Linha[] },
-    contatosIds.length
-      ? supabase
-          .from("crm_leads")
-          .select("contact_id, status, created_at, crm_pipelines(name), crm_stages(name)")
-          .eq("organization_id", orgId)
-          .in("contact_id", contatosIds)
-          .order("created_at", { ascending: false })
-      : { data: [] as Linha[] },
-    contatosIds.length
-      ? supabase
-          .from("crm_sales")
-          .select("contact_id, status, amount_cents, currency, created_at")
-          .eq("organization_id", orgId)
-          .in("contact_id", contatosIds)
-          .order("created_at", { ascending: false })
-      : { data: [] as Linha[] },
+    // A OPORTUNIDADE do compromisso é a que ele já tem ligada (o vínculo gravado na marcação),
+    // e a venda é a própria oportunidade vista pelo dinheiro (parcelas) — mesma conta das telas.
+    supabase
+      .from("crm_lead_links")
+      .select("lead_id, target_id, created_at")
+      .eq("organization_id", orgId)
+      .eq("target_kind", ALVO_DE_VINCULO_DO_AGENDAMENTO)
+      .in("target_id", ids.data)
+      .order("created_at", { ascending: true }),
     origemIds.length
       ? supabase
           .from("calendar_appointments")
@@ -95,6 +90,28 @@ export async function GET(req: NextRequest): Promise<Response> {
           .in("id", origemIds)
       : { data: [] as Linha[] },
   ]);
+
+  const leadPorCompromisso = new Map<string, string>();
+  for (const v of (vinculos.data ?? []) as Linha[]) {
+    const alvo = texto(v.target_id);
+    const lead = texto(v.lead_id);
+    // O vínculo mais antigo vale (a lista vem em ordem de criação).
+    if (alvo && lead && !leadPorCompromisso.has(alvo)) leadPorCompromisso.set(alvo, lead);
+  }
+  const leadIds = [...new Set(leadPorCompromisso.values())];
+  const { data: oportunidades } = leadIds.length
+    ? await supabase
+        .from("crm_leads")
+        .select(SELECAO_DA_OPORTUNIDADE)
+        .eq("organization_id", orgId)
+        .in("id", leadIds)
+    : { data: [] as Linha[] };
+  const vendaPorLead = new Map(
+    ((oportunidades ?? []) as unknown as Linha[]).map((o) => [
+      String(o.id),
+      vendaDaOportunidade(o),
+    ]),
+  );
 
   const por = (lista: unknown, chave: string) => {
     const mapa = new Map<string, Linha>();
@@ -108,26 +125,11 @@ export async function GET(req: NextRequest): Promise<Response> {
   const tipoPorId = por(tipos.data, "id");
   const contatoPorId = por(contatos.data, "id");
   const origemPorId = por(origens.data, "id");
-  // Entre os funis do cliente, o aberto mais recente tem preferência sobre o já fechado.
-  const leadDoContato = new Map<string, Linha>();
-  for (const l of (leads.data ?? []) as Linha[]) {
-    const k = texto(l.contact_id);
-    if (!k) continue;
-    const atual = leadDoContato.get(k);
-    if (!atual || (atual.status !== "open" && l.status === "open")) leadDoContato.set(k, l);
-  }
-  const vendaDoContato = por(vendas.data, "contact_id");
-  const nomeDe = (x: unknown): string | null => {
-    const obj = Array.isArray(x) ? x[0] : x;
-    return obj && typeof obj === "object" ? texto((obj as Linha).name) : null;
-  };
-
   const detalhes: DetalheDoCompromisso[] = linhas.map((l) => {
     const tipo = tipoPorId.get(texto(l.event_type_id) ?? "");
     const contatoId = texto(l.contact_id) ?? "";
     const contato = contatoPorId.get(contatoId);
-    const lead = leadDoContato.get(contatoId);
-    const venda = vendaDoContato.get(contatoId);
+    const venda = vendaPorLead.get(leadPorCompromisso.get(String(l.id)) ?? "");
     return {
       id: String(l.id),
       tipo: tipo
@@ -145,14 +147,10 @@ export async function GET(req: NextRequest): Promise<Response> {
       telefone: contato ? texto(contato.phone_number) : null,
       email: contato ? texto(contato.email) : null,
       conversa_id: texto(l.conversation_id),
-      funil: lead ? nomeDe(lead.crm_pipelines) : null,
-      etapa: lead ? nomeDe(lead.crm_stages) : null,
+      funil: venda?.funil ?? null,
+      etapa: venda?.etapa ?? null,
       venda: venda
-        ? {
-            status: String(venda.status),
-            valor_cents: Number(venda.amount_cents ?? 0),
-            moeda: texto(venda.currency) ?? "BRL",
-          }
+        ? { status: venda.status, valor_cents: venda.amount_cents, moeda: venda.currency }
         : null,
       resultado_registrado_em: texto(l.outcome_recorded_at),
       cancelado_em: texto(l.cancelled_at),
