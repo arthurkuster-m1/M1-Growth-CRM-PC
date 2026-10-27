@@ -38,6 +38,8 @@ export const preferenciasDaTabelaSchema = z
     visualizacao: z.enum(["tabela", "kanban", "calendario", "timeline", "galeria"]).optional(),
     /** Posição da aba "Todas" entre as abas salvas (menor = mais à esquerda). */
     posicao: z.number().finite().optional(),
+    /** A visualização de fábrica foi apagada: sai das abas (os dados continuam a um clique). */
+    oculta: z.boolean().optional(),
     /** Calendário: as propriedades que aparecem DENTRO de cada tarefa (ids de coluna, na ordem da tabela). */
     calendario: z
       .object({
