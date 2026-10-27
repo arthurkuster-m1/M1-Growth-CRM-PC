@@ -456,4 +456,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.15| Edite o título no topo de uma delas e salve                                              | O título muda nas duas páginas (e no compromisso)                                                                     |           |
 | 23.16| **Produtos e ticket médio** no celular                                                   | O produto ocupa a linha inteira e o valor e a lixeira ficam na linha de baixo; nada de texto espremido                |           |
 | 23.17| **Abrir a oportunidade** pelo relatório de atividades e pela captação                        | Clicar no nome da oportunidade (Atividades) ou em "Ver o lead no funil" (Captações) abre o popup por cima; fechar volta à tela |           |
+| 23.18| **Parcelas automáticas** na página da venda | Com valor preenchido, a parcela 1 já aparece (vencimento, valor, recebida); mudar o total ou a data refaz a tabela; editar uma parcela na mão para de refazer |           |
 

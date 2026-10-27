@@ -79,6 +79,13 @@ describe("página da venda × página da oportunidade", () => {
     );
   });
 
+  it("a parcela única já nasce gerada, com valor e vencimento, sem apertar nada", () => {
+    abrir("venda");
+    expect(screen.getByLabelText("Valor da parcela 1")).toHaveValue("12500,00");
+    expect(screen.getByLabelText("Vencimento da parcela 1")).toBeTruthy();
+    expect(screen.getByLabelText("Parcela recebida 1")).toBeTruthy();
+  });
+
   it("modo oportunidade continua com a página completa", () => {
     abrir("oportunidade");
     expect(screen.getByText("Cliente, funil e status")).toBeTruthy();
