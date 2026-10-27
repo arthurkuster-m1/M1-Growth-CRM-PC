@@ -78,7 +78,10 @@ export function SidebarContent({
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
   // O CRM não é mais um grupo com toggle: a página CRM (Clientes) vem solta, logo abaixo de Início,
   // e o que sobrou do grupo só é alcançado pelo ⌘K.
-  const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE && g.group.id !== "crm");
+  const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE && g.group.id !== "crm" && g.group.id !== "canais",
+  );
+  // Conexões é a última porta solta do menu (abaixo dos grupos); Webhooks vive dentro dela.
+  const temConexoes = todos.some(({ items }) => items.some((i) => i.href === "/app/connections"));
   const temCrm = todos.some(({ items }) => items.some((i) => i.href === "/app/clientes"));
   const rodape = todos.find((g) => g.group.id === GRUPO_NO_RODAPE)?.group.hub;
 
@@ -445,6 +448,40 @@ export function SidebarContent({
             </div>
           );
         })}
+        {temConexoes &&
+          (() => {
+            const href = "/app/connections";
+            const rotulo = t("Conexões");
+            const ativo = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <div className="space-y-0.5">
+                <Link
+                  href={href}
+                  title={collapsed ? rotulo : undefined}
+                  aria-current={ativo ? "page" : undefined}
+                  onClick={onNavigate}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                    ativo
+                      ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                      : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                    collapsed && "justify-center px-2",
+                  )}
+                >
+                  <PlugsConnected
+                    size={18}
+                    weight={ativo ? "fill" : "regular"}
+                    className={ativo ? "text-primary" : undefined}
+                    aria-hidden
+                  />
+                  {!collapsed && <span className="truncate">{rotulo}</span>}
+                  <ConnectionHealthDot
+                    className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
+                  />
+                </Link>
+              </div>
+            );
+          })()}
       </nav>
       <div className="border-t p-2">
         {rodape && (

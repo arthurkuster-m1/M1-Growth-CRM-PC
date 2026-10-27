@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  */
 const badgeVariants = cva(
   [
-    "inline-flex items-center gap-1 rounded-full border px-3 py-0.5",
+    "inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-0.5 whitespace-nowrap",
     "text-xs font-medium leading-5",
     "transition-colors duration-fast ease-out",
     "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2",
