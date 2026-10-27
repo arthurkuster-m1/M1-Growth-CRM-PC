@@ -804,7 +804,11 @@ export function DialogoDaVenda({
       />
     ) : null}
     <Dialog open onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6">
+      <DialogContent
+        // Venda/oportunidade existente abre só para ler: sem foco no título, que levantaria o teclado.
+        onOpenAutoFocus={venda ? (e) => e.preventDefault() : undefined}
+        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6"
+      >
         <div className="flex items-start justify-between gap-2 pr-8">
           <DialogTitle className="sr-only">
             {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
