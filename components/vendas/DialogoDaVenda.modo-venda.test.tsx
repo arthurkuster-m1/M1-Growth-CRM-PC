@@ -15,6 +15,15 @@ vi.mock("@/lib/api/client", () => ({
     delete: vi.fn(),
   },
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/app/clientes",
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock("@/hooks/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: { is_platform_admin: false }, activeOrg: { orgId: "org-1", role: "admin" } }),
+  usePermission: () => true,
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
 import { DialogoDaVenda } from "./DialogoDaVenda";
@@ -94,8 +103,29 @@ describe("página da venda × página da oportunidade", () => {
 
   it("modo oportunidade continua com a página completa", () => {
     abrir("oportunidade");
-    expect(screen.getByText("Cliente, funil e status")).toBeTruthy();
-    expect(screen.getByText("Detalhes da oportunidade")).toBeTruthy();
+    // a ordem pedida: título, cliente, funil, responsável, compromissos, tarefas, previsão…
+    const ordem = [
+      "Funil e status",
+      "Responsável",
+      "Compromissos",
+      "Tarefas",
+      "Previsão de fechamento",
+      "Produtos e serviços",
+      "Próximos passos",
+      "Comentários",
+      "Detalhes da oportunidade",
+    ].map((t) => screen.getByText(t));
+    for (let i = 1; i < ordem.length; i++) {
+      expect(
+        ordem[i - 1]!.compareDocumentPosition(ordem[i]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    expect(screen.getByTestId("cliente-da-oportunidade")).toBeTruthy();
+    expect(screen.getByTestId("numeros-da-oportunidade")).toBeTruthy();
+    // lembrete e lixeira no cabeçalho; descrição e comentários são um bloco só
+    expect(screen.getByLabelText("Lembrete")).toBeTruthy();
+    expect(screen.getByLabelText("Apagar oportunidade")).toBeTruthy();
+    expect(screen.queryByText("Descrição da oportunidade")).toBeNull();
     // o título editável fica em cima, nas duas páginas
     expect(screen.getByLabelText("Título da oportunidade")).toBeTruthy();
   });
