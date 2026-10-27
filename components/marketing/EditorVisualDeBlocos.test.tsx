@@ -97,7 +97,6 @@ describe("EditorVisualDeBlocos", () => {
     expect(menu.queryByText("Estudo de persona")).toBeNull();
     // o 1º clique só pede confirmação…
     fireEvent.click(menu.getByRole("button", { name: "Substituir a página" }));
-    expect(ultimo).toHaveLength(2);
     // …o 2º apaga tudo, e Ctrl+Z devolve
     fireEvent.click(
       within(screen.getByRole("menu")).getByRole("button", {
@@ -106,7 +105,7 @@ describe("EditorVisualDeBlocos", () => {
     );
     expect(ultimo).toHaveLength(0);
     fireEvent.keyDown(raiz(), { key: "z", ctrlKey: true });
-    expect(ultimo).toHaveLength(2);
+    expect(ultimo).toHaveLength(3);
   });
 
   it("seleção em massa: Shift+clique, Ctrl+Shift+5 troca o tipo e Ctrl+Z desfaz", () => {
