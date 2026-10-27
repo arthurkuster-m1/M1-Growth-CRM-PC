@@ -348,3 +348,29 @@ describe("a visão escolhida é lembrada ao voltar ou atualizar a página", () =
     expect(screen.getByTestId("grade-da-agenda").dataset.visao).not.toBe("ano");
   });
 });
+
+describe("arrastar para o lado troca o período (celular)", () => {
+  const arrastar = (de: number, ate: number) => {
+    const area = screen.getByTestId("area-do-gesto-da-agenda");
+    fireEvent.touchStart(area, { touches: [{ clientX: de, clientY: 200 }] });
+    fireEvent.touchEnd(area, { changedTouches: [{ clientX: ate, clientY: 205 }] });
+  };
+  const periodo = () => screen.getByTestId("periodo").textContent;
+
+  it("direita→esquerda avança e esquerda→direita volta, como as setas", () => {
+    montar();
+    const inicial = periodo();
+    arrastar(300, 100);
+    const depois = periodo();
+    expect(depois).not.toBe(inicial);
+    arrastar(100, 300);
+    expect(periodo()).toBe(inicial);
+  });
+
+  it("um toque curto não troca o período", () => {
+    montar();
+    const inicial = periodo();
+    arrastar(200, 190);
+    expect(periodo()).toBe(inicial);
+  });
+});

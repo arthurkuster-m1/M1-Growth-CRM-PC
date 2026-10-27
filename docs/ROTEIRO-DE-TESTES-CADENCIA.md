@@ -448,3 +448,8 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.12| **Celular**: seção Oportunidade e Venda do compromisso                                  | Tudo cabe na largura da tela (nada some pelo lado direito)                                                            |           |
 | 23.13| **Compromisso › Oportunidade › Abrir oportunidade**                                    | Abre o **popup da oportunidade por cima** do compromisso (sem trocar de página); ao fechar, volta ao compromisso no mesmo ponto |           |
 
+| 21.17 | **Celular**: arraste o dedo da **direita para a esquerda** sobre a grade           | Vai para o **próximo** período (Dia, 3 dias, Semana ou Mês, conforme a visão), como a seta ">"                  |           |
+| 21.18 | **Celular**: arraste da **esquerda para a direita**                                 | Volta ao período **anterior**, como a seta "<"                                                                    |           |
+| 21.19 | Role a grade para cima/baixo (movimento vertical)                                   | **Não** troca o período                                                                                           |           |
+| 21.20 | Arraste um **compromisso** para remarcar (segurando o cartão)                       | Continua remarcando; **não** troca o período                                                                      |           |
+

@@ -21,6 +21,7 @@ import { AgendaInterativa } from "@/components/agenda/AgendaInterativa";
 import { FiltroDePessoas } from "@/components/agenda/FiltroDePessoas";
 import type { Agendamento, VisaoDaAgenda } from "@/components/agenda/tipos";
 import { ancoraLocalDoDia } from "@/lib/agenda/semana-semente";
+import { direcaoDoGesto, gestoPodeComecarEm } from "@/lib/agenda/gesto-de-troca";
 import { recorteDaGrade as recorteDaGradeDe } from "@/lib/agenda/recorte-da-grade";
 import { Button } from "@/components/ui/button";
 import {
@@ -270,6 +271,7 @@ export function AgendaClient({
    * `ancoraLocalDoDia` transforma a data numa `Date` local ao meio-dia — a doze
    * horas de qualquer borda de horário de verão.
    */
+  const gestoDoToque = React.useRef<{ x: number; y: number } | null>(null);
   const [ancora, setAncora] = React.useState(() => ancoraLocalDoDia(hojeNaOrganizacao));
 
   // AS PESSOAS SÃO REAIS, e vêm da lista MÍNIMA da agenda — `/api/v1/agenda/pessoas`
@@ -590,29 +592,52 @@ export function AgendaClient({
           remarca. Toda a fiação (a consulta de horários da janela desenhada, a
           proposta de remarcação, o otimismo com volta atrás) mora em
           `AgendaInterativa`; aqui fica só o que esta tela já sabia. */}
-      <AgendaInterativa
-        fuso={fusoDaAgenda}
-        visao={visao}
-        ancora={ancora}
-        agora={new Date()}
-        pessoas={pessoas}
-        agendamentos={agendamentosDaGrade}
-        recorte={recorteDaGrade}
-        tipos={tiposIniciais.map((t) => ({ id: t.id, nome: t.nome, duracaoMin: t.duracaoMin }))}
-        tipo={tipo ? { id: tipo.id, duracaoMin: tipo.duracaoMin } : null}
-        onEscolherTipo={escolherTipo}
-        // SEGUNDA PORTA: o clique num bloco livre da grade. Sem `onMarcarEm`, a
-        // `AgendaInterativa` não monta a interação, e a grade volta a ser o que
-        // ela é para quem só lê — uma leitura, sem bloco clicável.
-        onMarcarEm={
-          podeMarcar
-            ? (instante) => {
-                // Clicar num bloco livre abre o NOVO compromisso já nesse horário.
-                abrirNovoCompromisso({ startsAt: instante, eventTypeId: tipo?.id ?? null });
-              }
-            : undefined
-        }
-        /* Tocar num card abre o detalhe. A prop já atravessava `AgendaInterativa`
+      {/* No celular, arrastar para o lado troca o período (direita→esquerda avança, esquerda→direita
+          volta), como as setas — vale para Dia, 3 dias, Semana e Mês. */}
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        data-testid="area-do-gesto-da-agenda"
+        onTouchStart={(e) => {
+          gestoDoToque.current =
+            e.touches.length === 1 && gestoPodeComecarEm(e.target)
+              ? { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY }
+              : null;
+        }}
+        onTouchEnd={(e) => {
+          const inicio = gestoDoToque.current;
+          gestoDoToque.current = null;
+          const fim = e.changedTouches[0];
+          if (!inicio || !fim) return;
+          const direcao = direcaoDoGesto(fim.clientX - inicio.x, fim.clientY - inicio.y);
+          if (direcao !== 0) setAncora((d) => addDays(d, direcao * passo));
+        }}
+        onTouchCancel={() => {
+          gestoDoToque.current = null;
+        }}
+      >
+        <AgendaInterativa
+          fuso={fusoDaAgenda}
+          visao={visao}
+          ancora={ancora}
+          agora={new Date()}
+          pessoas={pessoas}
+          agendamentos={agendamentosDaGrade}
+          recorte={recorteDaGrade}
+          tipos={tiposIniciais.map((t) => ({ id: t.id, nome: t.nome, duracaoMin: t.duracaoMin }))}
+          tipo={tipo ? { id: tipo.id, duracaoMin: tipo.duracaoMin } : null}
+          onEscolherTipo={escolherTipo}
+          // SEGUNDA PORTA: o clique num bloco livre da grade. Sem `onMarcarEm`, a
+          // `AgendaInterativa` não monta a interação, e a grade volta a ser o que
+          // ela é para quem só lê — uma leitura, sem bloco clicável.
+          onMarcarEm={
+            podeMarcar
+              ? (instante) => {
+                  // Clicar num bloco livre abre o NOVO compromisso já nesse horário.
+                  abrirNovoCompromisso({ startsAt: instante, eventTypeId: tipo?.id ?? null });
+                }
+              : undefined
+          }
+          /* Tocar num card abre o detalhe. A prop já atravessava `AgendaInterativa`
            e `GradeDaAgenda` e chegava `undefined` aqui: o toque não fazia nada, e
            o detalhe só abria por `?compromisso=`, que apenas o Histórico e o Radar
            linkavam. Reusa o MESMO parâmetro que `EntradaDaAgenda` já lê — e `push`,
@@ -621,14 +646,15 @@ export function AgendaClient({
            sem ele, abrir um card trocava a URL por só `?compromisso=`, o fecho
            não achava tipo nenhum para manter e o F5 seguinte voltava ao
            primeiro (#1657). */
-        onAbrirAgendamento={(id) => {
-          const parametros = new URLSearchParams();
-          if (tipo) parametros.set("tipo", tipo.id);
-          parametros.set("compromisso", id);
-          router.push(`/app/agenda?${parametros.toString()}`);
-        }}
-        className="min-h-0 flex-1"
-      />
+          onAbrirAgendamento={(id) => {
+            const parametros = new URLSearchParams();
+            if (tipo) parametros.set("tipo", tipo.id);
+            parametros.set("compromisso", id);
+            router.push(`/app/agenda?${parametros.toString()}`);
+          }}
+          className="min-h-0 flex-1"
+        />
+      </div>
 
       <CartaoDaConexaoGoogle
         configurado={googleConfigurado}
