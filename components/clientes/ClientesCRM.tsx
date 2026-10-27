@@ -213,13 +213,35 @@ const SO_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "parcelas",
   "pago",
   "previsto",
-  "primeiro-pagamento",
-  "ultimo-pagamento",
-  "proximo-pagamento",
   "posicionamento",
   "resultado-rapido",
   "tentativas",
   "cadencia",
+  "sem-resposta",
+  "op-tempo-na-etapa",
+  "op-ultima-atividade",
+  "op-atribuido-em",
+  "op-criado-por",
+  "op-retomada",
+  "op-utm-fonte",
+  "op-utm-meio",
+  "op-utm-campanha",
+  "op-utm-termo",
+  "op-utm-conteudo",
+  "op-etapa-da-perda",
+  "op-motivo-da-perda",
+  "op-dias-ate-perder",
+  "op-interesse",
+  "op-tags",
+]);
+/** Saíram da tabela de Oportunidades (ficam em Vendas ou em Clientes). */
+const FORA_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
+  "funis",
+  "comentarios",
+  "status-venda",
+  "forma-de-pagamento",
+  "parcelas",
+  "email",
 ]);
 /** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
 const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
@@ -242,6 +264,8 @@ const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
   "vendas-ativas",
   "tags",
   "atividade",
+  "ultimo-pagamento",
+  "proximo-pagamento",
 ]);
 const TIPOS_DO_CRM = ["tabela", "kanban"] as const;
 
@@ -841,6 +865,20 @@ export function ClientesCRM({
     .filter((e) => (!funilAtual || e.pipeline_id === funilAtual.id) && funilPermitido(e.pipeline_id))
     .map((e) => ({ id: e.id, rotulo: e.name, cor: corDaEtapa(e), pipeline_id: e.pipeline_id }));
 
+  /** "3d" ou "5h": há quanto tempo (relógio fixado na montagem da tela). */
+  const tempoDesde = (iso: string) => {
+    const h = Math.max(0, Math.floor((agora - new Date(iso).getTime()) / 3_600_000));
+    return h < 48 ? `${h}h` : `${Math.floor(h / 24)}d`;
+  };
+  /** Dias entre a criação e a perda (só para oportunidade perdida). */
+  const diasAtePerder = (l: Linha): number | null => {
+    const p = l.participacao;
+    if (!p || p.status !== "lost" || !p.fechado_em) return null;
+    return Math.max(
+      0,
+      Math.round((new Date(p.fechado_em).getTime() - new Date(p.criado_em).getTime()) / 86_400_000),
+    );
+  };
   const colunas: ColunaDoMotor<Linha>[] = [
     {
       id: "nome",
@@ -937,7 +975,7 @@ export function ClientesCRM({
     },
     {
       id: "etapa",
-      titulo: t("Etapa"),
+      titulo: ehOportunidades ? t("Status da oportunidade") : t("Etapa"),
       icone: <Kanban size={14} aria-hidden />,
       largura: 250,
       celula: (l) => {
@@ -979,7 +1017,8 @@ export function ClientesCRM({
         return empilhado(
           lista.map(({ venda, p }, i) => {
             const id = venda ? venda.campanha_id : p.campanha_id;
-            const nome = id ? campanhasPorId.get(id) : null;
+            // Campanha e funil andam juntos: sem campanha, aparece o nome do funil.
+            const nome = (id ? campanhasPorId.get(id) : null) ?? funisPorId.get(p.funil_id)?.name ?? null;
             return (
               <SeletorDeOpcao
                 key={venda?.id ?? `${p.lead_id}-${i}`}
@@ -1484,7 +1523,7 @@ export function ClientesCRM({
     },
     {
       id: "previsto",
-      titulo: t("Valor previsto"),
+      titulo: t("Valor comprometido"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 140,
       padrao: ehOportunidades,
@@ -1497,14 +1536,31 @@ export function ClientesCRM({
       ),
     },
     {
-      id: "primeiro-pagamento",
-      titulo: t("Primeiro pagamento"),
+      id: "op-tags",
+      titulo: t("Tags do cliente"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 160,
+      largura: 220,
+      padrao: false,
+      celula: (l) =>
+        l.tags.length > 0 ? (
+          <span className="block truncate px-2 text-sm" title={l.tags.join(", ")}>
+            {l.tags.join(", ")}
+          </span>
+        ) : (
+          semValor
+        ),
+    },
+    {
+      id: "op-interesse",
+      titulo: t("Valor em interesse"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
       padrao: false,
       celula: (l) => (
-        <span className="block px-2 text-sm">
-          {dia(l.participacao?.primeiro_pagamento ?? null) || "—"}
+        <span className="block px-2 text-sm tabular-nums">
+          {l.participacao && l.participacao.interesse_cents > 0
+            ? moeda(l.participacao.interesse_cents)
+            : "—"}
         </span>
       ),
     },
@@ -1514,11 +1570,7 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 160,
       padrao: false,
-      celula: (l) => (
-        <span className="block px-2 text-sm">
-          {dia(l.participacao?.ultimo_pagamento ?? null) || "—"}
-        </span>
-      ),
+      celula: (l) => <span className="block px-2 text-sm">{dia(l.ultima_compra) || "—"}</span>,
     },
     {
       id: "proximo-pagamento",
@@ -1526,11 +1578,143 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 160,
       padrao: false,
+      celula: (l) => <span className="block px-2 text-sm">{dia(l.proximo_vencimento) || "—"}</span>,
+    },
+    {
+      id: "sem-resposta",
+      titulo: t("Sem resposta há (horas)"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p || p.status !== "open") return semValor;
+        const h = Math.max(
+          0,
+          Math.floor((agora - new Date(p.ultima_atividade ?? p.criado_em).getTime()) / 3_600_000),
+        );
+        return <span className="block px-2 text-sm tabular-nums">{h}h</span>;
+      },
+    },
+    {
+      id: "op-tempo-na-etapa",
+      titulo: t("Tempo na etapa"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      padrao: false,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p?.entrou_na_etapa_em) return semValor;
+        return <span className="block px-2 text-sm tabular-nums">{tempoDesde(p.entrou_na_etapa_em)}</span>;
+      },
+    },
+    {
+      id: "op-ultima-atividade",
+      titulo: t("Última atividade"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      padrao: false,
       celula: (l) => (
-        <span className="block px-2 text-sm">
-          {dia(l.participacao?.proximo_pagamento ?? null) || "—"}
+        <span className="block truncate px-2 text-sm">
+          {dia(l.participacao?.ultima_atividade ?? null) || "—"}
         </span>
       ),
+    },
+    {
+      id: "op-atribuido-em",
+      titulo: t("Atribuída em"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {dia(l.participacao?.atribuido_em ?? null) || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "op-criado-por",
+      titulo: t("Criada por"),
+      icone: <Users size={14} aria-hidden />,
+      largura: 180,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {nomeDoMembro(l.participacao?.criado_por_id ?? null) ?? t("Automático")}
+        </span>
+      ),
+    },
+    {
+      id: "op-retomada",
+      titulo: t("Retomada de"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      padrao: false,
+      celula: (l) => {
+        const p = l.participacao;
+        if (!p?.retomada_de_id) return semValor;
+        return (
+          <span className="block truncate px-2 text-sm" title={p.retomada_de_titulo ?? ""}>
+            {p.retomada_de_titulo ?? t("Sim")}
+          </span>
+        );
+      },
+    },
+    ...(
+      [
+        ["op-utm-fonte", "UTM · fonte", "fonte"],
+        ["op-utm-meio", "UTM · meio", "meio"],
+        ["op-utm-campanha", "UTM · campanha", "campanha"],
+        ["op-utm-termo", "UTM · termo", "termo"],
+        ["op-utm-conteudo", "UTM · conteúdo", "conteudo"],
+      ] as const
+    ).map(([id, titulo, chave]) => ({
+      id,
+      titulo: t(titulo),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 160,
+      padrao: false,
+      celula: (l: Linha) => (
+        <span className="block truncate px-2 text-sm">{l.participacao?.utm?.[chave] ?? "—"}</span>
+      ),
+    })),
+    {
+      id: "op-etapa-da-perda",
+      titulo: t("Etapa de onde perdeu"),
+      icone: <Kanban size={14} aria-hidden />,
+      largura: 190,
+      padrao: false,
+      celula: (l) => {
+        const id = l.participacao?.etapa_da_perda_id;
+        return id ? (
+          <span className="block truncate px-2 text-sm">{etapasPorId.get(id)?.name ?? "—"}</span>
+        ) : (
+          semValor
+        );
+      },
+    },
+    {
+      id: "op-motivo-da-perda",
+      titulo: t("Motivo da perda"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 220,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm" title={l.participacao?.motivo_da_perda ?? ""}>
+          {l.participacao?.motivo_da_perda ?? "—"}
+        </span>
+      ),
+    },
+    {
+      id: "op-dias-ate-perder",
+      titulo: t("Dias até perder"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 150,
+      padrao: false,
+      celula: (l) => {
+        const d = diasAtePerder(l);
+        return d === null ? semValor : <span className="block px-2 text-sm tabular-nums">{d}</span>;
+      },
     },
     {
       id: "posicionamento",
@@ -1663,7 +1847,7 @@ export function ClientesCRM({
     },
     {
       id: "primeira-compra",
-      titulo: t("Primeira compra"),
+      titulo: t("Primeiro pagamento"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 160,
       celula: (l) => (
@@ -2007,9 +2191,101 @@ export function ClientesCRM({
     },
     {
       id: "previsto",
-      titulo: t("Valor previsto"),
+      titulo: t("Valor comprometido"),
       tipo: "numero",
       valorDe: (l) => (l.participacao?.previsto_cents ?? 0) / 100,
+    },
+    { id: "op-tags", titulo: t("Tags do cliente"), tipo: "multi", valorDe: (l) => l.tags },
+    {
+      id: "op-interesse",
+      titulo: t("Valor em interesse"),
+      tipo: "numero",
+      valorDe: (l) => (l.participacao?.interesse_cents ?? 0) / 100,
+    },
+    {
+      id: "ultimo-pagamento",
+      titulo: t("Último pagamento"),
+      tipo: "data",
+      valorDe: (l) => l.ultima_compra?.slice(0, 10) ?? null,
+    },
+    {
+      id: "proximo-pagamento",
+      titulo: t("Próximo pagamento"),
+      tipo: "data",
+      valorDe: (l) => l.proximo_vencimento?.slice(0, 10) ?? null,
+    },
+    {
+      id: "op-tempo-na-etapa",
+      titulo: t("Tempo na etapa (horas)"),
+      tipo: "numero",
+      valorDe: (l) =>
+        l.participacao?.entrou_na_etapa_em
+          ? Math.max(
+              0,
+              Math.floor((agora - new Date(l.participacao.entrou_na_etapa_em).getTime()) / 3_600_000),
+            )
+          : null,
+    },
+    {
+      id: "op-ultima-atividade",
+      titulo: t("Última atividade"),
+      tipo: "data",
+      valorDe: (l) => l.participacao?.ultima_atividade?.slice(0, 10) ?? null,
+    },
+    {
+      id: "op-atribuido-em",
+      titulo: t("Atribuída em"),
+      tipo: "data",
+      valorDe: (l) => l.participacao?.atribuido_em?.slice(0, 10) ?? null,
+    },
+    {
+      id: "op-criado-por",
+      titulo: t("Criada por"),
+      tipo: "opcao",
+      valorDe: (l) => l.participacao?.criado_por_id ?? undefined,
+      opcoes: membros.map((m) => ({ id: m.id, rotulo: m.nome, cor: "gray" as CorDaOpcao })),
+      rotuloDoValor: (v) => nomeDoMembro(v) ?? v,
+    },
+    {
+      id: "op-retomada",
+      titulo: t("É retomada de outra oportunidade"),
+      tipo: "caixa",
+      valorDe: (l) => Boolean(l.participacao?.retomada_de_id),
+      rotuloDoValor: (v) => (v === "1" ? t("Sim") : t("Não")),
+    },
+    ...(
+      [
+        ["op-utm-fonte", "UTM · fonte", "fonte"],
+        ["op-utm-meio", "UTM · meio", "meio"],
+        ["op-utm-campanha", "UTM · campanha", "campanha"],
+        ["op-utm-termo", "UTM · termo", "termo"],
+        ["op-utm-conteudo", "UTM · conteúdo", "conteudo"],
+      ] as const
+    ).map(([id, titulo, chave]) => ({
+      id,
+      titulo: t(titulo),
+      tipo: "texto" as const,
+      valorDe: (l: Linha) => l.participacao?.utm?.[chave] ?? "",
+    })),
+    {
+      id: "op-etapa-da-perda",
+      titulo: t("Etapa de onde perdeu"),
+      tipo: "opcao",
+      valorDe: (l) => l.participacao?.etapa_da_perda_id ?? undefined,
+      opcoes: opcoesDeEtapa,
+      rotuloDoValor: (v) => etapasPorId.get(v)?.name ?? v,
+    },
+    {
+      id: "op-motivo-da-perda",
+      titulo: t("Motivo da perda"),
+      tipo: "texto",
+      valorDe: (l) => l.participacao?.motivo_da_perda ?? "",
+    },
+    {
+      id: "op-dias-ate-perder",
+      titulo: t("Dias até perder"),
+      tipo: "numero",
+      valorDe: (l) => diasAtePerder(l),
     },
     {
       id: "posicionamento",
@@ -2041,7 +2317,7 @@ export function ClientesCRM({
     },
     {
       id: "etapa",
-      titulo: t("Etapa"),
+      titulo: ehOportunidades ? t("Status da oportunidade") : t("Etapa"),
       tipo: "opcao",
       valorDe: (l) => l.participacao?.etapa_id,
       opcoes: opcoesDeEtapa,
@@ -2156,7 +2432,7 @@ export function ClientesCRM({
     },
     {
       id: "primeira-compra",
-      titulo: t("Primeira compra"),
+      titulo: t("Primeiro pagamento"),
       tipo: "data",
       valorDe: (l) => l.primeira_compra,
     },
@@ -2214,8 +2490,10 @@ export function ClientesCRM({
   ];
   // Etapa e situação são de UM funil: na lista "Todos" não há uma só etapa por lead.
   const campos = todosOsCampos
-    .filter((c) => funilAtual !== null || (c.id !== "etapa" && c.id !== "status"))
-    .filter((c) => (ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id)));
+    // Em Oportunidades cada linha É uma oportunidade, então a etapa sempre faz sentido.
+    .filter((c) => ehOportunidades || funilAtual !== null || (c.id !== "etapa" && c.id !== "status"))
+    .filter((c) => (ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id)))
+    .filter((c) => !(ehOportunidades && FORA_DE_OPORTUNIDADES.has(c.id)));
 
   const camposDaBarra: CampoDaBarra[] = campos.map((c) => ({
     id: c.id,
@@ -2225,9 +2503,9 @@ export function ClientesCRM({
   }));
 
   // Cada aba mostra só o que é dela: Clientes, o que é da pessoa; Oportunidades, o do negócio.
-  const colunasDaVisao = colunas.filter((c) =>
-    ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id),
-  );
+  const colunasDaVisao = colunas
+    .filter((c) => (ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id)))
+    .filter((c) => !(ehOportunidades && FORA_DE_OPORTUNIDADES.has(c.id)));
   // A linha de totais do fim da tabela: somas e contagens do que está na tela.
   const somaDe = (linhas: readonly Linha[], f: (l: Linha) => number) =>
     linhas.reduce((s2, l) => s2 + f(l), 0);
@@ -2301,6 +2579,12 @@ export function ClientesCRM({
         p.status === "open" && new Date(p.ultima_atividade ?? p.criado_em).getTime() < seteDias,
     );
   const semContato = alvos.filter(estaSemContato).length;
+  /** Aberta de verdade: fora de Comprou, Não comprou e Desqualificado. (Definida ANTES de `passaNoDestaque`, que a usa na hora de renderizar.) */
+  const emAbertoDeVerdade = (l: Linha) =>
+    (l.participacao ? [l.participacao] : l.participacoes).some((p) => {
+      const e = etapasPorId.get(p.etapa_id);
+      return p.status === "open" && !e?.is_won && !e?.is_lost;
+    });
   /** Quem aparece na lista quando se clica num número do topo. */
   const passaNoDestaque = (l: Linha): boolean => {
     const emAberto = (l.participacao ? [l.participacao] : l.participacoes).filter(
@@ -2468,11 +2752,6 @@ export function ClientesCRM({
   const numerosDaBase = numeros.filter((n) =>
     ["todos", "mql", "faturamento", "abertos", "compraram"].includes(n.id),
   );
-  const emAbertoDeVerdade = (l: Linha) =>
-    (l.participacao ? [l.participacao] : l.participacoes).some((p) => {
-      const e = etapasPorId.get(p.etapa_id);
-      return p.status === "open" && !e?.is_won && !e?.is_lost;
-    });
   // Aba Oportunidades: os quatro números do topo.
   const numerosDeOportunidades: typeof numeros = [
     { id: "todos", rotulo: t("Total de oportunidades"), valor: String(alvos.length) },
@@ -3251,7 +3530,7 @@ export function ClientesCRM({
                   idDe={(l) => l.chave}
                   etapaDe={(l) => l.participacao?.etapa_id}
                   funilDe={(l) => l.participacao?.funil_id}
-                  tituloDe={(l) => l.nome}
+                  tituloDe={(l) => l.participacao?.titulo || l.nome}
                   colunas={mostradas.filter((c) => c.id !== "nome" && c.id !== "etapa")}
                   podeEditar={podeEditar}
                   aoMover={(l, etapaId) => {

@@ -779,7 +779,13 @@ export function SeletorDeFunis({
           <CaretDown size={12} className="shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(92vw,400px)] p-2">
+      <PopoverContent
+        align="start"
+        collisionPadding={12}
+        // Não abre o teclado sozinho (ele encolhia a tela e cortava o popup); o campo de busca é um toque.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="max-h-[min(var(--radix-popover-content-available-height),80dvh)] w-[min(calc(100vw-1.5rem),400px)] overflow-y-auto overscroll-contain p-2"
+      >
         <label className="relative block">
           <span className="sr-only">{t("Buscar funil")}</span>
           <MagnifyingGlass
@@ -794,7 +800,7 @@ export function SeletorDeFunis({
             className="h-9 w-full rounded-xl border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
           />
         </label>
-        <div className="mt-2 max-h-80 overflow-y-auto overscroll-contain">
+        <div className="mt-2">
           <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium hover:bg-secondary">
             <input
               type="checkbox"

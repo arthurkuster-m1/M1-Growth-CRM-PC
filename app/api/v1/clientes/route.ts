@@ -68,6 +68,28 @@ export interface ParticipacaoDoCliente {
   /** Tentativas de ligação registradas nesta oportunidade e a data da última. */
   tentativas: number;
   ultima_tentativa: string | null;
+  /** Quando entrou na etapa atual (o relógio do "tempo na etapa"). */
+  entrou_na_etapa_em: string | null;
+  /** Quando foi atribuída ao responsável atual. */
+  atribuido_em: string | null;
+  /** Quem criou a oportunidade (usuário); nulo = veio de automação, formulário ou integração. */
+  criado_por_id: string | null;
+  /** Se retomou outra oportunidade: o id e o título dela. */
+  retomada_de_id: string | null;
+  retomada_de_titulo: string | null;
+  /** Para a oportunidade perdida: a etapa em que estava e o motivo. */
+  etapa_da_perda_id: string | null;
+  motivo_da_perda: string | null;
+  /** Os dados de origem (UTMs) guardados na entrada da oportunidade. */
+  utm: {
+    fonte: string | null;
+    meio: string | null;
+    campanha: string | null;
+    termo: string | null;
+    conteudo: string | null;
+  };
+  /** Valor da oportunidade ainda sem parcelas (só interesse). */
+  interesse_cents: number;
 }
 
 /** Uma venda ativa (não cancelada) do cliente, para a coluna "Vendas" do CRM. */
@@ -200,7 +222,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let consultaDeNegocios = supabase
     .from("crm_leads")
     .select(
-      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em, notes, nome_da_venda, title, source_metadata, payment_method, installments",
+      "id, contact_id, pipeline_id, stage_id, status, value_cents, currency, owner_user_id, created_at, updated_at, closed_at, last_activity_at, expected_close_date, source, demand_campaign_id, demand_creative_id, demand_landing_page_id, proxima_acao, proxima_acao_em, notes, nome_da_venda, title, source_metadata, payment_method, installments, stage_changed_at, assigned_at, created_by_user_id, retomado_de_lead_id, lost_from_stage_id, lost_reason",
     )
     .eq("organization_id", orgId)
     .not("contact_id", "is", null)
@@ -239,7 +261,18 @@ export async function GET(req: NextRequest): Promise<Response> {
     source_metadata: Record<string, unknown> | null;
     payment_method: string | null;
     installments: number | null;
+    stage_changed_at: string | null;
+    assigned_at: string | null;
+    created_by_user_id: string | null;
+    retomado_de_lead_id: string | null;
+    lost_from_stage_id: string | null;
+    lost_reason: string | null;
   }>;
+  const tituloDoNegocio = new Map(
+    linhasDeNegocio.map((n) => [n.id, (n.nome_da_venda ?? "").trim() || (n.title ?? "").trim()] as const),
+  );
+  const texto = (v: unknown): string | null =>
+    typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 
   // Quem aparece: no funil escolhido, os contatos dele; em "todos", todos os contatos.
   let consultaDeContatos = supabase
@@ -325,6 +358,23 @@ export async function GET(req: NextRequest): Promise<Response> {
       proximo_pagamento: null,
       tentativas: tentativasPorLead.get(n.id)?.n ?? 0,
       ultima_tentativa: tentativasPorLead.get(n.id)?.ultima ?? null,
+      entrou_na_etapa_em: n.stage_changed_at,
+      atribuido_em: n.assigned_at,
+      criado_por_id: n.created_by_user_id,
+      retomada_de_id: n.retomado_de_lead_id,
+      retomada_de_titulo: n.retomado_de_lead_id
+        ? (tituloDoNegocio.get(n.retomado_de_lead_id) ?? null)
+        : null,
+      etapa_da_perda_id: n.status === "lost" ? n.lost_from_stage_id : null,
+      motivo_da_perda: n.status === "lost" ? n.lost_reason : null,
+      utm: {
+        fonte: texto(n.source_metadata?.utm_source),
+        meio: texto(n.source_metadata?.utm_medium),
+        campanha: texto(n.source_metadata?.utm_campaign),
+        termo: texto(n.source_metadata?.utm_term),
+        conteudo: texto(n.source_metadata?.utm_content),
+      },
+      interesse_cents: 0,
     });
     porContato.set(n.contact_id, lista);
   }
@@ -620,6 +670,9 @@ export async function GET(req: NextRequest): Promise<Response> {
         primeiro_pagamento: d?.primeiro ?? null,
         ultimo_pagamento: d?.ultimo ?? null,
         proximo_pagamento: d?.proximo ?? null,
+        // Sem parcelas ainda: o valor da oportunidade é só interesse (a mesma regra do popup).
+        interesse_cents:
+          p.status !== "lost" && (d?.parcelas_total ?? 0) === 0 ? Math.max(0, p.valor_cents ?? 0) : 0,
       };
     }),
   }));
