@@ -468,4 +468,8 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.27| **Tipos de atendimento** (celular) | Os seletores abrem o popup do app; não há campo de preço; dá para trocar Onde acontece e o endereço/link; o lembrete tem o botão "Inserir o link da reunião online (Meet)" e, numa reunião online com link pronto, a mensagem chega com o link |           |
 | 23.28| **Página de atendimento do tipo** | O roteiro está dentro do editor de blocos (sem lista de passos nem caixa "Roteiro"); nada passa da borda no celular |           |
 | 23.29| **Atendentes e horários** | Cada atendente é um cartão (status, carga, capacidade, horário e botão Editar); nada é cortado no celular |           |
+| 23.30| **Horas da grade** | Em Configurações › Agenda › Horas da grade, escolher 08:00 a 17:00: a grade mostra só esse trecho; uma reunião às 18:30 faz aparecer as linhas até as 19:00 só enquanto existir |           |
+| 23.31| **Linha do agora** | Com o dia de hoje destacado, a linha vermelha não aparece por cima do cabeçalho (TER 27) ao rolar |           |
+| 23.32| **Título da oportunidade único** | O título é o mesmo campo no popup, na seção Oportunidade e na seção Venda do compromisso; editar num muda os outros |           |
+| 23.33| **Datas da oportunidade** | Próxima ação e Previsão de fechamento abrem o calendário do app (com ícone), não o do sistema |           |
 

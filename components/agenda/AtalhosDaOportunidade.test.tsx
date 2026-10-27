@@ -39,12 +39,9 @@ describe("atalhos da oportunidade no compromisso", () => {
     expect((screen.getByLabelText("Próxima ação") as HTMLInputElement).value).toBe(
       "Ligar na quinta",
     );
-    expect((screen.getByLabelText("Data da próxima ação") as HTMLInputElement).value).toBe(
-      "2026-10-30",
-    );
-    expect((screen.getByLabelText("Previsão de fechamento") as HTMLInputElement).value).toBe(
-      "2026-11-15",
-    );
+    // O seletor de data do app (CampoDeData): o botão mostra o dia em dd/mm/aaaa.
+    expect(screen.getByLabelText("Data da próxima ação").textContent).toContain("30/10/2026");
+    expect(screen.getByLabelText("Previsão de fechamento").textContent).toContain("15/11/2026");
   });
 
   it("editar a próxima ação grava pela rota da oportunidade ao sair do campo", async () => {
@@ -61,8 +58,10 @@ describe("atalhos da oportunidade no compromisso", () => {
 
   it("mudar a previsão de fechamento grava no lead", async () => {
     montar();
-    fireEvent.change(screen.getByLabelText("Previsão de fechamento"), {
-      target: { value: "2026-12-01" },
+    fireEvent.click(screen.getByLabelText("Previsão de fechamento"));
+    // Com o calendário aberto, o campo de digitação por cima aceita dd/mm/aaaa.
+    fireEvent.change(screen.getAllByLabelText("Previsão de fechamento")[1]!, {
+      target: { value: "01/12/2026" },
     });
     await waitFor(() =>
       expect(api.patch).toHaveBeenCalledWith("/api/v1/leads/lead-1", {

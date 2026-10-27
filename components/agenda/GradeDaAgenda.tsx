@@ -32,6 +32,7 @@ import {
 } from "@/lib/agenda/propriedades-do-compromisso";
 
 import { PainelDoDia, Propriedades, SeletorDePropriedades, usePropriedades } from "./PainelDoDia";
+import { janelaComCompromissos, useJanelaDaGrade, type JanelaDaGrade } from "@/lib/agenda/janela-da-grade";
 import { corDaTrilha, fundoDaTrilha } from "./paleta";
 import { DIAS_DA_VISAO, type Agendamento, type Pessoa, type VisaoDaAgenda } from "./tipos";
 
@@ -50,7 +51,14 @@ const ALTURA_DA_HORA = 48;
 const PRIMEIRA_HORA = 7;
 const ULTIMA_HORA = 21;
 
-const HORAS = Array.from({ length: ULTIMA_HORA - PRIMEIRA_HORA + 1 }, (_, i) => PRIMEIRA_HORA + i);
+/**
+ * A janela de horas EM VIGOR: a que a pessoa escolheu em Configurações (mais o que for preciso para
+ * caber os compromissos do período). Sem escolha, vale a de fábrica (07h–21h).
+ */
+const JanelaCtx = React.createContext<JanelaDaGrade>({ primeira: PRIMEIRA_HORA, ultima: ULTIMA_HORA });
+const useJanela = () => React.useContext(JanelaCtx);
+const horasDa = (j: JanelaDaGrade) =>
+  Array.from({ length: j.ultima - j.primeira + 1 }, (_, i) => j.primeira + i);
 
 /**
  * O que transforma a grade de DESENHO em AGENDA.
@@ -118,9 +126,9 @@ interface PropostaDeRemarcacao {
  * Quando os dois fusos são o mesmo — a maioria, e o CI inteiro — `partesNoFuso`
  * devolve exatamente o que `getHours()` devolvia: a conversão é a identidade.
  */
-function minutosDesdeOTopo(d: Date, fuso: string): number {
+function minutosDesdeOTopo(d: Date, fuso: string, primeira: number = PRIMEIRA_HORA): number {
   const p = partesNoFuso(d, fuso);
-  return (p.hora - PRIMEIRA_HORA) * 60 + p.minuto;
+  return (p.hora - primeira) * 60 + p.minuto;
 }
 
 /** Minuto do dia SEM deslocar da primeira hora — o que o teclado e o arraste pedem. */
@@ -186,10 +194,10 @@ function chaveDoDia(d: Date): string {
 }
 
 /** O compromisso (ou a ocupação) toca a janela de horas que a grade desenha? Fora dela, não se desenha. */
-function apareceNaJanela(c: Agendamento, fuso: string): boolean {
-  const inicio = minutosDesdeOTopo(new Date(c.comeca), fuso) + PRIMEIRA_HORA * 60;
+function apareceNaJanela(c: Agendamento, fuso: string, j: JanelaDaGrade): boolean {
+  const inicio = minutosDesdeOTopo(new Date(c.comeca), fuso, j.primeira) + j.primeira * 60;
   const duracao = Math.max((Date.parse(c.termina) - Date.parse(c.comeca)) / 60_000, 15);
-  return inicio + duracao > PRIMEIRA_HORA * 60 && inicio < (ULTIMA_HORA + 1) * 60;
+  return inicio + duracao > j.primeira * 60 && inicio < (j.ultima + 1) * 60;
 }
 
 /** A chave de um INSTANTE: o dia que ele cai NO FUSO DA ORGANIZAÇÃO. */
@@ -216,10 +224,11 @@ function instanteDoMinuto(dia: Date, minuto: number, fuso: string): Date {
 }
 
 /** Os começos de célula que a camada de marcação desenha, em minutos do dia. */
-const CELULAS = Array.from(
-  { length: ((ULTIMA_HORA - PRIMEIRA_HORA + 1) * 60) / PASSO_DA_CELULA_MIN },
-  (_, i) => PRIMEIRA_HORA * 60 + i * PASSO_DA_CELULA_MIN,
-);
+const celulasDa = (j: JanelaDaGrade) =>
+  Array.from(
+    { length: ((j.ultima - j.primeira + 1) * 60) / PASSO_DA_CELULA_MIN },
+    (_, i) => j.primeira * 60 + i * PASSO_DA_CELULA_MIN,
+  );
 
 function diasDaSemanaDe(ancora: Date): Date[] {
   const inicio = startOfWeek(ancora, { weekStartsOn: 0 });
@@ -310,6 +319,7 @@ function CamadaDeMarcacao({
   interacao: InteracaoDaGrade;
 }) {
   const pixelsDe = usePixels();
+  const janela = useJanela();
   const t = useT();
   const localeDaData = useLocaleDeData();
   const chave = chaveDoDia(dia);
@@ -317,7 +327,7 @@ function CamadaDeMarcacao({
 
   return (
     <>
-      {CELULAS.map((minuto) => {
+      {celulasDa(janela).map((minuto) => {
         const livre = horarioNaCelula(publicados, minuto, fuso);
         const inicio = instanteDoMinuto(dia, minuto, fuso);
         const fim = instanteDoMinuto(dia, minuto + PASSO_DA_CELULA_MIN, fuso);
@@ -358,7 +368,7 @@ function CamadaDeMarcacao({
                   cn("cursor-default", !interacao.carregando && "bg-secondary/60"),
             )}
             style={{
-              top: pixelsDe(minuto - PRIMEIRA_HORA * 60),
+              top: pixelsDe(minuto - janela.primeira * 60),
               height: pixelsDe(PASSO_DA_CELULA_MIN),
             }}
           />
@@ -410,6 +420,7 @@ function BlocoDeAgendamento({
   };
 }) {
   const pixelsDe = usePixels();
+  const janela = useJanela();
   const propriedadesDoDia = React.useContext(PropriedadesNoBlocoCtx);
   const t = useT();
   const comeca = new Date(agendamento.comeca);
@@ -496,7 +507,7 @@ function BlocoDeAgendamento({
         arraste?.ativo && "opacity-40",
       )}
       style={{
-        top: pixelsDe(minutosDesdeOTopo(comeca, fuso)),
+        top: pixelsDe(minutosDesdeOTopo(comeca, fuso, janela.primeira)),
         height: Math.max(pixelsDe(duracao) - 2, 18),
         // `calc` em vez de porcentagem crua para os 2px de respiro entre
         // colunas vizinhas não saírem da largura útil de cada bloco.
@@ -550,8 +561,9 @@ function BlocoDeAgendamento({
 /** A régua do agora — a linha que faz a tela parecer viva em vez de impressa. */
 function ReguaDoAgora({ agora, fuso }: { agora: Date; fuso: string }) {
   const pixelsDe = usePixels();
-  const minutos = minutosDesdeOTopo(agora, fuso);
-  if (minutos < 0 || minutos > (ULTIMA_HORA - PRIMEIRA_HORA + 1) * 60) return null;
+  const janela = useJanela();
+  const minutos = minutosDesdeOTopo(agora, fuso, janela.primeira);
+  if (minutos < 0 || minutos > (janela.ultima - janela.primeira + 1) * 60) return null;
   return (
     <div
       data-testid="regua-do-agora"
@@ -571,10 +583,11 @@ function ReguaDoAgora({ agora, fuso }: { agora: Date; fuso: string }) {
 
 function ColunaDeHoras() {
   const alturaDaHora = useAlturaDaHora();
+  const janela = useJanela();
   return (
     <div className="w-10 shrink-0 border-r border-border select-none md:w-12" aria-hidden>
       <div className="h-12 border-b border-border md:h-8" />
-      {HORAS.map((h) => (
+      {horasDa(janela).map((h) => (
         <div
           key={h}
           className="relative border-b border-border/50 text-right"
@@ -612,6 +625,7 @@ function FantasmaDoArraste({
   fuso: string;
 }) {
   const pixelsDe = usePixels();
+  const janela = useJanela();
   const t = useT();
   const valido = proposta.instante !== null;
   return (
@@ -625,7 +639,7 @@ function FantasmaDoArraste({
         valido ? "border-accent bg-accent-soft" : "border-error bg-error-bg",
       )}
       style={{
-        top: pixelsDe(proposta.minuto - PRIMEIRA_HORA * 60),
+        top: pixelsDe(proposta.minuto - janela.primeira * 60),
         height: Math.max(pixelsDe(duracaoMin) - 2, 18),
       }}
     >
@@ -669,6 +683,7 @@ function ColunaDeDia({
   };
 }) {
   const alturaDaHora = useAlturaDaHora();
+  const janela = useJanela();
   const localeDaData = useLocaleDeData();
   const doDia = agendamentos.filter(
     (c) => chaveDoDiaDoInstante(new Date(c.comeca), fuso) === chaveDoDia(dia),
@@ -706,7 +721,7 @@ function ColunaDeDia({
           // continua numa linha só.
           "sticky top-0 z-20 flex h-12 flex-col items-center justify-center gap-0.5 border-b border-border bg-surface px-1 md:h-8 md:flex-row md:gap-1.5 md:px-2",
           aoEscolherDia && "cursor-pointer hover:bg-secondary/60",
-          escolhido && "bg-accent/10",
+          escolhido && "after:pointer-events-none after:absolute after:inset-0 after:bg-accent/10",
         )}
       >
         <span className="truncate text-[11px] font-semibold tracking-wide text-text-muted uppercase">
@@ -735,9 +750,9 @@ function ColunaDeDia({
         // corpo de dia é determinístico e independe do que está desenhado por
         // cima — que é exatamente o que muda durante um arraste.
         data-corpo-do-dia={chaveDoDia(dia)}
-        style={{ height: HORAS.length * alturaDaHora }}
+        style={{ height: horasDa(janela).length * alturaDaHora }}
       >
-        {HORAS.map((h) => (
+        {horasDa(janela).map((h) => (
           <div key={h} className="border-b border-border/50" style={{ height: alturaDaHora }} />
         ))}
         {interacao && (
@@ -749,7 +764,7 @@ function ColunaDeDia({
             interacao={interacao}
           />
         )}
-        {repartirSobrepostos(doDia.filter((c) => apareceNaJanela(c, fuso))).map(
+        {repartirSobrepostos(doDia.filter((c) => apareceNaJanela(c, fuso, janela))).map(
           ({ agendamento, coluna, colunas }) => (
             <BlocoDeAgendamento
               key={agendamento.id}
@@ -1100,6 +1115,18 @@ export function GradeDaAgenda({
         )
       : ALTURA_DA_HORA;
 
+  // As horas que a pessoa escolheu em Configurações, esticadas só o necessário para caber os
+  // compromissos do período (uma reunião às 18:30 abre espaço mesmo com a janela acabando às 17h).
+  const [janelaEscolhida] = useJanelaDaGrade();
+  const janela = React.useMemo(
+    () =>
+      janelaComCompromissos(janelaEscolhida, agendamentos, (d) => {
+        const p = partesNoFuso(d, fuso);
+        return { hora: p.hora, minuto: p.minuto };
+      }),
+    [janelaEscolhida, agendamentos, fuso],
+  );
+
   const gradeRef = React.useRef<HTMLDivElement>(null);
   const [proposta, setProposta] = React.useState<PropostaDeRemarcacao | null>(null);
   /**
@@ -1119,7 +1146,7 @@ export function GradeDaAgenda({
     moveu: boolean;
   } | null>(null);
 
-  const limites = { primeiro: PRIMEIRA_HORA * 60, ultimo: (ULTIMA_HORA + 1) * 60 };
+  const limites = { primeiro: janela.primeira * 60, ultimo: (janela.ultima + 1) * 60 };
 
   /** A proposta para um instante — a mesma conta para o ponteiro e para o teclado. */
   const montarProposta = React.useCallback(
@@ -1180,7 +1207,7 @@ export function GradeDaAgenda({
       const bruto = minutoSobY({
         y: clientYDoTopo - r.top,
         alturaDaHoraPx: alturaDaHora,
-        primeiraHora: PRIMEIRA_HORA,
+        primeiraHora: janela.primeira,
       });
       return montarProposta(
         id,
@@ -1307,6 +1334,7 @@ export function GradeDaAgenda({
   /** As colunas dos dias com a régua das horas — a rolagem mora AQUI dentro (ver o comentário antigo). */
   const corpoDasColunas = (noBloco: PropriedadesNoBloco | null) => (
     <AlturaDaHoraCtx.Provider value={alturaDaHora}>
+      <JanelaCtx.Provider value={janela}>
       <PropriedadesNoBlocoCtx.Provider value={noBloco}>
         {/* A rolagem mora AQUI dentro, e não na página: `html, body` têm `overflow-x: hidden` no
             globals.css, então uma grade que estourasse a largura simplesmente sumiria pela direita,
@@ -1343,6 +1371,7 @@ export function GradeDaAgenda({
           </div>
         </div>
       </PropriedadesNoBlocoCtx.Provider>
+      </JanelaCtx.Provider>
     </AlturaDaHoraCtx.Provider>
   );
 

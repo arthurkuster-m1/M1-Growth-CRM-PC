@@ -5,6 +5,7 @@ import { AgendasConectadas } from "@/components/agenda/AgendasConectadas";
 import { PrazosDePresenca } from "@/components/agenda/PrazosDePresenca";
 import { AgendaDosColegas } from "@/components/agenda/AgendaDosColegas";
 import { DiasBloqueados } from "@/components/agenda/DiasBloqueados";
+import { HorasDaGrade } from "@/components/agenda/HorasDaGrade";
 
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
@@ -435,6 +436,9 @@ export function TiposDeAgendamentoClient({
               verInicial={colegasPodemVerAgendaLigado}
               podeMudar={podeMudarAgendaDosColegas}
             />
+          </BlocoRecolhivel>
+          <BlocoRecolhivel titulo={t("Horas da grade")} resumo={t("Quais horas do dia a Agenda mostra")}>
+            <HorasDaGrade />
           </BlocoRecolhivel>
           <BlocoRecolhivel titulo={t("Dias fora da rotina")} resumo={t("Feriados, férias e outros dias sem atendimento")}>
             <DiasBloqueados podeEditar={podeEditar} />
