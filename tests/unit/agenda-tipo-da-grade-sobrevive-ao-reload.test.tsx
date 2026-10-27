@@ -102,9 +102,7 @@ vi.mock("@/hooks/i18n/useLocaleDeData", async () => {
  * a única forma de asseverar isto sem rota nem servidor — o valor do tipo na
  * tela pode estar certo enquanto a grade pede a disponibilidade de outro.
  */
-const pedidos = vi.hoisted(
-  () => [] as Array<{ event_type_id: string } | null>,
-);
+const pedidos = vi.hoisted(() => [] as Array<{ event_type_id: string } | null>);
 vi.mock("@/hooks/agenda/useHorariosLivres", () => ({
   useHorariosLivres: (argumento: { event_type_id: string } | null) => {
     pedidos.push(argumento);
@@ -224,6 +222,7 @@ function abrirCom(url: string) {
 const botaoDoTipo = (id: string) => screen.getByTestId(`tipo-da-grade-${id}`);
 
 beforeEach(() => {
+  window.localStorage.removeItem("m1.agenda.visao");
   abrirCom("/app/agenda");
   pedidos.length = 0;
   compromissosDaGrade.length = 0;
@@ -333,5 +332,19 @@ describe("o tipo escolhido na grade sobrevive ao reload", () => {
 
     expect(botaoDoTipo("tipo-1")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("novo-agendamento")).toBeTruthy();
+  });
+});
+
+describe("a visão escolhida é lembrada ao voltar ou atualizar a página", () => {
+  it("quem deixou o Mês volta ao Mês", () => {
+    window.localStorage.setItem("m1.agenda.visao", "mes");
+    montar();
+    expect(screen.getByTestId("grade-da-agenda").dataset.visao).toBe("mes");
+  });
+
+  it("valor guardado que não existe mais é ignorado (cai no padrão)", () => {
+    window.localStorage.setItem("m1.agenda.visao", "ano");
+    montar();
+    expect(screen.getByTestId("grade-da-agenda").dataset.visao).not.toBe("ano");
   });
 });

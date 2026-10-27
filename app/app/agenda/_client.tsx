@@ -67,6 +67,17 @@ const VISOES: Array<{ id: VisaoDaAgenda; rotulo: string }> = [
  * `tests/unit/telas-sem-dado-de-mentira.test.ts` impede que alguém religue os
  * imports sem querer.
  */
+const CHAVE_DA_VISAO = "m1.agenda.visao";
+const VISOES_VALIDAS: readonly VisaoDaAgenda[] = ["dia", "tres_dias", "semana", "mes"];
+function lerVisaoGuardada(): VisaoDaAgenda | null {
+  try {
+    const v = window.localStorage.getItem(CHAVE_DA_VISAO);
+    return VISOES_VALIDAS.find((x) => x === v) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function AgendaClient({
   fusoDaAgenda,
   fusoDeApresentacao,
@@ -229,8 +240,20 @@ export function AgendaClient({
     // O aviso da regra é justo em geral; aqui trocar a visão É o ponto do efeito.
     // A largura só existe no cliente, e decidir antes divergiria da hidratação.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (window.matchMedia("(max-width: 767px)").matches) setVisao("dia");
+    // A visão que a pessoa deixou é a que volta (sair, voltar ou atualizar a página); só quem nunca
+    // escolheu cai no padrão: Dia no celular, Semana no computador.
+    const guardada = lerVisaoGuardada();
+    if (guardada) setVisao(guardada);
+    else if (window.matchMedia("(max-width: 767px)").matches) setVisao("dia");
   }, []);
+  const escolherVisao = (nova: VisaoDaAgenda) => {
+    setVisao(nova);
+    try {
+      window.localStorage.setItem(CHAVE_DA_VISAO, nova);
+    } catch {
+      /* navegador sem armazenamento: a escolha vale só nesta sessão */
+    }
+  };
   const [isolada, setIsolada] = React.useState<string | null>(null);
   /**
    * A ÂNCORA NASCE DO RELÓGIO DA ORGANIZAÇÃO, não do navegador.
@@ -552,7 +575,7 @@ export function AgendaClient({
                   key={v.id}
                   data-testid={`visao-${v.id}`}
                   aria-checked={visao === v.id}
-                  onSelect={() => setVisao(v.id)}
+                  onSelect={() => escolherVisao(v.id)}
                   className={cn(visao === v.id && "font-semibold")}
                 >
                   {t(v.rotulo)}
