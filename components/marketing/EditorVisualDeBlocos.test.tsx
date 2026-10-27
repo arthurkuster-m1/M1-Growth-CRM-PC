@@ -89,21 +89,14 @@ describe("EditorVisualDeBlocos", () => {
     expect(screen.getByRole("button", { name: "Concluir" })).toBeTruthy();
   });
 
-  it("Modelos: adiciona ao final ou substitui a página (pede confirmação)", () => {
+  it("Modelos: só a página em branco (sem modelo próprio), com confirmação e Ctrl+Z", () => {
     render(<Casca inicial={iniciais()} />);
     fireEvent.click(screen.getByRole("button", { name: "Modelos" }));
-    // o primeiro modelo da lista é o básico: título, texto, título e lista
-    fireEvent.click(
-      within(screen.getByRole("menu")).getAllByRole("button", { name: "Adicionar ao final" })[0]!,
-    );
-    expect(ultimo).toHaveLength(7);
-
-    fireEvent.click(screen.getByRole("button", { name: "Modelos" }));
-    // "Página em branco" é a primeira linha: o 1º clique só pede confirmação…
-    fireEvent.click(
-      within(screen.getByRole("menu")).getAllByRole("button", { name: "Substituir a página" })[0]!,
-    );
-    expect(ultimo).toHaveLength(7);
+    const menu = within(screen.getByRole("menu"));
+    expect(menu.getAllByRole("button", { name: "Substituir a página" })).toHaveLength(1);
+    expect(menu.queryByText("Estudo de persona")).toBeNull();
+    // o 1º clique só pede confirmação…
+    fireEvent.click(menu.getByRole("button", { name: "Substituir a página" }));
     // …o 2º apaga tudo, e Ctrl+Z devolve
     fireEvent.click(
       within(screen.getByRole("menu")).getByRole("button", {
@@ -112,7 +105,7 @@ describe("EditorVisualDeBlocos", () => {
     );
     expect(ultimo).toHaveLength(0);
     fireEvent.keyDown(raiz(), { key: "z", ctrlKey: true });
-    expect(ultimo).toHaveLength(7);
+    expect(ultimo).toHaveLength(3);
   });
 
   it("seleção em massa: Shift+clique, Ctrl+Shift+5 troca o tipo e Ctrl+Z desfaz", () => {

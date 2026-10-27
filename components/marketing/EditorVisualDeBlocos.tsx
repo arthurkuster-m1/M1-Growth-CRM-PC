@@ -54,7 +54,7 @@ import {
   textoDoBloco,
   type AlvoDeConversao,
 } from "@/lib/marketing/edicao-de-blocos";
-import { MODELOS_DE_PAGINA, modeloDoModulo } from "@/lib/marketing/modelos";
+import { modeloDaPagina } from "@/lib/marketing/modelos";
 import { Copy, DotsSixVertical, PencilSimple, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -884,26 +884,6 @@ export function EditorVisualDeBlocos({
         <MenuFlutuante x={menu.x} y={menu.y} aoFechar={fecharMenu}>
           {menu.tipo === "modelos" ? (
             <>
-              {chaveDaPagina ? (
-                <>
-                  <CabecalhoDoMenu>{t("Modelo desta página")}</CabecalhoDoMenu>
-                  <LinhaDeModelo
-                    rotulo={t("O modelo padrão deste tipo de página")}
-                    descricao=""
-                    confirmando={confirmarModelo === "__padrao"}
-                    vazia={blocos.length === 0}
-                    aoAdicionar={() =>
-                      aplicarModelo("adicionar", (n) => modeloDoModulo(chaveDaPagina, n))
-                    }
-                    aoSubstituir={() => {
-                      if (blocos.length === 0 || confirmarModelo === "__padrao")
-                        aplicarModelo("substituir", (n) => modeloDoModulo(chaveDaPagina, n));
-                      else setConfirmarModelo("__padrao");
-                    }}
-                  />
-                </>
-              ) : null}
-              <CabecalhoDoMenu>{t("Todos os modelos")}</CabecalhoDoMenu>
               <LinhaDeModelo
                 rotulo={t("Página em branco")}
                 descricao={t("Apaga todos os blocos")}
@@ -917,21 +897,26 @@ export function EditorVisualDeBlocos({
                   else setConfirmarModelo("em-branco");
                 }}
               />
-              {MODELOS_DE_PAGINA.map((m) => (
-                <LinhaDeModelo
-                  key={m.chave}
-                  rotulo={t(m.rotulo)}
-                  descricao={t(m.descricao)}
-                  confirmando={confirmarModelo === m.chave}
-                  vazia={blocos.length === 0}
-                  aoAdicionar={() => aplicarModelo("adicionar", m.montar)}
-                  aoSubstituir={() => {
-                    if (blocos.length === 0 || confirmarModelo === m.chave)
-                      aplicarModelo("substituir", m.montar);
-                    else setConfirmarModelo(m.chave);
-                  }}
-                />
-              ))}
+              {modeloDaPagina(chaveDaPagina ?? "")
+                ? (() => {
+                    const m = modeloDaPagina(chaveDaPagina ?? "")!;
+                    return (
+                      <LinhaDeModelo
+                        key={m.chave}
+                        rotulo={t(m.rotulo)}
+                        descricao={t(m.descricao)}
+                        confirmando={confirmarModelo === m.chave}
+                        vazia={blocos.length === 0}
+                        aoAdicionar={() => aplicarModelo("adicionar", m.montar)}
+                        aoSubstituir={() => {
+                          if (blocos.length === 0 || confirmarModelo === m.chave)
+                            aplicarModelo("substituir", m.montar);
+                          else setConfirmarModelo(m.chave);
+                        }}
+                      />
+                    );
+                  })()
+                : null}
             </>
           ) : menu.tipo === "inserir" ? (
             <>

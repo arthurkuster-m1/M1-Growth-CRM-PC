@@ -26,7 +26,6 @@ interface TarefaAdiada {
   lado: string | null;
   prazoOriginal: string | null;
   eventos: EventoDoHistorico[];
-  semMotivo: number;
 }
 
 /**
@@ -38,7 +37,6 @@ export function TarefasAdiadas({ empresa }: { empresa: string }) {
   const tag = useTagDeIdioma();
   const hoje = hojeLocal();
   const [janela, setJanela] = useState(() => ({ de: `${hoje.slice(0, 7)}-01`, ate: hoje }));
-  const [soSemMotivo, setSoSemMotivo] = useState(false);
   const consulta = useTarefasAdiadas(janela.de, janela.ate, true);
 
   const atalhos: AtalhoDePeriodo[] = [
@@ -59,10 +57,8 @@ export function TarefasAdiadas({ empresa }: { empresa: string }) {
         lado: e.crm_tasks?.cronograma_lado ?? null,
         prazoOriginal: e.crm_tasks?.prazo_original ?? null,
         eventos: [],
-        semMotivo: 0,
       };
       atual.eventos.push(e);
-      if (!e.motivo) atual.semMotivo += 1;
       porTarefa.set(e.task_id, atual);
     }
     return [...porTarefa.values()]
@@ -73,7 +69,7 @@ export function TarefasAdiadas({ empresa }: { empresa: string }) {
       .sort((a, b) => b.eventos.length - a.eventos.length);
   }, [consulta.data]);
 
-  const visiveis = soSemMotivo ? tarefas.filter((x) => x.semMotivo > 0) : tarefas;
+  const visiveis = tarefas;
   const totalAdiamentos = tarefas.reduce((s, x) => s + x.eventos.length, 0);
 
   return (
@@ -86,14 +82,6 @@ export function TarefasAdiadas({ empresa }: { empresa: string }) {
           atalhos={atalhos}
           aoMudar={setJanela}
         />
-        <label className="ml-auto inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={soSemMotivo}
-            onChange={(e) => setSoSemMotivo(e.target.checked)}
-          />
-          {t("Só as sem motivo registrado")}
-        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
