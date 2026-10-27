@@ -331,7 +331,10 @@ function DialogoDeIncluir({
         <div className="grid gap-3">
           <p className="text-xs text-muted-foreground">
             {t("Prazo atual")}:{" "}
-            {diaDoIso(tarefa?.due_date ?? null).split("-").reverse().join("/") || t("sem prazo")}
+            {diaDoIso(tarefa?.due_date ?? null)
+              .split("-")
+              .reverse()
+              .join("/") || t("sem prazo")}
           </p>
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">{t("Novo início")}</span>

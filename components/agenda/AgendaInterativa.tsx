@@ -367,7 +367,7 @@ export function AgendaInterativa({
         pessoas={pessoas}
         agendamentos={desenhados}
         onAbrirAgendamento={onAbrirAgendamento}
-        className="min-h-0 flex-1"
+        className="min-h-[68dvh] flex-1 sm:min-h-0"
         interacao={
           tipo && onMarcarEm
             ? {

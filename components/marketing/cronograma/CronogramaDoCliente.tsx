@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
+import { AutoavaliacaoDaSemana } from "@/components/marketing/cronograma/AutoavaliacaoDaSemana";
 import { EdicaoDaSemana } from "@/components/marketing/cronograma/EdicaoDaSemana";
 import {
   FormularioDaConfig,
@@ -32,7 +33,14 @@ import {
   periodoDaSemana,
 } from "@/lib/marketing/cronograma";
 import { nomeNovoDeFase } from "@/lib/marketing/cronograma-ordem";
-import { Archive, CalendarBlank, CaretDown, CaretLeft, CaretRight, ShareNetwork } from "@/lib/ui/icons";
+import {
+  Archive,
+  CalendarBlank,
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+  ShareNetwork,
+} from "@/lib/ui/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -385,7 +393,9 @@ export function CronogramaDoCliente() {
                 {t("Arquivar todas as tarefas concluídas")} ({concluidasAbertas.length})
               </button>
               <span className="text-xs text-muted-foreground">
-                {t("Tira do cronograma tudo o que já foi concluído. Dá para desfazer com Ctrl+Z ou em Arquivadas.")}
+                {t(
+                  "Tira do cronograma tudo o que já foi concluído. Dá para desfazer com Ctrl+Z ou em Arquivadas.",
+                )}
               </span>
             </div>
           ) : null}
@@ -424,6 +434,8 @@ export function CronogramaDoCliente() {
           }}
         />
       ) : null}
+
+      {podeEditar && aba === "semana" ? <AutoavaliacaoDaSemana inicioDaSemana={inicio} /> : null}
 
       {podeEditar ? (
         <CompartilharPagina

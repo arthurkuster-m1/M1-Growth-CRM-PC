@@ -384,7 +384,7 @@ export function AgendaClient({
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full w-full max-w-full min-w-0 flex-col gap-3 overflow-x-clip p-4 sm:gap-6 sm:p-6"
+      className="flex h-full w-full max-w-full min-w-0 flex-col gap-3 overflow-x-clip p-2 sm:gap-6 sm:p-6"
     >
       {/*
         Em Suspense porque `useSearchParams` obriga: sem a fronteira, o Next
@@ -397,7 +397,7 @@ export function AgendaClient({
       </React.Suspense>
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
+        <div className="hidden min-w-0 sm:block">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
@@ -478,7 +478,7 @@ export function AgendaClient({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 rounded-xl px-3 text-xs lg:h-8"
+            className="h-9 shrink-0 rounded-xl px-3 text-xs lg:h-8"
             onClick={() => setAncora(ancoraLocalDoDia(hojeNaOrganizacao))}
           >
             {t("Hoje")}
@@ -503,7 +503,7 @@ export function AgendaClient({
           </span>
           <span
             data-testid="periodo-curto"
-            className="min-w-0 flex-1 text-center text-xs font-semibold whitespace-nowrap first-letter:uppercase sm:hidden"
+            className="min-w-0 flex-1 truncate text-center text-xs font-semibold first-letter:uppercase sm:hidden"
           >
             {periodoCurto}
           </span>
@@ -538,7 +538,7 @@ export function AgendaClient({
                 size="sm"
                 data-testid="alternador-de-visao"
                 aria-label={t("Escolher a visualização")}
-                className="h-10 gap-2 rounded-xl px-4 text-sm sm:h-9 sm:px-3 sm:text-xs lg:h-8"
+                className="h-9 shrink-0 gap-1.5 rounded-xl px-3 text-xs sm:h-9 sm:gap-2 sm:text-xs lg:h-8"
               >
                 <span data-testid="visao-atual">
                   {t(VISOES.find((v) => v.id === visao)?.rotulo ?? "Semana")}

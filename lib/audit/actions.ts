@@ -745,6 +745,7 @@ export const AUDIT_ACTIONS = [
   "marketing_page.bulk_published",
   "marketing_cronograma.task_added",
   "marketing_cronograma.week_closed",
+  "marketing_cronograma.self_review_saved",
   "marketing_page.bulk_unpublished",
   "marketing_share_link.created",
   "marketing_share_link.revoked",
