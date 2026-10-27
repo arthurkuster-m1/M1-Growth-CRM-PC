@@ -1,6 +1,7 @@
 "use client";
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
+import { TituloDaOportunidade } from "@/components/vendas/TituloDaOportunidade";
 import { OrigemEmCascata, type ValorDaOrigem } from "@/components/contacts/ficha/OrigemEmCascata";
 import { corpoDaOrigem, valorDaOrigemDoCard } from "@/components/contacts/ficha/origem-do-card";
 import type { DadosDoLead } from "@/components/leads/FichaDoLead";
@@ -814,13 +815,10 @@ export function DialogoDaVenda({
             {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
           </DialogTitle>
           {/* O título, editável em cima — o MESMO da oportunidade e da venda (muda um, muda o outro). */}
-          <input
-            value={nomeDaVendaTexto}
-            maxLength={120}
-            aria-label={t("Título da oportunidade")}
-            onChange={(e) => setNomeDaVendaTexto(e.target.value)}
+          <TituloDaOportunidade
+            valor={nomeDaVendaTexto}
+            aoMudar={setNomeDaVendaTexto}
             placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
-            className="-mx-2 min-w-0 flex-1 rounded-xl border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-hidden transition-colors hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/20"
           />
           {ehVenda ? null : (
           <Popover>

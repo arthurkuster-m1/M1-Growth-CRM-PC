@@ -4,10 +4,25 @@ import * as React from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
+import { Check } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 import { AvatarDaPessoa } from "./AvatarDaPessoa";
 import type { Pessoa } from "./tipos";
+
+function Marca({ ligada }: { ligada: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "grid size-4 shrink-0 place-items-center rounded-md border",
+        ligada ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card",
+      )}
+    >
+      {ligada ? <Check size={11} weight="bold" /> : null}
+    </span>
+  );
+}
 
 /**
  * O filtro da Agenda para quem enxerga a equipe (gerente e administrador).
@@ -52,8 +67,10 @@ export function FiltroDaAgenda({
     return partes.join(" · ");
   })();
 
+  // O mesmo desenho das listas em popup do app (SeletorEmPopup): linhas arredondadas, escolha com ✓.
   const linha =
-    "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-secondary";
+    "flex min-h-9 w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm hover:bg-secondary";
+
 
   return (
     <div className={cn("flex items-center", className)} data-testid="filtro-da-agenda">
@@ -63,13 +80,13 @@ export function FiltroDaAgenda({
             type="button"
             data-testid="filtro-da-agenda-botao"
             data-ativos={ativos}
-            className="inline-flex h-9 max-w-full items-center gap-2 rounded-xl border px-3 text-xs font-medium hover:bg-secondary lg:h-8"
+            className="inline-flex h-9 max-w-full items-center gap-2 rounded-xl border bg-card px-3 text-xs font-medium hover:bg-secondary/60 lg:h-8"
           >
             <span className="text-muted-foreground">{t("Filtrar")}:</span>
             <span className="truncate">{resumo}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-2">
+        <PopoverContent align="start" className="w-[min(20rem,92vw)] p-1.5">
           <div className="max-h-[70dvh] overflow-y-auto">
             <div className="px-2 pt-1 pb-1 text-xs font-semibold text-muted-foreground">
               {t("Atendentes")}
@@ -80,7 +97,7 @@ export function FiltroDaAgenda({
               data-testid="filtro-todas-as-pessoas"
               onClick={() => aoMudarPessoas([])}
             >
-              <input type="checkbox" readOnly checked={pessoasEscolhidas.length === 0} />
+              <Marca ligada={pessoasEscolhidas.length === 0} />
               {t("Todos os atendentes")}
             </button>
             {pessoas.map((p) => (
@@ -91,7 +108,7 @@ export function FiltroDaAgenda({
                 data-testid={`filtro-pessoa-${p.id}`}
                 onClick={() => aoMudarPessoas(alternar(pessoasEscolhidas, p.id))}
               >
-                <input type="checkbox" readOnly checked={pessoasEscolhidas.includes(p.id)} />
+                <Marca ligada={pessoasEscolhidas.includes(p.id)} />
                 <AvatarDaPessoa pessoa={p} tamanho="sm" />
                 <span className="min-w-0 truncate">{p.nome}</span>
               </button>
@@ -108,7 +125,7 @@ export function FiltroDaAgenda({
                   data-testid="filtro-todos-os-tipos"
                   onClick={() => aoMudarTipos([])}
                 >
-                  <input type="checkbox" readOnly checked={tiposEscolhidos.length === 0} />
+                  <Marca ligada={tiposEscolhidos.length === 0} />
                   {t("Todos os tipos")}
                 </button>
                 {tipos.map((nome) => (
@@ -119,7 +136,7 @@ export function FiltroDaAgenda({
                     data-testid={`filtro-tipo-${nome}`}
                     onClick={() => aoMudarTipos(alternar(tiposEscolhidos, nome))}
                   >
-                    <input type="checkbox" readOnly checked={tiposEscolhidos.includes(nome)} />
+                    <Marca ligada={tiposEscolhidos.includes(nome)} />
                     <span className="min-w-0 truncate">{nome}</span>
                   </button>
                 ))}

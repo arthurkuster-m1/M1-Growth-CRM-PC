@@ -11,6 +11,7 @@ import { SeletorDeContato } from "@/components/kanban/SeletorDeContato";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { toast } from "sonner";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
+import { TituloDaOportunidade } from "@/components/vendas/TituloDaOportunidade";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { modeloDoAtendimento } from "@/lib/agenda/atendimentos";
@@ -27,6 +28,7 @@ import { useRouter } from "next/navigation";
 import {
   ROTULO_DO_STATUS_DA_VENDA,
   STATUS_DA_VENDA,
+  nomeDaVenda,
   type StatusDaVenda,
   type Venda,
 } from "@/lib/vendas";
@@ -765,12 +767,9 @@ function PaginaExistente({
                         <p className="text-sm text-text-muted">{t("Oportunidade indisponível.")}</p>
                       ) : (
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
-                          <span className="min-w-0 basis-full truncate font-medium sm:flex-1 sm:basis-auto">
-                            {a.oportunidade_titulo ||
-                              venda.name ||
-                              venda.product_name ||
-                              t("Oportunidade")}
-                          </span>
+                          <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
+                            <TituloDaOportunidadeDoCompromisso venda={venda} podeEditar={podeEditar} />
+                          </div>
                           {etapaAtual ? (
                             podeEditar && etapasDoFunil.length > 0 ? (
                               <MenuDeOpcoes
@@ -831,9 +830,9 @@ function PaginaExistente({
                   >
                     <h3 className="mb-2 text-base font-semibold">{t("Venda")}</h3>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
-                      <span className="min-w-0 basis-full truncate sm:flex-1 sm:basis-auto">
-                        {venda.product_name || venda.name || t("Produto de interesse")}
-                      </span>
+                      <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
+                        <TituloDaOportunidadeDoCompromisso venda={venda} podeEditar={podeEditar} />
+                      </div>
                       <span className="text-base font-semibold tabular-nums">
                         {formatMoney(venda.amount_cents, venda.currency)}
                       </span>
@@ -1046,6 +1045,47 @@ function PaginaExistente({
  * A página do compromisso. Com `id`, abre o compromisso; com `novo`, abre o formulário de um
  * compromisso novo e, ao criar, passa para a página dele.
  */
+/**
+ * O título da oportunidade na página do compromisso: o MESMO campo do popup da oportunidade e da
+ * venda (`TituloDaOportunidade`, o `name` da venda). Aparece nas seções Oportunidade e Venda e edita
+ * o mesmo dado: grava ao sair do campo.
+ */
+function TituloDaOportunidadeDoCompromisso({
+  venda,
+  podeEditar,
+}: {
+  venda: Venda;
+  podeEditar: boolean;
+}) {
+  const qc = useQueryClient();
+  const nome = nomeDaVenda(venda);
+  const [rascunho, setRascunho] = React.useState<string | null>(null);
+  const gravar = useMutation({
+    mutationFn: async (novo: string) => apiClient.patch(`/api/v1/vendas/${venda.id}`, { name: novo }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["venda-da-oportunidade"] });
+      void qc.invalidateQueries({ queryKey: ["agenda"] });
+    },
+    onError: showApiError,
+    onSettled: () => setRascunho(null),
+  });
+  return (
+    <TituloDaOportunidade
+      valor={rascunho ?? nome}
+      desabilitado={!podeEditar}
+      aoMudar={setRascunho}
+      aoSair={() => {
+        const novo = (rascunho ?? "").trim();
+        if (rascunho === null || novo === nome || novo === "") {
+          setRascunho(null);
+          return;
+        }
+        gravar.mutate(novo);
+      }}
+    />
+  );
+}
+
 export function PaginaDoCompromisso({
   id,
   novo,

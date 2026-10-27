@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { chaveDaFicha, OrigemEditavel, type DadosDoLead } from "@/components/leads/FichaDoLead";
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { CaretDown } from "@/lib/ui/icons";
@@ -102,26 +103,24 @@ export function AtalhosDaOportunidade({
               }}
               className={`${CLASSE_DO_CAMPO} flex-1 basis-40`}
             />
-            <input
-              type="date"
-              value={proximaAcaoEm ?? ""}
-              disabled={!podeEditar}
-              aria-label={t("Data da próxima ação")}
-              onChange={(e) =>
-                gravarProximaAcao.mutate({ proxima_acao_em: e.target.value || null })
-              }
-              className={`${CLASSE_DO_CAMPO} max-w-full min-w-0 shrink-0`}
+            <CampoDeData
+              valor={proximaAcaoEm ?? ""}
+              desabilitado={!podeEditar}
+              rotulo={t("Data da próxima ação")}
+              placeholder={t("Escolher data")}
+              aoMudar={(dia) => gravarProximaAcao.mutate({ proxima_acao_em: dia || null })}
+              className="max-w-full min-w-0 shrink-0 sm:w-44"
             />
           </div>
         </Campo>
         <Campo rotulo={t("Previsão de fechamento")}>
-          <input
-            type="date"
-            value={previsao ?? ""}
-            disabled={!podeEditar}
-            aria-label={t("Previsão de fechamento")}
-            onChange={(e) => gravarPrevisao.mutate(e.target.value || null)}
-            className={`${CLASSE_DO_CAMPO} w-full`}
+          <CampoDeData
+            valor={previsao ?? ""}
+            desabilitado={!podeEditar}
+            rotulo={t("Previsão de fechamento")}
+            placeholder={t("Escolher data")}
+            aoMudar={(dia) => gravarPrevisao.mutate(dia || null)}
+            className="w-full"
           />
         </Campo>
       </div>
