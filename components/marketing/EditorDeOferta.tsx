@@ -232,7 +232,7 @@ export function EditorDeOferta({
         <div
           role="group"
           aria-label={t("Nível da oferta")}
-          className="inline-flex rounded-xl bg-secondary p-0.5"
+          className="inline-flex max-w-full rounded-xl bg-secondary p-0.5"
         >
           {(["simples", "completa"] as const).map((n) => (
             <button
@@ -241,7 +241,8 @@ export function EditorDeOferta({
               aria-pressed={bloco.nivel === n}
               onClick={() => set("nivel", n)}
               className={cn(
-                "h-8 rounded-[10px] px-3 text-sm font-medium transition-colors",
+                // No celular a barra cresce na vertical para o texto caber inteiro (sem cortar as letras).
+                "min-h-10 rounded-[10px] px-3 py-1.5 text-center text-sm leading-tight font-medium transition-colors sm:h-8 sm:min-h-0 sm:py-0",
                 bloco.nivel === n
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",

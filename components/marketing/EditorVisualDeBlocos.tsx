@@ -325,10 +325,11 @@ function LinhaVisual({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn("group/linha relative", isDragging && "z-10 opacity-70")}
     >
-      <div className="flex items-start gap-1">
+      <div className="flex items-start gap-0.5 sm:gap-1">
         <div
           className={cn(
-            "flex w-9 shrink-0 items-center justify-end gap-0.5 pt-3 transition-opacity sm:w-12",
+            // No celular a faixa da alça é estreita (o texto aproveita a largura); no computador, larga.
+            "flex w-5 shrink-0 items-center justify-end gap-0.5 pt-3 transition-opacity sm:w-12",
             selecionado
               ? "opacity-100"
               : "opacity-0 group-hover/linha:opacity-100 focus-within:opacity-100",
@@ -357,7 +358,7 @@ function LinhaVisual({
               const r = e.currentTarget.getBoundingClientRect();
               aoAbrirMenu(r.left, r.bottom + 4, bloco.id);
             }}
-            className="grid h-6 w-5 cursor-grab touch-none place-items-center rounded-md text-text-subtle hover:bg-secondary"
+            className="grid h-6 w-5 cursor-grab touch-none place-items-center rounded-md text-text-subtle hover:bg-secondary max-sm:-mr-0.5"
           >
             <DotsSixVertical size={16} weight="bold" aria-hidden />
           </button>

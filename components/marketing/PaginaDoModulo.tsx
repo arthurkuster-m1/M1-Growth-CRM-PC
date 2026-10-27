@@ -294,7 +294,7 @@ export function PaginaDoModulo({
           {t("Esta página ainda não foi publicada.")}
         </p>
       ) : (
-        <article className="rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
+        <article className="rounded-3xl border bg-card p-4 shadow-sm sm:p-10">
           <BlocosRender blocos={visiveis} rotulos={rotulos} />
         </article>
       )}

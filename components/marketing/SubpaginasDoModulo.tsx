@@ -175,7 +175,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
                 aria-expanded={menu}
                 disabled={criando}
                 onClick={() => setMenu((a) => !a)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
               >
                 <Plus size={14} weight="bold" aria-hidden />
                 {ehProdutos ? t("Novo produto") : t("Nova subpágina")}

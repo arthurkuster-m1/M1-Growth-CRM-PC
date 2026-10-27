@@ -3,7 +3,8 @@ import { AvisoDeReuniaoEncerradaDoApp } from "@/components/agenda/AvisoDeReuniao
 import { DestinoPosReuniao } from "@/components/agenda/DestinoPosReuniao";
 import { NovoCompromissoGlobal } from "@/components/agenda/NovoCompromissoGlobal";
 import { PagamentoPedidoDaOportunidade } from "@/components/vendas/PagamentoPedidoDaOportunidade";
-import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { BotaoVoltar } from "@/components/shell/BotaoVoltar";
@@ -37,6 +38,14 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
   useCrmAlerts();
   useAtalhoDesfazer();
   useNotifyOpenFromServiceWorker();
+  // A ROLAGEM MORA NO <main>, não na janela: o Next só volta ao topo da JANELA ao navegar, então a
+  // página nova abria na altura em que a anterior estava (ex.: Análise de concorrência abrindo no
+  // meio). Trocou de página (de caminho, não só de filtro na URL): o conteúdo volta ao começo.
+  const caminho = usePathname();
+  const areaDeRolagem = useRef<HTMLElement>(null);
+  useEffect(() => {
+    areaDeRolagem.current?.scrollTo?.({ top: 0 });
+  }, [caminho]);
   // O SINAL DE PRESENÇA (issue #996) sai daqui porque presença é "esta aba
   // está aberta" — não "a pessoa está na tela Equipe". Quem atende passa o dia
   // no Inbox e na Agenda; um emissor amarrado à tela de gestão diria que só o
@@ -105,6 +114,7 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
           peça fixa quem cobre isso é o terceiro termo do `max()` do contrato.
         */}
         <main
+          ref={areaDeRolagem}
           className="flex-1 overflow-auto p-4 pb-area-segura sm:p-6"
           style={estiloDaReserva(ocupacaoDoRodape)}
           data-rodape-ocupado={ocupacaoDoRodape}

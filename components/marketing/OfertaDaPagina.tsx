@@ -158,10 +158,14 @@ export function OfertaDaPagina({
                 key={k}
                 className={cn("flex flex-col gap-1.5 rounded-2xl bg-card p-5", BORDA_DA_MARCA)}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <h4 className="font-semibold">{e.nome}</h4>
+                {/* No celular o preço vai ACIMA do nome (o nome ganha a largura inteira do cartão);
+                    a partir de `sm` ele volta para o lado. */}
+                <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:justify-between sm:gap-3">
+                  <h4 className="order-2 min-w-0 font-semibold [overflow-wrap:anywhere] sm:order-1">
+                    {e.nome}
+                  </h4>
                   {e.valor ? (
-                    <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    <span className="order-1 shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary sm:order-2">
                       {e.valor}
                     </span>
                   ) : null}
@@ -183,10 +187,14 @@ export function OfertaDaPagina({
                 key={k}
                 className="flex flex-col gap-1.5 rounded-2xl border-[1.5px] border-dashed border-primary bg-primary/5 p-5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <h4 className="font-semibold">{e.nome}</h4>
+                {/* No celular o preço vai ACIMA do nome (o nome ganha a largura inteira do cartão);
+                    a partir de `sm` ele volta para o lado. */}
+                <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:justify-between sm:gap-3">
+                  <h4 className="order-2 min-w-0 font-semibold [overflow-wrap:anywhere] sm:order-1">
+                    {e.nome}
+                  </h4>
                   {e.valor ? (
-                    <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    <span className="order-1 shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary sm:order-2">
                       {e.valor}
                     </span>
                   ) : null}

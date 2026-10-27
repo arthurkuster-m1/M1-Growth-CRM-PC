@@ -25,6 +25,7 @@ import {
 import { lerChaveDePagina } from "@/lib/marketing/modulos";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { sincronizarOfertas } from "@/lib/marketing/sincronizar-ofertas";
+import { tipoAoMudarOPreco } from "@/lib/marketing/tipo-ao-mudar-preco";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +69,9 @@ function aplicar(blocosBrutos: unknown, m: Mudancas): unknown[] | null {
   const saida = blocos.map((b) => {
     if (b.tipo !== "oferta") return b;
     achou = true;
+    // Digitar um preço em produto gratuito/sob consulta muda o tipo para "Único" (senão o valor
+    // ficava escondido atrás do tipo e a tabela parecia não ter salvo).
+    const tipoNovo = m.tipoDePreco ?? tipoAoMudarOPreco(b.preco.tipo, m.preco);
     return {
       ...b,
       ...(m.etapa !== undefined ? { etapa: m.etapa } : {}),
@@ -75,7 +79,7 @@ function aplicar(blocosBrutos: unknown, m: Mudancas): unknown[] | null {
       ...(m.carroChefe !== undefined ? { carroChefe: m.carroChefe } : {}),
       preco: {
         ...b.preco,
-        ...(m.tipoDePreco !== undefined ? { tipo: m.tipoDePreco } : {}),
+        ...(tipoNovo !== undefined ? { tipo: tipoNovo } : {}),
         ...(m.preco !== undefined ? { valor: m.preco === null ? "" : moedaDoNumero(m.preco) } : {}),
       },
     };
