@@ -19,6 +19,7 @@ import { opcaoDaTarefa, type OpcaoDeStatus } from "@/lib/tarefas/opcoes-de-statu
 import type { Tarefa } from "@/lib/tarefas/tipos";
 import { Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
+import { soDeDentro } from "@/lib/ui/so-de-dentro";
 
 interface Props {
   tarefas: Tarefa[];
@@ -127,13 +128,13 @@ export function QuadroKanban({
                   // Mexer numa propriedade do cartão não pode abrir a tarefa nem começar um arrasto.
                   <div
                     className="mt-1.5 flex flex-col gap-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={soDeDentro}
+                    onKeyDown={soDeDentro}
+                    onPointerDown={soDeDentro}
                     // O arrasto do cartão nasce de mousedown/touchstart: selecionar texto numa
                     // propriedade não pode arrastar o cartão.
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
+                    onMouseDown={soDeDentro}
+                    onTouchStart={soDeDentro}
                   >
                     {colunas.map((c) => (
                       <div key={c.id} className="-mx-1 min-w-0">
