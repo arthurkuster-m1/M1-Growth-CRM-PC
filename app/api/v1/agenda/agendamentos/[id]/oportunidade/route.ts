@@ -5,8 +5,50 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * GET — a oportunidade ligada ao compromisso, com as ETAPAS do funil dela (para trocar a etapa
+ * pela página do compromisso). Sem oportunidade ligada, `lead` vem nulo.
+ */
+export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = randomUUID();
+  const auth = await requireRole("viewer", { requestId, resource: "agenda" });
+  if (!auth.ok) return auth.response;
+  const { id } = await context.params;
+  if (!z.uuid().safeParse(id).success)
+    return fail("not_found", "Compromisso indisponível.", 404, { requestId });
+  const org = auth.org.orgId;
+  const db = await createClient();
+  const { data: vinculo } = await db
+    .from("crm_lead_links")
+    .select("lead_id")
+    .eq("organization_id", org)
+    .eq("target_kind", "appointment")
+    .eq("target_id", id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const leadId = (vinculo as { lead_id?: string } | null)?.lead_id;
+  if (!leadId) return ok({ lead: null, etapas: [] }, { requestId });
+  const { data: lead } = await db
+    .from("crm_leads")
+    .select("id, pipeline_id, stage_id, status, updated_at")
+    .eq("organization_id", org)
+    .eq("id", leadId)
+    .maybeSingle();
+  if (!lead) return ok({ lead: null, etapas: [] }, { requestId });
+  const { data: etapas } = await db
+    .from("crm_stages")
+    .select("id, name, color, position, is_won, is_lost, qualification")
+    .eq("organization_id", org)
+    .eq("pipeline_id", (lead as { pipeline_id: string }).pipeline_id)
+    .eq("is_archived", false)
+    .order("position", { ascending: true });
+  return ok({ lead, etapas: etapas ?? [] }, { requestId });
+}
 
 const RANK: Record<string, number> = { viewer: 0, agent: 1, manager: 2, admin: 3, owner: 4 };
 const corpo = z.object({ lead_id: z.string().uuid().nullable() });

@@ -22,8 +22,16 @@ export const OPCOES_DE_RESULTADO: Array<{
   dica: string;
 }> = [
   { id: "no_show", rotulo: "No show", dica: "O cliente não apareceu." },
-  { id: "nao_comprou", rotulo: "Compareceu e não comprou", dica: "A reunião aconteceu, sem venda." },
-  { id: "comprou", rotulo: "Compareceu e comprou", dica: "Abre a oportunidade para registrar o pagamento." },
+  {
+    id: "nao_comprou",
+    rotulo: "Compareceu e não comprou",
+    dica: "A reunião aconteceu, sem venda.",
+  },
+  {
+    id: "comprou",
+    rotulo: "Compareceu e comprou",
+    dica: "Abre a oportunidade para registrar o pagamento.",
+  },
 ];
 
 /** As três ações rápidas do compromisso, as mesmas na lista, na grade e na página do compromisso. */
@@ -36,7 +44,8 @@ export function useAcoesDoCompromisso() {
   };
 
   const confirmar = useMutation({
-    mutationFn: async (id: string) => apiClient.post(`/api/v1/agenda/agendamentos/${id}/confirmacao`, {}),
+    mutationFn: async (id: string) =>
+      apiClient.post(`/api/v1/agenda/agendamentos/${id}/confirmacao`, {}),
     onSuccess: () => {
       toast.success(t("Compromisso confirmado."));
       recarregar();
@@ -48,10 +57,14 @@ export function useAcoesDoCompromisso() {
     mutationFn: async (a: { id: string; opcao: ResultadoDaReuniao; leadId?: string | null }) => {
       let { leadId } = a;
       if (a.opcao !== "no_show" && leadId === undefined) {
-        const d = await apiClient.get<{ data: { lead_id: string | null } }>(`/api/v1/agenda/agendamentos/${a.id}`);
+        const d = await apiClient.get<{ data: { lead_id: string | null } }>(
+          `/api/v1/agenda/agendamentos/${a.id}`,
+        );
         leadId = d.data.lead_id;
       }
-      const atual = await apiClient.get<{ data: { revision: number } }>(`/api/v1/agenda/agendamentos/${a.id}`);
+      const atual = await apiClient.get<{ data: { revision: number } }>(
+        `/api/v1/agenda/agendamentos/${a.id}`,
+      );
       await apiClient.patch("/api/v1/agenda/agendamentos", {
         id: a.id,
         revision: atual.data.revision,
@@ -68,7 +81,12 @@ export function useAcoesDoCompromisso() {
         return;
       }
       if (leadId) pedirPagamentoDaOportunidade(leadId);
-      else toast.message(t("Resultado registrado. Este compromisso não tem oportunidade ligada para lançar a venda."));
+      else
+        toast.message(
+          t(
+            "Resultado registrado. Este compromisso não tem oportunidade ligada para lançar a venda.",
+          ),
+        );
     },
     onError: showApiError,
   });
@@ -179,11 +197,14 @@ export function BotaoExcluir({
   aoExcluir,
   tamanho = "sm",
   className,
+  soIcone = false,
 }: {
   id: string;
   aoExcluir?: () => void;
   tamanho?: "sm" | "default";
   className?: string;
+  /** Só a lixeira vermelha (o texto fica no rótulo acessível): cabe ao lado do X da página. */
+  soIcone?: boolean;
 }) {
   const t = useT();
   const [pedindo, setPedindo] = React.useState(false);
@@ -210,10 +231,32 @@ export function BotaoExcluir({
         >
           {t("Sim, excluir")}
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="rounded-lg" onClick={() => setPedindo(false)}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="rounded-lg"
+          onClick={() => setPedindo(false)}
+        >
           {t("Não")}
         </Button>
       </span>
+    );
+  if (soIcone)
+    return (
+      <button
+        type="button"
+        data-testid={`excluir-${id}`}
+        aria-label={t("Excluir compromisso")}
+        title={t("Excluir compromisso")}
+        className={cn(
+          "grid h-9 w-9 place-items-center rounded-xl text-error-fg transition-colors hover:bg-error-bg",
+          className,
+        )}
+        onClick={() => setPedindo(true)}
+      >
+        <Trash size={20} weight="bold" aria-hidden />
+      </button>
     );
   return (
     <Button

@@ -13,6 +13,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import type { DetalheDoCompromisso } from "@/lib/agenda/propriedades-do-compromisso";
+import { corDoTipo } from "@/lib/agenda/cor-do-tipo";
 import { ALVO_DE_VINCULO_DO_AGENDAMENTO } from "@/lib/agenda/tipos";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     tiposIds.length
       ? supabase
           .from("calendar_event_types")
-          .select("id, name, color, category")
+          .select("id, name, category")
           .eq("organization_id", orgId)
           .in("id", tiposIds)
       : { data: [] as Linha[] },
@@ -135,7 +136,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       tipo: tipo
         ? {
             nome: texto(tipo.name) ?? "",
-            cor: texto(tipo.color),
+            cor: corDoTipo(String(tipo.id)),
             categoria: texto(tipo.category) ?? "outro",
           }
         : null,
