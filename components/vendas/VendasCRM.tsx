@@ -5,7 +5,6 @@ import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { SeletorDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
@@ -39,16 +38,18 @@ import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { recebeuNoMes, recorteDoMes, resumoDaVenda } from "@/lib/vendas-tabela";
 import { apiClient } from "@/lib/api/client";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import {
-  aplicarConsulta,
-  type CampoConsultavel,
-} from "@/lib/motor/consulta";
+import { aplicarConsulta, type CampoConsultavel } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+import {
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import { somarMeses } from "@/lib/marketing/campanhas-resumo";
 import { precisaDeConfirmacao } from "@/lib/vendas-recorrentes";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { ArrowRight, Plus, TextAa } from "@/lib/ui/icons";
+import { Plus, TextAa } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import {
   STATUS_DA_VENDA,
@@ -121,10 +122,8 @@ export function VendasCRM() {
 
   // As abas salvas de Vendas (da organização, como as de Clientes e Tarefas). "Tabela" é a de fábrica.
   const padrao = useVisualizacao("vendas");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
-    "vendas",
-    podeEditarVisoes,
-  );
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } =
+    useVisoesSalvas("vendas", podeEditarVisoes);
   const ID_DA_PADRAO = "padrao";
   const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
   const ordemDasAbas = [
@@ -238,9 +237,9 @@ export function VendasCRM() {
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
   const [soComRecebimento, setSoComRecebimento] = useState(false);
   /** O número do topo "aberto": a lista mostra só as vendas que o compõem (clique de novo para soltar). */
-  const [destaque, setDestaque] = useState<null | "recebido" | "areceber" | "interesse" | "fechadas">(
-    null,
-  );
+  const [destaque, setDestaque] = useState<
+    null | "recebido" | "areceber" | "interesse" | "fechadas"
+  >(null);
   const [abertaId, setAbertaId] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState<Venda | null>(null);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
@@ -321,14 +320,17 @@ export function VendasCRM() {
     )
     .sort((a, b) => a.parcela.due_on.localeCompare(b.parcela.due_on));
   const canceladas = vendas.flatMap((v) =>
-    (v.parcelas ?? []).filter((p) => p.status === "cancelada").map((p) => ({ venda: v, parcela: p })),
+    (v.parcelas ?? [])
+      .filter((p) => p.status === "cancelada")
+      .map((p) => ({ venda: v, parcela: p })),
   );
   const termo = busca.trim().toLowerCase();
   const filtradasSemDestaque = useMemo(
     () =>
       vendas.filter(
         (v) =>
-          (idsEscolhidos.length === 0 || (v.pipeline_id !== null && idsEscolhidos.includes(v.pipeline_id))) &&
+          (idsEscolhidos.length === 0 ||
+            (v.pipeline_id !== null && idsEscolhidos.includes(v.pipeline_id))) &&
           (filtroStatus === null || v.status === filtroStatus) &&
           (!soComRecebimento || recebeuNoMes(v, mes)) &&
           (termo === "" ||
@@ -499,8 +501,7 @@ export function VendasCRM() {
       titulo: t("Valor pago"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 140,
-      celula: (v) =>
-        dinheiro(resumoDaVenda(v).pagoCents, "text-green-700 dark:text-green-400"),
+      celula: (v) => dinheiro(resumoDaVenda(v).pagoCents, "text-green-700 dark:text-green-400"),
     },
     {
       id: "previsto",
@@ -605,7 +606,11 @@ export function VendasCRM() {
         </span>
       );
     },
-    pago: (ls) => dinheiro(somar(ls, (r) => r.pagoCents), "text-green-700 dark:text-green-400"),
+    pago: (ls) =>
+      dinheiro(
+        somar(ls, (r) => r.pagoCents),
+        "text-green-700 dark:text-green-400",
+      ),
     previsto: (ls) => dinheiro(somar(ls, (r) => r.previstoCents)),
     valor: (ls) => dinheiro(ls.reduce((s2, v) => s2 + v.amount_cents, 0)),
   };
@@ -619,7 +624,12 @@ export function VendasCRM() {
       opcoes?: { id: string; rotulo: string; cor?: CorDaOpcao }[];
     }
   > = [
-    { id: "oportunidade", titulo: t("Oportunidade"), tipo: "texto", valorDe: (v) => nomeDaVenda(v) },
+    {
+      id: "oportunidade",
+      titulo: t("Oportunidade"),
+      tipo: "texto",
+      valorDe: (v) => nomeDaVenda(v),
+    },
     { id: "cliente", titulo: t("Cliente"), tipo: "texto", valorDe: (v) => v.cliente?.nome ?? "" },
     { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (v) => v.funil ?? "" },
     {
@@ -738,8 +748,9 @@ export function VendasCRM() {
   return (
     <div className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
       {/* No celular o título, o subtítulo e o atalho para Clientes saem: a barra de abas do CRM já diz onde você está. */}
-      <header className="flex flex-wrap items-start justify-between gap-3 max-sm:hidden">
-        <div>
+      {/* O período (mês) fica à direita do título; no celular o título some e o período continua. */}
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-sm:hidden">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Vendas")}</h1>
           <p className="text-sm text-muted-foreground">
             {t(
@@ -747,14 +758,30 @@ export function VendasCRM() {
             )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/app/clientes"
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
+        <div className="flex items-center gap-1 rounded-xl bg-secondary p-0.5 sm:ml-auto">
+          <button
+            type="button"
+            aria-label={t("Mês anterior")}
+            onClick={() => setMes(somarMeses(mes, -1))}
+            className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
           >
-            <ArrowRight size={14} className="rotate-180" aria-hidden />
-            {t("Clientes")}
-          </Link>
+            ‹
+          </button>
+          <span className="min-w-36 text-center text-sm font-medium capitalize">
+            {new Intl.DateTimeFormat("pt-BR", {
+              month: "long",
+              year: "numeric",
+              timeZone: "UTC",
+            }).format(new Date(`${mes}-01T12:00:00Z`))}
+          </span>
+          <button
+            type="button"
+            aria-label={t("Próximo mês")}
+            onClick={() => setMes(somarMeses(mes, 1))}
+            className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
+          >
+            ›
+          </button>
         </div>
       </header>
 
@@ -837,59 +864,35 @@ export function VendasCRM() {
         </section>
       ) : null}
 
-      <div className="flex items-center gap-1 self-start rounded-xl bg-secondary p-0.5">
-        <button
-          type="button"
-          aria-label={t("Mês anterior")}
-          onClick={() => setMes(somarMeses(mes, -1))}
-          className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
-        >
-          ‹
-        </button>
-        <span className="min-w-36 text-center text-sm font-medium capitalize">
-          {new Intl.DateTimeFormat("pt-BR", {
-            month: "long",
-            year: "numeric",
-            timeZone: "UTC",
-          }).format(new Date(`${mes}-01T12:00:00Z`))}
-        </span>
-        <button
-          type="button"
-          aria-label={t("Próximo mês")}
-          onClick={() => setMes(somarMeses(mes, 1))}
-          className="grid h-9 w-9 grid-cols-1 place-items-center rounded-[10px] hover:bg-card"
-        >
-          ›
-        </button>
-      </div>
-
       <section
         aria-label={t("Resumo")}
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-5 max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border max-sm:flex max-sm:[scrollbar-width:none] max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent sm:grid-cols-3 xl:grid-cols-5 max-sm:[&::-webkit-scrollbar]:hidden"
       >
         {numeros.map(([rotulo, valor, filtro]) => {
           const ativo = filtro !== null && destaque === filtro;
           const Cartao = filtro === null ? "div" : "button";
           return (
-          <Cartao
-            key={rotulo}
-            {...(filtro === null
-              ? {}
-              : {
-                  type: "button" as const,
-                  "aria-pressed": ativo,
-                  title: t("Clique para ver só as vendas que compõem este número"),
-                  onClick: () => setDestaque(ativo ? null : filtro),
-                })}
-            className={`bg-card px-4 py-3 text-left max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2 ${
-              filtro === null ? "" : "transition-colors hover:bg-secondary/60"
-            } ${ativo ? "ring-2 ring-primary ring-inset" : ""}`}
-          >
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {rotulo}
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{valor}</NumeroQueCabe></p>
-          </Cartao>
+            <Cartao
+              key={rotulo}
+              {...(filtro === null
+                ? {}
+                : {
+                    type: "button" as const,
+                    "aria-pressed": ativo,
+                    title: t("Clique para ver só as vendas que compõem este número"),
+                    onClick: () => setDestaque(ativo ? null : filtro),
+                  })}
+              className={`bg-card px-4 py-3 text-left max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2 ${
+                filtro === null ? "" : "transition-colors hover:bg-secondary/60"
+              } ${ativo ? "ring-2 ring-primary ring-inset" : ""}`}
+            >
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                {rotulo}
+              </p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">
+                <NumeroQueCabe>{valor}</NumeroQueCabe>
+              </p>
+            </Cartao>
           );
         })}
       </section>
@@ -910,7 +913,6 @@ export function VendasCRM() {
           </button>
         </p>
       ) : null}
-
 
       <SeletorDeFunis
         funis={funisNaOrdem}
@@ -974,12 +976,14 @@ export function VendasCRM() {
           className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         />
         {/* Os chips de situação: no celular, uma fila que rola de lado (sem quebrar em várias linhas). */}
-        <div className="flex flex-wrap gap-1.5 max-sm:order-last max-sm:w-full max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden">
+        <div className="flex flex-wrap gap-1.5 max-sm:order-last max-sm:w-full max-sm:[scrollbar-width:none] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 max-sm:[&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             aria-pressed={soComRecebimento}
             onClick={() => setSoComRecebimento((x) => !x)}
-            title={t("Só as vendas com algum pagamento recebido no mês escolhido (mesmo comprometidas)")}
+            title={t(
+              "Só as vendas com algum pagamento recebido no mês escolhido (mesmo comprometidas)",
+            )}
             className={cn(
               "h-9 shrink-0 rounded-lg border px-3 text-xs font-medium whitespace-nowrap",
               soComRecebimento ? "border-green-600 bg-green-600/10" : "hover:bg-secondary",
@@ -1134,7 +1138,9 @@ export function VendasCRM() {
         }
       />
 
-      {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
+      {abertaId ? (
+        <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} />
+      ) : null}
       {cancelando && cancelando.pipeline_id ? (
         <LoseLeadDialog
           open
@@ -1206,7 +1212,11 @@ function CobrancaParaConfirmar({
           />
         </label>
         <div className="w-48">
-          <SeletorDaFormaDePagamento valor={forma} aoEscolher={setForma} className="h-9 rounded-lg" />
+          <SeletorDaFormaDePagamento
+            valor={forma}
+            aoEscolher={setForma}
+            className="h-9 rounded-lg"
+          />
         </div>
         <button
           type="button"

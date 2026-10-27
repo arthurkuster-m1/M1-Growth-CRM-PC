@@ -660,7 +660,7 @@ function LinhaDeSelecao({
           type="checkbox"
           checked={marcado}
           onChange={aoMarcar}
-          className="h-4 w-4 shrink-0 accent-primary"
+          className="caixa-redonda"
         />
         <span className="min-w-0 flex-1 truncate" title={funil.nome}>
           {funil.nome}
@@ -748,8 +748,8 @@ export function SeletorDeFunis({
     escolhidos.length === 0
       ? t("Todas")
       : escolhidos.length === 1
-        ? (funis.find((f) => f.id === escolhidos[0])?.nome ?? t("1 funil"))
-        : `${escolhidos.length} ${t("funis")}`;
+        ? (funis.find((f) => f.id === escolhidos[0])?.nome ?? t("1 campanha"))
+        : `${escolhidos.length} ${t("campanhas")}`;
 
   function terminou(e: DragEndEvent) {
     const { active, over } = e;
@@ -774,7 +774,7 @@ export function SeletorDeFunis({
           )}
         >
           <Funnel size={14} className="shrink-0" aria-hidden />
-          <span className="text-muted-foreground">{t("Funis")}:</span>
+          <span className="text-muted-foreground">{t("Campanhas")}:</span>
           <span className="truncate">{rotulo}</span>
           <CaretDown size={12} className="shrink-0 text-muted-foreground" aria-hidden />
         </button>
@@ -787,7 +787,7 @@ export function SeletorDeFunis({
         className="max-h-[min(var(--radix-popover-content-available-height),80dvh)] w-[min(calc(100vw-1.5rem),400px)] overflow-y-auto overscroll-contain p-2"
       >
         <label className="relative block">
-          <span className="sr-only">{t("Buscar funil")}</span>
+          <span className="sr-only">{t("Buscar campanha")}</span>
           <MagnifyingGlass
             size={14}
             aria-hidden
@@ -796,7 +796,7 @@ export function SeletorDeFunis({
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder={t("Buscar funil")}
+            placeholder={t("Buscar campanha")}
             className="h-9 w-full rounded-xl border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
           />
         </label>
@@ -806,7 +806,7 @@ export function SeletorDeFunis({
               type="checkbox"
               checked={escolhidos.length === 0}
               onChange={() => aoEscolher([])}
-              className="h-4 w-4 accent-primary"
+              className="caixa-redonda"
             />
             {t("Todas")}
           </label>
@@ -831,7 +831,7 @@ export function SeletorDeFunis({
           </DndContext>
           {ativosDaLista.length === 0 ? (
             <p className="px-2 py-3 text-xs text-muted-foreground">
-              {t("Nenhum funil encontrado.")}
+              {t("Nenhuma campanha encontrada.")}
             </p>
           ) : null}
 
@@ -903,7 +903,7 @@ export function SeletorDeFunis({
                         type="checkbox"
                         checked={filtros.status.includes(s)}
                         onChange={() => aoFiltrar({ ...filtros, status: alternar(filtros.status, s) })}
-                        className="h-4 w-4 accent-primary"
+                        className="caixa-redonda"
                       />
                       {rotuloDoStatus(s === "sem_campanha" ? null : s)}
                     </label>
@@ -922,7 +922,7 @@ export function SeletorDeFunis({
                         type="checkbox"
                         checked={filtros.canais.includes(c)}
                         onChange={() => aoFiltrar({ ...filtros, canais: alternar(filtros.canais, c) })}
-                        className="h-4 w-4 accent-primary"
+                        className="caixa-redonda"
                       />
                       {rotuloDoCanal(t, c)}
                     </label>
@@ -955,11 +955,11 @@ export function SeletorDeFunis({
               className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
             >
               <Archive size={14} aria-hidden />
-              {t("Arquivar funis de campanhas pausadas ou encerradas")}
+              {t("Arquivar campanhas pausadas ou encerradas")}
               {pausadas.length > 0 ? ` (${pausadas.length})` : ""}
             </button>
             <p className="px-1 text-[11px] text-muted-foreground">
-              {t("Arquivar só tira o funil da lista de cima: as oportunidades continuam em Todas.")}
+              {t("Arquivar só tira a campanha da lista: as oportunidades continuam em Todas.")}
             </p>
           </div>
         ) : null}
