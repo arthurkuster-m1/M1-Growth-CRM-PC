@@ -26,6 +26,7 @@ import { pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useRouter } from "next/navigation";
 import type { Venda } from "@/lib/vendas";
 
+import { AtalhosDaOportunidade } from "./AtalhosDaOportunidade";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { corDoTipo } from "@/lib/agenda/cor-do-tipo";
 import { BotaoExcluir, useAcoesDoCompromisso } from "./AcoesDoCompromisso";
@@ -366,6 +367,9 @@ function PaginaExistente({
               stage_id: string;
               status: string;
               updated_at: string;
+              proxima_acao: string | null;
+              proxima_acao_em: string | null;
+              expected_close_date: string | null;
             } | null;
             etapas: EtapaDoFunil[];
           };
@@ -796,6 +800,20 @@ function PaginaExistente({
                           </span>
                         </div>
                       )}
+                      {a.lead_id && venda ? (
+                        <AtalhosDaOportunidade
+                          key={a.lead_id}
+                          leadId={a.lead_id}
+                          podeEditar={podeEditar}
+                          proximaAcao={oport.data?.lead?.proxima_acao ?? null}
+                          proximaAcaoEm={oport.data?.lead?.proxima_acao_em ?? null}
+                          previsao={oport.data?.lead?.expected_close_date ?? null}
+                          aoSalvar={() => {
+                            void oport.refetch();
+                            void qc.invalidateQueries({ queryKey: ["venda-da-oportunidade"] });
+                          }}
+                        />
+                      ) : null}
                     </div>
                   )}
                 </section>

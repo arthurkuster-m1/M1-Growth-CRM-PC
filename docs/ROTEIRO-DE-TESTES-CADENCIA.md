@@ -421,4 +421,8 @@ Em **Agenda**. Teste no computador e no celular.
 | 22.13| Clique na **etapa** e escolha outra                                         | A etapa muda aqui e **também no funil/CRM**; etapa de perda pede o motivo; etapa de ganho pede o pagamento         |           |
 | 22.14| **Venda**: produto, valor e status                                          | Numa linha no computador; quebra em linhas no celular; o status é uma etiqueta colorida editável                   |           |
 | 22.15| Mude o status da venda (Comprometida / Paga / Não comprou)                  | Reflete na página da oportunidade e no CRM                                                                         |           |
+| 22.16| **Oportunidade › Próxima ação**: escreva e saia do campo; escolha uma data | Grava ("Próxima ação atualizada") e aparece igual na **página da oportunidade** e no CRM                           |           |
+| 22.17| **Oportunidade › Previsão de fechamento**: escolha uma data                | Grava e aparece igual na página da oportunidade                                                                     |           |
+| 22.18| **Oportunidade › Origem**                                                   | É um **toggle fechado**, com o resumo (campanha · origem) na linha; ao abrir, dá para trocar campanha, criativo, landing page e origem em texto |           |
+| 22.19| Quem só lê (viewer)                                                         | Próxima ação, previsão e origem aparecem **travadas**                                                              |           |
 

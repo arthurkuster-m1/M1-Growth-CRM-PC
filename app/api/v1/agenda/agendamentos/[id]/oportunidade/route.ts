@@ -35,7 +35,9 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   if (!leadId) return ok({ lead: null, etapas: [] }, { requestId });
   const { data: lead } = await db
     .from("crm_leads")
-    .select("id, pipeline_id, stage_id, status, updated_at")
+    .select(
+      "id, pipeline_id, stage_id, status, updated_at, proxima_acao, proxima_acao_em, expected_close_date",
+    )
     .eq("organization_id", org)
     .eq("id", leadId)
     .maybeSingle();
