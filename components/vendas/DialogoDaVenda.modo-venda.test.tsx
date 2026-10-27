@@ -107,11 +107,11 @@ describe("página da venda × página da oportunidade", () => {
     const ordem = [
       "Funil e status",
       "Responsável",
+      "Próximos passos",
       "Compromissos",
       "Tarefas",
       "Previsão de fechamento",
       "Produtos e serviços",
-      "Próximos passos",
       "Comentários",
       "Detalhes da oportunidade",
     ].map((t) => screen.getByText(t));

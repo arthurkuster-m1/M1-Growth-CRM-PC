@@ -10,6 +10,7 @@ import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
 import { PaginaDoCompromisso, statusDoCompromisso } from "@/components/agenda/PaginaDoCompromisso";
 import { useAcoesDoCompromisso } from "@/components/agenda/AcoesDoCompromisso";
 import { MenuDeOpcoes, Tag } from "@/components/agenda/CamposDoCompromisso";
+import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorClient";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -361,9 +362,11 @@ export function TarefasDaOportunidade({
   podeEditar?: boolean;
 }) {
   const t = useT();
-  const router = useRouter();
+  const { user, activeOrg } = useAuth();
   const qc = useQueryClient();
   const [agora] = useState(() => Date.now());
+  const [tarefaAbertaId, setTarefaAbertaId] = useState<string | null>(null);
+  const [agoraIso] = useState(() => new Date().toISOString());
   const [criando, setCriando] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [dia, setDia] = useState("");
@@ -420,7 +423,7 @@ export function TarefasDaOportunidade({
                 <button
                   type="button"
                   aria-label={`${t("Abrir tarefa")}: ${x.title}`}
-                  onClick={() => router.push(`/app/tarefas?abrir=${x.id}`)}
+                  onClick={() => setTarefaAbertaId(x.id)}
                   className="absolute inset-0 rounded-xl"
                 />
                 <button
@@ -499,6 +502,20 @@ export function TarefasDaOportunidade({
             </button>
           </div>
         )
+      ) : null}
+      {tarefaAbertaId ? (
+        // Abre POR CIMA, no lugar: o mesmo painel da tela de Tarefas e do Início.
+        <TarefasMotorClient
+          key={tarefaAbertaId}
+          soPainel
+          abrirInicial={tarefaAbertaId}
+          aoFecharPainel={() => setTarefaAbertaId(null)}
+          fuso={activeOrg?.timezone || "America/Sao_Paulo"}
+          usuarioId={user.id}
+          podeEditar={podeEditar}
+          podeConfigurar={false}
+          agoraIso={agoraIso}
+        />
       ) : null}
     </div>
   );
