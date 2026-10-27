@@ -118,6 +118,7 @@ O fork do CRM foi MESCLADO a este chat: tudo que ele fez está na `main` (commit
 - `docs/PLANO-CAMPANHAS-M1.md` — campanhas de demanda (frente 4): fórmulas da planilha do Arthur,
   modelo, sessões C1–C7, decisões, métricas por canal.
 - `docs/PLANO-MARKETING-M1.md` — histórico da aba Marketing.
+- `docs/PLANO-REDES-SOCIAIS-M1.md` — redes sociais direto pelas APIs da Meta e do YouTube (sem parceiro): análise, DMs, comentários, publicação. Só plano, nada construído.
 
 **Feito e no ar hoje:** Cronograma completo; produtos em escala (busca, tabela, importação CSV,
 edição em massa/na linha); páginas legais + página inicial pública (Google verificado); redução do
