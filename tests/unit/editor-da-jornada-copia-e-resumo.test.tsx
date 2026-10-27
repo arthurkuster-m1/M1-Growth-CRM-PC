@@ -68,10 +68,11 @@ function faixasNaTela(): Record<string, string[]> {
   const porDia: Record<string, string[]> = {};
   for (const linha of screen.getAllByTestId("janela")) {
     const dow = linha.getAttribute("data-dow") ?? "?";
-    const inicio = linha.querySelector('input[aria-label="Início"]') as HTMLInputElement | null;
-    const fim = linha.querySelector('input[aria-label="Fim"]') as HTMLInputElement | null;
+    // O seletor de hora do app: o botão mostra o horário escrito (HH:mm).
+    const inicio = linha.querySelector('button[aria-label="Início"]');
+    const fim = linha.querySelector('button[aria-label="Fim"]');
     if (!inicio || !fim) continue;
-    (porDia[dow] ??= []).push(`${inicio.value}–${fim.value}`);
+    (porDia[dow] ??= []).push(`${inicio.textContent?.trim()}–${fim.textContent?.trim()}`);
   }
   return porDia;
 }

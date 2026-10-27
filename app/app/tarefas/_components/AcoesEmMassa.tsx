@@ -1,5 +1,6 @@
 "use client";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useState } from "react";
 
@@ -69,12 +70,11 @@ function PainelDeData({
         />
       </label>
       {hora !== null ? (
-        <input
-          type="time"
-          aria-label={t("Horário")}
-          value={hora}
-          onChange={(e) => setHora(e.target.value || "09:00")}
-          className="h-10 w-full rounded-xl border bg-card px-2 text-sm"
+        <SeletorDeHora
+          rotulo={t("Horário")}
+          valor={hora}
+          aoMudar={(v) => setHora(v || "09:00")}
+          className="h-10 w-full justify-between"
         />
       ) : null}
       <div className="flex gap-1.5">
