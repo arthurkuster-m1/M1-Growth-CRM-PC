@@ -1071,6 +1071,8 @@ function TituloDaOportunidadeDoCompromisso({
   });
   return (
     <TituloDaOportunidade
+      // Mesmo campo e mesmo dado do título; aqui só no tamanho de um texto normal.
+      className="text-sm font-normal"
       valor={rascunho ?? nome}
       desabilitado={!podeEditar}
       aoMudar={setRascunho}
