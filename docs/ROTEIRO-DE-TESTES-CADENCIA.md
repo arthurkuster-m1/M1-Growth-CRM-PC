@@ -452,4 +452,7 @@ Em **Agenda**. Teste no computador e no celular.
 | 21.18 | **Celular**: arraste da **esquerda para a direita**                                 | Volta ao período **anterior**, como a seta "<"                                                                    |           |
 | 21.19 | Role a grade para cima/baixo (movimento vertical)                                   | **Não** troca o período                                                                                           |           |
 | 21.20 | Arraste um **compromisso** para remarcar (segurando o cartão)                       | Continua remarcando; **não** troca o período                                                                      |           |
+| 23.14| Abra a **página da venda** e a **da oportunidade** no celular                           | Popup com **bordas arredondadas** (não colado nas bordas da tela), cartões arredondados e o **título editável em cima** |           |
+| 23.15| Edite o título no topo de uma delas e salve                                              | O título muda nas duas páginas (e no compromisso)                                                                     |           |
+| 23.16| **Produtos e ticket médio** no celular                                                   | O produto ocupa a linha inteira e o valor e a lixeira ficam na linha de baixo; nada de texto espremido                |           |
 
