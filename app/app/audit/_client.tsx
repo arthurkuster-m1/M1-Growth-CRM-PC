@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeDataEHoraLocal } from "@/components/motor/CampoDeDataEHoraLocal";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
 import { useT } from "@/hooks/i18n/useT";
@@ -86,11 +87,11 @@ export function AuditClient() {
           </div>
           <div className="space-y-1">
             <label className="block text-xs text-muted-foreground">{t("De")}</label>
-            <Input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <CampoDeDataEHoraLocal valor={from} rotulo={t("De")} aoMudar={setFrom} />
           </div>
           <div className="space-y-1">
             <label className="block text-xs text-muted-foreground">{t("Até")}</label>
-            <Input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
+            <CampoDeDataEHoraLocal valor={to} rotulo={t("Até")} aoMudar={setTo} />
           </div>
           <div className="flex items-end">
             <Button variant="outline" className="w-full" onClick={handleExport}>

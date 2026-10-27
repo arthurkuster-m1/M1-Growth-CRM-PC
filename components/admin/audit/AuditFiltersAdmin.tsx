@@ -1,4 +1,5 @@
 "use client";
+import { CampoDeDataEHoraLocal, isoParaCampoLocal } from "@/components/motor/CampoDeDataEHoraLocal";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -235,24 +236,20 @@ export function AuditFiltersAdmin({
         <label className="text-xs text-muted-foreground sr-only" htmlFor="audit-from">
           {t("De")}
         </label>
-        <Input
-          id="audit-from"
-          type="datetime-local"
-          className="h-9 w-48 text-sm"
-          onChange={(e) => handleFromChange(e.target.value)}
-          aria-label={t("Data de início")}
+        <CampoDeDataEHoraLocal
+          valor={isoParaCampoLocal(filters.from)}
+          rotulo={t("Data de início")}
+          aoMudar={handleFromChange}
         />
       </div>
       <div className="flex items-center gap-1">
         <label className="text-xs text-muted-foreground sr-only" htmlFor="audit-to">
           {t("Até")}
         </label>
-        <Input
-          id="audit-to"
-          type="datetime-local"
-          className="h-9 w-48 text-sm"
-          onChange={(e) => handleToChange(e.target.value)}
-          aria-label={t("Data de fim")}
+        <CampoDeDataEHoraLocal
+          valor={isoParaCampoLocal(filters.to)}
+          rotulo={t("Data de fim")}
+          aoMudar={handleToChange}
         />
       </div>
       {hasAnyFilter && (

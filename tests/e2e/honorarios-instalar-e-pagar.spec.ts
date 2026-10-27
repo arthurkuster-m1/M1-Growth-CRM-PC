@@ -69,7 +69,10 @@ test.describe("Honorários: instalar e registrar um pagamento", () => {
     await page.getByTestId("criar-contrato").click();
     await expect(page.locator('tr[data-testid^="contrato-"]').first()).toBeVisible();
 
-    await page.getByTestId("parcela-vencimento").fill("2026-12-10");
+    // O seletor de data do app: abre o calendário e aceita o dia digitado (dd/mm/aaaa).
+    await page.getByTestId("parcela-vencimento").getByRole("button").click();
+    await page.getByPlaceholder("dd/mm/aaaa").fill("10/12/2026");
+    await page.keyboard.press("Enter");
     await page.getByTestId("parcela-valor").fill("1234,56");
     await page.getByTestId("criar-parcela").click();
     const linha = page.locator('tr[data-testid^="parcela-"]').first();

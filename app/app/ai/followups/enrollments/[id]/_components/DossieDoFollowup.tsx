@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoDeDataEHoraLocal } from "@/components/motor/CampoDeDataEHoraLocal";
 import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useLocaleDeData, useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
@@ -385,13 +386,9 @@ export function DossieDoFollowup({ id, canWrite }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-2">
             <Label htmlFor="adiar-quando">{t("Novo horário")}</Label>
-            <Input
-              id="adiar-quando"
-              type="datetime-local"
-              value={quando}
-              onChange={(e) => setQuando(e.target.value)}
-              data-testid="dossie-adiar-quando"
-            />
+            <div data-testid="dossie-adiar-quando">
+              <CampoDeDataEHoraLocal valor={quando} rotulo={t("Novo horário")} aoMudar={setQuando} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAdiando(false)}>

@@ -255,11 +255,12 @@ test.describe("dossiê do follow-up — ler a história e intervir", () => {
     await page.getByTestId("dossie-adiar").click();
     const daquiUmMes = new Date(Date.now() + 30 * 24 * 3_600_000);
     const p = (n: number) => String(n).padStart(2, "0");
+    // O seletor de data do app: dia digitado no calendário (dd/mm/aaaa); a hora fica a de 00:00.
+    await page.getByTestId("dossie-adiar-quando").getByRole("button").first().click();
     await page
-      .getByTestId("dossie-adiar-quando")
-      .fill(
-        `${daquiUmMes.getFullYear()}-${p(daquiUmMes.getMonth() + 1)}-${p(daquiUmMes.getDate())}T${p(daquiUmMes.getHours())}:${p(daquiUmMes.getMinutes())}`,
-      );
+      .getByPlaceholder("dd/mm/aaaa")
+      .fill(`${p(daquiUmMes.getDate())}/${p(daquiUmMes.getMonth() + 1)}/${daquiUmMes.getFullYear()}`);
+    await page.keyboard.press("Enter");
     await page.getByTestId("dossie-adiar-confirmar").click();
     await expect(page.getByText("Follow-up adiado.")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("dossie-proximo-passo")).toContainText(
