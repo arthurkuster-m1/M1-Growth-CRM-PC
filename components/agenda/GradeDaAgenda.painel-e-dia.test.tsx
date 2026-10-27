@@ -78,3 +78,29 @@ describe("altura da hora na visão Dia", () => {
     expect(alturaDaHoraParaPropriedades([google], 6)).toBe(48);
   });
 });
+
+describe("ocupação fora da janela da grade", () => {
+  it("a ocupação das 05:40 (antes das 07h) não é desenhada em cima do cabeçalho do dia", () => {
+    const madrugada: Agendamento = {
+      id: "g-madrugada",
+      titulo: "Ocupado",
+      responsavelId: "u1",
+      comeca: "2026-09-17T08:40:00Z", // 05:40 em São Paulo
+      termina: "2026-09-17T09:10:00Z",
+      origem: "google_sync",
+      situacao: "confirmed",
+    };
+    render(
+      <GradeDaAgenda
+        visao="tres_dias"
+        ancora={QUARTA}
+        agora={QUARTA}
+        fuso={FUSO}
+        agendamentos={[madrugada, reuniao]}
+        pessoas={[]}
+      />,
+    );
+    expect(screen.queryByTestId("agendamento-g-madrugada")).toBeNull();
+    expect(screen.getByTestId("agendamento-r1")).toBeTruthy();
+  });
+});
