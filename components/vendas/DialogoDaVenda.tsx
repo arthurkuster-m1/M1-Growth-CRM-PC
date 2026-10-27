@@ -8,7 +8,7 @@ import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import Link from "next/link";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api/client";
@@ -528,6 +528,26 @@ export function DialogoDaVenda({
       })),
     );
   }
+
+  // As parcelas nascem sozinhas: com valor e sem nenhuma recebida, a tabela já aparece (vencimento,
+  // valor e recebida) e acompanha o total e a data da primeira parcela. Parou de acompanhar quando
+  // a pessoa editou uma parcela na mão, para não apagar o que ela digitou.
+  const editouParcelaRef = useRef(false);
+  const ultimoGeradoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (recorrente || total <= 0) return;
+    if (parcelas.some((p) => p.recebida) || editouParcelaRef.current) return;
+    const chave = `${total}|${primeiro}`;
+    if (ultimoGeradoRef.current === null) {
+      ultimoGeradoRef.current = chave;
+      if (parcelas.length > 0) return;
+    } else if (ultimoGeradoRef.current === chave) {
+      return;
+    }
+    ultimoGeradoRef.current = chave;
+    gerar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total, primeiro, recorrente]);
 
   /**
    * Mudou o número de parcelas (Enter ou sair do campo): as parcelas são geradas na hora. As já
@@ -1346,11 +1366,12 @@ export function DialogoDaVenda({
                           <CampoDeData
                             valor={p.due_on}
                             rotulo={`${t("Vencimento da parcela")} ${i + 1}`}
-                            aoMudar={(dia) =>
+                            aoMudar={(dia) => {
+                              editouParcelaRef.current = true;
                               setParcelas((l) =>
                                 l.map((x, k) => (k === i ? { ...x, due_on: dia } : x)),
-                              )
-                            }
+                              );
+                            }}
                             className="h-9"
                           />
                         </td>
@@ -1359,15 +1380,11 @@ export function DialogoDaVenda({
                             value={p.valor}
                             inputMode="decimal"
                             aria-label={`${t("Valor da parcela")} ${i + 1}`}
-                            onChange={(e) =>
-                              setParcelas((l) =>
-                                l.map((x, k) =>
-                                  k === i
-                                    ? { ...x, valor: e.target.value.replace(/[^\d.,]/g, "") }
-                                    : x,
-                                ),
-                              )
-                            }
+                            onChange={(e) => {
+                              editouParcelaRef.current = true;
+                              const v = e.target.value.replace(/[^\d.,]/g, "");
+                              setParcelas((l) => l.map((x, k) => (k === i ? { ...x, valor: v } : x)));
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
