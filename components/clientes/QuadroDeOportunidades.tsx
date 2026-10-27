@@ -17,6 +17,7 @@ import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { cn } from "@/lib/utils";
+import { soDeDentro } from "@/lib/ui/so-de-dentro";
 
 export interface ColunaDoQuadro {
   /** Chave da coluna no grupo. */
@@ -130,22 +131,32 @@ function Quadro<T>({
         {grupo.colunas.map((c) => {
           const itens = porColuna.get(c.chave) ?? [];
           return (
-            <Coluna key={c.chave} id={c.chave} nome={c.nome} cor={c.cor} quantidade={itens.length}
+            <Coluna
+              key={c.chave}
+              id={c.chave}
+              nome={c.nome}
+              cor={c.cor}
+              quantidade={itens.length}
               total={totalDe?.(itens)}
             >
               {itens.map((l) => (
-                <Cartao key={idDe(l)} id={idDe(l)} arrastavel={podeEditar} aoAbrir={() => aoAbrir(l)}>
+                <Cartao
+                  key={idDe(l)}
+                  id={idDe(l)}
+                  arrastavel={podeEditar}
+                  aoAbrir={() => aoAbrir(l)}
+                >
                   <p className="text-sm leading-snug font-semibold [overflow-wrap:anywhere]">
                     {tituloDe(l)}
                   </p>
                   {colunas.length > 0 ? (
                     <div
                       className="mt-1.5 flex flex-col gap-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
+                      onClick={soDeDentro}
+                      onKeyDown={soDeDentro}
+                      onPointerDown={soDeDentro}
+                      onMouseDown={soDeDentro}
+                      onTouchStart={soDeDentro}
                     >
                       {colunas.map((col) => (
                         <div key={col.id} className="-mx-1 min-w-0">
@@ -200,7 +211,9 @@ function Coluna({
           {nome}
         </Etiqueta>
         <span className="text-xs text-muted-foreground">{quantidade}</span>
-        {total ? <span className="ml-auto text-xs text-muted-foreground tabular-nums">{total}</span> : null}
+        {total ? (
+          <span className="ml-auto text-xs text-muted-foreground tabular-nums">{total}</span>
+        ) : null}
       </header>
       <div className="flex min-h-12 min-w-0 flex-col gap-2">
         {children}
@@ -237,7 +250,9 @@ function Cartao({
         listeners?.onKeyDown?.(e);
         if (e.key === "Enter") aoAbrir();
       }}
-      style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      style={
+        transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+      }
       className={cn(
         "min-w-0 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm",
         arrastavel && "cursor-grab active:cursor-grabbing",

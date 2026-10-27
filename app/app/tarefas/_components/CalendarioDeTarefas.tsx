@@ -23,6 +23,7 @@ import { opcaoDaTarefa, type CorDaOpcao, type OpcaoDeStatus } from "@/lib/tarefa
 import type { Tarefa } from "@/lib/tarefas/tipos";
 import { CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
+import { soDeDentro } from "@/lib/ui/so-de-dentro";
 
 interface Props {
   tarefas: Tarefa[];
@@ -196,13 +197,17 @@ export function CalendarioDeTarefas({
           aria-label={nomeDoDia(escolhido, "longo")}
           className="rounded-2xl border bg-card p-3 md:hidden"
         >
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold capitalize">{nomeDoDia(escolhido, "longo")}</h3>
+          {/* O título numa linha só e o botão "Nova tarefa", pequeno, na linha de baixo, à direita —
+              nada quebra em duas linhas no celular. */}
+          <div className="mb-2 flex flex-col gap-1">
+            <h3 className="truncate text-sm font-semibold whitespace-nowrap capitalize">
+              {nomeDoDia(escolhido, "longo")}
+            </h3>
             {podeEditar && aoCriarNoDia ? (
               <button
                 type="button"
                 onClick={() => aoCriarNoDia(escolhido)}
-                className="h-8 rounded-lg px-3 text-sm font-medium text-primary hover:bg-secondary"
+                className="h-7 self-end rounded-lg px-2.5 text-xs font-medium whitespace-nowrap text-primary hover:bg-secondary"
               >
                 {t("Nova tarefa")}
               </button>
@@ -218,10 +223,31 @@ export function CalendarioDeTarefas({
                     type="button"
                     onClick={() => aoAbrir(tarefa)}
                     style={corDe(tarefa)}
-                    className="block w-full truncate rounded-lg px-3 py-2 text-left text-sm font-medium"
+                    className={cn(
+                      "block w-full rounded-lg px-3 py-2 text-left text-sm font-medium",
+                      colunas.length > 0 ? "[overflow-wrap:anywhere]" : "truncate",
+                    )}
                   >
                     {tarefa.title}
                   </button>
+                  {/* As propriedades escolhidas na configuração da visualização aparecem aqui,
+                      sob cada tarefa do dia (mexer nelas não abre a tarefa). */}
+                  {colunas.length > 0 ? (
+                    <div
+                      className="mt-1 flex flex-col gap-0.5 px-1"
+                      onClick={soDeDentro}
+                      onKeyDown={soDeDentro}
+                      onPointerDown={soDeDentro}
+                      onMouseDown={soDeDentro}
+                      onTouchStart={soDeDentro}
+                    >
+                      {colunas.map((c) => (
+                        <div key={c.id} className="min-w-0 text-xs">
+                          {c.celula(tarefa)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -415,11 +441,11 @@ function Chip({
           {/* Mexer numa propriedade não pode abrir a tarefa nem começar um arrasto. */}
           <div
             className="mt-1 flex flex-col gap-0.5"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onClick={soDeDentro}
+            onKeyDown={soDeDentro}
+            onPointerDown={soDeDentro}
+            onMouseDown={soDeDentro}
+            onTouchStart={soDeDentro}
           >
             {colunas.map((c) => (
               <div key={c.id} className="-mx-1 min-w-0 text-[11px]">

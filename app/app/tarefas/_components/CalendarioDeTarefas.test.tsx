@@ -80,4 +80,25 @@ describe("CalendarioDeTarefas", () => {
     expect(screen.getByRole("button", { name: "Revisão semanal" })).toBeTruthy();
     expect(screen.getByText(/Arraste uma tarefa para um dia/)).toBeTruthy();
   });
+
+  it("o resumo do dia (lista embaixo do calendário) mostra as propriedades escolhidas de cada tarefa", () => {
+    montar([status]);
+    const resumo = screen.getByRole("region", { name: /16/ });
+    expect(within(resumo).getByText("Enviar proposta")).toBeTruthy();
+    expect(within(resumo).getByText("Não iniciada")).toBeTruthy();
+  });
+
+  it("o resumo do dia, sem propriedades escolhidas, mostra só o título", () => {
+    montar([]);
+    const resumo = screen.getByRole("region", { name: /16/ });
+    expect(within(resumo).queryByText("Não iniciada")).toBeNull();
+  });
+
+  it('o título do dia e o "Nova tarefa" não dividem a mesma linha (nada quebra no celular)', () => {
+    montar([]);
+    const resumo = screen.getByRole("region", { name: /16/ });
+    const titulo = within(resumo).getByRole("heading");
+    expect(titulo.className).toContain("whitespace-nowrap");
+    expect(titulo.parentElement?.className).toContain("flex-col");
+  });
 });

@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Fragment,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -356,22 +357,37 @@ export function TabelaDoMotor<T>({
   // global, que difere entre servidor e navegador (aviso de hidratação).
   const idDoMotor = useId();
   const [aoVivo, setAoVivo] = useState<{ id: string; largura: number } | null>(null);
+  // A largura que a pessoa acabou de soltar: vale até a tela devolver a preferência gravada. Sem
+  // isto a coluna "pulava" de volta para a largura antiga no intervalo entre soltar a alça e a
+  // gravação chegar — e, se a gravação falhasse, a escolha parecia não ter sido feita.
+  const [soltada, setSoltada] = useState<{ id: string; largura: number } | null>(null);
+  useEffect(() => {
+    if (!soltada) return;
+    if (colunas.some((c) => c.id === soltada.id && c.largura === soltada.largura)) {
+      setSoltada(null);
+      return;
+    }
+    const prazo = setTimeout(() => setSoltada(null), 4000);
+    return () => clearTimeout(prazo);
+  }, [soltada, colunas]);
 
   // Celular: colunas mais estreitas (cabem mais na tela). A tabela inteira desliza junto,
   // título inclusive — nada fica preso à esquerda, como no Notion.
   const LARGURA_MAXIMA_NO_CELULAR = 176;
   const LARGURA_DO_TITULO_NO_CELULAR = 184;
+  // A largura que a pessoa escolheu (arrastando a alça) vale em TODA coluna, o título inclusive —
+  // antes o título voltava para a largura padrão do celular ao soltar a alça. Sem escolha, o
+  // celular usa o padrão estreito (o título um pouco mais largo).
   const larguraDe = (c: ColunaDoMotor<T>) =>
     aoVivo?.id === c.id
       ? aoVivo.largura
-      : celular
-        ? c.fixa || c.semOcultar
-          ? LARGURA_DO_TITULO_NO_CELULAR
-          : // Largura escolhida pela pessoa (arrastando a alça) vale no celular; sem escolha, o teto.
-            (c as { larguraPersonalizada?: boolean }).larguraPersonalizada
-            ? c.largura
-            : Math.min(c.largura, LARGURA_MAXIMA_NO_CELULAR)
-        : c.largura;
+      : soltada?.id === c.id
+        ? soltada.largura
+        : !celular || (c as { larguraPersonalizada?: boolean }).larguraPersonalizada
+          ? c.largura
+          : c.fixa || c.semOcultar
+            ? LARGURA_DO_TITULO_NO_CELULAR
+            : Math.min(c.largura, LARGURA_MAXIMA_NO_CELULAR);
   const comAcoes = Boolean(acoesDaLinha);
   const comFim = Boolean(fimDoCabecalho);
   const comSelecao = Boolean(aoSelecionar);
@@ -420,7 +436,7 @@ export function TabelaDoMotor<T>({
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto overscroll-x-contain border-y bg-card [container-type:inline-size] sm:mx-0 sm:rounded-2xl sm:border">
+    <div className="[container-type:inline-size] -mx-4 overflow-x-auto overscroll-x-contain border-y bg-card sm:mx-0 sm:rounded-2xl sm:border">
       <div role="table" aria-label={rotuloDaTabela} style={{ minWidth: larguraTotal }}>
         <DndContext
           id={`${idDoMotor}-colunas`}
@@ -508,7 +524,10 @@ export function TabelaDoMotor<T>({
                         aoArrastar={(largura) =>
                           setAoVivo(largura === null ? null : { id: c.id, largura })
                         }
-                        aoConfirmar={(largura) => aoRedimensionarColuna(c.id, largura)}
+                        aoConfirmar={(largura) => {
+                          setSoltada({ id: c.id, largura });
+                          aoRedimensionarColuna(c.id, largura);
+                        }}
                       />
                     ) : null}
                   </CabecalhoOrdenavel>
