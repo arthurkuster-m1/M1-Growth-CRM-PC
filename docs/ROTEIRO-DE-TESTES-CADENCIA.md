@@ -473,4 +473,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.32| **Título da oportunidade único** | O título é o mesmo campo no popup, na seção Oportunidade e na seção Venda do compromisso; editar num muda os outros |           |
 | 23.33| **Datas da oportunidade** | Próxima ação e Previsão de fechamento abrem o calendário do app (com ícone), não o do sistema |           |
 | 23.34| **Datas no seletor do app** | Em Anti-ban, Editar contato, Custos de captação, Honorários, Aplicar plano, ações em massa de Tarefas, Auditoria, Capturas e Adiar follow-up, o campo de data tem ícone e abre o calendário do app (e a hora, as colunas do app), nunca o do sistema |           |
+| 23.35| **Perdas e Previsão no dashboard de Atendimento** | Na aba Atendimento aparecem, abaixo da tabela de leads esperando resposta, a Previsão e (gerente/administrador) as Perdas; trocar o período no topo muda as Perdas; atendente comum não vê as Perdas |           |
 
