@@ -163,6 +163,17 @@ export const NAV_CATALOG = [
     group: "atendimento",
   },
   {
+    // FINANÇAS (antes "Faturamento"): página solta no menu lateral — o link é desenhado pelo Sidebar,
+    // junto de Início, CRM e Tarefas, e não como item de grupo (por isso não leva `sidebar: true`).
+    // Aqui ela existe para o ⌘K e para o teste de completude.
+    href: "/app/financas",
+    label: "Finanças",
+    description: "Quanto entrou, de que forma, e quanto cada pessoa tem a receber.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "viewer",
+  },
+  {
     // MARKETING — a vitrine do trabalho da agência. Quatro de cinco telas sobem para o menu
     // porque o Arthur quer entrar direto em cada uma; a visão geral é o hub do grupo.
     href: "/app/marketing/estrategia",
@@ -595,29 +606,13 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
 
-  // ---- Análise — o dinheiro e a auditoria ----
+  // ---- Análise — dinheiro de honorários e auditoria ----
   //
   // Desempenho, Atividades e a leitura do tráfego (Meta Ads) saíram daqui (outubro/2026): os números do
   // período vivem nos Dashboards (Tráfego Pago, Prospecção Ativa, Comercial, Atendimento, Business e
   // Atividades). A página de Meta Ads continua existindo, mas só se chega a ela por Marketing ›
   // Campanhas. A Evolução da IA foi para o grupo de IA ("Ver tudo em IA"). Sobraram aqui as duas
   // consultas de dinheiro e o Audit Log, todas visitas deliberadas — por isso ficam no hub.
-  {
-    // A terceira ponta do módulo financeiro: Configurações › Financeiro descreve
-    // para onde o dinheiro vai, CRM › Comandas é onde o dia acontece, e aqui se
-    // responde a pergunta do fim do mês.
-    //
-    // Fora do sidebar de propósito: é consulta periódica, não uso diário, e o
-    // hub de Análise é onde ela se encontra sem disputar pixel com o que se abre
-    // toda hora.
-    href: "/app/faturamento",
-    label: "Faturamento",
-    description: "Quanto entrou, de que forma, e quanto cada pessoa tem a receber.",
-    icon: "ChartBar",
-    group: "analise",
-    section: "Dinheiro",
-    minRole: "viewer",
-  },
   {
     // Módulo opcional (ADR-0002), fonte `modulos_instalados` — a porta só existe
     // depois que o administrador da instalação instala `honorarios` em

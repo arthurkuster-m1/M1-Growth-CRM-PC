@@ -69,6 +69,8 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "redirect para /app/marketing/dashboards?painel=atividades: Atividades virou uma aba dos Dashboards; mantido por links salvos",
   "/app/ads/meta":
     "a leitura de Meta Ads saiu do menu de Análise; só se chega a ela pelo atalho em Marketing › Campanhas (geracao-de-demanda), a pedido do dono do produto",
+  "/app/faturamento":
+    "redirect para /app/financas: Faturamento virou a página Finanças; mantido por links salvos",
   "/app/vendas":
     "redirect para /app/clientes?visao=vendas: Vendas virou uma visão da página CRM",
   "/app/marketing/geracao-de-demanda/resultados":

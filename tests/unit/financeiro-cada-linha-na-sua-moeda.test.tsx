@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (s: string) => s }));
 
-import { ListaDeLancamentos, type Lancamento } from "@/app/app/faturamento/_lancamentos";
+import { ListaDeLancamentos, type Lancamento } from "@/app/app/financas/_lancamentos";
 import { Recorrencias, type Recorrencia } from "@/app/app/settings/tenant/financeiro/_recorrencias";
 
 /** O `Intl` separa símbolo e número com espaço inseparável; o teste lê espaço. */
