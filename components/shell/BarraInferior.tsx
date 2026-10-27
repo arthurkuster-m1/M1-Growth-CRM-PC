@@ -8,7 +8,8 @@ import { ContadorDeCasos } from "@/components/shell/ContadorDeCasos";
 import { GavetaDeNavegacao } from "@/components/shell/MobileSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
-import { sidebarGroups, type NavDestination } from "@/lib/navigation/registry";
+import { destinosDaInterface } from "@/lib/navigation/interface";
+import { NAV_DESTINATIONS, sidebarGroups, type NavDestination } from "@/lib/navigation/registry";
 import { usePecaDoRodape, type PecaDoRodape } from "@/lib/ui/rodape-ocupado";
 import { cn } from "@/lib/utils";
 
@@ -56,21 +57,21 @@ export const BARRA_INFERIOR: PecaDoRodape = {
  * o que é verdade no laptop e não resolve a escolha aqui. Então a preferência é
  * declarada, e o primeiro que a organização PUDER ver ganha a vaga.
  *
- * A escolha segue quem usa o produto no celular: alguém atendendo fora da mesa.
- * Inbox é a conversa; Funis é onde o negócio anda; Agenda é o compromisso de
- * hoje; Desempenho é o número que se confere no caminho. A lista tem sobra
- * depois dessas quatro porque toda uma dessas portas pode estar fechada — o
- * plano da empresa pode não incluir Análise, a organização pode não ter ligado
- * a Agenda —, e uma barra com um buraco no meio é pior que uma barra com outra
- * aba. Contatos e Casos entram nessa ordem como reserva.
+ * A ordem é a escolhida pelo dono (26/10/2026): Inbox, Agenda, CRM e Tarefas. A lista tem
+ * sobra depois dessas quatro porque toda uma dessas portas pode estar fechada — o plano da
+ * empresa pode não incluir uma área, a organização pode não ter ligado a Agenda —, e uma barra
+ * com um buraco no meio é pior que uma barra com outra aba. Funis, Desempenho e Contatos
+ * entram nessa ordem como reserva.
  */
 const PREFERIDAS = [
   "/app/inbox",
-  "/app/kanban",
   "/app/agenda",
+  "/app/clientes",
+  "/app/tarefas",
+  // Reservas, só entram se uma das quatro de cima estiver fechada para a organização.
+  "/app/kanban",
   "/app/metrics",
   "/app/contacts",
-  "/app/ai/cases",
 ] as const;
 
 const VAGAS = 4;
@@ -103,14 +104,27 @@ export function BarraInferior() {
   const { user, activeOrg } = useAuth();
   const ancora = usePecaDoRodape(BARRA_INFERIOR);
 
-  const visiveis = new Map<string, NavDestination>();
-  for (const { items } of sidebarGroups(
+  const argumentos = [
     user.is_platform_admin && !user.support,
     activeOrg?.role ?? null,
     activeOrg?.interface_settings,
     activeOrg?.modulos_ligados ?? [],
     activeOrg?.capacidades_ligadas ?? [],
-  )) {
+  ] as const;
+  const visiveis = new Map<string, NavDestination>();
+  // Tudo o que a organização PODE ver (mesma régua do sidebar), e não só o que está no sidebar:
+  // Tarefas é porta do grupo Atendimento sem ser item do sidebar.
+  const permitidos = new Set(
+    destinosDaInterface(
+      argumentos[2],
+      argumentos[0],
+      argumentos[1],
+      argumentos[3],
+      argumentos[4],
+    ).map((d) => d.href),
+  );
+  for (const d of NAV_DESTINATIONS) if (permitidos.has(d.href)) visiveis.set(d.href, d);
+  for (const { items } of sidebarGroups(...argumentos)) {
     for (const item of items) visiveis.set(item.href, item);
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
@@ -15,6 +15,13 @@ const DIAS_NA_JANELA = 28;
 const LARGURA_DO_DIA = 36;
 
 type Gesto = "mover" | "inicio" | "fim";
+
+/** A coluna do nome da tarefa (fixa à esquerda) pode ser alargada; a escolha fica neste aparelho. */
+const LARGURA_DO_NOME_MINIMA = 88;
+const LARGURA_DO_NOME_MAXIMA = 520;
+const CHAVE_DA_LARGURA_DO_NOME = "tarefas:linha-do-tempo:largura-do-nome";
+const limitarNome = (v: number) =>
+  Math.min(LARGURA_DO_NOME_MAXIMA, Math.max(LARGURA_DO_NOME_MINIMA, Math.round(v)));
 
 interface Props {
   tarefas: Tarefa[];
@@ -59,6 +66,49 @@ export function LinhaDoTempo({
   aoAbrir,
 }: Props) {
   const t = useT();
+  // Largura escolhida da coluna do nome (px); sem escolha, valem as classes (112px no celular,
+  // 192px no computador). Só é uma conveniência do aparelho: o armazenamento pode falhar.
+  const [larguraDoNome, setLarguraDoNome] = useState<number | null>(null);
+  const cabecalhoDoNome = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    try {
+      const guardada = Number(window.localStorage.getItem(CHAVE_DA_LARGURA_DO_NOME));
+      // Ler o armazenamento só existe no cliente: decidir antes divergiria da hidratação.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (Number.isFinite(guardada) && guardada > 0) setLarguraDoNome(limitarNome(guardada));
+    } catch {
+      // Sem armazenamento (janela privada): vale o padrão.
+    }
+  }, []);
+  const estiloDoNome = larguraDoNome ? { width: larguraDoNome } : undefined;
+  const iniciarAlargar = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const alvo = e.currentTarget;
+    try {
+      alvo.setPointerCapture(e.pointerId);
+    } catch {
+      // Sem captura (evento sintético): o gesto segue pelos eventos da própria alça.
+    }
+    const x0 = e.clientX;
+    const l0 = cabecalhoDoNome.current?.getBoundingClientRect().width || 112;
+    const mover = (ev: PointerEvent) => setLarguraDoNome(limitarNome(l0 + ev.clientX - x0));
+    const soltar = (ev: PointerEvent) => {
+      alvo.removeEventListener("pointermove", mover);
+      alvo.removeEventListener("pointerup", soltar);
+      alvo.removeEventListener("pointercancel", soltar);
+      const final = limitarNome(l0 + ev.clientX - x0);
+      setLarguraDoNome(final);
+      try {
+        window.localStorage.setItem(CHAVE_DA_LARGURA_DO_NOME, String(final));
+      } catch {
+        // Sem armazenamento: a largura vale só até recarregar.
+      }
+    };
+    alvo.addEventListener("pointermove", mover);
+    alvo.addEventListener("pointerup", soltar);
+    alvo.addEventListener("pointercancel", soltar);
+  };
   const [inicio, setInicio] = useState(() => somarDias(hoje, -7));
   const [ao_vivo, setAoVivo] = useState<{ id: string; de: string; ate: string } | null>(null);
   // Arrastar uma tarefa sem data para dentro da linha do tempo: o dia sobre o qual ela está.
@@ -212,9 +262,30 @@ export function LinhaDoTempo({
         }}
         onDrop={aoSoltarDeFora}
       >
-        <div style={{ minWidth: 112 + DIAS_NA_JANELA * LARGURA_DO_DIA }}>
+        <div style={{ minWidth: (larguraDoNome ?? 112) + DIAS_NA_JANELA * LARGURA_DO_DIA }}>
           <div className="flex border-b bg-secondary/50 text-[11px] text-muted-foreground">
-            <div className="sticky left-0 z-10 w-28 shrink-0 bg-secondary px-2 py-2 md:w-48" />
+            <div
+              ref={cabecalhoDoNome}
+              style={estiloDoNome}
+              className="sticky left-0 z-10 w-28 shrink-0 bg-secondary px-2 py-2 md:w-48"
+            >
+              {/* Alça: arrastar para os lados muda a largura do nome da tarefa (a coluna continua
+                  fixa à esquerda enquanto as datas rolam). */}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={t("Largura da coluna")}
+                tabIndex={0}
+                onPointerDown={iniciarAlargar}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                  e.preventDefault();
+                  const atual = cabecalhoDoNome.current?.getBoundingClientRect().width || 112;
+                  setLarguraDoNome(limitarNome(atual + (e.key === "ArrowRight" ? 16 : -16)));
+                }}
+                className="absolute top-0 right-0 z-20 h-full w-5 cursor-col-resize touch-none select-none after:absolute after:top-1/4 after:right-1 after:h-1/2 after:w-0.5 after:bg-muted-foreground/50 hover:after:bg-primary focus-visible:after:bg-primary"
+              />
+            </div>
             {dias.map((d, i) => (
               <div
                 key={d}
@@ -249,6 +320,7 @@ export function LinhaDoTempo({
                     type="button"
                     title={tarefa.title}
                     onClick={() => aoAbrir(tarefa)}
+                    style={estiloDoNome}
                     className="sticky left-0 z-10 w-28 shrink-0 truncate bg-card px-2 py-2 text-left text-sm hover:bg-secondary md:w-48"
                   >
                     {tarefa.title}
