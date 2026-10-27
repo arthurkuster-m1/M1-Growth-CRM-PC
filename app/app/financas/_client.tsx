@@ -1,9 +1,10 @@
 "use client";
 /**
- * O faturamento na tela.
+ * As Finanças na tela — os números saem das VENDAS (oportunidades com parcela recebida),
+ * não de comandas.
  *
  * ⚠️ NENHUM NÚMERO É CALCULADO AQUI. Todos vêm prontos de
- * `fn_relatorio_financeiro`, e isso é o desenho: somar na tela o que a API
+ * `fn_relatorio_financas`, e isso é o desenho: somar na tela o que a API
  * devolve paginado é como um relatório passa a mentir sem ninguém perceber. Esta
  * tela formata e dispõe; ela não faz conta.
  *
@@ -11,7 +12,7 @@
  * ela é uma razão entre dois números que já vieram somados — não uma segunda
  * apuração dos mesmos dados.
  *
- * ⚠️ MOEDAS DIFERENTES NÃO SE SOMAM (#1531). Com lançamentos ou comandas em mais
+ * ⚠️ MOEDAS DIFERENTES NÃO SE SOMAM (#1531). Com parcelas ou lançamentos em mais
  * de uma moeda no período, cada moeda ganha o seu bloco — cartões, ticket
  * médio e listas —, com os números que o relatório já devolve separados em
  * `por_moeda`. A ordem dos blocos é a única decisão da tela, e ela não é uma
@@ -31,29 +32,45 @@ import { formatCents } from "@/lib/money";
 import { ListaDeLancamentos, type Conta, type Lancamento } from "./_lancamentos";
 
 type Forma = { nome: string; quantidade: number; total_cents: number };
-type Profissional = { attendant_user_id: string | null; itens: number; comissao_cents: number };
-type Servico = { nome: string; quantidade: number; total_cents: number };
-type Cliente = { contact_id: string; comandas: number; total_cents: number };
+type VendaDaPessoa = { owner_user_id: string | null; vendas: number; total_cents: number };
+type Produto = { nome: string; quantidade: number; total_cents: number };
+type Cliente = { contact_id: string; vendas: number; total_cents: number };
 
 /** O que o relatório devolve no topo e, com as mesmas chaves, para cada moeda. */
 type Totais = {
   entradas_cents: number;
   saidas_cents: number;
   saldo_cents: number;
-  comandas_finalizadas: number;
-  comandas_estornadas: number;
+  a_receber_cents: number;
+  vendas_fechadas: number;
+  vendas_canceladas: number;
   faturado_cents: number;
   ticket_medio_cents: number;
   por_forma: Forma[];
-  por_profissional: Profissional[];
-  por_servico: Servico[];
+  por_pessoa: VendaDaPessoa[];
+  por_produto: Produto[];
   por_cliente: Cliente[];
 };
 
-type Relatorio = Totais & {
+type Relatorio = {
   de: string;
   ate: string;
   por_moeda?: Record<string, Totais>;
+};
+
+const SEM_MOVIMENTO: Totais = {
+  entradas_cents: 0,
+  saidas_cents: 0,
+  saldo_cents: 0,
+  a_receber_cents: 0,
+  vendas_fechadas: 0,
+  vendas_canceladas: 0,
+  faturado_cents: 0,
+  ticket_medio_cents: 0,
+  por_forma: [],
+  por_pessoa: [],
+  por_produto: [],
+  por_cliente: [],
 };
 
 type Pessoa = { user_id: string; name: string | null; email: string | null };
@@ -66,20 +83,11 @@ const primeiroDoMes = () => `${hoje().slice(0, 7)}-01`;
  * da organização primeiro, as demais em ordem alfabética do código ISO —
  * determinística, para o bloco não trocar de lugar a cada recarga.
  *
- * Sem `por_moeda` (período vazio, ou o banco ainda sem a migration 0444), um
- * bloco só com os números do topo na moeda da organização. Numa organização em
- * real é a tela de antes; em outra moeda, não.
- *
- * ponytail: nenhuma rota grava `currency` em comanda, lançamento ou recorrência
- * — as linhas nascem 'BRL' pelo default da coluna, a mesma classe de defeito que
- * a 0400 corrigiu para os negócios nascidos da conversa. Até a escrita herdar `organizations.currency`,
- * uma organização em outra moeda vê o período com movimento em R$ e o vazio na
- * moeda dela (e, sem a 0444, os totais em BRL saem com o símbolo dela). Teto
- * conhecido; o upgrade é a escrita herdar a moeda, e este fallback fica certo.
+ * Sem `por_moeda` (período vazio) o bloco é zerado, na moeda da organização.
  */
 function blocosPorMoeda(r: Relatorio, moedaDaOrg: string): Array<[string, Totais]> {
   const blocos = Object.entries(r.por_moeda ?? {});
-  if (blocos.length === 0) return [[moedaDaOrg, r]];
+  if (blocos.length === 0) return [[moedaDaOrg, SEM_MOVIMENTO]];
   return blocos.sort(([a], [b]) =>
     a === moedaDaOrg ? -1 : b === moedaDaOrg ? 1 : a.localeCompare(b),
   );
@@ -271,6 +279,8 @@ function BlocoDaMoeda({
   nomeDoContato: (id: string) => string;
 }) {
   const t = useT();
+  // A porcentagem de cada forma é sobre o que as parcelas recebidas somam nesta moeda.
+  const recebido = totais.por_forma.reduce((s, f) => s + f.total_cents, 0);
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -280,48 +290,46 @@ function BlocoDaMoeda({
         <Cartao titulo={t("Ticket médio")} valor={formatCents(totais.ticket_medio_cents, moeda)} />
       </div>
 
-      <p className="text-sm text-text-muted" data-testid="resumo-de-comandas">
-        {totais.comandas_finalizadas} {t("comanda(s) finalizada(s)")}
-        {totais.comandas_estornadas > 0
-          ? `, ${totais.comandas_estornadas} ${t("estornada(s)")}`
+      <p className="text-sm text-text-muted" data-testid="resumo-de-vendas">
+        {totais.vendas_fechadas} {t("venda(s) fechada(s)")}
+        {totais.vendas_canceladas > 0
+          ? `, ${totais.vendas_canceladas} ${t("cancelada(s)")}`
           : ""}
         {" · "}
         {formatCents(totais.faturado_cents, moeda)} {t("faturado")}
+        {" · "}
+        {formatCents(totais.a_receber_cents, moeda)} {t("a receber no período")}
       </p>
 
       {/*
-        ⚠️ O FATURADO E O QUE ENTROU PODEM DIFERIR, e isso não é defeito: uma
-        comanda fechada hoje pode ter lançamento com data de amanhã, e um
-        lançamento manual (aluguel, material) não veio de comanda nenhuma.
-        Comparar os dois é erro de leitura, e o aviso existe para que ninguém
-        passe a tarde procurando a diferença. Com várias moedas, ele entra só no
+        ⚠️ O FATURADO E O QUE ENTROU PODEM DIFERIR, e isso não é defeito: faturado é o valor das
+        vendas fechadas no período; entrou é o dinheiro que caiu (parcelas recebidas e lançamentos
+        avulsos), inclusive de vendas fechadas antes. Com várias moedas, o aviso entra só no
         primeiro bloco: repetido em cada um, viraria ruído que ninguém lê.
       */}
       {comAviso ? (
         <p className="text-xs text-text-muted">
           {t(
-            "O faturado soma comandas; o que entrou soma lançamentos pagos. Os dois não precisam bater.",
+            "O faturado soma as vendas fechadas; o que entrou soma as parcelas recebidas e os lançamentos pagos. Os dois não precisam bater.",
           )}
         </p>
       ) : null}
 
-      <Tabela titulo={t("Por forma de pagamento")} vazio={t("Nenhuma comanda no período.")}>
+      <Tabela titulo={t("Por forma de pagamento")} vazio={t("Nenhum recebimento no período.")}>
         {totais.por_forma.map((f) => (
           <tr key={f.nome} className="border-b border-border/60">
             <td className="py-1">{f.nome}</td>
             <td className="py-1 text-right text-text-muted">{f.quantidade}</td>
             <td className="py-1 text-right tabular-nums">{formatCents(f.total_cents, moeda)}</td>
             <td className="py-1 text-right text-text-muted">
-              {totais.faturado_cents > 0
-                ? `${Math.round((f.total_cents / totais.faturado_cents) * 100)}%`
-                : "—"}
+              {recebido > 0 ? `${Math.round((f.total_cents / recebido) * 100)}%` : "—"}
             </td>
           </tr>
         ))}
       </Tabela>
 
-      <Tabela titulo={t("Serviços que mais faturaram")} vazio={t("Nenhum item no período.")}>
-        {totais.por_servico.map((sv) => (
+      <Tabela titulo={t("Produtos que mais faturaram")} vazio={t("Nenhum produto vendido no período.")}>
+        {totais.por_produto.map((sv) => (
           <tr key={sv.nome} className="border-b border-border/60">
             <td className="py-1">{sv.nome}</td>
             <td className="py-1 text-right text-text-muted">{sv.quantidade}</td>
@@ -336,7 +344,7 @@ function BlocoDaMoeda({
         {totais.por_cliente.map((c) => (
           <tr key={c.contact_id} className="border-b border-border/60">
             <td className="py-1">{nomeDoContato(c.contact_id)}</td>
-            <td className="py-1 text-right text-text-muted">{c.comandas}</td>
+            <td className="py-1 text-right text-text-muted">{c.vendas}</td>
             <td className="py-1 text-right tabular-nums" colSpan={2}>
               {formatCents(c.total_cents, moeda)}
             </td>
@@ -344,13 +352,13 @@ function BlocoDaMoeda({
         ))}
       </Tabela>
 
-      <Tabela titulo={t("Comissão por pessoa")} vazio={t("Nenhuma comissão no período.")}>
-        {totais.por_profissional.map((p) => (
-          <tr key={p.attendant_user_id ?? "sem"} className="border-b border-border/60">
-            <td className="py-1">{nomeDe(p.attendant_user_id)}</td>
-            <td className="py-1 text-right text-text-muted">{p.itens}</td>
+      <Tabela titulo={t("Vendas por pessoa")} vazio={t("Nenhuma venda fechada no período.")}>
+        {totais.por_pessoa.map((p) => (
+          <tr key={p.owner_user_id ?? "sem"} className="border-b border-border/60">
+            <td className="py-1">{nomeDe(p.owner_user_id)}</td>
+            <td className="py-1 text-right text-text-muted">{p.vendas}</td>
             <td className="py-1 text-right tabular-nums" colSpan={2}>
-              {formatCents(p.comissao_cents, moeda)}
+              {formatCents(p.total_cents, moeda)}
             </td>
           </tr>
         ))}
