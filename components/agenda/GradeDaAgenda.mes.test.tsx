@@ -116,3 +116,21 @@ describe("visão mês — interação", () => {
     expect(() => fireEvent.doubleClick(screen.getByTestId("celula-mes-2026-10-28"))).not.toThrow();
   });
 });
+
+describe("painel do dia no mês", () => {
+  it("tocar num dia abre embaixo os compromissos dele, com as propriedades padrão", () => {
+    mes();
+    fireEvent.click(screen.getByTestId("celula-mes-2026-10-23"));
+    const painel = screen.getByTestId("painel-do-dia");
+    expect(painel.dataset.dia).toBe("2026-10-23");
+    expect(painel.textContent).toContain("Reunião");
+    // padrão: horário e status, sem nenhuma busca extra
+    expect(painel.textContent).toContain("Confirmado");
+  });
+
+  it("um dia sem compromisso diz isso", () => {
+    mes();
+    fireEvent.click(screen.getByTestId("celula-mes-2026-10-20"));
+    expect(screen.getByTestId("painel-do-dia").textContent).toContain("Nenhum compromisso");
+  });
+});
