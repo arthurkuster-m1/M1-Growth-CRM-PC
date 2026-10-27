@@ -19,6 +19,7 @@ import { z } from "zod";
 import { listaAgendamentos, type AgendamentoListado } from "@/lib/agenda/consulta";
 import { donosDaAgenda } from "@/lib/agenda/donos-da-agenda";
 import { lerOcupacaoExterna } from "@/lib/agenda/ocupacao-externa";
+import { recorteDeVisibilidadeDaAgenda } from "@/lib/agenda/visibilidade";
 import { resolveAuthDual, tetoDeEscritaDoToken } from "@/lib/api/auth-dual";
 import type { Actor } from "@/lib/api/handlers/types";
 import { ApiError } from "@/lib/api/types";
@@ -186,10 +187,18 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
 
   const supabase = await createClient();
+  // "Atendentes podem ver a agenda dos colegas" desligado: o atendente só lê a própria agenda,
+  // qualquer que seja o `owner_user_id` pedido.
+  const soDoDono = await recorteDeVisibilidadeDaAgenda(
+    supabase,
+    activeOrg.orgId,
+    activeOrg.role,
+    authz.user.id,
+  );
   const resultado = await listaAgendamentos(supabase, activeOrg.orgId, {
     contactId: parsed.data.contact_id ?? null,
     leadId: parsed.data.lead_id ?? null,
-    ownerUserId: parsed.data.owner_user_id ?? null,
+    ownerUserId: soDoDono ?? parsed.data.owner_user_id ?? null,
     dia: parsed.data.dia ?? null,
     de: parsed.data.de ?? null,
     ate: parsed.data.ate ?? null,
@@ -253,7 +262,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     // item 3). `organization_id` continua vindo do cookie validado; os donos são
     // membros DESSA organização, com filtro explícito (mesmo caminho de
     // `app/api/v1/agenda/pessoas/route.ts`).
-    const { donos, erro: erroDosDonos } = await donosDaAgenda(activeOrg.orgId);
+    const { donos: todosOsDonos, erro: erroDosDonos } = await donosDaAgenda(activeOrg.orgId);
+    const donos = soDoDono ? todosOsDonos.filter((d) => d === soDoDono) : todosOsDonos;
     if (erroDosDonos) {
       logger.warn("[agenda.agendamentos] donos da agenda não vieram", {
         erro: erroDosDonos,

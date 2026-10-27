@@ -704,16 +704,7 @@ export function FunisClient({
             "Quem já tem atendimento marcado entra pelo funil de clientes. Sem um funil marcado, entra pelo padrão.",
           )}
         </p>
-      ) : (
-        <p className="mt-4 text-xs text-muted-foreground" data-testid="funis-rodape-clientes">
-          {t(
-            "Para separar quem já é cliente, ligue “Clientes pela agenda” em Configurações › Tipos de agendamento. Enquanto estiver desligado, todo contato novo entra pelo funil padrão.",
-          )}{" "}
-          <Link href="/app/settings/tenant/agenda" className="underline" data-testid="funis-rodape-ligar">
-            {t("Abrir Tipos de agendamento")}
-          </Link>
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

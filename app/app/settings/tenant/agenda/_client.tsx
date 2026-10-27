@@ -4,7 +4,6 @@ import { EditorDasPaginasDeAtendimento } from "@/components/agenda/EditorDaPagin
 import { AgendasConectadas } from "@/components/agenda/AgendasConectadas";
 import { PrazosDePresenca } from "@/components/agenda/PrazosDePresenca";
 import { AgendaDosColegas } from "@/components/agenda/AgendaDosColegas";
-import { ClientePelaAgenda } from "@/components/agenda/ClientePelaAgenda";
 import { DiasBloqueados } from "@/components/agenda/DiasBloqueados";
 
 import { useT } from "@/hooks/i18n/useT";
@@ -310,9 +309,8 @@ export function TiposDeAgendamentoClient({
   usuarioAtualId,
   podeConfigurarGoogle,
   erroDeLeitura = null,
-  clientePelaAgendaLigado,
-  podeLigarClientePelaAgenda,
   colegasPodemMexerNaAgendaLigado,
+  colegasPodemVerAgendaLigado,
   podeMudarAgendaDosColegas,
   parte = "tudo",
 }: {
@@ -325,11 +323,11 @@ export function TiposDeAgendamentoClient({
   podeConfigurarGoogle: boolean;
   /** Mensagem do banco quando a consulta FALHOU. `null` = a consulta rodou. */
   erroDeLeitura?: string | null;
-  /** `organizations.settings.crm.cliente_pela_agenda`, lido pela página. */
-  clientePelaAgendaLigado: boolean;
-  podeLigarClientePelaAgenda: boolean;
   /** `organizations.settings.colegas_podem_mexer_na_agenda` (migration 0343). */
   colegasPodemMexerNaAgendaLigado: boolean;
+  /** `organizations.settings.colegas_podem_ver_agenda` (migration 0671). */
+  colegasPodemVerAgendaLigado: boolean;
+  /** Só administrador muda as duas opções das colegas. */
   podeMudarAgendaDosColegas: boolean;
 }) {
   const t = useT();
@@ -385,16 +383,17 @@ export function TiposDeAgendamentoClient({
               <AgendasConectadas />
             </BlocoRecolhivel>
           )}
-          <BlocoRecolhivel titulo={t("Confirmação de presença")} resumo={t("Quando pedir para a equipe registrar se o cliente compareceu")}>
+          <BlocoRecolhivel titulo={t("Registro do resultado da reunião")} resumo={t("Depois da reunião, quando o sistema pede para a equipe dizer se o cliente compareceu")}>
             <PrazosDePresenca podeEditar={podeEditar} />
-          </BlocoRecolhivel>
-          <BlocoRecolhivel titulo={t("Clientes pela agenda")} resumo={t("Marcar cliente automaticamente a partir dos compromissos")}>
-            <ClientePelaAgenda ligadoInicial={clientePelaAgendaLigado} podeLigar={podeLigarClientePelaAgenda} />
           </BlocoRecolhivel>
           {/* A opção da issue #978 fica ao lado das outras regras de comportamento da agenda: é a
               mesma pergunta ("como a agenda se comporta nesta empresa?"). */}
-          <BlocoRecolhivel titulo={t("Agenda dos colegas")} resumo={t("Se um colega pode mexer nos compromissos do outro")}>
-            <AgendaDosColegas ligadoInicial={colegasPodemMexerNaAgendaLigado} podeMudar={podeMudarAgendaDosColegas} />
+          <BlocoRecolhivel titulo={t("Agenda dos colegas")} resumo={t("Quem vê e quem pode mexer na agenda dos colegas")}>
+            <AgendaDosColegas
+              ligadoInicial={colegasPodemMexerNaAgendaLigado}
+              verInicial={colegasPodemVerAgendaLigado}
+              podeMudar={podeMudarAgendaDosColegas}
+            />
           </BlocoRecolhivel>
           <BlocoRecolhivel titulo={t("Dias fora da rotina")} resumo={t("Feriados, férias e outros dias sem atendimento")}>
             <DiasBloqueados podeEditar={podeEditar} />

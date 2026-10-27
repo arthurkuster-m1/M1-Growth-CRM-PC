@@ -408,3 +408,16 @@ export function colegasPodemMexerNaAgendaLigado(settings: unknown): boolean {
       : undefined;
   return raiz?.colegas_podem_mexer_na_agenda !== false;
 }
+
+/**
+ * "Atendentes podem VER a agenda dos colegas" (migration 0671). Ausente = ligado, e só o `false`
+ * explícito desliga — a mesma régua de `fn_colegas_podem_ver_agenda`. Desligado, quem é atendente
+ * vê só a própria agenda; gerente e administrador veem todas. Nunca lança.
+ */
+export function colegasPodemVerAgendaLigado(settings: unknown): boolean {
+  const raiz =
+    settings && typeof settings === "object" && !Array.isArray(settings)
+      ? (settings as Record<string, unknown>)
+      : undefined;
+  return raiz?.colegas_podem_ver_agenda !== false;
+}

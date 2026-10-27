@@ -18,6 +18,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { isServiceRoleConfigured } from "@/lib/audit";
 import { PAPEL_MINIMO_DA_LISTA } from "@/lib/agenda/lista-de-pessoas";
+import { recorteDeVisibilidadeDaAgenda } from "@/lib/agenda/visibilidade";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,7 +53,16 @@ export async function GET(_req: NextRequest): Promise<Response> {
 
   if (error) return fail("internal_error", error.message, 500, { requestId });
 
-  const membros = (rows ?? []) as Array<{ user_id: string; role: string }>;
+  // "Atendentes podem ver a agenda dos colegas" desligado: o atendente só vê a si mesmo na lista.
+  const soDoDono = await recorteDeVisibilidadeDaAgenda(
+    await createClient(),
+    orgId,
+    authz.org.role,
+    authz.user.id,
+  );
+  const membros = ((rows ?? []) as Array<{ user_id: string; role: string }>).filter(
+    (m) => !soDoDono || m.user_id === soDoDono,
+  );
 
   if (!isServiceRoleConfigured() || membros.length === 0) {
     const degradado: PessoaDaAgenda[] = membros.map((m) => ({ ...m, full_name: null }));

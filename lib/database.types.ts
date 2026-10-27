@@ -10353,6 +10353,8 @@ export type Database = {
       fn_appointment_enrollment_current: { Args: { p_org: string; p_id: string; p_node?: string | null }; Returns: boolean }
       fn_agenda_settings: { Args: { p_org: string; p_config: Json }; Returns: Json }
       fn_colegas_podem_mexer_na_agenda: { Args: { p_org: string }; Returns: boolean }
+      fn_colegas_podem_ver_agenda: { Args: { p_org: string }; Returns: boolean }
+      fn_definir_colegas_podem_ver_agenda: { Args: { p_org: string; p_ligado: boolean }; Returns: Json }
       fn_definir_colegas_podem_mexer_na_agenda: { Args: { p_org: string; p_ligado: boolean }; Returns: Json }
       fn_definir_cliente_pela_agenda: { Args: { p_ligado: boolean; p_org: string }; Returns: Json }
       fn_followup_patch: { Args: { p_org: string; p_id: string; p_revision: number; p_patch: Json }; Returns: number }
