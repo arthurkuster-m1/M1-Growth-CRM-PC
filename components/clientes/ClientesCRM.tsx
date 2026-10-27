@@ -14,7 +14,10 @@ import { BarraDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFu
 import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
-import { QuadroDeOportunidades, type GrupoDoQuadro } from "@/components/clientes/QuadroDeOportunidades";
+import {
+  QuadroDeOportunidades,
+  type GrupoDoQuadro,
+} from "@/components/clientes/QuadroDeOportunidades";
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
@@ -79,11 +82,13 @@ import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { apiClient } from "@/lib/api/client";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { lerNumero } from "@/lib/marketing/calculadora";
+import { aplicarConsulta, type CampoConsultavel } from "@/lib/motor/consulta";
 import {
-  aplicarConsulta,
-  type CampoConsultavel,
-} from "@/lib/motor/consulta";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import {
   ArrowRight,
@@ -282,7 +287,11 @@ export function ClientesCRM({
   };
   const [configurando, setConfigurando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<ReadonlySet<string>>(new Set());
-  const [perdendo, setPerdendo] = useState<{ leadId: string; funilId: string; etapaId?: string } | null>(null);
+  const [perdendo, setPerdendo] = useState<{
+    leadId: string;
+    funilId: string;
+    etapaId?: string;
+  } | null>(null);
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
   const [novaOportunidade, setNovaOportunidade] = useState(false);
   const [prospectando, setProspectando] = useState(false);
@@ -315,7 +324,17 @@ export function ClientesCRM({
   /** `?cadencia=ativa` (todos em cadência) ou `?cadencia=2` (os que estão no passo 2). */
   const cadenciaFiltro = parametros.get("cadencia");
   const [destaque, setDestaque] = useState<
-    null | "ligarhoje" | "cadencia" | "faturamento" | "abertos" | "abertas" | "compraram" | "vendas" | "mql" | "semcontato" | "sempasso"
+    | null
+    | "ligarhoje"
+    | "cadencia"
+    | "faturamento"
+    | "abertos"
+    | "abertas"
+    | "compraram"
+    | "vendas"
+    | "mql"
+    | "semcontato"
+    | "sempasso"
   >(null);
   const [importarAberto, setImportarAberto] = useState(false);
   /** O status do ciclo de vida que filtra a lista (clique de novo para soltar). */
@@ -345,16 +364,18 @@ export function ClientesCRM({
   // As abas salvas do CRM (da organização, como as de Tarefas): cada uma é Tabela ou Quadro,
   // com os próprios filtros, ordem e colunas. "Tabela" é a aba de fábrica.
   const padrao = useVisualizacao(tela);
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
-    tela,
-    podeEditar,
-  );
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } =
+    useVisoesSalvas(tela, podeEditar);
   const posicaoDaPadrao = padrao.preferencias.posicao ?? -1_000_000;
+  // A de fábrica é uma visualização como as outras: pode ser apagada (some das abas) — desde que
+  // reste outra para abrir.
+  const padraoOculta = padrao.preferencias.oculta === true && visoes.length > 0;
   const ordemDasAbas = [
-    { id: ID_DA_PADRAO, posicao: posicaoDaPadrao },
+    ...(padraoOculta ? [] : [{ id: ID_DA_PADRAO, posicao: posicaoDaPadrao }]),
     ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
   ].sort((a, b) => a.posicao - b.posicao);
-  const abaPedida = parametros.get("v");
+  const abaPedidaBruta = parametros.get("v");
+  const abaPedida = padraoOculta && abaPedidaBruta === ID_DA_PADRAO ? null : abaPedidaBruta;
   const visaoAtiva =
     abaPedida === ID_DA_PADRAO
       ? undefined
@@ -368,13 +389,17 @@ export function ClientesCRM({
   };
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   // Em Oportunidades o quadro do funil é a visão de abertura; "Tabela" continua a um clique.
-  const vista = visaoAtiva
-    ? visaoAtiva.type === "kanban"
-      ? "quadro"
-      : "tabela"
-    : ehOportunidades && abaPedida !== ID_DA_PADRAO
-      ? "quadro"
-      : "tabela";
+  // O tipo da de fábrica é escolhido como o de qualquer outra; sem escolha, Oportunidades abre em
+  // quadro e o resto em tabela — e o nome da aba diz o que ela é.
+  const tipoDaPadrao: "tabela" | "kanban" =
+    padrao.preferencias.visualizacao === "kanban" || padrao.preferencias.visualizacao === "tabela"
+      ? padrao.preferencias.visualizacao
+      : ehOportunidades
+        ? "kanban"
+        : "tabela";
+  const nomeDaPadrao =
+    padrao.preferencias.nome ?? (tipoDaPadrao === "kanban" ? t("Quadro") : t("Tabela"));
+  const vista = (visaoAtiva ? visaoAtiva.type : tipoDaPadrao) === "kanban" ? "quadro" : "tabela";
   const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
     ? visaoAtiva.config
     : padrao.preferencias;
@@ -399,9 +424,8 @@ export function ClientesCRM({
     novo: ReadonlySet<string> | ((atual: ReadonlySet<string>) => ReadonlySet<string>),
   ) => {
     const valor = typeof novo === "function" ? novo(statusDasVendas) : novo;
-    const lista = [...valor].filter(
-      (v): v is (typeof STATUS_DA_VENDA)[number] =>
-        (STATUS_DA_VENDA as readonly string[]).includes(v),
+    const lista = [...valor].filter((v): v is (typeof STATUS_DA_VENDA)[number] =>
+      (STATUS_DA_VENDA as readonly string[]).includes(v),
     );
     atualizar((p) => ({ ...p, statusDasVendas: lista.length > 0 ? lista : undefined }));
   };
@@ -606,7 +630,9 @@ export function ClientesCRM({
    * UMA LINHA POR VENDA: cada venda do lead é uma linha, com o card (funil e etapa) em que ela
    * está; campanha, anúncio e landing page são os da própria venda. Sem venda, cai nos cards.
    */
-  const itensDaLinha = (l: Linha): Array<{ venda: VendaAtivaDoCliente | null; p: ParticipacaoDoCliente }> => {
+  const itensDaLinha = (
+    l: Linha,
+  ): Array<{ venda: VendaAtivaDoCliente | null; p: ParticipacaoDoCliente }> => {
     const base = l.participacao ? l.participacoes : l.participacoes;
     const porVenda = vendasVisiveis(l)
       .map((v) => ({ venda: v, p: base.find((x) => x.lead_id === v.lead_id) ?? null }))
@@ -814,7 +840,9 @@ export function ClientesCRM({
                   const novo = nome.trim();
                   if (!novo || novo === p.titulo) return;
                   otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, titulo: novo }));
-                  void executar(() => apiClient.patch(`/api/v1/vendas/${p.lead_id}`, { name: novo }));
+                  void executar(() =>
+                    apiClient.patch(`/api/v1/vendas/${p.lead_id}`, { name: novo }),
+                  );
                 }}
               />
             </div>
@@ -827,22 +855,22 @@ export function ClientesCRM({
             </button>
           </div>
         ) : (
-        <div className="flex min-w-0 items-center gap-1">
-          <div className="min-w-0 flex-1">
-            <CelulaDeTexto
-              valor={l.nome}
-              rotulo={t("Nome do lead")}
-              podeEditar={podeEditar}
-              aoSalvar={(nome) => void salvarContato(l, { name: nome }, { nome })}
-            />
+          <div className="flex min-w-0 items-center gap-1">
+            <div className="min-w-0 flex-1">
+              <CelulaDeTexto
+                valor={l.nome}
+                rotulo={t("Nome do lead")}
+                podeEditar={podeEditar}
+                aoSalvar={(nome) => void salvarContato(l, { name: nome }, { nome })}
+              />
+            </div>
+            <Link
+              href={`/app/contacts/${l.contact_id}`}
+              className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
+            >
+              {t("Abrir")}
+            </Link>
           </div>
-          <Link
-            href={`/app/contacts/${l.contact_id}`}
-            className="inline-flex h-7 shrink-0 items-center rounded-md border bg-card px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
-          >
-            {t("Abrir")}
-          </Link>
-        </div>
         ),
     },
     {
@@ -1033,7 +1061,11 @@ export function ClientesCRM({
             .map((p) => p.previsao_de_fechamento)
             .filter((d): d is string => Boolean(d))
             .sort();
-          return <span className="block truncate px-2 text-sm text-muted-foreground">{datas[0] ? dia(datas[0]) : "—"}</span>;
+          return (
+            <span className="block truncate px-2 text-sm text-muted-foreground">
+              {datas[0] ? dia(datas[0]) : "—"}
+            </span>
+          );
         }
         return (
           <CelulaDeDia
@@ -1141,7 +1173,12 @@ export function ClientesCRM({
         const dias = p.ultima_tentativa
           ? Math.floor((agora - new Date(p.ultima_tentativa).getTime()) / 86_400_000)
           : null;
-        const quando = dias === null ? "" : dias <= 0 ? t("hoje") : `${t("há")} ${dias} ${dias === 1 ? t("dia") : t("dias")}`;
+        const quando =
+          dias === null
+            ? ""
+            : dias <= 0
+              ? t("hoje")
+              : `${t("há")} ${dias} ${dias === 1 ? t("dia") : t("dias")}`;
         return (
           <span className="block truncate px-2 text-sm">
             {p.tentativas} {p.tentativas === 1 ? t("tentativa") : t("tentativas")}
@@ -1162,7 +1199,7 @@ export function ClientesCRM({
             href={`tel:${l.telefone}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+            className="mx-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary"
           >
             <Phone size={14} aria-hidden />
             {t("Ligar")}
@@ -1175,7 +1212,7 @@ export function ClientesCRM({
       id: "whatsapp",
       titulo: "WhatsApp",
       icone: <WhatsappLogo size={14} aria-hidden />,
-      largura: 120,
+      largura: 170,
       padrao: ehOportunidades,
       celula: (l) => (
         <BotaoWhatsApp
@@ -1195,7 +1232,7 @@ export function ClientesCRM({
       id: "instagram",
       titulo: "Instagram",
       icone: <InstagramLogo size={14} aria-hidden />,
-      largura: 120,
+      largura: 140,
       padrao: false,
       celula: (l) => {
         const link = typeof l.campos.link_instagram === "string" ? l.campos.link_instagram : "";
@@ -1204,7 +1241,7 @@ export function ClientesCRM({
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+            className="mx-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary"
           >
             <InstagramLogo size={14} aria-hidden />
             Instagram
@@ -1218,19 +1255,19 @@ export function ClientesCRM({
       id: "inbox",
       titulo: t("Inbox"),
       icone: <ChatCircle size={14} aria-hidden />,
-      largura: 130,
+      largura: 160,
       padrao: ehOportunidades,
       celula: (l) =>
         l.conversa_id ? (
           <Link
             href={`/app/inbox?id=${l.conversa_id}`}
-            className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+            className="mx-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary"
           >
             <ChatCircle size={14} aria-hidden />
             {t("Abrir no Inbox")}
           </Link>
         ) : l.telefone ? (
-          <span className="mx-2 inline-flex">
+          <span className="mx-2 inline-flex whitespace-nowrap [&_button]:mt-0 [&_button]:h-8 [&_button]:w-auto [&_button]:shrink-0 [&_button]:rounded-lg [&_button]:border [&_button]:px-2.5 [&_button]:py-0 [&_button]:text-xs [&_button]:font-medium">
             <AbrirConversaDoLead contactId={l.contact_id} phone={l.telefone} />
           </span>
         ) : (
@@ -1241,14 +1278,14 @@ export function ClientesCRM({
       id: "acao",
       titulo: t("Adicionar ação"),
       icone: <Plus size={14} aria-hidden />,
-      largura: 150,
+      largura: 170,
       padrao: ehOportunidades,
       celula: (l) => (
         <button
           type="button"
           disabled={!podeEditar}
           onClick={() => setAcaoDoContato(l.contact_id)}
-          className="mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+          className="mx-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary disabled:opacity-50"
         >
           <Plus size={14} aria-hidden />
           {t("Adicionar ação")}
@@ -1445,7 +1482,9 @@ export function ClientesCRM({
       largura: 160,
       padrao: false,
       celula: (l) => (
-        <span className="block px-2 text-sm">{dia(l.participacao?.primeiro_pagamento ?? null) || "—"}</span>
+        <span className="block px-2 text-sm">
+          {dia(l.participacao?.primeiro_pagamento ?? null) || "—"}
+        </span>
       ),
     },
     {
@@ -1455,7 +1494,9 @@ export function ClientesCRM({
       largura: 160,
       padrao: false,
       celula: (l) => (
-        <span className="block px-2 text-sm">{dia(l.participacao?.ultimo_pagamento ?? null) || "—"}</span>
+        <span className="block px-2 text-sm">
+          {dia(l.participacao?.ultimo_pagamento ?? null) || "—"}
+        </span>
       ),
     },
     {
@@ -1465,7 +1506,9 @@ export function ClientesCRM({
       largura: 160,
       padrao: false,
       celula: (l) => (
-        <span className="block px-2 text-sm">{dia(l.participacao?.proximo_pagamento ?? null) || "—"}</span>
+        <span className="block px-2 text-sm">
+          {dia(l.participacao?.proximo_pagamento ?? null) || "—"}
+        </span>
       ),
     },
     {
@@ -1799,7 +1842,9 @@ export function ClientesCRM({
       celula: (l) => {
         if (!ehOportunidades) {
           return (
-            <span className="block truncate px-2 text-sm">{l.origem_do_cliente.anuncio ?? "—"}</span>
+            <span className="block truncate px-2 text-sm">
+              {l.origem_do_cliente.anuncio ?? "—"}
+            </span>
           );
         }
         const lista = itensDaLinha(l);
@@ -2228,8 +2273,7 @@ export function ClientesCRM({
   const estaSemContato = (l: Linha) =>
     (l.participacao ? [l.participacao] : l.participacoes).some(
       (p) =>
-        p.status === "open" &&
-        new Date(p.ultima_atividade ?? p.criado_em).getTime() < seteDias,
+        p.status === "open" && new Date(p.ultima_atividade ?? p.criado_em).getTime() < seteDias,
     );
   const semContato = alvos.filter(estaSemContato).length;
   /** Quem aparece na lista quando se clica num número do topo. */
@@ -2252,7 +2296,9 @@ export function ClientesCRM({
           ? prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null
           : false;
       case "cadencia": {
-        const passo = l.participacao ? cadenciaDeHoje.porLead.get(l.participacao.lead_id) : undefined;
+        const passo = l.participacao
+          ? cadenciaDeHoje.porLead.get(l.participacao.lead_id)
+          : undefined;
         return passo ? venceAteHoje(passo.vence_em, hojeLocal) : false;
       }
       case "abertas":
@@ -2283,7 +2329,9 @@ export function ClientesCRM({
   // Fila do dia: do mais atrasado ao menos (sem a pessoa ter escolhido outra ordem).
   if (destaque === "ligarhoje" && !preferencias.ordenacao?.length) {
     const peso = (l: Linha) =>
-      l.participacao ? (prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) ?? Infinity) : Infinity;
+      l.participacao
+        ? (prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) ?? Infinity)
+        : Infinity;
     visiveis.sort((x, y) => peso(x) - peso(y));
   }
   // Cadência de hoje: do passo mais atrasado ao menos.
@@ -2305,7 +2353,9 @@ export function ClientesCRM({
   }).length;
   const filaDaCadencia = metaDoDia > 0 ? Math.min(doDiaNaCadencia, metaDoDia) : doDiaNaCadencia;
   const filaDoDia = alvos.filter(
-    (l) => l.participacao && prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null,
+    (l) =>
+      l.participacao &&
+      prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null,
   ).length;
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
@@ -2362,7 +2412,9 @@ export function ClientesCRM({
       rotulo: t("Taxa de conversão"),
       valor: `${taxa}%`,
       detalhe:
-        leadsComVenda === 1 ? t("1 cliente comprou") : `${leadsComVenda} ${t("clientes compraram")}`,
+        leadsComVenda === 1
+          ? t("1 cliente comprou")
+          : `${leadsComVenda} ${t("clientes compraram")}`,
     },
     { id: "vendas", rotulo: t("Vendas"), valor: String(totalDeVendas) },
     { id: "mql", rotulo: t("MQL"), valor: String(alvos.filter((l) => l.is_mql).length) },
@@ -2479,10 +2531,7 @@ export function ClientesCRM({
   }));
 
   const abasPorId = new Map([
-    [
-      ID_DA_PADRAO,
-      { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Tabela"), tipo: "tabela" as const },
-    ],
+    [ID_DA_PADRAO, { id: ID_DA_PADRAO, nome: nomeDaPadrao, tipo: tipoDaPadrao }],
     ...visoes.map((v) => [v.id, { id: v.id, nome: v.name, tipo: v.type }] as const),
   ]);
   const abas = ordemDasAbas.flatMap((a) => {
@@ -2579,10 +2628,9 @@ export function ClientesCRM({
     const aviso =
       alvos.length === 1
         ? t("Excluir esta oportunidade? O cliente continua cadastrado.")
-        : t("Excluir as {n} oportunidades selecionadas? Os clientes continuam cadastrados.").replace(
-            "{n}",
-            String(alvos.length),
-          );
+        : t(
+            "Excluir as {n} oportunidades selecionadas? Os clientes continuam cadastrados.",
+          ).replace("{n}", String(alvos.length));
     if (!window.confirm(aviso)) return;
     let recusadas = 0;
     for (const l of alvos) {
@@ -2693,7 +2741,9 @@ export function ClientesCRM({
               disabled={!clicavel && destaque === null}
               aria-pressed={ativo}
               title={
-                clicavel ? t("Clique para ver quem compõe este número") : t("Mostrar todos os leads")
+                clicavel
+                  ? t("Clique para ver quem compõe este número")
+                  : t("Mostrar todos os leads")
               }
               onClick={() =>
                 setDestaque(
@@ -2701,13 +2751,15 @@ export function ClientesCRM({
                 )
               }
               className={`bg-card px-4 py-3 text-left transition-colors hover:bg-secondary/60 ${
-                ativo ? "ring-2 ring-inset ring-primary" : ""
+                ativo ? "ring-2 ring-primary ring-inset" : ""
               }`}
             >
               <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {n.rotulo}
               </p>
-              <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{n.valor}</NumeroQueCabe></p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">
+                <NumeroQueCabe>{n.valor}</NumeroQueCabe>
+              </p>
               {n.detalhe ? <p className="text-[11px] text-muted-foreground">{n.detalhe}</p> : null}
             </button>
           );
@@ -2727,7 +2779,9 @@ export function ClientesCRM({
           >
             <Phone size={14} aria-hidden />
             {t("Ligar hoje")}
-            <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">{filaDoDia}</span>
+            <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">
+              {filaDoDia}
+            </span>
           </button>
           {cadenciaDeHoje.passos.length > 0 ? (
             <button
@@ -2741,7 +2795,9 @@ export function ClientesCRM({
             >
               <Phone size={14} aria-hidden />
               {t("Cadência de hoje")}
-              <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">{filaDaCadencia}</span>
+              <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">
+                {filaDaCadencia}
+              </span>
             </button>
           ) : null}
           <button
@@ -2766,10 +2822,7 @@ export function ClientesCRM({
       ) : null}
 
       {ehOportunidades ? null : (
-        <section
-          aria-label={t("Ciclo de vida")}
-          className="rounded-2xl border bg-card px-4 py-3"
-        >
+        <section aria-label={t("Ciclo de vida")} className="rounded-2xl border bg-card px-4 py-3">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {t("Ciclo de vida")}
@@ -2794,7 +2847,11 @@ export function ClientesCRM({
               const ativo = cicloFiltro === ciclo;
               const apagado = cicloFiltro !== null && !ativo;
               return (
-                <li key={ciclo} className="min-w-[8.5rem] flex-1" style={{ marginLeft: i === 0 ? 0 : -10 }}>
+                <li
+                  key={ciclo}
+                  className="min-w-[8.5rem] flex-1"
+                  style={{ marginLeft: i === 0 ? 0 : -10 }}
+                >
                   <button
                     type="button"
                     aria-pressed={ativo}
@@ -2931,7 +2988,9 @@ export function ClientesCRM({
           <span>
             {t("Mostrando só quem está em")}{" "}
             <strong>
-              {cadenciaFiltro === "ativa" ? t("cadência") : `${t("cadência")} · ${t("passo")} ${cadenciaFiltro}`}
+              {cadenciaFiltro === "ativa"
+                ? t("cadência")
+                : `${t("cadência")} · ${t("passo")} ${cadenciaFiltro}`}
             </strong>{" "}
             · {visiveis.length} {visiveis.length === 1 ? t("lead") : t("leads")}
           </span>
@@ -2959,9 +3018,9 @@ export function ClientesCRM({
                 ? t("Ligar hoje")
                 : destaque === "cadencia"
                   ? t("Cadência de hoje")
-                : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}
-            </strong> · {visiveis.length}{" "}
-            {visiveis.length === 1 ? t("lead") : t("leads")}
+                  : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}
+            </strong>{" "}
+            · {visiveis.length} {visiveis.length === 1 ? t("lead") : t("leads")}
           </span>
           <button
             type="button"
@@ -2974,36 +3033,36 @@ export function ClientesCRM({
       ) : null}
 
       {ehOportunidades ? (
-      <BarraDeFunis
-        funis={funisNaOrdem}
-        arquivados={arquivados}
-        filtros={{
-          status: barra.preferencias.funis?.status ?? [],
-          canais: barra.preferencias.funis?.canais ?? [],
-        }}
-        aoFiltrar={(f) =>
-          salvarFunis((atual) => ({ ...atual, status: f.status, canais: f.canais }))
-        }
-        escolhido={funilEscolhido}
-        todosId={TODOS}
-        rotuloTodos={ehOportunidades ? t("Todas") : undefined}
-        podeOrganizar
-        aoEscolher={(id) => {
-          setEtapasFiltro(null);
-          ir({ funil: id });
-        }}
-        aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
-        aoArquivar={(ids, arquivar) =>
-          salvarFunis((f) => {
-            const atuais = new Set(f.arquivados ?? []);
-            for (const id of ids) {
-              if (arquivar) atuais.add(id);
-              else atuais.delete(id);
-            }
-            return { ...f, arquivados: [...atuais] };
-          })
-        }
-      />
+        <BarraDeFunis
+          funis={funisNaOrdem}
+          arquivados={arquivados}
+          filtros={{
+            status: barra.preferencias.funis?.status ?? [],
+            canais: barra.preferencias.funis?.canais ?? [],
+          }}
+          aoFiltrar={(f) =>
+            salvarFunis((atual) => ({ ...atual, status: f.status, canais: f.canais }))
+          }
+          escolhido={funilEscolhido}
+          todosId={TODOS}
+          rotuloTodos={ehOportunidades ? t("Todas") : undefined}
+          podeOrganizar
+          aoEscolher={(id) => {
+            setEtapasFiltro(null);
+            ir({ funil: id });
+          }}
+          aoReordenar={(ids) => salvarFunis((f) => ({ ...f, ordem: ids }))}
+          aoArquivar={(ids, arquivar) =>
+            salvarFunis((f) => {
+              const atuais = new Set(f.arquivados ?? []);
+              for (const id of ids) {
+                if (arquivar) atuais.add(id);
+                else atuais.delete(id);
+              }
+              return { ...f, arquivados: [...atuais] };
+            })
+          }
+        />
       ) : null}
 
       {ehOportunidades ? (
@@ -3049,36 +3108,34 @@ export function ClientesCRM({
       ) : (
         <>
           <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-          <AbasDeVisualizacao
-        aoReordenar={reordenarAbasNaTela}
-            abas={abas}
-            ativaId={ativaId}
-            podeEditar={podeEditar}
-            tipos={TIPOS_DO_CRM}
-            aoEscolher={(id) => ir({ aba: id })}
-            aoCriar={(nome, tipo) =>
-              void criarVisao({ name: nome, type: tipo, config: preferencias }).then(
-                (v) => v && ir({ aba: v.id }),
-              )
-            }
-            modelos={ehOportunidades ? MODELOS_DAS_OPORTUNIDADES : []}
-            aoCriarModelo={(id) => {
-              const modelo = MODELOS_DAS_OPORTUNIDADES.find((m) => m.id === id);
-              if (!modelo) return;
-              // Já existe uma aba com o nome do modelo? Abre essa em vez de duplicar.
-              const existente = visoes.find((v) => v.name === modelo.nome);
-              if (existente) return ir({ aba: existente.id });
-              void criarVisao({
-                name: modelo.nome,
-                type: modelo.tipo,
-                config: modelo.config,
-              }).then((v) => v && ir({ aba: v.id }));
-            }}
-            aoConfigurar={() => setConfigurando(true)}
-          />
-          {ehOportunidades ? null : (
-            <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />
-          )}
+            <AbasDeVisualizacao
+              aoReordenar={reordenarAbasNaTela}
+              abas={abas}
+              ativaId={ativaId}
+              podeEditar={podeEditar}
+              tipos={TIPOS_DO_CRM}
+              aoEscolher={(id) => ir({ aba: id })}
+              aoCriar={(nome, tipo) =>
+                void criarVisao({ name: nome, type: tipo, config: preferencias }).then(
+                  (v) => v && ir({ aba: v.id }),
+                )
+              }
+              modelos={ehOportunidades ? MODELOS_DAS_OPORTUNIDADES : []}
+              aoCriarModelo={(id) => {
+                const modelo = MODELOS_DAS_OPORTUNIDADES.find((m) => m.id === id);
+                if (!modelo) return;
+                // Já existe uma aba com o nome do modelo? Abre essa em vez de duplicar.
+                const existente = visoes.find((v) => v.name === modelo.nome);
+                if (existente) return ir({ aba: existente.id });
+                void criarVisao({
+                  name: modelo.nome,
+                  type: modelo.tipo,
+                  config: modelo.config,
+                }).then((v) => v && ir({ aba: v.id }));
+              }}
+              aoConfigurar={() => setConfigurando(true)}
+            />
+            {ehOportunidades ? null : <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />}
           </div>
 
           {vista === "quadro" && !ehOportunidades ? (
@@ -3101,7 +3158,7 @@ export function ClientesCRM({
                   />
                 </label>
                 <BarraDeConsulta
-          salvamento={salvamento}
+                  salvamento={salvamento}
                   compacta
                   campos={camposDaBarra}
                   consulta={{
@@ -3150,7 +3207,10 @@ export function ClientesCRM({
                     if (l.participacao) void abrirVenda(l, l.participacao.lead_id);
                   }}
                   totalDe={(itens) => {
-                    const soma = itens.reduce((s2, l) => s2 + (l.participacao?.valor_cents ?? 0), 0);
+                    const soma = itens.reduce(
+                      (s2, l) => s2 + (l.participacao?.valor_cents ?? 0),
+                      0,
+                    );
                     return soma > 0 ? moeda(soma) : null;
                   }}
                 />
@@ -3226,7 +3286,9 @@ export function ClientesCRM({
                 <AcoesEmMassaDeClientes
                   contatoIds={[
                     ...new Set(
-                      resultado.linhas.filter((l) => selecionadas.has(l.chave)).map((l) => l.contact_id),
+                      resultado.linhas
+                        .filter((l) => selecionadas.has(l.chave))
+                        .map((l) => l.contact_id),
                     ),
                   ]}
                   podeGerir={ROLE_RANK[role] >= ROLE_RANK.manager}
@@ -3242,22 +3304,37 @@ export function ClientesCRM({
           <ConfigurarVisualizacao
             aberto={configurando}
             aoFechar={() => setConfigurando(false)}
-            nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
-            tipo={visaoAtiva?.type ?? "tabela"}
+            nome={visaoAtiva?.name ?? nomeDaPadrao}
+            tipo={visaoAtiva?.type ?? tipoDaPadrao}
             tipos={TIPOS_DO_CRM}
             podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
-            ehPadrao={!visaoAtiva}
+            ehPadrao={false}
             aoArquivar={
-          visaoAtiva && visaoAtiva.editavel === false
-            ? () => void arquivarVisao(visaoAtiva.id)
-            : undefined
-        }
+              visaoAtiva && visaoAtiva.editavel === false
+                ? () => void arquivarVisao(visaoAtiva.id)
+                : undefined
+            }
             aoRenomear={(nome) =>
               visaoAtiva
                 ? void editarVisao(visaoAtiva.id, { name: nome })
                 : padrao.atualizar((p) => ({ ...p, nome }))
             }
-            aoTrocarTipo={(tipo) => visaoAtiva && void editarVisao(visaoAtiva.id, { type: tipo })}
+            aoTrocarTipo={(tipo) =>
+              visaoAtiva
+                ? void editarVisao(visaoAtiva.id, { type: tipo })
+                : padrao.atualizar((p) => ({
+                    ...p,
+                    visualizacao: tipo === "kanban" ? "kanban" : "tabela",
+                  }))
+            }
+            aoDuplicar={() => {
+              const origem = visaoAtiva ?? { name: nomeDaPadrao, type: tipoDaPadrao };
+              void criarVisao({
+                name: `${t("Cópia de")} ${origem.name}`.slice(0, 60),
+                type: origem.type,
+                config: preferencias,
+              }).then((v) => v && ir({ aba: v.id }));
+            }}
             aoMoverAba={moverAba}
             podeMoverAba={{
               esquerda: indiceDaAba > 0,
@@ -3298,9 +3375,19 @@ export function ClientesCRM({
                 ? () => {
                     void apagarVisao(visaoAtiva.id);
                     setConfigurando(false);
-                    ir({ aba: ID_DA_PADRAO });
+                    ir({
+                      aba: padraoOculta
+                        ? (visoes.find((v) => v.id !== visaoAtiva.id)?.id ?? ID_DA_PADRAO)
+                        : ID_DA_PADRAO,
+                    });
                   }
-                : undefined
+                : visoes.length > 0
+                  ? () => {
+                      padrao.atualizar((p) => ({ ...p, oculta: true }));
+                      setConfigurando(false);
+                      ir({ aba: visoes[0]!.id });
+                    }
+                  : undefined
             }
           />
         </>

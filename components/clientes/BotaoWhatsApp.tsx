@@ -74,13 +74,13 @@ export function BotaoWhatsApp({
   }
 
   return (
-    <span className={cn("mx-2 inline-flex items-stretch", className)}>
+    <span className={cn("mx-2 inline-flex shrink-0 items-stretch", className)}>
       <a
         href={link(atual) ?? "#"}
         target="_blank"
         rel="noopener noreferrer"
         title={atual ? `${t("Mensagem:")} ${atual.title}` : t("Abrir o WhatsApp sem mensagem")}
-        className="inline-flex h-8 items-center gap-1.5 rounded-l-lg border px-2.5 text-xs font-medium hover:bg-secondary"
+        className="inline-flex h-8 items-center gap-1.5 rounded-l-lg border px-2.5 text-xs font-medium whitespace-nowrap hover:bg-secondary"
       >
         <WhatsappLogo size={14} aria-hidden />
         WhatsApp
