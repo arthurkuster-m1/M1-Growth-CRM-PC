@@ -86,6 +86,12 @@ describe("página da venda × página da oportunidade", () => {
     expect(screen.getByLabelText("Parcela recebida 1")).toBeTruthy();
   });
 
+  it("abrir uma venda existente não põe o foco no título (não levanta o teclado)", () => {
+    abrir("venda");
+    expect(document.activeElement).not.toBe(screen.getByLabelText("Título da oportunidade"));
+    expect(document.activeElement?.tagName).not.toBe("INPUT");
+  });
+
   it("modo oportunidade continua com a página completa", () => {
     abrir("oportunidade");
     expect(screen.getByText("Cliente, funil e status")).toBeTruthy();
