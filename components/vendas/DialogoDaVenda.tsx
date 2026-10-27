@@ -29,6 +29,7 @@ import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
+  ROTULO_DO_STATUS_DA_VENDA,
   STATUS_DA_VENDA,
   type StatusDaVenda,
   nomeDaVenda,
@@ -109,20 +110,7 @@ const BARRAS = {
 
 /** Uma fase do popup: cartão com a barra colorida na lateral e o título. */
 function rotuloDoStatus(t: (s: string) => string, st: StatusDaVenda): string {
-  switch (st) {
-    case "interesse":
-      return t("Possível venda");
-    case "comprometida":
-      return t("Comprometido");
-    case "concluida":
-      return t("Pago");
-    case "recorrencia_ativa":
-      return t("Recorrência ativa");
-    case "recorrencia_encerrada":
-      return t("Recorrência encerrada");
-    case "cancelada":
-      return t("Cancelado");
-  }
+  return t(ROTULO_DO_STATUS_DA_VENDA[st]);
 }
 
 function Fase({
@@ -161,7 +149,17 @@ export function DialogoDaVenda({
   negocio: negocioProp,
   funis,
   funilInicial,
+  modo = "oportunidade",
+  abrirComStatus,
 }: {
+  /**
+   * "venda" é a PÁGINA DA VENDA: só o título (o mesmo da oportunidade), o status, os produtos, o
+   * pagamento e as anotações — tudo o que é da oportunidade (funil, cliente, origem, previsão…) fica
+   * na página dela. Os campos que as duas páginas têm (título, status, anotações) são o MESMO dado.
+   */
+  modo?: "oportunidade" | "venda";
+  /** Abre já escolhendo este status (ex.: "Pago" pelo compromisso; "Cancelado" pede o motivo). */
+  abrirComStatus?: StatusDaVenda;
   /** Oportunidade nova: os funis para escolher onde ela entra. */
   funis?: Array<{ id: string; nome: string }>;
   funilInicial?: string | null;
@@ -583,6 +581,17 @@ export function DialogoDaVenda({
     }
   }
 
+  // Aberta já com um status pedido (pelo compromisso): cancelar e encerrar pedem o motivo aqui; os
+  // demais só abrem a página para registrar o pagamento.
+  useEffect(() => {
+    if (abrirComStatus === "cancelada" || abrirComStatus === "recorrencia_encerrada") {
+      void mudarStatusDaOportunidade(abrirComStatus);
+    }
+    // Uma vez, na abertura.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const ehVenda = modo === "venda";
   const itensValidos = itens.filter((i) => i.produtoId !== "");
   const valido =
     contato !== "" &&
@@ -782,6 +791,7 @@ export function DialogoDaVenda({
           <DialogTitle className="min-w-0 text-base font-semibold break-words">
             {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
           </DialogTitle>
+          {ehVenda ? null : (
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -834,14 +844,55 @@ export function DialogoDaVenda({
               ) : null}
             </PopoverContent>
           </Popover>
+          )}
         </div>
         <DialogDescription className="text-sm text-muted-foreground">
-          {t(
-            "Informe os produtos, o valor real e como o cliente vai pagar. Só entra no mês o que de fato cair na conta.",
-          )}
+          {ehVenda
+            ? t("A venda desta oportunidade: produtos, pagamento e anotações.")
+            : t(
+                "Informe os produtos, o valor real e como o cliente vai pagar. Só entra no mês o que de fato cair na conta.",
+              )}
         </DialogDescription>
 
+        {ehVenda ? (
+          <>
+            {/* 1 e 2 · o título (o MESMO da oportunidade) e o status da venda (o MESMO campo do status). */}
+            <Fase titulo={t("Venda")} cor="purple">
+              <label className="grid gap-1">
+                <span className="text-xs text-muted-foreground">{t("Título da oportunidade")}</span>
+                <input
+                  value={nomeDaVendaTexto}
+                  maxLength={120}
+                  onChange={(e) => setNomeDaVendaTexto(e.target.value)}
+                  placeholder={nomePadrao || t("Nome do cliente | Produto")}
+                  className="h-10 w-full min-w-0 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              {venda && venda.lead_id ? (
+                <div className="grid gap-1">
+                  <span className="text-xs text-muted-foreground">{t("Status da venda")}</span>
+                  <SeletorEmPopup
+                    rotulo={t("Status da venda")}
+                    valor={statusAtual}
+                    opcoes={STATUS_DA_VENDA.map((st) => ({
+                      id: st,
+                      rotulo: rotuloDoStatus(t, st),
+                      cor: COR_DO_STATUS[st],
+                    }))}
+                    aoEscolher={(id) => void mudarStatusDaOportunidade(id as StatusDaVenda)}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {t("Ao mudar o status, ele é salvo na hora e o painel fecha.")}
+                  </span>
+                </div>
+              ) : null}
+            </Fase>
+          </>
+        ) : null}
+
         {/* O NEGÓCIO da venda: previsão, descrição e campos do funil. */}
+        {ehVenda ? null : (
+        <>
         <Fase titulo={t("Negócio")} cor="purple">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 sm:col-span-2">
@@ -1032,8 +1083,10 @@ export function DialogoDaVenda({
             <CompromissosDoLead contactId={venda.contact_id} leadId={venda.lead_id} />
           </Fase>
         ) : null}
+        </>
+        )}
 
-        <Fase titulo={t("Produtos e serviços")} cor="orange">
+        <Fase titulo={ehVenda ? t("Produtos e ticket médio") : t("Produtos e serviços")} cor="orange">
           {itens.map((it, i) => (
             <div key={i} className="grid grid-cols-[1fr_8rem_auto] items-center gap-2">
               <SeletorEmPopup
@@ -1101,6 +1154,12 @@ export function DialogoDaVenda({
               <Plus size={14} weight="bold" aria-hidden />
               {t("Vendeu mais alguma coisa?")}
             </button>
+            {ehVenda && itensValidos.length > 1 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("Ticket médio por produto")}:{" "}
+                <strong className="tabular-nums">{reais(Math.round(total / itensValidos.length))}</strong>
+              </p>
+            ) : null}
             <p className="text-sm">
               {recorrente && parcelas.length > 0
                 ? t("Total (soma das parcelas)")
@@ -1119,7 +1178,7 @@ export function DialogoDaVenda({
 
         {true ? (
           <Fase titulo={t("Pagamento")} cor="green">
-            {venda && venda.lead_id ? (
+            {!ehVenda && venda && venda.lead_id ? (
               <div className="grid gap-1">
                 <span className="text-xs text-muted-foreground">{t("Status da oportunidade")}</span>
                 <SeletorEmPopup
@@ -1360,7 +1419,7 @@ export function DialogoDaVenda({
           </Fase>
         ) : null}
 
-        {leadDaVenda ? (
+        {leadDaVenda && !ehVenda ? (
           <Fase titulo={t("Origem")} cor="pink">
             {origemAtual ? (
               <>
@@ -1384,6 +1443,21 @@ export function DialogoDaVenda({
           </Fase>
         ) : null}
 
+        {ehVenda ? (
+          <Fase titulo={t("Anotações da oportunidade")} cor="gray">
+            <textarea
+              rows={4}
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder={t("Anotações rápidas sobre esta oportunidade…")}
+              aria-label={t("Anotações da oportunidade")}
+              className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("As mesmas anotações aparecem na página da oportunidade.")}
+            </p>
+          </Fase>
+        ) : (
         <Fase titulo={t("Detalhes da oportunidade")} cor="gray">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid grid-cols-1 gap-1">
@@ -1420,6 +1494,7 @@ export function DialogoDaVenda({
             ) : null}
           </div>
         </Fase>
+        )}
 
         {erro ? (
           <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm">
@@ -1428,7 +1503,7 @@ export function DialogoDaVenda({
         ) : null}
 
         <div className="flex flex-wrap justify-between gap-2 pt-1">
-          {venda ? (
+          {venda && !ehVenda ? (
             <button
               type="button"
               onClick={() => {
@@ -1460,7 +1535,7 @@ export function DialogoDaVenda({
               onClick={() => void salvar()}
               className="h-10 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
-              {salvando ? t("Salvando…") : t("Salvar oportunidade")}
+              {salvando ? t("Salvando…") : ehVenda ? t("Salvar venda") : t("Salvar oportunidade")}
             </button>
           </div>
         </div>

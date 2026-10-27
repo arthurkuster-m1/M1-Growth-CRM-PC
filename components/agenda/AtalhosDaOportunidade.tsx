@@ -78,8 +78,11 @@ export function AtalhosDaOportunidade({
   };
 
   return (
-    <div className="mt-1 grid gap-3" data-testid="atalhos-da-oportunidade">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <div
+      className="mt-1 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3"
+      data-testid="atalhos-da-oportunidade"
+    >
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         <Campo rotulo={t("Próxima ação")}>
           <div className="flex flex-wrap items-center gap-1 sm:flex-nowrap">
             <input
@@ -107,7 +110,7 @@ export function AtalhosDaOportunidade({
               onChange={(e) =>
                 gravarProximaAcao.mutate({ proxima_acao_em: e.target.value || null })
               }
-              className={`${CLASSE_DO_CAMPO} shrink-0`}
+              className={`${CLASSE_DO_CAMPO} max-w-full min-w-0 shrink-0`}
             />
           </div>
         </Campo>
@@ -125,11 +128,11 @@ export function AtalhosDaOportunidade({
 
       {d && d.campanhas ? (
         <details
-          className="group rounded-xl border border-border bg-card px-3 py-2 text-sm"
+          className="group max-w-full min-w-0 overflow-hidden rounded-xl border border-border bg-card px-3 py-2 text-sm"
           data-testid="origem-da-oportunidade"
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-            <span className="font-medium">{t("Origem")}</span>
+          <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-2">
+            <span className="shrink-0 font-medium">{t("Origem")}</span>
             <span className="flex min-w-0 items-center gap-2 text-text-muted">
               <span className="truncate">{resumoDaOrigem || t("Sem origem informada")}</span>
               <CaretDown

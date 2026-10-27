@@ -8,7 +8,7 @@ import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDa
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { EVENTO_PAGAMENTO_PEDIDO } from "@/lib/vendas-cliente";
-import type { Venda } from "@/lib/vendas";
+import type { StatusDaVenda, Venda } from "@/lib/vendas";
 
 /**
  * Abre a venda da oportunidade que tentou virar Comprou sem pagamento, para registrar ao menos o
@@ -18,11 +18,15 @@ export function PagamentoPedidoDaOportunidade() {
   const t = useT();
   const queryClient = useQueryClient();
   const [leadId, setLeadId] = useState<string | null>(null);
+  const [status, setStatus] = useState<StatusDaVenda | undefined>(undefined);
 
   useEffect(() => {
     const ouvir = (e: Event) => {
-      const id = (e as CustomEvent<{ leadId?: string }>).detail?.leadId;
-      if (id) setLeadId(id);
+      const detalhe = (e as CustomEvent<{ leadId?: string; status?: StatusDaVenda }>).detail;
+      if (detalhe?.leadId) {
+        setStatus(detalhe.status);
+        setLeadId(detalhe.leadId);
+      }
     };
     window.addEventListener(EVENTO_PAGAMENTO_PEDIDO, ouvir);
     return () => window.removeEventListener(EVENTO_PAGAMENTO_PEDIDO, ouvir);
@@ -45,6 +49,8 @@ export function PagamentoPedidoDaOportunidade() {
       venda={venda}
       contatoInicial={{ contact_id: venda.contact_id, nome: venda.cliente?.nome ?? "" }}
       clientes={[]}
+      modo="venda"
+      abrirComStatus={status}
       titulo={t("Registre o pagamento para marcar como Comprou")}
       aoFechar={() => setLeadId(null)}
       aoSalvar={async (v: DadosDaVenda) => {

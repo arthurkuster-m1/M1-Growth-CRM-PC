@@ -29,7 +29,8 @@ export function Campo({
   );
 }
 
-export type CorDaTag = "azul" | "amarelo" | "verde" | "vermelho" | "cinza" | "roxo";
+export type CorDaTag =
+  "azul" | "amarelo" | "verde" | "vermelho" | "cinza" | "roxo" | "laranja" | "marrom";
 
 const CLASSE_DA_COR: Record<CorDaTag, string> = {
   azul: "border-blue-500/60 bg-blue-500/15 text-blue-700 dark:text-blue-300",
@@ -38,6 +39,8 @@ const CLASSE_DA_COR: Record<CorDaTag, string> = {
   vermelho: "border-red-500/60 bg-red-500/15 text-red-700 dark:text-red-300",
   cinza: "border-gray-400/70 bg-gray-500/15 text-gray-700 dark:text-gray-300",
   roxo: "border-purple-500/60 bg-purple-500/15 text-purple-700 dark:text-purple-300",
+  laranja: "border-orange-500/60 bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  marrom: "border-stone-500/60 bg-stone-500/15 text-stone-700 dark:text-stone-300",
 };
 
 /** Uma etiqueta colorida; com `editavel`, o lápis avisa que dá para mudar. */

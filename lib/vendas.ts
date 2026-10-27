@@ -23,6 +23,19 @@ export const STATUS_DA_VENDA = [
 ] as const;
 export type StatusDaVenda = (typeof STATUS_DA_VENDA)[number];
 
+/**
+ * Os RÓTULOS do status da venda — uma fonte só: a página da venda, a da oportunidade e o compromisso
+ * mostram e oferecem exatamente estes nomes, nesta ordem (`STATUS_DA_VENDA`).
+ */
+export const ROTULO_DO_STATUS_DA_VENDA: Record<StatusDaVenda, string> = {
+  interesse: "Possível venda",
+  comprometida: "Comprometido",
+  concluida: "Pago",
+  recorrencia_ativa: "Recorrência ativa",
+  recorrencia_encerrada: "Recorrência encerrada",
+  cancelada: "Cancelado",
+};
+
 export const STATUS_DA_PARCELA = ["prevista", "recebida", "cancelada"] as const;
 export type StatusDaParcela = (typeof STATUS_DA_PARCELA)[number];
 
