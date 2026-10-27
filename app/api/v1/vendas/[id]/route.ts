@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { concluirCompromissosDaVenda } from "@/lib/agenda/concluir-compromissos-da-venda";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -109,7 +110,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
       .eq("id", id)
       .eq("organization_id", orgId)
       .maybeSingle();
-    const valor = Number((valorRow as { value_cents: number | string | null } | null)?.value_cents) || 0;
+    const valor =
+      Number((valorRow as { value_cents: number | string | null } | null)?.value_cents) || 0;
     const hoje = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
     if (vivas.length === 0 && valor > 0) {
       await supabase.from("crm_sale_payments").insert({
@@ -182,6 +184,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
       return fail("internal_error", "Erro ao cancelar a venda.", 500, { requestId });
     }
   }
+
+  // A venda puxa o compromisso: quem comprou compareceu (ver o helper).
+  await concluirCompromissosDaVenda(supabase, orgId, id);
 
   const { data: venda } = await supabase
     .from("crm_leads")

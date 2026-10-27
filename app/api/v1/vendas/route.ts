@@ -99,9 +99,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const itens = completos.itens;
   const valor =
-    itens.length > 0
-      ? itens.reduce((s, i) => s + i.amount_cents, 0)
-      : (campos.amount_cents ?? 0);
+    itens.length > 0 ? itens.reduce((s, i) => s + i.amount_cents, 0) : (campos.amount_cents ?? 0);
   // Venda concluída sem parcelas: uma parcela única, recebida na data do pagamento.
   const hoje = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
   const pagamentos =

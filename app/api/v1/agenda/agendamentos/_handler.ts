@@ -109,6 +109,11 @@ export interface MarcarInput {
    * é o worker de push.
    */
   guest_email?: string;
+  /**
+   * INTERNO — quem chama pela rota não manda isto (o schema da rota não o conhece). É o
+   * compromisso de que este nasceu por REMARCAÇÃO: o antigo fica como "não compareceu".
+   */
+  remarcado_de?: string;
 }
 
 export interface AlterarInput {
@@ -321,12 +326,25 @@ async function executarCriacaoDeAgendamento(
     .eq("organization_id", ctx.organization_id)
     .eq("id", input.event_type_id)
     .maybeSingle();
-  if (erroTipo) throw new ApiError(500, "internal_error", undefined, ctx.requestId, erroTipo.message);
+  if (erroTipo)
+    throw new ApiError(500, "internal_error", undefined, ctx.requestId, erroTipo.message);
   if (!tipo) {
-    throw new ApiError(404, "not_found", undefined, ctx.requestId, "Tipo de agendamento não encontrado.");
+    throw new ApiError(
+      404,
+      "not_found",
+      undefined,
+      ctx.requestId,
+      "Tipo de agendamento não encontrado.",
+    );
   }
   if (!tipo.is_active) {
-    throw new ApiError(422, "agenda_tipo_desativado", undefined, ctx.requestId, `"${tipo.name}" está desativado.`);
+    throw new ApiError(
+      422,
+      "agenda_tipo_desativado",
+      undefined,
+      ctx.requestId,
+      `"${tipo.name}" está desativado.`,
+    );
   }
 
   // A oportunidade informada precisa ser desta empresa e, havendo contato, ser DELE: compromisso
@@ -340,7 +358,13 @@ async function executarCriacaoDeAgendamento(
       .eq("id", input.lead_id)
       .maybeSingle();
     if (!lead) {
-      throw new ApiError(404, "not_found", undefined, ctx.requestId, "Oportunidade não encontrada.");
+      throw new ApiError(
+        404,
+        "not_found",
+        undefined,
+        ctx.requestId,
+        "Oportunidade não encontrada.",
+      );
     }
     const contatoDoLead = (lead as { contact_id: string | null }).contact_id;
     if (input.contact_id && contatoDoLead && contatoDoLead !== input.contact_id) {
@@ -360,7 +384,11 @@ async function executarCriacaoDeAgendamento(
   if (!input.owner_user_id && input.distribuir) {
     // "Qualquer atendente": o menos carregado no dia entre os livres naquele horário.
     const fimDoTipo = new Date(inicio.getTime() + tipo.duration_minutes * 60_000);
-    const { data: orgTz } = await supabase.from("organizations").select("timezone").eq("id", ctx.organization_id).maybeSingle();
+    const { data: orgTz } = await supabase
+      .from("organizations")
+      .select("timezone")
+      .eq("id", ctx.organization_id)
+      .maybeSingle();
     const fusoDaEquipe = fusoUtilizavel((orgTz as { timezone?: string | null } | null)?.timezone);
     const dia = chaveDoDia(inicio, fusoDaEquipe);
     const livres = await atendentesLivresNoHorario(supabase, ctx.organization_id, {
@@ -462,17 +490,39 @@ async function executarCriacaoDeAgendamento(
   });
 
   const booking = tipo.location_kind === "google_meet" ? ctx.meetingBooking : undefined;
-  if (booking && (booking.boundary.organization_id !== ctx.organization_id || booking.boundary.contact_id !== input.contact_id || ctx.actor.type !== "ai_agent")) {
-    throw new ApiError(403,"forbidden",undefined,ctx.requestId,"A conversa deste atendimento mudou.");
+  if (
+    booking &&
+    (booking.boundary.organization_id !== ctx.organization_id ||
+      booking.boundary.contact_id !== input.contact_id ||
+      ctx.actor.type !== "ai_agent")
+  ) {
+    throw new ApiError(
+      403,
+      "forbidden",
+      undefined,
+      ctx.requestId,
+      "A conversa deste atendimento mudou.",
+    );
   }
-  const delivery = booking ? { state:"waiting_for_link",generation:randomUUID(),service_boundary:booking.boundary,source_operation_id:booking.sourceJobId,
-    booking_claim:booking.claim,authorized_by:{kind:ctx.actor.type,id:ctx.actor.id} } : {state:"none"};
+  const delivery = booking
+    ? {
+        state: "waiting_for_link",
+        generation: randomUUID(),
+        service_boundary: booking.boundary,
+        source_operation_id: booking.sourceJobId,
+        booking_claim: booking.claim,
+        authorized_by: { kind: ctx.actor.type, id: ctx.actor.id },
+      }
+    : { state: "none" };
   const { data: criado, error: erroInsert } = await supabase
     .from("calendar_appointments")
     .insert({
       organization_id: ctx.organization_id,
       event_type_id: tipo.id,
-      title: input.title ?? (await tituloPadrao(supabase, ctx.organization_id, input.contact_id)) ?? tipo.name,
+      title:
+        input.title ??
+        (await tituloPadrao(supabase, ctx.organization_id, input.contact_id)) ??
+        tipo.name,
       starts_at: inicio.toISOString(),
       ends_at: fim.toISOString(),
       // O fuso do compromisso é campo de primeira classe: é o da JORNADA, onde
@@ -494,6 +544,7 @@ async function executarCriacaoDeAgendamento(
       // tela), e string vazia gravada seria um convidado sem e-mail — que faz o
       // Google recusar o EVENTO INTEIRO, não só o convidado.
       guest_email: input.guest_email || null,
+      rescheduled_from_id: input.remarcado_de ?? null,
       created_by_kind: autorParaCriacao(ctx.actor),
       created_by_user_id: ctx.actor.type === "user" ? ctx.actor.id : null,
       source: ctx.actor.type === "user" ? "ui" : "mcp",
@@ -538,19 +589,11 @@ async function executarCriacaoDeAgendamento(
 }
 
 /**
- * ⚠️ REMARCAR NÃO É CANCELAR MAIS CRIAR — é a MESMA linha mudando de horário.
- *
- * 1. A TIMELINE conta a história certa. Cancelar+criar emitiria
- *    `appointment_cancelled` seguido de `appointment_scheduled`: duas linhas
- *    dizendo que o cliente desistiu e voltou, quando ele só mudou de horário.
- * 2. O ESPELHO NO GOOGLE é atualizado, não destruído e refeito — recriar exigiria
- *    casar o evento antigo lá fora, e casar por janela de horário erra nos dois
- *    sentidos (barrado até haver identificador próprio no espelho).
- * 3. O `id` que o cliente já recebeu continua valendo.
- *
- * `rescheduled_from_id` fica VAZIO: ele é do fluxo em que a remarcação gera
- * compromisso NOVO (auto-agendamento), que não existe. Usá-lo aqui seria
- * inventar encadeamento onde há uma linha só.
+ * ⚠️ REMARCAR (decisão do dono do produto, 27/10/2026): o compromisso que ainda está de pé NÃO muda
+ * de horário — ele vira "não compareceu" (conta no no-show) e nasce um compromisso NOVO, ligado a ele
+ * por `rescheduled_from_id`. Cada compromisso é uma reunião de um cliente, com o próprio resultado.
+ * Ver `remarcarCriandoOutro`. Antes disto a linha era a mesma mudando de horário; o que ainda segue
+ * esse caminho é o compromisso que já tem resultado (realizado ou falta).
  */
 /**
  * O título que o compromisso ganha quando ninguém o escreveu: "R1 · Nome do cliente", onde o
@@ -595,11 +638,24 @@ export async function alterarAgendamentoHandler(
     "starts_at",
     "status",
     "time_zone",
+    "title",
+    "notes",
+    "description",
+    "location_details",
+    "conversation_id",
+    "guest_email",
   ]);
 
   await exigeDonoDoCompromisso(supabase, ctx, atual);
 
-  if (input.revision !== undefined && input.revision !== Number(atual.revision)) throw new ApiError(409,"conflict",undefined,ctx.requestId,"O compromisso mudou. Recarregue antes de confirmar.");
+  if (input.revision !== undefined && input.revision !== Number(atual.revision))
+    throw new ApiError(
+      409,
+      "conflict",
+      undefined,
+      ctx.requestId,
+      "O compromisso mudou. Recarregue antes de confirmar.",
+    );
   if (atual.status === "cancelled") {
     throw new ApiError(
       422,
@@ -612,10 +668,17 @@ export async function alterarAgendamentoHandler(
 
   const mudanca: Record<string, unknown> = {};
   if (input.status === "completed" || input.status === "no_show") {
-    if (ctx.actor.type !== "user") throw new ApiError(403,"forbidden",undefined,ctx.requestId,"Peça à equipe para confirmar a presença no compromisso. Uma interpretação de texto não registra o fato.");
-    if (input.outcome_message_id) mudanca.outcome_message_id=input.outcome_message_id;
+    if (ctx.actor.type !== "user")
+      throw new ApiError(
+        403,
+        "forbidden",
+        undefined,
+        ctx.requestId,
+        "Peça à equipe para confirmar a presença no compromisso. Uma interpretação de texto não registra o fato.",
+      );
+    if (input.outcome_message_id) mudanca.outcome_message_id = input.outcome_message_id;
   }
-  if(input.confirmation_next_at) mudanca.confirmation_next_at=input.confirmation_next_at;
+  if (input.confirmation_next_at) mudanca.confirmation_next_at = input.confirmation_next_at;
   if (input.notes !== undefined) mudanca.notes = input.notes;
   if (input.title !== undefined) mudanca.title = input.title.trim();
   // Trocar SÓ o convidado não é remarcação nem mudança de situação, então não
@@ -635,7 +698,13 @@ export async function alterarAgendamentoHandler(
       .eq("id", (atual.event_type_id as string | null) ?? "")
       .maybeSingle();
     if (!tipo) {
-      throw new ApiError(404, "not_found", undefined, ctx.requestId, "O tipo deste agendamento não existe mais.");
+      throw new ApiError(
+        404,
+        "not_found",
+        undefined,
+        ctx.requestId,
+        "O tipo deste agendamento não existe mais.",
+      );
     }
 
     const novoFim = new Date(novoInicio.getTime() + tipo.duration_minutes * 60_000);
@@ -654,6 +723,12 @@ export async function alterarAgendamentoHandler(
         fim: novoFim,
         ignorarAgendamentoId: atual.id as string,
       });
+      // REMARCAR CRIA OUTRO COMPROMISSO (decisão do dono do produto, 27/10/2026): o antigo fica como
+      // "não compareceu" — conta no no-show — e o novo nasce ligado a ele. Cada compromisso é uma
+      // reunião daquele cliente, com o próprio resultado. Só vale para o que ainda está de pé.
+      if (atual.status === "pending" || atual.status === "confirmed") {
+        return remarcarCriandoOutro(supabase, ctx, atual, input, novoInicio);
+      }
       mudanca.starts_at = novoInicio.toISOString();
       mudanca.ends_at = novoFim.toISOString();
       mudanca.time_zone = consulta.fusoDaRegra;
@@ -702,7 +777,13 @@ export async function alterarAgendamentoHandler(
 
   if (Object.keys(mudanca).length === 0) return { id: atual.id, inalterado: true };
 
-  const salvo = await alteraComRevisao(supabase,ctx,input.id,input.revision ?? Number(atual.revision),mudanca);
+  const salvo = await alteraComRevisao(
+    supabase,
+    ctx,
+    input.id,
+    input.revision ?? Number(atual.revision),
+    mudanca,
+  );
 
   if (transicao) {
     await fecharOLaco(supabase, ctx, {
@@ -712,8 +793,17 @@ export async function alterarAgendamentoHandler(
       gatilho: gatilhoDaTransicao(atual.status as SituacaoAnterior, transicao),
       transicao,
       fusoDoCompromisso: String(salvo.time_zone),
-      nomeDoTipo: await nomeDoTipoDoCompromisso(supabase, ctx, atual.event_type_id as string | null),
-      outcome: {revision:salvo.revision,source_kind:salvo.outcome_source_kind,message_id:salvo.outcome_message_id,recorded_at:salvo.outcome_recorded_at},
+      nomeDoTipo: await nomeDoTipoDoCompromisso(
+        supabase,
+        ctx,
+        atual.event_type_id as string | null,
+      ),
+      outcome: {
+        revision: salvo.revision,
+        source_kind: salvo.outcome_source_kind,
+        message_id: salvo.outcome_message_id,
+        recorded_at: salvo.outcome_recorded_at,
+      },
     });
 
     if (transicao === "no_show") {
@@ -726,17 +816,119 @@ export async function alterarAgendamentoHandler(
       });
     }
 
-    void audit({action: transicao === "rescheduled" ? "agenda.appointment_rescheduled" : transicao === "completed" || transicao === "no_show" ? "agenda.appointment_outcome_recorded" : "agenda.appointment_updated",
-      actorUserId:ctx.actor.type === "user" ? ctx.actor.id : null,organizationId:ctx.organization_id,
-      resourceType:"calendar_appointment",resourceId:input.id,requestId:ctx.requestId,
-      metadata:{status:salvo.status,revision:salvo.revision,outcome_source_kind:salvo.outcome_source_kind,outcome_message_id:salvo.outcome_message_id}});
-
+    void audit({
+      action:
+        transicao === "rescheduled"
+          ? "agenda.appointment_rescheduled"
+          : transicao === "completed" || transicao === "no_show"
+            ? "agenda.appointment_outcome_recorded"
+            : "agenda.appointment_updated",
+      actorUserId: ctx.actor.type === "user" ? ctx.actor.id : null,
+      organizationId: ctx.organization_id,
+      resourceType: "calendar_appointment",
+      resourceId: input.id,
+      requestId: ctx.requestId,
+      metadata: {
+        status: salvo.status,
+        revision: salvo.revision,
+        outcome_source_kind: salvo.outcome_source_kind,
+        outcome_message_id: salvo.outcome_message_id,
+      },
+    });
   }
 
-  if (!transicao) void audit({action:"agenda.appointment_updated",actorUserId:ctx.actor.type==="user"?ctx.actor.id:null,
-    organizationId:ctx.organization_id,resourceType:"calendar_appointment",resourceId:input.id,requestId:ctx.requestId,
-    metadata:{revision:salvo.revision,confirmation_next_at:salvo.confirmation_next_at}});
+  if (!transicao)
+    void audit({
+      action: "agenda.appointment_updated",
+      actorUserId: ctx.actor.type === "user" ? ctx.actor.id : null,
+      organizationId: ctx.organization_id,
+      resourceType: "calendar_appointment",
+      resourceId: input.id,
+      requestId: ctx.requestId,
+      metadata: { revision: salvo.revision, confirmation_next_at: salvo.confirmation_next_at },
+    });
   return salvo as Record<string, unknown>;
+}
+
+/**
+ * REMARCAR = o compromisso antigo vira "não compareceu" e nasce um NOVO, ligado a ele
+ * (`rescheduled_from_id`), com o mesmo cliente, oportunidade, responsável, tipo e anotações.
+ *
+ * A ordem importa: o antigo sai primeiro (o "não compareceu" devolve o horário dele, e o novo pode
+ * cair em cima — remarcar para 30 minutos depois, por exemplo); se o novo não puder ser criado, o
+ * antigo volta ao estado de antes e a pessoa vê o erro. NÃO dispara o fluxo anti-no-show
+ * ("você faltou"): o cliente remarcou, não sumiu.
+ */
+async function remarcarCriandoOutro(
+  supabase: SB,
+  ctx: HandlerCtx,
+  atual: Record<string, unknown>,
+  input: AlterarInput,
+  novoInicio: Date,
+): Promise<Record<string, unknown>> {
+  const leadId = await leadJaVinculado(supabase, ctx, atual.id as string);
+  const antigo = await alteraComRevisao(
+    supabase,
+    ctx,
+    atual.id as string,
+    input.revision ?? Number(atual.revision),
+    { status: "no_show" },
+  );
+
+  let novo: Record<string, unknown>;
+  try {
+    novo = await executarCriacaoDeAgendamento(supabase, ctx, {
+      event_type_id: atual.event_type_id as string,
+      starts_at: novoInicio.toISOString(),
+      owner_user_id: (atual.owner_user_id as string | null) ?? undefined,
+      contact_id: (atual.contact_id as string | null) ?? undefined,
+      lead_id: leadId ?? undefined,
+      conversation_id: (atual.conversation_id as string | null) ?? undefined,
+      title: (input.title ?? (atual.title as string | null) ?? undefined) || undefined,
+      notes: input.notes ?? (atual.notes as string | null) ?? undefined,
+      description: (atual.description as string | null) ?? undefined,
+      location_details: (atual.location_details as string | null) ?? undefined,
+      guest_email: input.guest_email ?? (atual.guest_email as string | null) ?? undefined,
+      remarcado_de: atual.id as string,
+    });
+  } catch (erro) {
+    // O novo não nasceu: devolve o antigo ao que era, para a agenda não perder a reunião.
+    await alteraComRevisao(supabase, ctx, atual.id as string, Number(antigo.revision), {
+      status: atual.status,
+    }).catch(() => undefined);
+    throw erro;
+  }
+
+  await fecharOLaco(supabase, ctx, {
+    appointmentId: atual.id as string,
+    contactId: (atual.contact_id as string | null) ?? null,
+    leadId,
+    atividade: atividadeDaTransicao(atual.status as SituacaoAnterior, "rescheduled"),
+    // Sem gatilho de automação para o antigo: quem avisa o cliente é o `appointment.created` do
+    // NOVO compromisso. Os dois juntos mandariam duas mensagens para a mesma remarcação.
+    gatilho: null,
+    transicao: "rescheduled",
+    fusoDoCompromisso: String(antigo.time_zone),
+    nomeDoTipo: await nomeDoTipoDoCompromisso(supabase, ctx, atual.event_type_id as string | null),
+    outcome: {
+      revision: antigo.revision,
+      source_kind: antigo.outcome_source_kind,
+      message_id: antigo.outcome_message_id,
+      recorded_at: antigo.outcome_recorded_at,
+    },
+  });
+
+  void audit({
+    action: "agenda.appointment_rescheduled",
+    actorUserId: ctx.actor.type === "user" ? ctx.actor.id : null,
+    organizationId: ctx.organization_id,
+    resourceType: "calendar_appointment",
+    resourceId: atual.id as string,
+    requestId: ctx.requestId,
+    metadata: { novo_id: novo.id, antigo_status: "no_show" },
+  });
+
+  return { ...novo, remarcado_de: atual.id };
 }
 
 /**
@@ -771,14 +963,28 @@ export async function cancelarAgendamentoHandler(
 
   // Idempotente: cancelar o que já está cancelado devolve o estado, não erro —
   // quem chamou queria o compromisso desmarcado, e ele está.
-  if (input.revision !== undefined && input.revision !== Number(atual.revision)) throw new ApiError(409,"conflict",undefined,ctx.requestId,"O compromisso mudou. Recarregue antes de confirmar.");
+  if (input.revision !== undefined && input.revision !== Number(atual.revision))
+    throw new ApiError(
+      409,
+      "conflict",
+      undefined,
+      ctx.requestId,
+      "O compromisso mudou. Recarregue antes de confirmar.",
+    );
   if (atual.status === "cancelled") {
     return { id: atual.id, status: "cancelled", ja_estava: true };
   }
 
-  const salvo = await alteraComRevisao(supabase,ctx,input.id,input.revision ?? Number(atual.revision),{
-    status:"cancelled",cancellation_reason:input.reason,
-  });
+  const salvo = await alteraComRevisao(
+    supabase,
+    ctx,
+    input.id,
+    input.revision ?? Number(atual.revision),
+    {
+      status: "cancelled",
+      cancellation_reason: input.reason,
+    },
+  );
 
   await fecharOLaco(supabase, ctx, {
     appointmentId: atual.id as string,
@@ -1033,7 +1239,13 @@ async function exigeSemSobreposicao(
     ignorarAgendamentoId: args.ignorarAgendamentoId,
   });
   if (!oQueOcupa.ok) {
-    throw new ApiError(500, "internal_error", undefined, ctx.requestId, "Não foi possível conferir a agenda.");
+    throw new ApiError(
+      500,
+      "internal_error",
+      undefined,
+      ctx.requestId,
+      "Não foi possível conferir a agenda.",
+    );
   }
   const pedido = { inicio: args.inicio.getTime(), fim: args.fim.getTime() };
   const cruza = oQueOcupa.ocupados.some((o) => colide(o.inicio.getTime(), o.fim.getTime(), pedido));
@@ -1099,7 +1311,7 @@ async function fecharOLaco(
     transicao: Transicao;
     fusoDoCompromisso: string;
     nomeDoTipo: string;
-    outcome?: Record<string,unknown>;
+    outcome?: Record<string, unknown>;
   },
 ): Promise<void> {
   // Pendência Google é derivada da revisão publicável; não emite evento sem consumer.
@@ -1231,7 +1443,7 @@ async function fecharOLaco(
     sourceId: args.appointmentId,
     actor: ctx.actor,
     reason: `${args.nomeDoTipo} — ${args.atividade}`,
-    payload: args.outcome ? {outcome:args.outcome} : {},
+    payload: args.outcome ? { outcome: args.outcome } : {},
     // ⚠️ `sync` não existe no CHECK de `actor_kind`; `autorParaTimeline` mapeia.
     actorKind: autorParaTimeline(ctx.actor.type),
   } as never);
@@ -1239,84 +1451,84 @@ async function fecharOLaco(
 
 /**
  * O recorte da linha que o corpo do aviso carrega (#1612) — lido DEPOIS da
-  * gravação, com o filtro de organização do resto do handler.
-  *
-  * Falha não é erro: devolver `null` deixa os campos novos do payload em `null`
-  * e o evento SAI MESMO ASSIM. O aviso já existia antes destes campos; perder a
-  * emissão inteira por causa de uma coluna seria trocar um payload pobre por
-  * nenhum payload.
-  */
- async function compromissoParaOAviso(
-   supabase: SB,
-   ctx: HandlerCtx,
-   appointmentId: string,
- ): Promise<RecorteDoCompromisso | null> {
-   const { data } = await supabase
-     .from("calendar_appointments")
-     .select("starts_at, ends_at, status, location_kind, event_type_id")
-     .eq("organization_id", ctx.organization_id)
-     .eq("id", appointmentId)
-     .maybeSingle();
-   return (data as RecorteDoCompromisso | null) ?? null;
- }
+ * gravação, com o filtro de organização do resto do handler.
+ *
+ * Falha não é erro: devolver `null` deixa os campos novos do payload em `null`
+ * e o evento SAI MESMO ASSIM. O aviso já existia antes destes campos; perder a
+ * emissão inteira por causa de uma coluna seria trocar um payload pobre por
+ * nenhum payload.
+ */
+async function compromissoParaOAviso(
+  supabase: SB,
+  ctx: HandlerCtx,
+  appointmentId: string,
+): Promise<RecorteDoCompromisso | null> {
+  const { data } = await supabase
+    .from("calendar_appointments")
+    .select("starts_at, ends_at, status, location_kind, event_type_id")
+    .eq("organization_id", ctx.organization_id)
+    .eq("id", appointmentId)
+    .maybeSingle();
+  return (data as RecorteDoCompromisso | null) ?? null;
+}
 
- /**
-  * O TIPO de atendimento — `slug` e `name` de `calendar_event_types`.
-  *
-  * O `slug` entra agora no payload (#1612): é o identificador estável que
-  * renomear não muda (migration do `calendar_event_types`), e é o que um
-  * sistema do lado de fora usa para casar "Manutenção" sem depender do nome
-  * que alguém digitou. O `event_type_name` continua saindo — é o que as
-  * condições de regra existentes leem.
-  */
- async function tipoDoCompromisso(
-   supabase: SB,
-   ctx: HandlerCtx,
-   eventTypeId: unknown,
- ): Promise<TipoDoAtendimento | null> {
-   if (typeof eventTypeId !== "string" || !eventTypeId) return null;
-   const { data } = await supabase
-     .from("calendar_event_types")
-     .select("slug, name")
-     .eq("organization_id", ctx.organization_id)
-     .eq("id", eventTypeId)
-     .maybeSingle();
-   return (data as TipoDoAtendimento | null) ?? null;
- }
+/**
+ * O TIPO de atendimento — `slug` e `name` de `calendar_event_types`.
+ *
+ * O `slug` entra agora no payload (#1612): é o identificador estável que
+ * renomear não muda (migration do `calendar_event_types`), e é o que um
+ * sistema do lado de fora usa para casar "Manutenção" sem depender do nome
+ * que alguém digitou. O `event_type_name` continua saindo — é o que as
+ * condições de regra existentes leem.
+ */
+async function tipoDoCompromisso(
+  supabase: SB,
+  ctx: HandlerCtx,
+  eventTypeId: unknown,
+): Promise<TipoDoAtendimento | null> {
+  if (typeof eventTypeId !== "string" || !eventTypeId) return null;
+  const { data } = await supabase
+    .from("calendar_event_types")
+    .select("slug, name")
+    .eq("organization_id", ctx.organization_id)
+    .eq("id", eventTypeId)
+    .maybeSingle();
+  return (data as TipoDoAtendimento | null) ?? null;
+}
 
- /**
-  * Os negócios do compromisso, em `lead_ids` (#1612).
-  *
-  * Duas fontes, e as duas existem de verdade: os VÍNCULOS já gravados (um
-  * compromisso pode estar ligado a mais de um negócio) e o negócio ATIVO do
-  * contato, que no nascer do compromisso ainda não tem vínculo — o `crm_lead_links`
-  * é escrito logo abaixo, DEPOIS do emit. Sem a segunda fonte,
-  * `appointment.created` sairia sempre com a lista vazia, que é o campo mais
-  * útil de todos justamente no gatilho mais usado.
-  */
- async function leadIdsDoCompromisso(
-   supabase: SB,
-   ctx: HandlerCtx,
-   appointmentId: string,
-   leadAtivo: string | null,
- ): Promise<string[]> {
-   const { data } = await supabase
-     .from("crm_lead_links")
-     .select("lead_id")
-     .eq("organization_id", ctx.organization_id)
-     .eq("target_kind", ALVO_DE_VINCULO_DO_AGENDAMENTO)
-     .eq("target_id", appointmentId);
+/**
+ * Os negócios do compromisso, em `lead_ids` (#1612).
+ *
+ * Duas fontes, e as duas existem de verdade: os VÍNCULOS já gravados (um
+ * compromisso pode estar ligado a mais de um negócio) e o negócio ATIVO do
+ * contato, que no nascer do compromisso ainda não tem vínculo — o `crm_lead_links`
+ * é escrito logo abaixo, DEPOIS do emit. Sem a segunda fonte,
+ * `appointment.created` sairia sempre com a lista vazia, que é o campo mais
+ * útil de todos justamente no gatilho mais usado.
+ */
+async function leadIdsDoCompromisso(
+  supabase: SB,
+  ctx: HandlerCtx,
+  appointmentId: string,
+  leadAtivo: string | null,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("crm_lead_links")
+    .select("lead_id")
+    .eq("organization_id", ctx.organization_id)
+    .eq("target_kind", ALVO_DE_VINCULO_DO_AGENDAMENTO)
+    .eq("target_id", appointmentId);
 
-   const vinculados = (Array.isArray(data) ? data : [])
-     .map((linha) => (linha as { lead_id?: unknown }).lead_id)
-     .filter((id): id is string => typeof id === "string" && !!id);
-   const todos = leadAtivo ? [...vinculados, leadAtivo] : vinculados;
-   // Sem duplicata: o vínculo e o ativo costumam ser o MESMO negócio, e uma
-   // lista com o id duas vezes faz o receptor somar dois sistemas do mesmo lead.
-   return todos.filter((id, i) => todos.indexOf(id) === i);
- }
+  const vinculados = (Array.isArray(data) ? data : [])
+    .map((linha) => (linha as { lead_id?: unknown }).lead_id)
+    .filter((id): id is string => typeof id === "string" && !!id);
+  const todos = leadAtivo ? [...vinculados, leadAtivo] : vinculados;
+  // Sem duplicata: o vínculo e o ativo costumam ser o MESMO negócio, e uma
+  // lista com o id duas vezes faz o receptor somar dois sistemas do mesmo lead.
+  return todos.filter((id, i) => todos.indexOf(id) === i);
+}
 
- /**
+/**
  * A oportunidade a que o compromisso JÁ pertence (vínculo gravado na marcação). Nas transições
  * seguintes (confirmar, remarcar, cancelar, desfecho) vale ela, e não "o negócio ativo" de agora:
  * com várias oportunidades por pessoa o ativo pode ter mudado.
@@ -1333,7 +1545,10 @@ async function leadJaVinculado(
     .eq("target_kind", ALVO_DE_VINCULO_DO_AGENDAMENTO)
     .eq("target_id", appointmentId);
   // O vínculo mais antigo vale (a ordem é aqui, não na consulta).
-  const linhas = (Array.isArray(data) ? data : []) as Array<{ lead_id?: string; created_at?: string }>;
+  const linhas = (Array.isArray(data) ? data : []) as Array<{
+    lead_id?: string;
+    created_at?: string;
+  }>;
   linhas.sort((x, y) => String(x.created_at ?? "").localeCompare(String(y.created_at ?? "")));
   return linhas[0]?.lead_id ?? null;
 }
@@ -1371,10 +1586,40 @@ async function leadAtivoDoContato(
   return rota.routed ? rota.leadId : null;
 }
 
-async function alteraComRevisao(supabase:SB,ctx:HandlerCtx,id:string,revision:number,patch:Record<string,unknown>):Promise<Record<string,unknown>> {
-  const {data,error}=await supabase.rpc("fn_appointment_change",{p_org:ctx.organization_id,p_id:id,p_revision:revision,p_patch:patch});
-  if(error) throw new ApiError(error.code === "40001" ? 409 : error.code === "42501" ? 403 : error.code === "P0002" ? 404 : 422,
-    error.code === "40001" ? "conflict" : error.code === "42501" ? "forbidden" : error.code === "P0002" ? "not_found" : "validation_failed",undefined,ctx.requestId,
-    error.code === "40001" ? "Este compromisso mudou. Atualize os dados antes de confirmar novamente." : "Não foi possível alterar este compromisso. Confira a presença, o horário e a mensagem vinculada.");
-  return data as Record<string,unknown>;
+async function alteraComRevisao(
+  supabase: SB,
+  ctx: HandlerCtx,
+  id: string,
+  revision: number,
+  patch: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.rpc("fn_appointment_change", {
+    p_org: ctx.organization_id,
+    p_id: id,
+    p_revision: revision,
+    p_patch: patch,
+  });
+  if (error)
+    throw new ApiError(
+      error.code === "40001"
+        ? 409
+        : error.code === "42501"
+          ? 403
+          : error.code === "P0002"
+            ? 404
+            : 422,
+      error.code === "40001"
+        ? "conflict"
+        : error.code === "42501"
+          ? "forbidden"
+          : error.code === "P0002"
+            ? "not_found"
+            : "validation_failed",
+      undefined,
+      ctx.requestId,
+      error.code === "40001"
+        ? "Este compromisso mudou. Atualize os dados antes de confirmar novamente."
+        : "Não foi possível alterar este compromisso. Confira a presença, o horário e a mensagem vinculada.",
+    );
+  return data as Record<string, unknown>;
 }
