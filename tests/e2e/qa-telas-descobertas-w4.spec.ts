@@ -17,7 +17,7 @@
  *
  * Tela sadia provada também é resultado: cada uma sai com captura.
  */
-import { execFileSync } from "node:child_process";
+
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -106,53 +106,5 @@ test.describe("QA — as telas da W4 que ninguém abria", () => {
       path: path.join(SAIDA, "qa-tela-settings-templates.png"),
       fullPage: true,
     });
-  });
-
-  test("histórico: o dono consegue achar o que o assistente mudou?", async ({ page }) => {
-    test.setTimeout(240_000);
-    await login(page);
-
-    // Primeiro faz o assistente mexer em algo, para haver o que procurar.
-    execFileSync("npx", ["tsx", "scripts/seed-e2e-agente-mcp.ts"], { stdio: "pipe" });
-    const { bearer } = JSON.parse(fs.readFileSync(AGENTE_PATH, "utf8")) as { bearer: string };
-    const funis = await page.request.get(`${APP_URL}/api/v1/pipelines`);
-    const funilId = ((await funis.json()) as { data?: Array<{ id: string }> }).data?.[0]?.id;
-
-    console.info(`[QA] funil alvo: ${funilId ?? "(NENHUM — /api/v1/pipelines não devolveu id)"}`);
-
-    const criacao = await page.request.post(`${APP_URL}/api/mcp`, {
-      headers: { authorization: `Bearer ${bearer}`, accept: "application/json, text/event-stream" },
-      data: {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: {
-          name: "crm_create_stage",
-          arguments: { pipeline_id: funilId, name: `Etapa QA audit ${ts}` },
-        },
-      },
-    });
-    // ⚠️ HTTP 200 NÃO É SUCESSO NO MCP: o protocolo devolve 200 com `isError` no
-    // corpo. A primeira versão desta sonda olhava só o status e reportou "criou"
-    // sobre uma chamada que falhou — o erro estava no payload, calado.
-    const corpoMcp = await criacao.text();
-    console.info(`[QA] assistente criou etapa → HTTP ${criacao.status()}`);
-    console.info(`[QA] corpo da resposta MCP: ${corpoMcp.replace(/\s+/g, " ").slice(0, 500)}`);
-
-    await page.goto(`${APP_URL}/app/audit`);
-    await page.waitForLoadState("networkidle");
-    await radiografia(page, "/app/audit");
-    await page.screenshot({ path: path.join(SAIDA, "qa-tela-audit.png"), fullPage: true });
-
-    // A promessa do selo é "ver o que mudou". Um dono que clicou nele chega aqui
-    // e procura pela etapa que o assistente acabou de criar. Ele acha?
-    const corpo = await page.locator("body").innerText();
-    const achaAcao = corpo.includes("pipeline.stage_created");
-    const achaNome = corpo.includes(`Etapa QA audit ${ts}`);
-    console.info(`[QA] /app/audit · encontra a AÇÃO (pipeline.stage_created)? ${achaAcao ? "SIM" : "NÃO"}`);
-    console.info(`[QA] /app/audit · encontra O QUE MUDOU (nome da etapa)? ${achaNome ? "SIM" : "NÃO"}`);
-    console.info(
-      `[QA] /app/audit · a linha diz que foi o ASSISTENTE? ${/assistente|ai_agent|agente/i.test(corpo) ? "SIM" : "NÃO"}`,
-    );
   });
 });

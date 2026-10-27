@@ -265,6 +265,7 @@ não.
 - `/app/integrations/nuvemshop/webhooks` (#51)
 - `/app/integrations/nuvemshop/mapping` (#52)
 - `/app/team/[userId]` (#55)
+- `/app/audit` (#56) — a tela de auditoria saiu do cliente (outubro/2026); o histórico segue gravado e a agência o lê em `/admin/audit`
 - `/app/audit/[id]` (#57)
 - `/app/lgpd` (#58) — só a fila existe (`/app/lgpd/requests`)
 - `/app/lgpd/redact` (#61)

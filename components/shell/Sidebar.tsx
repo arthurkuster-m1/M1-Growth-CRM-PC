@@ -9,7 +9,6 @@ import {
   CaretDoubleLeft,
   CaretDoubleRight,
   CaretDown,
-  ChartBar,
   CurrencyDollar,
   Gear,
   House,
@@ -40,7 +39,6 @@ const ICONE_DO_GRUPO: Record<string, typeof Kanban> = {
   crm: Kanban,
   ia: Robot,
   canais: PlugsConnected,
-  analise: ChartBar,
   organizacao: Buildings,
 };
 
