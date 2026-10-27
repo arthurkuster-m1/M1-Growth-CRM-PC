@@ -597,8 +597,46 @@
 
 /* `duration-*` não tem espaço de tema no v4 (o `transitionDuration` do v3 não
    tem equivalente em `@theme`), então o apelido vira utilitário explícito. */
-/* Caixa de marcar arredondada, no desenho do app (o `checkbox` nativo é quadrado e destoa dos
-   cantos arredondados do resto). Uso: `<input type="checkbox" className="caixa-redonda" />`. */
+/* Caixa de marcar arredondada, no desenho do app: vale para TODO `<input type="checkbox">` (o nativo
+   é quadrado e destoa dos cantos arredondados). Fica na camada base, então qualquer utilitário
+   (`h-4 w-4`…) ainda vence. `caixa-redonda` é o apelido para usar a mesma aparência em outro lugar. */
+@layer base {
+  input[type="checkbox"] {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid var(--color-border-strong);
+    background-color: var(--card);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast),
+      border-color var(--duration-fast);
+    &:checked {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+    &:checked::after {
+      content: "";
+      width: 0.3rem;
+      height: 0.6rem;
+      border: solid var(--primary-foreground);
+      border-width: 0 2px 2px 0;
+      transform: translateY(-1px) rotate(45deg);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
 @utility caixa-redonda {
   appearance: none;
   display: inline-grid;
@@ -606,7 +644,7 @@
   flex-shrink: 0;
   width: 1.25rem;
   height: 1.25rem;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   border: 1.5px solid var(--color-border-strong);
   background-color: var(--card);
   cursor: pointer;

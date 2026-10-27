@@ -40,7 +40,7 @@ const PopoverAnchor = PopoverPrimitive.Anchor;
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => {
+>(({ className, align = "center", sideOffset = 4, collisionPadding = 8, ...props }, ref) => {
   // A roda do mouse rola a lista mesmo quando o popup abre por cima de um diálogo.
   const refComRolagem = useRolagemLivre(ref);
   return (
@@ -49,8 +49,10 @@ const PopoverContent = React.forwardRef<
       ref={refComRolagem}
       align={align}
       sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
       className={cn(
-        "ds-painel z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-2xl border bg-popover p-4 text-popover-foreground shadow-md outline-hidden",
+        // Nunca passa da tela: se o conteúdo é maior que o espaço disponível, o próprio popup rola.
+        "ds-painel z-50 max-h-(--radix-popover-content-available-height) w-72 origin-(--radix-popover-content-transform-origin) overflow-y-auto overscroll-contain rounded-2xl border bg-popover p-4 text-popover-foreground shadow-md outline-hidden",
         className,
       )}
       {...props}

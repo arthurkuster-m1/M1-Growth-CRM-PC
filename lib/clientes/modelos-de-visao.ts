@@ -16,21 +16,6 @@ export interface ModeloDeVisao {
 }
 
 /**
- * O RADAR: o que esfriou e pede ação — Crítico e Em risco, com o mais urgente em cima. "Em voo"
- * fica de fora de propósito: a IA ou a agenda já prometeram voltar, não há decisão pendente.
- */
-export const MODELO_RADAR: ModeloDeVisao = {
-  id: "radar",
-  nome: "Radar",
-  descricao: "O que esfriou e pede ação: crítico e em risco, o mais urgente primeiro.",
-  tipo: "tabela",
-  config: {
-    filtros: [{ campo: "radar", operador: "e", valor: ["critico", "em_risco"] }],
-    ordenacao: [{ campo: "radar", direcao: "asc" }],
-  },
-};
-
-/**
  * TODAS as colunas da tabela de Oportunidades, na ordem de fábrica. Os modelos abaixo escolhem
  * quais delas aparecem (e em que ordem); as demais ficam escondidas, a um clique no menu.
  */
@@ -87,6 +72,45 @@ function colunas(ids: readonly string[]): PreferenciasDaTabela {
     visiveis,
   };
 }
+
+/**
+ * O RADAR: o que esfriou e pede ação — Crítico e Em risco, com o mais urgente em cima. "Em voo"
+ * fica de fora de propósito: a IA ou a agenda já prometeram voltar, não há decisão pendente.
+ * Só as colunas que servem a esse trabalho: o botão de agir, o radar, há quanto tempo está parado
+ * e qual é o próximo passo.
+ */
+export const MODELO_RADAR: ModeloDeVisao = {
+  id: "radar",
+  nome: "Radar",
+  descricao: "O que esfriou e pede ação: crítico e em risco, o mais urgente primeiro.",
+  tipo: "tabela",
+  config: {
+    ...colunas([
+      "nome",
+      "radar",
+      "sem-resposta",
+      "op-ultima-atividade",
+      "op-tempo-na-etapa",
+      "etapa",
+      "ligar",
+      "inbox",
+      "acao",
+      "cliente",
+      "telefone",
+      "responsavel",
+      "tentativas",
+      "resultado-rapido",
+      "proxima-acao",
+      "proxima-acao-em",
+      "previsto",
+    ]),
+    filtros: [{ campo: "radar", operador: "e", valor: ["critico", "em_risco"] }],
+    ordenacao: [
+      { campo: "radar", direcao: "asc" },
+      { campo: "sem-resposta", direcao: "desc" },
+    ],
+  },
+};
 
 /** CONVERSÃO — trabalhar o lead: quem está parado, quem ligar, qual o próximo passo. */
 export const MODELO_CONVERSAO: ModeloDeVisao = {
