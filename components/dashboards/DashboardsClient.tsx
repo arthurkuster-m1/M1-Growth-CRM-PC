@@ -4,8 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Atendimento, type DadosDeAtendimento } from "@/components/dashboards/Atendimento";
-import { PerdasPanel } from "@/app/app/metrics/_components/PerdasPanel";
-import { PrevisaoPanel } from "@/app/app/metrics/_components/PrevisaoPanel";
+import { PerdasPanel } from "@/components/dashboards/PerdasPanel";
+import { PrevisaoPanel } from "@/components/dashboards/PrevisaoPanel";
+import { Relatorios } from "@/components/dashboards/atividades/Relatorios";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { Business, type DadosDeBusiness } from "@/components/dashboards/Business";
@@ -20,7 +21,15 @@ import { useAtalhosDePeriodo } from "@/components/motor/atalhos-de-periodo";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { PAINEIS, type IdDoPainel } from "@/lib/dashboards/visibilidade";
-import { CalendarCheck, ChartLineUp, Eye, Megaphone, Receipt, UsersThree } from "@/lib/ui/icons";
+import {
+  CalendarCheck,
+  ChartLineUp,
+  ClockCounterClockwise,
+  Eye,
+  Megaphone,
+  Receipt,
+  UsersThree,
+} from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 type Painel = IdDoPainel;
@@ -96,6 +105,11 @@ export function DashboardsClient({
       id: "business",
       rotulo: t("Business"),
       icone: <Receipt size={16} weight="duotone" aria-hidden />,
+    },
+    {
+      id: "atividades",
+      rotulo: t("Atividades"),
+      icone: <ClockCounterClockwise size={16} weight="duotone" aria-hidden />,
     },
   ];
   const abas = todasAsAbas.filter((a) => !ocultos.includes(a.id));
@@ -188,7 +202,9 @@ export function DashboardsClient({
                 ? t("Dados reais · conversas e mensagens")
                 : painel === "comercial"
                   ? t("Dados reais · agenda e vendas")
-                  : t("Dados reais · CRM, abordagens e vendas")}
+                  : painel === "atividades"
+                    ? t("Dados reais · atividades da operação")
+                    : t("Dados reais · CRM, abordagens e vendas")}
         </span>
       </header>
 
@@ -260,7 +276,9 @@ export function DashboardsClient({
         ) : null}
       </div>
 
-      {/* No celular os filtros dividem a largura do bloco por igual (sem sobra à direita). */}
+      {/* No celular os filtros dividem a largura do bloco por igual (sem sobra à direita).
+          Atividades tem o próprio seletor de período dentro da página. */}
+      {painel === "atividades" ? null : (
       <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border bg-card p-3 sm:flex sm:flex-wrap">
         <div
           className={cn(
@@ -298,6 +316,7 @@ export function DashboardsClient({
           {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
         </span>
       </div>
+      )}
 
       {painel === "trafego" ? (
         trafego.isLoading ? (
@@ -341,6 +360,7 @@ export function DashboardsClient({
             <Atendimento
               periodo={janela}
               podeVerAtrito={papel !== undefined && ROLE_RANK[papel] >= ROLE_RANK.agent}
+              podeEditarRegua={podeVerPerdas}
               dados={atendimento.data}
               aoSalvarHorario={async (h) => {
                 await apiClient.put("/api/v1/dashboards/atendimento", h);
@@ -356,6 +376,7 @@ export function DashboardsClient({
         )
       ) : null}
       {painel === "comercial" ? <AnalisesDaAgenda periodo={janela} /> : null}
+      {painel === "atividades" ? <Relatorios abaInicial="atividades" /> : null}
       {painel === "prospeccao" ? (
         prospeccao.isLoading ? (
           <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />

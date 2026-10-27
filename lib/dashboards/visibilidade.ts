@@ -1,5 +1,12 @@
 /** Os dashboards que existem, na ordem em que aparecem nas abas. */
-export const PAINEIS = ["trafego", "prospeccao", "comercial", "atendimento", "business"] as const;
+export const PAINEIS = [
+  "trafego",
+  "prospeccao",
+  "comercial",
+  "atendimento",
+  "business",
+  "atividades",
+] as const;
 export type IdDoPainel = (typeof PAINEIS)[number];
 
 /**

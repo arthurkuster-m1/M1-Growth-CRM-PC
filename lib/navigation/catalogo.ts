@@ -533,6 +533,17 @@ export const NAV_CATALOG = [
     section: "Acompanhar o agente",
     minRole: "manager",
   },
+  {
+    // Se o agente está melhorando: mora no grupo de IA (Ver tudo em IA), junto de uso e execuções — a
+    // análise geral do negócio ficou nos Dashboards.
+    href: "/app/ai/evolution",
+    label: "Evolução da IA",
+    description: "Se o agente está melhorando, onde ele erra e o que falta ensinar.",
+    icon: "ChartLineUp",
+    group: "ia",
+    section: "Acompanhar o agente",
+    minRole: "manager",
+  },
 
   // ---- Canais — por onde as mensagens entram e saem ----
   {
@@ -584,25 +595,13 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
 
-  // ---- Análise — olhar o sistema funcionando ----
+  // ---- Análise — o dinheiro e a auditoria ----
   //
-  // ── QUEM FICA NO MENU, E POR QUÊ ─────────────────────────────────────────
-  //
-  // A régua é a FREQUÊNCIA de quem opera vendas por WhatsApp, não a importância
-  // da tela. As três de cima entram na rotina — o dono abre Desempenho para
-  // saber como vai o mês, Meta Ads para saber quanto custou trazer quem chegou,
-  // e Atividades para saber se a equipe (e a IA) trabalhou no período. São
-  // perguntas que se refazem toda semana, e um menu é para o que se refaz.
-  //
-  // As duas de baixo são visita DELIBERADA: "Evolução da IA" é revisão do
-  // agente, coisa de quando se senta para ensiná-lo — e quem senta para isso já
-  // vai ao grupo de IA; "Audit Log" é forense, aberto quando algo deu errado e
-  // se precisa saber quem mexeu. Nenhuma das duas se abre de passagem, e é
-  // justamente disso que o hub é feito: quem vai lá vai de propósito.
-  //
-  // Sair do menu não é sair do produto — o hub `/app/analise` é INVENTÁRIO e
-  // lista as cinco (`hubSections`), então as duas continuam a um clique, com a
-  // frase que explica para que servem. O ⌘K também as acha por nome.
+  // Desempenho, Atividades e a leitura do tráfego (Meta Ads) saíram daqui (outubro/2026): os números do
+  // período vivem nos Dashboards (Tráfego Pago, Prospecção Ativa, Comercial, Atendimento, Business e
+  // Atividades). A página de Meta Ads continua existindo, mas só se chega a ela por Marketing ›
+  // Campanhas. A Evolução da IA foi para o grupo de IA ("Ver tudo em IA"). Sobraram aqui as duas
+  // consultas de dinheiro e o Audit Log, todas visitas deliberadas — por isso ficam no hub.
   {
     // A terceira ponta do módulo financeiro: Configurações › Financeiro descreve
     // para onde o dinheiro vai, CRM › Comandas é onde o dia acontece, e aqui se
@@ -633,56 +632,6 @@ export const NAV_CATALOG = [
     section: "Dinheiro",
     minRole: "viewer",
     modulo: "honorarios",
-  },
-  {
-    href: "/app/metrics",
-    label: "Desempenho",
-    description: "Funil e performance por atendente nos últimos 30 dias.",
-    icon: "ChartBar",
-    group: "analise",
-    section: "Os números do período",
-    sidebar: true,
-  },
-  {
-    // Logo abaixo de Desempenho porque responde a metade da MESMA pergunta: lá
-    // está o que aconteceu depois que a pessoa chegou; aqui, quanto custou
-    // trazê-la. Ler as duas juntas é o que fecha a conta do custo por cliente.
-    href: "/app/ads/meta",
-    label: "Meta Ads",
-    description: "Quanto custou cada resultado das campanhas que trazem gente para cá.",
-    icon: "Megaphone",
-    group: "analise",
-    section: "Os números do período",
-    // `manager`, e não o `viewer` de Desempenho: aqui não há recorte por
-    // pessoa — orçamento e criativo são da empresa inteira. Mesmo grau dos
-    // outros dois vizinhos do grupo.
-    minRole: "manager",
-    sidebar: true,
-  },
-  {
-    // Irmã de "Desempenho", não a mesma coisa: lá é DESFECHO (funil agora,
-    // ganho/perdido por atendente); aqui é o TRABALHO que aconteceu no
-    // período, com quem fez cada coisa. Um mês inteiro atendido pela IA e um
-    // mês inteiro atendido pela equipe têm o mesmo desfecho e histórias
-    // opostas — só esta tela distingue as duas.
-    href: "/app/activities",
-    label: "Atividades",
-    description:
-      "Relatório do que a equipe e os agentes fizeram no período: quanto, quem e de que tipo.",
-    icon: "ClockCounterClockwise",
-    group: "analise",
-    section: "Os números do período",
-    sidebar: true,
-  },
-  {
-    // Observabilidade, não configuração: por isso não fica junto dos agentes.
-    href: "/app/ai/evolution",
-    label: "Evolução da IA",
-    description: "Se o agente está melhorando, onde ele erra e o que falta ensinar.",
-    icon: "ChartLineUp",
-    group: "analise",
-    section: "O histórico que se consulta",
-    minRole: "manager",
   },
   {
     href: "/app/audit",

@@ -478,4 +478,8 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.37| **Ganhos e perdidos por atendente** | Em Dashboards › Atendimento, a tabela "Por atendente" tem as colunas Ganhos e Perdidos (a IA e "Sem responsável" mostram —); trocar o período muda os números |           |
 | 23.38| **Atrito do atendimento** | Em Dashboards › Atendimento aparece o painel com silêncio, repetiu depois da passagem e espera na fila humana, cada um com sua nota; o período do topo muda os números; quem é só viewer não vê o painel |           |
 | 23.39| **Automação e insistência no Atendimento** | Em Dashboards › Atendimento, abaixo do "Atrito do atendimento", aparecem os painéis "Automação" (4 números) e "Insistência e demandas abertas" (3 números), com as notas de cada um; o período do topo muda os valores |           |
+| 23.40| **Dashboards concentram a análise** | O menu Análise só tem Faturamento, Honorários e Audit Log; não há Desempenho, Atividades nem Meta Ads ali; Dashboards tem 6 abas (Tráfego Pago, Prospecção Ativa, Comercial, Atendimento, Business, Atividades); a aba Atividades traz as duas abas de antes (Atividades e Por etiqueta) |           |
+| 23.41| **Meta Ads só por Campanhas** | Em Marketing › Campanhas o atalho Meta Ads abre a página; ela não aparece mais no menu nem em Análise |           |
+| 23.42| **Evolução da IA em IA** | "Ver tudo em IA" lista Evolução da IA em "Acompanhar o agente"; Análise não a lista mais |           |
+| 23.43| **Régua do abandono no Atendimento** | O painel "Atrito do atendimento" mostra a régua (editável para gerente/admin) que antes ficava no Desempenho; /app/metrics e /app/activities redirecionam para os Dashboards |           |
 

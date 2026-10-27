@@ -109,7 +109,8 @@ test.describe("Relatórios › Por etiqueta, pela tela (#1891)", () => {
     for (const l of porId.values()) expect(l.tags).toEqual([TAG]);
 
     // ── O relatório: a linha da etiqueta, com os números exatos. ───────────
-    await page.goto("/app/activities?aba=etiquetas");
+    await page.goto("/app/marketing/dashboards?painel=atividades");
+    await page.getByRole("tab", { name: "Por etiqueta" }).click();
     await expect(page.getByRole("tab", { name: "Por etiqueta" })).toHaveAttribute(
       "aria-selected",
       "true",

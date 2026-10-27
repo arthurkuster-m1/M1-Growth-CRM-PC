@@ -60,7 +60,7 @@ export const BARRA_INFERIOR: PecaDoRodape = {
  * A ordem é a escolhida pelo dono (26/10/2026): Inbox, Agenda, CRM e Tarefas. A lista tem
  * sobra depois dessas quatro porque toda uma dessas portas pode estar fechada — o plano da
  * empresa pode não incluir uma área, a organização pode não ter ligado a Agenda —, e uma barra
- * com um buraco no meio é pior que uma barra com outra aba. Funis, Desempenho e Contatos
+ * com um buraco no meio é pior que uma barra com outra aba. Funis, Dashboards e Contatos
  * entram nessa ordem como reserva.
  */
 const PREFERIDAS = [
@@ -70,7 +70,7 @@ const PREFERIDAS = [
   "/app/tarefas",
   // Reservas, só entram se uma das quatro de cima estiver fechada para a organização.
   "/app/kanban",
-  "/app/metrics",
+  "/app/marketing/dashboards",
   "/app/contacts",
 ] as const;
 

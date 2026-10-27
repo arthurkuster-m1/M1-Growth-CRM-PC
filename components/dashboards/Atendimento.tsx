@@ -15,6 +15,7 @@ import {
 } from "@/components/dashboards/base";
 import { useT } from "@/hooks/i18n/useT";
 import { formatarMinutos } from "@/lib/dashboards/atendimento";
+import { ReguaDoAbandono } from "@/components/dashboards/ReguaDoAbandono";
 import { useAtritoMetrics } from "@/hooks/metrics/useAtritoMetrics";
 import { formatarMedida, type Medida } from "@/lib/metrics/atrito";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,13 @@ export interface DadosDeAtendimento {
  * automação (quanto a IA resolve) e a insistência do agente com as demandas sem próximo passo.
  * Seguem o período do dashboard; sem dado, mostram "—".
  */
-function AtritoDoAtendimento({ periodo }: { periodo?: { de: string; ate: string } }) {
+function AtritoDoAtendimento({
+  periodo,
+  podeEditarRegua,
+}: {
+  periodo?: { de: string; ate: string };
+  podeEditarRegua: boolean;
+}) {
   const t = useT();
   const { data, isLoading, isError } = useAtritoMetrics(periodo);
   if (isError) return null;
@@ -142,6 +149,15 @@ function AtritoDoAtendimento({ periodo }: { periodo?: { de: string; ate: string 
                   valor: i.m ? formatarMedida(i.m) : "—",
                 }))}
               />
+              {g.titulo === t("Atrito do atendimento") && data ? (
+                <div className="mt-3">
+                  <ReguaDoAbandono
+                    horas={data.data.regua.abandono_horas}
+                    padrao={data.data.regua.default}
+                    podeEditar={podeEditarRegua}
+                  />
+                </div>
+              ) : null}
               <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
                 {g.itens.map((i) =>
                   i.m?.nota ? (
@@ -174,6 +190,7 @@ export function Atendimento({
   aoSalvarHorario,
   periodo,
   podeVerAtrito = false,
+  podeEditarRegua = false,
 }: {
   dados: DadosDeAtendimento;
   aoSalvarHorario: (h: { inicio: string; fim: string; dias: number[] }) => Promise<void>;
@@ -181,6 +198,8 @@ export function Atendimento({
   periodo?: { de: string; ate: string };
   /** O atrito é de quem atende (agente ou acima): abaixo disso o painel nem aparece. */
   podeVerAtrito?: boolean;
+  /** Gerente e administrador ajustam a régua do abandono; os demais só a leem. */
+  podeEditarRegua?: boolean;
 }) {
   const t = useT();
   const [inicio, setInicio] = useState(dados.horario.inicio);
@@ -373,7 +392,9 @@ export function Atendimento({
         </Painel>
       </div>
 
-      {podeVerAtrito ? <AtritoDoAtendimento periodo={periodo} /> : null}
+      {podeVerAtrito ? (
+        <AtritoDoAtendimento periodo={periodo} podeEditarRegua={podeEditarRegua} />
+      ) : null}
 
       <Painel titulo={t("Quando chegam as conversas")} nota={t("Dia da semana × hora (08h–20h)")}>
         <div className="overflow-x-auto">

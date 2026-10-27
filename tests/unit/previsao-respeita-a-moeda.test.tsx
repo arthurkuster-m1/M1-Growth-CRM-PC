@@ -21,7 +21,7 @@ vi.mock("@/hooks/metrics/usePrevisaoFunil", () => ({
   usePrevisaoFunil: () => ({ data: dados, isLoading: false, isError: false }),
 }));
 
-import { PrevisaoPanel } from "@/app/app/metrics/_components/PrevisaoPanel";
+import { PrevisaoPanel } from "@/components/dashboards/PrevisaoPanel";
 
 /** Os espaços que o `Intl` emite são NBSP (U+00A0) ou narrow NBSP (U+202F). */
 const semNbsp = (s: string) => s.replace(/[\u00A0\u202F]/g, " ");
