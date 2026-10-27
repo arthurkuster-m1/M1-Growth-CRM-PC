@@ -464,4 +464,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.23| **Clientes pela agenda removido** | Configurações › Agenda não mostra mais "Clientes pela agenda"; novo agendamento não etiqueta o contato como cliente |           |
 | 23.24| **Registro do resultado da reunião** | O texto explica que vale depois da reunião e o que cada prazo faz; o campo "Soltar o horário…" não existe mais e pedido não confirmado não é cancelado sozinho |           |
 | 23.25| **Ver a agenda dos colegas** (como administrador) | Desligar "Atendentes podem ver a agenda dos colegas": um atendente passa a ver só os próprios compromissos (grade, resumo do dia e lista de pessoas); gerente/administrador seguem vendo todos; só administrador consegue mudar as duas opções |           |
+| 23.26| **Filtro da Agenda** (gerente/administrador) | O botão "Filtrar" abre a lista de atendentes e de tipos com caixas; escolher um, vários ou todos muda a grade e o resumo do dia; o bloco "Ocupado" do Google segue só a pessoa; o botão resume o que está valendo |           |
 

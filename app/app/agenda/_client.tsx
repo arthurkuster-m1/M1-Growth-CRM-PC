@@ -18,6 +18,7 @@ import { AvisoDaConexaoGoogle } from "./_components/AvisoDaConexaoGoogle";
 import { CartaoDaConexaoGoogle } from "./_components/CartaoDaConexaoGoogle";
 
 import { AgendaInterativa } from "@/components/agenda/AgendaInterativa";
+import { FiltroDaAgenda, aplicaFiltroDaAgenda } from "@/components/agenda/FiltroDaAgenda";
 import { FiltroDePessoas } from "@/components/agenda/FiltroDePessoas";
 import type { Agendamento, VisaoDaAgenda } from "@/components/agenda/tipos";
 import { ancoraLocalDoDia } from "@/lib/agenda/semana-semente";
@@ -256,6 +257,9 @@ export function AgendaClient({
     }
   };
   const [isolada, setIsolada] = React.useState<string | null>(null);
+  // Filtro do gestor: vários atendentes e vários tipos (vazio = todos).
+  const [pessoasEscolhidas, setPessoasEscolhidas] = React.useState<string[]>([]);
+  const [tiposEscolhidos, setTiposEscolhidos] = React.useState<string[]>([]);
   /**
    * A ÂNCORA NASCE DO RELÓGIO DA ORGANIZAÇÃO, não do navegador.
    *
@@ -349,8 +353,13 @@ export function AgendaClient({
     agendamentosVivos ?? (naJanelaDoServidor ? agendamentosIniciais : []);
 
   const agendamentos = React.useMemo(
-    () => (isolada === null ? todos : todos.filter((a) => a.responsavelId === isolada)),
-    [isolada, todos],
+    () =>
+      aplicaFiltroDaAgenda(
+        isolada === null ? todos : todos.filter((a) => a.responsavelId === isolada),
+        pessoasEscolhidas,
+        tiposEscolhidos,
+      ),
+    [isolada, todos, pessoasEscolhidas, tiposEscolhidos],
   );
 
   // A GRADE não mostra cancelado: ela responde "o que está de pé". A lista de próximos,
@@ -552,7 +561,18 @@ export function AgendaClient({
             filtro de atendentes desce para uma linha própria, antes do calendário. */}
         <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           <div className="order-last w-full sm:order-none sm:w-auto">
-            <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
+            {podeGerenciarEquipe ? (
+              <FiltroDaAgenda
+                pessoas={pessoas}
+                tipos={tiposIniciais.map((x) => x.nome)}
+                pessoasEscolhidas={pessoasEscolhidas}
+                tiposEscolhidos={tiposEscolhidos}
+                aoMudarPessoas={setPessoasEscolhidas}
+                aoMudarTipos={setTiposEscolhidos}
+              />
+            ) : (
+              <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
+            )}
           </div>
           {/* O MENU DE VISÕES, como no Google Agenda: um botão com a visão atual que abre a lista
               (Dia, 3 dias, Semana, Mês). Vale no celular e no computador. */}

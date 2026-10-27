@@ -26,6 +26,8 @@ interface AgendamentoListado {
   donoId: string | null;
   contatoId: string | null;
   contatoNome: string | null;
+  /** O tipo de atendimento de que o compromisso nasceu (ausente no bloco do Google). */
+  tipo?: { slug: string; nome: string } | null;
 }
 
 export interface RecorteDaGrade {
@@ -99,6 +101,7 @@ export function useAgendamentos(recorte: RecorteDaGrade | null) {
           // Campo novo é optional e a rota pode ainda não mandá-lo — `?? undefined`
           // mantém o wire tolerante a servidor mais velho que o cliente.
           quemSeraAtendido: a.contatoNome ?? undefined,
+          tipo: a.tipo?.nome || undefined,
         }));
       } catch (err) {
         showApiError(err);
