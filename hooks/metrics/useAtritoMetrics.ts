@@ -29,11 +29,22 @@ export function useSalvarReguaAbandono() {
   });
 }
 
-/** Spec 17 — o Índice de Atrito. Mede o propósito, não a atividade. */
-export function useAtritoMetrics() {
+/**
+ * Spec 17 — o Índice de Atrito. Mede o propósito, não a atividade. Sem período, os últimos 30 dias;
+ * com período (dias `YYYY-MM-DD`, inclusive), do início do dia `de` ao fim do dia `ate`.
+ */
+export function useAtritoMetrics(periodo?: { de: string; ate: string }, enabled = true) {
   return useQuery({
-    queryKey: ["metrics", "atrito"],
-    queryFn: async () => apiClient.get<{ data: AtritoMetrics }>("/api/v1/metrics/atrito"),
+    queryKey: ["metrics", "atrito", periodo?.de ?? null, periodo?.ate ?? null],
+    enabled,
+    queryFn: async () => {
+      if (!periodo) return apiClient.get<{ data: AtritoMetrics }>("/api/v1/metrics/atrito");
+      const from = new Date(`${periodo.de}T00:00:00`);
+      const to = new Date(`${periodo.ate}T00:00:00`);
+      to.setDate(to.getDate() + 1);
+      const qs = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+      return apiClient.get<{ data: AtritoMetrics }>(`/api/v1/metrics/atrito?${qs.toString()}`);
+    },
     staleTime: 30_000,
   });
 }
