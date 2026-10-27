@@ -16,11 +16,14 @@ import { useT } from "@/hooks/i18n/useT";
  */
 export function RegistrarAcaoEmMassaDialog({
   contatoIds,
+  leadId,
   aberto,
   aoFechar,
   aoConcluir,
 }: {
   contatoIds: string[];
+  /** Uma oportunidade: a ação entra na atividade dela. */
+  leadId?: string;
   aberto: boolean;
   aoFechar: () => void;
   aoConcluir: () => void;
@@ -32,12 +35,14 @@ export function RegistrarAcaoEmMassaDialog({
         <DialogHeader>
           <DialogTitle>{t("Registrar ação")}</DialogTitle>
           <DialogDescription>
-            {t("A ação entra na linha do tempo dos")} {contatoIds.length}{" "}
-            {t("leads selecionados.")}
+            {leadId
+              ? t("A ação entra na atividade desta oportunidade e no histórico do lead.")
+              : `${t("A ação entra na linha do tempo dos")} ${contatoIds.length} ${t("leads selecionados.")}`}
           </DialogDescription>
         </DialogHeader>
         <RegistrarAcaoDoLead
           contactIds={contatoIds}
+          leadId={leadId}
           podeEditar
           semBloco
           aoRegistrar={() => {

@@ -47,10 +47,13 @@ export function LinhaDoTempoDoLead({
 export function RegistrarAcaoDoLead({
   contactId,
   contactIds,
+  leadId,
   podeEditar,
   semBloco = false,
   aoRegistrar,
 }: {
+  /** A oportunidade em que a ação acontece: ela entra na atividade DELA (e no histórico do lead). */
+  leadId?: string;
   /** Um lead (a ficha). Em massa, passe `contactIds`. */
   contactId?: string;
   /** Vários leads de uma vez: a mesma ação é registrada na linha do tempo de cada um. */
@@ -85,6 +88,7 @@ export function RegistrarAcaoDoLead({
     mutationFn: async () => {
       const corpo = {
         acao,
+        ...(leadId ? { lead_id: leadId } : {}),
         ...(titulo.trim() ? { titulo: titulo.trim() } : {}),
         ...(resultado ? { resultado } : {}),
         ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
@@ -128,6 +132,7 @@ export function RegistrarAcaoDoLead({
       aoRegistrar?.();
       escolher(null);
       void qc.invalidateQueries({ queryKey: ["contact-timeline"] });
+      void qc.invalidateQueries({ queryKey: ["timeline"] });
       void qc.invalidateQueries({ queryKey: ["timeline"] });
       void qc.invalidateQueries();
     },

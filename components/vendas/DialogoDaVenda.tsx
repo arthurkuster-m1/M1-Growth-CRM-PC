@@ -29,10 +29,12 @@ import {
   ClienteDaOportunidade,
   CompromissosDaOportunidade,
   ScoreDaOportunidade,
+  AtividadeDaOportunidade,
   TagsDoCliente,
   TarefasDaOportunidade,
 } from "@/components/vendas/BlocosDaOportunidade";
 import { Funnel } from "@/lib/ui/icons";
+import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
@@ -126,15 +128,21 @@ function rotuloDoStatus(t: (s: string) => string, st: StatusDaVenda): string {
 function Fase({
   titulo,
   cor: _cor,
+  acao,
   children,
 }: {
   titulo: string;
   cor: keyof typeof BARRAS;
+  /** Um botão no canto direito do título (ex.: "Registro de ação"). */
+  acao?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:p-4">
-      <h3 className="text-base font-semibold">{titulo}</h3>
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <h3 className="text-base font-semibold">{titulo}</h3>
+        {acao}
+      </div>
       {children}
     </section>
   );
@@ -282,6 +290,7 @@ export function DialogoDaVenda({
   // O MESMO painel em qualquer porta de entrada: etapa, funil, responsável e campos do funil vêm
   // da própria oportunidade, não de quem abriu o painel.
   const [perdendo, setPerdendo] = useState(false);
+  const [registrandoAcao, setRegistrandoAcao] = useState(false);
   const dadosDoLead = origemDoCard.data;
   async function recarregarTudo() {
     await queryClient.invalidateQueries();
@@ -789,6 +798,15 @@ export function DialogoDaVenda({
 
   return (
     <>
+    {registrandoAcao && venda?.lead_id ? (
+      <RegistrarAcaoEmMassaDialog
+        aberto
+        contatoIds={[venda.contact_id]}
+        leadId={venda.lead_id}
+        aoFechar={() => setRegistrandoAcao(false)}
+        aoConcluir={() => void queryClient.invalidateQueries({ queryKey: ["clientes"] })}
+      />
+    ) : null}
     {confirmandoPasso !== null ? (
       <ConfirmarDataDaProximaAcao
         texto={confirmandoPasso}
@@ -1012,7 +1030,23 @@ export function DialogoDaVenda({
         </div>
 
         {/* 3 · funil, etapa (tag colorida e editável), score e, se perdida, o motivo. */}
-        <Fase titulo={t("Funil e status")} cor="blue">
+        <Fase
+          titulo={t("Funil e status")}
+          cor="blue"
+          acao={
+            venda?.lead_id ? (
+              <button
+                type="button"
+                onClick={() => setRegistrandoAcao(true)}
+                data-testid="registro-de-acao"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+              >
+                <Plus size={14} aria-hidden />
+                {t("Registro de ação")}
+              </button>
+            ) : null
+          }
+        >
           {!venda && funis && funis.length > 0 ? (
             <div className="grid gap-1">
               <span className="text-xs text-muted-foreground">{t("Funil")}</span>
@@ -1555,16 +1589,6 @@ export function DialogoDaVenda({
         <BlocoRecolhivel titulo={t("Detalhes da oportunidade")}>
           <div className="p-4 pt-0">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid grid-cols-1 gap-1">
-              <span className="text-xs text-muted-foreground">
-                {t("Referência (ex.: Mensalidade 03/2026)")}
-              </span>
-              <input
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-                className={CAMPO}
-              />
-            </label>
             {venda ? (
               <dl className="grid gap-x-4 gap-y-1 text-xs text-muted-foreground sm:col-span-2 sm:grid-cols-3">
                 <div>
@@ -1590,6 +1614,11 @@ export function DialogoDaVenda({
           </div>
           </div>
         </BlocoRecolhivel>
+
+        {/* Atividade: tudo o que aconteceu nesta oportunidade (o histórico, filtrado por ela). */}
+        {venda?.lead_id ? (
+          <AtividadeDaOportunidade leadId={venda.lead_id} contactId={venda.contact_id} />
+        ) : null}
         </>
         )}
 
