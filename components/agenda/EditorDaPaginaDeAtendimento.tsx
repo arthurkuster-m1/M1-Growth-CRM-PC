@@ -8,7 +8,14 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useT } from "@/hooks/i18n/useT";
-import { LIMITE_DE_PASSOS, padraoDoModelo, type ModeloDeAtendimentoDoTipo } from "@/lib/agenda/modelos-de-atendimento";
+import { EditorVisualDeBlocos } from "@/components/marketing/EditorVisualDeBlocos";
+import {
+  LIMITE_DE_PASSOS,
+  blocosDoModelo,
+  padraoDoModelo,
+  type ModeloDeAtendimentoDoTipo,
+} from "@/lib/agenda/modelos-de-atendimento";
+import { randomId } from "@/lib/random-id";
 import { ROTULO_DO_MODELO } from "@/lib/agenda/atendimentos";
 import { apiClient } from "@/lib/api/client";
 import { ArrowDown, ArrowUp, Plus, Trash } from "@/lib/ui/icons";
@@ -17,14 +24,38 @@ import { BlocoRecolhivel } from "./BlocoRecolhivel";
 import { useMatrizDeAtendentes } from "./equipe-hooks";
 import { useModelosDeAtendimento } from "./modelos-hooks";
 
-const BLOCOS: Array<{ id: keyof ModeloDeAtendimentoDoTipo["blocos"]; rotulo: string; dica: string }> = [
-  { id: "roteiro", rotulo: "Roteiro", dica: "Os passos que o atendente segue, com dica de cada um." },
+const BLOCOS: Array<{
+  id: keyof ModeloDeAtendimentoDoTipo["blocos"];
+  rotulo: string;
+  dica: string;
+}> = [
+  {
+    id: "roteiro",
+    rotulo: "Roteiro",
+    dica: "Os passos que o atendente segue, com dica de cada um.",
+  },
   { id: "anotacoes", rotulo: "Anotações", dica: "O espaço para escrever o que foi falado." },
-  { id: "oportunidade", rotulo: "Oportunidade e venda", dica: "A oportunidade, a venda e as parcelas dentro do compromisso." },
-  { id: "ia", rotulo: "Recomendações da IA ao vivo", dica: "Sugestões durante a reunião (em breve)." },
+  {
+    id: "oportunidade",
+    rotulo: "Oportunidade e venda",
+    dica: "A oportunidade, a venda e as parcelas dentro do compromisso.",
+  },
+  {
+    id: "ia",
+    rotulo: "Recomendações da IA ao vivo",
+    dica: "Sugestões durante a reunião (em breve).",
+  },
 ];
 
-function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: ModeloDeAtendimentoDoTipo; podeEditar: boolean }) {
+function EditorDoTipo({
+  tipoId,
+  atual,
+  podeEditar,
+}: {
+  tipoId: string;
+  atual: ModeloDeAtendimentoDoTipo;
+  podeEditar: boolean;
+}) {
   const t = useT();
   const qc = useQueryClient();
   const [m, setM] = React.useState<ModeloDeAtendimentoDoTipo>(atual);
@@ -40,6 +71,7 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
         modelo: m.modelo,
         blocos: m.blocos,
         roteiro: m.roteiro.filter((p) => p.titulo.trim() !== ""),
+        ...(m.blocos_do_modelo ? { blocos_do_modelo: m.blocos_do_modelo } : {}),
       }),
     onSuccess: () => {
       toast.success(t("Página de atendimento salva."));
@@ -66,7 +98,10 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
           rotulo={t("Modelo da página de atendimento")}
           valor={m.modelo}
           desabilitado={!podeEditar}
-          opcoes={(["vendas", "padrao"] as const).map((id) => ({ id, rotulo: t(ROTULO_DO_MODELO[id]) }))}
+          opcoes={(["vendas", "padrao"] as const).map((id) => ({
+            id,
+            rotulo: t(ROTULO_DO_MODELO[id]),
+          }))}
           aoEscolher={(id) => {
             if (id === m.modelo) return;
             // Trocar de modelo traz o padrão dele (blocos e roteiro); dá para ajustar depois.
@@ -87,7 +122,9 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
                   className="mt-0.5"
                   disabled={!podeEditar}
                   checked={m.blocos[b.id]}
-                  onChange={(e) => mudar((x) => ({ ...x, blocos: { ...x.blocos, [b.id]: e.target.checked } }))}
+                  onChange={(e) =>
+                    mudar((x) => ({ ...x, blocos: { ...x.blocos, [b.id]: e.target.checked } }))
+                  }
                 />
                 <span className="text-sm">
                   <span className="font-medium">{t(b.rotulo)}</span>
@@ -104,14 +141,24 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
           <p className="mb-2 text-sm font-medium">{t("Roteiro de atendimento")}</p>
           <ol className="grid gap-2">
             {m.roteiro.map((p, i) => (
-              <li key={i} className="grid gap-2 rounded-xl border border-border bg-background p-3 sm:grid-cols-[1fr_2fr_auto]">
+              <li
+                key={i}
+                className="grid gap-2 rounded-xl border border-border bg-background p-3 sm:grid-cols-[1fr_2fr_auto]"
+              >
                 <input
                   aria-label={`${t("Título do passo")} ${i + 1}`}
                   value={p.titulo}
                   maxLength={80}
                   disabled={!podeEditar}
                   placeholder={t("Título do passo")}
-                  onChange={(e) => mudar((x) => ({ ...x, roteiro: x.roteiro.map((q, k) => (k === i ? { ...q, titulo: e.target.value } : q)) }))}
+                  onChange={(e) =>
+                    mudar((x) => ({
+                      ...x,
+                      roteiro: x.roteiro.map((q, k) =>
+                        k === i ? { ...q, titulo: e.target.value } : q,
+                      ),
+                    }))
+                  }
                   className="h-9 rounded-xl border border-border bg-surface px-3 text-sm"
                 />
                 <input
@@ -120,15 +167,36 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
                   maxLength={300}
                   disabled={!podeEditar}
                   placeholder={t("Dica: o que fazer ou perguntar")}
-                  onChange={(e) => mudar((x) => ({ ...x, roteiro: x.roteiro.map((q, k) => (k === i ? { ...q, dica: e.target.value } : q)) }))}
+                  onChange={(e) =>
+                    mudar((x) => ({
+                      ...x,
+                      roteiro: x.roteiro.map((q, k) =>
+                        k === i ? { ...q, dica: e.target.value } : q,
+                      ),
+                    }))
+                  }
                   className="h-9 rounded-xl border border-border bg-surface px-3 text-sm"
                 />
                 {podeEditar ? (
                   <div className="flex items-center gap-1">
-                    <Button type="button" variant="ghost" size="icon" aria-label={t("Subir passo")} disabled={i === 0} onClick={() => mover(i, -1)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("Subir passo")}
+                      disabled={i === 0}
+                      onClick={() => mover(i, -1)}
+                    >
                       <ArrowUp size={16} aria-hidden />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" aria-label={t("Descer passo")} disabled={i === m.roteiro.length - 1} onClick={() => mover(i, 1)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("Descer passo")}
+                      disabled={i === m.roteiro.length - 1}
+                      onClick={() => mover(i, 1)}
+                    >
                       <ArrowDown size={16} aria-hidden />
                     </Button>
                     <Button
@@ -136,7 +204,9 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
                       variant="ghost"
                       size="icon"
                       aria-label={t("Remover passo")}
-                      onClick={() => mudar((x) => ({ ...x, roteiro: x.roteiro.filter((_, k) => k !== i) }))}
+                      onClick={() =>
+                        mudar((x) => ({ ...x, roteiro: x.roteiro.filter((_, k) => k !== i) }))
+                      }
                     >
                       <Trash size={16} aria-hidden />
                     </Button>
@@ -151,7 +221,9 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
               variant="outline"
               size="sm"
               className="mt-2 gap-1.5 rounded-xl"
-              onClick={() => mudar((x) => ({ ...x, roteiro: [...x.roteiro, { titulo: "", dica: "" }] }))}
+              onClick={() =>
+                mudar((x) => ({ ...x, roteiro: [...x.roteiro, { titulo: "", dica: "" }] }))
+              }
             >
               <Plus size={14} aria-hidden />
               {t("Adicionar passo")}
@@ -160,12 +232,70 @@ function EditorDoTipo({ tipoId, atual, podeEditar }: { tipoId: string; atual: Mo
         </div>
       ) : null}
 
+      <div>
+        <p className="mb-1 text-sm font-medium">{t("Modelo de blocos do compromisso")}</p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          {t(
+            "O editor da página do compromisso já abre com este modelo. Cada compromisso pode adaptá-lo, mas a adaptação vale só para ele.",
+          )}
+        </p>
+        {m.blocos_do_modelo ? (
+          <>
+            <EditorVisualDeBlocos
+              blocos={m.blocos_do_modelo}
+              aoMudar={(novos) => podeEditar && mudar((x) => ({ ...x, blocos_do_modelo: novos }))}
+              novoId={randomId}
+              rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
+            />
+            {podeEditar ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-2 rounded-xl"
+                onClick={() => mudar((x) => ({ ...x, blocos_do_modelo: undefined }))}
+              >
+                {t("Voltar ao modelo gerado pelo roteiro")}
+              </Button>
+            ) : null}
+          </>
+        ) : podeEditar ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            onClick={() => mudar((x) => ({ ...x, blocos_do_modelo: blocosDoModelo(x, randomId) }))}
+          >
+            {t("Editar o modelo de blocos")}
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {t("O modelo vem do roteiro deste tipo.")}
+          </p>
+        )}
+      </div>
+
       {podeEditar ? (
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" className="rounded-xl" disabled={!sujo} onClick={() => { setM(atual); setSujo(false); }}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="rounded-xl"
+            disabled={!sujo}
+            onClick={() => {
+              setM(atual);
+              setSujo(false);
+            }}
+          >
             {t("Descartar")}
           </Button>
-          <Button type="button" className="rounded-xl" disabled={!sujo || salvar.isPending} onClick={() => salvar.mutate()}>
+          <Button
+            type="button"
+            className="rounded-xl"
+            disabled={!sujo || salvar.isPending}
+            onClick={() => salvar.mutate()}
+          >
             {t("Salvar página de atendimento")}
           </Button>
         </div>
@@ -179,7 +309,8 @@ export function EditorDasPaginasDeAtendimento({ podeEditar }: { podeEditar: bool
   const t = useT();
   const modelos = useModelosDeAtendimento();
   const matriz = useMatrizDeAtendentes();
-  if (modelos.isPending || matriz.isPending) return <p className="text-sm text-muted-foreground">{t("Carregando…")}</p>;
+  if (modelos.isPending || matriz.isPending)
+    return <p className="text-sm text-muted-foreground">{t("Carregando…")}</p>;
   const tipos = matriz.data?.tipos ?? [];
   if (!modelos.data || tipos.length === 0) return null;
   return (
@@ -187,14 +318,20 @@ export function EditorDasPaginasDeAtendimento({ podeEditar }: { podeEditar: bool
       <div>
         <h3 className="text-sm font-semibold">{t("Página de atendimento de cada tipo")}</h3>
         <p className="text-xs text-muted-foreground">
-          {t("O que o atendente vê ao abrir o compromisso: o roteiro, as anotações e a venda. Cada tipo pode ter a sua página.")}
+          {t(
+            "O que o atendente vê ao abrir o compromisso: o roteiro, as anotações e a venda. Cada tipo pode ter a sua página.",
+          )}
         </p>
       </div>
       {tipos.map((tipo) => {
         const atual = modelos.data![tipo.id];
         if (!atual) return null;
         return (
-          <BlocoRecolhivel key={tipo.id} titulo={tipo.nome} resumo={t(ROTULO_DO_MODELO[atual.modelo])}>
+          <BlocoRecolhivel
+            key={tipo.id}
+            titulo={tipo.nome}
+            resumo={t(ROTULO_DO_MODELO[atual.modelo])}
+          >
             <EditorDoTipo tipoId={tipo.id} atual={atual} podeEditar={podeEditar} />
           </BlocoRecolhivel>
         );
