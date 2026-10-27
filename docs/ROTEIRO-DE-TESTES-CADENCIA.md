@@ -265,7 +265,7 @@ Em **Agenda**. Teste no computador e no celular.
 | 14.17 | **Celular — topo da Agenda**                                                          | Só aparecem **Novo agendamento**, **Hoje** (com as setas e o período) e o botão da visão; o calendário começa logo abaixo, sem título nem subtítulo |           |
 | 14.18 | **Celular — fim da página**                                                           | No cartão "Agenda conectada" aparecem "Configurar suas agendas" e "Desconectar", e **embaixo deles** o botão "Sincronizar com Google", que funciona |           |
 | 14.19 | **Computador**                                                                        | O botão "Sincronizar com Google" continua no topo, ao lado de "Novo agendamento", e o título "Agenda" aparece                                       |           |
-| 14.20 | **Celular — filtro de pessoas**                                                       | O filtro de pessoas **não aparece** no celular (decisão provisória para o topo ficar limpo); no computador continua                                 |           |
+| 14.20 | **Celular — filtro de pessoas**                                                       | O filtro de pessoas **aparece** no celular, embaixo de Hoje / Semana, antes do calendário (decisão final)                                           |           |
 | 14.21 | **Computador — Mês**: olhe um dia com a rotina pessoal do Google (ex.: 05:00 e 05:40) | Essas faixas "Ocupado" fora de 07h–18h **não aparecem**; as de dentro da janela aparecem                                                            |           |
 | 14.22 | **Mês**: dia com vários compromissos                                                  | Estão em **ordem cronológica** (6h, depois 9h, depois 14h…)                                                                                         |           |
 | 14.23 | **Mês**: clique numa faixa de compromisso                                             | Abre a página do compromisso                                                                                                                        |           |
@@ -273,3 +273,108 @@ Em **Agenda**. Teste no computador e no celular.
 | 14.25 | **Mês**: **duplo clique** num dia de hoje em diante                                   | Abre o novo compromisso já naquele dia (9h, ajustável)                                                                                              |           |
 | 14.26 | **Mês**: duplo clique num dia **passado**                                             | Nada acontece                                                                                                                                       |           |
 | 14.27 | **Mês**: duplo clique numa faixa                                                      | Abre/seleciona o compromisso e **não** cria um novo                                                                                                 |           |
+
+---
+
+## 15. Celular — acertos de tela (27/10/2026)
+
+| #     | Passo                                                                        | Esperado                                                                                        | Resultado |
+| ----- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------- |
+| 15.1  | **Agenda, celular**: olhe o topo (Hoje, período, botão da visão)             | O período ("25 out — 31 out") **não passa por cima** do botão da visão; nada quebra em 2 linhas |           |
+| 15.2  | **Agenda, celular**: olhe a grade                                            | A grade ocupa mais da tela; o título "Agenda" some no celular                                   |           |
+| 15.3  | **Barra de baixo**                                                           | Inbox, Agenda, CRM, Tarefas e Mais, nessa ordem                                                 |           |
+| 15.4  | **Tarefas — calendário**: toque num dia                                      | Abre embaixo a lista do dia, com as propriedades escolhidas; "Nova tarefa" fica numa linha só   |           |
+| 15.5  | **Tarefas — seletor de data**: toque fora dele                               | Fecha e salva a data, sem precisar do X                                                         |           |
+| 15.6  | **Tarefas — linha do tempo**: arraste a borda da coluna do nome              | A largura da coluna muda e fica guardada                                                        |           |
+| 15.7  | **Tabelas no celular** (Tarefas, Oportunidades…)                             | O texto **não é cortado**; dá para ajustar a largura das colunas                                |           |
+| 15.8  | **CRM › Oportunidades — tabela**: olhe as colunas WhatsApp, Inbox, Ação      | Os botões ficam **numa linha só**, sem texto sobreposto                                         |           |
+| 15.9  | **Marketing, celular**: cartões, links, "Apagar subpágina", abrir uma página | Textos dentro dos cartões; o botão de apagar é pequeno; a página abre no topo                   |           |
+| 15.10 | **Produtos**: mude o preço de um produto pela tabela                         | O valor **fica salvo** (não volta ao anterior)                                                  |           |
+| 15.11 | **Marketing › Modelos**: abra o menu numa página                             | Só aparecem **Página em branco** e o modelo **daquele tipo de página**                          |           |
+
+---
+
+## 16. CRM — visualização padrão (27/10/2026)
+
+| #    | Passo                                            | Esperado                                                                    | Resultado |
+| ---- | ------------------------------------------------ | --------------------------------------------------------------------------- | --------- |
+| 16.1 | **Oportunidades**: olhe a primeira aba           | O nome diz o que ela é ("Quadro" ou "Tabela") e ela se comporta assim       |           |
+| 16.2 | Abra a configuração da visualização padrão       | Dá para trocar o tipo (tabela ↔ quadro) **mantendo filtros e propriedades** |           |
+| 16.3 | **Duplicar** a visualização padrão               | Nasce uma cópia com os mesmos filtros e propriedades                        |           |
+| 16.4 | **Apagar** a visualização padrão (havendo outra) | Ela some das abas; se não houver outra, a opção de apagar não aparece       |           |
+
+---
+
+## 17. Tarefas adiadas e autoavaliação da semana (27/10/2026)
+
+| #    | Passo                                                                    | Esperado                                                                                                      | Resultado |
+| ---- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | --------- |
+| 17.1 | **Cronograma › Tarefas adiadas**                                         | **Não existe** mais o filtro "Só as sem motivo registrado"                                                    |           |
+| 17.2 | Adie uma tarefa **sem escrever o motivo**                                | Não deixa: o motivo é obrigatório                                                                             |           |
+| 17.3 | **Cronograma › Tarefas da semana** (como gerente): olhe embaixo da lista | Aparece "Autoavaliação da semana": barra de 0 a 100% e campo de tópicos                                       |           |
+| 17.4 | Dê uma nota, escreva tópicos e salve                                     | Aparece "Autoavaliação salva" e a semana entra no histórico como "Semana dd/mm/aa → dd/mm/aa — NN% — tópicos" |           |
+| 17.5 | Troque de semana e volte                                                 | Cada semana mostra a **sua** nota e as suas anotações                                                         |           |
+| 17.6 | Abra o cronograma como **cliente** (visão do cliente / link público)     | A autoavaliação **não aparece**                                                                               |           |
+
+---
+
+## 18. Agenda — mês com painel do dia e propriedades (27/10/2026)
+
+| #    | Passo                                                                                              | Esperado                                                                                       | Resultado |
+| ---- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------- |
+| 18.1 | **Agenda › Mês**: toque num dia                                                                    | Abre embaixo o painel com os compromissos dele, em ordem de horário                            |           |
+| 18.2 | **Celular**: olhe as células do mês                                                                | Só **pontinhos coloridos** por responsável; no computador, as faixas                           |           |
+| 18.3 | No painel, toque num compromisso                                                                   | Abre a página do compromisso                                                                   |           |
+| 18.4 | **Novo agendamento** no painel                                                                     | Abre já no dia escolhido (a partir de hoje)                                                    |           |
+| 18.5 | **Propriedades**: marque/desmarque itens                                                           | A lista sob cada compromisso muda; ao recarregar a escolha **continua** (fica neste navegador) |           |
+| 18.6 | Marque Tipo, Categoria, Link, Ligar, E-mail, Inbox, Funil, Status do funil, Status da venda, Valor | Aparecem os valores certos do compromisso e da oportunidade ligada a ele                       |           |
+| 18.7 | Compromisso sem oportunidade ou sem link                                                           | Mostra "—" nesses campos, sem erro                                                             |           |
+
+---
+
+## 19. Remarcação, no-show e venda (27/10/2026)
+
+| #     | Passo                                                                             | Esperado                                                                                        | Resultado |
+| ----- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------- |
+| 19.1  | **Arraste** um compromisso aberto para outro horário                              | O antigo vira **Não compareceu** (conta no no-show) e nasce um **novo** no horário escolhido    |           |
+| 19.2  | Remarque pela **data e hora** da página do compromisso                            | Mesmo efeito, e a página passa a mostrar o **compromisso novo**                                 |           |
+| 19.3  | Abra o compromisso antigo                                                         | Status **Remarcado**; no novo, "Remarcado de" mostra o horário anterior (propriedade do painel) |           |
+| 19.4  | O novo tem o mesmo cliente, oportunidade, responsável, tipo e anotações do antigo | Sim                                                                                             |           |
+| 19.5  | Olhe as **análises / no-show**                                                    | A remarcação **conta** como não comparecimento                                                  |           |
+| 19.6  | O cliente recebe mensagem ao remarcar                                             | Recebe **uma** mensagem (a de compromisso marcado), não duas; **não** recebe "você faltou"      |           |
+| 19.7  | Remarque para um horário que **não cabe** (ocupado)                               | Recusa com erro e o compromisso **continua como era** (não vira falta)                          |           |
+| 19.8  | **Resultado** do compromisso: Compareceu e comprou                                | Status **Compareceu e Comprou** e abre o pagamento da oportunidade                              |           |
+| 19.9  | Registre o pagamento (ou marque a venda como Paga/Comprometida pela oportunidade) | As reuniões já realizadas dessa oportunidade viram **Compareceu e Comprou** sozinhas            |           |
+| 19.10 | Resultado: Compareceu e não comprou                                               | Status **Compareceu e Não comprou**; pergunta o destino da oportunidade                         |           |
+| 19.11 | Resultado: Não compareceu                                                         | Status **Não compareceu**                                                                       |           |
+| 19.12 | Tente registrar resultado de reunião que **ainda não começou**                    | Não deixa ("Disponível quando a reunião começar")                                               |           |
+| 19.13 | Anote se o espelho do **Google Agenda** ficou certo depois de remarcar            | O evento antigo some/não confunde e o novo aparece (**ponto a conferir**)                       |           |
+
+---
+
+## 20. Página do compromisso (27/10/2026)
+
+| #     | Passo                                                                | Esperado                                                                                                              | Resultado |
+| ----- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------- |
+| 20.1  | Abra um compromisso                                                  | Título no topo (ex.: "R1 · Nome do cliente"), **tag do tipo no canto superior direito**, depois as propriedades       |           |
+| 20.2  | Clique na tag do tipo e escolha outro                                | O tipo muda e o **fim** acompanha a duração do novo tipo                                                              |           |
+| 20.3  | **Data e Hora**: troque o início                                     | Remarca (19.2); mostra "até HH:mm"                                                                                    |           |
+| 20.4  | **Status**: clique na tag                                            | Opções: Confirmado, Compareceu e Comprou, Compareceu e Não comprou, Não compareceu (as de resultado só após o início) |           |
+| 20.5  | **Responsável**: troque                                              | Só aparecem atendentes do tipo livres naquele horário                                                                 |           |
+| 20.6  | **Cliente**: ícone do Inbox                                          | Abre a conversa do cliente no Inbox                                                                                   |           |
+| 20.7  | **Cliente**: ícone de ligar                                          | Abre a ligação com o telefone do cliente                                                                              |           |
+| 20.8  | **Cliente**: ícone de trocar                                         | Busca um cliente; ao trocar, a **oportunidade e a venda** passam a ser as do novo cliente                             |           |
+| 20.9  | **Link da Reunião** (Meet): link pronto                              | Mostra o link, com botão de **copiar** e de **abrir**                                                                 |           |
+| 20.10 | Link pendente ou com falha                                           | Mostra "Gerando o link…" ou "Falha ao gerar o link" no lugar do link                                                  |           |
+| 20.11 | Compromisso **presencial**                                           | O rótulo vira "Endereço"; copiar e abrir no mapa                                                                      |           |
+| 20.12 | **Oportunidade**                                                     | Nome + etapa do funil na mesma linha, e o funil embaixo; cliente com várias oportunidades permite escolher            |           |
+| 20.13 | **Venda**: produto de interesse, valor e status na mesma linha       | Mudar para Comprometida / Não comprou funciona; **Paga** abre o pagamento                                             |           |
+| 20.14 | Venda paga ou comprometida                                           | Abre embaixo o resumo (Valor, Pago, A receber) e as parcelas                                                          |           |
+| 20.15 | **Editor de blocos** em compromisso novo de reunião de vendas        | Já vem com o roteiro de vendas (Abertura, Diagnóstico… Fechamento) para escrever embaixo de cada passo                |           |
+| 20.16 | Escreva no editor, espere "Salvo neste compromisso", feche e reabra  | O texto continua lá                                                                                                   |           |
+| 20.17 | Adapte os blocos de **um** compromisso                               | **Outro** compromisso do mesmo tipo continua com o modelo original                                                    |           |
+| 20.18 | "Voltar ao modelo do tipo"                                           | O compromisso volta ao modelo do tipo                                                                                 |           |
+| 20.19 | Compromisso antigo que tinha anotações no campo antigo               | As anotações aparecem como bloco "Anotações anteriores"                                                               |           |
+| 20.20 | **Configurações › Tipos de agendamento › Editar o modelo de blocos** | Editar e salvar muda o modelo dos compromissos **ainda não adaptados** desse tipo                                     |           |
+| 20.21 | Quem **só lê** (viewer)                                              | Vê os blocos sem editar; sem botões de trocar/remarcar                                                                |           |
+| 20.22 | **Celular**: abra a página do compromisso                            | Propriedades legíveis, sem texto sobreposto; o editor de blocos cabe na tela                                          |           |
