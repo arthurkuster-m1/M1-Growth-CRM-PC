@@ -11,7 +11,9 @@ import { ROLE_RANK, type Role } from "@/lib/auth/types";
  * desligada vê só a própria.
  *
  * ⚠️ FALHA FECHA: se a leitura da opção não vier, recorta para a própria agenda. Mostrar a agenda
- * alheia por engano é o erro que não se desfaz; esconder por um instante, sim.
+ * alheia por engano é o erro que não se desfaz; esconder por um instante, sim. Única exceção: a
+ * função ainda não existir no banco (migration 0671 por aplicar) — aí vale o padrão, "ligado",
+ * que é o comportamento de antes da opção.
  */
 export async function recorteDeVisibilidadeDaAgenda(
   supabase: SupabaseClient,
@@ -23,6 +25,9 @@ export async function recorteDeVisibilidadeDaAgenda(
   const { data, error } = await supabase.rpc("fn_colegas_podem_ver_agenda", {
     p_org: organizationId,
   });
-  if (error) return userId;
+  if (error) {
+    const semAFuncao = error.code === "PGRST202" || error.code === "42883";
+    return semAFuncao ? null : userId;
+  }
   return data === false ? userId : null;
 }
