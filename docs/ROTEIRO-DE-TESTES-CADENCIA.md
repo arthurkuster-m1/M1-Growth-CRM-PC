@@ -426,4 +426,5 @@ Em **Agenda**. Teste no computador e no celular.
 | 22.18| **Oportunidade › Origem**                                                   | É um **toggle fechado**, com o resumo (campanha · origem) na linha; ao abrir, dá para trocar campanha, criativo, landing page e origem em texto |           |
 | 22.19| Quem só lê (viewer)                                                         | Próxima ação, previsão e origem aparecem **travadas**                                                              |           |
 | 21.15 | **3 dias / Semana / Dia**: dia com ocupação do Google às **05:40**           | Nada aparece em cima do cabeçalho do dia (nome e número); o evento só aparece dentro da janela de horas da grade |           |
+| 21.16 | Escolha **Mês**, saia da Agenda e volte (ou atualize a página)              | A Agenda volta no **Mês**; o mesmo vale para Dia, 3 dias e Semana                                                |           |
 
