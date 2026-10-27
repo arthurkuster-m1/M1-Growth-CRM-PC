@@ -63,10 +63,10 @@ export function CabecalhoDaSubpagina({
 
   return (
     <header className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <Link
           href={voltar.href}
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex w-fit min-w-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <CaretLeft size={14} aria-hidden />
           {voltar.rotulo}
@@ -75,10 +75,13 @@ export function CabecalhoDaSubpagina({
           <button
             type="button"
             onClick={() => setConfirmando(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-500/10 px-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-500/20 dark:text-red-300"
+            aria-label={t("Apagar subpágina")}
+            title={t("Apagar subpágina")}
+            // No celular só o ícone da lixeira, pequeno, no canto; a partir de `sm` o botão com texto.
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/10 px-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-500/20 sm:h-9 sm:rounded-xl sm:px-3 sm:text-sm dark:text-red-300"
           >
-            <Trash size={15} aria-hidden />
-            {t("Apagar subpágina")}
+            <Trash size={14} aria-hidden />
+            <span className="hidden sm:inline">{t("Apagar subpágina")}</span>
           </button>
         ) : null}
       </div>

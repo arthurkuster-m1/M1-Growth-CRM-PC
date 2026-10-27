@@ -301,7 +301,10 @@ export function BlocosRender({
                 )}
               >
                 {itens.map(({ item: i, idx }) => (
-                  <div key={idx} className={cn("rounded-2xl bg-card p-5", BORDA_DA_MARCA)}>
+                  <div
+                    key={idx}
+                    className={cn("min-w-0 rounded-2xl bg-card p-4 sm:p-5", BORDA_DA_MARCA)}
+                  >
                     {digitando || i.titulo
                       ? (campo(
                           ["itens", idx, "titulo"],
@@ -352,19 +355,24 @@ export function BlocosRender({
             return (
               <div key={b.id} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {itens.map(({ item: i, idx }) => (
-                  <div key={idx} className={cn("rounded-2xl bg-card p-5", BORDA_DA_MARCA)}>
+                  <div
+                    key={idx}
+                    className={cn("min-w-0 rounded-2xl bg-card p-4 sm:p-5", BORDA_DA_MARCA)}
+                  >
                     {campo(
                       ["itens", idx, "valor"],
                       cn(
-                        "font-bold tracking-tight text-primary",
-                        slide ? "text-4xl sm:text-6xl" : "text-3xl",
+                        // `min-w-0` + quebra em qualquer ponto + corpo menor no celular: valor
+                        // comprido ("R$ 7.000.000", "Sob consulta") não pode sair do cartão.
+                        "font-bold tracking-tight text-primary [overflow-wrap:anywhere]",
+                        slide ? "text-3xl sm:text-6xl" : "text-2xl sm:text-3xl",
                       ),
                       "Número",
                     ) ?? (
                       <p
                         className={cn(
-                          "font-bold tracking-tight text-primary",
-                          slide ? "text-4xl sm:text-6xl" : "text-3xl",
+                          "font-bold tracking-tight [overflow-wrap:anywhere] text-primary",
+                          slide ? "text-3xl sm:text-6xl" : "text-2xl sm:text-3xl",
                         )}
                       >
                         {i.valor}
@@ -375,7 +383,12 @@ export function BlocosRender({
                       cn("mt-1 font-medium", slide ? "text-lg" : "text-sm"),
                       "O que é",
                     ) ?? (
-                      <p className={cn("mt-1 font-medium", slide ? "text-lg" : "text-sm")}>
+                      <p
+                        className={cn(
+                          "mt-1 font-medium [overflow-wrap:anywhere]",
+                          slide ? "text-lg" : "text-sm",
+                        )}
+                      >
                         {i.rotulo}
                       </p>
                     )}
@@ -506,7 +519,7 @@ export function BlocosRender({
             return (
               <ul key={b.id} className="flex flex-wrap gap-2">
                 {itens.map(({ item: i, idx }) => (
-                  <li key={idx}>
+                  <li key={idx} className="max-w-full min-w-0">
                     {digitando ? (
                       <span className="inline-flex max-w-full items-center rounded-xl border bg-card px-4 py-2 text-sm font-medium text-primary shadow-sm">
                         {campo(["itens", idx, "rotulo"], "min-w-24", "Nome do link")}
@@ -519,7 +532,7 @@ export function BlocosRender({
                         title={rotulos.abrirLink}
                         className="inline-flex max-w-full items-center rounded-xl border bg-card px-4 py-2 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-secondary"
                       >
-                        <span className="truncate">{i.rotulo || i.url}</span>
+                        <span className="[overflow-wrap:anywhere]">{i.rotulo || i.url}</span>
                       </a>
                     )}
                   </li>

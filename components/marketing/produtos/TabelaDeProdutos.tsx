@@ -1,5 +1,6 @@
 "use client";
 
+import { tipoAoMudarOPreco } from "@/lib/marketing/tipo-ao-mudar-preco";
 import { registrarDesfazer } from "@/lib/motor/desfazer";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -25,13 +26,14 @@ import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
-import {
-  aplicarConsulta,
-  consultaAtiva,
-  type CampoConsultavel,
-} from "@/lib/motor/consulta";
+import { aplicarConsulta, consultaAtiva, type CampoConsultavel } from "@/lib/motor/consulta";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+import {
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import type { ResumoDeSubpagina } from "@/lib/marketing/paginas";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { Check, Package, TextAa, Trash } from "@/lib/ui/icons";
@@ -130,7 +132,16 @@ export function TabelaDeProdutos({
       if (m.carroChefe !== undefined) volta.carroChefe = o.carroChefe;
       if (m.tipoDePreco !== undefined) volta.tipoDePreco = o.tipoDePreco;
       if (m.janelaAtivoMeses !== undefined) volta.janelaAtivoMeses = o.janelaAtivoMeses;
-      if (m.preco !== undefined) volta.preco = o.preco === "—" ? null : o.valor;
+      if (m.preco !== undefined) {
+        volta.preco = o.valor > 0 ? o.valor : null;
+        // Digitar o preço pode ter trocado o tipo (gratuito/sob consulta → único): o Ctrl+Z volta.
+        if (
+          m.tipoDePreco === undefined &&
+          tipoAoMudarOPreco(o.tipoDePreco, m.preco) !== undefined
+        ) {
+          volta.tipoDePreco = o.tipoDePreco;
+        }
+      }
     }
     return volta as Mudancas;
   };
@@ -147,7 +158,10 @@ export function TabelaDeProdutos({
               etapa: m.etapa ?? p.oferta.etapa,
               nivel: m.nivel ?? p.oferta.nivel,
               carroChefe: m.carroChefe ?? p.oferta.carroChefe,
-              tipoDePreco: m.tipoDePreco ?? p.oferta.tipoDePreco,
+              tipoDePreco:
+                m.tipoDePreco ??
+                tipoAoMudarOPreco(p.oferta.tipoDePreco, m.preco) ??
+                p.oferta.tipoDePreco,
               janelaAtivoMeses:
                 m.janelaAtivoMeses !== undefined ? m.janelaAtivoMeses : p.oferta.janelaAtivoMeses,
               valor: m.preco !== undefined ? (m.preco ?? 0) : p.oferta.valor,
@@ -162,8 +176,8 @@ export function TabelaDeProdutos({
       }),
     );
   const editar = async (keys: string[], m: Mudancas) => {
-    const antes = (queryClient.getQueryData<DadosDoCache>(chaveDoCache)?.subpaginas ?? []).filter((s) =>
-      keys.includes(s.key),
+    const antes = (queryClient.getQueryData<DadosDoCache>(chaveDoCache)?.subpaginas ?? []).filter(
+      (s) => keys.includes(s.key),
     );
     const ok = await editarSemDesfazer(keys, m);
     if (ok && antes.length > 0) {
@@ -197,10 +211,8 @@ export function TabelaDeProdutos({
   };
 
   const padrao = useVisualizacao("produtos");
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } = useVisoesSalvas(
-    "produtos",
-    podeEditar,
-  );
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao, arquivarVisao } =
+    useVisoesSalvas("produtos", podeEditar);
   const visaoAtiva = visoes.find((v) => v.id === parametros.get("v"));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   const preferenciasSalvas: PreferenciasDaTabela = visaoAtiva
@@ -535,7 +547,6 @@ export function TabelaDeProdutos({
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
 
-
   const abas = [
     {
       id: ID_DA_PADRAO,
@@ -561,7 +572,7 @@ export function TabelaDeProdutos({
         aoConfigurar={() => setConfigurando(true)}
       />
       <BarraDeConsulta
-          salvamento={salvamento}
+        salvamento={salvamento}
         campos={camposDaBarra}
         consulta={{
           filtros: preferencias.filtros,
