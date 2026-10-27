@@ -397,9 +397,9 @@ export function AgendaClient({
       </React.Suspense>
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="hidden min-w-0 sm:block">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="hidden text-sm text-muted-foreground sm:block">
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
           </p>
         </div>

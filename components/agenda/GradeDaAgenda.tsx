@@ -19,6 +19,8 @@ import {
 } from "@/lib/agenda/grade-interativa";
 import { SEMANAS_NA_VISAO_DE_MES, primeiroDiaDaVisaoDeMes } from "@/lib/agenda/recorte-da-grade";
 import { diaLocalISO, instanteDe, partesNoFuso } from "@/lib/agenda/fuso";
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -807,6 +809,7 @@ function VisaoDeMes({
   onMarcarNoDia?: (instante: string) => void;
 }) {
   const localeDaData = useLocaleDeData();
+  const t = useT();
   const tag = useTagDeIdioma();
   // O dia aberto no painel de baixo (como no calendário das Tarefas): tocar no dia o escolhe.
   const [escolhido, setEscolhido] = React.useState(() => chaveDoDiaDoInstante(agora, fuso));
@@ -847,6 +850,8 @@ function VisaoDeMes({
               onClick={() => setEscolhido(chaveDoDia(d))}
               // Duplo clique no dia cria um compromisso nele (9h, o horário padrão do campo; a
               // pessoa ajusta na janela). Só de hoje em diante.
+              // Dia que já passou: o óbvio precisa ser dito — um aviso do app (toast) explica por que
+              // nada abriu, em vez de o duplo clique parecer quebrado.
               onDoubleClick={
                 podeMarcarAqui
                   ? () =>
@@ -862,7 +867,9 @@ function VisaoDeMes({
                           fuso,
                         ).toISOString(),
                       )
-                  : undefined
+                  : onMarcarNoDia !== undefined
+                    ? () => toast.message(t("Não é possível agendar em um dia que já passou."))
+                    : undefined
               }
               className={cn(
                 "cursor-pointer",

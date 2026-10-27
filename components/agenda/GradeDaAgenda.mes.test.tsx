@@ -6,6 +6,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const avisar = vi.hoisted(() => vi.fn());
+vi.mock("sonner", () => ({ toast: { message: avisar, success: vi.fn(), error: vi.fn() } }));
+
 import { GradeDaAgenda, doDiaNoMes } from "./GradeDaAgenda";
 import type { Agendamento } from "./tipos";
 
@@ -98,6 +101,8 @@ describe("visão mês — interação", () => {
     mes({ interacao: { horariosPorDia: {}, motivo: null, duracaoMin: 30, onMarcarEm: marcar } });
     fireEvent.doubleClick(screen.getByTestId("celula-mes-2026-10-20"));
     expect(marcar).not.toHaveBeenCalled();
+    // E o app diz por quê, em vez de parecer que o duplo clique quebrou.
+    expect(avisar).toHaveBeenCalledWith("Não é possível agendar em um dia que já passou.");
   });
 
   it("duplo clique numa faixa não cria compromisso por baixo", () => {
