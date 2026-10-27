@@ -378,3 +378,22 @@ Em **Agenda**. Teste no computador e no celular.
 | 20.20 | **Configurações › Tipos de agendamento › Editar o modelo de blocos** | Editar e salvar muda o modelo dos compromissos **ainda não adaptados** desse tipo                                     |           |
 | 20.21 | Quem **só lê** (viewer)                                              | Vê os blocos sem editar; sem botões de trocar/remarcar                                                                |           |
 | 20.22 | **Celular**: abra a página do compromisso                            | Propriedades legíveis, sem texto sobreposto; o editor de blocos cabe na tela                                          |           |
+
+---
+
+## 21. Agenda — painel do dia na semana e nos 3 dias; propriedades no Dia (28/10/2026)
+
+| #     | Passo                                                               | Esperado                                                                                                 | Resultado |
+| ----- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------- |
+| 21.1  | **Semana**: toque no cabeçalho de um dia (ex.: "qui 29")            | Abre **embaixo da grade** o painel com os compromissos daquele dia; o cabeçalho escolhido fica destacado |           |
+| 21.2  | **3 dias**: mesmo teste                                             | Mesmo comportamento                                                                                      |           |
+| 21.3  | Ao abrir a Semana / 3 dias                                          | O painel já vem no dia de hoje (ou no primeiro dia, se hoje não está na faixa)                           |           |
+| 21.4  | No painel, botão **Propriedades**                                   | A mesma escolha do mês (guardada neste navegador); as propriedades aparecem sob cada compromisso         |           |
+| 21.5  | **Novo agendamento** no painel                                      | Abre já no dia aberto (a partir de hoje)                                                                 |           |
+| 21.6  | **Celular**: Semana e 3 dias                                        | A grade tem altura própria; o painel fica logo abaixo, sem cortar nada                                   |           |
+| 21.7  | **Dia**: olhe o topo da grade                                       | **Não há** painel embaixo; só o botão **Propriedades**                                                   |           |
+| 21.8  | **Dia**: marque 5 ou 6 propriedades                                 | As propriedades aparecem **dentro de cada compromisso** e as **horas ficam mais altas** para caberem     |           |
+| 21.9  | **Dia**: dois compromissos próximos (ex.: 9h e 9h30)                | Um **não fica em cima do outro**: o espaço entre eles se expande                                         |           |
+| 21.10 | **Dia**: desmarque todas as propriedades                            | A grade volta à altura normal                                                                            |           |
+| 21.11 | **Dia**: arraste um compromisso para remarcar, com horas expandidas | O fantasma do arraste cai no horário certo (a conta acompanha a altura nova)                             |           |
+| 21.12 | **Dia**: clique num compromisso                                     | Abre a página do compromisso (as propriedades no bloco são só texto, sem links aninhados)                |           |

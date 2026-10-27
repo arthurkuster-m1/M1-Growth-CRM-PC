@@ -22,7 +22,14 @@ import { diaLocalISO, instanteDe, partesNoFuso } from "@/lib/agenda/fuso";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/i18n/useT";
 
-import { PainelDoDia } from "./PainelDoDia";
+import { useDetalhesDosCompromissos } from "@/hooks/agenda/useDetalhesDosCompromissos";
+import {
+  precisaDeDetalhe,
+  type DetalheDoCompromisso,
+  type IdDePropriedade,
+} from "@/lib/agenda/propriedades-do-compromisso";
+
+import { PainelDoDia, Propriedades, SeletorDePropriedades, usePropriedades } from "./PainelDoDia";
 import { corDaTrilha, fundoDaTrilha } from "./paleta";
 import { DIAS_DA_VISAO, type Agendamento, type Pessoa, type VisaoDaAgenda } from "./tipos";
 
@@ -127,8 +134,41 @@ function rotuloHora(d: Date, fuso: string): string {
   return `${dois(p.hora)}:${dois(p.minuto)}`;
 }
 
-function pixelsDe(minutos: number): number {
-  return (minutos / 60) * ALTURA_DA_HORA;
+/**
+ * A ALTURA DA HORA em vigor. Quase sempre é a de fábrica; na visão Dia com propriedades escolhidas
+ * ela CRESCE para o bloco de cada compromisso caber com elas, sem um evento empilhar sobre o outro.
+ */
+const AlturaDaHoraCtx = React.createContext(ALTURA_DA_HORA);
+const useAlturaDaHora = () => React.useContext(AlturaDaHoraCtx);
+function usePixels(): (minutos: number) => number {
+  const h = useAlturaDaHora();
+  return (minutos) => (minutos / 60) * h;
+}
+
+/** As propriedades que a visão Dia desenha dentro de cada bloco (ausente nas demais visões). */
+type PropriedadesNoBloco = {
+  escolhidas: IdDePropriedade[];
+  detalhes: Map<string, DetalheDoCompromisso> | undefined;
+  pessoas: Pessoa[];
+  tag: string;
+  carregando: boolean;
+};
+const PropriedadesNoBlocoCtx = React.createContext<PropriedadesNoBloco | null>(null);
+
+const LINHA_DA_PROPRIEDADE_PX = 22;
+const ALTURA_MAXIMA_DA_HORA = 720;
+
+/** A altura da hora que faz o compromisso mais apertado caber com as propriedades escolhidas. */
+export function alturaDaHoraParaPropriedades(agendamentos: Agendamento[], quantas: number): number {
+  if (quantas === 0) return ALTURA_DA_HORA;
+  const precisa = 34 + quantas * LINHA_DA_PROPRIEDADE_PX;
+  let altura = ALTURA_DA_HORA;
+  for (const a of agendamentos) {
+    if (a.origem === "google_sync") continue;
+    const minutos = Math.max((Date.parse(a.termina) - Date.parse(a.comeca)) / 60_000, 15);
+    altura = Math.max(altura, Math.ceil((precisa / minutos) * 60));
+  }
+  return Math.min(altura, ALTURA_MAXIMA_DA_HORA);
 }
 
 /**
@@ -260,6 +300,7 @@ function CamadaDeMarcacao({
   agendamentosDoDia: Agendamento[];
   interacao: InteracaoDaGrade;
 }) {
+  const pixelsDe = usePixels();
   const t = useT();
   const localeDaData = useLocaleDeData();
   const chave = chaveDoDia(dia);
@@ -359,6 +400,8 @@ function BlocoDeAgendamento({
     moveu: () => boolean;
   };
 }) {
+  const pixelsDe = usePixels();
+  const propriedadesDoDia = React.useContext(PropriedadesNoBlocoCtx);
   const t = useT();
   const comeca = new Date(agendamento.comeca);
   const termina = new Date(agendamento.termina);
@@ -474,12 +517,30 @@ function BlocoDeAgendamento({
           {agendamento.quemSeraAtendido ? ` · ${agendamento.quemSeraAtendido}` : ""}
         </span>
       )}
+      {propriedadesDoDia && !doGoogle ? (
+        <div
+          data-testid={`propriedades-${agendamento.id}`}
+          className="mt-0.5 ml-1 flex w-full min-w-0 flex-col gap-0.5 text-[11px] leading-[18px] text-text"
+        >
+          <Propriedades
+            c={agendamento}
+            d={propriedadesDoDia.detalhes?.get(agendamento.id)}
+            carregando={propriedadesDoDia.carregando}
+            escolhidas={propriedadesDoDia.escolhidas}
+            pessoas={propriedadesDoDia.pessoas}
+            fuso={fuso}
+            tag={propriedadesDoDia.tag}
+            soTexto
+          />
+        </div>
+      ) : null}
     </button>
   );
 }
 
 /** A régua do agora — a linha que faz a tela parecer viva em vez de impressa. */
 function ReguaDoAgora({ agora, fuso }: { agora: Date; fuso: string }) {
+  const pixelsDe = usePixels();
   const minutos = minutosDesdeOTopo(agora, fuso);
   if (minutos < 0 || minutos > (ULTIMA_HORA - PRIMEIRA_HORA + 1) * 60) return null;
   return (
@@ -500,6 +561,7 @@ function ReguaDoAgora({ agora, fuso }: { agora: Date; fuso: string }) {
 }
 
 function ColunaDeHoras() {
+  const alturaDaHora = useAlturaDaHora();
   return (
     <div className="w-10 shrink-0 border-r border-border select-none md:w-12" aria-hidden>
       <div className="h-12 border-b border-border md:h-8" />
@@ -507,7 +569,7 @@ function ColunaDeHoras() {
         <div
           key={h}
           className="relative border-b border-border/50 text-right"
-          style={{ height: ALTURA_DA_HORA }}
+          style={{ height: alturaDaHora }}
         >
           <span className="absolute -top-1.5 right-1 text-[10px] text-text-subtle tabular-nums">
             {String(h).padStart(2, "0")}h
@@ -540,6 +602,7 @@ function FantasmaDoArraste({
   duracaoMin: number;
   fuso: string;
 }) {
+  const pixelsDe = usePixels();
   const t = useT();
   const valido = proposta.instante !== null;
   return (
@@ -575,7 +638,12 @@ function ColunaDeDia({
   interacao,
   proposta,
   arrasteDoCard,
+  escolhido,
+  aoEscolherDia,
 }: {
+  /** Semana e 3 dias: este é o dia aberto no painel de baixo. */
+  escolhido?: boolean;
+  aoEscolherDia?: () => void;
   dia: Date;
   agora: Date;
   fuso: string;
@@ -591,6 +659,7 @@ function ColunaDeDia({
     moveu: () => boolean;
   };
 }) {
+  const alturaDaHora = useAlturaDaHora();
   const localeDaData = useLocaleDeData();
   const doDia = agendamentos.filter(
     (c) => chaveDoDiaDoInstante(new Date(c.comeca), fuso) === chaveDoDia(dia),
@@ -608,10 +677,27 @@ function ColunaDeDia({
       )}
     >
       <div
+        role={aoEscolherDia ? "button" : undefined}
+        tabIndex={aoEscolherDia ? 0 : undefined}
+        data-testid={aoEscolherDia ? `cabecalho-dia-${format(dia, "yyyy-MM-dd")}` : undefined}
+        aria-pressed={aoEscolherDia ? escolhido === true : undefined}
+        onClick={aoEscolherDia}
+        onKeyDown={
+          aoEscolherDia
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  aoEscolherDia();
+                }
+              }
+            : undefined
+        }
         className={cn(
           // No celular o cabeçalho empilha a sigla e o número, como no Google Agenda; no desktop
           // continua numa linha só.
           "sticky top-0 z-20 flex h-12 flex-col items-center justify-center gap-0.5 border-b border-border bg-surface px-1 md:h-8 md:flex-row md:gap-1.5 md:px-2",
+          aoEscolherDia && "cursor-pointer hover:bg-secondary/60",
+          escolhido && "bg-accent/10",
         )}
       >
         <span className="truncate text-[11px] font-semibold tracking-wide text-text-muted uppercase">
@@ -638,10 +724,10 @@ function ColunaDeDia({
         // corpo de dia é determinístico e independe do que está desenhado por
         // cima — que é exatamente o que muda durante um arraste.
         data-corpo-do-dia={chaveDoDia(dia)}
-        style={{ height: HORAS.length * ALTURA_DA_HORA }}
+        style={{ height: HORAS.length * alturaDaHora }}
       >
         {HORAS.map((h) => (
-          <div key={h} className="border-b border-border/50" style={{ height: ALTURA_DA_HORA }} />
+          <div key={h} className="border-b border-border/50" style={{ height: alturaDaHora }} />
         ))}
         {interacao && (
           <CamadaDeMarcacao
@@ -913,6 +999,21 @@ function VisaoDeMes({
   );
 }
 
+/** Busca as propriedades extras dos compromissos do dia; só existe quando alguma escolhida precisa delas. */
+function BuscaDeDetalhes({
+  ids,
+  children,
+}: {
+  ids: string[];
+  children: (
+    detalhes: Map<string, DetalheDoCompromisso> | undefined,
+    carregando: boolean,
+  ) => React.ReactNode;
+}) {
+  const consulta = useDetalhesDosCompromissos(ids, true);
+  return <>{children(consulta.data, consulta.isLoading)}</>;
+}
+
 export function GradeDaAgenda({
   visao,
   ancora,
@@ -958,6 +1059,28 @@ export function GradeDaAgenda({
       : Array.from({ length: DIAS_DA_VISAO[visao === "mes" ? "dia" : visao] }, (_, i) =>
           addDays(ancora, i),
         );
+
+  const tag = useTagDeIdioma();
+  // As propriedades que a pessoa escolheu (as mesmas do painel do mês). Na visão Dia elas entram nos
+  // blocos e a hora cresce para caberem; nas outras, valem no painel de baixo.
+  const [propriedades, gravarPropriedades] = usePropriedades();
+  const chavesDosDias = dias.map(chaveDoDia);
+  const [diaDoPainel, setDiaDoPainel] = React.useState(() => chaveDoDiaDoInstante(agora, fuso));
+  const hojeDaOrg = chaveDoDiaDoInstante(agora, fuso);
+  const diaAberto = chavesDosDias.includes(diaDoPainel)
+    ? diaDoPainel
+    : chavesDosDias.includes(hojeDaOrg)
+      ? hojeDaOrg
+      : (chavesDosDias[0] ?? hojeDaOrg);
+  const alturaDaHora =
+    visao === "dia"
+      ? alturaDaHoraParaPropriedades(
+          agendamentos.filter(
+            (a) => chaveDoDiaDoInstante(new Date(a.comeca), fuso) === chavesDosDias[0],
+          ),
+          propriedades.length,
+        )
+      : ALTURA_DA_HORA;
 
   const gradeRef = React.useRef<HTMLDivElement>(null);
   const [proposta, setProposta] = React.useState<PropostaDeRemarcacao | null>(null);
@@ -1038,7 +1161,7 @@ export function GradeDaAgenda({
       const r = escolhido.getBoundingClientRect();
       const bruto = minutoSobY({
         y: clientYDoTopo - r.top,
-        alturaDaHoraPx: ALTURA_DA_HORA,
+        alturaDaHoraPx: alturaDaHora,
         primeiraHora: PRIMEIRA_HORA,
       });
       return montarProposta(
@@ -1047,7 +1170,7 @@ export function GradeDaAgenda({
         Math.min(Math.max(bruto, limites.primeiro), limites.ultimo - PASSO_DA_CELULA_MIN),
       );
     },
-    [montarProposta, limites.primeiro, limites.ultimo],
+    [montarProposta, limites.primeiro, limites.ultimo, alturaDaHora],
   );
 
   const aoApontar = React.useCallback(
@@ -1163,30 +1286,21 @@ export function GradeDaAgenda({
     ? { aoApontar, aoTeclar, moveu: () => gesto.current?.moveu === true }
     : undefined;
 
-  return (
-    <div
-      data-testid="grade-da-agenda"
-      data-visao={visao}
-      className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-3xl border border-border bg-surface",
-        className,
-      )}
-    >
-      {visao === "mes" ? (
-        <VisaoDeMes
-          ancora={ancora}
-          agora={agora}
-          fuso={fuso}
-          agendamentos={agendamentos}
-          pessoas={pessoas}
-          onAbrir={onAbrirAgendamento}
-          onMarcarNoDia={interacao ? (instante) => interacao.onMarcarEm(instante) : undefined}
-        />
-      ) : (
-        // A rolagem mora AQUI dentro, e não na página: `html, body` têm
-        // `overflow-x: hidden` no globals.css, então uma grade que estourasse a
-        // largura simplesmente sumiria pela direita, sem barra para trazê-la de volta.
-        <div ref={gradeRef} className="flex min-h-0 flex-1 overflow-auto">
+  /** As colunas dos dias com a régua das horas — a rolagem mora AQUI dentro (ver o comentário antigo). */
+  const corpoDasColunas = (noBloco: PropriedadesNoBloco | null) => (
+    <AlturaDaHoraCtx.Provider value={alturaDaHora}>
+      <PropriedadesNoBlocoCtx.Provider value={noBloco}>
+        {/* A rolagem mora AQUI dentro, e não na página: `html, body` têm `overflow-x: hidden` no
+            globals.css, então uma grade que estourasse a largura simplesmente sumiria pela direita,
+            sem barra para trazê-la de volta. Na semana e nos 3 dias a grade tem altura própria e o
+            painel do dia fica embaixo dela, na rolagem da grade inteira. */}
+        <div
+          ref={gradeRef}
+          className={cn(
+            "flex overflow-auto",
+            visao === "dia" ? "min-h-0 flex-1" : "h-[min(60dvh,36rem)] shrink-0",
+          )}
+        >
           <ColunaDeHoras />
           <div className="flex min-w-0 flex-1">
             {dias.map((d) => (
@@ -1204,10 +1318,100 @@ export function GradeDaAgenda({
                 interacao={interacao}
                 proposta={proposta}
                 arrasteDoCard={arrasteDoCard}
+                escolhido={visao !== "dia" ? chaveDoDia(d) === diaAberto : undefined}
+                aoEscolherDia={visao !== "dia" ? () => setDiaDoPainel(chaveDoDia(d)) : undefined}
               />
             ))}
           </div>
         </div>
+      </PropriedadesNoBlocoCtx.Provider>
+    </AlturaDaHoraCtx.Provider>
+  );
+
+  return (
+    <div
+      data-testid="grade-da-agenda"
+      data-visao={visao}
+      className={cn(
+        "flex min-h-0 flex-col rounded-3xl border border-border bg-surface",
+        visao === "dia" || visao === "mes" ? "overflow-hidden" : "overflow-y-auto",
+        className,
+      )}
+    >
+      {visao === "mes" ? (
+        <VisaoDeMes
+          ancora={ancora}
+          agora={agora}
+          fuso={fuso}
+          agendamentos={agendamentos}
+          pessoas={pessoas}
+          onAbrir={onAbrirAgendamento}
+          onMarcarNoDia={interacao ? (instante) => interacao.onMarcarEm(instante) : undefined}
+        />
+      ) : (
+        <>
+          {visao === "dia" ? (
+            <div className="flex shrink-0 justify-end border-b border-border px-2 py-1">
+              <SeletorDePropriedades escolhidas={propriedades} gravar={gravarPropriedades} />
+            </div>
+          ) : null}
+          {visao === "dia" && precisaDeDetalhe(propriedades) ? (
+            <BuscaDeDetalhes
+              ids={agendamentos
+                .filter(
+                  (a) =>
+                    a.origem !== "google_sync" &&
+                    chaveDoDiaDoInstante(new Date(a.comeca), fuso) === chavesDosDias[0],
+                )
+                .map((a) => a.id)}
+            >
+              {(detalhes, carregando) =>
+                corpoDasColunas({ escolhidas: propriedades, detalhes, pessoas, tag, carregando })
+              }
+            </BuscaDeDetalhes>
+          ) : (
+            corpoDasColunas(
+              visao === "dia" && propriedades.length > 0
+                ? {
+                    escolhidas: propriedades,
+                    detalhes: undefined,
+                    pessoas,
+                    tag,
+                    carregando: false,
+                  }
+                : null,
+            )
+          )}
+          {visao !== "dia" ? (
+            <PainelDoDia
+              rotuloDoDia={new Intl.DateTimeFormat(tag, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                timeZone: "UTC",
+              }).format(new Date(`${diaAberto}T12:00:00Z`))}
+              chaveDoDia={diaAberto}
+              compromissos={doDiaNoMes(agendamentos, new Date(`${diaAberto}T12:00:00`), fuso)}
+              pessoas={pessoas}
+              fuso={fuso}
+              tag={tag}
+              onAbrir={onAbrirAgendamento}
+              onNovo={
+                interacao && diaAberto >= hojeDaOrg
+                  ? () => {
+                      const [ano, mes, dia] = diaAberto.split("-").map(Number);
+                      interacao.onMarcarEm(
+                        instanteDe(
+                          { ano: ano!, mes: mes!, dia: dia!, hora: 9, minuto: 0 },
+                          fuso,
+                        ).toISOString(),
+                      );
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
+        </>
       )}
     </div>
   );
