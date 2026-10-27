@@ -1847,7 +1847,7 @@ export function ClientesCRM({
     },
     {
       id: "primeira-compra",
-      titulo: t("Primeiro pagamento"),
+      titulo: t("Primeira compra"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 160,
       celula: (l) => (
@@ -2432,7 +2432,7 @@ export function ClientesCRM({
     },
     {
       id: "primeira-compra",
-      titulo: t("Primeiro pagamento"),
+      titulo: t("Primeira compra"),
       tipo: "data",
       valorDe: (l) => l.primeira_compra,
     },
