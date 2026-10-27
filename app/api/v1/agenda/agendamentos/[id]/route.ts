@@ -225,6 +225,17 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
         .eq("id", leadDoCompromisso)
         .maybeSingle()
     : { data: null };
+  // Os blocos da página: leitura à parte e tolerante — a coluna chega com a atualização do banco, e
+  // enquanto ela não existe a página abre normalmente com o modelo do tipo.
+  const blocosLinha = await db
+    .from("calendar_appointments")
+    .select("blocos" as never)
+    .eq("organization_id", org)
+    .eq("id", id)
+    .maybeSingle();
+  const blocosDoCompromisso = blocosLinha.error
+    ? null
+    : ((blocosLinha.data as { blocos?: unknown } | null)?.blocos ?? null);
   const cliente = cli.data as {
     name?: string | null;
     display_name?: string | null;
@@ -240,6 +251,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
         }
       : null,
     lead_id: leadDoCompromisso,
+    blocos: blocosDoCompromisso,
     oportunidade_titulo:
       ((
         leadRow as { nome_da_venda?: string | null; title?: string | null } | null
