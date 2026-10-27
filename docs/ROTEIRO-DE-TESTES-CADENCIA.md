@@ -397,3 +397,6 @@ Em **Agenda**. Teste no computador e no celular.
 | 21.10 | **Dia**: desmarque todas as propriedades                            | A grade volta à altura normal                                                                            |           |
 | 21.11 | **Dia**: arraste um compromisso para remarcar, com horas expandidas | O fantasma do arraste cai no horário certo (a conta acompanha a altura nova)                             |           |
 | 21.12 | **Dia**: clique num compromisso                                     | Abre a página do compromisso (as propriedades no bloco são só texto, sem links aninhados)                |           |
+| 21.13 | **Celular**: olhe o topo da Agenda                                         | O título **"Agenda"** aparece em cima do botão "Novo agendamento"                                          |           |
+| 21.14 | **Mês**: duplo clique num dia que **já passou**                            | Aparece um aviso do app: "Não é possível agendar em um dia que já passou."; nada abre                       |           |
+
