@@ -81,6 +81,18 @@ describe("a barra de abas do celular", () => {
     expect(screen.getByTestId("mais").getAttribute("data-como-aba")).toBe("true");
   });
 
+  it("as quatro abas são, nesta ordem, Inbox, Agenda, CRM e Tarefas (ordem escolhida pelo dono)", () => {
+    estado.role = "admin";
+    montar();
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs.slice(0, 4)).toEqual([
+      "/app/inbox",
+      "/app/agenda",
+      "/app/clientes",
+      "/app/tarefas",
+    ]);
+  });
+
   it("a aba da conversa continua acesa dentro de `/app/inbox/[id]`", () => {
     estado.role = "admin";
     estado.caminho = "/app/inbox/abc-123";
