@@ -237,6 +237,10 @@ export function VendasCRM() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusDaVenda | null>(null);
   const [soComRecebimento, setSoComRecebimento] = useState(false);
+  /** O número do topo "aberto": a lista mostra só as vendas que o compõem (clique de novo para soltar). */
+  const [destaque, setDestaque] = useState<null | "recebido" | "areceber" | "interesse" | "fechadas">(
+    null,
+  );
   const [abertaId, setAbertaId] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState<Venda | null>(null);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
@@ -320,7 +324,7 @@ export function VendasCRM() {
     (v.parcelas ?? []).filter((p) => p.status === "cancelada").map((p) => ({ venda: v, parcela: p })),
   );
   const termo = busca.trim().toLowerCase();
-  const filtradas = useMemo(
+  const filtradasSemDestaque = useMemo(
     () =>
       vendas.filter(
         (v) =>
@@ -335,7 +339,27 @@ export function VendasCRM() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vendas, filtroStatus, termo, soComRecebimento, mes, funilEscolhido],
   );
-  const totais = totaisDeVendas(filtradas);
+  // Os números do topo contam o que a lista mostraria SEM o número escolhido (senão clicar num deles
+  // zeraria os outros); a lista, aí sim, mostra só quem compõe o número.
+  const filtradas = useMemo(
+    () =>
+      destaque === null
+        ? filtradasSemDestaque
+        : filtradasSemDestaque.filter((v) => {
+            switch (destaque) {
+              case "recebido":
+                return fluxoDoMes([v], mes).recebido > 0;
+              case "areceber":
+                return fluxoDoMes([v], mes).aReceber > 0;
+              case "interesse":
+                return v.status === "interesse";
+              case "fechadas":
+                return totaisDeVendas([v]).vendasConcluidas > 0;
+            }
+          }),
+    [filtradasSemDestaque, destaque, mes],
+  );
+  const totais = totaisDeVendas(filtradasSemDestaque);
   // "Recebido no mês" ligado: a venda fica, mas só com as parcelas e os valores pagos nesse mês.
   const exibidas = useMemo(
     () => (soComRecebimento ? filtradas.map((v) => recorteDoMes(v, mes)) : filtradas),
@@ -702,12 +726,13 @@ export function VendasCRM() {
   });
 
   const fluxo = fluxoDoMes(vendas, mes);
-  const numeros: Array<[string, string]> = [
-    [t("Recebido no mês"), reais(fluxo.recebido)],
-    [t("A receber no mês"), reais(fluxo.aReceber)],
-    [t("Em interesse"), reais(totais.interesse)],
-    [t("Vendas fechadas"), String(totais.vendasConcluidas)],
-    [t("Ticket médio"), totais.ticketMedio === null ? "—" : reais(totais.ticketMedio)],
+  const numeros: Array<[string, string, NonNullable<typeof destaque> | null]> = [
+    [t("Recebido no mês"), reais(fluxo.recebido), "recebido"],
+    [t("A receber no mês"), reais(fluxo.aReceber), "areceber"],
+    [t("Em interesse"), reais(totais.interesse), "interesse"],
+    [t("Vendas fechadas"), String(totais.vendasConcluidas), "fechadas"],
+    // O ticket médio é uma média, não um grupo de vendas: não filtra.
+    [t("Ticket médio"), totais.ticketMedio === null ? "—" : reais(totais.ticketMedio), null],
   ];
 
   return (
@@ -842,18 +867,49 @@ export function VendasCRM() {
         aria-label={t("Resumo")}
         className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 xl:grid-cols-5 max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
       >
-        {numeros.map(([rotulo, valor]) => (
-          <div
+        {numeros.map(([rotulo, valor, filtro]) => {
+          const ativo = filtro !== null && destaque === filtro;
+          const Cartao = filtro === null ? "div" : "button";
+          return (
+          <Cartao
             key={rotulo}
-            className="bg-card px-4 py-3 max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2"
+            {...(filtro === null
+              ? {}
+              : {
+                  type: "button" as const,
+                  "aria-pressed": ativo,
+                  title: t("Clique para ver só as vendas que compõem este número"),
+                  onClick: () => setDestaque(ativo ? null : filtro),
+                })}
+            className={`bg-card px-4 py-3 text-left max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2 ${
+              filtro === null ? "" : "transition-colors hover:bg-secondary/60"
+            } ${ativo ? "ring-2 ring-primary ring-inset" : ""}`}
           >
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {rotulo}
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{valor}</NumeroQueCabe></p>
-          </div>
-        ))}
+          </Cartao>
+          );
+        })}
       </section>
+
+      {destaque ? (
+        <p className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            {t("Mostrando só as vendas que compõem")}{" "}
+            <strong>{numeros.find(([, , f]) => f === destaque)?.[0]}</strong> · {filtradas.length}{" "}
+            {filtradas.length === 1 ? t("venda") : t("vendas")}
+          </span>
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => setDestaque(null)}
+          >
+            {t("Limpar")}
+          </button>
+        </p>
+      ) : null}
 
 
       <SeletorDeFunis
