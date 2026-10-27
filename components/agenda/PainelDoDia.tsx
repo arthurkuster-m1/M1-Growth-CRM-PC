@@ -348,6 +348,63 @@ function StatusEditavel({ c }: { c: Agendamento }) {
   );
 }
 
+/** O responsável no painel: tocar nele abre a equipe; escolher troca (e move o evento do Google). */
+function ResponsavelEditavel({
+  c,
+  pessoas,
+  nome,
+}: {
+  c: Agendamento;
+  pessoas: Pessoa[];
+  nome: React.ReactNode;
+}) {
+  const t = useT();
+  const qc = useQueryClient();
+  const trocar = useMutation({
+    mutationFn: async (userId: string) =>
+      apiClient.patch<{ data: { google?: string } }>(
+        `/api/v1/agenda/agendamentos/${c.id}/responsavel`,
+        { user_id: userId },
+      ),
+    onSuccess: (r) => {
+      const g = r.data?.google;
+      toast.success(
+        g === "so_no_app"
+          ? t(
+              "Responsável trocado. Ele não conectou o Google: o compromisso fica só na agenda do app.",
+            )
+          : g === "remocao_pendente"
+            ? t(
+                "Responsável trocado. Não consegui remover o evento da agenda do Google anterior: apague lá à mão.",
+              )
+            : t("Responsável do compromisso trocado."),
+      );
+      void qc.invalidateQueries({ queryKey: ["agenda"] });
+    },
+    onError: showApiError,
+  });
+  return (
+    <MenuDeOpcoes
+      gatilho={
+        <span
+          data-testid={`responsavel-do-dia-${c.id}`}
+          className="inline-flex items-center rounded-full border border-border bg-secondary/60 px-2 py-0.5 text-xs font-medium"
+        >
+          {nome}
+        </span>
+      }
+      opcoes={pessoas.map((p) => ({
+        id: p.id,
+        rotulo: p.nome,
+        desabilitado: trocar.isPending,
+        aoEscolher: () => {
+          if (p.id !== c.responsavelId) trocar.mutate(p.id);
+        },
+      }))}
+    />
+  );
+}
+
 export function Propriedades({
   c,
   d,
@@ -407,7 +464,16 @@ export function Propriedades({
       <StatusEditavel c={c} />
     ),
   );
-  add("responsavel", "Responsável", pessoas.find((p) => p.id === c.responsavelId)?.nome ?? vazio);
+  const nomeDoResponsavel = pessoas.find((p) => p.id === c.responsavelId)?.nome ?? vazio;
+  add(
+    "responsavel",
+    "Responsável",
+    soTexto || c.situacao === "cancelled" || c.origem === "google_sync" || pessoas.length < 2 ? (
+      nomeDoResponsavel
+    ) : (
+      <ResponsavelEditavel c={c} pessoas={pessoas} nome={nomeDoResponsavel} />
+    ),
+  );
   add("cliente", "Cliente", c.quemSeraAtendido ?? vazio);
 
   // As propriedades que dependem da busca: enquanto ela não volta, uma linha só diz isso.

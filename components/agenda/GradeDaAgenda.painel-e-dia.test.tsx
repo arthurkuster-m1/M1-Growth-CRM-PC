@@ -66,6 +66,27 @@ describe("painel do dia na semana e nos 3 dias", () => {
     expect(screen.getByText("Compareceu e Comprou")).toBeTruthy();
   });
 
+  it("o responsável no painel é editável quando há mais de uma pessoa", () => {
+    window.localStorage.setItem("m1.agenda.propriedades", JSON.stringify(["responsavel"]));
+    render(
+      <GradeDaAgenda
+        visao="semana"
+        ancora={QUARTA}
+        agora={QUARTA}
+        fuso={FUSO}
+        agendamentos={[reuniao]}
+        pessoas={[
+          { id: "u1", nome: "Arthur", trilha: 1 },
+          { id: "u2", nome: "Bia", trilha: 2 },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("cabecalho-dia-2026-09-17"));
+    fireEvent.click(screen.getByTestId("responsavel-do-dia-r1"));
+    expect(screen.getByText("Bia")).toBeTruthy();
+    window.localStorage.removeItem("m1.agenda.propriedades");
+  });
+
   it("sem escolher, o painel abre no dia de hoje", () => {
     grade("semana");
     expect(screen.getByTestId("painel-do-dia").dataset.dia).toBe("2026-09-16");

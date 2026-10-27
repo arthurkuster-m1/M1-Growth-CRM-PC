@@ -459,4 +459,6 @@ Em **Agenda**. Teste no computador e no celular.
 | 23.18| **Parcelas automáticas** na página da venda | Com valor preenchido, a parcela 1 já aparece (vencimento, valor, recebida); mudar o total ou a data refaz a tabela; editar uma parcela na mão para de refazer |           |
 | 23.19| **Abrir sem teclado** no celular | Abrir uma venda ou oportunidade existente não levanta o teclado nem seleciona o título; tocar no título edita |           |
 | 23.20| **Status editável** no resumo do dia da Agenda | Tocar no status de um compromisso embaixo do calendário abre as opções; escolher atualiza na hora; resultado só vale depois do início da reunião |           |
+| 23.21| **Responsável editável** no resumo do dia (ligar a propriedade Responsável) | Tocar no nome abre a equipe; escolher troca o responsável e avisa sobre o Google |           |
+| 23.22| **Aviso "Ocupação do Google ainda não verificada"** | Com o Google sincronizado há pouco, o aviso não aparece ao ver o mês atual; só aparece se a sincronização estiver velha (>30 min), com erro ou o período passar da janela (~90 dias à frente) |           |
 
