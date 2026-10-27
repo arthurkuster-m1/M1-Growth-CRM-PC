@@ -230,173 +230,177 @@ function LinhaDeMeta({
       </button>
       {aberta ? (
         <>
-      <div className="grid gap-2 sm:grid-cols-[1.6fr_1fr_1fr_auto]">
-        <input
-          defaultValue={meta.titulo}
-          aria-label={t("Meta")}
-          maxLength={120}
-          onBlur={(e) =>
-            e.target.value.trim() &&
-            e.target.value !== meta.titulo &&
-            void aoEditar({ titulo: e.target.value })
-          }
-          className={CAMPO}
-        />
-        <SelectDoApp
-          value={meta.tipo}
-          aria-label={t("Tipo da meta")}
-          onChange={(e) => void aoEditar({ tipo: e.target.value as TipoDeMeta })}
-          className={CAMPO}
-        >
-          {TIPOS_DE_META.map((tipo) => (
-            <option key={tipo} value={tipo}>
-              {rotuloDoTipo(tipo)}
-            </option>
-          ))}
-        </SelectDoApp>
-        {meta.tipo === "numero" ? (
-          <input
-            defaultValue={meta.unidade}
-            aria-label={t("Unidade")}
-            placeholder={t("Unidade (ex.: leads)")}
-            maxLength={20}
-            onBlur={(e) =>
-              e.target.value !== meta.unidade && void aoEditar({ unidade: e.target.value })
-            }
-            className={CAMPO}
-          />
-        ) : (
-          <span />
-        )}
-        <button
-          type="button"
-          aria-label={t("Apagar meta")}
-          onClick={() => void aoApagar()}
-          className={cn(BOTAO_ICONE, "hover:text-error-fg")}
-        >
-          <Trash size={16} aria-hidden />
-        </button>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        <Rotulo texto={t("De onde vem o número de hoje")}>
-          <SelectDoApp
-            value={meta.fonte}
-            aria-label={t("De onde vem o número de hoje")}
-            onChange={(e) => void aoEditar({ fonte: e.target.value as FonteDaMeta })}
-            className={CAMPO}
-          >
-            <option value="manual">{t("Digitado por mim")}</option>
-            <option value="leads">{t("Leads do CRM")}</option>
-            <option value="vendas">{t("Vendas fechadas")}</option>
-            <option value="faturamento">{t("Faturamento recebido")}</option>
-            <option value="a_receber">{t("A receber (comprometido)")}</option>
-            <option value="investido">{t("Investimento em anúncios")}</option>
-            <option value="cpl">{t("CPL (custo por lead)")}</option>
-            <option value="roas">{t("ROAS (retorno sobre o investido)")}</option>
-          </SelectDoApp>
-        </Rotulo>
-        {meta.fonte !== "manual" ? (
-          <>
-            <Rotulo texto={t("Prazo da meta")}>
-              <SelectDoApp
-                value={meta.periodo}
-                aria-label={t("Prazo da meta")}
-                onChange={(e) => {
-                  const periodo = e.target.value as Periodo | "personalizado";
-                  if (periodo === "personalizado") {
-                    // Já nasce com o mês atual escolhido; a pessoa ajusta no seletor.
-                    const hoje = chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA);
-                    void aoEditar({
-                      periodo,
-                      periodo_de: meta.periodo_de ?? `${hoje.slice(0, 7)}-01`,
-                      periodo_ate: meta.periodo_ate ?? hoje,
-                    });
-                  } else {
-                    void aoEditar({ periodo, periodo_de: null, periodo_ate: null });
-                  }
-                }}
+          <div className="grid gap-2 sm:grid-cols-[1.6fr_1fr_1fr_auto]">
+            <input
+              defaultValue={meta.titulo}
+              aria-label={t("Meta")}
+              maxLength={120}
+              onBlur={(e) =>
+                e.target.value.trim() &&
+                e.target.value !== meta.titulo &&
+                void aoEditar({ titulo: e.target.value })
+              }
+              className={CAMPO}
+            />
+            <SelectDoApp
+              value={meta.tipo}
+              aria-label={t("Tipo da meta")}
+              onChange={(e) => void aoEditar({ tipo: e.target.value as TipoDeMeta })}
+              className={CAMPO}
+            >
+              {TIPOS_DE_META.map((tipo) => (
+                <option key={tipo} value={tipo}>
+                  {rotuloDoTipo(tipo)}
+                </option>
+              ))}
+            </SelectDoApp>
+            {meta.tipo === "numero" ? (
+              <input
+                defaultValue={meta.unidade}
+                aria-label={t("Unidade")}
+                placeholder={t("Unidade (ex.: leads)")}
+                maxLength={20}
+                onBlur={(e) =>
+                  e.target.value !== meta.unidade && void aoEditar({ unidade: e.target.value })
+                }
                 className={CAMPO}
-              >
-                <optgroup label={t("Fixos")}>
-                  <option value="hoje">{t("Diário (hoje)")}</option>
-                  <option value="semana">{t("Semanal (esta semana)")}</option>
-                  <option value="mes">{t("Mensal (este mês)")}</option>
-                  <option value="trimestre">{t("Trimestral (este trimestre)")}</option>
-                  <option value="semestre">{t("Semestral (este semestre)")}</option>
-                  <option value="ano">{t("Anual (este ano)")}</option>
-                </optgroup>
-                <optgroup label={t("Janelas móveis")}>
-                  <option value="ontem">{t("Ontem")}</option>
-                  <option value="ultimos_5_dias">{t("Últimos 5 dias")}</option>
-                  <option value="ultimos_7_dias">{t("Últimos 7 dias")}</option>
-                  <option value="ultimos_30_dias">{t("Últimos 30 dias")}</option>
-                  <option value="mes_passado">{t("Mês passado")}</option>
-                </optgroup>
-                <option value="personalizado">{t("Datas personalizadas…")}</option>
-              </SelectDoApp>
-              {meta.periodo === "personalizado" ? (
-                <div className="mt-2">
-                  <SeletorDePeriodo
-                    de={meta.periodo_de ?? chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA)}
-                    ate={meta.periodo_ate ?? chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA)}
-                    rotulo={t("Datas da meta")}
-                    aoMudar={(p) =>
-                      void aoEditar({ periodo: "personalizado", periodo_de: p.de, periodo_ate: p.ate })
-                    }
-                  />
-                </div>
-              ) : null}
-            </Rotulo>
-            {meta.fonte !== "cpl" && meta.fonte !== "roas" ? (
-              <Rotulo texto={t("Cálculo")}>
-                <SelectDoApp
-                  value={meta.calculo}
-                  aria-label={t("Cálculo")}
-                  onChange={(e) => void aoEditar({ calculo: e.target.value as CalculoDaMeta })}
-                  className={CAMPO}
-                >
-                  <option value="soma">{t("Soma do período")}</option>
-                  <option value="media_diaria">{t("Média por dia")}</option>
-                </SelectDoApp>
-              </Rotulo>
+              />
             ) : (
               <span />
             )}
-          </>
-        ) : null}
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Rotulo texto={t("Onde queremos chegar")}>
-          <CampoDeValor
-            tipo={meta.tipo}
-            texto={alvo}
-            aoMudar={setAlvo}
-            aoConfirmar={(v) => v !== meta.valor_alvo && void aoEditar({ valor_alvo: v })}
-            rotulo={t("Onde queremos chegar")}
-          />
-        </Rotulo>
-        <Rotulo
-          texto={
-            meta.fonte === "manual"
-              ? t("Onde estamos hoje")
-              : t("Onde estamos hoje (automático, do CRM)")
-          }
-        >
-          {meta.fonte !== "manual" ? (
-            <p className="flex h-10 items-center rounded-xl border border-dashed px-3 text-sm text-muted-foreground tabular-nums">
-              {t("Atualiza sozinho — aparece no cronograma")}
-            </p>
-          ) : (
-            <CampoDeValor
-              tipo={meta.tipo}
-              texto={atual}
-              aoMudar={setAtual}
-              aoConfirmar={(v) => v !== meta.valor_atual && void aoEditar({ valor_atual: v })}
-              rotulo={t("Onde estamos hoje")}
-            />
-          )}
-        </Rotulo>
-      </div>
+            <button
+              type="button"
+              aria-label={t("Apagar meta")}
+              onClick={() => void aoApagar()}
+              className={cn(BOTAO_ICONE, "hover:text-error-fg")}
+            >
+              <Trash size={16} aria-hidden />
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Rotulo texto={t("De onde vem o número de hoje")}>
+              <SelectDoApp
+                value={meta.fonte}
+                aria-label={t("De onde vem o número de hoje")}
+                onChange={(e) => void aoEditar({ fonte: e.target.value as FonteDaMeta })}
+                className={CAMPO}
+              >
+                <option value="manual">{t("Digitado por mim")}</option>
+                <option value="leads">{t("Leads do CRM")}</option>
+                <option value="vendas">{t("Vendas fechadas")}</option>
+                <option value="faturamento">{t("Faturamento recebido")}</option>
+                <option value="a_receber">{t("A receber (comprometido)")}</option>
+                <option value="investido">{t("Investimento em anúncios")}</option>
+                <option value="cpl">{t("CPL (custo por lead)")}</option>
+                <option value="roas">{t("ROAS (retorno sobre o investido)")}</option>
+              </SelectDoApp>
+            </Rotulo>
+            {meta.fonte !== "manual" ? (
+              <>
+                <Rotulo texto={t("Prazo da meta")}>
+                  <SelectDoApp
+                    value={meta.periodo}
+                    aria-label={t("Prazo da meta")}
+                    onChange={(e) => {
+                      const periodo = e.target.value as Periodo | "personalizado";
+                      if (periodo === "personalizado") {
+                        // Já nasce com o mês atual escolhido; a pessoa ajusta no seletor.
+                        const hoje = chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA);
+                        void aoEditar({
+                          periodo,
+                          periodo_de: meta.periodo_de ?? `${hoje.slice(0, 7)}-01`,
+                          periodo_ate: meta.periodo_ate ?? hoje,
+                        });
+                      } else {
+                        void aoEditar({ periodo, periodo_de: null, periodo_ate: null });
+                      }
+                    }}
+                    className={CAMPO}
+                  >
+                    <optgroup label={t("Fixos")}>
+                      <option value="hoje">{t("Diário (hoje)")}</option>
+                      <option value="semana">{t("Semanal (esta semana)")}</option>
+                      <option value="mes">{t("Mensal (este mês)")}</option>
+                      <option value="trimestre">{t("Trimestral (este trimestre)")}</option>
+                      <option value="semestre">{t("Semestral (este semestre)")}</option>
+                      <option value="ano">{t("Anual (este ano)")}</option>
+                    </optgroup>
+                    <optgroup label={t("Janelas móveis")}>
+                      <option value="ontem">{t("Ontem")}</option>
+                      <option value="ultimos_5_dias">{t("Últimos 5 dias")}</option>
+                      <option value="ultimos_7_dias">{t("Últimos 7 dias")}</option>
+                      <option value="ultimos_30_dias">{t("Últimos 30 dias")}</option>
+                      <option value="mes_passado">{t("Mês passado")}</option>
+                    </optgroup>
+                    <option value="personalizado">{t("Datas personalizadas…")}</option>
+                  </SelectDoApp>
+                  {meta.periodo === "personalizado" ? (
+                    <div className="mt-2">
+                      <SeletorDePeriodo
+                        de={meta.periodo_de ?? chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA)}
+                        ate={meta.periodo_ate ?? chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA)}
+                        rotulo={t("Datas da meta")}
+                        aoMudar={(p) =>
+                          void aoEditar({
+                            periodo: "personalizado",
+                            periodo_de: p.de,
+                            periodo_ate: p.ate,
+                          })
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </Rotulo>
+                {meta.fonte !== "cpl" && meta.fonte !== "roas" ? (
+                  <Rotulo texto={t("Cálculo")}>
+                    <SelectDoApp
+                      value={meta.calculo}
+                      aria-label={t("Cálculo")}
+                      onChange={(e) => void aoEditar({ calculo: e.target.value as CalculoDaMeta })}
+                      className={CAMPO}
+                    >
+                      <option value="soma">{t("Soma do período")}</option>
+                      <option value="media_diaria">{t("Média por dia")}</option>
+                    </SelectDoApp>
+                  </Rotulo>
+                ) : (
+                  <span />
+                )}
+              </>
+            ) : null}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Rotulo texto={t("Onde queremos chegar")}>
+              <CampoDeValor
+                tipo={meta.tipo}
+                texto={alvo}
+                aoMudar={setAlvo}
+                aoConfirmar={(v) => v !== meta.valor_alvo && void aoEditar({ valor_alvo: v })}
+                rotulo={t("Onde queremos chegar")}
+              />
+            </Rotulo>
+            <Rotulo
+              texto={
+                meta.fonte === "manual"
+                  ? t("Onde estamos hoje")
+                  : t("Onde estamos hoje (automático, do CRM)")
+              }
+            >
+              {meta.fonte !== "manual" ? (
+                <p className="flex h-10 items-center rounded-xl border border-dashed px-3 text-sm text-muted-foreground tabular-nums">
+                  {t("Atualiza sozinho — aparece no cronograma")}
+                </p>
+              ) : (
+                <CampoDeValor
+                  tipo={meta.tipo}
+                  texto={atual}
+                  aoMudar={setAtual}
+                  aoConfirmar={(v) => v !== meta.valor_atual && void aoEditar({ valor_atual: v })}
+                  rotulo={t("Onde estamos hoje")}
+                />
+              )}
+            </Rotulo>
+          </div>
         </>
       ) : null}
     </div>
@@ -518,107 +522,107 @@ function LinhaDeAcao({
       )}
     >
       <div className="grid gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,2.6fr)]">
-      <input
-        defaultValue={item.acao}
-        aria-label={t("Ação")}
-        maxLength={200}
-        onBlur={(e) =>
-          e.target.value.trim() &&
-          e.target.value !== item.acao &&
-          void acoes.aoEditarItem(item.id, { acao: e.target.value })
-        }
-        className={CAMPO}
-      />
-      <PeriodoDaAcao
-        inicio={item.semana_inicio}
-        fim={item.semana_fim}
-        config={acoes.config}
-        aoSalvarConfig={acoes.aoSalvarConfig}
-        aoMudar={(s) =>
-          void acoes.aoEditarItem(item.id, { semana_inicio: s.inicio, semana_fim: s.fim })
-        }
-      />
-      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto_auto] md:col-span-2 xl:col-span-1">
-        <SelectDoApp
-          value={item.status}
-          aria-label={t("Situação")}
-          onChange={(e) =>
-            void acoes.aoEditarItem(item.id, { status: e.target.value as StatusDoItem })
+        <input
+          defaultValue={item.acao}
+          aria-label={t("Ação")}
+          maxLength={200}
+          onBlur={(e) =>
+            e.target.value.trim() &&
+            e.target.value !== item.acao &&
+            void acoes.aoEditarItem(item.id, { acao: e.target.value })
           }
           className={CAMPO}
-        >
-          {STATUS_DO_ITEM.map((s) => (
-            <option key={s} value={s}>
-              {rotuloDoStatus(s)}
-            </option>
-          ))}
-        </SelectDoApp>
-        <SelectDoApp
-          value={item.fase}
-          aria-label={t("Fase")}
-          onChange={(e) => void acoes.aoEditarItem(item.id, { fase: e.target.value })}
-          className={CAMPO}
-        >
-          <option value="">{t("Sem fase")}</option>
-          {fases.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </SelectDoApp>
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={item.destaque}
-            onChange={(e) => void acoes.aoEditarItem(item.id, { destaque: e.target.checked })}
-          />
-          {t("Destacar")}
-        </label>
-        <div className="flex items-center">
+        />
+        <PeriodoDaAcao
+          inicio={item.semana_inicio}
+          fim={item.semana_fim}
+          config={acoes.config}
+          aoSalvarConfig={acoes.aoSalvarConfig}
+          aoMudar={(s) =>
+            void acoes.aoEditarItem(item.id, { semana_inicio: s.inicio, semana_fim: s.fim })
+          }
+        />
+        <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto_auto] md:col-span-2 xl:col-span-1">
+          <SelectDoApp
+            value={item.status}
+            aria-label={t("Situação")}
+            onChange={(e) =>
+              void acoes.aoEditarItem(item.id, { status: e.target.value as StatusDoItem })
+            }
+            className={CAMPO}
+          >
+            {STATUS_DO_ITEM.map((s) => (
+              <option key={s} value={s}>
+                {rotuloDoStatus(s)}
+              </option>
+            ))}
+          </SelectDoApp>
+          <SelectDoApp
+            value={item.fase}
+            aria-label={t("Fase")}
+            onChange={(e) => void acoes.aoEditarItem(item.id, { fase: e.target.value })}
+            className={CAMPO}
+          >
+            <option value="">{t("Sem fase")}</option>
+            {fases.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </SelectDoApp>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={item.destaque}
+              onChange={(e) => void acoes.aoEditarItem(item.id, { destaque: e.target.checked })}
+            />
+            {t("Destacar")}
+          </label>
+          <div className="flex items-center">
+            <button
+              type="button"
+              aria-label={t("Subir ação")}
+              title={t("Subir")}
+              disabled={!aoMover.subir}
+              onClick={aoMover.subir}
+              className={cn(BOTAO_ICONE, "disabled:opacity-30")}
+            >
+              <ArrowUp size={16} aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label={t("Descer ação")}
+              title={t("Descer")}
+              disabled={!aoMover.descer}
+              onClick={aoMover.descer}
+              className={cn(BOTAO_ICONE, "disabled:opacity-30")}
+            >
+              <ArrowDown size={16} aria-hidden />
+            </button>
+          </div>
           <button
             type="button"
-            aria-label={t("Subir ação")}
-            title={t("Subir")}
-            disabled={!aoMover.subir}
-            onClick={aoMover.subir}
+            aria-label={t("Arquivar ação")}
+            disabled={item.status !== "concluido"}
+            title={
+              item.status === "concluido"
+                ? t("Tirar do gráfico (fica guardada)")
+                : t("Só ações concluídas podem ser arquivadas")
+            }
+            onClick={() => void acoes.aoEditarItem(item.id, { arquivado: true })}
             className={cn(BOTAO_ICONE, "disabled:opacity-30")}
           >
-            <ArrowUp size={16} aria-hidden />
+            <Archive size={16} aria-hidden />
           </button>
           <button
             type="button"
-            aria-label={t("Descer ação")}
-            title={t("Descer")}
-            disabled={!aoMover.descer}
-            onClick={aoMover.descer}
-            className={cn(BOTAO_ICONE, "disabled:opacity-30")}
+            aria-label={t("Apagar ação")}
+            onClick={() => void acoes.aoApagarItem(item.id)}
+            className={cn(BOTAO_ICONE, "hover:text-error-fg")}
           >
-            <ArrowDown size={16} aria-hidden />
+            <Trash size={16} aria-hidden />
           </button>
         </div>
-        <button
-          type="button"
-          aria-label={t("Arquivar ação")}
-          disabled={item.status !== "concluido"}
-          title={
-            item.status === "concluido"
-              ? t("Tirar do gráfico (fica guardada)")
-              : t("Só ações concluídas podem ser arquivadas")
-          }
-          onClick={() => void acoes.aoEditarItem(item.id, { arquivado: true })}
-          className={cn(BOTAO_ICONE, "disabled:opacity-30")}
-        >
-          <Archive size={16} aria-hidden />
-        </button>
-        <button
-          type="button"
-          aria-label={t("Apagar ação")}
-          onClick={() => void acoes.aoApagarItem(item.id)}
-          className={cn(BOTAO_ICONE, "hover:text-error-fg")}
-        >
-          <Trash size={16} aria-hidden />
-        </button>
-      </div>
       </div>
     </div>
   );
@@ -668,7 +672,9 @@ export function PeriodoDaAcao({
       <span
         className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground"
         title={
-          config.data_inicio ? undefined : t("A primeira data escolhida define a semana 1 do projeto.")
+          config.data_inicio
+            ? undefined
+            : t("A primeira data escolhida define a semana 1 do projeto.")
         }
       >
         {config.data_inicio
@@ -857,17 +863,17 @@ function CartaoDeFase({
       </div>
       {aberta
         ? itens.map((i, k) => (
-        <LinhaDeAcao
-          key={i.id}
-          item={i}
-          fases={fases}
-          acoes={acoes}
-          aoMover={{
-            subir: k > 0 ? () => aoMoverItem(i.id, -1) : undefined,
-            descer: k < itens.length - 1 ? () => aoMoverItem(i.id, 1) : undefined,
-          }}
-        />
-      ))
+            <LinhaDeAcao
+              key={i.id}
+              item={i}
+              fases={fases}
+              acoes={acoes}
+              aoMover={{
+                subir: k > 0 ? () => aoMoverItem(i.id, -1) : undefined,
+                descer: k < itens.length - 1 ? () => aoMoverItem(i.id, 1) : undefined,
+              }}
+            />
+          ))
         : null}
       {aberta ? (
         <NovaAcao
