@@ -185,6 +185,13 @@ function chaveDoDia(d: Date): string {
   return format(d, "yyyy-MM-dd");
 }
 
+/** O compromisso (ou a ocupação) toca a janela de horas que a grade desenha? Fora dela, não se desenha. */
+function apareceNaJanela(c: Agendamento, fuso: string): boolean {
+  const inicio = minutosDesdeOTopo(new Date(c.comeca), fuso) + PRIMEIRA_HORA * 60;
+  const duracao = Math.max((Date.parse(c.termina) - Date.parse(c.comeca)) / 60_000, 15);
+  return inicio + duracao > PRIMEIRA_HORA * 60 && inicio < (ULTIMA_HORA + 1) * 60;
+}
+
 /** A chave de um INSTANTE: o dia que ele cai NO FUSO DA ORGANIZAÇÃO. */
 function chaveDoDiaDoInstante(instante: Date, fuso: string): string {
   return diaLocalISO(instante, fuso);
@@ -717,7 +724,9 @@ function ColunaDeDia({
       </div>
 
       <div
-        className="relative"
+        // `overflow-hidden`: o que fica FORA da janela da grade (7h–22h) — como a ocupação do Google das
+        // 05:40 — não pode vazar para cima do cabeçalho do dia nem para fora da coluna.
+        className="relative overflow-hidden"
         // O ALVO DO ARRASTE, e ele é lido por GEOMETRIA e não por hit-testing.
         //
         // `document.elementFromPoint` devolveria o card arrastado ou o fantasma
@@ -740,22 +749,24 @@ function ColunaDeDia({
             interacao={interacao}
           />
         )}
-        {repartirSobrepostos(doDia).map(({ agendamento, coluna, colunas }) => (
-          <BlocoDeAgendamento
-            key={agendamento.id}
-            agendamento={agendamento}
-            pessoa={pessoas.find((p) => p.id === agendamento.responsavelId)}
-            onAbrir={onAbrir}
-            fuso={fuso}
-            coluna={coluna}
-            colunas={colunas}
-            arraste={
-              arrasteDoCard
-                ? { ...arrasteDoCard, ativo: proposta?.id === agendamento.id }
-                : undefined
-            }
-          />
-        ))}
+        {repartirSobrepostos(doDia.filter((c) => apareceNaJanela(c, fuso))).map(
+          ({ agendamento, coluna, colunas }) => (
+            <BlocoDeAgendamento
+              key={agendamento.id}
+              agendamento={agendamento}
+              pessoa={pessoas.find((p) => p.id === agendamento.responsavelId)}
+              onAbrir={onAbrir}
+              fuso={fuso}
+              coluna={coluna}
+              colunas={colunas}
+              arraste={
+                arrasteDoCard
+                  ? { ...arrasteDoCard, ativo: proposta?.id === agendamento.id }
+                  : undefined
+              }
+            />
+          ),
+        )}
         {proposta && proposta.dia === chaveDoDia(dia) && (
           <FantasmaDoArraste
             proposta={proposta}
