@@ -1,5 +1,6 @@
 "use client";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { TituloDaOportunidade } from "@/components/vendas/TituloDaOportunidade";
 import { OrigemEmCascata, type ValorDaOrigem } from "@/components/contacts/ficha/OrigemEmCascata";
@@ -857,15 +858,15 @@ export function DialogoDaVenda({
                       className="w-full"
                     />
                   </div>
-                  <label className="grid gap-1">
+                  <div className="grid gap-1">
                     <span className="text-xs text-muted-foreground">{t("Hora")}</span>
-                    <input
-                      type="time"
-                      value={lembreteHora}
-                      onChange={(e) => setLembreteHora(e.target.value)}
-                      className={CAMPO}
+                    <SeletorDeHora
+                      rotulo={t("Hora")}
+                      valor={lembreteHora}
+                      aoMudar={setLembreteHora}
+                      className="w-full justify-between"
                     />
-                  </label>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {t("Vira uma tarefa com este dia e hora, ligada ao lead — ela aparece em Tarefas e avisa na hora.")}
                   </p>

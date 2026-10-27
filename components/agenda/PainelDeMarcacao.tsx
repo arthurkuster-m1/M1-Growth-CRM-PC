@@ -1,5 +1,6 @@
 "use client";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import { useT } from "@/hooks/i18n/useT";
@@ -9,7 +10,6 @@ import Link from "next/link";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { dataDeParede, instanteDe } from "@/lib/agenda/fuso";
 import { ApiError } from "@/lib/api/types";
 import { CaretLeft, CaretRight, CheckCircle, Clock, MapPin, Warning } from "@/lib/ui/icons";
@@ -473,19 +473,15 @@ export function PainelDeMarcacao({
               {t("Outro horário")}
             </label>
             <div className="flex gap-2">
-              <Input
-                id="hora-do-encaixe"
-                data-testid="hora-do-encaixe"
-                type="time"
-                step={60}
-                value={horaDoEncaixe}
-                onChange={(e) => setHoraDoEncaixe(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") usarHoraDoEncaixe();
-                }}
-                aria-describedby="ajuda-do-encaixe"
-                className="h-11 min-w-0 flex-1 px-2 tabular-nums lg:h-9"
-              />
+              <div data-testid="hora-do-encaixe" data-valor={horaDoEncaixe} className="min-w-0 flex-1">
+                <SeletorDeHora
+                  rotulo={t("Outro horário")}
+                  valor={horaDoEncaixe}
+                  passoDeMinutos={1}
+                  aoMudar={setHoraDoEncaixe}
+                  className="h-11 w-full justify-between lg:h-9"
+                />
+              </div>
               <Button
                 variant="outline"
                 size="sm"

@@ -1,5 +1,6 @@
 "use client";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { useState } from "react";
 
 import {
@@ -93,22 +94,20 @@ export function Atendimento({
         <span className="font-medium">{t("Horário de atendimento")}</span>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {t("Das")}
-          <input
-            type="time"
-            value={inicio}
-            disabled={!dados.podeEditarHorario}
-            onChange={(e) => setInicio(e.target.value)}
-            className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground"
+          <SeletorDeHora
+            rotulo={t("Das")}
+            valor={inicio}
+            desabilitado={!dados.podeEditarHorario}
+            aoMudar={setInicio}
           />
         </label>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {t("às")}
-          <input
-            type="time"
-            value={fim}
-            disabled={!dados.podeEditarHorario}
-            onChange={(e) => setFim(e.target.value)}
-            className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground"
+          <SeletorDeHora
+            rotulo={t("às")}
+            valor={fim}
+            desabilitado={!dados.podeEditarHorario}
+            aoMudar={setFim}
           />
         </label>
         <div className="flex items-center gap-1" role="group" aria-label={t("Dias de atendimento")}>

@@ -29,7 +29,7 @@
  *
  *     npx vitest run tests/unit/agenda-encaixe-no-painel.test.tsx
  */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -79,7 +79,12 @@ function escolherEncaixe(dia: string, hora: string) {
   fireEvent.click(screen.getByTestId(`dia-${dia}`));
   const abrir = screen.queryByTestId("abrir-encaixe");
   if (abrir) fireEvent.click(abrir);
-  fireEvent.change(screen.getByTestId("hora-do-encaixe"), { target: { value: hora } });
+  // O seletor de hora do app: abre as colunas de hora e de minuto e escolhe cada uma.
+  const [hh, mm] = hora.split(":") as [string, string];
+  fireEvent.click(within(screen.getByTestId("hora-do-encaixe")).getByRole("button"));
+  fireEvent.click(within(screen.getByRole("listbox", { name: "Hora" })).getByRole("option", { name: hh }));
+  fireEvent.click(within(screen.getByRole("listbox", { name: "Min" })).getByRole("option", { name: mm }));
+  fireEvent.click(screen.getByRole("button", { name: "Pronto" }));
   fireEvent.click(screen.getByTestId("usar-hora-do-encaixe"));
 }
 
@@ -195,11 +200,11 @@ describe("a recusa do servidor fica no painel", () => {
     expect(await screen.findByTestId("recusa-da-marcacao")).toHaveTextContent(OCUPADO);
     expect(painel()).toHaveAttribute("data-tempo", "confirmando");
     expect(screen.queryByText("Marcado.")).toBeNull();
-    expect(screen.getByTestId("hora-do-encaixe")).toHaveValue("10:30");
+    expect(screen.getByTestId("hora-do-encaixe")).toHaveAttribute("data-valor", "10:30");
 
     // Voltar para corrigir não apaga o que ela digitou.
     fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
-    expect(screen.getByTestId("hora-do-encaixe")).toHaveValue("10:30");
+    expect(screen.getByTestId("hora-do-encaixe")).toHaveAttribute("data-valor", "10:30");
   });
 
   it("falha sem mensagem da rota (rede, 5xx) diz que não marcou, sem inventar motivo", async () => {

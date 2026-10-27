@@ -13,10 +13,19 @@ interface Props {
   aoMudar: (hora: string) => void;
   /** Enter ou "Pronto": o seletor fecha e quem o contém pode confirmar. */
   aoConfirmar?: () => void;
+  /** Nome acessível do botão; sem ele, "Horário". */
+  rotulo?: string;
+  desabilitado?: boolean;
+  className?: string;
+  /** De quantos em quantos minutos a coluna de minutos oferece (5 por padrão; 1 para hora exata). */
+  passoDeMinutos?: number;
+  /** O que aparece enquanto `valor` está vazio. */
+  placeholder?: string;
 }
 
 const HORAS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-const MINUTOS_DE_5 = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
+const minutosDe = (passo: number) =>
+  Array.from({ length: Math.ceil(60 / passo) }, (_, i) => String(i * passo).padStart(2, "0"));
 
 function Coluna({
   rotulo,
@@ -32,7 +41,7 @@ function Coluna({
   const ativo = useRef<HTMLButtonElement | null>(null);
   // Ao abrir, a coluna já mostra o valor atual no meio da lista.
   useEffect(() => {
-    ativo.current?.scrollIntoView({ block: "center" });
+    ativo.current?.scrollIntoView?.({ block: "center" });
   }, []);
   return (
     <div className="flex flex-col">
@@ -74,23 +83,38 @@ function Coluna({
  * O seletor de horário no estilo das datas: um botão com a hora e, ao clicar, duas colunas
  * roláveis (horas e minutos) em vez do campo nativo do navegador.
  */
-export function SeletorDeHora({ valor, aoMudar, aoConfirmar }: Props) {
+export function SeletorDeHora({
+  valor,
+  aoMudar,
+  aoConfirmar,
+  rotulo,
+  desabilitado,
+  className,
+  passoDeMinutos = 5,
+  placeholder,
+}: Props) {
   const t = useT();
   const [aberto, setAberto] = useState(false);
-  const [hh = "09", mm = "00"] = valor.split(":");
-  const minutos = MINUTOS_DE_5.includes(mm)
-    ? MINUTOS_DE_5
-    : [...MINUTOS_DE_5, mm].sort((a, b) => Number(a) - Number(b));
+  const vazio = !/^\d{1,2}:\d{2}/.test(valor);
+  const [hh = "09", mm = "00"] = vazio ? ["09", "00"] : valor.split(":");
+  const base = minutosDe(passoDeMinutos);
+  const minutos = base.includes(mm)
+    ? base
+    : [...base, mm].sort((a, b) => Number(a) - Number(b));
 
   return (
     <Popover open={aberto} onOpenChange={setAberto}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={t("Horário")}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-sm tabular-nums transition-colors hover:bg-secondary"
+          aria-label={rotulo ?? t("Horário")}
+          disabled={desabilitado}
+          className={cn(
+            "inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-sm tabular-nums transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60",
+            className,
+          )}
         >
-          {hh}:{mm}
+          {vazio ? <span className="text-muted-foreground">{placeholder ?? "--:--"}</span> : `${hh}:${mm}`}
           <Clock size={14} className="text-muted-foreground" aria-hidden />
         </button>
       </PopoverTrigger>

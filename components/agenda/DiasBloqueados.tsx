@@ -24,6 +24,7 @@
  * fechado, e cada data de atendimento é uma exceção ABERTA. Essa agenda não
  * tinha como ser montada pela tela — só por SQL.
  */
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -208,23 +209,11 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
             <>
               <label className="block">
                 <span className="block text-sm">{t("Das")}</span>
-                <input
-                  aria-label={t("Das")}
-                  className="mt-1 rounded-xl border p-2"
-                  type="time"
-                  value={de}
-                  onChange={(e) => setDe(e.target.value)}
-                />
+                <SeletorDeHora rotulo={t("Das")} valor={de} aoMudar={setDe} className="mt-1" />
               </label>
               <label className="block">
                 <span className="block text-sm">{t("Até")}</span>
-                <input
-                  aria-label={t("Até")}
-                  className="mt-1 rounded-xl border p-2"
-                  type="time"
-                  value={ate}
-                  onChange={(e) => setAte(e.target.value)}
-                />
+                <SeletorDeHora rotulo={t("Até")} valor={ate} aoMudar={setAte} className="mt-1" />
               </label>
             </>
           ) : null}

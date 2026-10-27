@@ -1,4 +1,5 @@
 "use client";
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import * as React from "react";
 
 import { Input } from "@/components/ui/input";
@@ -207,22 +208,22 @@ export function TriggerEditor({ value, onChange, disabled, organizationTimezone 
               </div>
               <div className="space-y-1">
                 <Label htmlFor="bh_start">{t("Início")}</Label>
-                <Input
-                  id="bh_start"
-                  type="time"
-                  value={bh.start}
-                  onChange={(e) => patchBh({ start: e.target.value })}
-                  disabled={disabled}
+                <SeletorDeHora
+                  rotulo={t("Início")}
+                  valor={bh.start}
+                  aoMudar={(v) => patchBh({ start: v })}
+                  desabilitado={disabled}
+                  className="w-full justify-between"
                 />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="bh_end">{t("Fim")}</Label>
-                <Input
-                  id="bh_end"
-                  type="time"
-                  value={bh.end}
-                  onChange={(e) => patchBh({ end: e.target.value })}
-                  disabled={disabled}
+                <SeletorDeHora
+                  rotulo={t("Fim")}
+                  valor={bh.end}
+                  aoMudar={(v) => patchBh({ end: v })}
+                  desabilitado={disabled}
+                  className="w-full justify-between"
                 />
               </div>
             </div>

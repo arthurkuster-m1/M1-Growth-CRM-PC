@@ -28,7 +28,7 @@
  *      botão que não deixa errar.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,6 +63,19 @@ function corpoEnviado(): Record<string, unknown> {
 }
 
 /** O campo de data virou o calendário do Notion: abre o painel e digita o dia (dd/mm/aaaa). */
+/** O seletor de hora do app: abre o botão, escolhe a hora e o minuto nas colunas e confirma. */
+async function escolherHora(
+  u: ReturnType<typeof userEvent.setup>,
+  rotulo: string,
+  hhmm: string,
+) {
+  const [hh, mm] = hhmm.split(":") as [string, string];
+  await u.click(screen.getByRole("button", { name: rotulo }));
+  await u.click(within(screen.getByRole("listbox", { name: "Hora" })).getByRole("option", { name: hh }));
+  await u.click(within(screen.getByRole("listbox", { name: "Min" })).getByRole("option", { name: mm }));
+  await u.click(screen.getByRole("button", { name: "Pronto" }));
+}
+
 async function escolherDia(u: ReturnType<typeof userEvent.setup>, rotulo: string, dia: string) {
   await u.click(screen.getByRole("button", { name: rotulo }));
   const campo = await screen.findByRole("textbox", { name: rotulo });
@@ -99,10 +112,8 @@ describe("Dias fora da rotina — fechar e abrir", () => {
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
     await escolherDia(u, "Dia", "01/10/2026");
-    await u.clear(screen.getByLabelText("Das"));
-    await u.type(screen.getByLabelText("Das"), "14:00");
-    await u.clear(screen.getByLabelText("Até"));
-    await u.type(screen.getByLabelText("Até"), "18:00");
+    await escolherHora(u, "Das", "14:00");
+    await escolherHora(u, "Até", "18:00");
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
@@ -120,10 +131,8 @@ describe("Dias fora da rotina — fechar e abrir", () => {
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
     await escolherDia(u, "Dia", "01/10/2026");
-    await u.clear(screen.getByLabelText("Das"));
-    await u.type(screen.getByLabelText("Das"), "18:00");
-    await u.clear(screen.getByLabelText("Até"));
-    await u.type(screen.getByLabelText("Até"), "14:00");
+    await escolherHora(u, "Das", "18:00");
+    await escolherHora(u, "Até", "14:00");
 
     expect(screen.getByRole("button", { name: "Abrir este dia" })).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
@@ -135,10 +144,8 @@ describe("Dias fora da rotina — fechar e abrir", () => {
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
     await escolherDia(u, "Dia", "01/10/2026");
-    await u.clear(screen.getByLabelText("Das"));
-    await u.type(screen.getByLabelText("Das"), "14:00");
-    await u.clear(screen.getByLabelText("Até"));
-    await u.type(screen.getByLabelText("Até"), "18:00");
+    await escolherHora(u, "Das", "14:00");
+    await escolherHora(u, "Até", "18:00");
     // 01, 08, 15 e 22 de outubro — quatro quintas.
     await escolherDia(u, "Repetir toda semana até (opcional)", "22/10/2026");
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
@@ -191,10 +198,8 @@ describe("Dias fora da rotina — fechar e abrir", () => {
 
     await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
     await escolherDia(u, "Dia", "01/10/2026");
-    await u.clear(screen.getByLabelText("Das"));
-    await u.type(screen.getByLabelText("Das"), "14:00");
-    await u.clear(screen.getByLabelText("Até"));
-    await u.type(screen.getByLabelText("Até"), "18:00");
+    await escolherHora(u, "Das", "14:00");
+    await escolherHora(u, "Até", "18:00");
     await escolherDia(u, "Repetir toda semana até (opcional)", "15/10/2026");
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
 

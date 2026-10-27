@@ -1,5 +1,6 @@
 "use client";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useMemo, useState } from "react";
@@ -312,25 +313,19 @@ export function ScheduleDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  type="time"
-                  value={w.start}
-                  aria-label={t("Início")}
-                  onChange={(e) =>
-                    setWindows((ws) =>
-                      ws.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)),
-                    )
+                <SeletorDeHora
+                  rotulo={t("Início")}
+                  valor={w.start}
+                  aoMudar={(v) =>
+                    setWindows((ws) => ws.map((x, j) => (j === i ? { ...x, start: v } : x)))
                   }
                 />
                 <span className="text-muted-foreground">–</span>
-                <Input
-                  type="time"
-                  value={w.end}
-                  aria-label="Fim"
-                  onChange={(e) =>
-                    setWindows((ws) =>
-                      ws.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)),
-                    )
+                <SeletorDeHora
+                  rotulo={t("Fim")}
+                  valor={w.end}
+                  aoMudar={(v) =>
+                    setWindows((ws) => ws.map((x, j) => (j === i ? { ...x, end: v } : x)))
                   }
                 />
                 <Button

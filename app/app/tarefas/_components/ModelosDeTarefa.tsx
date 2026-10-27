@@ -1,5 +1,6 @@
 "use client";
 
+import { SeletorDeHora } from "@/components/motor/SeletorDeHora";
 import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import { useState } from "react";
 
@@ -406,13 +407,11 @@ function Corpo({
           <span className="text-sm">{t("Incluir hora no prazo")}</span>
           <div className="flex items-center gap-2">
             {r.prazoHora !== null ? (
-              <input
-                type="time"
-                aria-label={t("Horário")}
-                value={r.prazoHora}
-                disabled={!podeEditar}
-                onChange={(e) => mudar({ prazoHora: e.target.value || "17:00" })}
-                className="h-9 rounded-xl border bg-card px-2 text-sm"
+              <SeletorDeHora
+                rotulo={t("Horário")}
+                valor={r.prazoHora}
+                desabilitado={!podeEditar}
+                aoMudar={(v) => mudar({ prazoHora: v || "17:00" })}
               />
             ) : null}
             <Switch
@@ -510,13 +509,12 @@ function Corpo({
               : null}
             {campo(
               t("Criar a tarefa às"),
-              <input
-                id="modelo-hora"
-                type="time"
-                value={r.repeat_time}
-                disabled={!podeEditar}
-                onChange={(e) => mudar({ repeat_time: e.target.value || "07:00" })}
-                className={cn(CAMPO, "w-32")}
+              <SeletorDeHora
+                rotulo={t("Criar a tarefa às")}
+                valor={r.repeat_time}
+                desabilitado={!podeEditar}
+                aoMudar={(v) => mudar({ repeat_time: v || "07:00" })}
+                className="w-32 justify-between"
               />,
               "modelo-hora",
             )}
