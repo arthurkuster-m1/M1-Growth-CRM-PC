@@ -15,12 +15,27 @@ import { toast } from "sonner";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
-import { ROTULO_DO_MODELO, modeloDoAtendimento } from "@/lib/agenda/atendimentos";
+import { modeloDoAtendimento } from "@/lib/agenda/atendimentos";
 import { padraoDoModelo } from "@/lib/agenda/modelos-de-atendimento";
 import { apiClient } from "@/lib/api/client";
 import { rotuloDoLocal } from "@/lib/agenda/locais";
 import { formatCents as formatMoney } from "@/lib/money";
-import { ArrowSquareOut, ChatCircle, Copy, PencilSimple, Phone, Sparkle } from "@/lib/ui/icons";
+import {
+  ArrowSquareOut,
+  CalendarBlank,
+  ChatCircle,
+  Copy,
+  Flag,
+  Funnel,
+  LinkSimple,
+  PencilSimple,
+  Phone,
+  Users,
+} from "@/lib/ui/icons";
+import { blocosDoModelo } from "@/lib/agenda/modelos-de-atendimento";
+import { randomId } from "@/lib/random-id";
+import type { Bloco } from "@/lib/marketing/blocos";
+import { EditorDoCompromisso } from "./EditorDoCompromisso";
 import { ROTULO_DO_LOCAL } from "@/lib/agenda/propriedades-do-compromisso";
 import { pedirPagamentoDaOportunidade } from "@/lib/vendas-cliente";
 import { useRouter } from "next/navigation";
@@ -60,6 +75,7 @@ type Detalhe = {
   contact_id: string | null;
   lead_id: string | null;
   cliente: { nome: string | null; telefone: string | null; email: string | null } | null;
+  blocos?: Bloco[] | null;
   tipo: { id: string; nome: string; slug: string; cor?: string | null } | null;
   remarcado_para?: string | null;
   oportunidade_titulo?: string | null;
@@ -164,35 +180,22 @@ function TituloEditavel({
   );
 }
 
-function Bloco({
-  titulo,
-  acao,
+function Prop({
+  icone: Icone,
+  rotulo,
   children,
-  className,
 }: {
-  titulo: string;
-  acao?: React.ReactNode;
+  icone: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
+  rotulo: string;
   children: React.ReactNode;
-  className?: string;
 }) {
   return (
-    <section className={cn("min-w-0 rounded-2xl border border-border bg-surface p-4", className)}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{titulo}</h3>
-        {acao}
+    <div className="grid min-h-9 grid-cols-[7rem_minmax(0,1fr)] items-start gap-x-2 py-0.5 text-sm sm:grid-cols-[9rem_minmax(0,1fr)]">
+      <div className="flex min-h-9 items-center gap-2 text-text-muted">
+        <Icone size={16} aria-hidden />
+        <span className="truncate">{rotulo}</span>
       </div>
-      {children}
-    </section>
-  );
-}
-
-function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <div className="mb-1 text-xs text-text-muted">{rotulo}</div>
-      <div className="min-h-9 rounded-xl border border-border bg-card px-3 py-2 text-sm">
-        {children}
-      </div>
+      <div className="min-w-0 self-center">{children}</div>
     </div>
   );
 }
@@ -220,8 +223,6 @@ function PaginaExistente({
   const tag = useTagDeIdioma();
   const qc = useQueryClient();
   const [editandoVenda, setEditandoVenda] = React.useState(false);
-  const [anotacao, setAnotacao] = React.useState<string | null>(null);
-  const [feitos, setFeitos] = React.useState<Record<number, boolean>>({});
 
   const consulta = useQuery({
     queryKey: ["agenda", "detalhe", id],
@@ -379,7 +380,6 @@ function PaginaExistente({
   const cfg =
     (a?.tipo && modelosDosTipos.data?.[a.tipo.id]) ||
     padraoDoModelo(modeloDoAtendimento(a?.tipo ?? null));
-  const modelo = cfg.modelo;
   const comecou = a ? Date.parse(a.starts_at) <= Date.now() : false;
   const encerrado = a ? ["cancelled", "completed", "no_show"].includes(a.status) : false;
   const link = a?.meeting?.url ?? null;
@@ -388,7 +388,6 @@ function PaginaExistente({
     .filter((p) => p.status === "recebida")
     .reduce((s, p) => s + p.amount_cents, 0);
   const total = parcelas.reduce((s, p) => s + p.amount_cents, 0);
-  const textoDaAnotacao = anotacao ?? a?.notes ?? "";
   const vendeu = !!venda && VENDIDAS.has(venda.status);
   const statusUnico = a
     ? statusDoCompromisso(a, vendeu)
@@ -444,9 +443,10 @@ function PaginaExistente({
           </div>
         ) : (
           <>
-            <header className="flex min-w-0 flex-col gap-2 border-b border-border px-4 pt-12 pb-4 sm:px-6 sm:pt-6 sm:pr-14">
-              {/* 1.1 · o TIPO, em tag editável, no canto superior direito acima do título */}
-              <div className="flex min-h-7 justify-end">
+            <header className="flex min-w-0 flex-col gap-2 px-4 pt-12 pb-2 sm:px-8 sm:pt-6 sm:pr-14">
+              {/* o TIPO, em tag editável, no canto superior direito acima do título */}
+              <div className="flex min-h-7 items-center justify-between gap-2">
+                {podeEditar ? <BotaoExcluir id={a.id} aoExcluir={onClose} /> : <span />}
                 {podeEditar && !encerrado && (tipos.data?.length ?? 0) > 0 ? (
                   <Popover>
                     <PopoverTrigger asChild>
@@ -497,7 +497,6 @@ function PaginaExistente({
                   </Badge>
                 )}
               </div>
-              {/* 1 · título */}
               <div className="max-w-full min-w-0">
                 <TituloEditavel
                   key={a.id}
@@ -508,39 +507,42 @@ function PaginaExistente({
                   }
                 />
               </div>
-              {/* 2 · data e horário de início e fim, embaixo do título */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <div className="min-w-0 sm:w-72">
-                  <CampoDeDataEHora
-                    valor={a.starts_at}
-                    fuso={a.time_zone}
-                    tag={tag}
-                    rotulo={t("Reagendar o compromisso")}
-                    desabilitado={!podeEditar || encerrado || reagendar.isPending}
-                    aoEscolher={(iso) => reagendar.mutate(iso)}
-                    horariosLivres={
-                      a.tipo
-                        ? { eventTypeId: a.tipo.id, ownerId: a.responsavel_id, ignorarId: a.id }
-                        : undefined
-                    }
-                  />
-                </div>
-                <span className="text-sm whitespace-nowrap text-text-muted">
-                  {t("até")} {fimDoCompromisso}
-                </span>
-              </div>
-              {podeEditar && !encerrado && (
-                <p className="text-[11px] text-text-muted">
-                  {t(
-                    "Trocar o horário remarca: o compromisso antigo fica como não compareceu e nasce um novo.",
-                  )}
-                </p>
-              )}
             </header>
 
-            <div className="grid min-w-0 gap-3 p-3 sm:p-6">
-              {/* 3 · status único (substitui situação + resultado) */}
-              <Campo rotulo={t("Status do compromisso")}>
+            {/* As propriedades, como numa página do Notion: nome à esquerda, valor à direita. */}
+            <div className="grid min-w-0 gap-0.5 px-4 pb-4 sm:px-8">
+              <Prop icone={CalendarBlank} rotulo={t("Data e Hora")}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <div className="min-w-0 sm:w-64">
+                    <CampoDeDataEHora
+                      valor={a.starts_at}
+                      fuso={a.time_zone}
+                      tag={tag}
+                      rotulo={t("Reagendar o compromisso")}
+                      desabilitado={!podeEditar || encerrado || reagendar.isPending}
+                      aoEscolher={(iso) => reagendar.mutate(iso)}
+                      className="border-transparent bg-transparent hover:border-border"
+                      horariosLivres={
+                        a.tipo
+                          ? { eventTypeId: a.tipo.id, ownerId: a.responsavel_id, ignorarId: a.id }
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <span className="whitespace-nowrap text-text-muted">
+                    {t("até")} {fimDoCompromisso}
+                  </span>
+                </div>
+                {podeEditar && !encerrado ? (
+                  <p className="mt-0.5 text-[11px] text-text-muted">
+                    {t(
+                      "Trocar o horário remarca: o compromisso antigo fica como não compareceu e nasce um novo.",
+                    )}
+                  </p>
+                ) : null}
+              </Prop>
+
+              <Prop icone={Flag} rotulo={t("Status")}>
                 <div className="flex flex-wrap items-center gap-2">
                   {podeEditar && a.status !== "cancelled" && !a.remarcado_para ? (
                     <Popover>
@@ -605,17 +607,15 @@ function PaginaExistente({
                       {t("Cliente confirmou")}
                     </Badge>
                   )}
-                  {podeEditar && <BotaoExcluir id={a.id} aoExcluir={onClose} className="ml-auto" />}
                 </div>
-              </Campo>
+              </Prop>
 
-              {/* 4 · responsável */}
-              <div className="min-w-0">
-                <div className="mb-1 text-xs text-text-muted">{t("Responsável pela reunião")}</div>
+              <Prop icone={Users} rotulo={t("Responsável")}>
                 {podeEditar && !encerrado ? (
                   <SeletorEmPopup
                     rotulo={t("Responsável pela reunião")}
                     valor={a.responsavel_id ?? ""}
+                    className="border-transparent bg-transparent hover:border-border"
                     opcoes={(() => {
                       const doTipo = a.tipo ? atendentesDoTipoNaMatriz(matriz.data, a.tipo.id) : [];
                       const livres = new Set((livresNoHorario.data ?? []).map((l) => l.user_id));
@@ -637,68 +637,64 @@ function PaginaExistente({
                     }
                   />
                 ) : (
-                  <div className="min-h-9 rounded-xl border border-border bg-card px-3 py-2 text-sm">
-                    {nomeDoResponsavel ?? "—"}
-                  </div>
+                  <span>{nomeDoResponsavel ?? "—"}</span>
                 )}
-              </div>
+              </Prop>
 
-              {/* 5 · cliente, com os mini botões de ícone dentro do mesmo campo */}
-              <div className="min-w-0">
-                <div className="mb-1 text-xs text-text-muted">{t("Cliente")}</div>
-                <div className="flex min-h-10 items-center gap-1 rounded-xl border border-border bg-card px-3 py-1 text-sm">
+              <Prop icone={Users} rotulo={t("Cliente")}>
+                <div className="flex min-h-9 items-center gap-1">
                   {a.contact_id ? (
                     <Link
                       href={`/app/contacts/${a.contact_id}`}
-                      className="inline-flex min-w-0 flex-1 items-center gap-1 underline"
+                      className="inline-flex min-w-0 items-center gap-1 underline"
                     >
                       <span className="truncate">{a.cliente?.nome ?? t("Ver contato")}</span>
                       <ArrowSquareOut size={12} className="shrink-0" aria-hidden />
                     </Link>
                   ) : (
-                    <span className="min-w-0 flex-1 truncate text-text-muted">
+                    <span className="min-w-0 truncate text-text-muted">
                       {t("Compromisso pessoal, sem cliente")}
                     </span>
                   )}
-                  {a.cliente?.telefone ? (
-                    <>
+                  <span className="ml-auto flex shrink-0 items-center gap-0.5">
+                    {a.cliente?.telefone ? (
+                      <>
+                        <button
+                          type="button"
+                          aria-label={t("Abrir conversa no Inbox")}
+                          title={t("Abrir conversa no Inbox")}
+                          onClick={() => void abrirNoInbox()}
+                          className="grid h-7 w-7 place-items-center rounded-lg hover:bg-secondary"
+                        >
+                          <ChatCircle size={16} aria-hidden />
+                        </button>
+                        <a
+                          href={`tel:${a.cliente.telefone}`}
+                          aria-label={t("Ligar para o cliente")}
+                          title={a.cliente.telefone}
+                          className="grid h-7 w-7 place-items-center rounded-lg hover:bg-secondary"
+                        >
+                          <Phone size={16} aria-hidden />
+                        </a>
+                      </>
+                    ) : null}
+                    {podeEditar && !encerrado ? (
                       <button
                         type="button"
-                        aria-label={t("Abrir conversa no Inbox")}
-                        title={t("Abrir conversa no Inbox")}
-                        onClick={() => void abrirNoInbox()}
-                        className="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-secondary"
+                        aria-label={t("Trocar o cliente")}
+                        title={t("Trocar o cliente")}
+                        onClick={() => setTrocandoCliente(true)}
+                        className="grid h-7 w-7 place-items-center rounded-lg hover:bg-secondary"
                       >
-                        <ChatCircle size={16} aria-hidden />
+                        <PencilSimple size={14} aria-hidden />
                       </button>
-                      <a
-                        href={`tel:${a.cliente.telefone}`}
-                        aria-label={t("Ligar para o cliente")}
-                        title={a.cliente.telefone}
-                        className="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-secondary"
-                      >
-                        <Phone size={16} aria-hidden />
-                      </a>
-                    </>
-                  ) : null}
-                  {podeEditar && !encerrado ? (
-                    <button
-                      type="button"
-                      aria-label={t("Trocar o cliente")}
-                      title={t("Trocar o cliente")}
-                      onClick={() => setTrocandoCliente(true)}
-                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-secondary"
-                    >
-                      <PencilSimple size={14} aria-hidden />
-                    </button>
-                  ) : null}
+                    ) : null}
+                  </span>
                 </div>
-              </div>
+              </Prop>
 
-              {/* 6 · tipo de reunião (tag pequena) + link ou endereço, com copiar e abrir */}
-              <div className="min-w-0">
-                <div className="mb-1 text-xs text-text-muted">{t("Reunião")}</div>
-                <div className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 py-1 text-sm">
+              <Prop icone={LinkSimple} rotulo={ehVideo ? t("Link da Reunião") : t("Endereço")}>
+                <div className="flex min-h-9 items-center gap-2">
                   <Badge variant="neutral" className="shrink-0 rounded-md px-1.5 py-0 text-[11px]">
                     {t(
                       ROTULO_DO_LOCAL[a.location_kind ?? ""] ??
@@ -740,8 +736,8 @@ function PaginaExistente({
                     </>
                   ) : null}
                 </div>
-                {(a.google_sync || a.meeting) && (
-                  <details className="mt-2 rounded-xl border border-border px-3 py-2 text-sm">
+                {a.google_sync || a.meeting ? (
+                  <details className="mt-1 rounded-xl border border-border px-3 py-2 text-sm">
                     <summary className="cursor-pointer text-text-muted">
                       {t("Google Agenda e Meet")}
                     </summary>
@@ -764,23 +760,23 @@ function PaginaExistente({
                       )}
                     </div>
                   </details>
-                )}
-              </div>
+                ) : null}
+              </Prop>
+            </div>
 
-              {cfg.blocos.oportunidade ? (
-                <>
-                  {/* 7 · oportunidade: nome + etapa (mesma linha) e o funil; sempre do cliente */}
-                  <div className="min-w-0">
-                    <div className="mb-1 text-xs text-text-muted">{t("Oportunidade")}</div>
-                    <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm">
-                      {!a.contact_id ? (
-                        <span className="text-text-muted">
-                          {t("Sem cliente, sem oportunidade.")}
-                        </span>
-                      ) : podeEditar &&
-                        !encerrado &&
-                        (contexto.data?.oportunidades ?? []).length > 1 ? (
-                        <div className="mb-2">
+            {cfg.blocos.oportunidade ? (
+              <div className="grid min-w-0 gap-4 px-4 pb-4 sm:px-8">
+                {/* Oportunidade: nome + etapa do funil na mesma linha, e o funil; sempre do cliente */}
+                <section>
+                  <h3 className="mb-1 text-lg font-semibold">{t("Oportunidade")}</h3>
+                  {!a.contact_id ? (
+                    <p className="text-sm text-text-muted">{t("Sem cliente, sem oportunidade.")}</p>
+                  ) : (
+                    <div className="grid gap-0.5">
+                      {podeEditar &&
+                      !encerrado &&
+                      (contexto.data?.oportunidades ?? []).length > 1 ? (
+                        <div className="mb-1 sm:max-w-md">
                           <SeletorEmPopup
                             rotulo={t("Oportunidade do compromisso")}
                             valor={a.lead_id ?? ""}
@@ -797,16 +793,16 @@ function PaginaExistente({
                         </div>
                       ) : null}
                       {!a.lead_id ? (
-                        <p className="text-text-muted">
+                        <p className="text-sm text-text-muted">
                           {t("Este compromisso não está ligado a uma oportunidade.")}
                         </p>
                       ) : oportunidade.isPending ? (
-                        <p className="text-text-muted">{t("Carregando…")}</p>
+                        <p className="text-sm text-text-muted">{t("Carregando…")}</p>
                       ) : !venda ? (
-                        <p className="text-text-muted">{t("Oportunidade indisponível.")}</p>
+                        <p className="text-sm text-text-muted">{t("Oportunidade indisponível.")}</p>
                       ) : (
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
+                        <>
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
                             <span className="min-w-0 truncate font-medium">
                               {a.oportunidade_titulo ||
                                 venda.name ||
@@ -819,245 +815,152 @@ function PaginaExistente({
                               </Badge>
                             ) : null}
                           </div>
-                          <div className="text-xs text-text-muted">{venda.funil ?? "—"}</div>
-                        </div>
+                          <div className="flex items-center gap-2 text-sm text-text-muted">
+                            <Funnel size={14} aria-hidden />
+                            {venda.funil ?? "—"}
+                          </div>
+                        </>
                       )}
                     </div>
-                  </div>
+                  )}
+                </section>
 
-                  {/* 8 · venda: interesse + valor + status na mesma linha; o pagamento abre embaixo */}
-                  {venda ? (
-                    <div className="min-w-0">
-                      <div className="mb-1 text-xs text-text-muted">{t("Venda")}</div>
-                      <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                          <span className="min-w-0 flex-1 truncate">
-                            {venda.product_name || venda.name || t("Interesse")}
-                          </span>
-                          <span className="font-semibold tabular-nums">
-                            {formatMoney(venda.amount_cents, venda.currency)}
-                          </span>
-                          {podeEditar && a.lead_id ? (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  data-testid="status-da-venda"
-                                  className="rounded-lg"
-                                >
-                                  <Badge
-                                    variant={VARIANTE_DA_VENDA[venda.status] ?? "neutral"}
-                                    className="cursor-pointer gap-1 rounded-lg"
-                                  >
-                                    {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
-                                    <PencilSimple size={11} aria-hidden />
-                                  </Badge>
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-56 p-1.5">
-                                {(
-                                  [
-                                    ["comprometida", "Comprometida"],
-                                    ["concluida", "Paga"],
-                                    ["cancelada", "Não comprou"],
-                                  ] as const
-                                ).map(([novo, rotulo]) => (
-                                  <button
-                                    key={novo}
-                                    type="button"
-                                    disabled={mudarVenda.isPending || venda.status === novo}
-                                    onClick={() =>
-                                      novo === "concluida"
-                                        ? pedirPagamentoDaOportunidade(a.lead_id!)
-                                        : mudarVenda.mutate(novo)
-                                    }
-                                    className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm hover:bg-secondary disabled:opacity-50"
-                                  >
-                                    {t(rotulo)}
-                                  </button>
-                                ))}
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            <Badge
-                              variant={VARIANTE_DA_VENDA[venda.status] ?? "neutral"}
+                {/* Venda: produto de interesse + valor + status na mesma linha; o pagamento abre embaixo */}
+                {venda ? (
+                  <section>
+                    <h3 className="mb-1 text-lg font-semibold">{t("Venda")}</h3>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+                      <span className="min-w-0 flex-1 truncate">
+                        {venda.product_name || venda.name || t("Produto de interesse")}
+                      </span>
+                      <span className="font-semibold tabular-nums">
+                        {formatMoney(venda.amount_cents, venda.currency)}
+                      </span>
+                      {podeEditar && a.lead_id ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              data-testid="status-da-venda"
                               className="rounded-lg"
                             >
-                              {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
-                            </Badge>
-                          )}
-                        </div>
-                        {venda.status === "concluida" ||
-                        venda.status === "comprometida" ||
-                        parcelas.length > 0 ? (
-                          <div className="mt-3 space-y-2 border-t border-border pt-3">
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              {[
-                                [t("Valor"), formatMoney(venda.amount_cents, venda.currency)],
-                                [t("Pago"), formatMoney(pago, venda.currency)],
-                                [
-                                  t("A receber"),
-                                  formatMoney(Math.max(total - pago, 0), venda.currency),
-                                ],
-                              ].map(([r, v]) => (
-                                <div key={r} className="rounded-xl bg-background px-2 py-2">
-                                  <div className="text-[11px] text-text-muted">{r}</div>
-                                  <div className="font-semibold tabular-nums">{v}</div>
-                                </div>
-                              ))}
-                            </div>
-                            {parcelas.length > 0 && (
-                              <ul className="divide-y divide-border rounded-xl border border-border">
-                                {parcelas.map((p) => (
-                                  <li
-                                    key={p.id ?? p.number}
-                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                                  >
-                                    <span className="tabular-nums">
-                                      {p.number}ª ·{" "}
-                                      {new Date(`${p.due_on}T12:00:00`).toLocaleDateString(tag)}
-                                    </span>
-                                    <span className="tabular-nums">
-                                      {formatMoney(p.amount_cents, venda.currency)}
-                                    </span>
-                                    <Badge
-                                      variant={p.status === "recebida" ? "success" : "warning"}
-                                      className="rounded-lg"
-                                    >
-                                      {p.status === "recebida" ? t("Pago") : t("Comprometido")}
-                                    </Badge>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                            {podeEditar ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="rounded-xl"
-                                onClick={() => setEditandoVenda(true)}
+                              <Badge
+                                variant={VARIANTE_DA_VENDA[venda.status] ?? "neutral"}
+                                className="cursor-pointer gap-1 rounded-lg"
                               >
-                                {t("Editar venda e parcelas")}
-                              </Button>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
+                                {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
+                                <PencilSimple size={11} aria-hidden />
+                              </Badge>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-56 p-1.5">
+                            {(
+                              [
+                                ["comprometida", "Comprometida"],
+                                ["concluida", "Paga"],
+                                ["cancelada", "Não comprou"],
+                              ] as const
+                            ).map(([novo, rotulo]) => (
+                              <button
+                                key={novo}
+                                type="button"
+                                disabled={mudarVenda.isPending || venda.status === novo}
+                                onClick={() =>
+                                  novo === "concluida"
+                                    ? pedirPagamentoDaOportunidade(a.lead_id!)
+                                    : mudarVenda.mutate(novo)
+                                }
+                                className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm hover:bg-secondary disabled:opacity-50"
+                              >
+                                {t(rotulo)}
+                              </button>
+                            ))}
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <Badge
+                          variant={VARIANTE_DA_VENDA[venda.status] ?? "neutral"}
+                          className="rounded-lg"
+                        >
+                          {t(STATUS_DA_VENDA[venda.status] ?? venda.status)}
+                        </Badge>
+                      )}
                     </div>
-                  ) : null}
-                </>
-              ) : null}
-
-              {(cfg.blocos.roteiro && cfg.roteiro.length > 0) ||
-              cfg.blocos.anotacoes ||
-              cfg.blocos.ia ? (
-                <Bloco
-                  titulo={t(ROTULO_DO_MODELO[modelo])}
-                  className="md:col-span-2"
-                  acao={
-                    podeEditar && a.status !== "cancelled" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="rounded-xl"
-                        disabled={
-                          salvar.isPending || anotacao === null || anotacao === (a.notes ?? "")
-                        }
-                        onClick={() =>
-                          salvar.mutate(
-                            { notes: textoDaAnotacao.slice(0, 2000) },
-                            { onSuccess: () => setAnotacao(null) },
-                          )
-                        }
-                      >
-                        {t("Salvar anotações")}
-                      </Button>
-                    ) : undefined
-                  }
-                >
-                  <div
-                    className={cn(
-                      "grid gap-4",
-                      (cfg.blocos.roteiro || cfg.blocos.ia) &&
-                        cfg.blocos.anotacoes &&
-                        "lg:grid-cols-[1fr_1.2fr]",
-                    )}
-                  >
-                    {(cfg.blocos.roteiro || cfg.blocos.ia) && (
-                      <div className="space-y-3">
-                        {cfg.blocos.roteiro && cfg.roteiro.length > 0 ? (
-                          <div>
-                            <div className="mb-1.5 text-xs font-medium text-text-muted">
-                              {t("Roteiro de atendimento")}
+                    {venda.status === "concluida" ||
+                    venda.status === "comprometida" ||
+                    parcelas.length > 0 ? (
+                      <div className="mt-3 space-y-2 rounded-xl border border-border p-3 text-sm">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          {[
+                            [t("Valor"), formatMoney(venda.amount_cents, venda.currency)],
+                            [t("Pago"), formatMoney(pago, venda.currency)],
+                            [
+                              t("A receber"),
+                              formatMoney(Math.max(total - pago, 0), venda.currency),
+                            ],
+                          ].map(([r, v]) => (
+                            <div key={r} className="rounded-xl bg-background px-2 py-2">
+                              <div className="text-[11px] text-text-muted">{r}</div>
+                              <div className="font-semibold tabular-nums">{v}</div>
                             </div>
-                            <ol className="space-y-1.5">
-                              {cfg.roteiro.map((e, i) => (
-                                <li key={`${i}-${e.titulo}`}>
-                                  <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-card px-3 py-2">
-                                    <input
-                                      type="checkbox"
-                                      className="mt-0.5"
-                                      checked={!!feitos[i]}
-                                      onChange={(ev) =>
-                                        setFeitos((f) => ({ ...f, [i]: ev.target.checked }))
-                                      }
-                                    />
-                                    <span className="text-sm">
-                                      <span
-                                        className={cn(
-                                          "font-medium",
-                                          feitos[i] && "line-through opacity-60",
-                                        )}
-                                      >
-                                        {t(e.titulo)}
-                                      </span>
-                                      <span className="block text-xs text-text-muted">
-                                        {t(e.dica)}
-                                      </span>
-                                    </span>
-                                  </label>
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        ) : null}
-                        {cfg.blocos.ia ? (
-                          <div className="flex items-start gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-text-muted">
-                            <Sparkle
-                              size={16}
-                              weight="bold"
-                              className="mt-0.5 shrink-0"
-                              aria-hidden
-                            />
-                            <span>
-                              {t("Recomendações da IA ao vivo, durante a reunião: em breve.")}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                    {cfg.blocos.anotacoes ? (
-                      <div>
-                        <div className="mb-1.5 text-xs font-medium text-text-muted">
-                          {t("Anotações do atendimento")}
+                          ))}
                         </div>
-                        <textarea
-                          data-testid="anotacoes-do-atendimento"
-                          value={textoDaAnotacao}
-                          readOnly={!podeEditar || a.status === "cancelled"}
-                          maxLength={2000}
-                          onChange={(e) => setAnotacao(e.target.value)}
-                          placeholder={t(
-                            "Escreva aqui o que foi falado, as objeções e o combinado.",
-                          )}
-                          className="min-h-48 w-full resize-y rounded-2xl border border-border bg-card px-3 py-2.5 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-                        />
+                        {parcelas.length > 0 && (
+                          <ul className="divide-y divide-border rounded-xl border border-border">
+                            {parcelas.map((p) => (
+                              <li
+                                key={p.id ?? p.number}
+                                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                              >
+                                <span className="tabular-nums">
+                                  {p.number}ª ·{" "}
+                                  {new Date(`${p.due_on}T12:00:00`).toLocaleDateString(tag)}
+                                </span>
+                                <span className="tabular-nums">
+                                  {formatMoney(p.amount_cents, venda.currency)}
+                                </span>
+                                <Badge
+                                  variant={p.status === "recebida" ? "success" : "warning"}
+                                  className="rounded-lg"
+                                >
+                                  {p.status === "recebida" ? t("Pago") : t("Comprometido")}
+                                </Badge>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {podeEditar ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="rounded-xl"
+                            onClick={() => setEditandoVenda(true)}
+                          >
+                            {t("Editar venda e parcelas")}
+                          </Button>
+                        ) : null}
                       </div>
                     ) : null}
-                  </div>
-                </Bloco>
-              ) : null}
+                  </section>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* O editor de blocos: abre com o modelo do tipo e se adapta só neste compromisso */}
+            <div className="border-t border-border px-4 pt-4 pb-6 sm:px-8">
+              <EditorDoCompromisso
+                key={a.id}
+                id={a.id}
+                salvos={a.blocos ?? null}
+                modelo={blocosDoModelo(cfg, randomId)}
+                notasAntigas={a.notes}
+                podeEditar={podeEditar}
+                titulo={a.title}
+                aoSalvar={() =>
+                  void qc.invalidateQueries({ queryKey: ["agenda", "detalhe", a.id] })
+                }
+              />
             </div>
           </>
         )}

@@ -51832,3 +51832,10 @@ create policy marketing_cronograma_autoavaliacoes_all on public.marketing_cronog
   );
 
 revoke all on public.marketing_cronograma_autoavaliacoes from anon;
+
+-- ---- blocos do compromisso (migration 0670) ----
+alter table public.calendar_appointments
+  add column if not exists blocos jsonb;
+
+comment on column public.calendar_appointments.blocos is
+  'Blocos do editor da página do compromisso (mesmo formato dos blocos de Marketing). Nulo = ainda não adaptado: a página mostra o modelo do tipo. Validado por blocosSchema na rota.';
