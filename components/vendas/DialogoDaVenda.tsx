@@ -1078,6 +1078,32 @@ export function DialogoDaVenda({
           />
         </Fase>
 
+        {/* 4b · próximos passos e a data (entre o responsável e os compromissos). */}
+        <Fase titulo={t("Próximos passos")} cor="purple">
+          <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+            <input
+              value={proximoPasso}
+              maxLength={300}
+              onChange={(e) => setProximoPasso(e.target.value)}
+              // Escreveu a ação: confirma a data (a atual já vem escolhida).
+              onBlur={() => {
+                if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
+                  setConfirmandoPasso(proximoPasso.trim());
+                }
+              }}
+              placeholder={t("Ex.: Ligar na terça com a proposta")}
+              aria-label={t("Próximos passos")}
+              className={CAMPO}
+            />
+            <CampoDeData
+              valor={proximoPassoEm}
+              aoMudar={setProximoPassoEm}
+              rotulo={t("Próxima ação em")}
+              className="w-full"
+            />
+          </div>
+        </Fase>
+
         {/* 5 e 6 · compromissos e tarefas, como no Início; o que nasce aqui já leva cliente e oportunidade. */}
         {venda?.lead_id ? (
           <>
@@ -1471,32 +1497,6 @@ export function DialogoDaVenda({
           </Fase>
         ) : (
         <>
-        {/* 8 · próximos passos e a data. */}
-        <Fase titulo={t("Próximos passos")} cor="purple">
-          <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-            <input
-              value={proximoPasso}
-              maxLength={300}
-              onChange={(e) => setProximoPasso(e.target.value)}
-              // Escreveu a ação: confirma a data (a atual já vem escolhida).
-              onBlur={() => {
-                if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
-                  setConfirmandoPasso(proximoPasso.trim());
-                }
-              }}
-              placeholder={t("Ex.: Ligar na terça com a proposta")}
-              aria-label={t("Próximos passos")}
-              className={CAMPO}
-            />
-            <CampoDeData
-              valor={proximoPassoEm}
-              aoMudar={setProximoPassoEm}
-              rotulo={t("Próxima ação em")}
-              className="w-full"
-            />
-          </div>
-        </Fase>
-
         {/* 9 · comentários: a descrição e os comentários são um bloco só. */}
         <Fase titulo={t("Comentários")} cor="gray">
           <textarea
