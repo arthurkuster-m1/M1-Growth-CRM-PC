@@ -712,6 +712,22 @@ export function DialogoDaVenda({
     }
   }
 
+  // O título grava ao sair do campo (como na página do compromisso): quem edita o nome e fecha o
+  // painel sem apertar "Salvar" não o perde. Os demais campos seguem no botão.
+  const [nomeGravado, setNomeGravado] = useState((venda?.name ?? "").trim());
+  async function gravarTitulo() {
+    const novo = nomeDaVendaTexto.trim();
+    if (!venda || novo === nomeGravado) return;
+    try {
+      await apiClient.patch(`/api/v1/vendas/${venda.id}`, { name: novo });
+      setNomeGravado(novo);
+      void queryClient.invalidateQueries();
+      toast.success(t("Título salvo"));
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+
   async function salvar() {
     setSalvando(true);
     setErro(null);
@@ -875,6 +891,7 @@ export function DialogoDaVenda({
           <TituloDaOportunidade
             valor={nomeDaVendaTexto}
             aoMudar={setNomeDaVendaTexto}
+            aoSair={() => void gravarTitulo()}
             placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
           />
         </div>
@@ -959,6 +976,7 @@ export function DialogoDaVenda({
           <TituloDaOportunidade
             valor={nomeDaVendaTexto}
             aoMudar={setNomeDaVendaTexto}
+            aoSair={() => void gravarTitulo()}
             placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
           />
         </>
