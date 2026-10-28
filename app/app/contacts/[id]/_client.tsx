@@ -16,7 +16,7 @@ import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
-import { BlocosEmToggle } from "@/components/contacts/ficha/BlocoDaFicha";
+import { EstiloDosBlocos } from "@/components/contacts/ficha/BlocoDaFicha";
 import { CompromissosETarefasDoLead } from "@/components/contacts/ficha/CompromissosETarefasDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
 import { OportunidadesDoLead } from "@/components/contacts/ficha/OportunidadesDoLead";
@@ -411,22 +411,24 @@ function ContactDetailInner({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <PainelDaVisaoGeral
-            contactId={contactId}
-            aoAbrir={irParaAba}
-            podeEditar={podeEditarFicha}
-            aoAbrirTarefa={(id) => {
-              setTarefaParaAbrir(id);
-              irParaAba("atendimento");
-            }}
-          />
+          <EstiloDosBlocos.Provider value="cartao">
+            <PainelDaVisaoGeral
+              contactId={contactId}
+              aoAbrir={irParaAba}
+              podeEditar={podeEditarFicha}
+              aoAbrirTarefa={(id) => {
+                setTarefaParaAbrir(id);
+                irParaAba("atendimento");
+              }}
+            />
+          </EstiloDosBlocos.Provider>
           <div className="mt-4">
             <RoteirosDoContato contactId={contactId} />
           </div>
           {/* O que era a aba Cadastro: cadastro, links, qualificação, origem, ciclo, datas e tags,
               cada um num toggle (fechado = só o título). */}
           <div className="mt-4">
-            <BlocosEmToggle.Provider value>
+            <EstiloDosBlocos.Provider value="toggle">
               <div className="grid gap-4">
                 <CompromissosETarefasDoLead contactId={contactId} podeEditar={podeEditarFicha} />
                 <OportunidadesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
@@ -441,7 +443,7 @@ function ContactDetailInner({ contactId }: Props) {
                   podeGerirCategorias={Boolean(podeMarcarPessoal)}
                 />
               </div>
-            </BlocosEmToggle.Provider>
+            </EstiloDosBlocos.Provider>
           </div>
         </TabsContent>
 

@@ -95,8 +95,8 @@ async function abrirFicha(sourceMetadata: Record<string, unknown>, source = BASE
   // Controle de vacuidade: a ficha renderizou, então um nível ausente abaixo é
   // ausência de verdade, e não tela vazia.
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Joana");
-  // A origem mora na aba Cadastro.
-  await userEvent.click(screen.getByRole("tab", { name: "Cadastro" }));
+  // A origem mora num toggle da Visão geral.
+  await userEvent.click(screen.getByRole("button", { name: /^Origem/ }));
 }
 
 /** O valor ao lado do rótulo, na `<dl>` da ficha — ou `null` se o rótulo não está lá. */
