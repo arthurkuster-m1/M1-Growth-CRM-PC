@@ -82,7 +82,7 @@ import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { apiClient } from "@/lib/api/client";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { lerNumero } from "@/lib/marketing/calculadora";
-import { aplicarConsulta, type CampoConsultavel } from "@/lib/motor/consulta";
+import { aplicarConsulta, intervaloDoPeriodo, type CampoConsultavel } from "@/lib/motor/consulta";
 import {
   moverColuna,
   resolverColunas,
@@ -92,6 +92,7 @@ import {
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import {
   ArrowRight,
+  CalendarBlank,
   ChatCircle,
   InstagramLogo,
   MagnifyingGlass,
@@ -365,6 +366,7 @@ export function ClientesCRM({
   const [destaque, setDestaque] = useState<
     | null
     | "ligarhoje"
+    | "proximos5"
     | "cadencia"
     | "faturamento"
     | "abertos"
@@ -2612,6 +2614,11 @@ export function ClientesCRM({
           atrasoDaCadenciaDe(l),
         )
       : null;
+  /** A data do próximo passo cai de hoje até daqui a 4 dias (os 5 dias do filtro "Próximos 5 dias")? */
+  const noPeriodoDosProximosPassos = (dia: string | null): boolean => {
+    const janela = intervaloDoPeriodo("proximos_5_dias", hojeIso);
+    return Boolean(dia && janela && dia.slice(0, 10) >= janela.de && dia.slice(0, 10) <= janela.ate);
+  };
   /** Quem aparece na lista quando se clica num número do topo. */
   const passaNoDestaque = (l: Linha): boolean => {
     const emAberto = (l.participacao ? [l.participacao] : l.participacoes).filter(
@@ -2631,6 +2638,8 @@ export function ClientesCRM({
         return l.participacao
           ? prioridadeDoLead(l) !== null
           : false;
+      case "proximos5":
+        return emAberto.some((p) => noPeriodoDosProximosPassos(p.proxima_acao_em));
       case "cadencia": {
         const passo = l.participacao
           ? cadenciaDeHoje.porLead.get(l.participacao.lead_id)
@@ -2670,6 +2679,12 @@ export function ClientesCRM({
         : Infinity;
     visiveis.sort((x, y) => peso(x) - peso(y));
   }
+  // Próximos 5 dias: o passo que vence primeiro vem primeiro.
+  if (destaque === "proximos5" && !preferencias.ordenacao?.length) {
+    const quando = (l: Linha) =>
+      (l.participacao?.proxima_acao_em ?? "9999-12-31").slice(0, 10);
+    visiveis.sort((x, y) => quando(x).localeCompare(quando(y)));
+  }
   // Cadência de hoje: do passo mais atrasado ao menos.
   if (destaque === "cadencia" && !preferencias.ordenacao?.length) {
     const atraso = (l: Linha) => {
@@ -2688,6 +2703,10 @@ export function ClientesCRM({
     return passo ? venceAteHoje(passo.vence_em, hojeLocal) : false;
   }).length;
   const filaDaCadencia = metaDoDia > 0 ? Math.min(doDiaNaCadencia, metaDoDia) : doDiaNaCadencia;
+  const filaDosProximos5 = alvos.filter(
+    (l) =>
+      l.participacao?.status === "open" && noPeriodoDosProximosPassos(l.participacao.proxima_acao_em),
+  ).length;
   const filaDoDia = alvos.filter(
     (l) =>
       l.participacao &&
@@ -3142,6 +3161,21 @@ export function ClientesCRM({
               {filaDoDia}
             </span>
           </button>
+          <button
+            type="button"
+            aria-pressed={destaque === "proximos5"}
+            title={t("Leads com o próximo passo marcado de hoje até daqui a 4 dias")}
+            onClick={() => setDestaque(destaque === "proximos5" ? null : "proximos5")}
+            className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
+              destaque === "proximos5" ? "border-primary bg-primary/10" : "bg-card"
+            }`}
+          >
+            <CalendarBlank size={14} aria-hidden />
+            {t("Próximos 5 dias")}
+            <span className="rounded-full bg-secondary px-1.5 text-xs tabular-nums">
+              {filaDosProximos5}
+            </span>
+          </button>
           {cadenciaDeHoje.passos.length > 0 ? (
             <button
               type="button"
@@ -3377,7 +3411,9 @@ export function ClientesCRM({
             <strong>
               {destaque === "ligarhoje"
                 ? t("Ligar hoje")
-                : destaque === "cadencia"
+                : destaque === "proximos5"
+                  ? t("Próximos 5 dias")
+                  : destaque === "cadencia"
                   ? t("Cadência de hoje")
                   : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}
             </strong>{" "}

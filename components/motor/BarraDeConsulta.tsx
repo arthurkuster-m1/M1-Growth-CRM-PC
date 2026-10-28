@@ -222,6 +222,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
     mes_passado: t("Mês passado"),
     proximo_mes: t("Próximo mês"),
     ultimos_7_dias: t("Últimos 7 dias"),
+    proximos_5_dias: t("Próximos 5 dias"),
     proximos_7_dias: t("Próximos 7 dias"),
     ultimos_30_dias: t("Últimos 30 dias"),
     proximos_30_dias: t("Próximos 30 dias"),

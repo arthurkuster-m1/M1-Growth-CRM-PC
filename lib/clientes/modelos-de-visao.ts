@@ -240,9 +240,35 @@ export const MODELO_QUADRO: ModeloDeVisao = {
   ]),
 };
 
+/** PRÓXIMOS PASSOS — quem tem um passo marcado nos próximos 5 dias, o que vence primeiro em cima. */
+export const MODELO_PROXIMOS_PASSOS: ModeloDeVisao = {
+  id: "proximos-passos",
+  nome: "Próximos passos",
+  descricao: "Quem tem o próximo passo marcado nos próximos 5 dias, o mais próximo primeiro.",
+  tipo: "tabela",
+  config: {
+    ...colunas([
+      "nome",
+      "proxima-acao",
+      "proxima-acao-em",
+      "cliente",
+      "telefone",
+      "etapa",
+      "responsavel",
+      "ligar",
+      "inbox",
+      "acao",
+      "previsto",
+    ]),
+    filtros: [{ campo: "proxima-acao-em", operador: "periodo", valor: "proximos_5_dias" }],
+    ordenacao: [{ campo: "proxima-acao-em", direcao: "asc" }],
+  },
+};
+
 /** As visualizações de fábrica das Oportunidades (criadas na migration 0673) e o Radar. */
 export const VISOES_DE_FABRICA_DAS_OPORTUNIDADES: readonly ModeloDeVisao[] = [
   MODELO_CONVERSAO,
+  MODELO_PROXIMOS_PASSOS,
   MODELO_ORIGEM,
   MODELO_VENDAS,
   MODELO_PERDAS,

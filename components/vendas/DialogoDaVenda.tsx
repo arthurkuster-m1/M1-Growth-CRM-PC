@@ -9,6 +9,7 @@ import type { DadosDoLead } from "@/components/leads/FichaDoLead";
 import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -268,6 +269,27 @@ export function DialogoDaVenda({
   const [camposEditados, setCamposDoNegocio] = useState<Record<string, unknown> | null>(null);
   // ── Origem da venda (o mesmo modelo do lead): fonte + campanha → conjunto → anúncio → página ──
   const queryClient = useQueryClient();
+  const [virandoTarefa, setVirandoTarefa] = useState(false);
+  /** O próximo passo, quando é trabalho de verdade, vira uma tarefa do lead (com a mesma data). */
+  async function virarTarefa() {
+    if (!venda?.lead_id) return;
+    setVirandoTarefa(true);
+    try {
+      await apiClient.post("/api/v1/tasks", {
+        title: proximoPasso.trim(),
+        due_date: proximoPassoEm ? new Date(`${proximoPassoEm}T09:00:00`).toISOString() : null,
+        lead_id: venda.lead_id,
+        contact_id: venda.contact_id,
+        priority: "medium",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["crm_tasks"] });
+      toast.success(t("Tarefa criada."));
+    } catch (e) {
+      showApiError(e);
+    } finally {
+      setVirandoTarefa(false);
+    }
+  }
   const leadDaVenda = venda?.lead_id ?? null;
   const origemDoCard = useQuery({
     queryKey: ["ficha-do-lead", leadDaVenda],
@@ -1136,6 +1158,16 @@ export function DialogoDaVenda({
               className="w-full"
             />
           </div>
+          {venda?.lead_id && proximoPasso.trim() ? (
+            <button
+              type="button"
+              disabled={virandoTarefa}
+              onClick={() => void virarTarefa()}
+              className="mt-2 text-sm font-medium text-primary hover:underline disabled:opacity-50"
+            >
+              {t("Transformar em tarefa")}
+            </button>
+          ) : null}
         </Fase>
 
         {/* 5 e 6 · compromissos e tarefas, como no Início; o que nasce aqui já leva cliente e oportunidade. */}
