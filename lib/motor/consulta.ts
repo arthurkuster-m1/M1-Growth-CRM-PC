@@ -85,6 +85,7 @@ export const PERIODOS_RELATIVOS = [
   "mes_passado",
   "proximo_mes",
   "ultimos_7_dias",
+  "proximos_5_dias",
   "proximos_7_dias",
   "ultimos_30_dias",
   "proximos_30_dias",
@@ -151,6 +152,8 @@ export function intervaloDoPeriodo(
       return { de: primeiroDoMes(hoje, 1), ate: ultimoDoMes(hoje, 1) };
     case "ultimos_7_dias":
       return { de: somarDias(hoje, -6), ate: hoje };
+    case "proximos_5_dias":
+      return { de: hoje, ate: somarDias(hoje, 4) };
     case "proximos_7_dias":
       return { de: hoje, ate: somarDias(hoje, 6) };
     case "ultimos_30_dias":
