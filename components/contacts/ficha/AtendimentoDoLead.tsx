@@ -74,10 +74,6 @@ export function AtendimentoDoLead({
       <BlocoDaFicha titulo={t("Atendimento")} cor="blue">
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <CampoLido rotulo={t("Primeira abordagem")} valor={dia(qual.data?.primeira_abordagem, true)} />
-          <CampoLido
-            rotulo={t("Qualificação")}
-            valor={qual.data?.is_mql ? <SeloDaFicha cor="green">MQL</SeloDaFicha> : <SeloDaFicha cor="gray">{t("Não qualificado")}</SeloDaFicha>}
-          />
           <CampoLido rotulo={t("Funis")} valor={String(qual.data?.funis.length ?? 0)} />
           <CampoLido rotulo={t("Tarefas pendentes")} valor={String(lista.length)} />
         </dl>

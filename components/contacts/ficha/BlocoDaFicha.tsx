@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+
+import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
 
 import { CaretDown, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
-export type CorDoBloco = "blue" | "green" | "purple" | "orange" | "pink" | "yellow" | "gray" | "red";
+export type CorDoBloco =
+  "blue" | "green" | "purple" | "orange" | "pink" | "yellow" | "gray" | "red";
 
 const BARRA: Record<CorDoBloco, string> = {
   blue: "border-l-blue-500",
@@ -17,6 +20,19 @@ const BARRA: Record<CorDoBloco, string> = {
   gray: "border-l-gray-400",
   red: "border-l-red-500",
 };
+
+/**
+ * Dentro deste contexto os blocos da ficha viram TOGGLES (o mesmo desenho dos campos da página da
+ * oportunidade): fechados mostram só o título; a ação do bloco vai para dentro, no alto.
+ */
+export const BlocosEmToggle = createContext(false);
+
+/**
+ * O desenho do bloco: `barra` (o antigo, com a barra colorida na lateral), `cartao` (o cartão
+ * simples da página da oportunidade, aberto) ou `toggle` (o mesmo cartão, que abre e fecha).
+ */
+export type EstiloDoBloco = "barra" | "cartao" | "toggle";
+export const EstiloDosBlocos = createContext<EstiloDoBloco>("barra");
 
 /** Um tópico da ficha: cartão com a barra colorida na lateral, título e (opcional) uma ação. */
 export function BlocoDaFicha({
@@ -39,10 +55,43 @@ export function BlocoDaFicha({
   className?: string;
 }) {
   const [aberto, setAberto] = useState(recolhivel?.abertoInicial ?? false);
+  const emToggleAntigo = useContext(BlocosEmToggle);
+  const estilo = useContext(EstiloDosBlocos);
+  const emToggle = emToggleAntigo || estilo === "toggle";
+  if (estilo === "cartao" && !recolhivel && !emToggle) {
+    return (
+      <section
+        className={cn(
+          "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:p-4",
+          className,
+        )}
+      >
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold">{titulo}</h3>
+          {acao}
+        </div>
+        {children}
+      </section>
+    );
+  }
+  if (emToggle && !recolhivel) {
+    return (
+      <BlocoRecolhivel titulo={titulo}>
+        {acao ? (
+          <div className="mb-3 flex flex-wrap items-center justify-end gap-2">{acao}</div>
+        ) : null}
+        {children}
+      </BlocoRecolhivel>
+    );
+  }
   if (recolhivel) {
     return (
       <section
-        className={cn("min-w-0 rounded-2xl border border-l-4 bg-card shadow-sm", BARRA[cor], className)}
+        className={cn(
+          "min-w-0 rounded-2xl border border-l-4 bg-card shadow-sm",
+          BARRA[cor],
+          className,
+        )}
       >
         <button
           type="button"
@@ -56,7 +105,10 @@ export function BlocoDaFicha({
             <CaretRight size={14} weight="bold" aria-hidden className="shrink-0" />
           )}
           <span className="max-w-[40%] shrink-0 truncate text-sm font-semibold">{titulo}</span>
-          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground" title={recolhivel.texto}>
+          <span
+            className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
+            title={recolhivel.texto}
+          >
             {recolhivel.texto}
           </span>
           <span className="flex shrink-0 items-center gap-1.5">{recolhivel.selos}</span>
@@ -67,7 +119,11 @@ export function BlocoDaFicha({
   }
   return (
     <section
-      className={cn("min-w-0 rounded-2xl border border-l-4 bg-card p-4 shadow-sm", BARRA[cor], className)}
+      className={cn(
+        "min-w-0 rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
+        BARRA[cor],
+        className,
+      )}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{titulo}</h2>

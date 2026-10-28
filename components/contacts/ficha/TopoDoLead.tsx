@@ -50,7 +50,7 @@ export function TopoDoLead({
 }) {
   const t = useT();
   const queryClient = useQueryClient();
-  const membros = useAssignableMembers(podeEditar);
+  const membros = useAssignableMembers(true);
   const atualizar = useUpdateContact(contact.id);
   const qual = useQualificacaoDoContato(contact.id);
   const negocios = useDadosDosNegocios((qual.data?.funis ?? []).map((f) => f.lead_id));
@@ -75,6 +75,18 @@ export function TopoDoLead({
         }>(`/api/v1/contacts/${contact.id}/ciclo`)
       ).data,
   });
+  // MQL: a etiqueta ao lado do ciclo de vida; um clique marca ou desmarca.
+  async function alternarMql() {
+    try {
+      await apiClient.put(`/api/v1/contacts/${contact.id}/qualificacao`, {
+        is_mql: !qual.data?.is_mql,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["qualificacao-do-lead", contact.id] });
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    } catch (e) {
+      showApiError(e);
+    }
+  }
   async function mudarDono(id: string) {
     try {
       await apiClient.post("/api/v1/clientes/lote", {
@@ -225,28 +237,12 @@ export function TopoDoLead({
                 {t("Ciclo de vida")}
               </p>
               <p className="mt-1 text-sm">{ciclo.data.ciclo_motivo ?? "—"}</p>
-              <label className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                {t("Gestor de Relacionamento")}
-                <select
-                  disabled={!podeEditar}
-                  value={ciclo.data.dono_user_id ?? ""}
-                  onChange={(e) => void mudarDono(e.target.value)}
-                  className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
-                >
-                  <option value="">{t("Sem dono")}</option>
-                  {(membros.data ?? []).map((m) => (
-                    <option key={m.user_id} value={m.user_id}>
-                      {m.full_name?.trim() || t("Sem nome")}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </PopoverContent>
           </Popover>
         ) : null}
       </div>
 
-      {campos.length > 0 || podeEditar ? (
+      {campos.length > 0 || podeEditar || ciclo.data?.dono_user_id ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {campos.map(([k, v]) => (
             <span
@@ -274,6 +270,44 @@ export function TopoDoLead({
             >
               <Plus size={12} weight="bold" aria-hidden />
             </button>
+          ) : null}
+          {ciclo.data && (ciclo.data.dono_user_id || podeEditar) ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("Gestor de Relacionamento")}
+                  title={t("Gestor de Relacionamento")}
+                  className="rounded-full"
+                >
+                  <Etiqueta ponto cor={ciclo.data.dono_user_id ? "purple" : "gray"}>
+                    {ciclo.data.dono_user_id
+                      ? ((membros.data ?? [])
+                          .find((m) => m.user_id === ciclo.data!.dono_user_id)
+                          ?.full_name?.trim() ?? t("Fora da equipe"))
+                      : t("Sem gestor")}
+                  </Etiqueta>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-3">
+                <label className="grid gap-1 text-xs text-muted-foreground">
+                  {t("Gestor de Relacionamento")}
+                  <select
+                    disabled={!podeEditar}
+                    value={ciclo.data.dono_user_id ?? ""}
+                    onChange={(e) => void mudarDono(e.target.value)}
+                    className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
+                  >
+                    <option value="">{t("Sem dono")}</option>
+                    {(membros.data ?? []).map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.full_name?.trim() || t("Sem nome")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </PopoverContent>
+            </Popover>
           ) : null}
         </div>
       ) : null}

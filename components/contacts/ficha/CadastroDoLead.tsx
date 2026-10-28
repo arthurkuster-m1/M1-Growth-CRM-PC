@@ -318,7 +318,7 @@ export function CadastroDoLead({
   return (
     <div className="grid gap-4">
       <BlocoDaFicha
-        titulo={t("Contato")}
+        titulo={t("Cadastro")}
         cor="blue"
         acao={
           podeEditar && mudou ? (
@@ -328,32 +328,11 @@ export function CadastroDoLead({
           ) : null
         }
       >
+        {/* Nome, telefone e e-mail se editam no topo da página. */}
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="grid gap-1">
-            <Label className="text-xs">{t("Nome")}</Label>
-            <Input value={nome} disabled={!podeEditar} onChange={(e) => setNome(e.target.value)} />
-          </div>
           <dl className="self-end">
             <CampoLido rotulo={`${t("Nome")} · WhatsApp`} valor={contact.display_name} />
           </dl>
-          <div className="grid gap-1">
-            <Label className="text-xs">{t("Telefone")}</Label>
-            <Input
-              value={telefone}
-              disabled={!podeEditar}
-              inputMode="tel"
-              onChange={(e) => setTelefone(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <Label className="text-xs">{t("E-mail")}</Label>
-            <Input
-              type="email"
-              value={email}
-              disabled={!podeEditar}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
           <div className="grid gap-1">
             <Label className="text-xs">{t("Data de nascimento")}</Label>
             <CampoDeData
