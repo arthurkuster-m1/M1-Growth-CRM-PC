@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  COLUNAS_DE_CLIENTES,
   COLUNAS_DE_OPORTUNIDADES,
+  MODELOS_DOS_CLIENTES,
   MODELOS_DAS_OPORTUNIDADES,
   VISOES_DE_FABRICA_DAS_OPORTUNIDADES,
 } from "@/lib/clientes/modelos-de-visao";
@@ -32,4 +34,15 @@ describe("visões de fábrica das oportunidades", () => {
     expect(new Set(nomes).size).toBe(nomes.length);
     expect(nomes).toContain("Radar");
   });
+
+  for (const m of MODELOS_DOS_CLIENTES) {
+    it(`Clientes · ${m.nome}: só usa colunas de clientes, começa pelo nome e esconde o resto`, () => {
+      const ordem = m.config.ordem ?? [];
+      expect(ordem[0]).toBe("nome");
+      expect(new Set(ordem).size).toBe(ordem.length);
+      expect([...ordem].sort()).toEqual([...COLUNAS_DE_CLIENTES].sort());
+      const visiveis = Object.entries(m.config.visiveis ?? {}).filter(([, v]) => v);
+      expect(visiveis.length).toBeGreaterThan(3);
+    });
+  }
 });

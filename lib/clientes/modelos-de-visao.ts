@@ -65,13 +65,48 @@ export const COLUNAS_DE_OPORTUNIDADES = [
 ] as const;
 
 /** Só estas colunas aparecem, nesta ordem; as outras ficam escondidas. */
-function colunas(ids: readonly string[]): PreferenciasDaTabela {
-  const visiveis = Object.fromEntries(COLUNAS_DE_OPORTUNIDADES.map((id) => [id, ids.includes(id)]));
+function colunas(
+  ids: readonly string[],
+  todas: readonly string[] = COLUNAS_DE_OPORTUNIDADES,
+): PreferenciasDaTabela {
+  const visiveis = Object.fromEntries(todas.map((id) => [id, ids.includes(id)]));
   return {
-    ordem: [...ids, ...COLUNAS_DE_OPORTUNIDADES.filter((id) => !ids.includes(id))],
+    ordem: [...ids, ...todas.filter((id) => !ids.includes(id))],
     visiveis,
   };
 }
+
+/** TODAS as colunas da tabela de Clientes (a pessoa), na ordem de fábrica. */
+export const COLUNAS_DE_CLIENTES = [
+  "nome",
+  "ciclo",
+  "mql",
+  "dono",
+  "ativo-ate",
+  "ultimo-pagamento",
+  "proximo-pagamento",
+  "email",
+  "telefone",
+  "origem",
+  "tags",
+  "entrou",
+  "abordagem",
+  "primeira-compra",
+  "ltv",
+  "ltv-previsto",
+  "interesse",
+  "vendas",
+  "oportunidades-abertas",
+  "funis-ate-comprar",
+  "dias-ate-comprar",
+  "origem-campanha",
+  "origem-posicionamento",
+  "anuncio",
+  "lp",
+  "atividade",
+] as const;
+
+const colunasDeClientes = (ids: readonly string[]) => colunas(ids, COLUNAS_DE_CLIENTES);
 
 /**
  * O RADAR: o que esfriou e pede ação — Crítico e Em risco, com o mais urgente em cima. "Em voo"
@@ -224,7 +259,8 @@ export const MODELO_PERDAS: ModeloDeVisao = {
 export const MODELO_QUADRO: ModeloDeVisao = {
   id: "quadro-de-conversao",
   nome: "Quadro de conversão",
-  descricao: "O quadro do funil com o cartão enxuto: cliente, telefone, valor, radar e próxima ação.",
+  descricao:
+    "O quadro do funil com o cartão enxuto: cliente, telefone, valor, radar e próxima ação.",
   tipo: "kanban",
   config: colunas([
     "nome",
@@ -279,4 +315,75 @@ export const VISOES_DE_FABRICA_DAS_OPORTUNIDADES: readonly ModeloDeVisao[] = [
 export const MODELOS_DAS_OPORTUNIDADES: readonly ModeloDeVisao[] = [
   ...VISOES_DE_FABRICA_DAS_OPORTUNIDADES,
   MODELO_RADAR,
+];
+
+/** LISTA DE CLIENTES — quem é a pessoa, como falar com ela e em que ponto da relação está. */
+export const MODELO_LISTA_DE_CLIENTES: ModeloDeVisao = {
+  id: "lista-de-clientes",
+  nome: "Lista de clientes",
+  descricao: "Quem é cada cliente, como falar com ele e em que ponto da relação está.",
+  tipo: "tabela",
+  config: colunasDeClientes([
+    "nome",
+    "telefone",
+    "email",
+    "ciclo",
+    "mql",
+    "dono",
+    "tags",
+    "ativo-ate",
+    "atividade",
+  ]),
+};
+
+/** ANÁLISE DE COMPRAS — quanto cada cliente comprou e quanto demorou para comprar. */
+export const MODELO_ANALISE_DE_COMPRAS: ModeloDeVisao = {
+  id: "analise-de-compras",
+  nome: "Análise de Compras",
+  descricao: "Quanto cada cliente já pagou, o que está em interesse e quanto demorou para comprar.",
+  tipo: "tabela",
+  config: colunasDeClientes([
+    "nome",
+    "ciclo",
+    "entrou",
+    "abordagem",
+    "primeira-compra",
+    "funis-ate-comprar",
+    "dias-ate-comprar",
+    "vendas",
+    "ltv",
+    "ltv-previsto",
+    "interesse",
+    "ultimo-pagamento",
+    "proximo-pagamento",
+  ]),
+};
+
+/** ANÁLISE DE ORIGEM — de onde veio cada cliente (campanha, anúncio, página e posicionamento). */
+export const MODELO_ANALISE_DE_ORIGEM: ModeloDeVisao = {
+  id: "analise-de-origem-clientes",
+  nome: "Análise de Origem",
+  descricao: "De onde veio cada cliente: origem, campanha, anúncio, página e posicionamento.",
+  tipo: "tabela",
+  config: {
+    ...colunasDeClientes([
+      "nome",
+      "ciclo",
+      "mql",
+      "entrou",
+      "origem",
+      "origem-campanha",
+      "lp",
+      "anuncio",
+      "origem-posicionamento",
+    ]),
+    ordenacao: [{ campo: "origem", direcao: "asc" }],
+  },
+};
+
+/** Os modelos que a aba Clientes oferece no "+" (a pessoa cria com um clique e edita à vontade). */
+export const MODELOS_DOS_CLIENTES: readonly ModeloDeVisao[] = [
+  MODELO_LISTA_DE_CLIENTES,
+  MODELO_ANALISE_DE_COMPRAS,
+  MODELO_ANALISE_DE_ORIGEM,
 ];
