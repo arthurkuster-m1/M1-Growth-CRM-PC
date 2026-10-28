@@ -4,6 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 
+import { CampoInline } from "@/components/contacts/ficha/CampoInline";
+import {
+  useDadosDosNegocios,
+  useQualificacaoDoContato,
+} from "@/components/contacts/ficha/dados-da-ficha";
+import { telefoneE164 } from "@/components/leads/FichaDoLead";
+import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { rotuloDaChave } from "@/components/contacts/ficha/CadastroDoLead";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
@@ -21,7 +28,7 @@ import { apiClient } from "@/lib/api/client";
 import { PREFIXO_DA_CHAVE } from "@/lib/leads/links-de-contato";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
 import type { Contact } from "@/lib/types/contacts";
-import { ChatCircle, NotePencil, Phone, PencilSimple } from "@/lib/ui/icons";
+import { ChatCircle, NotePencil, PencilSimple, Phone, Plus } from "@/lib/ui/icons";
 import { nomeDaVenda, type Venda } from "@/lib/vendas";
 
 const textoDoValor = (v: unknown): string =>
@@ -44,6 +51,10 @@ export function TopoDoLead({
   const t = useT();
   const queryClient = useQueryClient();
   const membros = useAssignableMembers(podeEditar);
+  const atualizar = useUpdateContact(contact.id);
+  const qual = useQualificacaoDoContato(contact.id);
+  const negocios = useDadosDosNegocios((qual.data?.funis ?? []).map((f) => f.lead_id));
+  const [novoCampo, setNovoCampo] = useState<{ nome: string; valor: string } | null>(null);
   const [abertaId, setAbertaId] = useState<string | null>(null);
   const [acaoAberta, setAcaoAberta] = useState(false);
   const [anotacaoAberta, setAnotacaoAberta] = useState(false);
@@ -94,16 +105,79 @@ export function TopoDoLead({
     contact.custom_fields && typeof contact.custom_fields._rotulos === "object"
       ? (contact.custom_fields._rotulos as Record<string, string>)
       : {};
-  const campos = Object.entries(contact.custom_fields ?? {}).filter(
-    ([k, v]) =>
-      !k.startsWith(PREFIXO_DA_CHAVE) &&
-      !k.startsWith("_") &&
-      v !== null &&
-      v !== "" &&
-      typeof v !== "object",
-  );
+  // Os campos do contato e os dos funis dele, juntos (o mesmo que o Cadastro mostra).
+  const juntos = new Map<string, unknown>();
+  for (const [k, v] of Object.entries(contact.custom_fields ?? {})) {
+    if (k.startsWith(PREFIXO_DA_CHAVE) || k.startsWith("_")) continue;
+    if (v === null || v === "" || typeof v === "object") continue;
+    juntos.set(k, v);
+  }
+  for (const n of negocios.dados) {
+    for (const [k, v] of Object.entries(n.custom_fields ?? {})) {
+      if (v === null || v === "" || (typeof v === "object" && !Array.isArray(v))) continue;
+      if (!juntos.has(k)) juntos.set(k, v);
+    }
+  }
+  const campos = [...juntos.entries()];
   const rotuloDo = (k: string) =>
-    rotulos[k] ?? camposDefinidos.find((d) => d.key === k)?.label ?? rotuloDaChave(k);
+    rotulos[k] ??
+    camposDefinidos.find((d) => d.key === k)?.label ??
+    negocios.dados.flatMap((n) => n.negocio.field_defs).find((d) => d.key === k)?.label ??
+    rotuloDaChave(k);
+
+  async function gravarContato(corpo: Record<string, unknown>): Promise<boolean> {
+    try {
+      await atualizar.mutateAsync(corpo);
+      return true;
+    } catch {
+      return false; // o hook já avisou
+    }
+  }
+  const chaveDoNome = (nome: string): string => {
+    const base = nome
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 36);
+    return /^[a-z]/.test(base) ? base : `campo_${base}`;
+  };
+  /** Grava um campo personalizado (novo ou existente) e o repete nos funis que já o têm. */
+  async function gravarCampo(chave: string, valor: string, rotulo?: string): Promise<boolean> {
+    const atuais: Record<string, unknown> = { ...(contact.custom_fields ?? {}) };
+    const nomes: Record<string, string> = { ...rotulos };
+    atuais[chave] = valor;
+    if (rotulo) nomes[chave] = rotulo;
+    if (Object.keys(nomes).length > 0) atuais._rotulos = nomes;
+    const ok = await gravarContato({ custom_fields: atuais });
+    if (!ok) return false;
+    try {
+      for (const n of negocios.dados) {
+        if (chave in (n.custom_fields ?? {})) {
+          await apiClient.patch(`/api/v1/leads/${n.lead_id}`, {
+            custom_fields: { [chave]: valor },
+          });
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ["ficha-do-lead"] });
+    } catch (e) {
+      showApiError(e);
+      return false;
+    }
+    return true;
+  }
+  async function criarCampo() {
+    if (!novoCampo) return;
+    const nome = novoCampo.nome.trim();
+    if (!nome) return;
+    const chave = chaveDoNome(nome);
+    if (juntos.has(chave)) {
+      showApiError(new Error(t("Já existe um campo com esse nome.")));
+      return;
+    }
+    if (await gravarCampo(chave, novoCampo.valor.trim(), nome)) setNovoCampo(null);
+  }
 
   const telefone = contact.phone_number;
   const botao =
@@ -111,57 +185,133 @@ export function TopoDoLead({
 
   return (
     <div className="grid gap-3">
-      {telefone || contact.email ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          {telefone ? <span>{phoneForDisplay(telefone)}</span> : null}
-          {contact.email ? <span className="break-all">{contact.email}</span> : null}
-          {ciclo.data && ehCicloDeVida(ciclo.data.ciclo_de_vida) ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" aria-label={t("Ciclo de vida")} className="rounded-full">
-                  <Etiqueta ponto cor={COR_DO_CICLO[ciclo.data.ciclo_de_vida]}>
-                    {t(ROTULO_DO_CICLO[ciclo.data.ciclo_de_vida])}
-                  </Etiqueta>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-72 p-3">
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {t("Ciclo de vida")}
-                </p>
-                <p className="mt-1 text-sm">{ciclo.data.ciclo_motivo ?? "—"}</p>
-                <label className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                  {t("Gestor de Relacionamento")}
-                  <select
-                    disabled={!podeEditar}
-                    value={ciclo.data.dono_user_id ?? ""}
-                    onChange={(e) => void mudarDono(e.target.value)}
-                    className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
-                  >
-                    <option value="">{t("Sem dono")}</option>
-                    {(membros.data ?? []).map((m) => (
-                      <option key={m.user_id} value={m.user_id}>
-                        {m.full_name?.trim() || t("Sem nome")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </PopoverContent>
-            </Popover>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <CampoInline
+          valor={telefone ? phoneForDisplay(telefone) : ""}
+          placeholder={t("Adicionar telefone")}
+          rotulo={t("Telefone")}
+          type="tel"
+          inputMode="tel"
+          podeEditar={podeEditar}
+          className="max-w-44"
+          aoSalvar={async (novo) => {
+            const fone = telefoneE164(novo);
+            if (!fone) return false;
+            return gravarContato({ phone_number: fone });
+          }}
+        />
+        <CampoInline
+          valor={contact.email ?? ""}
+          placeholder={t("Adicionar e-mail")}
+          rotulo={t("E-mail")}
+          type="email"
+          inputMode="email"
+          podeEditar={podeEditar}
+          classeDoTexto="break-all"
+          className="max-w-64"
+          aoSalvar={(novo) => (novo ? gravarContato({ email: novo }) : false)}
+        />
+        {ciclo.data && ehCicloDeVida(ciclo.data.ciclo_de_vida) ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" aria-label={t("Ciclo de vida")} className="rounded-full">
+                <Etiqueta ponto cor={COR_DO_CICLO[ciclo.data.ciclo_de_vida]}>
+                  {t(ROTULO_DO_CICLO[ciclo.data.ciclo_de_vida])}
+                </Etiqueta>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 p-3">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("Ciclo de vida")}
+              </p>
+              <p className="mt-1 text-sm">{ciclo.data.ciclo_motivo ?? "—"}</p>
+              <label className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                {t("Gestor de Relacionamento")}
+                <select
+                  disabled={!podeEditar}
+                  value={ciclo.data.dono_user_id ?? ""}
+                  onChange={(e) => void mudarDono(e.target.value)}
+                  className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
+                >
+                  <option value="">{t("Sem dono")}</option>
+                  {(membros.data ?? []).map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.full_name?.trim() || t("Sem nome")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </PopoverContent>
+          </Popover>
+        ) : null}
+      </div>
+
+      {campos.length > 0 || podeEditar ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {campos.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
+            >
+              <span className="shrink-0 text-muted-foreground">{rotuloDo(k)}:</span>
+              <CampoInline
+                valor={textoDoValor(v)}
+                placeholder={rotuloDo(k)}
+                rotulo={rotuloDo(k)}
+                podeEditar={podeEditar}
+                className="h-7 max-w-48 py-0 text-xs"
+                aoSalvar={(novo) => gravarCampo(k, novo)}
+              />
+            </span>
+          ))}
+          {podeEditar && !novoCampo ? (
+            <button
+              type="button"
+              aria-label={t("Adicionar campo")}
+              title={t("Adicionar campo")}
+              onClick={() => setNovoCampo({ nome: "", valor: "" })}
+              className="inline-flex size-6 items-center justify-center rounded-full border border-dashed text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <Plus size={12} weight="bold" aria-hidden />
+            </button>
           ) : null}
         </div>
       ) : null}
 
-      {campos.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
-          {campos.map(([k, v]) => (
-            <span
-              key={k}
-              className="max-w-full rounded-full bg-secondary px-2.5 py-1 text-xs break-words"
-            >
-              <span className="text-muted-foreground">{rotuloDo(k)}:</span> {textoDoValor(v)}
-            </span>
-          ))}
-        </div>
+      {novoCampo ? (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void criarCampo();
+          }}
+        >
+          <input
+            autoFocus
+            value={novoCampo.nome}
+            maxLength={40}
+            placeholder={t("Nome do campo")}
+            onChange={(e) => setNovoCampo({ ...novoCampo, nome: e.target.value })}
+            className="h-9 w-40 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60"
+          />
+          <input
+            value={novoCampo.valor}
+            maxLength={200}
+            placeholder={t("Valor")}
+            onChange={(e) => setNovoCampo({ ...novoCampo, valor: e.target.value })}
+            className="h-9 w-44 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60"
+          />
+          <button type="submit" className={botao} disabled={!novoCampo.nome.trim()}>
+            {t("Salvar")}
+          </button>
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:underline"
+            onClick={() => setNovoCampo(null)}
+          >
+            {t("Cancelar")}
+          </button>
+        </form>
       ) : null}
 
       {!contact.is_anonymized ? (
