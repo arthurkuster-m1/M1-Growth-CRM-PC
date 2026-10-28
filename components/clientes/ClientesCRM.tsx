@@ -242,6 +242,7 @@ const FORA_DE_OPORTUNIDADES: ReadonlySet<string> = new Set([
   "forma-de-pagamento",
   "parcelas",
   "email",
+  "resultado-rapido",
 ]);
 /** Propriedades que são só da PESSOA: não aparecem na aba Oportunidades. */
 const SO_DE_CLIENTES: ReadonlySet<string> = new Set([
@@ -2009,10 +2010,18 @@ export function ClientesCRM({
       celula: (l) => {
         const c = l.participacao ? cadenciaAtiva.porLead.get(l.participacao.lead_id) : undefined;
         if (!c) return <span className="block px-2 text-sm text-muted-foreground">—</span>;
+        // O dia em que a cadência está ("D+2 · passo 2 de 3"); em destaque quando o passo é de hoje.
+        const ehHoje = atrasoDaCadenciaDe(l) !== null;
         return (
-          <span className="block truncate px-2 text-sm">
-            {t(rotuloDaCadencia(c))}
-            {c.atrasado ? <span className="ml-1 text-error-fg">· {t("atrasado")}</span> : null}
+          <span className="flex min-w-0 items-center gap-1.5 px-2 text-sm">
+            <Etiqueta ponto cor={c.atrasado ? "red" : ehHoje ? "orange" : "gray"}>
+              {t(rotuloDaCadencia(c))}
+            </Etiqueta>
+            {c.atrasado ? (
+              <span className="truncate text-xs text-error-fg">{t("atrasado")}</span>
+            ) : ehHoje ? (
+              <span className="truncate text-xs font-medium">{t("hoje")}</span>
+            ) : null}
           </span>
         );
       },
@@ -2585,6 +2594,24 @@ export function ClientesCRM({
       const e = etapasPorId.get(p.etapa_id);
       return p.status === "open" && !e?.is_won && !e?.is_lost;
     });
+  /** Dias de atraso do passo da cadência de hoje deste lead (0 = hoje); nulo = sem passo para hoje. */
+  const atrasoDaCadenciaDe = (l: Linha): number | null => {
+    const passo = l.participacao ? cadenciaDeHoje.porLead.get(l.participacao.lead_id) : undefined;
+    return passo && venceAteHoje(passo.vence_em, hojeLocal)
+      ? atrasoEmDias(passo.vence_em, hojeLocal)
+      : null;
+  };
+  /** A prioridade do lead na fila "Ligar hoje" (a cadência de hoje entra na frente de tudo). */
+  const prioridadeDoLead = (l: Linha): number | null =>
+    l.participacao
+      ? prioridadeDaFila(
+          l.participacao,
+          hojeIso,
+          agora,
+          configDaProspeccao.fila,
+          atrasoDaCadenciaDe(l),
+        )
+      : null;
   /** Quem aparece na lista quando se clica num número do topo. */
   const passaNoDestaque = (l: Linha): boolean => {
     const emAberto = (l.participacao ? [l.participacao] : l.participacoes).filter(
@@ -2602,7 +2629,7 @@ export function ClientesCRM({
         return l.is_mql;
       case "ligarhoje":
         return l.participacao
-          ? prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null
+          ? prioridadeDoLead(l) !== null
           : false;
       case "cadencia": {
         const passo = l.participacao
@@ -2639,7 +2666,7 @@ export function ClientesCRM({
   if (destaque === "ligarhoje" && !preferencias.ordenacao?.length) {
     const peso = (l: Linha) =>
       l.participacao
-        ? (prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) ?? Infinity)
+        ? (prioridadeDoLead(l) ?? Infinity)
         : Infinity;
     visiveis.sort((x, y) => peso(x) - peso(y));
   }
@@ -2664,7 +2691,7 @@ export function ClientesCRM({
   const filaDoDia = alvos.filter(
     (l) =>
       l.participacao &&
-      prioridadeDaFila(l.participacao, hojeIso, agora, configDaProspeccao.fila) !== null,
+      prioridadeDoLead(l) !== null,
   ).length;
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {

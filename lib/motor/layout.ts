@@ -155,8 +155,9 @@ export function moverColuna(
 }
 
 /**
- * Liga ou desliga uma propriedade. Ao DESLIGAR, ela vai para o fim da lista: assim as escondidas
- * ficam juntas embaixo e as visíveis, no topo, na ordem em que a pessoa as montou.
+ * Liga ou desliga uma propriedade. Ao DESLIGAR, ela vai para o fim da lista; ao LIGAR, entra logo
+ * depois da última visível (a primeira das escondidas). Assim as visíveis ficam no topo, na ordem em
+ * que a pessoa as montou, e as escondidas juntas embaixo.
  */
 export function alternarVisibilidade<T extends DefinicaoDeColuna>(
   p: PreferenciasDaTabela,
@@ -166,7 +167,15 @@ export function alternarVisibilidade<T extends DefinicaoDeColuna>(
   const atual = resolvidas.find((c) => c.id === id);
   if (!atual || atual.fixa || atual.semOcultar) return p;
   const proximo: PreferenciasDaTabela = { ...p, visiveis: { ...p.visiveis, [id]: !atual.visivel } };
-  if (!atual.visivel) return proximo;
   const ordem = resolvidas.filter((c) => !c.fixa).map((c) => c.id);
-  return { ...proximo, ordem: [...ordem.filter((x) => x !== id), id] };
+  const semEla = ordem.filter((x) => x !== id);
+  if (!atual.visivel) {
+    let ultimaVisivel = -1;
+    semEla.forEach((x, i) => {
+      if (resolvidas.find((c) => c.id === x)?.visivel) ultimaVisivel = i;
+    });
+    semEla.splice(ultimaVisivel + 1, 0, id);
+    return { ...proximo, ordem: semEla };
+  }
+  return { ...proximo, ordem: [...semEla, id] };
 }

@@ -151,7 +151,7 @@ function Quadro<T>({
                   </p>
                   {colunas.length > 0 ? (
                     <div
-                      className="mt-1.5 flex flex-col gap-0.5"
+                      className="mt-1.5 flex flex-col gap-1"
                       onClick={soDeDentro}
                       onKeyDown={soDeDentro}
                       onPointerDown={soDeDentro}
@@ -159,8 +159,12 @@ function Quadro<T>({
                       onTouchStart={soDeDentro}
                     >
                       {colunas.map((col) => (
-                        <div key={col.id} className="-mx-1 min-w-0">
-                          {col.celula(l)}
+                        <div key={col.id} className="min-w-0">
+                          {/* O nome da propriedade, pequeno: sem ele os valores soltos não dizem o que são. */}
+                          <p className="truncate text-[10px] leading-tight font-medium tracking-wide text-muted-foreground uppercase">
+                            {col.titulo}
+                          </p>
+                          <div className="-mx-1 min-w-0">{col.celula(l)}</div>
                         </div>
                       ))}
                     </div>

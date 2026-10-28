@@ -29,3 +29,32 @@ describe("resultados da prospecção", () => {
     expect(resultadosAtivosDaConfig(c).map((r) => r.rotulo)).toEqual(["Visualizou", "Marcou call"]);
   });
 });
+
+import { prioridadeDaFila } from "@/lib/leads/resultados-rapidos";
+
+describe("fila Ligar hoje com a cadência", () => {
+  const lead = {
+    status: "open",
+    proxima_acao_em: null,
+    ultima_atividade: new Date().toISOString(),
+    criado_em: new Date().toISOString(),
+  };
+  it("passo da cadência de hoje entra na fila e na frente de quem só tem ação vencida", () => {
+    const agora = Date.now();
+    const doDia = prioridadeDaFila(lead, "2026-10-28", agora, undefined, 0);
+    const vencida = prioridadeDaFila(
+      { ...lead, proxima_acao_em: "2026-10-20" },
+      "2026-10-28",
+      agora,
+      undefined,
+      null,
+    );
+    expect(doDia).not.toBeNull();
+    expect(vencida).not.toBeNull();
+    expect(doDia!).toBeLessThan(vencida!);
+  });
+  it("desligada nas configurações, a cadência não entra", () => {
+    const fila = { ...CONFIG_PADRAO_DA_PROSPECCAO.fila, cadencia: false };
+    expect(prioridadeDaFila(lead, "2026-10-28", Date.now(), fila, 0)).toBeNull();
+  });
+});

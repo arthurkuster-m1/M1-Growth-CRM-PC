@@ -161,6 +161,11 @@ export function ConfigDaProspeccaoDialog({
             "border-l-blue-500",
             null,
             <div className="grid gap-1">
+              {caixa(
+                t("Passo da cadência que vence hoje (ou está atrasado) — vem na frente de todos"),
+                c.fila.cadencia,
+                (v) => setC({ ...c, fila: { ...c.fila, cadencia: v } }),
+              )}
               {caixa(t("Próxima ação vencida ou marcada para hoje"), c.fila.vencidas, (v) =>
                 setC({ ...c, fila: { ...c.fila, vencidas: v } }),
               )}
