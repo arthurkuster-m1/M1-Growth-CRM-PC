@@ -82,8 +82,8 @@ export function PainelDaVisaoGeral({
     retry: false,
     staleTime: 10_000,
     queryFn: async () =>
-      (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`)).data
-        .vendas,
+      (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`))
+        .data.vendas,
   });
   const tarefasQ = useQuery({
     queryKey: ["tarefas-do-contato", contactId],
@@ -142,27 +142,26 @@ export function PainelDaVisaoGeral({
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cartoes.map(([rotulo, valor, barra]) => (
-          <div key={rotulo} className={`rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${barra}`}>
+          <div
+            key={rotulo}
+            className={`rounded-2xl border border-l-4 bg-card p-4 shadow-sm ${barra}`}
+          >
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {rotulo}
             </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums"><NumeroQueCabe>{valor}</NumeroQueCabe></p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              <NumeroQueCabe>{valor}</NumeroQueCabe>
+            </p>
           </div>
         ))}
       </div>
 
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-        <BlocoDaFicha
-          titulo={t("Vendas mais urgentes")}
-          cor="green"
-          acao={
-            <button type="button" onClick={() => aoAbrir("vendas")} className="text-xs font-medium text-primary hover:underline">
-              {t("Ver todas")}
-            </button>
-          }
-        >
+        <BlocoDaFicha titulo={t("Vendas mais urgentes")} cor="green">
           {vendasQ.isError ? (
-            <p className="text-sm text-muted-foreground">{t("Sem permissão para ver as vendas.")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("Sem permissão para ver as vendas.")}
+            </p>
           ) : urgentesVendas.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Nada a receber ou em negociação.")}</p>
           ) : (
@@ -171,27 +170,33 @@ export function PainelDaVisaoGeral({
                 const atrasada = vence !== null && vence < hoje && falta > 0;
                 return (
                   <li key={v.id}>
-                  <button
-                    type="button"
-                    onClick={() => setAbertaId(v.id)}
-                    className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5 text-left hover:bg-secondary/40"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{nomeDaVenda(v) || t("Sem produto")}</p>
-                      <p className={atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"}>
-                        {vence ? `${t("Vence")} ${diaBr(vence)}` : t("Sem data")}
-                        {atrasada ? ` · ${t("atrasada")}` : ""}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold tabular-nums">
-                        {reais(falta > 0 ? falta : v.amount_cents)}
-                      </p>
-                      <SeloDaFicha cor={v.status === "interesse" ? "blue" : "yellow"}>
-                        {v.status === "interesse" ? t("Interesse") : t("Comprometida")}
-                      </SeloDaFicha>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setAbertaId(v.id)}
+                      className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5 text-left hover:bg-secondary/40"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {nomeDaVenda(v) || t("Sem produto")}
+                        </p>
+                        <p
+                          className={
+                            atrasada ? "text-xs text-error-fg" : "text-xs text-muted-foreground"
+                          }
+                        >
+                          {vence ? `${t("Vence")} ${diaBr(vence)}` : t("Sem data")}
+                          {atrasada ? ` · ${t("atrasada")}` : ""}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {reais(falta > 0 ? falta : v.amount_cents)}
+                        </p>
+                        <SeloDaFicha cor={v.status === "interesse" ? "blue" : "yellow"}>
+                          {v.status === "interesse" ? t("Interesse") : t("Comprometida")}
+                        </SeloDaFicha>
+                      </div>
+                    </button>
                   </li>
                 );
               })}
@@ -199,15 +204,7 @@ export function PainelDaVisaoGeral({
           )}
         </BlocoDaFicha>
 
-        <BlocoDaFicha
-          titulo={t("Tarefas mais urgentes")}
-          cor="orange"
-          acao={
-            <button type="button" onClick={() => aoAbrir("atendimento")} className="text-xs font-medium text-primary hover:underline">
-              {t("Ver todas")}
-            </button>
-          }
-        >
+        <BlocoDaFicha titulo={t("Tarefas mais urgentes")} cor="orange">
           {tarefas.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente.")}</p>
           ) : (
@@ -219,7 +216,7 @@ export function PainelDaVisaoGeral({
                     <button
                       type="button"
                       title={t("Abrir e editar a tarefa")}
-                      onClick={() => (aoAbrirTarefa ? aoAbrirTarefa(x.id) : aoAbrir("atendimento"))}
+                      onClick={() => aoAbrirTarefa?.(x.id)}
                       className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-secondary/60"
                     >
                       <div className="min-w-0">
@@ -252,15 +249,7 @@ export function PainelDaVisaoGeral({
       <RegistrarAcaoDoLead contactId={contactId} podeEditar={podeEditar} />
       <UltimasAcoesDoLead contactId={contactId} aoVerTodas={() => aoAbrir("timeline")} />
 
-      <BlocoDaFicha
-        titulo={t("Anotações importantes")}
-        cor="yellow"
-        acao={
-          <button type="button" onClick={() => aoAbrir("anotacoes")} className="text-xs font-medium text-primary hover:underline">
-            {t("Ver todas")}
-          </button>
-        }
-      >
+      <BlocoDaFicha titulo={t("Anotações importantes")} cor="yellow">
         {notas.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t("Nenhuma anotação. Fixe a estrela nas importantes para elas aparecerem aqui.")}
@@ -271,12 +260,23 @@ export function PainelDaVisaoGeral({
               <li key={n.id} className="min-w-0 rounded-xl border p-3">
                 <div className="flex items-start gap-2">
                   {n.fixada ? (
-                    <Star size={14} weight="fill" className="mt-0.5 shrink-0 text-yellow-500" aria-label={t("Importante")} />
+                    <Star
+                      size={14}
+                      weight="fill"
+                      className="mt-0.5 shrink-0 text-yellow-500"
+                      aria-label={t("Importante")}
+                    />
                   ) : null}
                   <div className="min-w-0">
-                    {n.titulo ? <p className="text-sm font-semibold break-words">{n.titulo}</p> : null}
-                    <p className="line-clamp-3 text-sm break-words whitespace-pre-wrap">{n.texto}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{dia(n.criada_em, true)}</p>
+                    {n.titulo ? (
+                      <p className="text-sm font-semibold break-words">{n.titulo}</p>
+                    ) : null}
+                    <p className="line-clamp-3 text-sm break-words whitespace-pre-wrap">
+                      {n.texto}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {dia(n.criada_em, true)}
+                    </p>
                   </div>
                 </div>
               </li>
@@ -284,7 +284,9 @@ export function PainelDaVisaoGeral({
           </ul>
         )}
       </BlocoDaFicha>
-      {abertaId ? <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} /> : null}
+      {abertaId ? (
+        <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} />
+      ) : null}
     </div>
   );
 }
