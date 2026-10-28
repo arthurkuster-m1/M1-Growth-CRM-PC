@@ -16,6 +16,8 @@ import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
+import { BlocosEmToggle } from "@/components/contacts/ficha/BlocoDaFicha";
+import { CompromissosETarefasDoLead } from "@/components/contacts/ficha/CompromissosETarefasDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
 import { OportunidadesDoLead } from "@/components/contacts/ficha/OportunidadesDoLead";
 import { PainelDaVisaoGeral } from "@/components/contacts/ficha/PainelDaVisaoGeral";
@@ -89,7 +91,6 @@ function ContactDetailInner({ contactId }: Props) {
   const abaDaUrl = useSearchParams().get("aba");
   const ABAS_VALIDAS = [
     "overview",
-    "cadastro",
     "atendimento",
     "oportunidades",
     "vendas",
@@ -97,6 +98,7 @@ function ContactDetailInner({ contactId }: Props) {
     "timeline",
     "lgpd",
   ];
+  // "cadastro" virou parte da Visão geral: links antigos caem lá.
   const [aba, setAba] = useState(
     abaDaUrl && ABAS_VALIDAS.includes(abaDaUrl) ? abaDaUrl : "overview",
   );
@@ -400,7 +402,6 @@ function ContactDetailInner({ contactId }: Props) {
       <Tabs value={aba} onValueChange={irParaAba} className="min-w-0">
         <TabsList className="h-auto w-full max-w-full [scrollbar-width:none] justify-start overflow-x-auto sm:w-fit [&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
-          <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
           <TabsTrigger value="atendimento">{t("Atendimento e Tarefas")}</TabsTrigger>
           <TabsTrigger value="oportunidades">{t("Oportunidades")}</TabsTrigger>
           <TabsTrigger value="vendas">{t("Vendas")}</TabsTrigger>
@@ -422,17 +423,26 @@ function ContactDetailInner({ contactId }: Props) {
           <div className="mt-4">
             <RoteirosDoContato contactId={contactId} />
           </div>
-        </TabsContent>
-
-        <TabsContent value="cadastro" className="mt-4">
-          <CadastroDoLead
-            contact={contact}
-            origem={origem}
-            podeEditar={podeEditarFicha}
-            camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
-            clientesLigado={clientesLigado}
-            podeGerirCategorias={Boolean(podeMarcarPessoal)}
-          />
+          {/* O que era a aba Cadastro: cadastro, links, qualificação, origem, ciclo, datas e tags,
+              cada um num toggle (fechado = só o título). */}
+          <div className="mt-4">
+            <BlocosEmToggle.Provider value>
+              <div className="grid gap-4">
+                <CompromissosETarefasDoLead contactId={contactId} podeEditar={podeEditarFicha} />
+                <OportunidadesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
+                <VendasDaFicha contactId={contactId} nome={displayName} />
+                <AnotacoesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
+                <CadastroDoLead
+                  contact={contact}
+                  origem={origem}
+                  podeEditar={podeEditarFicha}
+                  camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
+                  clientesLigado={clientesLigado}
+                  podeGerirCategorias={Boolean(podeMarcarPessoal)}
+                />
+              </div>
+            </BlocosEmToggle.Provider>
+          </div>
         </TabsContent>
 
         <TabsContent value="atendimento" className="mt-4">

@@ -75,6 +75,18 @@ export function TopoDoLead({
         }>(`/api/v1/contacts/${contact.id}/ciclo`)
       ).data,
   });
+  // MQL: a etiqueta ao lado do ciclo de vida; um clique marca ou desmarca.
+  async function alternarMql() {
+    try {
+      await apiClient.put(`/api/v1/contacts/${contact.id}/qualificacao`, {
+        is_mql: !qual.data?.is_mql,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["qualificacao-do-lead", contact.id] });
+      await queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    } catch (e) {
+      showApiError(e);
+    }
+  }
   async function mudarDono(id: string) {
     try {
       await apiClient.post("/api/v1/clientes/lote", {

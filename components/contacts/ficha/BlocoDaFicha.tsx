@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+
+import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
 
 import { CaretDown, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -17,6 +19,12 @@ const BARRA: Record<CorDoBloco, string> = {
   gray: "border-l-gray-400",
   red: "border-l-red-500",
 };
+
+/**
+ * Dentro deste contexto os blocos da ficha viram TOGGLES (o mesmo desenho dos campos da página da
+ * oportunidade): fechados mostram só o título; a ação do bloco vai para dentro, no alto.
+ */
+export const BlocosEmToggle = createContext(false);
 
 /** Um tópico da ficha: cartão com a barra colorida na lateral, título e (opcional) uma ação. */
 export function BlocoDaFicha({
@@ -39,6 +47,15 @@ export function BlocoDaFicha({
   className?: string;
 }) {
   const [aberto, setAberto] = useState(recolhivel?.abertoInicial ?? false);
+  const emToggle = useContext(BlocosEmToggle);
+  if (emToggle && !recolhivel) {
+    return (
+      <BlocoRecolhivel titulo={titulo}>
+        {acao ? <div className="mb-3 flex flex-wrap items-center justify-end gap-2">{acao}</div> : null}
+        {children}
+      </BlocoRecolhivel>
+    );
+  }
   if (recolhivel) {
     return (
       <section

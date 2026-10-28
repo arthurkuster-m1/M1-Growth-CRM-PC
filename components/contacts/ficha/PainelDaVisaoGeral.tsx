@@ -58,7 +58,7 @@ function pendencia(v: Venda): { falta: number; vence: string | null } {
 
 /**
  * A VISÃO GERAL: um painel do que pede atenção neste cliente — o dinheiro mais urgente, as tarefas
- * mais urgentes e as anotações importantes. O cadastro completo mora na aba Cadastro.
+ * mais urgentes e as anotações importantes. O cadastro completo vem logo abaixo, em toggles.
  */
 export function PainelDaVisaoGeral({
   contactId,
