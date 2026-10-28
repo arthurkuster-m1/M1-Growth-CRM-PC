@@ -14,6 +14,7 @@ import { concluirCompromissosDaVenda } from "@/lib/agenda/concluir-compromissos-
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { faltaParaPagar, mensagemDaFalta } from "@/lib/vendas-pagamento";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,6 +52,44 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   const supabase = await createClient();
   const orgId = authz.org.orgId;
   const c = corpo.data;
+
+  // Receber exige que a venda tenha produto, responsável e forma de pagamento.
+  if (c.acao === "receber") {
+    const { data: parcela } = await supabase
+      .from("crm_sale_payments")
+      .select("lead_id, forma")
+      .eq("id", id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    const leadDaParcela = (parcela as { lead_id: string | null } | null)?.lead_id;
+    if (leadDaParcela) {
+      const [{ data: lead }, { count: itens }] = await Promise.all([
+        supabase
+          .from("crm_leads")
+          .select("owner_user_id, payment_method")
+          .eq("id", leadDaParcela)
+          .eq("organization_id", orgId)
+          .maybeSingle(),
+        supabase
+          .from("crm_sale_items")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", leadDaParcela)
+          .eq("organization_id", orgId),
+      ]);
+      const l = lead as { owner_user_id: string | null; payment_method: string | null } | null;
+      const falta = faltaParaPagar({
+        itens: itens ?? 0,
+        responsavelId: l?.owner_user_id,
+        forma: c.forma || (parcela as { forma: string | null }).forma || l?.payment_method,
+      });
+      if (falta.length > 0) {
+        return fail("venda_incompleta", mensagemDaFalta(falta), 422, {
+          requestId,
+          details: { faltam: falta },
+        });
+      }
+    }
+  }
 
   const patch: Record<string, unknown> =
     c.acao === "receber"
