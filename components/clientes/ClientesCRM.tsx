@@ -21,7 +21,7 @@ import {
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
 import { coolingLabel } from "@/lib/kanban/card-state";
-import { MODELOS_DAS_OPORTUNIDADES } from "@/lib/clientes/modelos-de-visao";
+import { MODELOS_DAS_OPORTUNIDADES, MODELOS_DOS_CLIENTES } from "@/lib/clientes/modelos-de-visao";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
 import { useCadenciaAtiva } from "@/hooks/marketing/useCadenciaAtiva";
 import { rotuloDaCadencia } from "@/lib/cadencia/hoje";
@@ -548,7 +548,9 @@ export function ClientesCRM({
     if (ehOportunidades) {
       return base.flatMap((c) =>
         c.participacoes
-          .filter((p) => (!funilAtual || p.funil_id === funilAtual.id) && funilPermitido(p.funil_id))
+          .filter(
+            (p) => (!funilAtual || p.funil_id === funilAtual.id) && funilPermitido(p.funil_id),
+          )
           .map((p) => ({
             ...c,
             participacao: p,
@@ -865,7 +867,9 @@ export function ClientesCRM({
   const semValor = <span className="block px-2 text-sm text-muted-foreground">—</span>;
 
   const opcoesDeEtapa = (dados?.etapas ?? [])
-    .filter((e) => (!funilAtual || e.pipeline_id === funilAtual.id) && funilPermitido(e.pipeline_id))
+    .filter(
+      (e) => (!funilAtual || e.pipeline_id === funilAtual.id) && funilPermitido(e.pipeline_id),
+    )
     .map((e) => ({ id: e.id, rotulo: e.name, cor: corDaEtapa(e), pipeline_id: e.pipeline_id }));
 
   /** "3d" ou "5h": há quanto tempo (relógio fixado na montagem da tela). */
@@ -1021,7 +1025,8 @@ export function ClientesCRM({
           lista.map(({ venda, p }, i) => {
             const id = venda ? venda.campanha_id : p.campanha_id;
             // Campanha e funil andam juntos: sem campanha, aparece o nome do funil.
-            const nome = (id ? campanhasPorId.get(id) : null) ?? funisPorId.get(p.funil_id)?.name ?? null;
+            const nome =
+              (id ? campanhasPorId.get(id) : null) ?? funisPorId.get(p.funil_id)?.name ?? null;
             return (
               <SeletorDeOpcao
                 key={venda?.id ?? `${p.lead_id}-${i}`}
@@ -1608,7 +1613,11 @@ export function ClientesCRM({
       celula: (l) => {
         const p = l.participacao;
         if (!p?.entrou_na_etapa_em) return semValor;
-        return <span className="block px-2 text-sm tabular-nums">{tempoDesde(p.entrou_na_etapa_em)}</span>;
+        return (
+          <span className="block px-2 text-sm tabular-nums">
+            {tempoDesde(p.entrou_na_etapa_em)}
+          </span>
+        );
       },
     },
     {
@@ -2233,7 +2242,9 @@ export function ClientesCRM({
         l.participacao?.entrou_na_etapa_em
           ? Math.max(
               0,
-              Math.floor((agora - new Date(l.participacao.entrou_na_etapa_em).getTime()) / 3_600_000),
+              Math.floor(
+                (agora - new Date(l.participacao.entrou_na_etapa_em).getTime()) / 3_600_000,
+              ),
             )
           : null,
     },
@@ -2502,7 +2513,9 @@ export function ClientesCRM({
   // Etapa e situação são de UM funil: na lista "Todos" não há uma só etapa por lead.
   const campos = todosOsCampos
     // Em Oportunidades cada linha É uma oportunidade, então a etapa sempre faz sentido.
-    .filter((c) => ehOportunidades || funilAtual !== null || (c.id !== "etapa" && c.id !== "status"))
+    .filter(
+      (c) => ehOportunidades || funilAtual !== null || (c.id !== "etapa" && c.id !== "status"),
+    )
     .filter((c) => (ehOportunidades ? !SO_DE_CLIENTES.has(c.id) : !SO_DE_OPORTUNIDADES.has(c.id)))
     .filter((c) => !(ehOportunidades && FORA_DE_OPORTUNIDADES.has(c.id)));
 
@@ -2617,7 +2630,9 @@ export function ClientesCRM({
   /** A data do próximo passo cai de hoje até daqui a 4 dias (os 5 dias do filtro "Próximos 5 dias")? */
   const noPeriodoDosProximosPassos = (dia: string | null): boolean => {
     const janela = intervaloDoPeriodo("proximos_5_dias", hojeIso);
-    return Boolean(dia && janela && dia.slice(0, 10) >= janela.de && dia.slice(0, 10) <= janela.ate);
+    return Boolean(
+      dia && janela && dia.slice(0, 10) >= janela.de && dia.slice(0, 10) <= janela.ate,
+    );
   };
   /** Quem aparece na lista quando se clica num número do topo. */
   const passaNoDestaque = (l: Linha): boolean => {
@@ -2635,9 +2650,7 @@ export function ClientesCRM({
       case "mql":
         return l.is_mql;
       case "ligarhoje":
-        return l.participacao
-          ? prioridadeDoLead(l) !== null
-          : false;
+        return l.participacao ? prioridadeDoLead(l) !== null : false;
       case "proximos5":
         return emAberto.some((p) => noPeriodoDosProximosPassos(p.proxima_acao_em));
       case "cadencia": {
@@ -2673,16 +2686,12 @@ export function ClientesCRM({
   );
   // Fila do dia: do mais atrasado ao menos (sem a pessoa ter escolhido outra ordem).
   if (destaque === "ligarhoje" && !preferencias.ordenacao?.length) {
-    const peso = (l: Linha) =>
-      l.participacao
-        ? (prioridadeDoLead(l) ?? Infinity)
-        : Infinity;
+    const peso = (l: Linha) => (l.participacao ? (prioridadeDoLead(l) ?? Infinity) : Infinity);
     visiveis.sort((x, y) => peso(x) - peso(y));
   }
   // Próximos 5 dias: o passo que vence primeiro vem primeiro.
   if (destaque === "proximos5" && !preferencias.ordenacao?.length) {
-    const quando = (l: Linha) =>
-      (l.participacao?.proxima_acao_em ?? "9999-12-31").slice(0, 10);
+    const quando = (l: Linha) => (l.participacao?.proxima_acao_em ?? "9999-12-31").slice(0, 10);
     visiveis.sort((x, y) => quando(x).localeCompare(quando(y)));
   }
   // Cadência de hoje: do passo mais atrasado ao menos.
@@ -2705,13 +2714,10 @@ export function ClientesCRM({
   const filaDaCadencia = metaDoDia > 0 ? Math.min(doDiaNaCadencia, metaDoDia) : doDiaNaCadencia;
   const filaDosProximos5 = alvos.filter(
     (l) =>
-      l.participacao?.status === "open" && noPeriodoDosProximosPassos(l.participacao.proxima_acao_em),
+      l.participacao?.status === "open" &&
+      noPeriodoDosProximosPassos(l.participacao.proxima_acao_em),
   ).length;
-  const filaDoDia = alvos.filter(
-    (l) =>
-      l.participacao &&
-      prioridadeDoLead(l) !== null,
-  ).length;
+  const filaDoDia = alvos.filter((l) => l.participacao && prioridadeDoLead(l) !== null).length;
 
   const resultado = aplicarConsulta(visiveis, campos, preferencias, {
     hoje: new Date(agora).toISOString().slice(0, 10),
@@ -3080,7 +3086,7 @@ export function ClientesCRM({
         aria-label={t("Resumo")}
         className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
           ehOportunidades ? "xl:grid-cols-4" : "xl:grid-cols-5"
-        } max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden`}
+        } max-sm:flex max-sm:[scrollbar-width:none] max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden`}
       >
         {(ehOportunidades ? numerosDeOportunidades : numerosDaBase).map((n) => {
           const clicavel = n.id !== "todos" && n.id !== "ponderada";
@@ -3112,9 +3118,7 @@ export function ClientesCRM({
                 <NumeroQueCabe>{n.valor}</NumeroQueCabe>
               </p>
               {n.detalhe ? (
-                <p className="text-[11px] text-muted-foreground max-sm:hidden">
-                  {n.detalhe}
-                </p>
+                <p className="text-[11px] text-muted-foreground max-sm:hidden">{n.detalhe}</p>
               ) : null}
             </button>
           );
@@ -3122,7 +3126,7 @@ export function ClientesCRM({
       </section>
 
       {ehOportunidades ? (
-        <div className="flex items-center gap-2 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:flex-wrap">
+        <div className="flex items-center gap-2 max-sm:[scrollbar-width:none] max-sm:overflow-x-auto sm:flex-wrap max-sm:[&::-webkit-scrollbar]:hidden">
           {dados?.pode_editar ? (
             <button
               type="button"
@@ -3428,8 +3432,9 @@ export function ClientesCRM({
                 : destaque === "proximos5"
                   ? t("Próximos 5 dias")
                   : destaque === "cadencia"
-                  ? t("Cadência de hoje")
-                  : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)?.rotulo}
+                    ? t("Cadência de hoje")
+                    : [...numeros, ...numerosDeOportunidades].find((n) => n.id === destaque)
+                        ?.rotulo}
             </strong>{" "}
             · {visiveis.length} {visiveis.length === 1 ? t("lead") : t("leads")}
           </span>
@@ -3530,9 +3535,11 @@ export function ClientesCRM({
                   (v) => v && ir({ aba: v.id }),
                 )
               }
-              modelos={ehOportunidades ? MODELOS_DAS_OPORTUNIDADES : []}
+              modelos={ehOportunidades ? MODELOS_DAS_OPORTUNIDADES : MODELOS_DOS_CLIENTES}
               aoCriarModelo={(id) => {
-                const modelo = MODELOS_DAS_OPORTUNIDADES.find((m) => m.id === id);
+                const modelo = (
+                  ehOportunidades ? MODELOS_DAS_OPORTUNIDADES : MODELOS_DOS_CLIENTES
+                ).find((m) => m.id === id);
                 if (!modelo) return;
                 // Já existe uma aba com o nome do modelo? Abre essa em vez de duplicar.
                 const existente = visoes.find((v) => v.name === modelo.nome);
