@@ -3010,10 +3010,8 @@ export function ClientesCRM({
 
   return (
     <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-6">
-      {/* No celular, Oportunidades não repete o título (a aba já diz onde você está); o botão de nova vai para a linha de ações. */}
-      <header
-        className={`flex flex-wrap items-start justify-between gap-3 ${ehOportunidades ? "max-sm:hidden" : ""}`}
-      >
+      {/* No celular, Oportunidades e Clientes não repetem o título (a aba já diz onde você está); os botões vão para a linha de ações. */}
+      <header className="flex flex-wrap items-start justify-between gap-3 max-sm:hidden">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             {ehOportunidades ? t("Oportunidades") : t("Clientes")}
@@ -3082,11 +3080,7 @@ export function ClientesCRM({
         aria-label={t("Resumo")}
         className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
           ehOportunidades ? "xl:grid-cols-4" : "xl:grid-cols-5"
-        } ${
-          ehOportunidades
-            ? "max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
-            : ""
-        }`}
+        } max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden`}
       >
         {(ehOportunidades ? numerosDeOportunidades : numerosDaBase).map((n) => {
           const clicavel = n.id !== "todos" && n.id !== "ponderada";
@@ -3109,11 +3103,7 @@ export function ClientesCRM({
               }
               className={`bg-card px-4 py-3 text-left transition-colors hover:bg-secondary/60 ${
                 ativo ? "ring-2 ring-primary ring-inset" : ""
-              } ${
-                ehOportunidades
-                  ? "max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2"
-                  : ""
-              }`}
+              } max-sm:min-w-36 max-sm:shrink-0 max-sm:rounded-xl max-sm:border max-sm:px-3 max-sm:py-2`}
             >
               <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {n.rotulo}
@@ -3122,9 +3112,7 @@ export function ClientesCRM({
                 <NumeroQueCabe>{n.valor}</NumeroQueCabe>
               </p>
               {n.detalhe ? (
-                <p
-                  className={`text-[11px] text-muted-foreground ${ehOportunidades ? "max-sm:hidden" : ""}`}
-                >
+                <p className="text-[11px] text-muted-foreground max-sm:hidden">
                   {n.detalhe}
                 </p>
               ) : null}
@@ -3215,8 +3203,32 @@ export function ClientesCRM({
         </div>
       ) : null}
 
+      {!ehOportunidades && dados?.pode_editar ? (
+        <div className="flex items-center gap-2 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setNovoLeadAberto(true)}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+          >
+            <Plus size={14} weight="bold" aria-hidden />
+            {t("Novo lead")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setImportarAberto(true)}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+          >
+            <UploadSimple size={14} weight="bold" aria-hidden />
+            {t("Importar")}
+          </button>
+        </div>
+      ) : null}
+
       {ehOportunidades ? null : (
-        <section aria-label={t("Ciclo de vida")} className="rounded-2xl border bg-card px-4 py-3">
+        <section
+          aria-label={t("Ciclo de vida")}
+          className="rounded-2xl border bg-card px-4 py-3 max-sm:px-3 max-sm:py-2"
+        >
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {t("Ciclo de vida")}
@@ -3230,7 +3242,7 @@ export function ClientesCRM({
                 {t("Mostrar todos")}
               </button>
             ) : (
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground max-sm:hidden">
                 {t("Clique numa etapa para filtrar a lista")}
               </span>
             )}
@@ -3243,7 +3255,7 @@ export function ClientesCRM({
               return (
                 <li
                   key={ciclo}
-                  className="min-w-[8.5rem] flex-1"
+                  className="min-w-[8.5rem] flex-1 max-sm:min-w-[7rem]"
                   style={{ marginLeft: i === 0 ? 0 : -10 }}
                 >
                   <button
@@ -3251,7 +3263,7 @@ export function ClientesCRM({
                     aria-pressed={ativo}
                     title={t("Filtrar a lista por esta etapa")}
                     onClick={() => setCicloFiltro(ativo ? null : ciclo)}
-                    className="relative flex h-16 w-full flex-col justify-center text-left transition-opacity hover:opacity-90"
+                    className="relative flex h-16 w-full flex-col justify-center text-left transition-opacity hover:opacity-90 max-sm:h-12"
                     style={{
                       // A seta que encaixa na próxima etapa: ponta à direita, recorte à esquerda.
                       clipPath:
@@ -3267,7 +3279,9 @@ export function ClientesCRM({
                     <span className="truncate text-[11px] font-semibold tracking-wide uppercase">
                       {t(ROTULO_PLURAL_DO_CICLO[ciclo])}
                     </span>
-                    <span className="text-xl leading-tight font-semibold tabular-nums">{n}</span>
+                    <span className="text-xl leading-tight font-semibold tabular-nums max-sm:text-base">
+                      {n}
+                    </span>
                   </button>
                 </li>
               );
