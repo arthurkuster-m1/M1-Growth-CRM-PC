@@ -286,6 +286,7 @@ function ContactDetailInner({ contactId }: Props) {
         <TopoDoLead
           contact={contact}
           camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
+          podeEditar={podeEditarFicha}
         />
       </header>
 
