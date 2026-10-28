@@ -11,6 +11,8 @@ import { useDeleteContact } from "@/hooks/contacts/useDeleteContact";
 import { format } from "date-fns";
 import { DotsThree, ShieldCheck, LockOpen } from "@/lib/ui/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CampoInline } from "@/components/contacts/ficha/CampoInline";
+import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
@@ -111,6 +113,7 @@ function ContactDetailInner({ contactId }: Props) {
   // mesmo motivo do `desbloquear` acima.
   const marcarPessoal = useMarkPersonalContact(contactId);
   const desmarcarPessoal = useUnmarkPersonalContact(contactId);
+  const atualizarContato = useUpdateContact(contactId);
   // Excluir o lead: vai para a Lixeira do CRM (7 dias) com tudo que depende dele.
   const excluir = useDeleteContact();
   const router = useRouter();
@@ -208,8 +211,24 @@ function ContactDetailInner({ contactId }: Props) {
           <div className="grid min-w-0 gap-2">
             <LinkVoltar href="/app/clientes">{t("CRM")}</LinkVoltar>
             {/* Sem truncar: nome é dado que a tela existe pra mostrar. Deixa quebrar linha. */}
-            <h1 className="text-xl font-semibold tracking-tight break-words sm:text-2xl">
-              {displayName}
+            <h1 className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">
+              <CampoInline
+                valor={contact.name ?? ""}
+                placeholder={displayName || t("Adicionar nome")}
+                rotulo={t("Nome")}
+                podeEditar={podeEditarFicha}
+                classeDoTexto="text-xl font-semibold tracking-tight sm:text-2xl"
+                className="block w-full text-xl font-semibold sm:text-2xl"
+                aoSalvar={async (novo) => {
+                  if (!novo) return false;
+                  try {
+                    await atualizarContato.mutateAsync({ name: novo });
+                    return true;
+                  } catch {
+                    return false;
+                  }
+                }}
+              />
             </h1>
             {contact.is_blocked || contact.is_personal || contact.is_anonymized ? (
               <div className="flex flex-wrap gap-1">
