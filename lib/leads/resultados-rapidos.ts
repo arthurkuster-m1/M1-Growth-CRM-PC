@@ -81,6 +81,8 @@ export function somarDiasUteis(dia: string, n: number): string {
  * marcada, sem resposta há 24h ou mais. `prioridade` menor = mais urgente (mais atrasada primeiro).
  */
 export interface CriteriosDaFila {
+  /** Passo da cadência que vence hoje (ou já venceu): entra na fila, e na frente de tudo. */
+  cadencia: boolean;
   /** Próxima ação vencida ou de hoje. */
   vencidas: boolean;
   /** Sem data marcada e sem resposta há `horasSemResposta` ou mais. */
@@ -91,6 +93,7 @@ export interface CriteriosDaFila {
 }
 
 export const CRITERIOS_PADRAO_DA_FILA: CriteriosDaFila = {
+  cadencia: true,
   vencidas: true,
   semResposta: true,
   horasSemResposta: 24,
@@ -108,8 +111,12 @@ export function prioridadeDaFila(
   hoje: string,
   agoraMs: number,
   criterios: CriteriosDaFila = CRITERIOS_PADRAO_DA_FILA,
+  /** Dias de atraso do passo da cadência deste lead (0 = vence hoje); nulo = sem passo para hoje. */
+  atrasoDaCadencia: number | null = null,
 ): number | null {
   if (p.status !== "open") return null;
+  // A cadência pede o lead hoje: vem ANTES de tudo, o mais atrasado primeiro.
+  if (criterios.cadencia && atrasoDaCadencia !== null) return -1_000_000_000 - atrasoDaCadencia;
   if (p.proxima_acao_em) {
     if (!criterios.vencidas || p.proxima_acao_em > hoje) return null;
     // Vencidas antes: quanto mais antiga a data, menor o número.
