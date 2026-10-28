@@ -169,9 +169,9 @@ describe("o reason da linha do tempo é gravado no vocabulário canônico", () =
 
 describe("a intenção do #600 sobrevive: quem lê em espanhol vê espanhol", () => {
   const TELAS = [
-    "components/kanban/LeadTimeline.tsx",
+    // A linha do tempo do negócio (LeadTimeline) e a do cliente (TimelineView) se desenham com ela.
+    "components/timeline/LinhaDoTempoVisual.tsx",
     "components/inbox/CRMSidePanel.tsx",
-    "components/contacts/TimelineView.tsx",
   ] as const;
 
   it.each(TELAS)("%s traduz o reason na LEITURA", (rel) => {
