@@ -81,11 +81,11 @@ describe("página da venda × página da oportunidade", () => {
     expect(screen.queryByLabelText("Lembrete")).toBeNull();
   });
 
-  it("as anotações da venda são as da oportunidade (o mesmo dado)", () => {
+  it("as anotações da venda são as do perfil do lead, presas a esta oportunidade", () => {
     abrir("venda");
-    expect((screen.getByLabelText("Anotações da oportunidade") as HTMLTextAreaElement).value).toBe(
-      "Cliente quer começar em dezembro",
-    );
+    // a mesma lista de anotações do cliente (campo de nova anotação), não mais um texto solto
+    expect(screen.getByPlaceholderText("O que vale lembrar sobre este lead?")).toBeTruthy();
+    expect(screen.queryByLabelText("Anotações da oportunidade")).toBeNull();
   });
 
   it("a parcela única já nasce gerada, com valor e vencimento, sem apertar nada", () => {
@@ -112,7 +112,7 @@ describe("página da venda × página da oportunidade", () => {
       "Tarefas",
       "Previsão de fechamento",
       "Produtos e serviços",
-      "Comentários",
+      "Anotações",
       "Detalhes da oportunidade",
     ].map((t) => screen.getByText(t));
     for (let i = 1; i < ordem.length; i++) {
