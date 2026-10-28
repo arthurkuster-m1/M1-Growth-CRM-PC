@@ -31,7 +31,8 @@ vi.mock("@/hooks/auth/AuthProvider", () => ({
 
 /** A cor serializada pode voltar como `rgb(...)` do jsdom. */
 const pintado = (el: HTMLElement) => {
-  const estilo = el.getAttribute("style") ?? "";
+  // O nome fica num <span> (a inicial maiúscula é CSS); o estilo mora no chip que o envolve.
+  const estilo = (el.closest("[style]") ?? el).getAttribute("style") ?? "";
   return estilo.replace(/\s/g, "");
 };
 

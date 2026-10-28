@@ -48,7 +48,7 @@ export function PaginaDoCRM() {
       <nav
         role="tablist"
         aria-label={t("CRM")}
-        className="flex items-center gap-1 border-b [scrollbar-width:none] overflow-x-auto [&::-webkit-scrollbar]:hidden"
+        className="sticky top-0 z-30 -mx-1 flex items-center gap-1 overflow-x-auto border-b bg-background px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <span className="mr-3 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
           {t("CRM")}

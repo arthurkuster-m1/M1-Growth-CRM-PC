@@ -12,7 +12,12 @@ import { useAcoesDoCompromisso } from "@/components/agenda/AcoesDoCompromisso";
 import { MenuDeOpcoes, Tag } from "@/components/agenda/CamposDoCompromisso";
 import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorClient";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
+import { SeletorDeTagsEmMassa } from "@/components/clientes/SeletorDeTagsEmMassa";
+import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
+import { normalizarTags } from "@/lib/contacts/tag-normalizada";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { LeadTimeline } from "@/components/kanban/LeadTimeline";
 import { useLeadTimeline } from "@/hooks/leads/useLeadTimeline";
@@ -20,7 +25,7 @@ import { useContact } from "@/hooks/contacts/useContact";
 import { useT } from "@/hooks/i18n/useT";
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { apiClient } from "@/lib/api/client";
-import { ArrowSquareOut, CaretDown, ChatCircle, Phone, Plus } from "@/lib/ui/icons";
+import { ArrowSquareOut, CaretDown, ChatCircle, Phone, Plus, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const rotuloDaChave = (k: string) =>
@@ -523,16 +528,85 @@ export function TarefasDaOportunidade({
   );
 }
 
-/** As TAGS são do cliente (o lead), nunca da oportunidade: o mesmo editor do painel do Inbox. */
+/**
+ * As TAGS são do cliente (o lead), nunca da oportunidade: as mesmas etiquetas coloridas da ficha
+ * do lead e o mesmo "Adicionar tag" (buscar as que existem, ou criar com a categoria escolhida).
+ * Fechado, o bloco mostra só o título.
+ */
 export function TagsDoCliente({ contactId }: { contactId: string }) {
   const t = useT();
   const { activeOrg } = useAuth();
   const { data } = useContact(contactId);
+  const atualizar = useUpdateContact(contactId);
+  const [adicionando, setAdicionando] = useState(false);
+  const [novas, setNovas] = useState<string[]>([]);
+  const existentes = useQuery({
+    queryKey: ["tags-existentes"],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (await apiClient.get<{ data: { tags: string[] } }>("/api/v1/tags/existentes")).data.tags,
+  });
   const tags = data?.data?.tags ?? [];
   if (!activeOrg) return null;
+  const gravar = (lista: string[]) => atualizar.mutateAsync({ tags: lista }).catch(() => null);
   return (
-    <BlocoRecolhivel titulo={t("Tags")} resumo={tags.length > 0 ? tags.join(", ") : undefined}>
-      <ContactTagsEditor contactId={contactId} orgId={activeOrg.orgId} tags={tags} />
+    <BlocoRecolhivel titulo={t("Tags")}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {tags.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("Sem tags.")}</p>
+        ) : (
+          tags.map((tag) => (
+            <ChipDeEtiqueta key={tag} tag={tag} contorno>
+              <button
+                type="button"
+                aria-label={`${t("Tirar")} ${tag}`}
+                onClick={() => void gravar(tags.filter((x) => x !== tag))}
+                className="ml-1.5 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <X size={11} weight="bold" aria-hidden />
+              </button>
+            </ChipDeEtiqueta>
+          ))
+        )}
+      </div>
+      <Popover open={adicionando} onOpenChange={setAdicionando}>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="outline" className="mt-3">
+            <Plus size={14} weight="bold" aria-hidden className="mr-1" />
+            {t("Adicionar tag")}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(92vw,420px)] p-3">
+          <SeletorDeTagsEmMassa
+            existentes={existentes.data ?? []}
+            escolhidas={novas}
+            aoMudar={setNovas}
+          />
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setNovas([]);
+                setAdicionando(false);
+              }}
+            >
+              {t("Cancelar")}
+            </Button>
+            <Button
+              size="sm"
+              disabled={novas.length === 0}
+              onClick={() => {
+                void gravar(normalizarTags([...tags, ...novas]));
+                setNovas([]);
+                setAdicionando(false);
+              }}
+            >
+              {t("Aplicar")}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </BlocoRecolhivel>
   );
 }
