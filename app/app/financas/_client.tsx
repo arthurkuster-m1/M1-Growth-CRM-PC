@@ -73,7 +73,14 @@ const SEM_MOVIMENTO: Totais = {
   por_cliente: [],
 };
 
-type Pessoa = { user_id: string; name: string | null; email: string | null };
+// A rota da equipe devolve `full_name` (não `name`): ler o campo errado fazia todo responsável
+// aparecer como "Sem responsável" aqui.
+type Pessoa = {
+  user_id: string;
+  full_name?: string | null;
+  name?: string | null;
+  email?: string | null;
+};
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const primeiroDoMes = () => `${hoje().slice(0, 7)}-01`;
@@ -109,11 +116,8 @@ export function Faturamento({
   const relatorio = useQuery({
     queryKey: ["relatorio", "financeiro", de, ate],
     queryFn: async () =>
-      (
-        await apiClient.get<{ data: Relatorio }>(
-          `/api/v1/reports/financeiro?de=${de}&ate=${ate}`,
-        )
-      ).data,
+      (await apiClient.get<{ data: Relatorio }>(`/api/v1/reports/financeiro?de=${de}&ate=${ate}`))
+        .data,
   });
 
   // Os nomes de quem atendeu não vêm do relatório: ele devolve o id, e juntar
@@ -126,7 +130,7 @@ export function Faturamento({
   const nomeDe = (id: string | null) => {
     if (!id) return t("Sem responsável");
     const p = (equipe.data ?? []).find((x) => x.user_id === id);
-    return p?.name ?? p?.email ?? t("Sem responsável");
+    return p?.full_name?.trim() || p?.name || p?.email || t("Responsável sem nome");
   };
 
   // Os nomes dos clientes, pelo mesmo motivo dos da equipe: o relatório devolve
@@ -135,9 +139,9 @@ export function Faturamento({
     queryKey: ["contacts", "para-relatorio"],
     queryFn: async () =>
       (
-        await apiClient.get<{ data: Array<{ id: string; display_name: string | null; name: string | null }> }>(
-          "/api/v1/contacts?limit=100",
-        )
+        await apiClient.get<{
+          data: Array<{ id: string; display_name: string | null; name: string | null }>;
+        }>("/api/v1/contacts?limit=100")
       ).data,
   });
 
@@ -212,7 +216,7 @@ export function Faturamento({
       </div>
 
       {relatorio.isError ? (
-        <p className="text-sm text-danger">{t("Não foi possível carregar o período.")}</p>
+        <p className="text-danger text-sm">{t("Não foi possível carregar o período.")}</p>
       ) : null}
 
       {variasMoedas ? (
@@ -292,9 +296,7 @@ function BlocoDaMoeda({
 
       <p className="text-sm text-text-muted" data-testid="resumo-de-vendas">
         {totais.vendas_fechadas} {t("venda(s) fechada(s)")}
-        {totais.vendas_canceladas > 0
-          ? `, ${totais.vendas_canceladas} ${t("cancelada(s)")}`
-          : ""}
+        {totais.vendas_canceladas > 0 ? `, ${totais.vendas_canceladas} ${t("cancelada(s)")}` : ""}
         {" · "}
         {formatCents(totais.faturado_cents, moeda)} {t("faturado")}
         {" · "}
@@ -328,7 +330,10 @@ function BlocoDaMoeda({
         ))}
       </Tabela>
 
-      <Tabela titulo={t("Produtos que mais faturaram")} vazio={t("Nenhum produto vendido no período.")}>
+      <Tabela
+        titulo={t("Produtos que mais faturaram")}
+        vazio={t("Nenhum produto vendido no período.")}
+      >
         {totais.por_produto.map((sv) => (
           <tr key={sv.nome} className="border-b border-border/60">
             <td className="py-1">{sv.nome}</td>
