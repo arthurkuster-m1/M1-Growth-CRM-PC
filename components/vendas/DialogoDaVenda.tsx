@@ -40,6 +40,7 @@ import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
   ROTULO_DO_STATUS_DA_VENDA,
@@ -1548,32 +1549,30 @@ export function DialogoDaVenda({
         )}
 
         {ehVenda ? (
-          <Fase titulo={t("Anotações da oportunidade")} cor="gray">
-            <textarea
-              rows={4}
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder={t("Anotações rápidas sobre esta oportunidade…")}
-              aria-label={t("Anotações da oportunidade")}
-              className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("As mesmas anotações aparecem na página da oportunidade.")}
-            </p>
-          </Fase>
+          venda?.lead_id ? (
+            <Fase titulo={t("Anotações da oportunidade")} cor="gray">
+              <AnotacoesDoLead contactId={venda.contact_id} leadId={venda.lead_id} podeEditar semBloco />
+            </Fase>
+          ) : (
+            <Fase titulo={t("Anotações da oportunidade")} cor="gray">
+              <textarea
+                rows={4}
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                placeholder={t("Anotações rápidas sobre esta oportunidade…")}
+                aria-label={t("Anotações da oportunidade")}
+                className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+            </Fase>
+          )
         ) : (
         <>
-        {/* 9 · comentários: a descrição e os comentários são um bloco só. */}
-        <Fase titulo={t("Comentários")} cor="gray">
-          <textarea
-            rows={4}
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            placeholder={t("Anotações e contexto desta oportunidade…")}
-            aria-label={t("Comentários")}
-            className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-          />
-        </Fase>
+        {/* 9 · anotações: as mesmas do perfil do lead, só desta oportunidade. */}
+        {venda?.lead_id ? (
+          <Fase titulo={t("Anotações")} cor="gray">
+            <AnotacoesDoLead contactId={venda.contact_id} leadId={venda.lead_id} podeEditar semBloco />
+          </Fase>
+        ) : null}
 
         {/* 10 · tags: do cliente (o lead), com o mesmo editor do Inbox. */}
         {venda ? <TagsDoCliente contactId={venda.contact_id} /> : null}

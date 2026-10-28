@@ -7076,7 +7076,9 @@ export type Database = {
           embedding: Json | null
           headline: string
           id: string
+          lead_id: string | null
           organization_id: string
+          pinned: boolean
           updated_at: string
         }
         Insert: {
@@ -7086,7 +7088,9 @@ export type Database = {
           embedding?: Json | null
           headline: string
           id?: string
+          lead_id?: string | null
           organization_id: string
+          pinned?: boolean
           updated_at?: string
         }
         Update: {
@@ -7096,7 +7100,9 @@ export type Database = {
           embedding?: Json | null
           headline?: string
           id?: string
+          lead_id?: string | null
           organization_id?: string
+          pinned?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -7105,6 +7111,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
             referencedColumns: ["id"]
           },
           {
