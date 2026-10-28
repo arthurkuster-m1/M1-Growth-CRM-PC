@@ -32,7 +32,11 @@ import type { ReactNode } from "react";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { estiloDoChip, normalizarCorDeEtiqueta } from "@/lib/tags/cor-da-etiqueta";
+import {
+  corPadraoDaEtiqueta,
+  estiloDoChip,
+  normalizarCorDeEtiqueta,
+} from "@/lib/tags/cor-da-etiqueta";
 import { useCorDaEtiqueta } from "@/components/tags/CoresDasEtiquetas";
 
 interface Props extends Omit<BadgeProps, "children"> {
@@ -58,7 +62,8 @@ export function ChipDeEtiqueta({ tag, cor, contorno, className, children, ...pro
   const corDoProvider = useCorDaEtiqueta(tag);
   const efetiva = cor === undefined ? corDoProvider : cor;
   if (contorno) {
-    const c = normalizarCorDeEtiqueta(efetiva);
+    // Toda tag tem cor: sem categoria nem cor própria, ganha um tom estável tirado do nome.
+    const c = normalizarCorDeEtiqueta(efetiva) ?? (cor === undefined ? corPadraoDaEtiqueta(tag) : null);
     return (
       <Badge
         variant="secondary"
@@ -80,14 +85,14 @@ export function ChipDeEtiqueta({ tag, cor, contorno, className, children, ...pro
             style={{ backgroundColor: c }}
           />
         ) : null}
-        {tag}
+        <span className="inline-block first-letter:uppercase">{tag}</span>
         {children}
       </Badge>
     );
   }
   return (
     <Badge variant="secondary" className={cn(className)} style={estiloDoChip(efetiva)} {...props}>
-      {tag}
+      <span className="inline-block first-letter:uppercase">{tag}</span>
       {children}
     </Badge>
   );

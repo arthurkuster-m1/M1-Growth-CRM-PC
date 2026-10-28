@@ -195,3 +195,13 @@ export function estiloDoChip(cor: string | null | undefined): React.CSSPropertie
     color: escolheAFrente(normalizada),
   };
 }
+
+/** Um tom estável para a tag que não tem categoria nem cor: o mesmo nome dá sempre a mesma cor. */
+export function corPadraoDaEtiqueta(tag: string): string {
+  const chave = chaveDaEtiqueta(tag);
+  let h = 0;
+  for (let i = 0; i < chave.length; i++) h = (h * 31 + chave.charCodeAt(i)) >>> 0;
+  // Sem o cinza (o último tom): tag sem categoria também é colorida.
+  const tons = PALETA_DE_ETIQUETAS.slice(0, -1);
+  return tons[h % tons.length]!;
+}
