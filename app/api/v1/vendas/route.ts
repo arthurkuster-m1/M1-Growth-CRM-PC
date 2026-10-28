@@ -13,6 +13,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { faltaParaPagar, mensagemDaFalta } from "@/lib/vendas-pagamento";
 import {
   camposDaOportunidade,
   completarItensComProduto,
@@ -116,6 +117,43 @@ export async function POST(req: NextRequest): Promise<Response> {
             },
           ]
         : undefined;
+
+  // Pago exige produto, responsável e forma de pagamento.
+  if (pagamentos?.some((p) => p.status === "recebida")) {
+    let responsavelAtual: string | null = responsavel ?? null;
+    let formaAtual: string | null = campos.payment_method ?? null;
+    let itensAtuais = 0;
+    if (leadPedido) {
+      const { data: l } = await supabase
+        .from("crm_leads")
+        .select("owner_user_id, payment_method")
+        .eq("id", leadPedido)
+        .eq("organization_id", orgId)
+        .maybeSingle();
+      const lead = l as { owner_user_id: string | null; payment_method: string | null } | null;
+      if (responsavel === undefined) responsavelAtual = lead?.owner_user_id ?? null;
+      if (campos.payment_method === undefined) formaAtual = lead?.payment_method ?? null;
+      if (itensBrutos === undefined) {
+        const { count } = await supabase
+          .from("crm_sale_items")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", leadPedido)
+          .eq("organization_id", orgId);
+        itensAtuais = count ?? 0;
+      }
+    }
+    const falta = faltaParaPagar({
+      itens: itensBrutos !== undefined ? itens.length : itensAtuais,
+      responsavelId: responsavelAtual,
+      forma: formaAtual,
+    });
+    if (falta.length > 0) {
+      return fail("venda_incompleta", mensagemDaFalta(falta), 422, {
+        requestId,
+        details: { faltam: falta },
+      });
+    }
+  }
 
   let leadId = leadPedido ?? null;
   if (leadId) {

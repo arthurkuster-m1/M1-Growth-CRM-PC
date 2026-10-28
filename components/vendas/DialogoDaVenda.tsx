@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
+import { faltaParaPagar, mensagemDaFalta } from "@/lib/vendas-pagamento";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
   ROTULO_DO_STATUS_DA_VENDA,
@@ -55,7 +56,15 @@ import {
   type Venda,
 } from "@/lib/vendas";
 
-const PALETA_DE_ETAPAS: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
+const PALETA_DE_ETAPAS: CorDaOpcao[] = [
+  "blue",
+  "purple",
+  "orange",
+  "yellow",
+  "pink",
+  "brown",
+  "gray",
+];
 
 const COR_DO_STATUS: Record<StatusDaVenda, CorDaOpcao> = {
   interesse: "purple",
@@ -110,7 +119,6 @@ const centavos = (texto: string) => Math.round((lerNumero(texto) ?? 0) * 100);
 const textoDe = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const reais = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
 
 const BARRAS = {
   blue: "border-l-blue-500",
@@ -237,7 +245,7 @@ export function DialogoDaVenda({
   const [proximoPassoEm, setProximoPassoEm] = useState(venda?.proxima_acao_em ?? "");
   const [confirmandoPasso, setConfirmandoPasso] = useState<string | null>(null);
   const [previsao, setPrevisao] = useState(venda?.expected_close_date ?? "");
-    const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
+  const [nomeDaVendaTexto, setNomeDaVendaTexto] = useState(venda?.name ?? "");
   const [etapaId, setEtapaId] = useState(negocioProp?.etapaId ?? "");
   const responsavelInicial = venda?.responsavel_id ?? negocioProp?.responsavelId ?? "";
   const [responsavel, setResponsavel] = useState(responsavelInicial);
@@ -363,7 +371,8 @@ export function DialogoDaVenda({
           camposValores: dadosDoLead.custom_fields ?? {},
           aoSalvarExtras: async (x) => {
             try {
-              if (Object.keys(x).length > 0) await apiClient.patch(`/api/v1/leads/${leadDaVenda}`, x);
+              if (Object.keys(x).length > 0)
+                await apiClient.patch(`/api/v1/leads/${leadDaVenda}`, x);
               await recarregarTudo();
             } catch (e) {
               showApiError(e);
@@ -508,8 +517,7 @@ export function DialogoDaVenda({
       const recebidas = l.filter((x) => x.recebida);
       const abertas = l.filter((x) => !x.recebida);
       const manter = abertas.slice(0, n).map((x) => ({ ...x, valor: novo }));
-      let ultima =
-        manter[manter.length - 1] ??
+      let ultima = manter[manter.length - 1] ??
         recebidas[recebidas.length - 1] ?? {
           number: 0,
           due_on: "",
@@ -520,7 +528,7 @@ export function DialogoDaVenda({
       const novas = [...manter];
       for (let k = manter.length; k < n; k += 1) {
         ultima = {
-          number: (recebidas.length + novas.length) + 1,
+          number: recebidas.length + novas.length + 1,
           // Sem nenhuma parcela ainda, a primeira vence na data de início escolhida.
           due_on: ultima.due_on === "" ? primeiro || hoje() : somarMesesNaData(ultima.due_on, 1),
           valor: novo,
@@ -659,9 +667,19 @@ export function DialogoDaVenda({
   const corDaEtapaTag = (e?: { ganho?: boolean; perdido?: boolean }) =>
     e?.ganho ? ("verde" as const) : e?.perdido ? ("vermelho" as const) : ("azul" as const);
   const itensValidos = itens.filter((i) => i.produtoId !== "");
+  // Pago exige produto, responsável e forma de pagamento (o servidor também recusa).
+  const parcelasDaTela = parcelas.length === 0 || total <= 0 ? parcelas : parcelasAjustadas();
+  const faltaParaPago = parcelasDaTela.some((p) => p.recebida)
+    ? faltaParaPagar({
+        itens: itensValidos.length,
+        responsavelId: responsavel,
+        forma: parcelasDaTela.length > 0 ? forma : "",
+      })
+    : [];
   const valido =
     contato !== "" &&
     itensValidos.length > 0 &&
+    faltaParaPago.length === 0 &&
     (parcelas.length === 0 || total > 0) &&
     (!lembreteAtivo || lembreteDia !== "");
 
@@ -712,30 +730,12 @@ export function DialogoDaVenda({
     }
   }
 
-  // O título grava ao sair do campo (como na página do compromisso): quem edita o nome e fecha o
-  // painel sem apertar "Salvar" não o perde. Os demais campos seguem no botão.
-  const [nomeGravado, setNomeGravado] = useState((venda?.name ?? "").trim());
-  async function gravarTitulo() {
-    const novo = nomeDaVendaTexto.trim();
-    if (!venda || novo === nomeGravado) return;
-    try {
-      await apiClient.patch(`/api/v1/vendas/${venda.id}`, { name: novo });
-      setNomeGravado(novo);
-      void queryClient.invalidateQueries();
-      toast.success(t("Título salvo"));
-    } catch (e) {
-      showApiError(e);
-    }
-  }
-
-  async function salvar() {
-    setSalvando(true);
-    setErro(null);
-    // As parcelas vão como estão na tela; o status da venda é derivado delas no servidor.
+  /** Tudo o que a venda leva para o servidor, como está na tela. */
+  function montarDados(): DadosDaVenda {
     const base = parcelasAjustadas();
     const todasRecebidas = base.length > 0 && base.every((p) => p.recebida);
     const pagos = base;
-    const salvou = await aoSalvar({
+    return {
       ...(venda ? { id: venda.id } : {}),
       contact_id: contato,
       status:
@@ -768,7 +768,128 @@ export function DialogoDaVenda({
       name: nomeDaVendaTexto.trim(),
       ...(responsavel !== responsavelInicial ? { responsavel_id: responsavel || null } : {}),
       ...(!venda && funilNovo ? { pipeline_id: funilNovo } : {}),
-    });
+    };
+  }
+
+  // O título grava ao sair do campo (como na página do compromisso): quem edita o nome e fecha o
+  // painel sem apertar "Salvar" não o perde. Os demais campos seguem no botão.
+  const [nomeGravado, setNomeGravado] = useState((venda?.name ?? "").trim());
+  async function gravarTitulo() {
+    const novo = nomeDaVendaTexto.trim();
+    if (!venda || novo === nomeGravado) return;
+    try {
+      await apiClient.patch(`/api/v1/vendas/${venda.id}`, { name: novo });
+      setNomeGravado(novo);
+      void queryClient.invalidateQueries();
+      toast.success(t("Título salvo"));
+    } catch (e) {
+      showApiError(e);
+    }
+  }
+
+  // ── Gravar sozinho ─────────────────────────────────────────────────────────────
+  // Numa oportunidade/venda que já existe, cada mudança (produto, forma de pagamento, parcela,
+  // responsável, previsão, notas, próximo passo, campos do funil) grava ~1s depois, sem apertar
+  // "Salvar". O botão continua (e fecha o painel). Venda nova só nasce no botão.
+  const [auto, setAuto] = useState<"ocioso" | "salvando" | "salvo" | "erro">("ocioso");
+  const ultimoGravado = useRef<string | null>(null);
+  const passoGravado = useRef({
+    texto: (venda?.proxima_acao ?? "").trim(),
+    em: venda?.proxima_acao_em ?? null,
+  });
+  const passoConfirmado = useRef(false);
+  const camposGravados = useRef<string | null>(null);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function gravarSozinho() {
+    temporizador.current = null;
+    if (!venda || salvando) return;
+    const { id: _id, contact_id: _contato, ...resto } = montarDados();
+    const chave = JSON.stringify(resto);
+    if (ultimoGravado.current === null) {
+      ultimoGravado.current = chave;
+      camposGravados.current = JSON.stringify(camposEditados);
+      return;
+    }
+    // Faltando o que a venda exige (ex.: pago sem forma de pagamento), o aviso aparece e nada grava.
+    if (!valido) return;
+    const vendaMudou = chave !== ultimoGravado.current;
+    const passoMudou =
+      passoConfirmado.current &&
+      (proximoPasso.trim() !== passoGravado.current.texto ||
+        (proximoPassoEm || null) !== passoGravado.current.em);
+    const camposMudaram =
+      camposEditados !== null && JSON.stringify(camposEditados) !== camposGravados.current;
+    if (!vendaMudou && !passoMudou && !camposMudaram) return;
+    setAuto("salvando");
+    try {
+      if (vendaMudou) {
+        await apiClient.patch(`/api/v1/vendas/${venda.id}`, resto);
+        ultimoGravado.current = chave;
+      }
+      if (passoMudou && venda.lead_id) {
+        await apiClient.put(`/api/v1/leads/${venda.lead_id}/proxima-acao`, {
+          proxima_acao: proximoPasso.trim(),
+          proxima_acao_em: proximoPassoEm || null,
+        });
+        passoGravado.current = { texto: proximoPasso.trim(), em: proximoPassoEm || null };
+      }
+      if (camposMudaram && venda.lead_id) {
+        await apiClient.patch(`/api/v1/leads/${venda.lead_id}`, { custom_fields: camposEditados });
+        camposGravados.current = JSON.stringify(camposEditados);
+      }
+      setAuto("salvo");
+      void queryClient.invalidateQueries();
+    } catch (e) {
+      setAuto("erro");
+      showApiError(e);
+    }
+  }
+  const gravarSozinhoRef = useRef(gravarSozinho);
+  useEffect(() => {
+    gravarSozinhoRef.current = gravarSozinho;
+  });
+  const assinaturaDaTela = JSON.stringify([
+    itens,
+    parcelas,
+    forma,
+    responsavel,
+    previsao,
+    nomeDaVendaTexto,
+    notas,
+    referencia,
+    recorrente,
+    recorrenciaAtiva,
+    mesesRascunho,
+    mesesAFrente,
+    proximoPassoEm,
+    proximoPasso,
+    camposEditados,
+  ]);
+  useEffect(() => {
+    if (!venda) return;
+    // A primeira passada só fotografa o estado de abertura.
+    const t0 = setTimeout(
+      () => void gravarSozinhoRef.current(),
+      ultimoGravado.current === null ? 0 : 1000,
+    );
+    temporizador.current = t0;
+    return () => clearTimeout(t0);
+  }, [assinaturaDaTela, venda]);
+  /** Fechar leva junto o que ainda esperava o tempo de gravar. */
+  function fechar() {
+    if (temporizador.current) {
+      clearTimeout(temporizador.current);
+      void gravarSozinhoRef.current();
+    }
+    aoFechar();
+  }
+
+  async function salvar() {
+    setSalvando(true);
+    setErro(null);
+    // As parcelas vão como estão na tela; o status da venda é derivado delas no servidor.
+    const salvou = await aoSalvar(montarDados());
     if (salvou === false) {
       setSalvando(false);
       setErro(t("Não consegui salvar a oportunidade. Confira os campos e tente de novo."));
@@ -776,11 +897,18 @@ export function DialogoDaVenda({
     }
     // O lembrete: cria, muda a data ou desliga a tarefa.
     try {
-      const nome = itensValidos[0] ? (produtos.find((p) => p.id === itensValidos[0]!.produtoId)?.nome ?? "") : "";
-      const quando = lembreteDia ? new Date(`${lembreteDia}T${lembreteHora || "09:00"}:00`).toISOString() : null;
+      const nome = itensValidos[0]
+        ? (produtos.find((p) => p.id === itensValidos[0]!.produtoId)?.nome ?? "")
+        : "";
+      const quando = lembreteDia
+        ? new Date(`${lembreteDia}T${lembreteHora || "09:00"}:00`).toISOString()
+        : null;
       if (lembreteAtivo && quando) {
         if (tarefaDoLembrete) {
-          await apiClient.patch(`/api/v1/tasks/${tarefaDoLembrete}`, { due_date: quando, status: "pending" });
+          await apiClient.patch(`/api/v1/tasks/${tarefaDoLembrete}`, {
+            due_date: quando,
+            status: "pending",
+          });
         } else {
           await apiClient.post("/api/v1/tasks", {
             title: `${t("Lembrete da oportunidade")}${nome ? `: ${nome}` : ""}`,
@@ -837,168 +965,521 @@ export function DialogoDaVenda({
 
   return (
     <>
-    {registrandoAcao && venda?.lead_id ? (
-      <RegistrarAcaoEmMassaDialog
-        aberto
-        contatoIds={[venda.contact_id]}
-        leadId={venda.lead_id}
-        aoFechar={() => setRegistrandoAcao(false)}
-        aoConcluir={() => void queryClient.invalidateQueries({ queryKey: ["clientes"] })}
-      />
-    ) : null}
-    {confirmandoPasso !== null ? (
-      <ConfirmarDataDaProximaAcao
-        texto={confirmandoPasso}
-        dataAtual={proximoPassoEm || null}
-        aoCancelar={() => {
-          setConfirmandoPasso(null);
-          setProximoPasso(venda?.proxima_acao ?? "");
-        }}
-        aoConfirmar={(data) => {
-          setConfirmandoPasso(null);
-          setProximoPassoEm(data ?? "");
-        }}
-      />
-    ) : null}
-    {(perdendo || cancelandoStatus) && leadDaVenda && (venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id) ? (
-      <LoseLeadDialog
-        open
-        leadId={leadDaVenda}
-        pipelineId={(venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id)!}
-        onOpenChange={(aberta) => {
-          if (aberta) return;
-          const foiStatus = cancelandoStatus;
-          setPerdendo(false);
-          setCancelandoStatus(false);
-          void queryClient.invalidateQueries().then(() => {
-            if (foiStatus) aoFechar();
-          });
-        }}
-      />
-    ) : null}
-    <Dialog open onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent
-        // Venda/oportunidade existente abre só para ler: sem foco no título, que levantaria o teclado.
-        onOpenAutoFocus={venda ? (e) => e.preventDefault() : undefined}
-        className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overflow-x-hidden rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6"
-      >
-        {ehVenda ? (
-        <div className="flex items-start justify-between gap-2 pr-8">
-          <DialogTitle className="sr-only">
-            {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
-          </DialogTitle>
-          {/* O título, editável em cima — o MESMO da oportunidade e da venda (muda um, muda o outro). */}
-          <TituloDaOportunidade
-            valor={nomeDaVendaTexto}
-            aoMudar={setNomeDaVendaTexto}
-            aoSair={() => void gravarTitulo()}
-            placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
-          />
-        </div>
-        ) : (
-        <>
-          <DialogTitle className="sr-only">
-            {titulo ?? (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
-          </DialogTitle>
-          {/* 1.1 · lembrete e lixeira no canto, acima do título (o X do painel vem logo depois). */}
-          <div className="flex min-h-9 items-center justify-end gap-1 pr-9">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={t("Lembrete")}
-                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary ${
-                  lembreteAtivo ? "border-primary/60 bg-primary/10 text-primary" : ""
-                }`}
-              >
-                <Bell size={14} aria-hidden />
-                {lembreteAtivo && lembreteDia
-                  ? lembreteDia.split("-").reverse().join("/")
-                  : t("Lembrete")}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 space-y-3 p-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={lembreteAtivo}
-                  onChange={(e) => setLembreteAtivo(e.target.checked)}
-                />
-                {t("Ativar um lembrete para esta oportunidade")}
-              </label>
-              {lembreteAtivo ? (
-                <div className="grid gap-3">
-                  <div className="grid gap-1">
-                    <span className="text-xs text-muted-foreground">{t("Data")}</span>
-                    <CampoDeData
-                      valor={lembreteDia}
-                      aoMudar={setLembreteDia}
-                      rotulo={t("Data do lembrete")}
-                      limpavel={false}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="grid gap-1">
-                    <span className="text-xs text-muted-foreground">{t("Hora")}</span>
-                    <SeletorDeHora
-                      rotulo={t("Hora")}
-                      valor={lembreteHora}
-                      aoMudar={setLembreteHora}
-                      className="w-full justify-between"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t("Vira uma tarefa com este dia e hora, ligada ao lead — ela aparece em Tarefas e avisa na hora.")}
-                  </p>
-                </div>
-              ) : null}
-            </PopoverContent>
-          </Popover>
-            {venda ? (
-              <button
-                type="button"
-                aria-label={t("Apagar oportunidade")}
-                title={t("Apagar oportunidade")}
-                onClick={() => {
-                  if (
-                    window.confirm(t("Apagar esta oportunidade? Os totais do cliente serão recalculados."))
-                  ) {
-                    void apagarOportunidade();
-                  }
-                }}
-                className="grid h-9 w-9 place-items-center rounded-lg text-error-fg hover:bg-error-bg"
-              >
-                <Trash size={16} aria-hidden />
-              </button>
-            ) : null}
-          </div>
-          {/* 1 · o título (Cliente + Produto): o MESMO da oportunidade e da venda. */}
-          <TituloDaOportunidade
-            valor={nomeDaVendaTexto}
-            aoMudar={setNomeDaVendaTexto}
-            aoSair={() => void gravarTitulo()}
-            placeholder={nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))}
-          />
-        </>
-        )}
-        <DialogDescription className={ehVenda ? "text-sm text-muted-foreground" : "sr-only"}>
-          {titulo
-            ? titulo
-            : ehVenda
-              ? t("A venda desta oportunidade: produtos, pagamento e anotações.")
-              : t(
-                "Informe os produtos, o valor real e como o cliente vai pagar. Só entra no mês o que de fato cair na conta.",
-              )}
-        </DialogDescription>
+      {registrandoAcao && venda?.lead_id ? (
+        <RegistrarAcaoEmMassaDialog
+          aberto
+          contatoIds={[venda.contact_id]}
+          leadId={venda.lead_id}
+          aoFechar={() => setRegistrandoAcao(false)}
+          aoConcluir={() => void queryClient.invalidateQueries({ queryKey: ["clientes"] })}
+        />
+      ) : null}
+      {confirmandoPasso !== null ? (
+        <ConfirmarDataDaProximaAcao
+          texto={confirmandoPasso}
+          dataAtual={proximoPassoEm || null}
+          aoCancelar={() => {
+            setConfirmandoPasso(null);
+            setProximoPasso(venda?.proxima_acao ?? "");
+          }}
+          aoConfirmar={(data) => {
+            setConfirmandoPasso(null);
+            passoConfirmado.current = true;
+            setProximoPassoEm(data ?? "");
+          }}
+        />
+      ) : null}
+      {(perdendo || cancelandoStatus) &&
+      leadDaVenda &&
+      (venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id) ? (
+        <LoseLeadDialog
+          open
+          leadId={leadDaVenda}
+          pipelineId={(venda?.pipeline_id ?? dadosDoLead?.negocio.pipeline_id)!}
+          onOpenChange={(aberta) => {
+            if (aberta) return;
+            const foiStatus = cancelandoStatus;
+            setPerdendo(false);
+            setCancelandoStatus(false);
+            void queryClient.invalidateQueries().then(() => {
+              if (foiStatus) aoFechar();
+            });
+          }}
+        />
+      ) : null}
+      <Dialog open onOpenChange={(a) => !a && fechar()}>
+        <DialogContent
+          // Venda/oportunidade existente abre só para ler: sem foco no título, que levantaria o teclado.
+          onOpenAutoFocus={venda ? (e) => e.preventDefault() : undefined}
+          className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-x-hidden overflow-y-auto rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6"
+        >
+          {ehVenda ? (
+            <div className="flex items-start justify-between gap-2 pr-8">
+              <DialogTitle className="sr-only">
+                {titulo ??
+                  (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
+              </DialogTitle>
+              {/* O título, editável em cima — o MESMO da oportunidade e da venda (muda um, muda o outro). */}
+              <TituloDaOportunidade
+                valor={nomeDaVendaTexto}
+                aoMudar={setNomeDaVendaTexto}
+                aoSair={() => void gravarTitulo()}
+                placeholder={
+                  nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))
+                }
+              />
+            </div>
+          ) : (
+            <>
+              <DialogTitle className="sr-only">
+                {titulo ??
+                  (venda ? nomeDaVenda(venda) || t("Editar oportunidade") : t("Nova oportunidade"))}
+              </DialogTitle>
+              {/* 1.1 · lembrete e lixeira no canto, acima do título (o X do painel vem logo depois). */}
+              <div className="flex min-h-9 items-center justify-end gap-1 pr-9">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t("Lembrete")}
+                      className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary ${
+                        lembreteAtivo ? "border-primary/60 bg-primary/10 text-primary" : ""
+                      }`}
+                    >
+                      <Bell size={14} aria-hidden />
+                      {lembreteAtivo && lembreteDia
+                        ? lembreteDia.split("-").reverse().join("/")
+                        : t("Lembrete")}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80 space-y-3 p-3">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={lembreteAtivo}
+                        onChange={(e) => setLembreteAtivo(e.target.checked)}
+                      />
+                      {t("Ativar um lembrete para esta oportunidade")}
+                    </label>
+                    {lembreteAtivo ? (
+                      <div className="grid gap-3">
+                        <div className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">{t("Data")}</span>
+                          <CampoDeData
+                            valor={lembreteDia}
+                            aoMudar={setLembreteDia}
+                            rotulo={t("Data do lembrete")}
+                            limpavel={false}
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">{t("Hora")}</span>
+                          <SeletorDeHora
+                            rotulo={t("Hora")}
+                            valor={lembreteHora}
+                            aoMudar={setLembreteHora}
+                            className="w-full justify-between"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t(
+                            "Vira uma tarefa com este dia e hora, ligada ao lead — ela aparece em Tarefas e avisa na hora.",
+                          )}
+                        </p>
+                      </div>
+                    ) : null}
+                  </PopoverContent>
+                </Popover>
+                {venda ? (
+                  <button
+                    type="button"
+                    aria-label={t("Apagar oportunidade")}
+                    title={t("Apagar oportunidade")}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          t("Apagar esta oportunidade? Os totais do cliente serão recalculados."),
+                        )
+                      ) {
+                        void apagarOportunidade();
+                      }
+                    }}
+                    className="grid h-9 w-9 place-items-center rounded-lg text-error-fg hover:bg-error-bg"
+                  >
+                    <Trash size={16} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+              {/* 1 · o título (Cliente + Produto): o MESMO da oportunidade e da venda. */}
+              <TituloDaOportunidade
+                valor={nomeDaVendaTexto}
+                aoMudar={setNomeDaVendaTexto}
+                aoSair={() => void gravarTitulo()}
+                placeholder={
+                  nomePadrao || (venda ? t("Título da oportunidade") : t("Nova oportunidade"))
+                }
+              />
+            </>
+          )}
+          <DialogDescription className={ehVenda ? "text-sm text-muted-foreground" : "sr-only"}>
+            {titulo
+              ? titulo
+              : ehVenda
+                ? t("A venda desta oportunidade: produtos, pagamento e anotações.")
+                : t(
+                    "Informe os produtos, o valor real e como o cliente vai pagar. Só entra no mês o que de fato cair na conta.",
+                  )}
+          </DialogDescription>
 
-        {ehVenda ? (
-          <>
-            {/* 1 e 2 · o título (o MESMO da oportunidade) e o status da venda (o MESMO campo do status). */}
-            <Fase titulo={t("Status da venda")} cor="purple">
-              {venda && venda.lead_id ? (
+          {ehVenda ? (
+            <>
+              {/* 1 e 2 · o título (o MESMO da oportunidade) e o status da venda (o MESMO campo do status). */}
+              <Fase titulo={t("Status da venda")} cor="purple">
+                {venda && venda.lead_id ? (
+                  <div className="grid gap-1">
+                    <SeletorEmPopup
+                      rotulo={t("Status da venda")}
+                      valor={statusAtual}
+                      opcoes={STATUS_DA_VENDA.map((st) => ({
+                        id: st,
+                        rotulo: rotuloDoStatus(t, st),
+                        cor: COR_DO_STATUS[st],
+                      }))}
+                      aoEscolher={(id) => void mudarStatusDaOportunidade(id as StatusDaVenda)}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {t("Ao mudar o status, ele é salvo na hora e o painel fecha.")}
+                    </span>
+                  </div>
+                ) : null}
+              </Fase>
+            </>
+          ) : null}
+
+          {ehVenda ? null : (
+            <>
+              {/* 2 · o cliente: um toggle com celular, e-mail e campos; atalhos de ícone no fim do campo. */}
+              <div className="grid grid-cols-1 gap-1">
+                {venda || (contatoInicial && contato === contatoInicial.contact_id) ? (
+                  <ClienteDaOportunidade
+                    contactId={venda?.contact_id ?? contatoInicial!.contact_id}
+                    nome={venda?.cliente?.nome ?? contatoInicial?.nome ?? ""}
+                  />
+                ) : (
+                  <>
+                    <span className="text-xs text-muted-foreground">{t("Cliente")}</span>
+                    {clienteEscolhido ? (
+                      <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-sm">
+                        <span>{clienteEscolhido.nome}</span>
+                        <button
+                          type="button"
+                          className="text-xs text-primary underline"
+                          onClick={() => setContato("")}
+                        >
+                          {t("Trocar")}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          value={busca}
+                          onChange={(e) => setBusca(e.target.value)}
+                          placeholder={t("Buscar cliente por nome ou telefone")}
+                          aria-label={t("Buscar cliente")}
+                          className={CAMPO}
+                        />
+                        {sugestoes.length > 0 ? (
+                          <ul className="grid grid-cols-1 gap-1 rounded-xl border p-1">
+                            {sugestoes.map((c) => (
+                              <li key={c.contact_id}>
+                                <button
+                                  type="button"
+                                  onClick={() => setContato(c.contact_id)}
+                                  className="flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-secondary"
+                                >
+                                  <span className="truncate">{c.nome}</span>
+                                  <span className="shrink-0 text-xs text-muted-foreground">
+                                    {c.telefone}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* 3 · funil, etapa (tag colorida e editável), score e, se perdida, o motivo. */}
+              <Fase
+                titulo={t("Funil e status")}
+                cor="blue"
+                acao={
+                  venda?.lead_id ? (
+                    <button
+                      type="button"
+                      onClick={() => setRegistrandoAcao(true)}
+                      data-testid="registro-de-acao"
+                      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+                    >
+                      <Plus size={14} aria-hidden />
+                      {t("Registro de ação")}
+                    </button>
+                  ) : null
+                }
+              >
+                {!venda && funis && funis.length > 0 ? (
+                  <div className="grid gap-1">
+                    <span className="text-xs text-muted-foreground">{t("Funil")}</span>
+                    <SeletorEmPopup
+                      rotulo={t("Funil")}
+                      valor={funilNovo}
+                      opcoes={funis.map((f) => ({ id: f.id, rotulo: f.nome }))}
+                      aoEscolher={setFunilNovo}
+                    />
+                  </div>
+                ) : null}
+                {venda?.funil || negocio ? (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <Funnel size={14} aria-hidden />
+                      {venda?.funil ?? "—"}
+                    </span>
+                    {negocio ? (
+                      <MenuDeOpcoes
+                        alinhar="start"
+                        gatilho={
+                          <Tag
+                            data-testid="etapa-da-oportunidade"
+                            cor={corDaEtapaTag(etapaDoFunil)}
+                            editavel
+                          >
+                            {negocio.etapas.find((e) => e.id === etapaAtualId)?.nome ??
+                              t("Escolher etapa")}
+                          </Tag>
+                        }
+                        opcoes={negocio.etapas.map((e) => ({
+                          id: e.id,
+                          rotulo: e.nome,
+                          desabilitado: e.id === etapaAtualId,
+                          aoEscolher: () => {
+                            setEtapaId(e.id);
+                            void negocio.aoMoverEtapa(e.id);
+                          },
+                        }))}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+                {venda?.lead_id ? (
+                  <ScoreDaOportunidade
+                    pipelineId={venda.pipeline_id ?? dadosDoLead?.negocio.pipeline_id}
+                    etapaId={etapaAtualId}
+                    ganho={Boolean(etapaDoFunil?.ganho)}
+                    perdido={Boolean(etapaDoFunil?.perdido) || oportunidadePerdida}
+                  />
+                ) : null}
+                {oportunidadePerdida ? (
+                  <p className="text-sm" data-testid="motivo-da-perda">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t("Motivo da perda")}:{" "}
+                    </span>
+                    {dadosDoLead?.sistema.motivo_da_perda?.trim() || t("Não informado")}
+                  </p>
+                ) : null}
+              </Fase>
+
+              {/* 4 · o responsável. */}
+              <Fase titulo={t("Responsável")} cor="purple">
+                <SeletorEmPopup
+                  rotulo={t("Responsável pela oportunidade")}
+                  valor={responsavel}
+                  opcoes={equipe.map((p) => ({ id: p.id, rotulo: p.nome }))}
+                  rotuloVazio={t("Sem responsável")}
+                  aoEscolher={setResponsavel}
+                />
+              </Fase>
+
+              {/* 4b · próximos passos e a data (entre o responsável e os compromissos). */}
+              <Fase titulo={t("Próximos passos")} cor="purple">
+                <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+                  <input
+                    value={proximoPasso}
+                    maxLength={300}
+                    onChange={(e) => setProximoPasso(e.target.value)}
+                    // Escreveu a ação: confirma a data (a atual já vem escolhida).
+                    onBlur={() => {
+                      if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
+                        setConfirmandoPasso(proximoPasso.trim());
+                      }
+                    }}
+                    placeholder={t("Ex.: Ligar na terça com a proposta")}
+                    aria-label={t("Próximos passos")}
+                    className={CAMPO}
+                  />
+                  <CampoDeData
+                    valor={proximoPassoEm}
+                    aoMudar={(v) => {
+                      passoConfirmado.current = true;
+                      setProximoPassoEm(v);
+                    }}
+                    rotulo={t("Próxima ação em")}
+                    className="w-full"
+                  />
+                </div>
+                {venda?.lead_id && proximoPasso.trim() ? (
+                  <button
+                    type="button"
+                    disabled={virandoTarefa}
+                    onClick={() => void virarTarefa()}
+                    className="mt-2 text-sm font-medium text-primary hover:underline disabled:opacity-50"
+                  >
+                    {t("Transformar em tarefa")}
+                  </button>
+                ) : null}
+              </Fase>
+
+              {/* 5 e 6 · compromissos e tarefas, como no Início; o que nasce aqui já leva cliente e oportunidade. */}
+              {venda?.lead_id ? (
+                <>
+                  <Fase titulo={t("Compromissos")} cor="blue">
+                    <CompromissosDaOportunidade
+                      contactId={venda.contact_id}
+                      leadId={venda.lead_id}
+                      vendeu={[
+                        "comprometida",
+                        "concluida",
+                        "recorrencia_ativa",
+                        "recorrencia_encerrada",
+                      ].includes(statusAtual)}
+                    />
+                  </Fase>
+                  <Fase titulo={t("Tarefas")} cor="yellow">
+                    <TarefasDaOportunidade contactId={venda.contact_id} leadId={venda.lead_id} />
+                  </Fase>
+                </>
+              ) : null}
+
+              {/* 7 · previsão de fechamento (a venda — produtos, serviços e pagamento — vem logo abaixo). */}
+              <Fase titulo={t("Previsão de fechamento")} cor="purple">
+                <CampoDeData
+                  valor={previsao}
+                  aoMudar={setPrevisao}
+                  rotulo={t("Previsão de fechamento")}
+                  className="w-full"
+                />
+              </Fase>
+            </>
+          )}
+
+          <Fase
+            titulo={ehVenda ? t("Produtos e ticket médio") : t("Produtos e serviços")}
+            cor="orange"
+          >
+            {itens.map((it, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[1fr_8rem_auto]"
+              >
+                <SeletorEmPopup
+                  className="col-span-2 sm:col-span-1"
+                  rotulo={`${t("Produto")} ${i + 1}`}
+                  valor={it.produtoId}
+                  opcoes={produtos.map((p) => ({ id: p.id, rotulo: p.nome }))}
+                  placeholder={t("Escolha o produto cadastrado")}
+                  aoEscolher={(novo) => {
+                    const p = produtos.find((x) => x.id === novo);
+                    setItens((l) =>
+                      l.map((x, k) =>
+                        k === i
+                          ? {
+                              ...x,
+                              produtoId: novo,
+                              // O preço de tabela entra de partida; pode mudar (desconto, negociação).
+                              valor:
+                                x.valor === "" && p && p.valor > 0
+                                  ? textoDe(Math.round(p.valor * 100))
+                                  : x.valor,
+                            }
+                          : x,
+                      ),
+                    );
+                  }}
+                />
+                <input
+                  value={it.valor}
+                  inputMode="decimal"
+                  onChange={(e) =>
+                    setItens((l) =>
+                      l.map((x, k) =>
+                        k === i ? { ...x, valor: e.target.value.replace(/[^\d.,]/g, "") } : x,
+                      ),
+                    )
+                  }
+                  placeholder="R$ 0,00"
+                  aria-label={`${t("Valor")} ${i + 1}`}
+                  className={CAMPO}
+                />
+                <button
+                  type="button"
+                  aria-label={t("Tirar item")}
+                  disabled={itens.length === 1}
+                  onClick={() => setItens((l) => l.filter((_, k) => k !== i))}
+                  className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg disabled:opacity-30"
+                >
+                  <Trash size={14} aria-hidden />
+                </button>
+              </div>
+            ))}
+            {produtos.length === 0 ? (
+              <p className="rounded-lg bg-warning-bg px-3 py-2 text-xs text-warning-fg">
+                {t(
+                  "Nenhum produto cadastrado ainda. Cadastre em Marketing › Produtos e ofertas: toda oportunidade é de um produto do catálogo.",
+                )}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setItens((l) => [...l, { produtoId: "", valor: "" }])}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary"
+              >
+                <Plus size={14} weight="bold" aria-hidden />
+                {t("Vendeu mais alguma coisa?")}
+              </button>
+              {ehVenda && itensValidos.length > 1 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("Ticket médio por produto")}:{" "}
+                  <strong className="tabular-nums">
+                    {reais(Math.round(total / itensValidos.length))}
+                  </strong>
+                </p>
+              ) : null}
+              <p className="text-sm">
+                {recorrente && parcelas.length > 0 ? t("Total (soma das parcelas)") : t("Total")}:{" "}
+                <strong className="tabular-nums">
+                  {reais(
+                    recorrente && parcelas.length > 0
+                      ? parcelas.reduce((a2, p) => a2 + centavos(p.valor), 0)
+                      : total,
+                  )}
+                </strong>
+              </p>
+            </div>
+          </Fase>
+
+          {true ? (
+            <Fase titulo={t("Pagamento")} cor="green">
+              {!ehVenda && venda && venda.lead_id ? (
                 <div className="grid gap-1">
+                  <span className="text-xs text-muted-foreground">
+                    {t("Status da oportunidade")}
+                  </span>
                   <SeletorEmPopup
-                    rotulo={t("Status da venda")}
+                    rotulo={t("Status da oportunidade")}
                     valor={statusAtual}
                     opcoes={STATUS_DA_VENDA.map((st) => ({
                       id: st,
@@ -1012,693 +1493,417 @@ export function DialogoDaVenda({
                   </span>
                 </div>
               ) : null}
-            </Fase>
-          </>
-        ) : null}
-
-        {ehVenda ? null : (
-        <>
-        {/* 2 · o cliente: um toggle com celular, e-mail e campos; atalhos de ícone no fim do campo. */}
-        <div className="grid grid-cols-1 gap-1">
-          {venda || (contatoInicial && contato === contatoInicial.contact_id) ? (
-            <ClienteDaOportunidade
-              contactId={venda?.contact_id ?? contatoInicial!.contact_id}
-              nome={venda?.cliente?.nome ?? contatoInicial?.nome ?? ""}
-            />
-          ) : (
-            <>
-              <span className="text-xs text-muted-foreground">{t("Cliente")}</span>
-              {clienteEscolhido ? (
-                <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2 text-sm">
-                  <span>{clienteEscolhido.nome}</span>
-                  <button
-                    type="button"
-                    className="text-xs text-primary underline"
-                    onClick={() => setContato("")}
-                  >
-                    {t("Trocar")}
-                  </button>
-                </div>
-              ) : (
-                <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="grid grid-cols-1 gap-1">
+                  <span className="text-xs text-muted-foreground">{t("Forma de pagamento")}</span>
+                  <SeletorDaFormaDePagamento valor={forma} aoEscolher={setForma} />
+                  {resumoDaTaxa ? (
+                    <span className="text-xs text-muted-foreground">{resumoDaTaxa}</span>
+                  ) : null}
+                </label>
+                <label className="grid grid-cols-1 gap-1">
+                  <span className="text-xs text-muted-foreground">{t("Número de parcelas")}</span>
                   <input
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                    placeholder={t("Buscar cliente por nome ou telefone")}
-                    aria-label={t("Buscar cliente")}
+                    value={qtd}
+                    inputMode="numeric"
+                    onChange={(e) => setQtd(e.target.value.replace(/\D/g, ""))}
+                    onBlur={aplicarQtdDeParcelas}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        aplicarQtdDeParcelas();
+                      }
+                    }}
                     className={CAMPO}
                   />
-                  {sugestoes.length > 0 ? (
-                    <ul className="grid grid-cols-1 gap-1 rounded-xl border p-1">
-                      {sugestoes.map((c) => (
-                        <li key={c.contact_id}>
-                          <button
-                            type="button"
-                            onClick={() => setContato(c.contact_id)}
-                            className="flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-secondary"
-                          >
-                            <span className="truncate">{c.nome}</span>
-                            <span className="shrink-0 text-xs text-muted-foreground">{c.telefone}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                </label>
+                <label className="grid grid-cols-1 gap-1">
+                  <span className="text-xs text-muted-foreground">{t("Primeira parcela em")}</span>
+                  <CampoDeData
+                    valor={primeiro}
+                    aoMudar={setPrimeiro}
+                    rotulo={t("Primeira parcela em")}
+                    className="w-full"
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={recorrente}
+                    onChange={(e) => setRecorrente(e.target.checked)}
+                  />
+                  {t("Recorrente (mensalidade, assinatura)")}
+                </label>
+              </div>
+              {recorrente ? (
+                <div
+                  className={`grid gap-2 rounded-xl border border-l-4 px-3 py-3 text-sm ${
+                    recorrenciaAtiva
+                      ? "border-l-emerald-500 bg-emerald-500/5"
+                      : "border-l-slate-400 bg-secondary/50"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">
+                      {recorrenciaAtiva ? t("Recorrência ativa") : t("Recorrência encerrada")}
+                    </span>
+                    {recorrenciaAtiva ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Encerra: o histórico recebido fica; as parcelas ainda previstas saem.
+                          setRecorrenciaAtiva(false);
+                          setParcelas((l) => l.filter((p) => p.recebida));
+                        }}
+                        className="h-8 rounded-lg border border-red-500/50 bg-red-500/10 px-3 text-xs font-medium text-red-700 hover:bg-red-500/20 dark:text-red-300"
+                      >
+                        {t("Encerrar recorrência")}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRecorrenciaAtiva(true)}
+                        className="h-8 rounded-lg border px-3 text-xs font-medium hover:bg-secondary"
+                      >
+                        {t("Reativar recorrência")}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {recorrenciaAtiva
+                      ? t(
+                          "Todo mês o sistema cria a próxima parcela como prevista e avisa na véspera, no dia e no dia seguinte para você confirmar se o lead pagou e se o valor mudou. Nada é dado como pago sozinho.",
+                        )
+                      : t(
+                          "Encerrada: a oportunidade e as parcelas já recebidas ficam no histórico (e no LTV). Nenhuma parcela nova é criada nem cobrada.",
+                        )}
+                  </p>
+                  {recorrenciaAtiva ? (
+                    <>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {t("Manter quantos meses de previsão à frente")}
+                          </span>
+                          <SeletorEmPopup
+                            rotulo={t("Meses à frente")}
+                            valor={String(mesesRascunho)}
+                            opcoes={Array.from({ length: 12 }, (_, k) => k + 1).map((n) => ({
+                              id: String(n),
+                              rotulo:
+                                n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`,
+                            }))}
+                            aoEscolher={(v) => setMesesRascunho(Number(v))}
+                          />
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">{t("Valor mensal")}</span>
+                          <input
+                            value={valorRascunho ?? valorMensal}
+                            inputMode="decimal"
+                            aria-label={t("Valor mensal")}
+                            onChange={(e) =>
+                              setValorRascunho(e.target.value.replace(/[^\d.,]/g, ""))
+                            }
+                            onKeyDown={(e) => e.key === "Enter" && aplicarRecorrencia()}
+                            className={CAMPO}
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={aplicarRecorrencia}
+                        className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-fit"
+                      >
+                        {t("Aplicar e gerar as parcelas")}
+                      </button>
+                      {mesesRascunho !== mesesAFrente || valorRascunho !== null ? (
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          {t(
+                            "Mudou os meses ou o valor? Clique em Aplicar para ver as parcelas e a previsão.",
+                          )}
+                        </p>
+                      ) : null}
+                      <p className="rounded-lg bg-background/70 px-3 py-2 text-xs">
+                        <strong className="tabular-nums">{reais(previstoCents)}</strong>{" "}
+                        {t("a receber")} ({abertasCont}{" "}
+                        {abertasCont === 1 ? t("parcela") : t("parcelas")}) · {t("já recebido")}{" "}
+                        <strong className="tabular-nums">{reais(recebidoCents)}</strong>
+                      </p>
+                    </>
                   ) : null}
-                </>
+                </div>
+              ) : null}
+
+              {parcelas.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full min-w-max text-sm">
+                    <thead className="bg-secondary/60 text-xs text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">#</th>
+                        <th className="px-3 py-2 text-left font-medium">{t("Vence em")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("Valor")}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t("Já recebida")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parcelas.map((p, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-3 py-1 tabular-nums">{i + 1}</td>
+                          <td className="px-2 py-1">
+                            <CampoDeData
+                              valor={p.due_on}
+                              rotulo={`${t("Vencimento da parcela")} ${i + 1}`}
+                              aoMudar={(dia) => {
+                                editouParcelaRef.current = true;
+                                setParcelas((l) =>
+                                  l.map((x, k) => (k === i ? { ...x, due_on: dia } : x)),
+                                );
+                              }}
+                              className="h-9"
+                            />
+                          </td>
+                          <td className="px-2 py-1 text-right">
+                            <input
+                              value={p.valor}
+                              inputMode="decimal"
+                              aria-label={`${t("Valor da parcela")} ${i + 1}`}
+                              onChange={(e) => {
+                                editouParcelaRef.current = true;
+                                const v = e.target.value.replace(/[^\d.,]/g, "");
+                                setParcelas((l) =>
+                                  l.map((x, k) => (k === i ? { ...x, valor: v } : x)),
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  aplicarValorDaParcela(i);
+                                }
+                              }}
+                              onBlur={() => aplicarValorDaParcela(i)}
+                              className="h-9 w-28 rounded-xl border bg-card px-2 text-right text-sm tabular-nums"
+                            />
+                          </td>
+                          <td className="px-3 py-1 text-center">
+                            <CirculoDeRecebida
+                              className="mx-auto size-6"
+                              marcado={p.recebida}
+                              rotulo={`${t("Parcela recebida")} ${i + 1}`}
+                              aoMudar={(v) => marcarParcelaNoFormulario(i, v)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("Gere as parcelas para registrar quando cada uma cai na conta.")}
+                </p>
               )}
+              {parcelas.length > 0 && Math.abs(diferenca) > 1 ? (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning-fg"
+                >
+                  {t("A soma das parcelas difere do total em")} {reais(Math.abs(diferenca))}.{" "}
+                  {t("As parcelas serão ajustadas ao total ao salvar.")}
+                </p>
+              ) : null}
+            </Fase>
+          ) : null}
+
+          {/* 7 · números principais da venda. */}
+          {ehVenda ? null : (
+            <div
+              className="grid grid-cols-3 gap-2 text-center"
+              data-testid="numeros-da-oportunidade"
+            >
+              {[
+                [t("Valor pago"), reais(recebidoCents)],
+                [t("Em interesse"), reais(parcelas.length === 0 ? total : 0)],
+                [t("Valor comprometido"), reais(previstoCents)],
+              ].map(([r, v]) => (
+                <div key={r} className="rounded-2xl border border-border bg-card/50 px-2 py-3">
+                  <div className="text-[11px] text-muted-foreground">{r}</div>
+                  <div className="text-sm font-semibold tabular-nums sm:text-base">{v}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {ehVenda ? (
+            venda?.lead_id ? (
+              <Fase titulo={t("Anotações da oportunidade")} cor="gray">
+                <AnotacoesDoLead
+                  contactId={venda.contact_id}
+                  leadId={venda.lead_id}
+                  podeEditar
+                  semBloco
+                />
+              </Fase>
+            ) : (
+              <Fase titulo={t("Anotações da oportunidade")} cor="gray">
+                <textarea
+                  rows={4}
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  placeholder={t("Anotações rápidas sobre esta oportunidade…")}
+                  aria-label={t("Anotações da oportunidade")}
+                  className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                />
+              </Fase>
+            )
+          ) : (
+            <>
+              {/* 9 · anotações: as mesmas do perfil do lead, só desta oportunidade. */}
+              {venda?.lead_id ? (
+                <Fase titulo={t("Anotações")} cor="gray">
+                  <AnotacoesDoLead
+                    contactId={venda.contact_id}
+                    leadId={venda.lead_id}
+                    podeEditar
+                    semBloco
+                  />
+                </Fase>
+              ) : null}
+
+              {/* 10 · tags: do cliente (o lead), com o mesmo editor do Inbox. */}
+              {venda ? <TagsDoCliente contactId={venda.contact_id} /> : null}
+
+              {/* 11 · origem, em toggle. */}
+              {leadDaVenda ? (
+                <BlocoRecolhivel titulo={t("Origem")}>
+                  <div className="grid gap-3 p-4 pt-0">
+                    {origemAtual ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t(
+                            "De onde veio esta oportunidade. É isto que leva o valor para a análise de landing pages e criativos.",
+                          )}
+                        </p>
+                        <OrigemEmCascata
+                          valor={origemAtual}
+                          aoMudar={setOrigemEditada}
+                          campanhas={opcoesDeOrigem.data?.campanhas ?? []}
+                          posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
+                          fontes={opcoesDeOrigem.data?.fontes ?? []}
+                          carregando={opcoesDeOrigem.isLoading}
+                        />
+                      </>
+                    ) : (
+                      <div className="h-16 animate-pulse rounded-lg bg-secondary" />
+                    )}
+                  </div>
+                </BlocoRecolhivel>
+              ) : null}
+
+              {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
+                <BlocoRecolhivel titulo={t("Campos do funil")}>
+                  <div className="p-4 pt-0">
+                    <CustomFieldsEditor
+                      fields={negocio.camposDoFunil}
+                      value={camposDoNegocio}
+                      onChange={setCamposDoNegocio}
+                      mode="lead"
+                    />
+                  </div>
+                </BlocoRecolhivel>
+              ) : null}
+
+              <BlocoRecolhivel titulo={t("Detalhes da oportunidade")}>
+                <div className="p-4 pt-0">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {venda ? (
+                      <dl className="grid gap-x-4 gap-y-1 text-xs text-muted-foreground sm:col-span-2 sm:grid-cols-3">
+                        <div>
+                          <dt className="uppercase">{t("Criada em")}</dt>
+                          <dd className="text-sm text-foreground">
+                            {venda.created_at
+                              ? venda.created_at.slice(0, 10).split("-").reverse().join("/")
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="uppercase">{t("Fechada em")}</dt>
+                          <dd className="text-sm text-foreground">
+                            {venda.closed_on
+                              ? venda.closed_on.slice(0, 10).split("-").reverse().join("/")
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="uppercase">{t("Último pagamento")}</dt>
+                          <dd className="text-sm text-foreground">
+                            {venda.paid_on
+                              ? venda.paid_on.slice(0, 10).split("-").reverse().join("/")
+                              : "—"}
+                          </dd>
+                        </div>
+                      </dl>
+                    ) : null}
+                  </div>
+                </div>
+              </BlocoRecolhivel>
+
+              {/* Atividade: tudo o que aconteceu nesta oportunidade (o histórico, filtrado por ela). */}
+              {venda?.lead_id ? (
+                <AtividadeDaOportunidade leadId={venda.lead_id} contactId={venda.contact_id} />
+              ) : null}
             </>
           )}
-        </div>
 
-        {/* 3 · funil, etapa (tag colorida e editável), score e, se perdida, o motivo. */}
-        <Fase
-          titulo={t("Funil e status")}
-          cor="blue"
-          acao={
-            venda?.lead_id ? (
+          {faltaParaPago.length > 0 ? (
+            <p
+              role="alert"
+              className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+            >
+              {t(mensagemDaFalta(faltaParaPago))}
+            </p>
+          ) : null}
+          {erro ? (
+            <p
+              role="alert"
+              className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm"
+            >
+              {erro}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap justify-between gap-2 pt-1">
+            <span className="self-center text-xs text-muted-foreground" aria-live="polite">
+              {auto === "salvando"
+                ? t("Salvando…")
+                : auto === "salvo"
+                  ? t("Salvo automaticamente")
+                  : auto === "erro"
+                    ? t("Não consegui salvar a última alteração")
+                    : ""}
+            </span>
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setRegistrandoAcao(true)}
-                data-testid="registro-de-acao"
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+                onClick={fechar}
+                className="h-10 rounded-xl border px-4 text-sm font-medium hover:bg-secondary"
               >
-                <Plus size={14} aria-hidden />
-                {t("Registro de ação")}
+                {t("Cancelar")}
               </button>
-            ) : null
-          }
-        >
-          {!venda && funis && funis.length > 0 ? (
-            <div className="grid gap-1">
-              <span className="text-xs text-muted-foreground">{t("Funil")}</span>
-              <SeletorEmPopup
-                rotulo={t("Funil")}
-                valor={funilNovo}
-                opcoes={funis.map((f) => ({ id: f.id, rotulo: f.nome }))}
-                aoEscolher={setFunilNovo}
-              />
-            </div>
-          ) : null}
-          {venda?.funil || negocio ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                <Funnel size={14} aria-hidden />
-                {venda?.funil ?? "—"}
-              </span>
-              {negocio ? (
-                <MenuDeOpcoes
-                  alinhar="start"
-                  gatilho={
-                    <Tag data-testid="etapa-da-oportunidade" cor={corDaEtapaTag(etapaDoFunil)} editavel>
-                      {negocio.etapas.find((e) => e.id === etapaAtualId)?.nome ?? t("Escolher etapa")}
-                    </Tag>
-                  }
-                  opcoes={negocio.etapas.map((e) => ({
-                    id: e.id,
-                    rotulo: e.nome,
-                    desabilitado: e.id === etapaAtualId,
-                    aoEscolher: () => {
-                      setEtapaId(e.id);
-                      void negocio.aoMoverEtapa(e.id);
-                    },
-                  }))}
-                />
-              ) : null}
-            </div>
-          ) : null}
-          {venda?.lead_id ? (
-            <ScoreDaOportunidade
-              pipelineId={venda.pipeline_id ?? dadosDoLead?.negocio.pipeline_id}
-              etapaId={etapaAtualId}
-              ganho={Boolean(etapaDoFunil?.ganho)}
-              perdido={Boolean(etapaDoFunil?.perdido) || oportunidadePerdida}
-            />
-          ) : null}
-          {oportunidadePerdida ? (
-            <p className="text-sm" data-testid="motivo-da-perda">
-              <span className="text-xs font-medium text-muted-foreground">{t("Motivo da perda")}: </span>
-              {dadosDoLead?.sistema.motivo_da_perda?.trim() || t("Não informado")}
-            </p>
-          ) : null}
-        </Fase>
-
-        {/* 4 · o responsável. */}
-        <Fase titulo={t("Responsável")} cor="purple">
-          <SeletorEmPopup
-            rotulo={t("Responsável pela oportunidade")}
-            valor={responsavel}
-            opcoes={equipe.map((p) => ({ id: p.id, rotulo: p.nome }))}
-            rotuloVazio={t("Sem responsável")}
-            aoEscolher={setResponsavel}
-          />
-        </Fase>
-
-        {/* 4b · próximos passos e a data (entre o responsável e os compromissos). */}
-        <Fase titulo={t("Próximos passos")} cor="purple">
-          <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-            <input
-              value={proximoPasso}
-              maxLength={300}
-              onChange={(e) => setProximoPasso(e.target.value)}
-              // Escreveu a ação: confirma a data (a atual já vem escolhida).
-              onBlur={() => {
-                if (proximoPasso.trim() !== (venda?.proxima_acao ?? "").trim()) {
-                  setConfirmandoPasso(proximoPasso.trim());
-                }
-              }}
-              placeholder={t("Ex.: Ligar na terça com a proposta")}
-              aria-label={t("Próximos passos")}
-              className={CAMPO}
-            />
-            <CampoDeData
-              valor={proximoPassoEm}
-              aoMudar={setProximoPassoEm}
-              rotulo={t("Próxima ação em")}
-              className="w-full"
-            />
-          </div>
-          {venda?.lead_id && proximoPasso.trim() ? (
-            <button
-              type="button"
-              disabled={virandoTarefa}
-              onClick={() => void virarTarefa()}
-              className="mt-2 text-sm font-medium text-primary hover:underline disabled:opacity-50"
-            >
-              {t("Transformar em tarefa")}
-            </button>
-          ) : null}
-        </Fase>
-
-        {/* 5 e 6 · compromissos e tarefas, como no Início; o que nasce aqui já leva cliente e oportunidade. */}
-        {venda?.lead_id ? (
-          <>
-            <Fase titulo={t("Compromissos")} cor="blue">
-              <CompromissosDaOportunidade
-                contactId={venda.contact_id}
-                leadId={venda.lead_id}
-                vendeu={["comprometida", "concluida", "recorrencia_ativa", "recorrencia_encerrada"].includes(
-                  statusAtual,
-                )}
-              />
-            </Fase>
-            <Fase titulo={t("Tarefas")} cor="yellow">
-              <TarefasDaOportunidade contactId={venda.contact_id} leadId={venda.lead_id} />
-            </Fase>
-          </>
-        ) : null}
-
-        {/* 7 · previsão de fechamento (a venda — produtos, serviços e pagamento — vem logo abaixo). */}
-        <Fase titulo={t("Previsão de fechamento")} cor="purple">
-          <CampoDeData
-            valor={previsao}
-            aoMudar={setPrevisao}
-            rotulo={t("Previsão de fechamento")}
-            className="w-full"
-          />
-        </Fase>
-        </>
-        )}
-
-        <Fase titulo={ehVenda ? t("Produtos e ticket médio") : t("Produtos e serviços")} cor="orange">
-          {itens.map((it, i) => (
-            <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[1fr_8rem_auto]">
-              <SeletorEmPopup
-                className="col-span-2 sm:col-span-1"
-                rotulo={`${t("Produto")} ${i + 1}`}
-                valor={it.produtoId}
-                opcoes={produtos.map((p) => ({ id: p.id, rotulo: p.nome }))}
-                placeholder={t("Escolha o produto cadastrado")}
-                aoEscolher={(novo) => {
-                  const p = produtos.find((x) => x.id === novo);
-                  setItens((l) =>
-                    l.map((x, k) =>
-                      k === i
-                        ? {
-                            ...x,
-                            produtoId: novo,
-                            // O preço de tabela entra de partida; pode mudar (desconto, negociação).
-                            valor:
-                              x.valor === "" && p && p.valor > 0
-                                ? textoDe(Math.round(p.valor * 100))
-                                : x.valor,
-                          }
-                        : x,
-                    ),
-                  );
-                }}
-              />
-              <input
-                value={it.valor}
-                inputMode="decimal"
-                onChange={(e) =>
-                  setItens((l) =>
-                    l.map((x, k) =>
-                      k === i ? { ...x, valor: e.target.value.replace(/[^\d.,]/g, "") } : x,
-                    ),
-                  )
-                }
-                placeholder="R$ 0,00"
-                aria-label={`${t("Valor")} ${i + 1}`}
-                className={CAMPO}
-              />
               <button
                 type="button"
-                aria-label={t("Tirar item")}
-                disabled={itens.length === 1}
-                onClick={() => setItens((l) => l.filter((_, k) => k !== i))}
-                className="grid h-9 w-9 grid-cols-1 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg disabled:opacity-30"
+                disabled={!valido || salvando}
+                onClick={() => void salvar()}
+                className="h-10 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
               >
-                <Trash size={14} aria-hidden />
+                {salvando ? t("Salvando…") : ehVenda ? t("Salvar venda") : t("Salvar oportunidade")}
               </button>
             </div>
-          ))}
-          {produtos.length === 0 ? (
-            <p className="rounded-lg bg-warning-bg px-3 py-2 text-xs text-warning-fg">
-              {t(
-                "Nenhum produto cadastrado ainda. Cadastre em Marketing › Produtos e ofertas: toda oportunidade é de um produto do catálogo.",
-              )}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setItens((l) => [...l, { produtoId: "", valor: "" }])}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-secondary"
-            >
-              <Plus size={14} weight="bold" aria-hidden />
-              {t("Vendeu mais alguma coisa?")}
-            </button>
-            {ehVenda && itensValidos.length > 1 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("Ticket médio por produto")}:{" "}
-                <strong className="tabular-nums">{reais(Math.round(total / itensValidos.length))}</strong>
-              </p>
-            ) : null}
-            <p className="text-sm">
-              {recorrente && parcelas.length > 0
-                ? t("Total (soma das parcelas)")
-                : t("Total")}
-              :{" "}
-              <strong className="tabular-nums">
-                {reais(
-                  recorrente && parcelas.length > 0
-                    ? parcelas.reduce((a2, p) => a2 + centavos(p.valor), 0)
-                    : total,
-                )}
-              </strong>
-            </p>
           </div>
-        </Fase>
-
-        {true ? (
-          <Fase titulo={t("Pagamento")} cor="green">
-            {!ehVenda && venda && venda.lead_id ? (
-              <div className="grid gap-1">
-                <span className="text-xs text-muted-foreground">{t("Status da oportunidade")}</span>
-                <SeletorEmPopup
-                  rotulo={t("Status da oportunidade")}
-                  valor={statusAtual}
-                  opcoes={STATUS_DA_VENDA.map((st) => ({
-                    id: st,
-                    rotulo: rotuloDoStatus(t, st),
-                    cor: COR_DO_STATUS[st],
-                  }))}
-                  aoEscolher={(id) => void mudarStatusDaOportunidade(id as StatusDaVenda)}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {t("Ao mudar o status, ele é salvo na hora e o painel fecha.")}
-                </span>
-              </div>
-            ) : null}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <label className="grid grid-cols-1 gap-1">
-                <span className="text-xs text-muted-foreground">{t("Forma de pagamento")}</span>
-                <SeletorDaFormaDePagamento valor={forma} aoEscolher={setForma} />
-                {resumoDaTaxa ? (
-                  <span className="text-xs text-muted-foreground">{resumoDaTaxa}</span>
-                ) : null}
-              </label>
-              <label className="grid grid-cols-1 gap-1">
-                <span className="text-xs text-muted-foreground">{t("Número de parcelas")}</span>
-                <input
-                  value={qtd}
-                  inputMode="numeric"
-                  onChange={(e) => setQtd(e.target.value.replace(/\D/g, ""))}
-                  onBlur={aplicarQtdDeParcelas}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      aplicarQtdDeParcelas();
-                    }
-                  }}
-                  className={CAMPO}
-                />
-              </label>
-              <label className="grid grid-cols-1 gap-1">
-                <span className="text-xs text-muted-foreground">{t("Primeira parcela em")}</span>
-                <CampoDeData
-                  valor={primeiro}
-                  aoMudar={setPrimeiro}
-                  rotulo={t("Primeira parcela em")}
-                  className="w-full"
-                />
-              </label>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={recorrente}
-                  onChange={(e) => setRecorrente(e.target.checked)}
-                />
-                {t("Recorrente (mensalidade, assinatura)")}
-              </label>
-            </div>
-            {recorrente ? (
-              <div
-                className={`grid gap-2 rounded-xl border border-l-4 px-3 py-3 text-sm ${
-                  recorrenciaAtiva
-                    ? "border-l-emerald-500 bg-emerald-500/5"
-                    : "border-l-slate-400 bg-secondary/50"
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">
-                    {recorrenciaAtiva ? t("Recorrência ativa") : t("Recorrência encerrada")}
-                  </span>
-                  {recorrenciaAtiva ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Encerra: o histórico recebido fica; as parcelas ainda previstas saem.
-                        setRecorrenciaAtiva(false);
-                        setParcelas((l) => l.filter((p) => p.recebida));
-                      }}
-                      className="h-8 rounded-lg border border-red-500/50 bg-red-500/10 px-3 text-xs font-medium text-red-700 hover:bg-red-500/20 dark:text-red-300"
-                    >
-                      {t("Encerrar recorrência")}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setRecorrenciaAtiva(true)}
-                      className="h-8 rounded-lg border px-3 text-xs font-medium hover:bg-secondary"
-                    >
-                      {t("Reativar recorrência")}
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {recorrenciaAtiva
-                    ? t(
-                        "Todo mês o sistema cria a próxima parcela como prevista e avisa na véspera, no dia e no dia seguinte para você confirmar se o lead pagou e se o valor mudou. Nada é dado como pago sozinho.",
-                      )
-                    : t(
-                        "Encerrada: a oportunidade e as parcelas já recebidas ficam no histórico (e no LTV). Nenhuma parcela nova é criada nem cobrada.",
-                      )}
-                </p>
-                {recorrenciaAtiva ? (
-                  <>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <label className="grid gap-1">
-                        <span className="text-xs text-muted-foreground">
-                          {t("Manter quantos meses de previsão à frente")}
-                        </span>
-                        <SeletorEmPopup
-                          rotulo={t("Meses à frente")}
-                          valor={String(mesesRascunho)}
-                          opcoes={Array.from({ length: 12 }, (_, k) => k + 1).map((n) => ({
-                            id: String(n),
-                            rotulo: n === 1 ? t("1 mês (a próxima parcela)") : `${n} ${t("meses")}`,
-                          }))}
-                          aoEscolher={(v) => setMesesRascunho(Number(v))}
-                        />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-xs text-muted-foreground">
-                          {t("Valor mensal")}
-                        </span>
-                        <input
-                          value={valorRascunho ?? valorMensal}
-                          inputMode="decimal"
-                          aria-label={t("Valor mensal")}
-                          onChange={(e) => setValorRascunho(e.target.value.replace(/[^\d.,]/g, ""))}
-                          onKeyDown={(e) => e.key === "Enter" && aplicarRecorrencia()}
-                          className={CAMPO}
-                        />
-                      </label>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={aplicarRecorrencia}
-                      className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-fit"
-                    >
-                      {t("Aplicar e gerar as parcelas")}
-                    </button>
-                    {mesesRascunho !== mesesAFrente || valorRascunho !== null ? (
-                      <p className="text-xs text-amber-700 dark:text-amber-300">
-                        {t("Mudou os meses ou o valor? Clique em Aplicar para ver as parcelas e a previsão.")}
-                      </p>
-                    ) : null}
-                    <p className="rounded-lg bg-background/70 px-3 py-2 text-xs">
-                      <strong className="tabular-nums">{reais(previstoCents)}</strong>{" "}
-                      {t("a receber")} ({abertasCont}{" "}
-                      {abertasCont === 1 ? t("parcela") : t("parcelas")}) ·{" "}
-                      {t("já recebido")}{" "}
-                      <strong className="tabular-nums">{reais(recebidoCents)}</strong>
-                    </p>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-
-            {parcelas.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full min-w-max text-sm">
-                  <thead className="bg-secondary/60 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">#</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("Vence em")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("Valor")}</th>
-                      <th className="px-3 py-2 text-center font-medium">{t("Já recebida")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parcelas.map((p, i) => (
-                      <tr key={i} className="border-t">
-                        <td className="px-3 py-1 tabular-nums">{i + 1}</td>
-                        <td className="px-2 py-1">
-                          <CampoDeData
-                            valor={p.due_on}
-                            rotulo={`${t("Vencimento da parcela")} ${i + 1}`}
-                            aoMudar={(dia) => {
-                              editouParcelaRef.current = true;
-                              setParcelas((l) =>
-                                l.map((x, k) => (k === i ? { ...x, due_on: dia } : x)),
-                              );
-                            }}
-                            className="h-9"
-                          />
-                        </td>
-                        <td className="px-2 py-1 text-right">
-                          <input
-                            value={p.valor}
-                            inputMode="decimal"
-                            aria-label={`${t("Valor da parcela")} ${i + 1}`}
-                            onChange={(e) => {
-                              editouParcelaRef.current = true;
-                              const v = e.target.value.replace(/[^\d.,]/g, "");
-                              setParcelas((l) => l.map((x, k) => (k === i ? { ...x, valor: v } : x)));
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                aplicarValorDaParcela(i);
-                              }
-                            }}
-                            onBlur={() => aplicarValorDaParcela(i)}
-                            className="h-9 w-28 rounded-xl border bg-card px-2 text-right text-sm tabular-nums"
-                          />
-                        </td>
-                        <td className="px-3 py-1 text-center">
-                          <CirculoDeRecebida
-                            className="mx-auto size-6"
-                            marcado={p.recebida}
-                            rotulo={`${t("Parcela recebida")} ${i + 1}`}
-                            aoMudar={(v) => marcarParcelaNoFormulario(i, v)}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t("Gere as parcelas para registrar quando cada uma cai na conta.")}
-              </p>
-            )}
-            {parcelas.length > 0 && Math.abs(diferenca) > 1 ? (
-              <p
-                role="alert"
-                className="rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning-fg"
-              >
-                {t("A soma das parcelas difere do total em")} {reais(Math.abs(diferenca))}.{" "}
-                {t("As parcelas serão ajustadas ao total ao salvar.")}
-              </p>
-            ) : null}
-          </Fase>
-        ) : null}
-
-        {/* 7 · números principais da venda. */}
-        {ehVenda ? null : (
-          <div className="grid grid-cols-3 gap-2 text-center" data-testid="numeros-da-oportunidade">
-            {[
-              [t("Valor pago"), reais(recebidoCents)],
-              [t("Em interesse"), reais(parcelas.length === 0 ? total : 0)],
-              [t("Valor comprometido"), reais(previstoCents)],
-            ].map(([r, v]) => (
-              <div key={r} className="rounded-2xl border border-border bg-card/50 px-2 py-3">
-                <div className="text-[11px] text-muted-foreground">{r}</div>
-                <div className="text-sm font-semibold tabular-nums sm:text-base">{v}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {ehVenda ? (
-          venda?.lead_id ? (
-            <Fase titulo={t("Anotações da oportunidade")} cor="gray">
-              <AnotacoesDoLead contactId={venda.contact_id} leadId={venda.lead_id} podeEditar semBloco />
-            </Fase>
-          ) : (
-            <Fase titulo={t("Anotações da oportunidade")} cor="gray">
-              <textarea
-                rows={4}
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                placeholder={t("Anotações rápidas sobre esta oportunidade…")}
-                aria-label={t("Anotações da oportunidade")}
-                className="w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </Fase>
-          )
-        ) : (
-        <>
-        {/* 9 · anotações: as mesmas do perfil do lead, só desta oportunidade. */}
-        {venda?.lead_id ? (
-          <Fase titulo={t("Anotações")} cor="gray">
-            <AnotacoesDoLead contactId={venda.contact_id} leadId={venda.lead_id} podeEditar semBloco />
-          </Fase>
-        ) : null}
-
-        {/* 10 · tags: do cliente (o lead), com o mesmo editor do Inbox. */}
-        {venda ? <TagsDoCliente contactId={venda.contact_id} /> : null}
-
-        {/* 11 · origem, em toggle. */}
-        {leadDaVenda ? (
-          <BlocoRecolhivel titulo={t("Origem")}>
-            <div className="grid gap-3 p-4 pt-0">
-            {origemAtual ? (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    "De onde veio esta oportunidade. É isto que leva o valor para a análise de landing pages e criativos.",
-                  )}
-                </p>
-                <OrigemEmCascata
-                  valor={origemAtual}
-                  aoMudar={setOrigemEditada}
-                  campanhas={opcoesDeOrigem.data?.campanhas ?? []}
-                  posicionamentos={opcoesDeOrigem.data?.posicionamentos ?? []}
-                  fontes={opcoesDeOrigem.data?.fontes ?? []}
-                  carregando={opcoesDeOrigem.isLoading}
-                />
-              </>
-            ) : (
-              <div className="h-16 animate-pulse rounded-lg bg-secondary" />
-            )}
-            </div>
-          </BlocoRecolhivel>
-        ) : null}
-
-        {negocio?.camposDoFunil && negocio.camposDoFunil.length > 0 ? (
-          <BlocoRecolhivel titulo={t("Campos do funil")}>
-            <div className="p-4 pt-0">
-              <CustomFieldsEditor
-                fields={negocio.camposDoFunil}
-                value={camposDoNegocio}
-                onChange={setCamposDoNegocio}
-                mode="lead"
-              />
-            </div>
-          </BlocoRecolhivel>
-        ) : null}
-
-        <BlocoRecolhivel titulo={t("Detalhes da oportunidade")}>
-          <div className="p-4 pt-0">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {venda ? (
-              <dl className="grid gap-x-4 gap-y-1 text-xs text-muted-foreground sm:col-span-2 sm:grid-cols-3">
-                <div>
-                  <dt className="uppercase">{t("Criada em")}</dt>
-                  <dd className="text-sm text-foreground">
-                    {venda.created_at ? venda.created_at.slice(0, 10).split("-").reverse().join("/") : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="uppercase">{t("Fechada em")}</dt>
-                  <dd className="text-sm text-foreground">
-                    {venda.closed_on ? venda.closed_on.slice(0, 10).split("-").reverse().join("/") : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="uppercase">{t("Último pagamento")}</dt>
-                  <dd className="text-sm text-foreground">
-                    {venda.paid_on ? venda.paid_on.slice(0, 10).split("-").reverse().join("/") : "—"}
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
-          </div>
-          </div>
-        </BlocoRecolhivel>
-
-        {/* Atividade: tudo o que aconteceu nesta oportunidade (o histórico, filtrado por ela). */}
-        {venda?.lead_id ? (
-          <AtividadeDaOportunidade leadId={venda.lead_id} contactId={venda.contact_id} />
-        ) : null}
-        </>
-        )}
-
-        {erro ? (
-          <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm">
-            {erro}
-          </p>
-        ) : null}
-
-        <div className="flex flex-wrap justify-between gap-2 pt-1">
-          <span />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={aoFechar}
-              className="h-10 rounded-xl border px-4 text-sm font-medium hover:bg-secondary"
-            >
-              {t("Cancelar")}
-            </button>
-            <button
-              type="button"
-              disabled={!valido || salvando}
-              onClick={() => void salvar()}
-              className="h-10 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              {salvando ? t("Salvando…") : ehVenda ? t("Salvar venda") : t("Salvar oportunidade")}
-            </button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -18,6 +18,7 @@ import {
   definirResponsavelDaVenda,
   gravarItensEParcelas,
 } from "@/lib/vendas-servidor";
+import { faltaParaPagar, mensagemDaFalta } from "@/lib/vendas-pagamento";
 import { SELECAO_DA_OPORTUNIDADE, edicaoDeVendaSchema, vendaDaOportunidade } from "@/lib/vendas";
 
 export const dynamic = "force-dynamic";
@@ -46,11 +47,36 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
 
   const { data: existe } = await supabase
     .from("crm_leads")
-    .select("id, status")
+    .select("id, status, owner_user_id, payment_method")
     .eq("id", id)
     .eq("organization_id", orgId)
     .maybeSingle();
   if (!existe) return fail("not_found", "Venda não encontrada.", 404, { requestId });
+
+  // Pago exige produto, responsável e forma de pagamento — antes de gravar qualquer coisa.
+  const { count: itensAtuais } = await supabase
+    .from("crm_sale_items")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", id)
+    .eq("organization_id", orgId);
+  // Só vale quando o pedido mexe no pagamento (marca como paga ou manda parcelas): editar o título
+  // ou uma nota de uma venda antiga não é barrado por isso.
+  const ficaPaga =
+    status === "concluida" || (pagamentos?.some((p) => p.status === "recebida") ?? false);
+  if (ficaPaga) {
+    const lead = existe as { owner_user_id: string | null; payment_method: string | null };
+    const falta = faltaParaPagar({
+      itens: itensBrutos !== undefined ? itensBrutos.length : (itensAtuais ?? 0),
+      responsavelId: responsavel !== undefined ? responsavel : lead.owner_user_id,
+      forma: campos.payment_method !== undefined ? campos.payment_method : lead.payment_method,
+    });
+    if (falta.length > 0) {
+      return fail("venda_incompleta", mensagemDaFalta(falta), 422, {
+        requestId,
+        details: { faltam: falta },
+      });
+    }
+  }
 
   let itens:
     | Array<{ product_id: string; product_name: string; quantity: number; amount_cents: number }>
