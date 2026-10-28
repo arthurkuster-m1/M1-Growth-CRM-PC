@@ -36,6 +36,8 @@ export function AnotacoesDoLead({
   leadId,
   podeEditar,
   semBloco = false,
+  semLista = false,
+  aoAdicionar,
 }: {
   contactId: string;
   /** Só as anotações desta oportunidade (e as novas nascem presas a ela). */
@@ -43,6 +45,9 @@ export function AnotacoesDoLead({
   podeEditar: boolean;
   /** Sem os cartões da ficha em volta (para usar dentro do popup da oportunidade). */
   semBloco?: boolean;
+  /** Só o formulário de nova anotação (para o atalho do topo da ficha). */
+  semLista?: boolean;
+  aoAdicionar?: () => void;
 }) {
   const t = useT();
   const locale = useLocaleDeData();
@@ -73,6 +78,7 @@ export function AnotacoesDoLead({
       setTitulo("");
       setTexto("");
       void qc.invalidateQueries({ queryKey: base });
+      aoAdicionar?.();
     },
     onError: showApiError,
   });
