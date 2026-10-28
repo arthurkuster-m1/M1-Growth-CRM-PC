@@ -15,7 +15,6 @@ import { CampoInline } from "@/components/contacts/ficha/CampoInline";
 import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
-import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
 import { EstiloDosBlocos } from "@/components/contacts/ficha/BlocoDaFicha";
 import { CompromissosETarefasDoLead } from "@/components/contacts/ficha/CompromissosETarefasDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
@@ -89,21 +88,11 @@ function ContactDetailInner({ contactId }: Props) {
     null,
   );
   const abaDaUrl = useSearchParams().get("aba");
-  const ABAS_VALIDAS = [
-    "overview",
-    "atendimento",
-    "oportunidades",
-    "vendas",
-    "anotacoes",
-    "timeline",
-    "lgpd",
-  ];
+  const ABAS_VALIDAS = ["overview", "timeline", "lgpd"];
   // "cadastro" virou parte da Visão geral: links antigos caem lá.
   const [aba, setAba] = useState(
     abaDaUrl && ABAS_VALIDAS.includes(abaDaUrl) ? abaDaUrl : "overview",
   );
-  /** A tarefa que a Visão geral mandou abrir na aba Atendimento e Tarefas. */
-  const [tarefaParaAbrir, setTarefaParaAbrir] = useState<string | null>(null);
   // Trocar de aba com algo digitado e não salvo pergunta antes (o que é do Cadastro, por ora).
   const sairComAviso = useSairComAviso();
   const irParaAba = (nova: string) => sairComAviso(() => setAba(nova));
@@ -402,10 +391,6 @@ function ContactDetailInner({ contactId }: Props) {
       <Tabs value={aba} onValueChange={irParaAba} className="min-w-0">
         <TabsList className="h-auto w-full max-w-full [scrollbar-width:none] justify-start overflow-x-auto sm:w-fit [&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
-          <TabsTrigger value="atendimento">{t("Atendimento e Tarefas")}</TabsTrigger>
-          <TabsTrigger value="oportunidades">{t("Oportunidades")}</TabsTrigger>
-          <TabsTrigger value="vendas">{t("Vendas")}</TabsTrigger>
-          <TabsTrigger value="anotacoes">{t("Anotações")}</TabsTrigger>
           <TabsTrigger value="timeline">{t("Linha do Tempo")}</TabsTrigger>
           {isAdmin && <TabsTrigger value="lgpd">LGPD</TabsTrigger>}
         </TabsList>
@@ -416,10 +401,6 @@ function ContactDetailInner({ contactId }: Props) {
               contactId={contactId}
               aoAbrir={irParaAba}
               podeEditar={podeEditarFicha}
-              aoAbrirTarefa={(id) => {
-                setTarefaParaAbrir(id);
-                irParaAba("atendimento");
-              }}
             />
           </EstiloDosBlocos.Provider>
           <div className="mt-4">
@@ -445,26 +426,6 @@ function ContactDetailInner({ contactId }: Props) {
               </div>
             </EstiloDosBlocos.Provider>
           </div>
-        </TabsContent>
-
-        <TabsContent value="atendimento" className="mt-4">
-          <AtendimentoDoLead
-            contactId={contactId}
-            nomeDoContato={displayName}
-            abrirTarefaId={tarefaParaAbrir}
-          />
-        </TabsContent>
-
-        <TabsContent value="oportunidades" className="mt-4">
-          <OportunidadesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
-        </TabsContent>
-
-        <TabsContent value="vendas" className="mt-4">
-          <VendasDaFicha contactId={contactId} nome={displayName} />
-        </TabsContent>
-
-        <TabsContent value="anotacoes" className="mt-4">
-          <AnotacoesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
