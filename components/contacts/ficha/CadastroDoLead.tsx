@@ -54,7 +54,7 @@ interface OrigemLida {
   posicionamento: string | null;
 }
 
-const rotuloDaChave = (k: string) =>
+export const rotuloDaChave = (k: string) =>
   k.replace(/[_-]+/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
 const texto = (v: unknown): string =>

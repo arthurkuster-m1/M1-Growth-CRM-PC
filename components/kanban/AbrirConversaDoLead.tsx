@@ -48,7 +48,7 @@ interface Props {
   contactId?: string | null;
   phone?: string | null;
   /** `card` = linha compacta do funil; `dossie` = bloco do painel do lead. */
-  variante?: "card" | "dossie";
+  variante?: "card" | "dossie" | "botao";
 }
 
 /**
@@ -141,6 +141,22 @@ export function AbrirConversaDoLead({ contactId, phone, variante = "card" }: Pro
             aria-hidden
           />
         )}
+      </button>
+    );
+  }
+
+  if (variante === "botao") {
+    return (
+      <button
+        type="button"
+        onClick={() => void abrir()}
+        disabled={!podeAbrir || abrindo}
+        aria-busy={abrindo}
+        title={podeAbrir ? t("Abrir conversa no Inbox") : semTelefone}
+        className="inline-flex h-9 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <ChatCircle size={15} aria-hidden />
+        {abrindo ? t("Abrindo…") : t("Inbox")}
       </button>
     );
   }

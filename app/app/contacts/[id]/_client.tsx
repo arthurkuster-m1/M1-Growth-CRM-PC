@@ -9,8 +9,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useDeleteContact } from "@/hooks/contacts/useDeleteContact";
 import { format } from "date-fns";
-import Link from "next/link";
-import { ShieldCheck, LockOpen } from "@/lib/ui/icons";
+import { DotsThree, ShieldCheck, LockOpen } from "@/lib/ui/icons";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { AtendimentoDoLead } from "@/components/contacts/ficha/AtendimentoDoLead";
 import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
@@ -24,7 +25,6 @@ import {
   useSairComAviso,
 } from "@/components/contacts/ficha/AvisoDeNaoSalvo";
 import { Card } from "@/components/ui/card";
-import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContact } from "@/hooks/contacts/useContact";
@@ -53,15 +52,16 @@ import { ROLE_RANK } from "@/lib/auth/types";
 import { AnonymizeDialog } from "@/components/contacts/AnonymizeDialog";
 import { PropostasDeDado } from "@/components/contacts/PropostasDeDado";
 import { RoteirosDoContato } from "@/components/contacts/RoteirosDoContato";
-import { ConversaNoDossie } from "@/components/kanban/ConversaNoDossie";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { origemDoContato } from "@/lib/leads/origem-do-contato";
-import { phoneForDisplay } from "@/lib/channels/phone-variants";
 import { DialButton } from "@/components/voice/DialButton";
 
 interface Props {
   contactId: string;
 }
+
+const ITEM_DO_MENU =
+  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-secondary disabled:opacity-60";
 
 export function ContactDetailClient({ contactId }: Props) {
   return (
@@ -81,6 +81,9 @@ function ContactDetailInner({ contactId }: Props) {
   // VALOR mora no contato. `camposDoFunil` é o mesmo leitor que o Kanban usa.
   const pipelineQuery = useDefaultPipeline(Boolean(activeOrg));
   const [anonOpen, setAnonOpen] = useState(false);
+  const [confirmando, setConfirmando] = useState<"desbloquear" | "pessoal" | "excluir" | null>(
+    null,
+  );
   const abaDaUrl = useSearchParams().get("aba");
   const ABAS_VALIDAS = [
     "overview",
@@ -184,7 +187,7 @@ function ContactDetailInner({ contactId }: Props) {
   );
 
   return (
-    <div className="min-w-0 space-y-4 p-6">
+    <div className="min-w-0 space-y-4 p-4 sm:p-6">
       {contact.is_anonymized && (
         <div
           role="alert"
@@ -200,167 +203,167 @@ function ContactDetailInner({ contactId }: Props) {
         </div>
       )}
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <LinkVoltar href="/app/clientes" className="mb-2">
-            {t("CRM")}
-          </LinkVoltar>
-          {/* Sem truncar: nome é dado que a tela existe pra mostrar, e cortar
-              com reticências sem um jeito de ver o resto violaria o princípio
-              de nunca esconder informação crítica. Deixa quebrar linha. */}
-          <h1 className="text-2xl font-semibold tracking-tight break-words">{displayName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {contact.email && <span>{contact.email}</span>}
-            {contact.email && contact.phone_number && <span>•</span>}
-            {contact.phone_number && <span>{phoneForDisplay(contact.phone_number)}</span>}
+      <header className="grid gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="grid min-w-0 gap-2">
+            <LinkVoltar href="/app/clientes">{t("CRM")}</LinkVoltar>
+            {/* Sem truncar: nome é dado que a tela existe pra mostrar. Deixa quebrar linha. */}
+            <h1 className="text-xl font-semibold tracking-tight break-words sm:text-2xl">
+              {displayName}
+            </h1>
+            {contact.is_blocked || contact.is_personal || contact.is_anonymized ? (
+              <div className="flex flex-wrap gap-1">
+                {contact.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
+                {/* Selo lido da COLUNA, nunca da etiqueta (critério 5). */}
+                {contact.is_personal && <Badge variant="secondary">{t("Pessoal")}</Badge>}
+                {contact.is_anonymized && <Badge variant="destructive">{t("Anonimizado")}</Badge>}
+              </div>
+            ) : null}
           </div>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {contact.tags.map((t) => (
-              <ChipDeEtiqueta key={t} tag={t} contorno />
-            ))}
-            {contact.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
-            {/* Selo lido da COLUNA, nunca da etiqueta (critério 5): editar
-                etiquetas não apaga o selo — mesma regra do "Bloqueado" acima. */}
-            {contact.is_personal && <Badge variant="secondary">{t("Pessoal")}</Badge>}
-            {contact.is_anonymized && <Badge variant="destructive">{t("Anonimizado")}</Badge>}
-          </div>
-        </div>
-        {!contact.is_anonymized && user.support?.access_mode !== "support_readonly" && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {/* O CAMINHO DE VOLTA do descadastro. Sem ele, o contato que pediu
-                para sair — ou que caiu num falso positivo — ficava preso para
-                sempre: `before-send` recusa todo envio, o funil não cria lead,
-                o follow-up não retoma. A regra W-02 previu o override
-                ("Tenant admin pode desbloquear manualmente; ação auditada") e o
-                produto não tinha porta nenhuma para exercê-lo.
-
-                Só ADMIN, como a regra nomeia: desfazer um pedido de descadastro
-                não é editar cadastro, é reabrir um canal que o cliente fechou —
-                e quem clica responde pela decisão. */}
-            {/* Confirmação antes do clique: nenhum caminho do produto bloqueia
-                de novo à mão (o único escritor de is_blocked=true é o STOP do
-                próprio cliente, em lib/channels/pos-entrada.ts), então um clique
-                errado ao lado do "Editar" reabriria um canal que só o cliente
-                consegue fechar outra vez. */}
-            {contact.is_blocked && isAdmin && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" disabled={desbloquear.isPending} className="shrink-0">
-                    <LockOpen size={16} weight="bold" aria-hidden />
-                    <span>{t("Desbloquear")}</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t("Desbloquear este contato?")}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t(
-                        "Este contato pediu para não receber mais mensagens. Desbloquear volta a permitir campanhas, follow-ups e respostas da IA para ele, e a ação fica registrada na auditoria em seu nome.",
-                      )}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => desbloquear.mutate()}>
+          {!contact.is_anonymized && user.support?.access_mode !== "support_readonly" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("Mais ações")}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-card hover:bg-secondary"
+                >
+                  <DotsThree size={18} weight="bold" aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-1.5">
+                <div className="grid gap-0.5">
+                  {/* Só ADMIN desfaz o descadastro (regra W-02): reabre um canal que o cliente fechou. */}
+                  {contact.is_blocked && isAdmin && (
+                    <button
+                      type="button"
+                      className={ITEM_DO_MENU}
+                      onClick={() => setConfirmando("desbloquear")}
+                    >
+                      <LockOpen size={15} weight="bold" aria-hidden />
                       {t("Desbloquear")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            {/* PESSOAL (spec 21, etapa 15): gerente marca e desmarca; sem
-                exceção de envio — quem é pessoal não recebe por nenhum caminho.
-                Marcar confirma (esconde da operação); desmarcar é direto. */}
-            {!contact.is_personal && podeMarcarPessoal && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={marcarPessoal.isPending}
-                    className="shrink-0"
-                    data-testid="marcar-pessoal"
-                  >
-                    <span>{t("Marcar como pessoal")}</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t("Marcar este contato como pessoal?")}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t(
-                        "O contato sai da operação: conversas fecham, IA, follow-ups, campanha e envios param. O histórico continua no banco e volta à vista ao desmarcar; follow-ups e campanhas cancelados não voltam.",
-                      )}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => marcarPessoal.mutate()}>
+                    </button>
+                  )}
+                  {/* PESSOAL (spec 21): gerente marca e desmarca. */}
+                  {!contact.is_personal && podeMarcarPessoal && (
+                    <button
+                      type="button"
+                      data-testid="marcar-pessoal"
+                      className={ITEM_DO_MENU}
+                      onClick={() => setConfirmando("pessoal")}
+                    >
                       {t("Marcar como pessoal")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            {contact.is_personal && podeMarcarPessoal && (
-              <Button
-                variant="outline"
-                disabled={desmarcarPessoal.isPending}
-                className="shrink-0"
-                data-testid="desmarcar-pessoal"
-                onClick={() => desmarcarPessoal.mutate()}
-              >
-                <span>
-                  {desmarcarPessoal.isPending ? t("Desmarcando...") : t("Desmarcar pessoal")}
-                </span>
-              </Button>
-            )}
-            {podeEditarFicha && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={excluir.isPending}
-                    className="shrink-0 text-error-fg hover:text-error-fg"
-                    data-testid="excluir-lead"
-                  >
-                    <span>{t("Excluir lead")}</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {t("Excluir")} {displayName}?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t(
-                        "O lead sai do CRM com todas as oportunidades, vendas (mesmo as pagas), conversas e compromissos dele. Fica 7 dias na Lixeira do CRM e pode ser restaurado nesse prazo; depois some de vez.",
-                      )}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() =>
-                        excluir.mutate(contactId, {
-                          onSuccess: () => {
-                            toast.success(t("Lead movido para a Lixeira"));
-                            router.push("/app/clientes");
-                          },
-                        })
-                      }
+                    </button>
+                  )}
+                  {contact.is_personal && podeMarcarPessoal && (
+                    <button
+                      type="button"
+                      data-testid="desmarcar-pessoal"
+                      disabled={desmarcarPessoal.isPending}
+                      className={ITEM_DO_MENU}
+                      onClick={() => desmarcarPessoal.mutate()}
+                    >
+                      {desmarcarPessoal.isPending ? t("Desmarcando...") : t("Desmarcar pessoal")}
+                    </button>
+                  )}
+                  {podeEditarFicha && (
+                    <button
+                      type="button"
+                      data-testid="excluir-lead"
+                      className={`${ITEM_DO_MENU} text-error-fg`}
+                      onClick={() => setConfirmando("excluir")}
                     >
                       {t("Excluir lead")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <DialButton contactId={contactId} hasPhone={!!contact.phone_number} />
-          </div>
-        )}
+                    </button>
+                  )}
+                  <DialButton contactId={contactId} hasPhone={!!contact.phone_number} />
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
+
+        <TopoDoLead
+          contact={contact}
+          camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
+        />
       </header>
 
-      <ConversaNoDossie conversa={contact.conversa} />
+      {/* As confirmações ficam fora do menu: o menu fecha ao clicar e levaria o diálogo junto. */}
+      <AlertDialog
+        open={confirmando === "desbloquear"}
+        onOpenChange={(v) => !v && setConfirmando(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Desbloquear este contato?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "Este contato pediu para não receber mais mensagens. Desbloquear volta a permitir campanhas, follow-ups e respostas da IA para ele, e a ação fica registrada na auditoria em seu nome.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => desbloquear.mutate()}>
+              {t("Desbloquear")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={confirmando === "pessoal"}
+        onOpenChange={(v) => !v && setConfirmando(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Marcar este contato como pessoal?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "O contato sai da operação: conversas fecham, IA, follow-ups, campanha e envios param. O histórico continua no banco e volta à vista ao desmarcar; follow-ups e campanhas cancelados não voltam.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => marcarPessoal.mutate()}>
+              {t("Marcar como pessoal")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={confirmando === "excluir"}
+        onOpenChange={(v) => !v && setConfirmando(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("Excluir")} {displayName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "O lead sai do CRM com todas as oportunidades, vendas (mesmo as pagas), conversas e compromissos dele. Fica 7 dias na Lixeira do CRM e pode ser restaurado nesse prazo; depois some de vez.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                excluir.mutate(contactId, {
+                  onSuccess: () => {
+                    toast.success(t("Lead movido para a Lixeira"));
+                    router.push("/app/clientes");
+                  },
+                })
+              }
+            >
+              {t("Excluir lead")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ANTES das abas, e não dentro de uma delas: é o único conteúdo desta
           tela que PEDE uma ação. Enterrado numa aba, viraria pendência que só
@@ -375,7 +378,7 @@ function ContactDetailInner({ contactId }: Props) {
       )}
 
       <Tabs value={aba} onValueChange={irParaAba} className="min-w-0">
-        <TabsList className="h-auto flex-wrap justify-start">
+        <TabsList className="h-auto w-full max-w-full [scrollbar-width:none] justify-start overflow-x-auto sm:w-fit [&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="cadastro">{t("Cadastro")}</TabsTrigger>
           <TabsTrigger value="atendimento">{t("Atendimento e Tarefas")}</TabsTrigger>
