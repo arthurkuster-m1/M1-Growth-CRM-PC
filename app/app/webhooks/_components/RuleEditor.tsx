@@ -29,12 +29,14 @@ import {
 } from "@/lib/automation/gatilho-de-data-do-funil";
 import {
   DIRECOES_DO_SILENCIO,
+  type UnidadeDoSilencio,
   GATILHO_ETAPA_PARADA,
   GATILHO_SILENCIO,
   configDaEtapaParada,
   configDoSilencio,
   type DirecaoDoSilencio,
 } from "@/lib/automation/gatilhos-de-tempo";
+import type { ModeloDeRegra } from "@/lib/automation/modelos-de-tag";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 import {
   useCreateAutomationRule,
@@ -50,6 +52,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rule: AutomationRuleRow | null;
+  /** Um modelo pronto: abre o editor de "nova automação" já preenchido. */
+  modelo?: ModeloDeRegra["regra"] | null;
 }
 
 type Op = "eq" | "neq" | "contains";
@@ -100,6 +104,8 @@ const STAGE_FIELD: CuratedField = {
 };
 const MESSAGE_FIELDS: CuratedField[] = [
   { value: "event.body_preview", label: "Texto da mensagem", op: "contains" },
+  // "Mandou N mensagens": igual a N dispara uma vez só por conversa (só há uma 3ª mensagem).
+  { value: "conversation.inbound_count", label: "Nº da mensagem do cliente na conversa", op: "eq" },
   { value: "contact.tags", label: "Tags do contato", op: "contains", lista: true },
 ];
 const CONTACT_FIELDS: CuratedField[] = [
@@ -205,11 +211,12 @@ const DIAS_PADRAO = "7";
  */
 interface ConfigDoTempo {
   dias: string;
+  unidade: UnidadeDoSilencio;
   direcao: DirecaoDoSilencio;
   proteger_pela_agenda: boolean;
 }
 
-export function RuleEditor({ open, onOpenChange, rule }: Props) {
+export function RuleEditor({ open, onOpenChange, rule, modelo = null }: Props) {
   const t = useT();
   const isEdit = !!rule;
   const [name, setName] = React.useState("");
@@ -224,6 +231,7 @@ export function RuleEditor({ open, onOpenChange, rule }: Props) {
   });
   const [configDoTempo, setConfigDoTempo] = React.useState<ConfigDoTempo>({
     dias: DIAS_PADRAO,
+    unidade: "dias",
     direcao: "da_equipe",
     proteger_pela_agenda: false,
   });
@@ -240,17 +248,18 @@ export function RuleEditor({ open, onOpenChange, rule }: Props) {
 
   React.useEffect(() => {
     if (!open) return;
-    setName(rule?.name ?? "");
-    setTriggerEvent((rule?.trigger_event as TriggerEvent) ?? "");
+    const base = rule ?? modelo;
+    setName(base?.name ?? "");
+    setTriggerEvent((base?.trigger_event as TriggerEvent) ?? "");
     setConditions(
-      rule?.conditions.map((c) => ({ field: c.field, op: c.op, value: c.value })) ?? [],
+      base?.conditions.map((c) => ({ field: c.field, op: c.op, value: c.value })) ?? [],
     );
     setAdvancedRows({});
-    setActions((rule?.actions as ActionItem[] | undefined) ?? []);
+    setActions((base?.actions as ActionItem[] | undefined) ?? []);
     // A configuração salva volta pelo MESMO leitor que a varredura usa: se ela
     // não reconhece o que está guardado, a tela não inventa nada e o operador
     // reescolhe — em vez de a tela mostrar um funil que o cron ignora.
-    const guardada = configDoGatilhoDeData(rule?.trigger_config);
+    const guardada = configDoGatilhoDeData(base?.trigger_config);
     setConfigDaData(
       guardada
         ? {
@@ -260,15 +269,16 @@ export function RuleEditor({ open, onOpenChange, rule }: Props) {
           }
         : { pipeline_id: "", campo: "", dias: DIAS_PADRAO },
     );
-    const silencioGuardado = configDoSilencio(rule?.trigger_config);
-    const etapaGuardada = configDaEtapaParada(rule?.trigger_config);
+    const silencioGuardado = configDoSilencio(base?.trigger_config);
+    const etapaGuardada = configDaEtapaParada(base?.trigger_config);
     const tempoGuardado = silencioGuardado ?? etapaGuardada;
     setConfigDoTempo({
       dias: tempoGuardado ? String(tempoGuardado.dias) : DIAS_PADRAO,
+      unidade: silencioGuardado ? silencioGuardado.unidade : "dias",
       direcao: silencioGuardado ? silencioGuardado.direcao : "da_equipe",
       proteger_pela_agenda: tempoGuardado ? tempoGuardado.proteger_pela_agenda : false,
     });
-  }, [open, rule]);
+  }, [open, rule, modelo]);
 
   const curatedFields = triggerEvent ? CURATED_FIELDS[triggerEvent] : [];
   const ehGatilhoDeData = triggerEvent === GATILHO_DE_DATA_DO_FUNIL;
@@ -334,7 +344,9 @@ export function RuleEditor({ open, onOpenChange, rule }: Props) {
               // O mesmo cuidado do gatilho de data: campo vazio vira NaN e o
               // schema recusa com a mensagem certa, em vez de gravar N=0.
               dias: configDoTempo.dias.trim() === "" ? Number.NaN : Number(configDoTempo.dias),
-              ...(triggerEvent === GATILHO_SILENCIO ? { direcao: configDoTempo.direcao } : {}),
+              ...(triggerEvent === GATILHO_SILENCIO
+                ? { direcao: configDoTempo.direcao, unidade: configDoTempo.unidade }
+                : {}),
               proteger_pela_agenda: configDoTempo.proteger_pela_agenda,
             }
           : undefined,
@@ -502,19 +514,43 @@ export function RuleEditor({ open, onOpenChange, rule }: Props) {
                 </p>
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="w-40 space-y-1">
-                    <Label htmlFor="dias-do-tempo">{t("Depois de N dias")}</Label>
+                    <Label htmlFor="dias-do-tempo">
+                      {triggerEvent === GATILHO_SILENCIO && configDoTempo.unidade === "horas"
+                        ? t("Depois de N horas")
+                        : t("Depois de N dias")}
+                    </Label>
                     <Input
                       id="dias-do-tempo"
                       type="number"
                       inputMode="numeric"
                       value={configDoTempo.dias}
                       min={1}
-                      max={3650}
+                      max={configDoTempo.unidade === "horas" ? 720 : 3650}
                       onChange={(e) =>
                         setConfigDoTempo((prev) => ({ ...prev, dias: e.target.value }))
                       }
                     />
                   </div>
+
+                  {triggerEvent === GATILHO_SILENCIO ? (
+                    <div className="w-32 space-y-1">
+                      <Label>{t("Unidade")}</Label>
+                      <Select
+                        value={configDoTempo.unidade}
+                        onValueChange={(v) =>
+                          setConfigDoTempo((prev) => ({ ...prev, unidade: v as UnidadeDoSilencio }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dias">{t("Dias")}</SelectItem>
+                          <SelectItem value="horas">{t("Horas")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
 
                   {triggerEvent === GATILHO_SILENCIO ? (
                     <div className="flex-1 basis-52 space-y-1">
@@ -539,7 +575,9 @@ export function RuleEditor({ open, onOpenChange, rule }: Props) {
                                   ? "Da equipe (nós não falamos)"
                                   : direcao === "do_cliente"
                                     ? "Do cliente (ele não respondeu)"
-                                    : "De qualquer um",
+                                    : direcao === "sem_atendimento"
+                                      ? "Sem atendimento (o cliente escreveu e ninguém respondeu)"
+                                      : "De qualquer um",
                               )}
                             </SelectItem>
                           ))}

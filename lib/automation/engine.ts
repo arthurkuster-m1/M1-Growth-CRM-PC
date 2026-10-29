@@ -140,6 +140,29 @@ export async function buildContext(admin: SupabaseClient, row: EventRow): Promis
         .maybeSingle();
       if (contact) context.contact = contact;
     }
+    // O NÚMERO DESTA MENSAGEM entre as do cliente na conversa ("a 3ª mensagem dele"): é o que
+    // faz "se o lead mandou N mensagens" ser uma condição de igualdade, que casa UMA vez por
+    // conversa (a 3ª mensagem só existe uma vez). Conta até o instante desta mensagem, e não
+    // até agora, para o atraso do consumidor não pular o N quando chegam duas em seguida.
+    const conversationId = row.payload.conversation_id as string | undefined;
+    if (conversationId) {
+      const { data: atual } = await admin
+        .from("messages")
+        .select("created_at")
+        .eq("id", row.entity_id)
+        .eq("organization_id", org)
+        .maybeSingle();
+      if (atual?.created_at) {
+        const { count } = await admin
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", org)
+          .eq("conversation_id", conversationId)
+          .eq("direction", "inbound")
+          .lte("created_at", atual.created_at as string);
+        if (typeof count === "number") context.conversation = { inbound_count: count };
+      }
+    }
   }
   return context;
 }
