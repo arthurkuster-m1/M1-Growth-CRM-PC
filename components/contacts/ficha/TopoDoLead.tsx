@@ -357,7 +357,7 @@ export function TopoDoLead({
           linha; o e-mail (com Copiar) na segunda; os demais campos na terceira. */}
       {comNome ? (
         <CampoInline
-          valor={contact.name ?? ""}
+          valor={contact.name ?? contact.display_name ?? ""}
           placeholder={t("Adicionar nome")}
           rotulo={t("Nome")}
           podeEditar={podeEditar}
