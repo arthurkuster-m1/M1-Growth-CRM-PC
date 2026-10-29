@@ -153,7 +153,7 @@ export function RegistrarAcaoDoLead({
       </BlocoDaFicha>
     );
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
       {podeEditar ? (
         envolver(
         <>
