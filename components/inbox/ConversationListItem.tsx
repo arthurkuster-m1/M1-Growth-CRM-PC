@@ -9,7 +9,6 @@ import { Robot } from "@/lib/ui/icons";
 import { ChannelLogo } from "@/components/inbox/ChannelLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import {
   comandoDaConversa,
@@ -140,9 +139,6 @@ export function ConversationListItem({
   const c = conversation.contacts ?? null;
   const displayName = rotuloDoContato(c, t);
   const phoneFallback = c?.phone_number ? phoneForDisplay(c.phone_number) : "??";
-  const tags = c?.tags ?? [];
-  const visibleTags = tags.slice(0, 2);
-  const overflow = tags.length - visibleTags.length;
   const preview = conversation.last_message_preview?.trim() || t("Sem mensagens");
   const truncated = preview.length > 60 ? `${preview.slice(0, 60)}…` : preview;
   const naFila = queuePosition !== undefined;
@@ -215,7 +211,6 @@ export function ConversationListItem({
   const rotuloCanal = canal?.phone_number ?? canal?.display_name ?? null;
 
   const temSelos =
-    visibleTags.length > 0 ||
     (mostrarAtendente && comando.quem === "humano") ||
     (mostrarCanal && rotuloCanal != null) ||
     Boolean(c?.is_blocked) ||
@@ -337,12 +332,6 @@ export function ConversationListItem({
 
         {temSelos && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {visibleTags.map((t) => (
-              <ChipDeEtiqueta key={t} tag={t} className="h-4 px-1.5 text-[10px]" />
-            ))}
-            {overflow > 0 && (
-              <span className="text-[10px] text-text-muted">+{overflow}</span>
-            )}
             {mostrarAtendente && comando.quem === "humano" && (
               <OwnerBadge ownerKind="user" ownerName={comando.nome ?? t("Atendente")} compacto />
             )}

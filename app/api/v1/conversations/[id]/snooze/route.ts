@@ -19,7 +19,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { fail, ok, noContent } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { snoozeSchema } from "@/lib/schemas/snooze";
+import { instanteDoLembrete, snoozeSchema } from "@/lib/schemas/snooze";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -48,10 +48,18 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
       details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
     });
   }
-  const { duration_hours } = parsed.data;
+  const instante = instanteDoLembrete(parsed.data);
+  if (!instante) {
+    return fail(
+      "validation_failed",
+      t("Escolha uma data e hora no futuro (até um ano)."),
+      422,
+      { requestId },
+    );
+  }
 
   const nowIso = new Date().toISOString();
-  const snoozeUntil = new Date(Date.now() + duration_hours * 3600_000).toISOString();
+  const snoozeUntil = instante.toISOString();
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -71,7 +79,10 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
     resourceType: "conversation",
     resourceId: data.id,
     requestId,
-    metadata: { duration_hours },
+    metadata:
+      "duration_hours" in parsed.data
+        ? { duration_hours: parsed.data.duration_hours }
+        : { snooze_until: snoozeUntil },
   });
   return ok({ snooze_until: snoozeUntil }, { requestId });
 }

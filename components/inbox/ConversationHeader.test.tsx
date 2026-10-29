@@ -49,7 +49,10 @@ vi.mock("@/hooks/ai/useAutomaticoAtivo", () => ({
 }));
 vi.mock("@/components/kanban/OwnerBadge", () => ({ OwnerBadge: () => null }));
 vi.mock("@/components/inbox/ReassignDialog", () => ({ ReassignDialog: () => null }));
-vi.mock("@/components/inbox/SnoozeButton", () => ({ SnoozeButton: () => null }));
+vi.mock("@/components/inbox/SnoozeButton", () => ({
+  SnoozeButton: () => null,
+  LembreteOutroDialog: () => null,
+}));
 vi.mock("@/components/inbox/JanelaSelo", () => ({ JanelaSelo: () => null }));
 vi.mock("@/components/inbox/ChannelLogo", () => ({ ChannelLogo: () => null }));
 vi.mock("@/hooks/voice/useVoiceSessionStatus", () => ({
@@ -58,6 +61,11 @@ vi.mock("@/hooks/voice/useVoiceSessionStatus", () => ({
 vi.mock("@/components/voice/VoiceCallContext", () => ({
   useVoiceCall: () => ({ call: null, startCall }),
 }));
+
+/** As ações do cabeçalho moram no menu "Opções": abre antes de procurar. */
+async function abrirOpcoes(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Opções" }));
+}
 
 function conversa(status: string): ConversationWithContact {
   return {
@@ -110,11 +118,12 @@ describe("ConversationHeader — chamada de voz na Inbox", () => {
     };
     render(<ConversationHeader conversation={atual} />);
 
+    await abrirOpcoes(user);
     await user.click(screen.getByRole("button", { name: "Chamar" }));
     expect(startCall).toHaveBeenCalledWith("contato-1");
   });
 
-  it("não oferece chamada individual para um grupo", () => {
+  it("não oferece chamada individual para um grupo", async () => {
     const atual = conversa("open");
     atual.is_group = true;
     atual.contacts = {
@@ -128,6 +137,7 @@ describe("ConversationHeader — chamada de voz na Inbox", () => {
       is_anonymized: false,
     };
     render(<ConversationHeader conversation={atual} />);
+    await abrirOpcoes(userEvent.setup());
     expect(screen.queryByRole("button", { name: "Chamar" })).toBeNull();
   });
 });
@@ -137,6 +147,7 @@ describe("ConversationHeader — Fechar e Arquivar por AlertDialog", () => {
     const user = userEvent.setup();
     render(<ConversationHeader conversation={conversa("open")} />);
 
+    await abrirOpcoes(user);
     await user.click(screen.getByRole("button", { name: "Fechar" }));
 
     const dialogo = await screen.findByRole("alertdialog");
@@ -147,6 +158,7 @@ describe("ConversationHeader — Fechar e Arquivar por AlertDialog", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(closeMutate).not.toHaveBeenCalled();
 
+    await abrirOpcoes(user);
     await user.click(screen.getByRole("button", { name: "Fechar" }));
     const dialogo2 = await screen.findByRole("alertdialog");
     await user.click(within(dialogo2).getByRole("button", { name: "Fechar" }));
@@ -162,6 +174,7 @@ describe("ConversationHeader — Fechar e Arquivar por AlertDialog", () => {
     const user = userEvent.setup();
     render(<ConversationHeader conversation={conversa("open")} />);
 
+    await abrirOpcoes(user);
     await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
     const dialogo = await screen.findByRole("alertdialog");
@@ -185,6 +198,7 @@ describe("ConversationHeader — Fechar e Arquivar por AlertDialog", () => {
     const user = userEvent.setup();
     render(<ConversationHeader conversation={conversa("closed")} />);
 
+    await abrirOpcoes(user);
     await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
     const dialogo = await screen.findByRole("alertdialog");
@@ -201,6 +215,7 @@ describe("ConversationHeader — busca dentro da conversa (#1793)", () => {
   it("o botão só existe com quem o atenda, e só abre a busca — nenhuma ação de atendimento", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<ConversationHeader conversation={conversa("open")} />);
+    await abrirOpcoes(user);
     expect(screen.queryByRole("button", { name: "Buscar nesta conversa" })).toBeNull();
 
     const buscar = vi.fn();

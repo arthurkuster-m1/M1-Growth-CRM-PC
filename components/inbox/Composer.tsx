@@ -144,6 +144,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [pendingEm, setPendingEm] = useState<"reply" | "note">("reply");
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [menuDismissed, setMenuDismissed] = useState(false);
+  const [sugerirIA, setSugerirIA] = useState(0);
   const [mode, setMode] = useState<"reply" | "note">(initialMode);
   /**
    * Menção de atendente (#2372) — e o motivo de ser quatro estados.
@@ -406,7 +407,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         )}
       >
         {mode === "reply" && (
-          <ReplyReviewPanel conversationId={conversationId} disabled={isDisabled} />
+          <ReplyReviewPanel
+            conversationId={conversationId}
+            disabled={isDisabled}
+            gatilho={sugerirIA}
+          />
         )}
         <TemplateMenu
           open={menuOpen}
@@ -414,6 +419,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           templates={templates.data ?? []}
           onPick={applyTemplate}
           onClose={() => setMenuDismissed(true)}
+          onSugerirIA={() => {
+            setText("");
+            setMenuDismissed(true);
+            setSugerirIA((n) => n + 1);
+          }}
         />
         {/* A LISTA DE ATENDENTES (#2372) — só em nota, só enquanto o `@` está
             aberto. O MESMO canto do slash-menu, que só existe em resposta: os
