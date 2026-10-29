@@ -82,12 +82,12 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    // Só o Marketing é toggle: Inbox, Agenda, CRM, Tarefas e Financeiro são links soltos, e
-    // "Agentes de IA" é UM link para a página "Ver tudo em IA".
-    expect(titulos).toEqual(["Marketing"]);
+    // Dois toggles: Marketing e Atendimento (Inbox, Agenda, CRM, Automações). Início e Tarefas são
+    // links soltos; Agentes de IA, Conexões e Financeiro são cabeçalhos que levam direto à página.
+    expect(titulos).toEqual(["Marketing", "Atendimento"]);
   });
 
-  it("a ordem do menu: Início, Inbox, Agenda, CRM, Tarefas, Financeiro, Marketing, Agentes de IA, Conexões", () => {
+  it("a ordem do menu: Início, Tarefas, Marketing, Atendimento, Agentes de IA, Conexões, Financeiro", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
@@ -96,20 +96,22 @@ describe("Sidebar agrupado", () => {
     const posicao = (h: string) => hrefs.indexOf(h);
     const ordem = [
       "/app/inicio",
+      "/app/tarefas",
+      "/app/marketing/estrategia",
+      // Atendimento: Inbox, Agenda, CRM e Automações, juntos e nesta ordem.
       "/app/inbox",
       "/app/agenda",
       "/app/clientes",
-      "/app/tarefas",
+      "/app/automacoes",
+      "/app/ai",
+      "/app/connections",
       "/app/financas",
     ].map(posicao);
     expect(ordem.every((i) => i >= 0)).toBe(true);
     expect([...ordem].sort((a, b) => a - b)).toEqual(ordem);
-    // Automações mora dentro do toggle de Marketing, e depois dele vêm IA e Conexões.
-    const auto = posicao("/app/automacoes");
-    expect(auto).toBeGreaterThan(ordem[5]!);
-    expect(posicao("/app/ai")).toBeGreaterThan(auto);
-    expect(hrefs[hrefs.length - 1]).toBe("/app/connections");
-    expect(posicao("/app/connections")).toBeGreaterThan(posicao("/app/ai"));
+    // Automações saiu do Marketing e mora em Atendimento.
+    expect(posicao("/app/automacoes")).toBeGreaterThan(posicao("/app/marketing/dashboards"));
+    expect(hrefs[hrefs.length - 1]).toBe("/app/financas");
   });
 
   it("Agentes de IA é um link só, e as telas de IA não aparecem soltas no menu", () => {
@@ -191,7 +193,7 @@ describe("Sidebar agrupado", () => {
     expect(nav.contains(config)).toBe(false);
   });
 
-  it("Conexões é uma porta solta, a última do menu, e Webhooks não tem porta própria", () => {
+  it("Conexões é cabeçalho solto (não toggle), e Webhooks não tem porta própria", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
@@ -199,9 +201,11 @@ describe("Sidebar agrupado", () => {
       "Canais",
     );
     expect(screen.queryByRole("link", { name: /Webhooks/ })).toBeNull();
-    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
-    const links = [...nav.querySelectorAll("a")];
-    expect(links[links.length - 1]).toHaveAttribute("href", "/app/connections");
+    expect(screen.getByRole("link", { name: "Conexões" })).toHaveAttribute(
+      "href",
+      "/app/connections",
+    );
+    expect(screen.queryByRole("button", { name: /Conexões/ })).toBeNull();
   });
 
   it("não deixa cabeçalho órfão quando a permissão esvazia o grupo", () => {
@@ -230,11 +234,14 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: "CRM" })).not.toHaveAttribute("aria-current");
   });
 
-  it("o toggle de Marketing começa fechado fora das telas dele e abre com um clique", () => {
+  it("só o toggle da rota atual começa aberto, e o outro abre com um clique", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    // A rota é /app/inbox, que não é do Marketing: o toggle está fechado.
-    expect(screen.queryAllByRole("button", { expanded: true })).toHaveLength(0);
+    // A rota é /app/inbox, do toggle Atendimento: é o único aberto.
+    const abertos = screen
+      .getAllByRole("button", { expanded: true })
+      .map((el) => el.textContent?.trim());
+    expect(abertos).toEqual(["Atendimento"]);
     fireEvent.click(screen.getByRole("button", { name: /Marketing/, expanded: false }));
     expect(screen.getByRole("button", { name: /Marketing/, expanded: true })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Automações" })).toHaveAttribute(
