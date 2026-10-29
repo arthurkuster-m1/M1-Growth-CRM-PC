@@ -270,6 +270,19 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
+    // A central de automações: regras de lead, tags, tarefas, mensagens e webhooks num só lugar,
+    // com a porta para os follow-ups da IA. O editor e o histórico de execuções saíram de
+    // Conexões › Webhooks (a rota antiga continua levando para a aba de receber dados).
+    href: "/app/automacoes",
+    label: "Automações",
+    description:
+      "Tudo o que o sistema faz sozinho: regras de lead, tags, tarefas e mensagens, num lugar só.",
+    icon: "FlowArrow",
+    group: "atendimento",
+    minRole: "manager",
+    sidebar: true,
+  },
+  {
     href: "/app/companies",
     label: "Empresas",
     description: "Cadastro B2B — razão social, CNPJ e decisores.",
