@@ -2,7 +2,8 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
  * DELETE /api/v1/contacts/[id]/anotacoes/[noteId] — remove uma anotação do lead (atendente em diante).
  * PATCH  /api/v1/contacts/[id]/anotacoes/[noteId] — fixa ou desafixa (`{ fixada }`): a fixada é a
- * "importante", que a Visão geral da ficha mostra primeiro.
+ * "importante", que a Visão geral da ficha mostra primeiro. `{ arquivada }` arquiva ou
+ * desarquiva (arquivada some da lista, mas não se perde).
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -57,12 +58,20 @@ export async function PATCH(
     .object({ id: z.string().uuid(), noteId: z.string().uuid() })
     .safeParse(await ctx.params);
   if (!ids.success) return fail("not_found", t("Anotação não encontrada."), 404, { requestId });
-  const corpo = z.object({ fixada: z.boolean() }).safeParse(await req.json().catch(() => null));
+  const corpo = z
+    .object({ fixada: z.boolean().optional(), arquivada: z.boolean().optional() })
+    .refine((c) => c.fixada !== undefined || c.arquivada !== undefined)
+    .safeParse(await req.json().catch(() => null));
   if (!corpo.success) return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
+  const mudanca: { pinned?: boolean; archived_at?: string | null } = {};
+  if (corpo.data.fixada !== undefined) mudanca.pinned = corpo.data.fixada;
+  if (corpo.data.arquivada !== undefined) {
+    mudanca.archived_at = corpo.data.arquivada ? new Date().toISOString() : null;
+  }
 
   const { data, error } = await createAdminClient()
     .from("lead_notes")
-    .update({ pinned: corpo.data.fixada })
+    .update(mudanca)
     .eq("id", ids.data.noteId)
     .eq("contact_id", ids.data.id)
     .eq("organization_id", authz.org.orgId)
@@ -71,5 +80,5 @@ export async function PATCH(
   if (!data || data.length === 0) {
     return fail("not_found", t("Anotação não encontrada."), 404, { requestId });
   }
-  return ok({ fixada: corpo.data.fixada }, { requestId });
+  return ok({ fixada: corpo.data.fixada, arquivada: corpo.data.arquivada }, { requestId });
 }

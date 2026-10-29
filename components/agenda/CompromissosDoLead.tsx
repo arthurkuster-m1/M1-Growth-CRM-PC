@@ -40,10 +40,13 @@ export function CompromissosDoLead({
   contactId,
   leadId,
   className,
+  semBotao = false,
 }: {
   contactId: string | null;
   leadId?: string | null;
   className?: string;
+  /** Sem o botão "Novo compromisso" (quem usa já tem um botão só para criar compromisso e tarefa). */
+  semBotao?: boolean;
 }) {
   const t = useT();
   const consulta = useQuery({
@@ -106,7 +109,7 @@ export function CompromissosDoLead({
             ? `${t("Próximo compromisso:")} ${quando(futuros[0]!.iniciaEm)}`
             : t("Nenhum compromisso agendado.")}
         </p>
-        <button
+        {semBotao ? null : <button
           type="button"
           data-testid="novo-compromisso-do-lead"
           onClick={() => abrirNovoCompromisso({ contactId, leadId })}
@@ -114,7 +117,7 @@ export function CompromissosDoLead({
         >
           <Plus size={14} aria-hidden />
           {t("Novo compromisso")}
-        </button>
+        </button>}
       </div>
       {futuros.length + passados.length > 0 ? (
         <ul className="grid gap-0.5">

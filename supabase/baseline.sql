@@ -52161,3 +52161,11 @@ select l.organization_id, l.contact_id, l.id, 'Comentário', btrim(l.notes), coa
    and btrim(l.notes) <> ''
    and not exists (select 1 from public.lead_notes n where n.lead_id = l.id);
 
+
+-- ---- anotações arquiváveis (migration 0678) ----
+alter table public.lead_notes
+  add column if not exists archived_at timestamptz;
+
+create index if not exists idx_lead_notes_ativas
+  on public.lead_notes (organization_id, contact_id, created_at desc)
+  where archived_at is null;

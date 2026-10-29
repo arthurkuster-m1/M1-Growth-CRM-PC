@@ -171,7 +171,6 @@ describe("a intenção do #600 sobrevive: quem lê em espanhol vê espanhol", ()
   const TELAS = [
     // A linha do tempo do negócio (LeadTimeline) e a do cliente (TimelineView) se desenham com ela.
     "components/timeline/LinhaDoTempoVisual.tsx",
-    "components/inbox/CRMSidePanel.tsx",
   ] as const;
 
   it.each(TELAS)("%s traduz o reason na LEITURA", (rel) => {

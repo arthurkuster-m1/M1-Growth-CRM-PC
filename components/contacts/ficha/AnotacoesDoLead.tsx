@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
-import { Star, Trash } from "@/lib/ui/icons";
+import { Archive, Star, Trash } from "@/lib/ui/icons";
 
 interface Anotacao {
   id: string;
@@ -88,6 +88,12 @@ export function AnotacoesDoLead({
   const fixar = useMutation({
     mutationFn: async (n: { id: string; fixada: boolean }) =>
       apiClient.patch(`/api/v1/contacts/${contactId}/anotacoes/${n.id}`, { fixada: n.fixada }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: base }),
+    onError: showApiError,
+  });
+  const arquivar = useMutation({
+    mutationFn: async (id: string) =>
+      apiClient.patch(`/api/v1/contacts/${contactId}/anotacoes/${id}`, { arquivada: true }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: base }),
     onError: showApiError,
   });
@@ -194,6 +200,17 @@ export function AnotacoesDoLead({
                         }
                       >
                         <Star size={14} weight={n.fixada ? "fill" : "regular"} aria-hidden />
+                      </button>
+                    ) : null}
+                    {podeEditar ? (
+                      <button
+                        type="button"
+                        aria-label={t("Arquivar anotação")}
+                        title={t("Arquivar (sai da lista, não se perde)")}
+                        onClick={() => arquivar.mutate(n.id)}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      >
+                        <Archive size={14} aria-hidden />
                       </button>
                     ) : null}
                     {podeEditar ? (

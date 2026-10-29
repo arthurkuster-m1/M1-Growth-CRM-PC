@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
@@ -369,11 +369,17 @@ export function TarefasDaOportunidade({
   contactId,
   leadId,
   podeEditar = true,
+  semBotao = false,
+  abrirCriacao = 0,
 }: {
   contactId: string | null;
   /** Sem oportunidade: as tarefas do cliente todo (e a nova nasce só com o cliente). */
   leadId?: string;
   podeEditar?: boolean;
+  /** Sem o botão "Nova tarefa": quem usa abre o formulário pelo `abrirCriacao`. */
+  semBotao?: boolean;
+  /** Sobe a cada pedido externo de "nova tarefa" (abre o formulário). */
+  abrirCriacao?: number;
 }) {
   const t = useT();
   const { user, activeOrg } = useAuth();
@@ -382,6 +388,12 @@ export function TarefasDaOportunidade({
   const [tarefaAbertaId, setTarefaAbertaId] = useState<string | null>(null);
   const [agoraIso] = useState(() => new Date().toISOString());
   const [criando, setCriando] = useState(false);
+  const pedidoVisto = useRef(abrirCriacao);
+  useEffect(() => {
+    if (abrirCriacao === pedidoVisto.current) return;
+    pedidoVisto.current = abrirCriacao;
+    setCriando(true);
+  }, [abrirCriacao]);
   const [titulo, setTitulo] = useState("");
   const [dia, setDia] = useState("");
   const consulta = useQuery({
@@ -429,7 +441,7 @@ export function TarefasDaOportunidade({
     <div className="grid gap-2" data-testid="tarefas-da-oportunidade">
       {abertas.length === 0 ? (
         // Com o botão "Nova tarefa" visível, o texto divide a linha com ele (como em Compromissos).
-        podeEditar && !criando ? null : (
+        podeEditar && !criando && !semBotao ? null : (
           <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente.")}</p>
         )
       ) : (
@@ -514,7 +526,7 @@ export function TarefasDaOportunidade({
               </button>
             </div>
           </div>
-        ) : (
+        ) : semBotao ? null : (
           <div
             className={cn(
               abertas.length === 0 && "flex flex-wrap items-center justify-between gap-2",
