@@ -2357,6 +2357,11 @@ export function ClientesCRM({
         cor: COR_DO_CICLO[c],
       })),
       rotuloDoValor: (v) => (ehCicloDeVida(v) ? t(ROTULO_DO_CICLO[v]) : v),
+      // Agrupado, o ciclo segue a vida do cliente: do novo lead ao cliente ativo (e a ordem inverte).
+      ordemDoValor: (v) => {
+        const i = (CICLOS_DE_VIDA as readonly string[]).indexOf(v);
+        return i < 0 ? CICLOS_DE_VIDA.length : i;
+      },
     },
     {
       id: "mql",
@@ -3583,6 +3588,7 @@ export function ClientesCRM({
                     ordenacao: preferencias.ordenacao,
                     agrupar: preferencias.agrupar,
                     agruparPor: preferencias.agruparPor,
+                    ordemDosGrupos: preferencias.ordemDosGrupos,
                   }}
                   aoMudar={mudarConsulta}
                 />
@@ -3639,6 +3645,7 @@ export function ClientesCRM({
                       ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
                       agrupar: preferencias.agrupar,
                       agruparPor: preferencias.agruparPor,
+                      ordemDosGrupos: preferencias.ordemDosGrupos,
                     })
                   }
                   ordenacao={preferencias.ordenacao}

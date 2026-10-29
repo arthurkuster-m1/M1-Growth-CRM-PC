@@ -422,6 +422,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
             ordenacao: preferencias.ordenacao,
             agrupar: preferencias.agrupar,
             agruparPor: preferencias.agruparPor,
+            ordemDosGrupos: preferencias.ordemDosGrupos,
           }}
           aoMudar={mudarConsulta}
         />
@@ -447,6 +448,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
             ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
             agrupar: preferencias.agrupar,
             agruparPor: preferencias.agruparPor,
+            ordemDosGrupos: preferencias.ordemDosGrupos,
           })
         }
         ordenacao={preferencias.ordenacao}
