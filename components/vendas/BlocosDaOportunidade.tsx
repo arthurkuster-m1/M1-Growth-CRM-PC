@@ -428,7 +428,10 @@ export function TarefasDaOportunidade({
   return (
     <div className="grid gap-2" data-testid="tarefas-da-oportunidade">
       {abertas.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente.")}</p>
+        // Com o botão "Nova tarefa" visível, o texto divide a linha com ele (como em Compromissos).
+        podeEditar && !criando ? null : (
+          <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente.")}</p>
+        )
       ) : (
         <ul className="flex flex-col gap-2">
           {abertas.map((x) => {
@@ -512,7 +515,14 @@ export function TarefasDaOportunidade({
             </div>
           </div>
         ) : (
-          <div>
+          <div
+            className={cn(
+              abertas.length === 0 && "flex flex-wrap items-center justify-between gap-2",
+            )}
+          >
+            {abertas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa pendente.")}</p>
+            ) : null}
             <button
               type="button"
               onClick={() => setCriando(true)}
