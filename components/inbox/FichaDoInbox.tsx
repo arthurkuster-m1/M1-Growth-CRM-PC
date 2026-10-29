@@ -119,6 +119,7 @@ export function FichaDoInbox({
         camposDefinidos={camposDoFunil(pipeline.data?.pipeline.settings ?? null)}
         podeEditar={podeEditar}
         semInbox
+        comNome
       />
 
       <div className="grid grid-cols-2 gap-2">

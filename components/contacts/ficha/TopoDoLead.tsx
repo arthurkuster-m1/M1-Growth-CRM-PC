@@ -55,12 +55,19 @@ export function TopoDoLead({
   camposDefinidos,
   podeEditar = false,
   semInbox = false,
+  comNome = false,
 }: {
   contact: Contact;
   camposDefinidos: CustomFieldDef[];
   podeEditar?: boolean;
   /** Na ficha DENTRO do Inbox a conversa já está aberta: o atalho "Inbox" levaria para a mesma tela. */
   semInbox?: boolean;
+  /**
+   * Ficha do Inbox: o nome (editável) abre a ficha e a ordem é nome, telefone, e-mail, campos
+   * personalizados, etiquetas (ciclo de vida, gestor, MQL) e os botões. Fora do Inbox o nome já
+   * está no cabeçalho da página e o telefone divide a primeira linha com as etiquetas.
+   */
+  comNome?: boolean;
 }) {
   const t = useT();
   const queryClient = useQueryClient();
@@ -222,123 +229,151 @@ export function TopoDoLead({
   const botao =
     "inline-flex h-9 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary";
 
+  const telefoneEl = (
+    <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+      <Phone size={15} aria-hidden className="shrink-0" />
+      <CampoInline
+        valor={telefone ? phoneForDisplay(telefone) : ""}
+        placeholder={t("Adicionar telefone")}
+        rotulo={t("Telefone")}
+        type="tel"
+        inputMode="tel"
+        podeEditar={podeEditar}
+        className="max-w-44"
+        aoSalvar={async (novo) => {
+          const fone = telefoneE164(novo);
+          if (!fone) return false;
+          return gravarContato({ phone_number: fone });
+        }}
+      />
+      {telefone ? (
+        <button
+          type="button"
+          aria-label={t("Copiar telefone")}
+          title={t("Copiar telefone")}
+          onClick={() => void copiar("telefone", phoneForDisplay(telefone))}
+          className={botaoIcone}
+        >
+          {copiado === "telefone" ? (
+            <Check size={14} aria-hidden />
+          ) : (
+            <Copy size={14} aria-hidden />
+          )}
+        </button>
+      ) : null}
+    </div>
+  );
+  const tagsEl = (
+    <>
+      {ciclo.data && ehCicloDeVida(ciclo.data.ciclo_de_vida) ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("Ciclo de vida")}
+              className="max-w-full min-w-0 rounded-full"
+            >
+              <Etiqueta ponto cor={COR_DO_CICLO[ciclo.data.ciclo_de_vida]}>
+                {t(ROTULO_DO_CICLO[ciclo.data.ciclo_de_vida])}
+              </Etiqueta>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 p-3">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {t("Ciclo de vida")}
+            </p>
+            <p className="mt-1 text-sm">{ciclo.data.ciclo_motivo ?? "—"}</p>
+          </PopoverContent>
+        </Popover>
+      ) : null}
+      {ciclo.data && (ciclo.data.dono_user_id || podeEditar) ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("Gestor de Relacionamento")}
+              title={t("Gestor de Relacionamento")}
+              className="max-w-full min-w-0 rounded-full"
+            >
+              <Etiqueta ponto cor={ciclo.data.dono_user_id ? "purple" : "gray"}>
+                {ciclo.data.dono_user_id
+                  ? ((membros.data ?? [])
+                      .find((m) => m.user_id === ciclo.data!.dono_user_id)
+                      ?.full_name?.trim() ?? t("Fora da equipe"))
+                  : t("Sem gestor de relacionamento")}
+              </Etiqueta>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 p-3">
+            <label className="grid gap-1 text-xs text-muted-foreground">
+              {t("Gestor de Relacionamento")}
+              <select
+                disabled={!podeEditar}
+                value={ciclo.data.dono_user_id ?? ""}
+                onChange={(e) => void mudarDono(e.target.value)}
+                className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
+              >
+                <option value="">{t("Sem dono")}</option>
+                {(membros.data ?? []).map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.full_name?.trim() || t("Sem nome")}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </PopoverContent>
+        </Popover>
+      ) : null}
+      {qual.data && (qual.data.is_mql || podeEditar) ? (
+        <button
+          type="button"
+          disabled={!podeEditar}
+          onClick={() => void alternarMql()}
+          aria-pressed={qual.data.is_mql}
+          title={
+            qual.data.is_mql
+              ? t("Lead qualificado (MQL) — clique para desmarcar")
+              : t("Marcar como lead qualificado (MQL)")
+          }
+          className="max-w-full min-w-0 rounded-full disabled:cursor-default"
+        >
+          {qual.data.is_mql ? (
+            <Etiqueta ponto cor="green">
+              MQL
+            </Etiqueta>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-dashed px-2 py-0.5 text-xs text-muted-foreground hover:bg-secondary">
+              + MQL
+            </span>
+          )}
+        </button>
+      ) : null}
+    </>
+  );
+
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       {/* A ficha: o telefone (com Ligar e Inbox) e as etiquetas do ciclo e do gestor na primeira
           linha; o e-mail (com Copiar) na segunda; os demais campos na terceira. */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          <Phone size={15} aria-hidden className="shrink-0" />
-          <CampoInline
-            valor={telefone ? phoneForDisplay(telefone) : ""}
-            placeholder={t("Adicionar telefone")}
-            rotulo={t("Telefone")}
-            type="tel"
-            inputMode="tel"
-            podeEditar={podeEditar}
-            className="max-w-44"
-            aoSalvar={async (novo) => {
-              const fone = telefoneE164(novo);
-              if (!fone) return false;
-              return gravarContato({ phone_number: fone });
-            }}
-          />
-          {telefone ? (
-            <button
-              type="button"
-              aria-label={t("Copiar telefone")}
-              title={t("Copiar telefone")}
-              onClick={() => void copiar("telefone", phoneForDisplay(telefone))}
-              className={botaoIcone}
-            >
-              {copiado === "telefone" ? (
-                <Check size={14} aria-hidden />
-              ) : (
-                <Copy size={14} aria-hidden />
-              )}
-            </button>
-          ) : null}
+      {comNome ? (
+        <CampoInline
+          valor={contact.name ?? ""}
+          placeholder={t("Adicionar nome")}
+          rotulo={t("Nome")}
+          podeEditar={podeEditar}
+          classeDoTexto="text-base font-semibold text-foreground"
+          className="max-w-full"
+          aoSalvar={(novo) => (novo ? gravarContato({ name: novo }) : false)}
+        />
+      ) : null}
+      {comNome ? (
+        telefoneEl
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {telefoneEl}
+          {tagsEl}
         </div>
-        {ciclo.data && ehCicloDeVida(ciclo.data.ciclo_de_vida) ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" aria-label={t("Ciclo de vida")} className="rounded-full">
-                <Etiqueta ponto cor={COR_DO_CICLO[ciclo.data.ciclo_de_vida]}>
-                  {t(ROTULO_DO_CICLO[ciclo.data.ciclo_de_vida])}
-                </Etiqueta>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-72 p-3">
-              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("Ciclo de vida")}
-              </p>
-              <p className="mt-1 text-sm">{ciclo.data.ciclo_motivo ?? "—"}</p>
-            </PopoverContent>
-          </Popover>
-        ) : null}
-        {ciclo.data && (ciclo.data.dono_user_id || podeEditar) ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={t("Gestor de Relacionamento")}
-                title={t("Gestor de Relacionamento")}
-                className="rounded-full"
-              >
-                <Etiqueta ponto cor={ciclo.data.dono_user_id ? "purple" : "gray"}>
-                  {ciclo.data.dono_user_id
-                    ? ((membros.data ?? [])
-                        .find((m) => m.user_id === ciclo.data!.dono_user_id)
-                        ?.full_name?.trim() ?? t("Fora da equipe"))
-                    : t("Sem gestor de relacionamento")}
-                </Etiqueta>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-3">
-              <label className="grid gap-1 text-xs text-muted-foreground">
-                {t("Gestor de Relacionamento")}
-                <select
-                  disabled={!podeEditar}
-                  value={ciclo.data.dono_user_id ?? ""}
-                  onChange={(e) => void mudarDono(e.target.value)}
-                  className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
-                >
-                  <option value="">{t("Sem dono")}</option>
-                  {(membros.data ?? []).map((m) => (
-                    <option key={m.user_id} value={m.user_id}>
-                      {m.full_name?.trim() || t("Sem nome")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </PopoverContent>
-          </Popover>
-        ) : null}
-        {qual.data && (qual.data.is_mql || podeEditar) ? (
-          <button
-            type="button"
-            disabled={!podeEditar}
-            onClick={() => void alternarMql()}
-            aria-pressed={qual.data.is_mql}
-            title={
-              qual.data.is_mql
-                ? t("Lead qualificado (MQL) — clique para desmarcar")
-                : t("Marcar como lead qualificado (MQL)")
-            }
-            className="rounded-full disabled:cursor-default"
-          >
-            {qual.data.is_mql ? (
-              <Etiqueta ponto cor="green">
-                MQL
-              </Etiqueta>
-            ) : (
-              <span className="inline-flex items-center rounded-full border border-dashed px-2 py-0.5 text-xs text-muted-foreground hover:bg-secondary">
-                + MQL
-              </span>
-            )}
-          </button>
-        ) : null}
-      </div>
+      )}
 
       <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
         <EnvelopeSimple size={15} aria-hidden className="shrink-0" />
@@ -433,6 +468,8 @@ export function TopoDoLead({
           </button>
         </form>
       ) : null}
+
+      {comNome ? <div className="flex min-w-0 flex-wrap items-center gap-1.5">{tagsEl}</div> : null}
 
       {!contact.is_anonymized ? (
         <div className="flex flex-wrap items-center gap-2">
