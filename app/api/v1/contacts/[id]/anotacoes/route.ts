@@ -88,10 +88,12 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
   const filtroDoLead = z.string().uuid().safeParse(new URL(req.url).searchParams.get("lead_id"));
   let consulta = createAdminClient()
     .from("lead_notes")
-    .select("id, headline, body, pinned, created_at, lead_id")
+    .select("id, headline, body, pinned, created_at, lead_id, archived_at")
     .eq("organization_id", authz.org.orgId)
     .eq("contact_id", id.data);
   if (filtroDoLead.success) consulta = consulta.eq("lead_id", filtroDoLead.data);
+  // Arquivadas ficam fora da lista, a menos que se peça (`?arquivadas=1`).
+  if (new URL(req.url).searchParams.get("arquivadas") !== "1") consulta = consulta.is("archived_at", null);
   const { data, error } = await consulta
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false })
@@ -107,6 +109,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
       titulo: (n.headline as string) ?? "",
       texto: (n.body as string) ?? "",
       fixada: Boolean(n.pinned),
+      arquivada: n.archived_at != null,
       criada_em: n.created_at as string,
       lead_id: (n.lead_id as string | null) ?? null,
       funil: rotulos.get(n.lead_id as string)?.funil ?? null,

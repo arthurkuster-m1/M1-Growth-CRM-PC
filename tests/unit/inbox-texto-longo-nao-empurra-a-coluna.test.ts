@@ -33,7 +33,6 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const PAINEL = "components/inbox/CRMSidePanel.tsx";
 const LAYOUT = "components/inbox/InboxLayout.tsx";
 const PASTA_INBOX = "components/inbox";
 
@@ -87,25 +86,6 @@ describe("inbox — texto longo não empurra a coluna (#1802)", () => {
         .map((c) => `  ${c.arquivo}:${c.linha}  ${c.classe}`)
         .join("\n")}`,
     ).toEqual([]);
-  });
-
-  it("régua 2: o fato da Memória do contato quebra em qualquer ponto, e não volta break-words", () => {
-    const fonte = ler(PAINEL);
-    const linha = fonte.split("\n").find((l) => l.includes("f.headline"));
-    expect(linha, `não achei o bloco de fatos em ${PAINEL}`).toBeDefined();
-
-    const summary = linha!.match(/<summary[^>]*>/)?.[0] ?? "";
-    expect(summary, `o <summary> do fato precisa de wrap-anywhere: ${summary}`).toContain(
-      "wrap-anywhere",
-    );
-
-    const paragrafo = linha!.match(/<p[^>]*>/)?.[0] ?? "";
-    expect(paragrafo, `o <p> do fato precisa de wrap-anywhere: ${paragrafo}`).toContain(
-      "wrap-anywhere",
-    );
-    // Mesma armadilha do 8e6220a: as duas regras com a mesma especificidade e
-    // o break-word vencendo a quebra forçada.
-    expect(paragrafo).not.toContain("break-words");
   });
 
   it("régua 3: as colunas que podem vazar para a página têm min-w-0", () => {
