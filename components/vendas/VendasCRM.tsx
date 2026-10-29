@@ -32,7 +32,7 @@ import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { CirculoDeRecebida } from "@/components/vendas/CirculoDeRecebida";
 import { recebeuNoMes, recorteDoMes, resumoDaVenda } from "@/lib/vendas-tabela";
@@ -99,18 +99,6 @@ function rotuloDoStatusDaVenda(t: (s: string) => string, s: StatusDaVenda): stri
 export function VendasCRM() {
   const t = useT();
   const rotuloDaFormaDe = useRotuloDaForma();
-  const equipeDaEmpresa = useQuery({
-    queryKey: ["team", "assignable", "vendas"],
-    staleTime: 60_000,
-    queryFn: async () =>
-      (
-        await apiClient.get<{ data: Array<{ user_id: string; full_name: string | null }> }>(
-          "/api/v1/team/assignable",
-        )
-      ).data,
-  });
-  const nomeDoResponsavel = (id: string | null | undefined) =>
-    (equipeDaEmpresa.data ?? []).find((p) => p.user_id === id)?.full_name?.trim() ?? "";
   const queryClient = useQueryClient();
   const router = useRouter();
   const caminho = usePathname();
@@ -240,7 +228,8 @@ export function VendasCRM() {
   const [destaque, setDestaque] = useState<
     null | "recebido" | "areceber" | "interesse" | "fechadas"
   >(null);
-  const [abertaId, setAbertaId] = useState<string | null>(null);
+  // A venda aberta pelo título: só a página da venda (a oportunidade se abre em Oportunidades).
+  const [vendaAberta, setVendaAberta] = useState<Venda | null>(null);
   const [cancelando, setCancelando] = useState<Venda | null>(null);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
 
@@ -385,15 +374,15 @@ export function VendasCRM() {
   const colunas: ColunaDoMotor<Venda>[] = [
     {
       id: "oportunidade",
-      titulo: t("Oportunidade"),
+      titulo: t("Venda"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 280,
       semOcultar: true,
       celula: (v) => (
         <button
           type="button"
-          onClick={() => setAbertaId(v.id)}
-          title={t("Abrir a oportunidade")}
+          onClick={() => setVendaAberta(v)}
+          title={t("Abrir a venda")}
           className="block w-full min-w-0 px-2 text-left hover:underline"
         >
           <span className="block truncate text-sm font-medium">
@@ -417,7 +406,41 @@ export function VendasCRM() {
       titulo: t("Produto(s)"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 240,
-      celula: (v) => texto(resumoDaVenda(v).produtos),
+      celula: (v) => {
+        const itens = v.itens ?? [];
+        if (itens.length <= 1) return texto(resumoDaVenda(v).produtos);
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title={t("Ver os produtos desta venda")}
+                className="mx-2 inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full bg-primary/10 px-2.5 text-sm font-semibold text-primary tabular-nums hover:bg-primary/20"
+              >
+                {itens.length} {t("produtos")}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 rounded-2xl p-2">
+              <ul className="grid gap-1">
+                {itens.map((i, k) => (
+                  <li
+                    key={i.id ?? k}
+                    className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm"
+                  >
+                    <span className="min-w-0 truncate">
+                      {i.quantity > 1 ? `${i.quantity}× ` : ""}
+                      {i.product_name}
+                    </span>
+                    <span className="shrink-0 text-muted-foreground tabular-nums">
+                      {reais(i.amount_cents)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </PopoverContent>
+          </Popover>
+        );
+      },
     },
     {
       id: "status",
@@ -450,6 +473,16 @@ export function VendasCRM() {
       icone: <TextAa size={14} aria-hidden />,
       largura: 160,
       celula: (v) => texto(v.payment_method ? rotuloDaFormaDe(v.payment_method) : ""),
+    },
+    {
+      id: "num_parcelas",
+      titulo: t("Nº de parcelas"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 130,
+      celula: (v) => {
+        const n = (v.parcelas ?? []).filter((p) => p.status !== "cancelada").length;
+        return texto(n > 0 ? String(n) : "");
+      },
     },
     {
       id: "parcelas",
@@ -539,53 +572,39 @@ export function VendasCRM() {
       celula: (v) => dataCelula(resumoDaVenda(v).proximoPagamento),
     },
     {
-      id: "previsao",
-      titulo: t("Previsão de fechamento"),
+      id: "recorrente",
+      titulo: t("Recorrente"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 180,
-      celula: (v) => dataCelula(v.expected_close_date),
+      largura: 130,
+      celula: (v) => texto(v.is_recurring ? t("Sim") : t("Não")),
     },
     {
-      id: "responsavel",
-      titulo: t("Responsável"),
+      id: "recorrencia",
+      titulo: t("Recorrência"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 180,
-      celula: (v) => texto(nomeDoResponsavel(v.responsavel_id)),
+      largura: 160,
+      celula: (v) =>
+        v.is_recurring ? (
+          <span className="block px-2">
+            <Etiqueta
+              ponto
+              cor={v.recurrence_active && v.status !== "recorrencia_encerrada" ? "green" : "gray"}
+            >
+              {v.recurrence_active && v.status !== "recorrencia_encerrada"
+                ? t("Ativa")
+                : t("Encerrada")}
+            </Etiqueta>
+          </span>
+        ) : (
+          texto("")
+        ),
     },
     {
-      id: "origem",
-      titulo: t("Origem"),
+      id: "valor_mensal",
+      titulo: t("Valor mensal"),
       icone: <TextAa size={14} aria-hidden />,
-      largura: 170,
-      celula: (v) => texto(v.origem ?? ""),
-    },
-    {
-      id: "campanha",
-      titulo: t("Campanha"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 240,
-      celula: (v) => texto(v.campanha ?? ""),
-    },
-    {
-      id: "anuncio",
-      titulo: t("Anúncio"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 200,
-      celula: (v) => texto(v.anuncio ?? ""),
-    },
-    {
-      id: "lp",
-      titulo: t("Landing page"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 200,
-      celula: (v) => texto(v.lp ?? ""),
-    },
-    {
-      id: "posicionamento",
-      titulo: t("Posicionamento"),
-      icone: <TextAa size={14} aria-hidden />,
-      largura: 170,
-      celula: (v) => texto(v.posicionamento ?? ""),
+      largura: 140,
+      celula: (v) => (v.is_recurring ? dinheiro(v.amount_cents) : texto("")),
     },
   ];
   // A linha de totais do fim da tabela (somas e contagens do que está na tela).
@@ -626,7 +645,7 @@ export function VendasCRM() {
   > = [
     {
       id: "oportunidade",
-      titulo: t("Oportunidade"),
+      titulo: t("Venda"),
       tipo: "texto",
       valorDe: (v) => nomeDaVenda(v),
     },
@@ -689,26 +708,33 @@ export function VendasCRM() {
       valorDe: (v) => resumoDaVenda(v).proximoPagamento,
     },
     {
-      id: "previsao",
-      titulo: t("Previsão de fechamento"),
-      tipo: "texto",
-      valorDe: (v) => v.expected_close_date ?? "",
+      id: "num_parcelas",
+      titulo: t("Nº de parcelas"),
+      tipo: "numero",
+      valorDe: (v) => (v.parcelas ?? []).filter((p) => p.status !== "cancelada").length,
     },
     {
-      id: "responsavel",
-      titulo: t("Responsável"),
+      id: "recorrente",
+      titulo: t("Recorrente"),
       tipo: "texto",
-      valorDe: (v) => nomeDoResponsavel(v.responsavel_id),
+      valorDe: (v) => (v.is_recurring ? t("Sim") : t("Não")),
     },
-    { id: "origem", titulo: t("Origem"), tipo: "texto", valorDe: (v) => v.origem ?? "" },
-    { id: "campanha", titulo: t("Campanha"), tipo: "texto", valorDe: (v) => v.campanha ?? "" },
-    { id: "anuncio", titulo: t("Anúncio"), tipo: "texto", valorDe: (v) => v.anuncio ?? "" },
-    { id: "lp", titulo: t("Landing page"), tipo: "texto", valorDe: (v) => v.lp ?? "" },
     {
-      id: "posicionamento",
-      titulo: t("Posicionamento"),
+      id: "recorrencia",
+      titulo: t("Recorrência"),
       tipo: "texto",
-      valorDe: (v) => v.posicionamento ?? "",
+      valorDe: (v) =>
+        v.is_recurring
+          ? v.recurrence_active && v.status !== "recorrencia_encerrada"
+            ? t("Ativa")
+            : t("Encerrada")
+          : "",
+    },
+    {
+      id: "valor_mensal",
+      titulo: t("Valor mensal"),
+      tipo: "numero",
+      valorDe: (v) => (v.is_recurring ? v.amount_cents / 100 : null),
     },
   ];
   const camposDaBarra: CampoDaBarra[] = campos.map((c) => ({
@@ -1138,8 +1164,29 @@ export function VendasCRM() {
         }
       />
 
-      {abertaId ? (
-        <CardDaOportunidade leadId={abertaId} aoFechar={() => setAbertaId(null)} />
+      {vendaAberta ? (
+        <DialogoDaVenda
+          key={vendaAberta.id}
+          modo="venda"
+          venda={vendaAberta}
+          contatoInicial={{
+            contact_id: vendaAberta.contact_id,
+            nome: vendaAberta.cliente?.nome ?? "",
+          }}
+          clientes={[]}
+          aoFechar={() => setVendaAberta(null)}
+          aoSalvar={async (v: DadosDaVenda) => {
+            try {
+              const { id, contact_id: _contato, ...resto } = v;
+              await apiClient.patch(`/api/v1/vendas/${id ?? vendaAberta.id}`, resto);
+              await queryClient.invalidateQueries();
+              return true;
+            } catch (e) {
+              showApiError(e);
+              return false;
+            }
+          }}
+        />
       ) : null}
       {cancelando && cancelando.pipeline_id ? (
         <LoseLeadDialog
