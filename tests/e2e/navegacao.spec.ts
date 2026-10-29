@@ -90,13 +90,8 @@ test.describe("navegação agrupada", () => {
     // Organização não aparece como título aqui: seu hub (Configurações) vive no
     // rodapé fixo — ver o teste de dobra abaixo.
     const titulos = sidebar(page).getByRole("heading");
-    await expect(titulos).toHaveText([
-      "Atendimento",
-      "CRM",
-      "Agente de IA",
-      "Canais",
-      "Análise",
-    ]);
+    // Só o Marketing é toggle: Inbox, Agenda, CRM etc. são links soltos e "Agentes de IA" é UM link.
+    await expect(titulos).toHaveText(["Marketing"]);
 
     await page.screenshot({
       path: path.join(EVIDENCE, "nav-sidebar-agrupado.png"),
@@ -157,7 +152,7 @@ test.describe("navegação agrupada", () => {
   test("chega em Conhecimento, que só existia atrás das abas de IA", async ({ page }) => {
     await loginAdmin(page);
 
-    await sidebar(page).getByRole("link", { name: "Ver tudo em IA" }).click();
+    await sidebar(page).getByRole("link", { name: "Agentes de IA" }).click();
     await page.waitForURL(/\/app\/ai$/);
 
     // O hub organiza por jornada, não numa grade solta.
@@ -289,6 +284,6 @@ test.describe("navegação agrupada", () => {
 
     // CANAIS é todo manager+/admin: o título não pode sobrar sozinho.
     await expect(sidebar(page).getByRole("heading", { name: "Canais" })).toHaveCount(0);
-    await expect(sidebar(page).getByRole("heading", { name: "Atendimento" })).toBeVisible();
+    await expect(sidebar(page).getByRole("link", { name: "Inbox" })).toBeVisible();
   });
 });

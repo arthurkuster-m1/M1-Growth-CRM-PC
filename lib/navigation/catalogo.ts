@@ -278,7 +278,7 @@ export const NAV_CATALOG = [
     description:
       "Tudo o que o sistema faz sozinho: regras de lead, tags, tarefas e mensagens, num lugar só.",
     icon: "FlowArrow",
-    group: "atendimento",
+    group: "marketing",
     minRole: "manager",
     sidebar: true,
   },
