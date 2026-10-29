@@ -91,7 +91,7 @@ export function CampoInline({
       title={rotulo ?? placeholder}
       className={cn(
         "min-w-0 rounded-lg text-left break-words hover:bg-secondary/70",
-        valor ? classeDoTexto : "text-muted-foreground/70 italic",
+        valor ? classeDoTexto : "text-muted-foreground italic",
         className,
       )}
     >

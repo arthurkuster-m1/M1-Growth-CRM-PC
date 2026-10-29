@@ -1,6 +1,6 @@
 ---
 impacto: nada_mudou
-secao: melhorado
+secao: alterado
 titulo: Configurações do Inbox — etiquetas do filtro, respostas rápidas e números com nome e cor
 ---
 

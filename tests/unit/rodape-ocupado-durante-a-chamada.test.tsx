@@ -37,6 +37,9 @@ const sessao = vi.hoisted(() => ({ valor: {} as Record<string, unknown> }));
 
 vi.mock("@/components/voice/VoiceCallContext", () => ({ useVoiceCall: () => sessao.valor }));
 vi.mock("@/hooks/contacts/useContact", () => ({ useContact: () => ({ data: undefined }) }));
+vi.mock("@/hooks/inbox/useConfigDoInbox", () => ({
+  useConfigDoInbox: () => ({ numeros: {}, categorias_ocultas: [], tags_ocultas: [] }),
+}));
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (texto: string) => texto }));
 
 // As peças da casca que NÃO são o assunto: barra lateral, barra de cima, barra

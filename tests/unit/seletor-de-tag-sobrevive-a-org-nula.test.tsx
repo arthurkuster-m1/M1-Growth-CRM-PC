@@ -32,6 +32,9 @@ import type { ActiveOrg } from "@/lib/auth/types";
 const activeOrgRef: { current: ActiveOrg | null } = { current: null };
 const tagsRef: { current: string[] } = { current: [] };
 
+vi.mock("@/hooks/inbox/useConfigDoInbox", () => ({
+  useConfigDoInbox: () => ({ numeros: {}, categorias_ocultas: [], tags_ocultas: [] }),
+}));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({ activeOrg: activeOrgRef.current }),
 }));
