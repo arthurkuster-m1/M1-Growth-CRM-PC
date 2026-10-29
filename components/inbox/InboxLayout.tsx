@@ -433,8 +433,10 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
     <div
       className={cn(
         // No celular, dentro de uma conversa a tela é toda dela (como no WhatsApp): cobre o
-        // cabeçalho e a barra de baixo, e o `dvh` acompanha o teclado para o campo não sumir.
-        selectedId && "max-md:fixed max-md:inset-0 max-md:z-40 max-md:h-dvh max-md:bg-background",
+        // cabeçalho, mas termina ACIMA da barra de abas (`--rodape-ocupado`, a altura que ela mede
+        // de verdade) — senão a barra tapa o Responder/Nota interna e o campo de texto.
+        selectedId &&
+          "max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:bottom-[var(--rodape-ocupado,0px)] max-md:z-40 max-md:h-auto max-md:bg-background",
         "grid h-[calc(100dvh-3.5rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] w-full grid-cols-1 md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]",
       )}
       /*
