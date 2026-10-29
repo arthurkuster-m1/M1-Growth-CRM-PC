@@ -28,7 +28,17 @@ import { apiClient } from "@/lib/api/client";
 import { PREFIXO_DA_CHAVE } from "@/lib/leads/links-de-contato";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
 import type { Contact } from "@/lib/types/contacts";
-import { ChatCircle, NotePencil, PencilSimple, Phone, Plus } from "@/lib/ui/icons";
+import {
+  Check,
+  ChatCircle,
+  Copy,
+  EnvelopeSimple,
+  NotePencil,
+  PencilSimple,
+  Phone,
+  Plus,
+} from "@/lib/ui/icons";
+import { toast } from "sonner";
 import { nomeDaVenda, type Venda } from "@/lib/vendas";
 
 const textoDoValor = (v: unknown): string =>
@@ -192,37 +202,88 @@ export function TopoDoLead({
   }
 
   const telefone = contact.phone_number;
+  const [copiado, setCopiado] = useState<"telefone" | "email" | null>(null);
+  async function copiar(qual: "telefone" | "email", texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(qual);
+      toast.success(qual === "email" ? t("E-mail copiado") : t("Telefone copiado"));
+      setTimeout(() => setCopiado(null), 1500);
+    } catch {
+      toast.error(t("Não consegui copiar. Selecione o texto e copie à mão."));
+    }
+  }
+  const botaoIcone =
+    "inline-flex size-7 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground";
   const botao =
     "inline-flex h-9 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary";
 
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-        <CampoInline
-          valor={telefone ? phoneForDisplay(telefone) : ""}
-          placeholder={t("Adicionar telefone")}
-          rotulo={t("Telefone")}
-          type="tel"
-          inputMode="tel"
-          podeEditar={podeEditar}
-          className="max-w-44"
-          aoSalvar={async (novo) => {
-            const fone = telefoneE164(novo);
-            if (!fone) return false;
-            return gravarContato({ phone_number: fone });
-          }}
-        />
-        <CampoInline
-          valor={contact.email ?? ""}
-          placeholder={t("Adicionar e-mail")}
-          rotulo={t("E-mail")}
-          type="email"
-          inputMode="email"
-          podeEditar={podeEditar}
-          classeDoTexto="break-all"
-          className="max-w-64"
-          aoSalvar={(novo) => (novo ? gravarContato({ email: novo }) : false)}
-        />
+      {/* A ficha: o telefone (com Ligar e Inbox) e as etiquetas do ciclo e do gestor na primeira
+          linha; o e-mail (com Copiar) na segunda; os demais campos na terceira. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+          <Phone size={15} aria-hidden className="shrink-0" />
+          <CampoInline
+            valor={telefone ? phoneForDisplay(telefone) : ""}
+            placeholder={t("Adicionar telefone")}
+            rotulo={t("Telefone")}
+            type="tel"
+            inputMode="tel"
+            podeEditar={podeEditar}
+            className="max-w-44"
+            aoSalvar={async (novo) => {
+              const fone = telefoneE164(novo);
+              if (!fone) return false;
+              return gravarContato({ phone_number: fone });
+            }}
+          />
+          {telefone ? (
+            <button
+              type="button"
+              aria-label={t("Copiar telefone")}
+              title={t("Copiar telefone")}
+              onClick={() => void copiar("telefone", phoneForDisplay(telefone))}
+              className={botaoIcone}
+            >
+              {copiado === "telefone" ? (
+                <Check size={14} aria-hidden />
+              ) : (
+                <Copy size={14} aria-hidden />
+              )}
+            </button>
+          ) : null}
+          {telefone && !contact.is_anonymized ? (
+            <>
+              <a
+                href={`tel:${telefone}`}
+                aria-label={t("Ligar")}
+                title={t("Ligar")}
+                className={botaoIcone}
+              >
+                <Phone size={14} aria-hidden />
+              </a>
+              {contact.conversa ? (
+                <Link
+                  href={`/app/inbox?id=${contact.conversa.id}`}
+                  aria-label={t("Abrir no Inbox")}
+                  title={t("Abrir no Inbox")}
+                  className={`${botaoIcone} relative`}
+                >
+                  <ChatCircle size={14} aria-hidden />
+                  {contact.conversa.unread > 0 ? (
+                    <span className="absolute -top-1 -right-1 min-w-4 rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground tabular-nums">
+                      {contact.conversa.unread}
+                    </span>
+                  ) : null}
+                </Link>
+              ) : (
+                <AbrirConversaDoLead contactId={contact.id} phone={telefone} variante="icone" />
+              )}
+            </>
+          ) : null}
+        </div>
         {ciclo.data && ehCicloDeVida(ciclo.data.ciclo_de_vida) ? (
           <Popover>
             <PopoverTrigger asChild>
@@ -240,9 +301,97 @@ export function TopoDoLead({
             </PopoverContent>
           </Popover>
         ) : null}
+        {ciclo.data && (ciclo.data.dono_user_id || podeEditar) ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("Gestor de Relacionamento")}
+                title={t("Gestor de Relacionamento")}
+                className="rounded-full"
+              >
+                <Etiqueta ponto cor={ciclo.data.dono_user_id ? "purple" : "gray"}>
+                  {ciclo.data.dono_user_id
+                    ? ((membros.data ?? [])
+                        .find((m) => m.user_id === ciclo.data!.dono_user_id)
+                        ?.full_name?.trim() ?? t("Fora da equipe"))
+                    : t("Sem gestor de relacionamento")}
+                </Etiqueta>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-3">
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                {t("Gestor de Relacionamento")}
+                <select
+                  disabled={!podeEditar}
+                  value={ciclo.data.dono_user_id ?? ""}
+                  onChange={(e) => void mudarDono(e.target.value)}
+                  className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
+                >
+                  <option value="">{t("Sem dono")}</option>
+                  {(membros.data ?? []).map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.full_name?.trim() || t("Sem nome")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </PopoverContent>
+          </Popover>
+        ) : null}
+        {qual.data && (qual.data.is_mql || podeEditar) ? (
+          <button
+            type="button"
+            disabled={!podeEditar}
+            onClick={() => void alternarMql()}
+            aria-pressed={qual.data.is_mql}
+            title={
+              qual.data.is_mql
+                ? t("Lead qualificado (MQL) — clique para desmarcar")
+                : t("Marcar como lead qualificado (MQL)")
+            }
+            className="rounded-full disabled:cursor-default"
+          >
+            {qual.data.is_mql ? (
+              <Etiqueta ponto cor="green">
+                MQL
+              </Etiqueta>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-dashed px-2 py-0.5 text-xs text-muted-foreground hover:bg-secondary">
+                + MQL
+              </span>
+            )}
+          </button>
+        ) : null}
       </div>
 
-      {campos.length > 0 || podeEditar || ciclo.data?.dono_user_id ? (
+      <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+        <EnvelopeSimple size={15} aria-hidden className="shrink-0" />
+        <CampoInline
+          valor={contact.email ?? ""}
+          placeholder={t("Adicionar e-mail")}
+          rotulo={t("E-mail")}
+          type="email"
+          inputMode="email"
+          podeEditar={podeEditar}
+          classeDoTexto="break-all"
+          className="max-w-72"
+          aoSalvar={(novo) => (novo ? gravarContato({ email: novo }) : false)}
+        />
+        {contact.email ? (
+          <button
+            type="button"
+            aria-label={t("Copiar e-mail")}
+            title={t("Copiar e-mail")}
+            onClick={() => void copiar("email", contact.email!)}
+            className={botaoIcone}
+          >
+            {copiado === "email" ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+          </button>
+        ) : null}
+      </div>
+
+      {campos.length > 0 || podeEditar ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {campos.map(([k, v]) => (
             <span
@@ -270,44 +419,6 @@ export function TopoDoLead({
             >
               <Plus size={12} weight="bold" aria-hidden />
             </button>
-          ) : null}
-          {ciclo.data && (ciclo.data.dono_user_id || podeEditar) ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={t("Gestor de Relacionamento")}
-                  title={t("Gestor de Relacionamento")}
-                  className="rounded-full"
-                >
-                  <Etiqueta ponto cor={ciclo.data.dono_user_id ? "purple" : "gray"}>
-                    {ciclo.data.dono_user_id
-                      ? ((membros.data ?? [])
-                          .find((m) => m.user_id === ciclo.data!.dono_user_id)
-                          ?.full_name?.trim() ?? t("Fora da equipe"))
-                      : t("Sem gestor")}
-                  </Etiqueta>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-3">
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  {t("Gestor de Relacionamento")}
-                  <select
-                    disabled={!podeEditar}
-                    value={ciclo.data.dono_user_id ?? ""}
-                    onChange={(e) => void mudarDono(e.target.value)}
-                    className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
-                  >
-                    <option value="">{t("Sem dono")}</option>
-                    {(membros.data ?? []).map((m) => (
-                      <option key={m.user_id} value={m.user_id}>
-                        {m.full_name?.trim() || t("Sem nome")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </PopoverContent>
-            </Popover>
           ) : null}
         </div>
       ) : null}
@@ -350,25 +461,6 @@ export function TopoDoLead({
 
       {!contact.is_anonymized ? (
         <div className="flex flex-wrap items-center gap-2">
-          {telefone ? (
-            <a href={`tel:${telefone}`} className={botao}>
-              <Phone size={15} aria-hidden />
-              {t("Ligar")}
-            </a>
-          ) : null}
-          {contact.conversa ? (
-            <Link href={`/app/inbox?id=${contact.conversa.id}`} className={botao}>
-              <ChatCircle size={15} aria-hidden />
-              {t("Inbox")}
-              {contact.conversa.unread > 0 ? (
-                <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground tabular-nums">
-                  {contact.conversa.unread}
-                </span>
-              ) : null}
-            </Link>
-          ) : (
-            <AbrirConversaDoLead contactId={contact.id} phone={telefone} variante="botao" />
-          )}
           {podeEditar ? (
             <>
               <button type="button" className={botao} onClick={() => setAcaoAberta(true)}>
