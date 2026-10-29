@@ -82,11 +82,44 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual([
-      "Marketing",
-      "Atendimento",
-      "Agente de IA",
-    ]);
+    // Só o Marketing é toggle: Inbox, Agenda, CRM, Tarefas e Financeiro são links soltos, e
+    // "Agentes de IA" é UM link para a página "Ver tudo em IA".
+    expect(titulos).toEqual(["Marketing"]);
+  });
+
+  it("a ordem do menu: Início, Inbox, Agenda, CRM, Tarefas, Financeiro, Marketing, Agentes de IA, Conexões", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
+    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
+    const hrefs = [...nav.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    const posicao = (h: string) => hrefs.indexOf(h);
+    const ordem = [
+      "/app/inicio",
+      "/app/inbox",
+      "/app/agenda",
+      "/app/clientes",
+      "/app/tarefas",
+      "/app/financas",
+    ].map(posicao);
+    expect(ordem.every((i) => i >= 0)).toBe(true);
+    expect([...ordem].sort((a, b) => a - b)).toEqual(ordem);
+    // Automações mora dentro do toggle de Marketing, e depois dele vêm IA e Conexões.
+    const auto = posicao("/app/automacoes");
+    expect(auto).toBeGreaterThan(ordem[5]!);
+    expect(posicao("/app/ai")).toBeGreaterThan(auto);
+    expect(hrefs[hrefs.length - 1]).toBe("/app/connections");
+    expect(posicao("/app/connections")).toBeGreaterThan(posicao("/app/ai"));
+  });
+
+  it("Agentes de IA é um link só, e as telas de IA não aparecem soltas no menu", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    abrirTodosOsGrupos();
+    expect(screen.getByRole("link", { name: "Agentes de IA" })).toHaveAttribute("href", "/app/ai");
+    expect(screen.queryByRole("link", { name: /Ver tudo em IA/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Casos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Agente de IA/ })).toBeNull();
   });
 
   it("o CRM não é grupo: é a página CRM, solta no topo, e não há hub", () => {
@@ -99,7 +132,7 @@ describe("Sidebar agrupado", () => {
     expect(screen.queryByRole("link", { name: "Etapas do funil" })).toBeNull();
   });
 
-  it("o número de Casos mora no item de Casos, e o da Fila no item de Inbox", () => {
+  it("o número de Casos mora em Agentes de IA, e o da Fila no item de Inbox", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
@@ -107,7 +140,7 @@ describe("Sidebar agrupado", () => {
     const fila = screen.getAllByTestId("marcador-fila");
     expect(casos).toHaveLength(1);
     expect(fila).toHaveLength(1);
-    expect(casos[0]!.closest("a")).toHaveAttribute("href", "/app/ai/cases");
+    expect(casos[0]!.closest("a")).toHaveAttribute("href", "/app/ai");
     expect(fila[0]!.closest("a")).toHaveAttribute("href", "/app/inbox");
     // Roteadores saiu do menu para Casos caber (a folga era menos de uma linha).
     expect(screen.queryByRole("link", { name: "Roteadores" })).toBeNull();
@@ -178,15 +211,8 @@ describe("Sidebar agrupado", () => {
     abrirTodosOsGrupos();
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
     expect(titulos).not.toContain("Canais");
-    expect(titulos).toContain("Atendimento");
+    expect(screen.getByRole("link", { name: "Inbox" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Conexões" })).toBeNull();
-  });
-
-  it("oferece o hub dos grupos que têm um", () => {
-    comoPapel("admin");
-    render(<Sidebar collapsed={false} />);
-    abrirTodosOsGrupos();
-    expect(screen.getByRole("link", { name: /Ver tudo em IA/ })).toHaveAttribute("href", "/app/ai");
   });
 
   it("colapsado esconde os títulos mas mantém os links", () => {
@@ -204,17 +230,16 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: "CRM" })).not.toHaveAttribute("aria-current");
   });
 
-  it("só o grupo da rota atual começa aberto (menu curto, como no desenho do M1)", () => {
+  it("o toggle de Marketing começa fechado fora das telas dele e abre com um clique", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    // A rota é /app/inbox, do grupo Atendimento: é o único aberto.
-    const abertos = screen
-      .getAllByRole("button", { expanded: true })
-      .map((el) => el.textContent?.trim());
-    expect(abertos).toEqual(["Atendimento"]);
-    // Os demais existem, fechados — e abrem com um clique.
-    const ia = screen.getByRole("button", { name: /Agente de IA/, expanded: false });
-    fireEvent.click(ia);
-    expect(screen.getByRole("button", { name: /Agente de IA/, expanded: true })).toBeTruthy();
+    // A rota é /app/inbox, que não é do Marketing: o toggle está fechado.
+    expect(screen.queryAllByRole("button", { expanded: true })).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: /Marketing/, expanded: false }));
+    expect(screen.getByRole("button", { name: /Marketing/, expanded: true })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Automações" })).toHaveAttribute(
+      "href",
+      "/app/automacoes",
+    );
   });
 });

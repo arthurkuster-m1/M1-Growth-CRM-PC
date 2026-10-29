@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import {
   ArrowRight,
   Buildings,
+  CalendarBlank,
   CaretDoubleLeft,
   CaretDoubleRight,
   CaretDown,
@@ -78,11 +79,14 @@ export function SidebarContent({
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
   // O CRM não é mais um grupo com toggle: a página CRM (Clientes) vem solta, logo abaixo de Início,
   // e o que sobrou do grupo só é alcançado pelo ⌘K.
-  const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE && g.group.id !== "crm" && g.group.id !== "canais",
-  );
+  // Só o Marketing é toggle. Atendimento (Inbox e Agenda) subiu para junto de Início e CRM, e o
+  // grupo de IA virou UM link — "Agentes de IA", que leva à página "Ver tudo em IA".
+  const grupos = todos.filter((g) => g.group.id === "marketing");
   // Conexões é a última porta solta do menu (abaixo dos grupos); Webhooks vive dentro dela.
   const temConexoes = todos.some(({ items }) => items.some((i) => i.href === "/app/connections"));
-  const temCrm = todos.some(({ items }) => items.some((i) => i.href === "/app/clientes"));
+  const tem = (href: string) => todos.some(({ items }) => items.some((i) => i.href === href));
+  const temCrm = tem("/app/clientes");
+  const temIA = todos.some((g) => g.group.id === "ia");
   const rodape = todos.find((g) => g.group.id === GRUPO_NO_RODAPE)?.group.hub;
 
   /**
@@ -307,10 +311,17 @@ export function SidebarContent({
         <div className="space-y-0.5">
           {[
             { href: "/app/inicio", rotulo: t("Início"), Icone: House },
+            ...(tem("/app/inbox")
+              ? [{ href: "/app/inbox", rotulo: t("Inbox"), Icone: Inbox, contador: "fila" as const }]
+              : []),
+            ...(tem("/app/agenda")
+              ? [{ href: "/app/agenda", rotulo: t("Agenda"), Icone: CalendarBlank }]
+              : []),
             ...(temCrm ? [{ href: "/app/clientes", rotulo: t("CRM"), Icone: Users }] : []),
             { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
-            { href: "/app/financas", rotulo: t("Finanças"), Icone: CurrencyDollar },
-          ].map(({ href, rotulo, Icone }) => {
+            { href: "/app/financas", rotulo: t("Financeiro"), Icone: CurrencyDollar },
+          ].map(({ href, rotulo, Icone, ...resto }) => {
+            const contador = "contador" in resto ? resto.contador : undefined;
             const ativo = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
@@ -334,6 +345,7 @@ export function SidebarContent({
                   aria-hidden
                 />
                 {!collapsed && <span className="truncate">{rotulo}</span>}
+                {contador === "fila" && <ContadorDaFila compacto={collapsed} />}
               </Link>
             );
           })}
@@ -448,6 +460,38 @@ export function SidebarContent({
             </div>
           );
         })}
+        {temIA &&
+          (() => {
+            const href = "/app/ai";
+            const rotulo = t("Agentes de IA");
+            const ativo = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <div className="space-y-0.5">
+                <Link
+                  href={href}
+                  title={collapsed ? rotulo : undefined}
+                  aria-current={ativo ? "page" : undefined}
+                  onClick={onNavigate}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                    ativo
+                      ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                      : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                    collapsed && "justify-center px-2",
+                  )}
+                >
+                  <Robot
+                    size={18}
+                    weight={ativo ? "fill" : "regular"}
+                    className={ativo ? "text-primary" : undefined}
+                    aria-hidden
+                  />
+                  {!collapsed && <span className="truncate">{rotulo}</span>}
+                  <ContadorDeCasos compacto={collapsed} />
+                </Link>
+              </div>
+            );
+          })()}
         {temConexoes &&
           (() => {
             const href = "/app/connections";
