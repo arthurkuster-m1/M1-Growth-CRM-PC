@@ -56,7 +56,9 @@ describe("0156 · o quadro montado no onboarding", () => {
       sql(`select count(*)::text || '|' || count(*) filter (where agent_stage_hint is not null)::text
              from public.crm_stages where pipeline_id = '${pipeline}'::uuid;`),
     );
-    expect(linha).toBe("8|0");
+    // O funil padrão tem 5 etapas desde a 0632 (Comprou / Não comprou / Desqualificado no lugar das
+    // antigas Ganho/Perdido): era 8 antes.
+    expect(linha).toBe("5|0");
   });
 
   it("troca o quadro inteiro e ensina o destino de cada coluna", () => {
@@ -94,10 +96,10 @@ describe("0156 · o quadro montado no onboarding", () => {
     }
     expect(levantou, "o banco precisa recusar dois ganhos no mesmo funil").toBe(true);
 
-    // E o funil continua com as 8 colunas que tinha antes da tentativa.
+    // E o funil continua com as 5 colunas que tinha antes da tentativa.
     expect(
       lastLine(sql(`select count(*)::text from public.crm_stages where pipeline_id='${pipeline}'::uuid;`)),
-    ).toBe("8");
+    ).toBe("5");
   });
 
   it("recusa funil de OUTRA organização", () => {
@@ -109,7 +111,7 @@ describe("0156 · o quadro montado no onboarding", () => {
     // E o funil de B ficou intacto.
     expect(
       lastLine(sql(`select count(*)::text from public.crm_stages where pipeline_id='${b.pipeline}'::uuid;`)),
-    ).toBe("8");
+    ).toBe("5");
   });
 
   it("recusa funil que já tem negócio — em vez de deixar o RESTRICT estourar", () => {

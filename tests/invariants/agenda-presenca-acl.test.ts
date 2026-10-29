@@ -7,6 +7,7 @@ const pool = new pg.Pool({
 });
 const tenants = [0, 1].map(() => ({
   org: randomUUID(),
+  admin: randomUUID(),
   manager: randomUUID(),
   agent: randomUUID(),
   viewer: randomUUID(),
@@ -45,7 +46,7 @@ beforeAll(async () => {
       "insert into organizations(id,slug,legal_name,display_name) values($1::uuid,$1::text,'ACL agenda','ACL agenda')",
       [tenant.org],
     );
-    for (const role of ["manager", "agent", "viewer"] as const) {
+    for (const role of ["admin", "manager", "agent", "viewer"] as const) {
       const user = tenant[role];
       await pool.query("insert into auth.users(id,email) values($1,$2)", [
         user,
@@ -112,30 +113,33 @@ describe("agenda: superfícies humanas e recibo privado têm autorização compo
     } finally { await pool.query("delete from auth.mfa_factors where id=$1", [factor]); }
   });
 
-  it("a opção da agenda dos colegas: manager da PRÓPRIA org com fator grava, e papéis, sessão sem prova e org vizinha não gravam", async () => {
+  it("a opção da agenda dos colegas: administrador da PRÓPRIA org com fator grava, e papéis abaixo, sessão sem prova e org vizinha não gravam", async () => {
     const a = tenants[0]!, b = tenants[1]!;
     const factor = randomUUID();
     await pool.query(
       "insert into auth.mfa_factors(id,user_id,status,factor_type) values($1,$2,'verified','totp')",
-      [factor, a.manager],
+      [factor, a.admin],
     );
     try {
       const antes = (await pool.query("select settings from organizations where id=$1", [a.org]))
         .rows[0].settings;
-      // Abaixo de manager: Atendente e Somente-leitura.
+      // Abaixo de administrador (só administrador muda): Gerente, Atendente e Somente-leitura.
+      await expect(
+        asRole("authenticated", a.manager, colegasQuery, [a.org, false], "aal2"),
+      ).rejects.toMatchObject({ code: "42501" });
       await expect(
         asRole("authenticated", a.agent, colegasQuery, [a.org, false], "aal2"),
       ).rejects.toMatchObject({ code: "42501" });
       await expect(
         asRole("authenticated", a.viewer, colegasQuery, [a.org, false], "aal2"),
       ).rejects.toMatchObject({ code: "42501" });
-      // A org VIZINHA: manager de A pedindo em nome de B.
+      // A org VIZINHA: administrador de A pedindo em nome de B.
       await expect(
-        asRole("authenticated", a.manager, colegasQuery, [b.org, false], "aal2"),
+        asRole("authenticated", a.admin, colegasQuery, [b.org, false], "aal2"),
       ).rejects.toMatchObject({ code: "42501" });
-      // O mesmo manager, com fator verificado, numa sessão que NÃO provou o fator.
+      // O mesmo administrador, com fator verificado, numa sessão que NÃO provou o fator.
       await expect(
-        asRole("authenticated", a.manager, colegasQuery, [a.org, false], "aal1"),
+        asRole("authenticated", a.admin, colegasQuery, [a.org, false], "aal1"),
       ).rejects.toMatchObject({ code: "42501" });
       // Sem sessão nenhuma.
       await expect(asRole("anon", null, colegasQuery, [a.org, false])).rejects.toMatchObject({
@@ -146,9 +150,9 @@ describe("agenda: superfícies humanas e recibo privado têm autorização compo
         (await pool.query("select settings from organizations where id=$1", [a.org])).rows[0]
           .settings,
       ).toEqual(antes);
-      // O positivo: manager da própria org, com o fator provado.
+      // O positivo: administrador da própria org, com o fator provado.
       expect(
-        (await asRole("authenticated", a.manager, colegasQuery, [a.org, false], "aal2")).rows[0]
+        (await asRole("authenticated", a.admin, colegasQuery, [a.org, false], "aal2")).rows[0]
           .result,
       ).toEqual({ ligado: false, mudou: true });
       expect(
@@ -165,7 +169,7 @@ describe("agenda: superfícies humanas e recibo privado têm autorização compo
       ).toBe(false);
       // Idempotente: pedir o que já está diz que não mudou — e não reescreve.
       expect(
-        (await asRole("authenticated", a.manager, colegasQuery, [a.org, false], "aal2")).rows[0]
+        (await asRole("authenticated", a.admin, colegasQuery, [a.org, false], "aal2")).rows[0]
           .result,
       ).toEqual({ ligado: false, mudou: false });
     } finally {
