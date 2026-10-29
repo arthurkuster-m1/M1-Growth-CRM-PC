@@ -859,6 +859,8 @@ export const AUDIT_ACTIONS = [
   // leads, conversas, regras). Três códigos para a mesma decisão deixariam o
   // filtro do painel com três opções onde houve UMA escolha do operador.
   "tag_vocabulary.changed",
+  // Nome/cor dos números e o que o filtro de tags do inbox esconde (organizations.settings.inbox).
+  "inbox_settings.changed",
   // Mover um card para OUTRO funil (issue #922) clona o negócio no destino e
   // encerra o original: é a escrita que mexe em DOIS funis de uma vez.
   "lead.moved_to_pipeline",

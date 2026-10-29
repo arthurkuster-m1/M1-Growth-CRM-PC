@@ -239,7 +239,14 @@ export const NAV_CATALOG = [
     description: "Scripts salvos para responder mais rápido, seus ou da equipe.",
     icon: "FileText",
     group: "atendimento",
-    sidebar: true,
+    // Saiu do menu: agora vive em Configurações do Inbox (botão no rodapé da lista de conversas).
+  },
+  {
+    href: "/app/inbox/configuracoes",
+    label: "Configurações do Inbox",
+    description: "Etiquetas do filtro, respostas rápidas e nome/cor dos números de atendimento.",
+    icon: "FileText",
+    group: "atendimento",
   },
 
   // ---- CRM — o funil ----

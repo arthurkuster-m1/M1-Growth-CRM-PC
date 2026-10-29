@@ -25,6 +25,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { PontoDaEtiqueta } from "@/components/tags/PontoDaEtiqueta";
+import { useCategoriasDeTags } from "@/components/tags/CoresDasEtiquetas";
+import { useConfigDoInbox } from "@/hooks/inbox/useConfigDoInbox";
+import { categoriaDaTag } from "@/lib/tags/categorias";
+import { chaveDaEtiqueta } from "@/lib/tags/cor-da-etiqueta";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
 import {
   type ModoDeEtiqueta,
@@ -286,8 +290,16 @@ export function InboxFilters({ value, onChange }: Props) {
   // reabrir o menu entre a primeira e a segunda, e o `DropdownMenuCheckboxItem`
   // é o item que NÃO fecha (o `Select` de hoje fecha). A regra é do componente,
   // e por isso o gatilho é um botão com `aria-expanded` em vez de um `Select`.
+  // O que a equipe escondeu em Configurações do Inbox não vira opção (a tag já escolhida fica,
+  // para dar como desfazer o filtro).
+  const configDoInbox = useConfigDoInbox();
+  const categoriasDeTags = useCategoriasDeTags();
+  const escondida = (tag: string) =>
+    !etiquetas.includes(tag) &&
+    (configDoInbox.tags_ocultas.includes(chaveDaEtiqueta(tag)) ||
+      configDoInbox.categorias_ocultas.includes(categoriaDaTag(tag, categoriasDeTags)?.id ?? ""));
   const opcoesDoSeletor = [
-    ...vocabularioDoSeletor,
+    ...vocabularioDoSeletor.filter((tag) => !escondida(tag)),
     ...etiquetasForaDoVocabulario,
   ];
   const alternaEtiqueta = (tag: string) => {

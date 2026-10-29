@@ -25,6 +25,9 @@ const activeOrgRef: { current: ActiveOrg | null } = { current: null };
 /** `undefined` = listagem ainda carregando (ou que falhou) — não é "zero canais". */
 const canaisRef: { current: ChannelSession[] | undefined } = { current: [] };
 
+vi.mock("@/hooks/inbox/useConfigDoInbox", () => ({
+  useConfigDoInbox: () => ({ numeros: {}, categorias_ocultas: [], tags_ocultas: [] }),
+}));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({ activeOrg: activeOrgRef.current }),
 }));

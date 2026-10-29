@@ -874,10 +874,46 @@ export function TagsDoLead({
   );
 
   return (
-    <BlocoDaFicha
-      titulo={t("Tags")}
-      cor="red"
-      acao={
+    <BlocoDaFicha titulo={t("Tags")} cor="red">
+      {/* As ferramentas ficam no fim da mesma linha das tags, sem uma linha só para elas. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-64">
+          {filtroPersonalizado ? (
+            <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+              {t("Filtro ativo")}:{" "}
+              <strong className="text-foreground">{filtroPersonalizado.nome}</strong>
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => setFiltroPersonalizadoId("")}
+              >
+                {t("Limpar")}
+              </button>
+            </p>
+          ) : null}
+          {tags.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("Sem tags.")}</p>
+          ) : visiveis.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("Nenhuma tag nesta categoria.")}</p>
+          ) : agrupar ? (
+            <div className="grid gap-3">
+              {grupos.map((g) => (
+                <div
+                  key={g.id}
+                  className="rounded-xl border border-l-4 p-2.5"
+                  style={{ borderLeftColor: g.categoria?.cor }}
+                >
+                  <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {g.categoria?.nome ?? t("Sem categoria")} · {g.itens.length}
+                  </p>
+                  {chips(g.itens)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            chips(visiveis)
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <SeletorDeCategorias
             config={config}
@@ -910,43 +946,7 @@ export function TagsDoLead({
             />
           ) : null}
         </div>
-      }
-    >
-      {filtroPersonalizado ? (
-        <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-          {t("Filtro ativo")}:{" "}
-          <strong className="text-foreground">{filtroPersonalizado.nome}</strong>
-          <button
-            type="button"
-            className="font-medium text-primary hover:underline"
-            onClick={() => setFiltroPersonalizadoId("")}
-          >
-            {t("Limpar")}
-          </button>
-        </p>
-      ) : null}
-      {tags.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("Sem tags.")}</p>
-      ) : visiveis.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("Nenhuma tag nesta categoria.")}</p>
-      ) : agrupar ? (
-        <div className="grid gap-3">
-          {grupos.map((g) => (
-            <div
-              key={g.id}
-              className="rounded-xl border border-l-4 p-2.5"
-              style={{ borderLeftColor: g.categoria?.cor }}
-            >
-              <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                {g.categoria?.nome ?? t("Sem categoria")} · {g.itens.length}
-              </p>
-              {chips(g.itens)}
-            </div>
-          ))}
-        </div>
-      ) : (
-        chips(visiveis)
-      )}
+      </div>
 
       {podeEditar ? (
         <Popover open={adicionando} onOpenChange={setAdicionando}>

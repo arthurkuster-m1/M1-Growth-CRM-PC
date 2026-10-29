@@ -369,17 +369,7 @@ export function CadastroDoLead({
 
   return (
     <div className="grid gap-4">
-      <BlocoDaFicha
-        titulo={t("Cadastro")}
-        cor="blue"
-        acao={
-          podeEditar && mudou ? (
-            <Button size="sm" disabled={atualizar.isPending} onClick={() => void salvarContato()}>
-              {atualizar.isPending ? t("Salvando…") : t("Salvar")}
-            </Button>
-          ) : null
-        }
-      >
+      <BlocoDaFicha titulo={t("Cadastro")} cor="blue">
         {/* Nome, telefone e e-mail se editam no topo da página. */}
         <div className="grid gap-3 sm:grid-cols-2">
           <dl className="self-end">
@@ -387,13 +377,26 @@ export function CadastroDoLead({
           </dl>
           <div className="grid gap-1">
             <Label className="text-xs">{t("Data de nascimento")}</Label>
-            <CampoDeData
-              valor={nascimento}
-              aoMudar={setNascimento}
-              rotulo={t("Data de nascimento")}
-              desabilitado={!podeEditar}
-              className="w-full"
-            />
+            {/* O Salvar divide a linha com a data: é um dado pequeno, não pede uma linha só para o botão. */}
+            <div className="flex items-center gap-2">
+              <CampoDeData
+                valor={nascimento}
+                aoMudar={setNascimento}
+                rotulo={t("Data de nascimento")}
+                desabilitado={!podeEditar}
+                className="min-w-0 flex-1"
+              />
+              {podeEditar && mudou ? (
+                <Button
+                  size="sm"
+                  className="shrink-0"
+                  disabled={atualizar.isPending}
+                  onClick={() => void salvarContato()}
+                >
+                  {atualizar.isPending ? t("Salvando…") : t("Salvar")}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="mt-4 border-t pt-4">
@@ -492,35 +495,22 @@ export function CadastroDoLead({
         titulo={t("Origem")}
         cor="orange"
         acao={
-          podeEditar ? (
-            editandoOrigem ? (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditandoOrigem(false);
-                    setOrigemEdit(origemAtual);
-                  }}
-                >
-                  {t("Cancelar")}
-                </Button>
-                <Button size="sm" onClick={() => setConfirmarOrigem(true)}>
-                  {t("Salvar origem")}
-                </Button>
-              </div>
-            ) : (
+          podeEditar && editandoOrigem ? (
+            <div className="flex gap-2">
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={() => {
+                  setEditandoOrigem(false);
                   setOrigemEdit(origemAtual);
-                  setEditandoOrigem(true);
                 }}
               >
-                {t("Alterar origem")}
+                {t("Cancelar")}
               </Button>
-            )
+              <Button size="sm" onClick={() => setConfirmarOrigem(true)}>
+                {t("Salvar origem")}
+              </Button>
+            </div>
           ) : null
         }
       >
@@ -534,10 +524,25 @@ export function CadastroDoLead({
             carregando={opcoesDeOrigem.isLoading}
           />
         ) : (
-          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
             <CampoLido rotulo={t("Origem")} valor={origem.origem} />
             <CampoLido rotulo={t("Campanha")} valor={origem.campanha} />
             <CampoLido rotulo={t("Conjunto")} valor={origem.conjunto} />
+            {/* "Alterar origem" no fim da primeira linha, em vez de uma linha só para ele. */}
+            {podeEditar ? (
+              <div className="flex items-start justify-end sm:col-span-2 lg:col-span-1 lg:col-start-4 lg:row-start-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setOrigemEdit(origemAtual);
+                    setEditandoOrigem(true);
+                  }}
+                >
+                  {t("Alterar origem")}
+                </Button>
+              </div>
+            ) : null}
             <CampoLido rotulo={t("Anúncio")} valor={origem.anuncio} />
             <CampoLido rotulo={t("Landing page")} valor={origemAtual.lp} />
             <CampoLido rotulo={t("Posicionamento")} valor={origem.posicionamento} />
