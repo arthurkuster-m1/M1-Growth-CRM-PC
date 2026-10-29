@@ -29,7 +29,7 @@ export function CRMSidePanel({ conversation }: Props) {
   }
 
   return (
-    <aside className="flex h-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto border-l border-border bg-background p-3">
+    <aside className="flex h-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto border-l border-border bg-background p-3 pt-6 max-md:pt-8">
       {contactId ? (
         <>
           <FichaDoInbox
