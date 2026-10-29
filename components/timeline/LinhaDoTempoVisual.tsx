@@ -118,13 +118,13 @@ export function LinhaDoTempoVisual({
   }, [itens]);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
       {dias.map(([chave, lista]) => (
-        <section key={chave} className="grid gap-3">
+        <section key={chave} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
           <h3 className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
             {rotuloDoDia(new Date(`${chave}T12:00:00`), t, locale)}
           </h3>
-          <ol className="relative ml-3.5 border-l pl-6">
+          <ol className="relative ml-3.5 min-w-0 border-l pl-6">
             {lista.map((it) => {
               const { Icone, tom } = aparenciaDoTipo(it.type);
               const cor = TONS[tom];
@@ -139,7 +139,7 @@ export function LinhaDoTempoVisual({
               );
               const automatico = actorShape(it.actor_kind ?? null) !== "filled";
               return (
-                <li key={it.id} className="relative pb-5 last:pb-0">
+                <li key={it.id} className="relative min-w-0 pb-5 last:pb-0">
                   <span
                     aria-hidden
                     className={cn(

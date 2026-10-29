@@ -49,7 +49,7 @@ export function TimelineView({ contactId, types }: Props) {
   const todos: TimelineItem[] = q.data?.pages.flatMap((p) => p.data) ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <LinhaDoTempoVisual itens={todos} />
       {q.hasNextPage && (
         <div className="flex justify-center">

@@ -15,6 +15,7 @@ import { useMemo, useState } from "react";
 import { BlocoRecolhivel } from "@/components/agenda/BlocoRecolhivel";
 import { CompromissosDoLead } from "@/components/agenda/CompromissosDoLead";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
+import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
 import { RegistrarAcaoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
 import { TagsDoLead } from "@/components/contacts/ficha/TagsDoLead";
 import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
@@ -56,6 +57,7 @@ export function FichaDoInbox({
   const contatoQ = useContact(contactId);
   const pipeline = useDefaultPipeline(Boolean(activeOrg));
   const [pedidoDeTarefa, setPedidoDeTarefa] = useState(0);
+  const [oportunidadeAbertaId, setOportunidadeAbertaId] = useState<string | null>(null);
 
   const vendasQ = useQuery({
     queryKey: ["vendas-do-cliente", contactId],
@@ -108,11 +110,15 @@ export function FichaDoInbox({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-3" data-testid="ficha-do-inbox">
+    <div
+      className="flex max-w-full min-w-0 flex-col gap-3 overflow-x-hidden"
+      data-testid="ficha-do-inbox"
+    >
       <TopoDoLead
         contact={contact}
         camposDefinidos={camposDoFunil(pipeline.data?.pipeline.settings ?? null)}
         podeEditar={podeEditar}
+        semInbox
       />
 
       <div className="grid grid-cols-2 gap-2">
@@ -121,7 +127,10 @@ export function FichaDoInbox({
       </div>
 
       {importantes.length > 0 ? (
-        <section data-testid="inbox-notas-importantes" className="rounded-2xl border border-border p-3">
+        <section
+          data-testid="inbox-notas-importantes"
+          className="rounded-2xl border border-border p-3"
+        >
           <h3 className="text-sm font-semibold">{t("Notas importantes")}</h3>
           <ul className="mt-2 grid gap-2">
             {importantes.map((n) => (
@@ -134,11 +143,7 @@ export function FichaDoInbox({
         </section>
       ) : null}
 
-      <BlocoRecolhivel
-        titulo={t("Tarefas e compromissos")}
-        inicialmenteAberto
-        resumo={null}
-      >
+      <BlocoRecolhivel titulo={t("Tarefas e compromissos")} inicialmenteAberto resumo={null}>
         {podeEditar ? (
           <div className="mb-3 flex justify-end">
             <DropdownMenu>
@@ -202,13 +207,16 @@ export function FichaDoInbox({
       </BlocoRecolhivel>
 
       <BlocoRecolhivel titulo={t("Atividade")}>
-        <div className="grid gap-3">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
           <RegistrarAcaoDoLead contactId={contactId} podeEditar={podeEditar} semBloco />
           <TimelineView contactId={contactId} />
         </div>
       </BlocoRecolhivel>
 
-      <BlocoRecolhivel titulo={t("Vendas")} resumo={vendas.length > 0 ? String(vendas.length) : null}>
+      <BlocoRecolhivel
+        titulo={t("Vendas")}
+        resumo={vendas.length > 0 ? String(vendas.length) : null}
+      >
         {vendasQ.isLoading ? (
           <Skeleton className="h-12 w-full" />
         ) : vendas.length === 0 ? (
@@ -216,24 +224,37 @@ export function FichaDoInbox({
         ) : (
           <ul className="grid gap-1.5">
             {vendas.map((v) => (
-              <li
-                key={v.id}
-                className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{nomeDaVenda(v) || t("Venda")}</p>
-                  <p className="text-muted-foreground">
-                    {t(ROTULO_DO_STATUS_DA_VENDA[v.status] ?? v.status)}
-                  </p>
-                </div>
-                <span className="shrink-0 font-semibold tabular-nums">
-                  {reais(v.amount_cents)}
-                </span>
+              <li key={v.id} className="min-w-0">
+                <button
+                  type="button"
+                  disabled={!v.lead_id}
+                  title={t("Abrir a oportunidade")}
+                  onClick={() => v.lead_id && setOportunidadeAbertaId(v.lead_id)}
+                  className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs hover:bg-secondary/60"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">
+                      {nomeDaVenda(v) || t("Venda")}
+                    </span>
+                    <span className="block text-muted-foreground">
+                      {t(ROTULO_DO_STATUS_DA_VENDA[v.status] ?? v.status)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums">
+                    {reais(v.amount_cents)}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
         )}
       </BlocoRecolhivel>
+      {oportunidadeAbertaId ? (
+        <CardDaOportunidade
+          leadId={oportunidadeAbertaId}
+          aoFechar={() => setOportunidadeAbertaId(null)}
+        />
+      ) : null}
     </div>
   );
 }

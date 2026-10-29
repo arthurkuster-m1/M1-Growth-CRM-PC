@@ -153,12 +153,12 @@ export function RegistrarAcaoDoLead({
       </BlocoDaFicha>
     );
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
       {podeEditar ? (
         envolver(
         <>
           <Select value={acao ?? ""} onValueChange={(v) => escolher(v as IdDaAcao)}>
-            <SelectTrigger className="w-full sm:w-72">
+            <SelectTrigger className="w-full sm:max-w-72">
               <SelectValue placeholder={t("Escolher ação")} />
             </SelectTrigger>
             <SelectContent>

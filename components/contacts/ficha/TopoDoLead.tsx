@@ -14,6 +14,7 @@ import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { rotuloDaChave } from "@/components/contacts/ficha/CadastroDoLead";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
+import { OportunidadeNaFicha } from "@/components/contacts/ficha/OportunidadeNaFicha";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -53,10 +54,13 @@ export function TopoDoLead({
   contact,
   camposDefinidos,
   podeEditar = false,
+  semInbox = false,
 }: {
   contact: Contact;
   camposDefinidos: CustomFieldDef[];
   podeEditar?: boolean;
+  /** Na ficha DENTRO do Inbox a conversa já está aberta: o atalho "Inbox" levaria para a mesma tela. */
+  semInbox?: boolean;
 }) {
   const t = useT();
   const queryClient = useQueryClient();
@@ -219,7 +223,7 @@ export function TopoDoLead({
     "inline-flex h-9 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary";
 
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       {/* A ficha: o telefone (com Ligar e Inbox) e as etiquetas do ciclo e do gestor na primeira
           linha; o e-mail (com Copiar) na segunda; os demais campos na terceira. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -438,7 +442,7 @@ export function TopoDoLead({
               {t("Ligar")}
             </a>
           ) : null}
-          {contact.conversa ? (
+          {semInbox ? null : contact.conversa ? (
             <Link href={`/app/inbox?id=${contact.conversa.id}`} className={botao}>
               <ChatCircle size={15} aria-hidden />
               {t("Inbox")}
@@ -467,28 +471,15 @@ export function TopoDoLead({
       ) : null}
 
       {abertas.length > 0 ? (
-        <ul className="grid gap-2" aria-label={t("Oportunidades abertas")}>
+        <ul className="grid min-w-0 gap-2" aria-label={t("Oportunidades abertas")}>
           {abertas.map((v) => (
-            <li key={v.id}>
-              <button
-                type="button"
-                onClick={() => setAbertaId(v.id)}
-                className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2 text-left hover:bg-secondary/50"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">
-                    {nomeDaVenda(v) || t("Oportunidade")}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {v.funil ?? "—"}
-                  </span>
-                </span>
-                {v.etapa ? (
-                  <Etiqueta ponto cor="blue">
-                    {v.etapa}
-                  </Etiqueta>
-                ) : null}
-              </button>
+            <li key={v.id} className="min-w-0">
+              <OportunidadeNaFicha
+                venda={v}
+                contactId={contact.id}
+                podeEditar={podeEditar}
+                aoAbrir={() => setAbertaId(v.id)}
+              />
             </li>
           ))}
         </ul>
