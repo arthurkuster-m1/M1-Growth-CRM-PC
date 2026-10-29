@@ -45991,83 +45991,6 @@ grant  execute on function public.fn_relatorio_financas(uuid, date, date) to aut
 notify pgrst, 'reload schema';
 
 
--- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
---
--- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
--- função entra ANTES dele — quem o empurrar para o meio desarma a cura para tudo
--- que vier depois. (O último bloco do arquivo é a chamada das travas do suporte,
--- migration 0274, que não cria função.)
--- Vigiado por `tests/unit/varredura-anon-e-o-ultimo-bloco.test.ts`.
---
--- A 0108 revogou anon numa LISTA de 8 funções, medida num banco instalado do
--- ZERO. Quem ATUALIZA tem outro estado: o `ALTER DEFAULT PRIVILEGES ... GRANT
--- ALL ON FUNCTIONS TO anon` do corpo deste arquivo grava uma entrada em
--- `pg_default_acl` que fica no catálogo PARA SEMPRE, e a partir daí toda função
--- criada em `public` nasce com EXECUTE para anon — inclusive as deste apêndice.
---
--- Medido numa VPS real (2026-08-07), comparando com o que um install fresco
--- produz: 6 definer expostas a anon e 5 a authenticated, entre elas
--- `fn_decrypt_oauth` — alcançável pela anon key, que vai para o browser.
---
--- Lista conserta o estoque e reabre no próximo `create function`. Esta varredura
--- é auto-curativa e roda DEPOIS de tudo que cria função, então cura no mesmo run
--- em que o defeito nasceria. Desfazer o ALTER DEFAULT PRIVILEGES não serve: ele
--- vem do `pg_dump` do Supabase e é reescrito a cada re-aplicação.
---
--- As duas origens de EXECUTE (a mesma lição da 0108): grant DIRETO a anon, que
--- `revoke from public` não remove; e grant a PUBLIC, do qual anon HERDA, que
--- `revoke from anon` não remove. O privilégio EFETIVO de authenticated e
--- service_role é medido ANTES e devolvido depois — tira anon sem tirar leitura.
-do $$
-declare
-  f record;
-  tinha_auth boolean;
-  tinha_service boolean;
-begin
-  if to_regrole('anon') is null then
-    return;
-  end if;
-
-  for f in
-    select p.oid, p.oid::regprocedure as assinatura
-      from pg_proc p
-      join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'public'
-       and p.prosecdef
-  loop
-    tinha_auth := to_regrole('authenticated') is not null
-                  and has_function_privilege('authenticated', f.oid, 'EXECUTE');
-    tinha_service := to_regrole('service_role') is not null
-                     and has_function_privilege('service_role', f.oid, 'EXECUTE');
-
-    execute format('revoke execute on function %s from public, anon', f.assinatura);
-
-    if tinha_auth then
-      execute format('grant execute on function %s to authenticated', f.assinatura);
-    end if;
-    if tinha_service then
-      execute format('grant execute on function %s to service_role', f.assinatura);
-    end if;
-  end loop;
-end $$;
-
--- regra 2 (authenticated): as 5 que o update abriu e o install não abre. Aqui não
--- cabe varredura — `authenticated` PRECISA de EXECUTE nos helpers de RLS e em
--- `retrieve_top_k_chunks` (num install fresco ele tem). É julgamento por função,
--- e o alvo de cada linha é o valor que um install fresco produz, medido.
-revoke execute on function public.fn_audit_log_row() from authenticated;
-revoke execute on function public.fn_decrypt_oauth(bytea) from authenticated;
-revoke execute on function public.fn_encrypt_oauth(text) from authenticated;
-revoke execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) from authenticated;
-revoke execute on function public.fn_update_budget_consumption() from authenticated;
-
-grant execute on function public.fn_audit_log_row() to service_role;
-grant execute on function public.fn_decrypt_oauth(bytea) to service_role;
-grant execute on function public.fn_encrypt_oauth(text) to service_role;
-grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
-grant execute on function public.fn_update_budget_consumption() to service_role;
-
-
 -- ---- Criador provisório sai na entrega (migration 0237) ----
 -- As duas funções acima já saíram com a regra; aqui fica só a COLUNA, que é
 -- o dado que faltava. Idempotente. NÃO há expurgo retroativo, de propósito:
@@ -46863,16 +46786,6 @@ create policy "user_orgs_update" on "public"."user_organizations" for update usi
 -- ---- grants da função nova (espelha o bloco da fn_is_platform_admin) ----
 revoke execute on function public.fn_is_platform_admin_full() from public, anon;
 grant execute on function public.fn_is_platform_admin_full() to authenticated, service_role;
-
--- ---- travas do modo somente leitura do suporte, depois de toda tabela (migration 0274) ----
---
--- ⚠️ ESTA CHAMADA É O ÚLTIMO BLOCO DO ARQUIVO. Tabela nova, coluna
--- `organization_id` nova, RLS ligada ou grant a `authenticated` entram ANTES
--- dela: é o que faz a primeira aplicação do arquivo chegar ao mesmo conjunto de
--- travas que a segunda. Vigiado, com o baseline aplicado UMA vez, por
--- tests/invariants/travas-de-suporte-cobrem-toda-tabela-na-instalacao.test.ts.
--- A definição da função está antes da varredura de anon.
-do $f$ begin perform public.fn_aplicar_travas_de_suporte(); end $f$;
 
 -- ---- Catálogo da DeepSeek (migration 0342) ----
 --
@@ -49487,9 +49400,13 @@ comment on column public.contacts.first_approached_at is
   'Quando o contato foi abordado/atendido pela primeira vez: a primeira mensagem de SAÍDA (humano, IA ou campanha). Mantido por trigger.';
 
 -- Um negócio ABERTO por contato em cada funil.
-create unique index if not exists uniq_crm_leads_open_contact_pipeline
-  on public.crm_leads (organization_id, contact_id, pipeline_id)
-  where status = 'open' and contact_id is not null;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create unique index if not exists uniq_crm_leads_open_contact_pipeline
+      on public.crm_leads (organization_id, contact_id, pipeline_id)
+      where status = 'open' and contact_id is not null;
+  end if;
+end $legado$;
 
 -- ── Primeira abordagem.
 create or replace function public.fn_contact_first_approach()
@@ -50687,9 +50604,13 @@ $f$;
 revoke execute on function public.fn_crm_sales_before_write() from public, anon, authenticated;
 
 drop trigger if exists trg_crm_sales_before_write on public.crm_sales;
-create trigger trg_crm_sales_before_write
-  before insert or update on public.crm_sales
-  for each row execute function public.fn_crm_sales_before_write();
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_crm_sales_before_write
+      before insert or update on public.crm_sales
+      for each row execute function public.fn_crm_sales_before_write();
+  end if;
+end $legado$;
 
 create or replace function public.fn_crm_sales_after_write()
 returns trigger language plpgsql security definer set search_path = public as $f$
@@ -50709,9 +50630,13 @@ $f$;
 revoke execute on function public.fn_crm_sales_after_write() from public, anon, authenticated;
 
 drop trigger if exists trg_crm_sales_after_write on public.crm_sales;
-create trigger trg_crm_sales_after_write
-  after insert or update or delete on public.crm_sales
-  for each row execute function public.fn_crm_sales_after_write();
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_crm_sales_after_write
+      after insert or update or delete on public.crm_sales
+      for each row execute function public.fn_crm_sales_after_write();
+  end if;
+end $legado$;
 
 -- ── RLS: a equipe do CRM (agent+) lê e escreve; viewer não vê dinheiro ──────────────────────
 alter table public.crm_sales enable row level security;
@@ -50774,7 +50699,12 @@ create table if not exists public.crm_sale_items (
   constraint crm_sale_items_check
     check (quantity between 1 and 10000 and amount_cents >= 0 and length(btrim(product_name)) between 1 and 200)
 );
+-- O índice por sale_id só vale enquanto a coluna existir (a 0636/0637 a removem; reaplicar o baseline
+-- num banco já migrado não pode errar).
+select exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_items' and column_name = 'sale_id') as tem_sale_id_items \gset
+\if :tem_sale_id_items
 create index if not exists crm_sale_items_sale_idx on public.crm_sale_items (sale_id, position);
+\endif
 
 create table if not exists public.crm_sale_payments (
   id uuid primary key default gen_random_uuid(),
@@ -50789,7 +50719,12 @@ create table if not exists public.crm_sale_payments (
   constraint crm_sale_payments_check
     check (status in ('prevista', 'recebida', 'cancelada') and amount_cents >= 0 and number >= 1)
 );
+-- O índice por sale_id só vale enquanto a coluna existir (a 0636/0637 a removem; reaplicar o baseline
+-- num banco já migrado não pode errar).
+select exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') as tem_sale_id_payments \gset
+\if :tem_sale_id_payments
 create index if not exists crm_sale_payments_sale_idx on public.crm_sale_payments (sale_id, due_on);
+\endif
 create index if not exists crm_sale_payments_org_due_idx
   on public.crm_sale_payments (organization_id, status, due_on);
 
@@ -51044,9 +50979,13 @@ end
 $f$;
 revoke execute on function public.fn_lead_won_sale() from public, anon, authenticated;
 drop trigger if exists trg_lead_won_sale on public.crm_leads;
-create trigger trg_lead_won_sale
-  after update of status on public.crm_leads
-  for each row execute function public.fn_lead_won_sale();
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_lead_won_sale
+      after update of status on public.crm_leads
+      for each row execute function public.fn_lead_won_sale();
+  end if;
+end $legado$;
 
 comment on table public.crm_sale_items is 'Produtos de uma venda (uma compra pode ter vários). O valor da venda é a soma.';
 comment on table public.crm_sale_payments is 'Parcelas/recebimentos de uma venda: o dinheiro só conta no mês em que entra. status prevista, recebida ou cancelada.';
@@ -51080,9 +51019,13 @@ begin
 end
 $f$;
 drop trigger if exists trg_crm_sales_recurrence_default on public.crm_sales;
-create trigger trg_crm_sales_recurrence_default
-  before insert or update on public.crm_sales
-  for each row execute function public.fn_crm_sales_recurrence_default();
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_crm_sales_recurrence_default
+      before insert or update on public.crm_sales
+      for each row execute function public.fn_crm_sales_recurrence_default();
+  end if;
+end $legado$;
 
 create index if not exists crm_sales_recurring_idx
   on public.crm_sales (organization_id) where recurrence_active;
@@ -51101,12 +51044,9 @@ alter table public.marketing_cronograma_metas
   add column if not exists source text not null default 'manual',
   add column if not exists period text not null default 'mes',
   add column if not exists aggregation text not null default 'soma';
-alter table public.marketing_cronograma_metas drop constraint if exists marketing_cronograma_metas_auto_check;
-alter table public.marketing_cronograma_metas add constraint marketing_cronograma_metas_auto_check
-  check (source in ('manual', 'leads', 'vendas', 'faturamento', 'a_receber', 'investido', 'cpl', 'roas')
-         and period in ('hoje', 'ontem', 'ultimos_5_dias', 'ultimos_7_dias', 'ultimos_30_dias',
-                        'semana', 'mes', 'mes_passado')
-         and aggregation in ('soma', 'media_diaria'));
+-- (a constraint marketing_cronograma_metas_auto_check, com o vocabulário final, é definida UMA vez só,
+--  no bloco da migration 0628: um bloco antigo com vocabulário menor falharia ao reaplicar num banco
+--  que já tem períodos novos.)
 
 -- Os números da empresa inteira num período (datas no fuso informado).
 create or replace function public.fn_metricas_do_crm(
@@ -51270,6 +51210,5586 @@ grant execute on function public.fn_vendas_por_produto(uuid, date, date) to auth
 
 notify pgrst, 'reload schema';
 
+
+-- ============================================================================
+-- 0614 a 0637 — a TRAVESSIA DO MODELO ANTIGO DE VENDAS (crm_sales) para a oportunidade única.
+--
+-- Estes blocos reaplicam inteiros (é o que mantém as funções e gatilhos no estado final da cadeia),
+-- mas alguns PASSOS migram DADOS do modelo antigo (`sale_id`), que a 0637 remove. Esses passos são
+-- protegidos por `\if :modelo_antigo_de_vendas`, medido UMA vez aqui, antes de qualquer bloco da
+-- travessia mexer na estrutura: instalação nova e banco antigo ainda têm `sale_id` e migram; banco
+-- que já atravessou não tem, e pular o passo é o certo. (`\if` é do psql, que aplica o baseline.)
+-- ============================================================================
+select exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') as modelo_antigo_de_vendas \gset
+
+-- ---- migration 0614 ----
+-- 0614 — O valor do card (crm_leads.value_cents) passa a VIR DAS VENDAS.
+--
+-- Uma pessoa é um lead; em cada funil ela tem uma "passagem" (crm_leads) e todo o dinheiro mora em
+-- crm_sales. O valor do card é, portanto, a soma das vendas não canceladas ligadas àquela passagem.
+-- Quem escreve value_cents (tela, API, importação, IA) continua escrevendo: o banco leva o número
+-- para a venda de interesse/comprometida e devolve a soma. Nada de dois lugares com valores diferentes.
+
+create or replace function public.fn_lead_valor_somado(p_lead uuid)
+returns bigint language sql stable security definer set search_path = public as $f$
+  select coalesce(sum(s.amount_cents), 0)::bigint
+    from public.crm_sales s
+   where s.lead_id = p_lead and s.status <> 'cancelada'
+$f$;
+revoke execute on function public.fn_lead_valor_somado(uuid) from public, anon, authenticated;
+
+-- Leva um valor digitado para a venda da passagem (a de interesse ou comprometida mais recente).
+create or replace function public.fn_lead_definir_valor(p_lead uuid, p_cents bigint)
+returns void language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead record;
+  v_sale record;
+  v_n integer;
+  v_outros bigint;
+  v_primeiro uuid;
+begin
+  select id, organization_id, contact_id, pipeline_id, demand_campaign_id,
+         demand_landing_page_id, demand_creative_id, title
+    into v_lead from public.crm_leads where id = p_lead;
+  if not found or v_lead.contact_id is null then
+    return;
+  end if;
+  select s.id, s.status into v_sale
+    from public.crm_sales s
+   where s.lead_id = p_lead and s.status in ('interesse', 'comprometida')
+   order by s.created_at desc limit 1;
+
+  if found then
+    if coalesce(p_cents, 0) <= 0 then
+      if v_sale.status = 'interesse' then
+        update public.crm_sales set status = 'cancelada' where id = v_sale.id;
+      end if;
+      return;
+    end if;
+    select count(*) into v_n from public.crm_sale_items where sale_id = v_sale.id;
+    if v_n > 0 then
+      select id into v_primeiro from public.crm_sale_items
+       where sale_id = v_sale.id order by position, created_at limit 1;
+      select coalesce(sum(amount_cents), 0) into v_outros
+        from public.crm_sale_items where sale_id = v_sale.id and id <> v_primeiro;
+      update public.crm_sale_items
+         set amount_cents = greatest(p_cents - v_outros, 0) where id = v_primeiro;
+    else
+      update public.crm_sales set amount_cents = p_cents where id = v_sale.id;
+    end if;
+  elsif coalesce(p_cents, 0) > 0 then
+    insert into public.crm_sales
+      (organization_id, contact_id, lead_id, pipeline_id, demand_campaign_id,
+       demand_landing_page_id, demand_creative_id, product_name, amount_cents, status)
+    values
+      (v_lead.organization_id, v_lead.contact_id, v_lead.id, v_lead.pipeline_id,
+       v_lead.demand_campaign_id, v_lead.demand_landing_page_id, v_lead.demand_creative_id,
+       left(coalesce(v_lead.title, ''), 200), p_cents, 'interesse');
+  end if;
+end
+$f$;
+revoke execute on function public.fn_lead_definir_valor(uuid, bigint) from public, anon, authenticated;
+
+-- Escrita direta em value_cents: vira venda, e o campo guarda a soma.
+create or replace function public.fn_crm_leads_valor_before()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if coalesce(current_setting('m1.valor_sync', true), '') = 'on' then
+    return new;
+  end if;
+  if new.value_cents is not distinct from old.value_cents then
+    return new;
+  end if;
+  perform set_config('m1.valor_sync', 'on', true);
+  perform public.fn_lead_definir_valor(new.id, coalesce(new.value_cents, 0));
+  perform set_config('m1.valor_sync', 'off', true);
+  new.value_cents := nullif(public.fn_lead_valor_somado(new.id), 0);
+  return new;
+end
+$f$;
+revoke execute on function public.fn_crm_leads_valor_before() from public, anon, authenticated;
+drop trigger if exists trg_crm_leads_valor_before on public.crm_leads;
+create trigger trg_crm_leads_valor_before
+  before update of value_cents on public.crm_leads
+  for each row execute function public.fn_crm_leads_valor_before();
+
+-- Lead que nasce com valor: nasce a venda de interesse.
+create or replace function public.fn_crm_leads_valor_inicial()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if coalesce(new.value_cents, 0) > 0 and new.contact_id is not null
+     and not exists (select 1 from public.crm_sales s where s.lead_id = new.id) then
+    perform set_config('m1.valor_sync', 'on', true);
+    perform public.fn_lead_definir_valor(new.id, new.value_cents);
+    perform set_config('m1.valor_sync', 'off', true);
+  end if;
+  return new;
+end
+$f$;
+revoke execute on function public.fn_crm_leads_valor_inicial() from public, anon, authenticated;
+drop trigger if exists trg_crm_leads_valor_inicial on public.crm_leads;
+create trigger trg_crm_leads_valor_inicial
+  after insert on public.crm_leads
+  for each row execute function public.fn_crm_leads_valor_inicial();
+
+-- Venda mudou: o valor do card acompanha.
+create or replace function public.fn_crm_sales_valor_do_lead()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead uuid;
+  v_ids uuid[] := '{}';
+begin
+  if coalesce(current_setting('m1.valor_sync', true), '') = 'on' then
+    return null;
+  end if;
+  if tg_op <> 'INSERT' and old.lead_id is not null then
+    v_ids := v_ids || old.lead_id;
+  end if;
+  if tg_op <> 'DELETE' and new.lead_id is not null and not (new.lead_id = any (v_ids)) then
+    v_ids := v_ids || new.lead_id;
+  end if;
+  perform set_config('m1.valor_sync', 'on', true);
+  foreach v_lead in array v_ids loop
+    update public.crm_leads
+       set value_cents = nullif(public.fn_lead_valor_somado(v_lead), 0)
+     where id = v_lead
+       and value_cents is distinct from nullif(public.fn_lead_valor_somado(v_lead), 0);
+  end loop;
+  perform set_config('m1.valor_sync', 'off', true);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_crm_sales_valor_do_lead() from public, anon, authenticated;
+drop trigger if exists trg_crm_sales_valor_do_lead on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_crm_sales_valor_do_lead
+      after insert or update of amount_cents, status, lead_id or delete on public.crm_sales
+      for each row execute function public.fn_crm_sales_valor_do_lead();
+  end if;
+end $legado$;
+
+-- Quem já tinha valor no card e nenhuma venda: o valor vira uma venda de interesse.
+do $m$
+declare r record;
+begin
+  perform set_config('m1.valor_sync', 'on', true);
+  for r in
+    select l.id, l.value_cents from public.crm_leads l
+     where coalesce(l.value_cents, 0) > 0 and l.contact_id is not null
+       and not exists (select 1 from public.crm_sales s where s.lead_id = l.id)
+  loop
+    perform public.fn_lead_definir_valor(r.id, r.value_cents);
+  end loop;
+  -- E o card passa a mostrar a soma das vendas.
+  update public.crm_leads l
+     set value_cents = nullif(public.fn_lead_valor_somado(l.id), 0)
+   where exists (select 1 from public.crm_sales s where s.lead_id = l.id)
+     and l.value_cents is distinct from nullif(public.fn_lead_valor_somado(l.id), 0);
+  perform set_config('m1.valor_sync', 'off', true);
+end
+$m$;
+
+comment on column public.crm_leads.value_cents is
+  'Valor do card = soma das vendas não canceladas da passagem (crm_sales.lead_id). Escrever aqui grava na venda de interesse/comprometida.';
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0615 ----
+
+create or replace function public.fn_demand_leads_trabalhados(
+  p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo'
+)
+returns table (campaign_id uuid, lead_key uuid)
+language sql stable security invoker set search_path = public, pg_temp
+as $$
+  select distinct c.id, coalesce(l.contact_id, l.id)
+    from public.demand_campaigns c
+    join public.crm_leads l
+      on l.organization_id = p_org
+     and (l.pipeline_id = c.pipeline_id or l.demand_campaign_id = c.id)
+   where c.organization_id = p_org
+     and (
+       (l.created_at at time zone p_tz)::date between p_from and p_to
+       or exists (
+         select 1 from public.crm_lead_activities a
+          where a.lead_id = l.id
+            and a.type in ('stage_changed', 'ai_turn', 'note', 'conversation_claimed',
+                           'handoff_triggered', 'handoff_resolved', 'voice_call',
+                           'task_created', 'task_completed', 'appointment_scheduled',
+                           'appointment_completed', 'followup_scheduled',
+                           'reactivation_accepted', 'moved_from_pipeline')
+            and (a.performed_at at time zone p_tz)::date between p_from and p_to
+       )
+     )
+$$;
+revoke all on function public.fn_demand_leads_trabalhados(uuid, date, date, text) from public, anon;
+grant execute on function public.fn_demand_leads_trabalhados(uuid, date, date, text) to authenticated;
+
+-- Quantas pessoas diferentes foram trabalhadas nas campanhas escolhidas (sem repetir).
+create or replace function public.fn_demand_leads_unicos(
+  p_org uuid, p_from date, p_to date, p_tz text, p_campaigns uuid[]
+)
+returns integer
+language sql stable security invoker set search_path = public, pg_temp
+as $$
+  select count(distinct t.lead_key)::integer
+    from public.fn_demand_leads_trabalhados(p_org, p_from, p_to, p_tz) t
+   where t.campaign_id = any (p_campaigns)
+$$;
+revoke all on function public.fn_demand_leads_unicos(uuid, date, date, text, uuid[]) from public, anon;
+grant execute on function public.fn_demand_leads_unicos(uuid, date, date, text, uuid[]) to authenticated;
+
+create or replace function public.fn_demand_campaigns_resultados(
+  p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo'
+)
+returns table (campaign_id uuid, investido numeric, leads integer, vendas integer,
+               recebido bigint, a_receber bigint)
+language sql stable security invoker set search_path = public, pg_temp
+as $$
+  select c.id,
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.campaign_id = c.id and d.day between p_from and p_to), 0),
+    coalesce((select count(*)::integer
+                from public.fn_demand_leads_trabalhados(p_org, p_from, p_to, p_tz) t
+               where t.campaign_id = c.id), 0),
+    coalesce((select count(*)::integer from public.crm_sales s
+               where s.organization_id = p_org and s.demand_campaign_id = c.id
+                 and s.status in ('comprometida', 'concluida')
+                 and coalesce(s.closed_on, s.paid_on) between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_sales s on s.id = p.sale_id
+              where s.demand_campaign_id = c.id and p.status = 'recebida'
+                and s.status <> 'cancelada' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_sales s on s.id = p.sale_id
+              where s.demand_campaign_id = c.id and p.status = 'prevista'
+                and s.status <> 'cancelada' and p.due_on between p_from and p_to), 0)
+  from public.demand_campaigns c
+  where c.organization_id = p_org;
+$$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0616 ----
+
+alter table public.demand_campaigns
+  add column if not exists product_ids uuid[] not null default '{}';
+
+update public.demand_campaigns
+   set product_ids = array[product_id]
+ where product_id is not null and cardinality(product_ids) = 0;
+
+create or replace function public.fn_lead_interest_sale()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_c record;
+  v_sale uuid;
+  v_ids uuid[];
+  v_n integer;
+  v_parte bigint;
+  v_resto bigint;
+  v_i integer := 0;
+  v_pid uuid;
+  v_nome text;
+  v_nomes text;
+begin
+  if new.demand_campaign_id is null or new.contact_id is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.demand_campaign_id is not distinct from new.demand_campaign_id then
+    return new;
+  end if;
+  select c.id, c.product_id, c.product_ids, c.ticket_cents into v_c
+    from public.demand_campaigns c
+   where c.id = new.demand_campaign_id and c.organization_id = new.organization_id;
+  if not found or coalesce(v_c.ticket_cents, 0) <= 0 then
+    return new;
+  end if;
+  v_ids := case
+    when cardinality(v_c.product_ids) > 0 then v_c.product_ids
+    when v_c.product_id is not null then array[v_c.product_id]
+    else '{}'::uuid[]
+  end;
+  v_n := cardinality(v_ids);
+  if v_n = 0 then
+    return new;
+  end if;
+  if exists (select 1 from public.crm_sales s where s.lead_id = new.id) then
+    return new;
+  end if;
+
+  select string_agg(coalesce(nullif(p.title, ''), 'Produto'), ' + ' order by array_position(v_ids, p.id))
+    into v_nomes
+    from public.marketing_pages p where p.id = any (v_ids);
+
+  insert into public.crm_sales
+    (organization_id, contact_id, lead_id, pipeline_id, demand_campaign_id,
+     demand_landing_page_id, demand_creative_id, product_name, amount_cents, status)
+  values
+    (new.organization_id, new.contact_id, new.id, new.pipeline_id, new.demand_campaign_id,
+     new.demand_landing_page_id, new.demand_creative_id, left(coalesce(v_nomes, ''), 200),
+     v_c.ticket_cents, 'interesse')
+  returning id into v_sale;
+
+  v_parte := v_c.ticket_cents / v_n;
+  v_resto := v_c.ticket_cents - v_parte * v_n;
+  foreach v_pid in array v_ids loop
+    select coalesce(nullif(p.title, ''), 'Produto') into v_nome
+      from public.marketing_pages p where p.id = v_pid;
+    insert into public.crm_sale_items
+      (organization_id, sale_id, product_id, product_name, amount_cents, position)
+    values
+      (new.organization_id, v_sale, v_pid, coalesce(v_nome, 'Produto'),
+       v_parte + case when v_i = 0 then v_resto else 0 end, v_i);
+    v_i := v_i + 1;
+  end loop;
+  return new;
+end
+$f$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0617 ----
+
+create or replace function public.fn_demand_campaign_apagar_previa(p_org uuid, p_campaigns uuid[])
+returns table (pipeline_id uuid, leads integer)
+language sql stable security definer set search_path = public, pg_temp
+as $$
+  select c.pipeline_id,
+         (select count(*)::integer from public.crm_leads l
+           where l.organization_id = p_org and l.pipeline_id = c.pipeline_id)
+    from public.demand_campaigns c
+    join public.crm_pipelines p on p.id = c.pipeline_id and p.organization_id = p_org
+   where c.organization_id = p_org
+     and c.id = any (p_campaigns)
+     and c.pipeline_id is not null
+     and not p.is_default
+     and not exists (
+       select 1 from public.demand_campaigns o
+        where o.organization_id = p_org and o.pipeline_id = c.pipeline_id
+          and not (o.id = any (p_campaigns)))
+   group by c.pipeline_id
+$$;
+revoke all on function public.fn_demand_campaign_apagar_previa(uuid, uuid[]) from public, anon, authenticated;
+grant execute on function public.fn_demand_campaign_apagar_previa(uuid, uuid[]) to service_role;
+
+create or replace function public.fn_demand_campaign_apagar(p_org uuid, p_campaigns uuid[], p_destino uuid)
+returns jsonb
+language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare
+  r record;
+  v_movidos integer := 0;
+  v_n integer;
+  v_funis_apagados integer := 0;
+  v_apagadas integer;
+  v_precisa boolean := false;
+begin
+  -- Há lead a mover? Então o destino é obrigatório e precisa ser um funil que continua existindo.
+  for r in select * from public.fn_demand_campaign_apagar_previa(p_org, p_campaigns) loop
+    if r.leads > 0 then v_precisa := true; end if;
+  end loop;
+  if v_precisa then
+    if p_destino is null then
+      raise exception 'destino_obrigatorio' using errcode = 'P0001';
+    end if;
+    if not exists (select 1 from public.crm_pipelines d
+                    where d.id = p_destino and d.organization_id = p_org and not d.is_archived)
+       or exists (select 1 from public.fn_demand_campaign_apagar_previa(p_org, p_campaigns) x
+                   where x.pipeline_id = p_destino) then
+      raise exception 'destino_invalido' using errcode = 'P0001';
+    end if;
+  end if;
+
+  for r in select * from public.fn_demand_campaign_apagar_previa(p_org, p_campaigns) loop
+    if r.leads > 0 then
+      update public.crm_leads l
+         set pipeline_id = p_destino,
+             lost_from_stage_id = null,
+             stage_id = coalesce(
+               (select s.id from public.crm_stages s
+                 where s.pipeline_id = p_destino and not s.is_archived
+                   and case l.status when 'won' then s.is_won when 'lost' then s.is_lost
+                                     else (not s.is_won and not s.is_lost) end
+                 order by s.position limit 1),
+               (select s.id from public.crm_stages s
+                 where s.pipeline_id = p_destino and not s.is_archived
+                   and not s.is_won and not s.is_lost
+                 order by s.position limit 1))
+       where l.organization_id = p_org and l.pipeline_id = r.pipeline_id;
+      get diagnostics v_n = row_count;
+      v_movidos := v_movidos + v_n;
+    end if;
+  end loop;
+
+  for r in select * from public.fn_demand_campaign_apagar_previa(p_org, p_campaigns) loop
+    -- As campanhas saem primeiro (a ligação com o funil vira nula) e depois o funil.
+    delete from public.demand_campaigns
+     where organization_id = p_org and id = any (p_campaigns) and pipeline_id = r.pipeline_id;
+    delete from public.crm_pipelines where id = r.pipeline_id and organization_id = p_org;
+    v_funis_apagados := v_funis_apagados + 1;
+  end loop;
+
+  delete from public.demand_campaigns where organization_id = p_org and id = any (p_campaigns);
+  get diagnostics v_apagadas = row_count;
+
+  return jsonb_build_object('leads_movidos', v_movidos, 'funis_apagados', v_funis_apagados,
+                            'campanhas_apagadas', v_apagadas);
+end
+$$;
+revoke all on function public.fn_demand_campaign_apagar(uuid, uuid[], uuid) from public, anon, authenticated;
+grant execute on function public.fn_demand_campaign_apagar(uuid, uuid[], uuid) to service_role;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0618 ----
+
+create table if not exists public.ad_insights_daily (
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  platform text not null default 'meta_ads',
+  ad_id text not null,
+  day date not null,
+  account_id text not null default '',
+  campaign_id text not null default '',
+  adset_id text not null default '',
+  ad_name text not null default '',
+  adset_name text not null default '',
+  campaign_name text not null default '',
+  spend numeric(14, 2) not null default 0,
+  impressions bigint not null default 0,
+  reach bigint not null default 0,
+  link_clicks bigint not null default 0,
+  lp_views bigint not null default 0,
+  currency text not null default '',
+  synced_at timestamptz not null default now(),
+  primary key (organization_id, platform, ad_id, day),
+  constraint ad_insights_daily_platform_check check (platform in ('meta_ads', 'google_ads'))
+);
+
+create index if not exists ad_insights_daily_campanha_idx
+  on public.ad_insights_daily (organization_id, platform, campaign_id, day);
+create index if not exists ad_insights_daily_conjunto_idx
+  on public.ad_insights_daily (organization_id, platform, adset_id, day);
+
+alter table public.ad_insights_daily enable row level security;
+
+drop policy if exists ad_insights_daily_select on public.ad_insights_daily;
+create policy ad_insights_daily_select on public.ad_insights_daily
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or public.fn_is_platform_admin()
+  );
+
+revoke all on public.ad_insights_daily from anon, authenticated;
+grant select on public.ad_insights_daily to authenticated;
+grant select, insert, update, delete on public.ad_insights_daily to service_role;
+
+comment on table public.ad_insights_daily is
+  'Insights diários por anúncio da plataforma de anúncios (nível anúncio, um dia por linha). Gasto, impressões, alcance, cliques no link e visitas à LP — leads e resultados NUNCA vêm daqui (vêm do CRM). Alcance de dias diferentes não soma: pessoas únicas não são aditivas.';
+
+alter table public.demand_campaigns
+  add column if not exists meta_ads_synced_at timestamptz,
+  add column if not exists meta_ads_diff_pct numeric;
+
+comment on column public.demand_campaigns.meta_ads_diff_pct is
+  'Diferença percentual entre a soma do gasto por anúncio e o gasto por campanha (mesmos dias). Perto de zero = a base por anúncio confere com o total.';
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0619 ----
+
+alter table public.ad_insights_connections
+  add column if not exists restrict_accounts boolean not null default false,
+  add column if not exists allowed_account_ids text[] not null default '{}';
+
+-- As conexões que já existem passam a valer só para as contas que elas já usam hoje.
+update public.ad_insights_connections c
+   set restrict_accounts = true,
+       allowed_account_ids = coalesce((
+         select array_agg(distinct a) from (
+           select d.meta_account_id as a
+             from public.demand_campaigns d
+            where d.organization_id = c.organization_id
+              and d.meta_account_id is not null and d.meta_account_id <> ''
+           union
+           select c.default_account_id
+            where c.default_account_id is not null and c.default_account_id <> ''
+         ) x
+       ), '{}')
+ where c.platform = 'meta_ads';
+
+comment on column public.ad_insights_connections.restrict_accounts is
+  'Token colocado pelo administrador da plataforma (agência): só as contas de `allowed_account_ids` valem. Token colocado pela própria empresa fica sem restrição (o token é só dela).';
+comment on column public.ad_insights_connections.allowed_account_ids is
+  'Contas de anúncio (act_<id>) que esta organização pode listar, escolher e ler. Editada só pelo administrador da plataforma.';
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0620 ----
+
+create table if not exists public.ad_adsets (
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  platform text not null default 'meta_ads',
+  adset_id text not null,
+  campaign_id text not null default '',
+  name text not null default '',
+  status text not null default '',
+  effective_status text not null default '',
+  synced_at timestamptz not null default now(),
+  primary key (organization_id, platform, adset_id),
+  constraint ad_adsets_platform_check check (platform in ('meta_ads', 'google_ads'))
+);
+
+create index if not exists ad_adsets_campanha_idx
+  on public.ad_adsets (organization_id, platform, campaign_id);
+
+alter table public.ad_adsets enable row level security;
+
+drop policy if exists ad_adsets_select on public.ad_adsets;
+create policy ad_adsets_select on public.ad_adsets
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or public.fn_is_platform_admin()
+  );
+
+revoke all on public.ad_adsets from anon, authenticated;
+grant select on public.ad_adsets to authenticated;
+grant select, insert, update, delete on public.ad_adsets to service_role;
+
+comment on table public.ad_adsets is
+  'Conjuntos de anúncios lidos da plataforma (cadastro: nome e status), independentes de terem tido entrega no período.';
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0621 ----
+
+-- Soma uma tag ao contato sem repetir (ignora maiúsculas/minúsculas).
+create or replace function public.fn_contato_soma_tag(p_contact uuid, p_org uuid, p_tag text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_contact is null or p_tag is null or btrim(p_tag) = '' then return; end if;
+  update public.contacts
+     set tags = array_append(coalesce(tags, '{}'::text[]), left(btrim(p_tag), 60))
+   where id = p_contact
+     and organization_id = p_org
+     and not is_anonymized
+     and not exists (
+       select 1 from unnest(coalesce(tags, '{}'::text[])) x
+        where lower(x) = lower(left(btrim(p_tag), 60))
+     );
+end
+$$;
+
+revoke all on function public.fn_contato_soma_tag(uuid, uuid, text) from public, anon, authenticated;
+
+-- A tag do funil passa a usar o mesmo somador (não duplica "Funil: x" depois que a tela normaliza).
+create or replace function public.fn_lead_tag_do_funil()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nome text;
+begin
+  if new.contact_id is null then return new; end if;
+  select name into v_nome from public.crm_pipelines where id = new.pipeline_id;
+  if v_nome is null then return new; end if;
+  perform public.fn_contato_soma_tag(new.contact_id, new.organization_id, 'Funil: ' || v_nome);
+  return new;
+end
+$$;
+
+-- Origem do negócio → tags do contato.
+create or replace function public.fn_lead_tags_de_origem()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nome text;
+begin
+  if new.contact_id is null then return new; end if;
+
+  if new.demand_campaign_id is not null
+     and (tg_op = 'INSERT' or new.demand_campaign_id is distinct from old.demand_campaign_id) then
+    select name into v_nome from public.demand_campaigns
+     where id = new.demand_campaign_id and organization_id = new.organization_id;
+    if v_nome is not null then
+      perform public.fn_contato_soma_tag(new.contact_id, new.organization_id, 'Campanha: ' || v_nome);
+    end if;
+  end if;
+
+  if new.demand_creative_id is not null
+     and (tg_op = 'INSERT' or new.demand_creative_id is distinct from old.demand_creative_id) then
+    select name into v_nome from public.demand_campaign_creatives
+     where id = new.demand_creative_id and organization_id = new.organization_id;
+    if v_nome is not null then
+      perform public.fn_contato_soma_tag(new.contact_id, new.organization_id, 'Ad: ' || v_nome);
+    end if;
+  end if;
+
+  if new.demand_landing_page_id is not null
+     and (tg_op = 'INSERT' or new.demand_landing_page_id is distinct from old.demand_landing_page_id) then
+    select name into v_nome from public.demand_campaign_landing_pages
+     where id = new.demand_landing_page_id and organization_id = new.organization_id;
+    if v_nome is not null then
+      perform public.fn_contato_soma_tag(new.contact_id, new.organization_id, 'LP: ' || v_nome);
+    end if;
+  end if;
+
+  return new;
+end
+$$;
+
+drop trigger if exists trg_crm_leads_tags_de_origem on public.crm_leads;
+create trigger trg_crm_leads_tags_de_origem
+  after insert or update of demand_campaign_id, demand_creative_id, demand_landing_page_id
+  on public.crm_leads
+  for each row execute function public.fn_lead_tags_de_origem();
+
+-- MQL → tag `MQL` no contato.
+create or replace function public.fn_contato_tag_mql()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.is_anonymized then return new; end if;
+  if new.is_mql then
+    if not exists (select 1 from unnest(coalesce(new.tags, '{}'::text[])) x where lower(x) = 'mql') then
+      new.tags := array_append(coalesce(new.tags, '{}'::text[]), 'MQL');
+    end if;
+  else
+    new.tags := array(select x from unnest(coalesce(new.tags, '{}'::text[])) x where lower(x) <> 'mql');
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists trg_contato_tag_mql on public.contacts;
+create trigger trg_contato_tag_mql
+  before insert or update of is_mql on public.contacts
+  for each row execute function public.fn_contato_tag_mql();
+
+-- Anotação importante (fixada).
+alter table public.lead_notes
+  add column if not exists pinned boolean not null default false;
+
+-- O que já existe: as tags de origem dos negócios atribuídos e a tag dos MQL.
+do $$
+declare
+  r record;
+begin
+  for r in
+    select l.contact_id, l.organization_id,
+           c.name as campanha, k.name as criativo, p.name as pagina
+      from public.crm_leads l
+      left join public.demand_campaigns c on c.id = l.demand_campaign_id
+      left join public.demand_campaign_creatives k on k.id = l.demand_creative_id
+      left join public.demand_campaign_landing_pages p on p.id = l.demand_landing_page_id
+     where l.contact_id is not null
+       and (l.demand_campaign_id is not null or l.demand_creative_id is not null
+            or l.demand_landing_page_id is not null)
+  loop
+    if r.campanha is not null then
+      perform public.fn_contato_soma_tag(r.contact_id, r.organization_id, 'Campanha: ' || r.campanha);
+    end if;
+    if r.criativo is not null then
+      perform public.fn_contato_soma_tag(r.contact_id, r.organization_id, 'Ad: ' || r.criativo);
+    end if;
+    if r.pagina is not null then
+      perform public.fn_contato_soma_tag(r.contact_id, r.organization_id, 'LP: ' || r.pagina);
+    end if;
+  end loop;
+end
+$$;
+
+update public.contacts
+   set tags = array_append(coalesce(tags, '{}'::text[]), 'MQL')
+ where is_mql
+   and not is_anonymized
+   and not exists (select 1 from unnest(coalesce(tags, '{}'::text[])) x where lower(x) = 'mql');
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0622 ----
+
+-- Segundo (terceiro…) card do mesmo contato no mesmo funil: uma venda a mais, na sua própria etapa.
+alter table public.crm_leads
+  add column if not exists venda_adicional boolean not null default false;
+
+drop index if exists public.uniq_crm_leads_open_contact_pipeline;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create unique index if not exists uniq_crm_leads_open_contact_pipeline
+      on public.crm_leads (organization_id, contact_id, pipeline_id)
+      where status = 'open' and contact_id is not null and not venda_adicional;
+  end if;
+end $legado$;
+
+alter table public.crm_sales
+  add column if not exists expected_close_date date;
+
+comment on column public.crm_sales.expected_close_date is
+  'Previsão de fechamento da venda (era do negócio). Espelhada no card (crm_leads.expected_close_date) para a venda principal.';
+
+-- A venda principal do card: a mais antiga.
+create or replace function public.fn_venda_principal(p_lead uuid)
+returns uuid
+language sql
+stable
+set search_path = public
+as $$
+  select s.id from public.crm_sales s where s.lead_id = p_lead order by s.created_at, s.id limit 1
+$$;
+
+-- venda → card
+create or replace function public.fn_sync_venda_para_card()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.lead_id is null then return new; end if;
+  if coalesce(current_setting('m1.previsao_sync', true), '') = 'on' then return new; end if;
+  if tg_op = 'INSERT' and new.expected_close_date is null and coalesce(new.description, '') = '' then
+    return new;
+  end if;
+  if public.fn_venda_principal(new.lead_id) is distinct from new.id then return new; end if;
+  perform set_config('m1.previsao_sync', 'on', true);
+  update public.crm_leads
+     set expected_close_date = new.expected_close_date,
+         description = nullif(new.description, '')
+   where id = new.lead_id
+     and organization_id = new.organization_id
+     and (expected_close_date is distinct from new.expected_close_date
+          or description is distinct from nullif(new.description, ''));
+  perform set_config('m1.previsao_sync', 'off', true);
+  return new;
+end
+$$;
+
+drop trigger if exists trg_venda_para_card on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_venda_para_card
+      after insert or update of expected_close_date, description on public.crm_sales
+      for each row execute function public.fn_sync_venda_para_card();
+  end if;
+end $legado$;
+
+-- card → venda principal
+create or replace function public.fn_sync_card_para_venda()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_venda uuid;
+begin
+  if coalesce(current_setting('m1.previsao_sync', true), '') = 'on' then return new; end if;
+  v_venda := public.fn_venda_principal(new.id);
+  if v_venda is null then return new; end if;
+  perform set_config('m1.previsao_sync', 'on', true);
+  update public.crm_sales
+     set expected_close_date = new.expected_close_date,
+         description = coalesce(new.description, '')
+   where id = v_venda
+     and organization_id = new.organization_id
+     and (expected_close_date is distinct from new.expected_close_date
+          or description is distinct from coalesce(new.description, ''));
+  perform set_config('m1.previsao_sync', 'off', true);
+  return new;
+end
+$$;
+
+drop trigger if exists trg_card_para_venda on public.crm_leads;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_card_para_venda
+      after update of expected_close_date, description on public.crm_leads
+      for each row execute function public.fn_sync_card_para_venda();
+  end if;
+end $legado$;
+
+-- Todo card tem ao menos uma venda: nasce uma de interesse (roda depois dos gatilhos que já criam
+-- a venda pela campanha ou pelo valor — só cria quando ainda não há nenhuma).
+create or replace function public.fn_lead_venda_minima()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.contact_id is null then return new; end if;
+  if exists (select 1 from public.crm_sales s where s.lead_id = new.id) then return new; end if;
+  perform set_config('m1.previsao_sync', 'on', true);
+  insert into public.crm_sales
+    (organization_id, contact_id, lead_id, pipeline_id, demand_campaign_id,
+     demand_landing_page_id, demand_creative_id, product_name, description,
+     amount_cents, status, expected_close_date)
+  values
+    (new.organization_id, new.contact_id, new.id, new.pipeline_id, new.demand_campaign_id,
+     new.demand_landing_page_id, new.demand_creative_id, left(coalesce(new.title, ''), 200),
+     coalesce(new.description, ''), 0, 'interesse', new.expected_close_date);
+  perform set_config('m1.previsao_sync', 'off', true);
+  return new;
+end
+$$;
+
+drop trigger if exists trg_lead_venda_minima on public.crm_leads;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_lead_venda_minima
+      after insert on public.crm_leads
+      for each row execute function public.fn_lead_venda_minima();
+  end if;
+end $legado$;
+
+-- O que já existe: a venda mínima dos cards sem venda e a previsão/descrição copiadas do card.
+do $$
+begin
+  perform set_config('m1.previsao_sync', 'on', true);
+
+  insert into public.crm_sales
+    (organization_id, contact_id, lead_id, pipeline_id, demand_campaign_id,
+     demand_landing_page_id, demand_creative_id, product_name, description,
+     amount_cents, status, expected_close_date)
+  select l.organization_id, l.contact_id, l.id, l.pipeline_id, l.demand_campaign_id,
+         l.demand_landing_page_id, l.demand_creative_id, left(coalesce(l.title, ''), 200),
+         coalesce(l.description, ''), 0,
+         case when l.status = 'won' then 'comprometida' else 'interesse' end,
+         l.expected_close_date
+    from public.crm_leads l
+   where l.contact_id is not null
+     and not exists (select 1 from public.crm_sales s where s.lead_id = l.id);
+
+  update public.crm_sales s
+     set expected_close_date = l.expected_close_date,
+         description = case when coalesce(s.description, '') = '' then coalesce(l.description, '')
+                            else s.description end
+    from public.crm_leads l
+   where s.lead_id = l.id
+     and s.id = public.fn_venda_principal(l.id)
+     and (s.expected_close_date is distinct from l.expected_close_date
+          or (coalesce(s.description, '') = '' and coalesce(l.description, '') <> ''));
+
+  perform set_config('m1.previsao_sync', 'off', true);
+end
+$$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0623 ----
+
+-- A inicial maiúscula (o resto do nome fica como está).
+create or replace function public.fn_inicial_maiuscula(p text)
+returns text
+language sql
+immutable
+as $$
+  select case when p is null or p = '' then p else upper(left(p, 1)) || substr(p, 2) end
+$$;
+
+-- Contato: LTV, previsto, interesse, vendas pagas, primeira e última compra.
+create or replace function public.fn_crm_sales_refresh_contact(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ltv bigint; v_prev bigint; v_int bigint; v_n integer; v_first date; v_last date;
+begin
+  with vendas as (
+    select s.id, s.status, s.amount_cents, s.paid_on,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'recebida'), 0) as pago,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'prevista'), 0) as previsto,
+           count(p.id) filter (where p.status <> 'cancelada') as parcelas,
+           count(p.id) filter (where p.status = 'recebida') as recebidas,
+           min(p.paid_on) filter (where p.status = 'recebida') as primeira_paga,
+           max(p.paid_on) filter (where p.status = 'recebida') as ultima_paga
+      from public.crm_sales s
+      left join public.crm_sale_payments p on p.sale_id = s.id
+     where s.organization_id = p_org and s.contact_id = p_contact
+     group by s.id
+  ),
+  pagas as (
+    -- Venda "paga": ao menos uma parcela recebida, ou concluída sem parcelas (pela data do pagamento).
+    select v.*,
+           case when parcelas = 0 and status = 'concluida' then amount_cents else pago end as valor_pago,
+           case when parcelas = 0 and status = 'concluida' then paid_on else primeira_paga end as data_primeira,
+           case when parcelas = 0 and status = 'concluida' then paid_on else ultima_paga end as data_ultima,
+           (recebidas > 0 or (parcelas = 0 and status = 'concluida')) as foi_paga
+      from vendas v
+  )
+  select
+    coalesce(sum(valor_pago) filter (where status in ('comprometida', 'concluida')), 0),
+    coalesce(sum(case when parcelas = 0 and status = 'comprometida' then amount_cents else previsto end)
+             filter (where status in ('comprometida', 'concluida')), 0),
+    coalesce(sum(amount_cents) filter (where status = 'interesse'), 0),
+    count(*) filter (where foi_paga and status in ('comprometida', 'concluida'))::integer,
+    min(data_primeira) filter (where foi_paga and status in ('comprometida', 'concluida')),
+    max(data_ultima) filter (where foi_paga and status in ('comprometida', 'concluida'))
+    into v_ltv, v_prev, v_int, v_n, v_first, v_last
+    from pagas;
+
+  update public.contacts
+     set ltv_cents = v_ltv,
+         ltv_forecast_cents = v_ltv + v_prev,
+         interest_cents = v_int,
+         sales_count = v_n,
+         last_purchase_on = v_last,
+         first_purchase_on = v_first
+   where id = p_contact and organization_id = p_org;
+end
+$$;
+
+-- Tags automáticas: 1ª letra do nome em maiúscula.
+create or replace function public.fn_lead_tag_do_funil()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nome text;
+begin
+  if new.contact_id is null then return new; end if;
+  select name into v_nome from public.crm_pipelines where id = new.pipeline_id;
+  if v_nome is null then return new; end if;
+  perform public.fn_contato_soma_tag(new.contact_id, new.organization_id,
+                                     'Funil: ' || public.fn_inicial_maiuscula(v_nome));
+  return new;
+end
+$$;
+
+create or replace function public.fn_lead_tags_de_origem()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nome text;
+begin
+  if new.contact_id is null then return new; end if;
+
+  if new.demand_campaign_id is not null
+     and (tg_op = 'INSERT' or new.demand_campaign_id is distinct from old.demand_campaign_id) then
+    select name into v_nome from public.demand_campaigns
+     where id = new.demand_campaign_id and organization_id = new.organization_id;
+    if v_nome is not null then
+      perform public.fn_contato_soma_tag(new.contact_id, new.organization_id,
+                                         'Campanha: ' || public.fn_inicial_maiuscula(v_nome));
+    end if;
+  end if;
+
+  if new.demand_creative_id is not null
+     and (tg_op = 'INSERT' or new.demand_creative_id is distinct from old.demand_creative_id) then
+    select name into v_nome from public.demand_campaign_creatives
+     where id = new.demand_creative_id and organization_id = new.organization_id;
+    if v_nome is not null then
+      perform public.fn_contato_soma_tag(new.contact_id, new.organization_id,
+                                         'Ad: ' || public.fn_inicial_maiuscula(v_nome));
+    end if;
+  end if;
+
+  if new.demand_landing_page_id is not null
+     and (tg_op = 'INSERT' or new.demand_landing_page_id is distinct from old.demand_landing_page_id) then
+    select name into v_nome from public.demand_campaign_landing_pages
+     where id = new.demand_landing_page_id and organization_id = new.organization_id;
+    if v_nome is not null then
+      perform public.fn_contato_soma_tag(new.contact_id, new.organization_id,
+                                         'LP: ' || public.fn_inicial_maiuscula(v_nome));
+    end if;
+  end if;
+
+  return new;
+end
+$$;
+
+-- A forma canônica de uma tag automática (qualquer caixa → "Prefixo: Nome").
+create or replace function public.fn_tag_canonica(p text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  m text[];
+begin
+  if p is null then return p; end if;
+  if lower(btrim(p)) = 'mql' then return 'MQL'; end if;
+  m := regexp_match(p, '^\s*(campanha|ad|lp|funil)\s*:\s*(.+?)\s*$', 'i');
+  if m is null then return p; end if;
+  return case lower(m[1])
+           when 'campanha' then 'Campanha'
+           when 'ad' then 'Ad'
+           when 'lp' then 'LP'
+           else 'Funil'
+         end || ': ' || public.fn_inicial_maiuscula(m[2]);
+end
+$$;
+
+-- O que já existe: ajusta as tags automáticas e tira a repetição que a troca de caixa deixaria.
+update public.contacts c
+   set tags = (
+     select coalesce(array_agg(t order by ord), '{}'::text[])
+       from (
+         select distinct on (lower(public.fn_tag_canonica(x))) public.fn_tag_canonica(x) as t, ord
+           from unnest(c.tags) with ordinality as u(x, ord)
+          order by lower(public.fn_tag_canonica(x)), ord
+       ) s
+   )
+ where not is_anonymized
+   and exists (
+     select 1 from unnest(c.tags) x where public.fn_tag_canonica(x) is distinct from x
+   );
+
+-- Devolve a caixa real do nome (a tela chegou a gravar tudo em minúsculas): procura o funil, a
+-- campanha, o criativo ou a página de mesmo nome na organização.
+create or replace function public.fn_tag_com_nome_real(p_org uuid, p text)
+returns text
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+  m text[];
+  v_nome text;
+begin
+  m := regexp_match(coalesce(p, ''), '^(Campanha|Ad|LP|Funil): (.+)$');
+  if m is null then return p; end if;
+  if m[1] = 'Funil' then
+    select name into v_nome from public.crm_pipelines
+     where organization_id = p_org and lower(public.fn_inicial_maiuscula(name)) = lower(m[2]) limit 1;
+  elsif m[1] = 'Campanha' then
+    select name into v_nome from public.demand_campaigns
+     where organization_id = p_org and lower(public.fn_inicial_maiuscula(name)) = lower(m[2]) limit 1;
+  elsif m[1] = 'Ad' then
+    select name into v_nome from public.demand_campaign_creatives
+     where organization_id = p_org and lower(public.fn_inicial_maiuscula(name)) = lower(m[2]) limit 1;
+  else
+    select name into v_nome from public.demand_campaign_landing_pages
+     where organization_id = p_org and lower(public.fn_inicial_maiuscula(name)) = lower(m[2]) limit 1;
+  end if;
+  if v_nome is null then return p; end if;
+  return m[1] || ': ' || public.fn_inicial_maiuscula(v_nome);
+end
+$$;
+
+update public.contacts c
+   set tags = (
+     select array_agg(public.fn_tag_com_nome_real(c.organization_id, x) order by ord)
+       from unnest(c.tags) with ordinality as u(x, ord)
+   )
+ where not is_anonymized
+   and exists (select 1 from unnest(c.tags) x where x ~ '^(Campanha|Ad|LP|Funil): ');
+
+-- Recalcula o resumo de compras de todos os contatos que têm venda ou data de primeira compra.
+do $$
+declare
+  r record;
+begin
+  for r in
+    select distinct c.organization_id, c.id
+      from public.contacts c
+     where c.first_purchase_on is not null
+        or exists (select 1 from public.crm_sales s where s.contact_id = c.id)
+  loop
+    perform public.fn_crm_sales_refresh_contact(r.organization_id, r.id);
+  end loop;
+end
+$$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0624 ----
+
+alter table public.crm_sales
+  add column if not exists name text not null default '';
+
+alter table public.crm_sales
+  drop constraint if exists crm_sales_name_len;
+alter table public.crm_sales
+  add constraint crm_sales_name_len check (char_length(name) <= 120);
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0625 ----
+
+create or replace function public.fn_card_origem_para_vendas()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  update public.crm_sales s
+     set demand_campaign_id = coalesce(s.demand_campaign_id, new.demand_campaign_id),
+         demand_creative_id = case
+           when s.demand_campaign_id is null or s.demand_campaign_id = new.demand_campaign_id
+             then coalesce(s.demand_creative_id, new.demand_creative_id) else s.demand_creative_id end,
+         demand_landing_page_id = case
+           when s.demand_campaign_id is null or s.demand_campaign_id = new.demand_campaign_id
+             then coalesce(s.demand_landing_page_id, new.demand_landing_page_id) else s.demand_landing_page_id end
+   where s.lead_id = new.id
+     and s.organization_id = new.organization_id
+     and (s.demand_campaign_id is null
+          or (s.demand_campaign_id = new.demand_campaign_id
+              and (s.demand_creative_id is null or s.demand_landing_page_id is null)));
+  return new;
+end
+$f$;
+revoke execute on function public.fn_card_origem_para_vendas() from public, anon, authenticated;
+
+drop trigger if exists trg_card_origem_para_vendas on public.crm_leads;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_card_origem_para_vendas
+      after update of demand_campaign_id, demand_creative_id, demand_landing_page_id on public.crm_leads
+      for each row execute function public.fn_card_origem_para_vendas();
+  end if;
+end $legado$;
+
+-- Vendas que já existem.
+update public.crm_sales s
+   set demand_campaign_id = coalesce(s.demand_campaign_id, l.demand_campaign_id),
+       demand_creative_id = case
+         when s.demand_campaign_id is null or s.demand_campaign_id = l.demand_campaign_id
+           then coalesce(s.demand_creative_id, l.demand_creative_id) else s.demand_creative_id end,
+       demand_landing_page_id = case
+         when s.demand_campaign_id is null or s.demand_campaign_id = l.demand_campaign_id
+           then coalesce(s.demand_landing_page_id, l.demand_landing_page_id) else s.demand_landing_page_id end
+  from public.crm_leads l
+ where l.id = s.lead_id
+   and l.organization_id = s.organization_id
+   and (s.demand_campaign_id is null
+        or (s.demand_campaign_id = l.demand_campaign_id
+            and (s.demand_creative_id is null or s.demand_landing_page_id is null)));
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0626 ----
+
+create or replace function public.fn_card_origem_para_vendas()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  update public.crm_sales s
+     set demand_campaign_id = new.demand_campaign_id,
+         demand_creative_id = new.demand_creative_id,
+         demand_landing_page_id = new.demand_landing_page_id
+   where s.lead_id = new.id
+     and s.organization_id = new.organization_id
+     and (s.demand_campaign_id is distinct from new.demand_campaign_id
+          or s.demand_creative_id is distinct from new.demand_creative_id
+          or s.demand_landing_page_id is distinct from new.demand_landing_page_id);
+  return new;
+end
+$f$;
+revoke execute on function public.fn_card_origem_para_vendas() from public, anon, authenticated;
+
+-- A venda que entra num card (ou muda de card) assume a origem dele.
+create or replace function public.fn_venda_origem_do_card()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare v record;
+begin
+  if new.lead_id is null then return new; end if;
+  if tg_op = 'UPDATE' and old.lead_id is not distinct from new.lead_id then return new; end if;
+  select l.demand_campaign_id, l.demand_creative_id, l.demand_landing_page_id
+    into v from public.crm_leads l
+   where l.id = new.lead_id and l.organization_id = new.organization_id;
+  if found then
+    new.demand_campaign_id := v.demand_campaign_id;
+    new.demand_creative_id := v.demand_creative_id;
+    new.demand_landing_page_id := v.demand_landing_page_id;
+  end if;
+  return new;
+end
+$f$;
+revoke execute on function public.fn_venda_origem_do_card() from public, anon, authenticated;
+drop trigger if exists trg_venda_origem_do_card on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_venda_origem_do_card
+      before insert or update of lead_id on public.crm_sales
+      for each row execute function public.fn_venda_origem_do_card();
+  end if;
+end $legado$;
+
+-- Vendas que já existem.
+update public.crm_sales s
+   set demand_campaign_id = l.demand_campaign_id,
+       demand_creative_id = l.demand_creative_id,
+       demand_landing_page_id = l.demand_landing_page_id
+  from public.crm_leads l
+ where l.id = s.lead_id
+   and l.organization_id = s.organization_id
+   and (s.demand_campaign_id is distinct from l.demand_campaign_id
+        or s.demand_creative_id is distinct from l.demand_creative_id
+        or s.demand_landing_page_id is distinct from l.demand_landing_page_id);
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0627 ----
+
+create or replace function public.fn_card_herda_origem_do_lead()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare v record;
+begin
+  if new.contact_id is null then return new; end if;
+  -- Origem própria informada na criação: respeita.
+  if new.demand_campaign_id is not null
+     or new.demand_creative_id is not null
+     or new.demand_landing_page_id is not null then
+    return new;
+  end if;
+  select l.source, l.source_metadata, l.demand_campaign_id, l.demand_creative_id, l.demand_landing_page_id
+    into v
+    from public.crm_leads l
+   where l.organization_id = new.organization_id
+     and l.contact_id = new.contact_id
+   order by (l.demand_campaign_id is not null) desc, l.created_at asc
+   limit 1;
+  if not found then return new; end if;
+  new.demand_campaign_id := v.demand_campaign_id;
+  new.demand_creative_id := v.demand_creative_id;
+  new.demand_landing_page_id := v.demand_landing_page_id;
+  if new.source is null or new.source in ('manual', '') then
+    new.source := v.source;
+  end if;
+  if new.source_metadata is null or new.source_metadata = '{}'::jsonb then
+    new.source_metadata := coalesce(v.source_metadata, '{}'::jsonb);
+  elsif v.source_metadata ? 'origem_manual' and not (new.source_metadata ? 'origem_manual') then
+    new.source_metadata := new.source_metadata || jsonb_build_object('origem_manual', v.source_metadata -> 'origem_manual');
+  end if;
+  return new;
+end
+$f$;
+revoke execute on function public.fn_card_herda_origem_do_lead() from public, anon, authenticated;
+
+drop trigger if exists trg_lead_a_origem_do_lead on public.crm_leads;
+create trigger trg_lead_a_origem_do_lead
+  before insert on public.crm_leads
+  for each row execute function public.fn_card_herda_origem_do_lead();
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0628 ----
+
+alter table public.marketing_cronograma_metas
+  add column if not exists period_from date,
+  add column if not exists period_to date;
+
+alter table public.marketing_cronograma_metas drop constraint if exists marketing_cronograma_metas_auto_check;
+alter table public.marketing_cronograma_metas add constraint marketing_cronograma_metas_auto_check
+  check (source in ('manual', 'leads', 'vendas', 'faturamento', 'a_receber', 'investido', 'cpl', 'roas')
+         and period in ('hoje', 'ontem', 'ultimos_5_dias', 'ultimos_7_dias', 'ultimos_30_dias',
+                        'semana', 'mes', 'mes_passado', 'trimestre', 'semestre', 'ano', 'personalizado')
+         and aggregation in ('soma', 'media_diaria')
+         and (period <> 'personalizado'
+              or (period_from is not null and period_to is not null and period_to >= period_from)));
+
+-- Uma venda "conta" no período do primeiro dinheiro que entrou nela.
+create or replace function public.fn_metricas_do_crm(
+  p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo'
+)
+returns table (leads integer, vendas integer, recebido bigint, a_receber bigint, investido numeric)
+language sql stable security invoker set search_path = public, pg_temp
+as $$
+  select
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_sales s
+               where s.organization_id = p_org and s.status in ('comprometida', 'concluida')
+                 and coalesce(
+                       (select min(p.paid_on) from public.crm_sale_payments p
+                         where p.sale_id = s.id and p.status = 'recebida'),
+                       case when s.status = 'concluida'
+                                 and not exists (select 1 from public.crm_sale_payments p2 where p2.sale_id = s.id)
+                            then coalesce(s.paid_on, s.closed_on) end
+                     ) between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_sales s on s.id = p.sale_id
+              where p.organization_id = p_org and p.status = 'recebida'
+                and s.status <> 'cancelada' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_sales s on s.id = p.sale_id
+              where p.organization_id = p_org and p.status = 'prevista'
+                and s.status <> 'cancelada' and p.due_on between p_from and p_to), 0),
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.organization_id = p_org and d.day between p_from and p_to), 0);
+$$;
+revoke all on function public.fn_metricas_do_crm(uuid, date, date, text) from public, anon;
+grant execute on function public.fn_metricas_do_crm(uuid, date, date, text) to authenticated;
+
+create or replace function public.fn_demand_campaigns_resultados(
+  p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo'
+)
+returns table (campaign_id uuid, investido numeric, leads integer, vendas integer,
+               recebido bigint, a_receber bigint)
+language sql stable security invoker set search_path = public, pg_temp
+as $$
+  select c.id,
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.campaign_id = c.id and d.day between p_from and p_to), 0),
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and (l.pipeline_id = c.pipeline_id or l.demand_campaign_id = c.id)
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_sales s
+               where s.organization_id = p_org and s.demand_campaign_id = c.id
+                 and s.status in ('comprometida', 'concluida')
+                 and coalesce(
+                       (select min(p.paid_on) from public.crm_sale_payments p
+                         where p.sale_id = s.id and p.status = 'recebida'),
+                       case when s.status = 'concluida'
+                                 and not exists (select 1 from public.crm_sale_payments p2 where p2.sale_id = s.id)
+                            then coalesce(s.paid_on, s.closed_on) end
+                     ) between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_sales s on s.id = p.sale_id
+              where s.demand_campaign_id = c.id and p.status = 'recebida'
+                and s.status <> 'cancelada' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_sales s on s.id = p.sale_id
+              where s.demand_campaign_id = c.id and p.status = 'prevista'
+                and s.status <> 'cancelada' and p.due_on between p_from and p_to), 0)
+  from public.demand_campaigns c
+  where c.organization_id = p_org;
+$$;
+revoke all on function public.fn_demand_campaigns_resultados(uuid, date, date, text) from public, anon;
+grant execute on function public.fn_demand_campaigns_resultados(uuid, date, date, text) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0629 ----
+
+alter table public.crm_sales
+  add column if not exists recurrence_ahead smallint not null default 1;
+
+alter table public.crm_sales drop constraint if exists crm_sales_recurrence_ahead_check;
+alter table public.crm_sales add constraint crm_sales_recurrence_ahead_check
+  check (recurrence_ahead between 1 and 12);
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0630 ----
+
+-- ── 1. Tipo e fixa da etapa ─────────────────────────────────────────────────
+alter table public.crm_stages
+  add column if not exists tipo text,
+  add column if not exists fixa boolean not null default false;
+
+alter table public.crm_stages drop constraint if exists crm_stages_tipo_check;
+alter table public.crm_stages add constraint crm_stages_tipo_check
+  check (tipo is null or tipo in ('aberta', 'qualificada', 'comprou', 'nao_comprou', 'desqualificado'));
+
+create or replace function public.fn_crm_stages_tipo()
+returns trigger language plpgsql as $f$
+begin
+  new.tipo := case
+    when new.is_won then 'comprou'
+    when new.is_lost then 'nao_comprou'
+    when new.qualification = 'disqualified' then 'desqualificado'
+    when new.qualification = 'mql' then 'qualificada'
+    else 'aberta'
+  end;
+  if new.is_won or new.is_lost or new.qualification = 'disqualified' then
+    new.fixa := true;
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists trg_crm_stages_tipo on public.crm_stages;
+create trigger trg_crm_stages_tipo
+  before insert or update of is_won, is_lost, qualification on public.crm_stages
+  for each row execute function public.fn_crm_stages_tipo();
+
+update public.crm_stages set is_won = is_won;  -- dispara o trigger nas linhas existentes
+
+comment on column public.crm_stages.tipo is
+  'Tipo da etapa, derivado: aberta, qualificada (MQL), comprou, nao_comprou, desqualificado.';
+comment on column public.crm_stages.fixa is
+  'Etapa fixa do funil (Comprou, Não comprou, Desqualificado): não se exclui nem muda de tipo.';
+
+-- ── 2. A etapa Desqualificado fixa em todo funil que ainda não tem ──────────
+insert into public.crm_stages (organization_id, pipeline_id, name, slug, position, color, qualification)
+select p.organization_id, p.id, 'Desqualificado', 'desqualificado',
+       coalesce((select max(s.position) from public.crm_stages s where s.pipeline_id = p.id), 0) + 1000,
+       '#6b7280', 'disqualified'
+  from public.crm_pipelines p
+ where not p.is_archived
+   and not exists (
+     select 1 from public.crm_stages s
+      where s.pipeline_id = p.id and s.qualification = 'disqualified' and not s.is_archived
+   )
+   and not exists (
+     select 1 from public.crm_stages s where s.pipeline_id = p.id and s.slug = 'desqualificado'
+   );
+
+-- ── 3. Histórico de estados ─────────────────────────────────────────────────
+create table if not exists public.crm_historico_de_estados (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  entidade text not null,
+  entidade_id uuid not null,
+  contact_id uuid references public.contacts(id) on delete set null,
+  de text,
+  para text not null,
+  motivo text,
+  autor uuid references auth.users(id) on delete set null,
+  autor_tipo text not null default 'sistema',
+  created_at timestamptz not null default now(),
+  constraint crm_historico_entidade_check check (entidade in ('pessoa', 'oportunidade', 'pagamento')),
+  constraint crm_historico_autor_tipo_check check (autor_tipo in ('usuario', 'ia', 'sistema'))
+);
+
+create index if not exists crm_historico_entidade_idx
+  on public.crm_historico_de_estados (entidade, entidade_id, created_at desc);
+create index if not exists crm_historico_org_idx
+  on public.crm_historico_de_estados (organization_id, created_at desc);
+create index if not exists crm_historico_contato_idx
+  on public.crm_historico_de_estados (contact_id, created_at desc);
+
+alter table public.crm_historico_de_estados enable row level security;
+
+drop policy if exists crm_historico_select on public.crm_historico_de_estados;
+create policy crm_historico_select on public.crm_historico_de_estados
+  for select using (
+    public.fn_is_platform_admin()
+    or organization_id in (select public.fn_user_org_ids())
+  );
+
+revoke all on public.crm_historico_de_estados from anon;
+revoke insert, update, delete on public.crm_historico_de_estados from authenticated;
+grant select on public.crm_historico_de_estados to authenticated;
+
+-- ── 4. Triggers que escrevem o histórico ────────────────────────────────────
+create or replace function public.fn_historico_etapa_da_oportunidade()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_de text;
+  v_para text;
+begin
+  if tg_op = 'UPDATE' and new.stage_id is not distinct from old.stage_id then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' then
+    select name into v_de from public.crm_stages where id = old.stage_id;
+  end if;
+  select name into v_para from public.crm_stages where id = new.stage_id;
+  insert into public.crm_historico_de_estados
+    (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+  values
+    (new.organization_id, 'oportunidade', new.id, new.contact_id, v_de, coalesce(v_para, '—'),
+     case when new.status = 'lost' then new.lost_reason when new.status = 'won' then new.won_reason end,
+     auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+  return new;
+end
+$f$;
+
+revoke execute on function public.fn_historico_etapa_da_oportunidade() from public, anon, authenticated;
+
+drop trigger if exists trg_historico_etapa_da_oportunidade on public.crm_leads;
+create trigger trg_historico_etapa_da_oportunidade
+  after insert or update of stage_id on public.crm_leads
+  for each row execute function public.fn_historico_etapa_da_oportunidade();
+
+create or replace function public.fn_historico_status_do_pagamento()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_contact uuid;
+begin
+  if tg_op = 'UPDATE' and new.status is not distinct from old.status then
+    return new;
+  end if;
+  select contact_id into v_contact from public.crm_sales where id = new.sale_id;
+  insert into public.crm_historico_de_estados
+    (organization_id, entidade, entidade_id, contact_id, de, para, autor, autor_tipo)
+  values
+    (new.organization_id, 'pagamento', new.id, v_contact,
+     case when tg_op = 'UPDATE' then old.status end, new.status,
+     auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+  return new;
+end
+$f$;
+
+revoke execute on function public.fn_historico_status_do_pagamento() from public, anon, authenticated;
+
+drop trigger if exists trg_historico_status_do_pagamento on public.crm_sale_payments;
+create trigger trg_historico_status_do_pagamento
+  after insert or update of status on public.crm_sale_payments
+  for each row execute function public.fn_historico_status_do_pagamento();
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0631 ----
+
+-- ── 1. Colunas ──────────────────────────────────────────────────────────────
+alter table public.contacts
+  add column if not exists ciclo_de_vida text,
+  add column if not exists ciclo_motivo text,
+  add column if not exists ciclo_atualizado_em timestamptz,
+  add column if not exists oportunidades_abertas integer not null default 0,
+  add column if not exists valor_em_aberto_cents bigint not null default 0,
+  add column if not exists proximo_vencimento date,
+  add column if not exists dono_user_id uuid references auth.users(id) on delete set null;
+
+alter table public.contacts drop constraint if exists contacts_ciclo_de_vida_check;
+alter table public.contacts add constraint contacts_ciclo_de_vida_check
+  check (ciclo_de_vida is null or ciclo_de_vida in
+    ('novo_lead', 'em_negociacao', 'ativo', 'ex_cliente', 'em_reativacao', 'nunca_comprou', 'desqualificado'));
+
+create index if not exists contacts_ciclo_idx on public.contacts (organization_id, ciclo_de_vida);
+
+alter table public.marketing_pages
+  add column if not exists janela_ativo_meses smallint;
+alter table public.marketing_pages drop constraint if exists marketing_pages_janela_ativo_check;
+alter table public.marketing_pages add constraint marketing_pages_janela_ativo_check
+  check (janela_ativo_meses is null or janela_ativo_meses between 1 and 60);
+
+comment on column public.contacts.ciclo_de_vida is
+  'Ciclo de vida calculado (nunca digitado): novo_lead, em_negociacao, ativo, ex_cliente, em_reativacao, nunca_comprou, desqualificado.';
+comment on column public.marketing_pages.janela_ativo_meses is
+  'Meses em que um pagamento deste produto mantém a pessoa como cliente ativa. Nulo = padrão da empresa.';
+
+-- ── 2. O cálculo ────────────────────────────────────────────────────────────
+create or replace function public.fn_contato_recalcula_ciclo(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_padrao integer;
+  v_hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+  v_abertas integer; v_valor bigint; v_proximo date;
+  v_ops integer; v_desq integer;
+  v_ja_pagou boolean; v_ativo boolean; v_assinatura boolean;
+  v_anterior text; v_novo text; v_motivo text;
+begin
+  select coalesce(nullif(settings ->> 'janela_ativo_meses', '')::integer, 6)
+    into v_padrao from public.organizations where id = p_org;
+  v_padrao := least(60, greatest(1, coalesce(v_padrao, 6)));
+
+  select ciclo_de_vida into v_anterior from public.contacts where id = p_contact and organization_id = p_org;
+
+  -- Oportunidades (cards).
+  with ops as (
+    select l.id, l.status, l.value_cents, s.tipo,
+           exists (
+             select 1 from public.crm_sales v
+               join public.crm_sale_payments p on p.sale_id = v.id and p.status = 'recebida'
+              where v.lead_id = l.id
+           ) as pago
+      from public.crm_leads l
+      left join public.crm_stages s on s.id = l.stage_id
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select
+    count(*) filter (where (status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado')
+                        or (status = 'won' and not pago)),
+    coalesce(sum(value_cents) filter (where status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado'), 0),
+    count(*),
+    count(*) filter (where status = 'open' and tipo = 'desqualificado')
+    into v_abertas, v_valor, v_ops, v_desq
+    from ops;
+
+  select min(p.due_on) into v_proximo
+    from public.crm_sale_payments p
+    join public.crm_sales v on v.id = p.sale_id
+   where v.organization_id = p_org and v.contact_id = p_contact
+     and p.status = 'prevista' and v.status in ('comprometida', 'concluida');
+
+  -- Pagamentos recebidos e a janela do produto (a maior entre os itens; senão, o padrão).
+  with pagos as (
+    select v.id as venda, coalesce(p.paid_on, v.paid_on) as quando,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.sale_id = v.id),
+             v_padrao) as janela
+      from public.crm_sales v
+      join public.crm_sale_payments p on p.sale_id = v.id and p.status = 'recebida'
+     where v.organization_id = p_org and v.contact_id = p_contact
+       and v.status in ('comprometida', 'concluida')
+    union all
+    select v.id, v.paid_on,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.sale_id = v.id),
+             v_padrao)
+      from public.crm_sales v
+     where v.organization_id = p_org and v.contact_id = p_contact
+       and v.status = 'concluida' and v.paid_on is not null
+       and not exists (select 1 from public.crm_sale_payments p where p.sale_id = v.id and p.status <> 'cancelada')
+  )
+  select count(*) > 0,
+         coalesce(bool_or(quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date), false)
+    into v_ja_pagou, v_ativo
+    from pagos;
+
+  select exists (
+    select 1 from public.crm_sales v
+     where v.organization_id = p_org and v.contact_id = p_contact
+       and v.is_recurring and v.recurrence_active and v.status in ('comprometida', 'concluida')
+       and exists (select 1 from public.crm_sale_payments p where p.sale_id = v.id and p.status = 'recebida')
+  ) into v_assinatura;
+
+  if v_ativo or v_assinatura then
+    v_novo := 'ativo';
+    v_motivo := case when v_assinatura then 'Assinatura ativa' else 'Pagamento dentro da janela de cliente ativo' end;
+  elsif v_ja_pagou then
+    if v_abertas > 0 then
+      v_novo := 'em_reativacao';
+      v_motivo := 'Ex-cliente com nova oportunidade aberta';
+    else
+      v_novo := 'ex_cliente';
+      v_motivo := 'Já pagou, mas está fora da janela de cliente ativo';
+    end if;
+  elsif v_abertas > 0 then
+    v_novo := 'em_negociacao';
+    v_motivo := 'Tem oportunidade aberta e ainda não pagou';
+  elsif v_ops = 0 then
+    v_novo := 'novo_lead';
+    v_motivo := 'Entrou e ainda não tem oportunidade';
+  elsif v_desq = v_ops then
+    v_novo := 'desqualificado';
+    v_motivo := 'Todas as oportunidades foram desqualificadas';
+  else
+    v_novo := 'nunca_comprou';
+    v_motivo := 'Todas as oportunidades terminaram sem compra';
+  end if;
+
+  update public.contacts
+     set ciclo_de_vida = v_novo,
+         ciclo_motivo = v_motivo,
+         oportunidades_abertas = v_abertas,
+         valor_em_aberto_cents = v_valor,
+         proximo_vencimento = v_proximo,
+         ciclo_atualizado_em = case when v_anterior is distinct from v_novo then now() else ciclo_atualizado_em end
+   where id = p_contact and organization_id = p_org
+     and (ciclo_de_vida is distinct from v_novo
+          or ciclo_motivo is distinct from v_motivo
+          or oportunidades_abertas is distinct from v_abertas
+          or valor_em_aberto_cents is distinct from v_valor
+          or proximo_vencimento is distinct from v_proximo);
+
+  if v_anterior is distinct from v_novo then
+    insert into public.crm_historico_de_estados
+      (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+    values (p_org, 'pessoa', p_contact, p_contact, v_anterior, v_novo, v_motivo,
+            auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+    if v_novo = 'ativo' and v_anterior in ('ex_cliente', 'em_reativacao') then
+      perform public.fn_contato_soma_tag(p_contact, p_org, 'Reativado');
+    end if;
+  end if;
+end
+$$;
+
+revoke all on function public.fn_contato_recalcula_ciclo(uuid, uuid) from public, anon, authenticated;
+
+-- Todos os contatos de uma empresa (ou de todas, com null): rotina diária e mudança de janela.
+create or replace function public.fn_ciclo_recalcula_todos(p_org uuid default null)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  r record; n integer := 0;
+begin
+  for r in
+    select c.organization_id, c.id from public.contacts c
+     where (p_org is null or c.organization_id = p_org)
+       and not c.is_anonymized and c.is_merged_into is null
+  loop
+    perform public.fn_contato_recalcula_ciclo(r.organization_id, r.id);
+    n := n + 1;
+  end loop;
+  return n;
+end
+$$;
+
+revoke all on function public.fn_ciclo_recalcula_todos(uuid) from public, anon, authenticated;
+grant execute on function public.fn_ciclo_recalcula_todos(uuid) to service_role;
+
+-- ── 3. Gatilhos ─────────────────────────────────────────────────────────────
+create or replace function public.fn_ciclo_apos_contato()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  perform public.fn_contato_recalcula_ciclo(new.organization_id, new.id);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_ciclo_apos_contato() from public, anon, authenticated;
+
+-- Pagamentos e vendas já atualizam o resumo do contato; o ciclo vai junto.
+drop trigger if exists trg_ciclo_apos_resumo on public.contacts;
+create trigger trg_ciclo_apos_resumo
+  after update of ltv_cents, ltv_forecast_cents, last_purchase_on, sales_count, interest_cents on public.contacts
+  for each row execute function public.fn_ciclo_apos_contato();
+
+drop trigger if exists trg_ciclo_contato_novo on public.contacts;
+create trigger trg_ciclo_contato_novo
+  after insert on public.contacts
+  for each row execute function public.fn_ciclo_apos_contato();
+
+create or replace function public.fn_ciclo_apos_oportunidade()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if tg_op <> 'DELETE' and new.contact_id is not null then
+    perform public.fn_contato_recalcula_ciclo(new.organization_id, new.contact_id);
+  end if;
+  if tg_op in ('DELETE', 'UPDATE') and old.contact_id is not null
+     and (tg_op = 'DELETE' or old.contact_id is distinct from new.contact_id) then
+    perform public.fn_contato_recalcula_ciclo(old.organization_id, old.contact_id);
+  end if;
+  return null;
+end
+$f$;
+revoke execute on function public.fn_ciclo_apos_oportunidade() from public, anon, authenticated;
+
+drop trigger if exists trg_ciclo_apos_oportunidade on public.crm_leads;
+create trigger trg_ciclo_apos_oportunidade
+  after insert or delete or update of stage_id, status, contact_id, value_cents on public.crm_leads
+  for each row execute function public.fn_ciclo_apos_oportunidade();
+
+create or replace function public.fn_ciclo_apos_venda()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.contact_id is not null then
+    perform public.fn_contato_recalcula_ciclo(new.organization_id, new.contact_id);
+  end if;
+  return null;
+end
+$f$;
+revoke execute on function public.fn_ciclo_apos_venda() from public, anon, authenticated;
+
+drop trigger if exists trg_ciclo_apos_venda on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_ciclo_apos_venda
+      after insert or update of status, is_recurring, recurrence_active, paid_on on public.crm_sales
+      for each row execute function public.fn_ciclo_apos_venda();
+  end if;
+end $legado$;
+
+-- Mudou a janela de um produto: a empresa toda é recalculada.
+create or replace function public.fn_ciclo_apos_janela()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  perform public.fn_ciclo_recalcula_todos(new.organization_id);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_ciclo_apos_janela() from public, anon, authenticated;
+
+drop trigger if exists trg_ciclo_apos_janela on public.marketing_pages;
+create trigger trg_ciclo_apos_janela
+  after update of janela_ativo_meses on public.marketing_pages
+  for each row when (old.janela_ativo_meses is distinct from new.janela_ativo_meses)
+  execute function public.fn_ciclo_apos_janela();
+
+-- ── 4. Dono da pessoa: começa pelo responsável da oportunidade mais recente ──
+update public.contacts c
+   set dono_user_id = x.owner_user_id
+  from (
+    select distinct on (l.contact_id) l.contact_id, l.owner_user_id
+      from public.crm_leads l
+     where l.owner_user_id is not null and l.owner_kind = 'user' and l.contact_id is not null
+     order by l.contact_id, l.created_at desc
+  ) x
+ where x.contact_id = c.id and c.dono_user_id is null;
+
+-- ── 5. O que já existe (sem tag "Reativado" retroativa: só nasce na volta) ──
+-- A versão desta função, neste ponto, ainda lê `sale_id`: só roda enquanto o modelo antigo existe.
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    perform public.fn_ciclo_recalcula_todos(null);
+  end if;
+end $legado$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0632 ----
+
+-- ── 1. Os nomes ─────────────────────────────────────────────────────────────
+update public.crm_stages set name = 'Comprou' where is_won and name = 'Ganho';
+update public.crm_stages set name = 'Não comprou' where is_lost and name = 'Perdido';
+
+-- ── 2. Desqualificado encerra o card ────────────────────────────────────────
+create or replace function public.fn_crm_lead_close_on_stage() returns trigger
+    language plpgsql
+    set search_path to 'public', 'pg_temp'
+    as $$
+declare
+  v_is_won  boolean;
+  v_is_lost boolean;
+  v_qual    text;
+begin
+  if tg_op = 'UPDATE'
+     and new.stage_id is not distinct from old.stage_id
+     and new.status   is not distinct from old.status then
+    return new;
+  end if;
+
+  select is_won, is_lost, qualification into v_is_won, v_is_lost, v_qual
+    from public.crm_stages where id = new.stage_id;
+
+  if v_is_won then
+    new.status := 'won';
+    new.closed_at := coalesce(new.closed_at, now());
+  elsif v_is_lost or v_qual = 'disqualified' then
+    -- "Desqualificado" é uma saída sem compra: fecha o card como perdido, com motivo.
+    new.status := 'lost';
+    new.closed_at := coalesce(new.closed_at, now());
+    if tg_op = 'UPDATE' and old.status is distinct from 'lost' then
+      new.lost_from_stage_id := coalesce(new.lost_from_stage_id, old.stage_id);
+    end if;
+  else
+    if tg_op = 'UPDATE' and old.status in ('won','lost') then
+      new.status := 'open';
+      new.closed_at := null;
+      new.lost_from_stage_id := null;
+    end if;
+  end if;
+  return new;
+end$$;
+
+revoke execute on function public.fn_crm_lead_close_on_stage() from public, anon;
+grant execute on function public.fn_crm_lead_close_on_stage() to anon, authenticated, service_role;
+
+-- ── 3. O ciclo: desqualificado conta pela etapa, não pelo status ────────────
+create or replace function public.fn_contato_recalcula_ciclo(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_padrao integer;
+  v_hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+  v_abertas integer; v_valor bigint; v_proximo date;
+  v_ops integer; v_desq integer;
+  v_ja_pagou boolean; v_ativo boolean; v_assinatura boolean;
+  v_anterior text; v_novo text; v_motivo text;
+begin
+  select coalesce(nullif(settings ->> 'janela_ativo_meses', '')::integer, 6)
+    into v_padrao from public.organizations where id = p_org;
+  v_padrao := least(60, greatest(1, coalesce(v_padrao, 6)));
+
+  select ciclo_de_vida into v_anterior from public.contacts where id = p_contact and organization_id = p_org;
+
+  with ops as (
+    select l.id, l.status, l.value_cents, s.tipo,
+           exists (
+             select 1 from public.crm_sales v
+               join public.crm_sale_payments p on p.sale_id = v.id and p.status = 'recebida'
+              where v.lead_id = l.id
+           ) as pago
+      from public.crm_leads l
+      left join public.crm_stages s on s.id = l.stage_id
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select
+    count(*) filter (where (status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado')
+                        or (status = 'won' and not pago)),
+    coalesce(sum(value_cents) filter (where status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado'), 0),
+    count(*),
+    count(*) filter (where tipo = 'desqualificado')
+    into v_abertas, v_valor, v_ops, v_desq
+    from ops;
+
+  select min(p.due_on) into v_proximo
+    from public.crm_sale_payments p
+    join public.crm_sales v on v.id = p.sale_id
+   where v.organization_id = p_org and v.contact_id = p_contact
+     and p.status = 'prevista' and v.status in ('comprometida', 'concluida');
+
+  with pagos as (
+    select v.id as venda, coalesce(p.paid_on, v.paid_on) as quando,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.sale_id = v.id),
+             v_padrao) as janela
+      from public.crm_sales v
+      join public.crm_sale_payments p on p.sale_id = v.id and p.status = 'recebida'
+     where v.organization_id = p_org and v.contact_id = p_contact
+       and v.status in ('comprometida', 'concluida')
+    union all
+    select v.id, v.paid_on,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.sale_id = v.id),
+             v_padrao)
+      from public.crm_sales v
+     where v.organization_id = p_org and v.contact_id = p_contact
+       and v.status = 'concluida' and v.paid_on is not null
+       and not exists (select 1 from public.crm_sale_payments p where p.sale_id = v.id and p.status <> 'cancelada')
+  )
+  select count(*) > 0,
+         coalesce(bool_or(quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date), false)
+    into v_ja_pagou, v_ativo
+    from pagos;
+
+  select exists (
+    select 1 from public.crm_sales v
+     where v.organization_id = p_org and v.contact_id = p_contact
+       and v.is_recurring and v.recurrence_active and v.status in ('comprometida', 'concluida')
+       and exists (select 1 from public.crm_sale_payments p where p.sale_id = v.id and p.status = 'recebida')
+  ) into v_assinatura;
+
+  if v_ativo or v_assinatura then
+    v_novo := 'ativo';
+    v_motivo := case when v_assinatura then 'Assinatura ativa' else 'Pagamento dentro da janela de cliente ativo' end;
+  elsif v_ja_pagou then
+    if v_abertas > 0 then
+      v_novo := 'em_reativacao';
+      v_motivo := 'Ex-cliente com nova oportunidade aberta';
+    else
+      v_novo := 'ex_cliente';
+      v_motivo := 'Já pagou, mas está fora da janela de cliente ativo';
+    end if;
+  elsif v_abertas > 0 then
+    v_novo := 'em_negociacao';
+    v_motivo := 'Tem oportunidade aberta e ainda não pagou';
+  elsif v_ops = 0 then
+    v_novo := 'novo_lead';
+    v_motivo := 'Entrou e ainda não tem oportunidade';
+  elsif v_desq = v_ops then
+    v_novo := 'desqualificado';
+    v_motivo := 'Todas as oportunidades foram desqualificadas';
+  else
+    v_novo := 'nunca_comprou';
+    v_motivo := 'Todas as oportunidades terminaram sem compra';
+  end if;
+
+  update public.contacts
+     set ciclo_de_vida = v_novo,
+         ciclo_motivo = v_motivo,
+         oportunidades_abertas = v_abertas,
+         valor_em_aberto_cents = v_valor,
+         proximo_vencimento = v_proximo,
+         ciclo_atualizado_em = case when v_anterior is distinct from v_novo then now() else ciclo_atualizado_em end
+   where id = p_contact and organization_id = p_org
+     and (ciclo_de_vida is distinct from v_novo
+          or ciclo_motivo is distinct from v_motivo
+          or oportunidades_abertas is distinct from v_abertas
+          or valor_em_aberto_cents is distinct from v_valor
+          or proximo_vencimento is distinct from v_proximo);
+
+  if v_anterior is distinct from v_novo then
+    insert into public.crm_historico_de_estados
+      (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+    values (p_org, 'pessoa', p_contact, p_contact, v_anterior, v_novo, v_motivo,
+            auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+    if v_novo = 'ativo' and v_anterior in ('ex_cliente', 'em_reativacao') then
+      perform public.fn_contato_soma_tag(p_contact, p_org, 'Reativado');
+    end if;
+  end if;
+end
+$$;
+
+revoke all on function public.fn_contato_recalcula_ciclo(uuid, uuid) from public, anon, authenticated;
+
+-- ── 4. As etapas fixas não se arquivam ──────────────────────────────────────
+create or replace function public.fn_crm_stages_fixa_nao_arquiva()
+returns trigger language plpgsql as $f$
+begin
+  if old.fixa and new.is_archived and not old.is_archived then
+    raise exception 'etapa_fixa_nao_arquiva' using errcode = '22023',
+      hint = 'Comprou, Não comprou e Desqualificado são etapas fixas do funil.';
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists trg_crm_stages_fixa_nao_arquiva on public.crm_stages;
+create trigger trg_crm_stages_fixa_nao_arquiva
+  before update of is_archived on public.crm_stages
+  for each row execute function public.fn_crm_stages_fixa_nao_arquiva();
+
+-- ── 5. Funil novo já nasce com a etapa Desqualificado ───────────────────────
+create or replace function public.fn_funil_novo_com_desqualificado()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  insert into public.crm_stages (organization_id, pipeline_id, name, slug, position, color, qualification)
+  values (new.organization_id, new.id, 'Desqualificado', 'desqualificado', 5000, '#6b7280', 'disqualified')
+  on conflict do nothing;
+  return new;
+end
+$f$;
+revoke execute on function public.fn_funil_novo_com_desqualificado() from public, anon, authenticated;
+
+drop trigger if exists trg_funil_novo_com_desqualificado on public.crm_pipelines;
+create trigger trg_funil_novo_com_desqualificado
+  after insert on public.crm_pipelines
+  for each row execute function public.fn_funil_novo_com_desqualificado();
+
+-- A versão desta função, neste ponto, ainda lê `sale_id`: só roda enquanto o modelo antigo existe.
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    perform public.fn_ciclo_recalcula_todos(null);
+  end if;
+end $legado$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0633 ----
+
+-- ── 1. Colunas ──────────────────────────────────────────────────────────────
+alter table public.crm_sale_payments
+  add column if not exists forma text,
+  add column if not exists origem_do_pagamento text not null default 'manual',
+  add column if not exists id_externo text,
+  add column if not exists confirmed_by uuid references auth.users(id) on delete set null;
+
+alter table public.crm_sale_payments drop constraint if exists crm_sale_payments_origem_check;
+alter table public.crm_sale_payments add constraint crm_sale_payments_origem_check
+  check (origem_do_pagamento in ('manual', 'integracao'));
+
+create unique index if not exists crm_sale_payments_id_externo_uniq
+  on public.crm_sale_payments (organization_id, id_externo)
+  where id_externo is not null;
+
+comment on column public.crm_sale_payments.forma is
+  'Como esta parcela foi/será paga (pix, cartao_credito, cartao_debito, boleto, transferencia, dinheiro, recorrencia, outro).';
+comment on column public.crm_sale_payments.id_externo is
+  'Id da transação no gateway ou na Hotmart; único por empresa (evita lançar a mesma cobrança duas vezes).';
+
+-- A forma das parcelas que já existem: a da venda.
+\if :modelo_antigo_de_vendas
+update public.crm_sale_payments p
+   set forma = nullif(s.payment_method, '')
+  from public.crm_sales s
+ where s.id = p.sale_id and p.forma is null;
+\endif
+
+-- A parcela nova nasce com a forma de pagamento da venda.
+create or replace function public.fn_crm_payment_forma_padrao()
+returns trigger language plpgsql as $f$
+begin
+  if new.forma is null then
+    select nullif(payment_method, '') into new.forma from public.crm_sales where id = new.sale_id;
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists trg_crm_payment_forma_padrao on public.crm_sale_payments;
+create trigger trg_crm_payment_forma_padrao
+  before insert on public.crm_sale_payments
+  for each row execute function public.fn_crm_payment_forma_padrao();
+
+-- ── 2. Parcela cancelada reabre o valor como interesse ──────────────────────
+create or replace function public.fn_crm_sales_refresh_contact(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ltv bigint; v_prev bigint; v_int bigint; v_n integer; v_first date; v_last date;
+begin
+  with vendas as (
+    select s.id, s.status, s.amount_cents, s.paid_on,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'recebida'), 0) as pago,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'prevista'), 0) as previsto,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'cancelada'), 0) as cancelado,
+           count(p.id) filter (where p.status <> 'cancelada') as parcelas,
+           count(p.id) filter (where p.status = 'recebida') as recebidas,
+           min(p.paid_on) filter (where p.status = 'recebida') as primeira_paga,
+           max(p.paid_on) filter (where p.status = 'recebida') as ultima_paga
+      from public.crm_sales s
+      left join public.crm_sale_payments p on p.sale_id = s.id
+     where s.organization_id = p_org and s.contact_id = p_contact
+     group by s.id
+  ),
+  pagas as (
+    select v.*,
+           case when parcelas = 0 and status = 'concluida' then amount_cents else pago end as valor_pago,
+           case when parcelas = 0 and status = 'concluida' then paid_on else primeira_paga end as data_primeira,
+           case when parcelas = 0 and status = 'concluida' then paid_on else ultima_paga end as data_ultima,
+           (recebidas > 0 or (parcelas = 0 and status = 'concluida')) as foi_paga
+      from vendas v
+  )
+  select
+    coalesce(sum(valor_pago) filter (where status in ('comprometida', 'concluida')), 0),
+    coalesce(sum(case when parcelas = 0 and status = 'comprometida' then amount_cents else previsto end)
+             filter (where status in ('comprometida', 'concluida')), 0),
+    -- Interesse: vendas em interesse + o valor das parcelas canceladas (volta a ser "possível venda").
+    coalesce(sum(amount_cents) filter (where status = 'interesse'), 0)
+      + coalesce(sum(cancelado) filter (where status in ('comprometida', 'concluida')), 0),
+    count(*) filter (where foi_paga and status in ('comprometida', 'concluida'))::integer,
+    min(data_primeira) filter (where foi_paga and status in ('comprometida', 'concluida')),
+    max(data_ultima) filter (where foi_paga and status in ('comprometida', 'concluida'))
+    into v_ltv, v_prev, v_int, v_n, v_first, v_last
+    from pagas;
+
+  update public.contacts
+     set ltv_cents = v_ltv,
+         ltv_forecast_cents = v_ltv + v_prev,
+         interest_cents = v_int,
+         sales_count = v_n,
+         last_purchase_on = v_last,
+         first_purchase_on = v_first
+   where id = p_contact and organization_id = p_org;
+end
+$$;
+
+-- ── 3. Excluir parcela também atualiza o resumo do contato ──────────────────
+create or replace function public.fn_crm_payment_deleted_refresh()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_contact uuid;
+begin
+  select contact_id into v_contact from public.crm_sales where id = old.sale_id;
+  if v_contact is not null then
+    perform public.fn_crm_sales_refresh_contact(old.organization_id, v_contact);
+  end if;
+  return old;
+end
+$f$;
+revoke execute on function public.fn_crm_payment_deleted_refresh() from public, anon, authenticated;
+
+drop trigger if exists trg_crm_payment_deleted_refresh on public.crm_sale_payments;
+create trigger trg_crm_payment_deleted_refresh
+  after delete on public.crm_sale_payments
+  for each row execute function public.fn_crm_payment_deleted_refresh();
+
+-- Recalcula o resumo de quem tem parcela cancelada.
+\if :modelo_antigo_de_vendas
+do $$
+declare r record;
+begin
+  for r in
+    select distinct s.organization_id, s.contact_id
+      from public.crm_sale_payments p join public.crm_sales s on s.id = p.sale_id
+     where p.status = 'cancelada' and s.contact_id is not null
+  loop
+    perform public.fn_crm_sales_refresh_contact(r.organization_id, r.contact_id);
+  end loop;
+end
+$$;
+\endif
+
+-- ── 4. A oportunidade já recebeu algum pagamento? (selo "Aguardando pagamento") ──
+alter table public.crm_leads
+  add column if not exists com_pagamento boolean not null default false;
+
+create or replace function public.fn_lead_atualiza_com_pagamento(p_lead uuid)
+returns void language plpgsql security definer set search_path = public as $f$
+begin
+  if p_lead is null then return; end if;
+  update public.crm_leads l
+     set com_pagamento = exists (
+           select 1 from public.crm_sales s
+            where s.lead_id = l.id
+              and (
+                exists (select 1 from public.crm_sale_payments p where p.sale_id = s.id and p.status = 'recebida')
+                or (s.status = 'concluida' and s.paid_on is not null
+                    and not exists (select 1 from public.crm_sale_payments p where p.sale_id = s.id and p.status <> 'cancelada'))
+              )
+         )
+   where l.id = p_lead
+     and l.com_pagamento is distinct from exists (
+           select 1 from public.crm_sales s
+            where s.lead_id = l.id
+              and (
+                exists (select 1 from public.crm_sale_payments p where p.sale_id = s.id and p.status = 'recebida')
+                or (s.status = 'concluida' and s.paid_on is not null
+                    and not exists (select 1 from public.crm_sale_payments p where p.sale_id = s.id and p.status <> 'cancelada'))
+              )
+         );
+end
+$f$;
+revoke execute on function public.fn_lead_atualiza_com_pagamento(uuid) from public, anon, authenticated;
+
+create or replace function public.fn_com_pagamento_apos_parcela()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_sale uuid := case when tg_op = 'DELETE' then old.sale_id else new.sale_id end;
+  v_lead uuid;
+begin
+  select lead_id into v_lead from public.crm_sales where id = v_sale;
+  perform public.fn_lead_atualiza_com_pagamento(v_lead);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_com_pagamento_apos_parcela() from public, anon, authenticated;
+
+drop trigger if exists trg_com_pagamento_apos_parcela on public.crm_sale_payments;
+create trigger trg_com_pagamento_apos_parcela
+  after insert or delete or update of status on public.crm_sale_payments
+  for each row execute function public.fn_com_pagamento_apos_parcela();
+
+create or replace function public.fn_com_pagamento_apos_venda()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  perform public.fn_lead_atualiza_com_pagamento(new.lead_id);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_com_pagamento_apos_venda() from public, anon, authenticated;
+
+drop trigger if exists trg_com_pagamento_apos_venda on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_com_pagamento_apos_venda
+      after insert or update of status, paid_on, lead_id on public.crm_sales
+      for each row execute function public.fn_com_pagamento_apos_venda();
+  end if;
+end $legado$;
+
+do $$
+declare r record;
+begin
+  for r in select distinct lead_id from public.crm_sales where lead_id is not null loop
+    perform public.fn_lead_atualiza_com_pagamento(r.lead_id);
+  end loop;
+end
+$$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0634 ----
+
+create table if not exists public.crm_saved_view_arquivadas (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  view_id uuid not null references public.crm_saved_views(id) on delete cascade,
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, view_id)
+);
+
+create index if not exists crm_saved_view_arquivadas_org_idx
+  on public.crm_saved_view_arquivadas (organization_id, user_id);
+
+alter table public.crm_saved_view_arquivadas enable row level security;
+
+drop policy if exists crm_saved_view_arquivadas_own on public.crm_saved_view_arquivadas;
+create policy crm_saved_view_arquivadas_own on public.crm_saved_view_arquivadas
+  for all
+  using (user_id = auth.uid() and organization_id in (select public.fn_user_org_ids()))
+  with check (user_id = auth.uid() and organization_id in (select public.fn_user_org_ids()));
+
+revoke all on public.crm_saved_view_arquivadas from anon;
+grant select, insert, delete on public.crm_saved_view_arquivadas to authenticated;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0635 ----
+
+-- ── 1. Os campos da venda dentro do card ────────────────────────────────────
+alter table public.crm_leads
+  add column if not exists is_recurring boolean not null default false,
+  add column if not exists recurrence_active boolean not null default false,
+  add column if not exists recurrence_ahead smallint not null default 1,
+  add column if not exists payment_method text not null default '',
+  add column if not exists installments integer not null default 1,
+  add column if not exists reference text not null default '',
+  add column if not exists notes text not null default '',
+  add column if not exists paid_on date;
+
+alter table public.crm_leads drop constraint if exists crm_leads_recurrence_ahead_check;
+alter table public.crm_leads add constraint crm_leads_recurrence_ahead_check
+  check (recurrence_ahead between 1 and 12);
+
+-- ── 2. Itens e parcelas apontam também para a oportunidade ──────────────────
+alter table public.crm_sale_items
+  add column if not exists lead_id uuid references public.crm_leads(id) on delete cascade;
+alter table public.crm_sale_payments
+  add column if not exists lead_id uuid references public.crm_leads(id) on delete cascade;
+
+create index if not exists crm_sale_items_lead_idx on public.crm_sale_items (lead_id);
+create index if not exists crm_sale_payments_lead_idx on public.crm_sale_payments (lead_id);
+
+create or replace function public.fn_item_ou_parcela_lead_id()
+returns trigger language plpgsql as $f$
+begin
+  if new.lead_id is null then
+    select lead_id into new.lead_id from public.crm_sales where id = new.sale_id;
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists trg_crm_sale_items_lead_id on public.crm_sale_items;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_crm_sale_items_lead_id
+      before insert on public.crm_sale_items
+      for each row execute function public.fn_item_ou_parcela_lead_id();
+  end if;
+end $legado$;
+
+drop trigger if exists trg_crm_sale_payments_lead_id on public.crm_sale_payments;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_crm_sale_payments_lead_id
+      before insert on public.crm_sale_payments
+      for each row execute function public.fn_item_ou_parcela_lead_id();
+  end if;
+end $legado$;
+
+-- A venda muda de card (ex.: a separação em duas oportunidades): itens e parcelas vão junto.
+create or replace function public.fn_venda_muda_de_card()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.lead_id is distinct from old.lead_id then
+    update public.crm_sale_items set lead_id = new.lead_id where sale_id = new.id;
+    update public.crm_sale_payments set lead_id = new.lead_id where sale_id = new.id;
+  end if;
+  return null;
+end
+$f$;
+revoke execute on function public.fn_venda_muda_de_card() from public, anon, authenticated;
+
+drop trigger if exists trg_venda_muda_de_card on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_venda_muda_de_card
+      after update of lead_id on public.crm_sales
+      for each row execute function public.fn_venda_muda_de_card();
+  end if;
+end $legado$;
+
+-- ── 3. Venda principal → card (os campos novos) ─────────────────────────────
+create or replace function public.fn_venda_para_campos_do_card()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.lead_id is null then return null; end if;
+  if public.fn_venda_principal(new.lead_id) is distinct from new.id then return null; end if;
+  update public.crm_leads
+     set is_recurring = new.is_recurring,
+         recurrence_active = new.recurrence_active,
+         recurrence_ahead = new.recurrence_ahead,
+         payment_method = coalesce(new.payment_method, ''),
+         installments = coalesce(new.installments, 1),
+         reference = coalesce(new.reference, ''),
+         notes = coalesce(new.notes, ''),
+         paid_on = new.paid_on::date
+   where id = new.lead_id
+     and organization_id = new.organization_id
+     and (is_recurring is distinct from new.is_recurring
+          or recurrence_active is distinct from new.recurrence_active
+          or recurrence_ahead is distinct from new.recurrence_ahead
+          or payment_method is distinct from coalesce(new.payment_method, '')
+          or installments is distinct from coalesce(new.installments, 1)
+          or reference is distinct from coalesce(new.reference, '')
+          or notes is distinct from coalesce(new.notes, '')
+          or paid_on is distinct from new.paid_on::date);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_venda_para_campos_do_card() from public, anon, authenticated;
+
+drop trigger if exists trg_venda_para_campos_do_card on public.crm_sales;
+do $legado$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'crm_sale_payments' and column_name = 'sale_id') then
+    create trigger trg_venda_para_campos_do_card
+      after insert or update of is_recurring, recurrence_active, recurrence_ahead, payment_method,
+        installments, reference, notes, paid_on, lead_id on public.crm_sales
+      for each row execute function public.fn_venda_para_campos_do_card();
+  end if;
+end $legado$;
+
+-- ── 4. O único card com duas vendas vira duas oportunidades ─────────────────
+do $$
+declare
+  r record;
+  v_novo uuid;
+  v_ganho uuid;
+  v_auto record;
+begin
+  for r in
+    select s.id as venda, s.lead_id, s.organization_id, s.created_at
+      from public.crm_sales s
+     where s.lead_id is not null
+       and (select count(*) from public.crm_sales x where x.lead_id = s.lead_id) > 1
+       and s.id <> public.fn_venda_principal(s.lead_id)
+  loop
+    -- A oportunidade nova é uma cópia do card; a venda "extra" vai para ela.
+    insert into public.crm_leads
+      (organization_id, pipeline_id, stage_id, contact_id, title, description, status, source,
+       source_metadata, owner_user_id, owner_kind, demand_campaign_id, demand_landing_page_id,
+       demand_creative_id, tags, currency, venda_adicional)
+    select organization_id, pipeline_id, stage_id, contact_id, title, description, 'open', source,
+           source_metadata, owner_user_id, owner_kind, demand_campaign_id, demand_landing_page_id,
+           demand_creative_id, tags, currency, true
+      from public.crm_leads where id = r.lead_id
+    returning id into v_novo;
+
+    -- A venda mínima que o gatilho criou para o card novo sai (a venda de verdade vai no lugar).
+    for v_auto in
+      select id from public.crm_sales where lead_id = v_novo and id <> r.venda
+    loop
+      delete from public.crm_sales where id = v_auto.id;
+    end loop;
+
+    update public.crm_sales set lead_id = v_novo where id = r.venda;
+
+    -- Venda paga: a nova oportunidade está em Comprou.
+    if exists (
+      select 1 from public.crm_sales s
+       where s.id = r.venda
+         and (s.status = 'concluida'
+              or exists (select 1 from public.crm_sale_payments p where p.sale_id = s.id and p.status = 'recebida'))
+    ) then
+      select id into v_ganho
+        from public.crm_stages
+       where pipeline_id = (select pipeline_id from public.crm_leads where id = v_novo)
+         and is_won and not is_archived
+       order by position limit 1;
+      if v_ganho is not null then
+        update public.crm_leads set stage_id = v_ganho where id = v_novo;
+      end if;
+    end if;
+  end loop;
+end
+$$;
+
+-- ── 5. Backfill dos campos novos e de lead_id ───────────────────────────────
+\if :modelo_antigo_de_vendas
+update public.crm_sale_items i set lead_id = s.lead_id
+  from public.crm_sales s where s.id = i.sale_id and i.lead_id is null;
+update public.crm_sale_payments p set lead_id = s.lead_id
+  from public.crm_sales s where s.id = p.sale_id and p.lead_id is null;
+\endif
+
+update public.crm_leads l
+   set is_recurring = s.is_recurring,
+       recurrence_active = s.recurrence_active,
+       recurrence_ahead = s.recurrence_ahead,
+       payment_method = coalesce(s.payment_method, ''),
+       installments = coalesce(s.installments, 1),
+       reference = coalesce(s.reference, ''),
+       notes = coalesce(s.notes, ''),
+       paid_on = s.paid_on::date
+  from public.crm_sales s
+ where s.id = public.fn_venda_principal(l.id);
+
+-- ── 6. A conferência (deve voltar vazia) ────────────────────────────────────
+create or replace function public.fn_oportunidade_unica_divergencias()
+returns table (tipo text, quantidade bigint)
+language sql stable security definer set search_path = public as $f$
+  select 'item_sem_lead_id'::text, count(*) from public.crm_sale_items i
+   join public.crm_sales s on s.id = i.sale_id
+   where i.lead_id is null and s.lead_id is not null
+  union all
+  select 'parcela_sem_lead_id', count(*) from public.crm_sale_payments p
+   join public.crm_sales s on s.id = p.sale_id
+   where p.lead_id is null and s.lead_id is not null
+  union all
+  select 'item_com_lead_diferente_da_venda', count(*) from public.crm_sale_items i
+   join public.crm_sales s on s.id = i.sale_id
+   where i.lead_id is distinct from s.lead_id
+  union all
+  select 'parcela_com_lead_diferente_da_venda', count(*) from public.crm_sale_payments p
+   join public.crm_sales s on s.id = p.sale_id
+   where p.lead_id is distinct from s.lead_id
+  union all
+  select 'card_com_mais_de_uma_venda', count(*) from (
+    select lead_id from public.crm_sales where lead_id is not null group by 1 having count(*) > 1
+  ) x
+  union all
+  select 'card_diferente_da_venda_principal', count(*) from public.crm_leads l
+   join public.crm_sales s on s.id = public.fn_venda_principal(l.id)
+   where l.is_recurring is distinct from s.is_recurring
+      or l.recurrence_active is distinct from s.recurrence_active
+      or l.recurrence_ahead is distinct from s.recurrence_ahead
+      or l.payment_method is distinct from coalesce(s.payment_method, '')
+      or l.installments is distinct from coalesce(s.installments, 1)
+      or l.reference is distinct from coalesce(s.reference, '')
+      or l.notes is distinct from coalesce(s.notes, '')
+      or l.paid_on is distinct from s.paid_on::date
+$f$;
+revoke execute on function public.fn_oportunidade_unica_divergencias() from public, anon, authenticated;
+grant execute on function public.fn_oportunidade_unica_divergencias() to service_role;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0636 ----
+
+-- ── 0. O nome dado à venda (vazio = os produtos juntados) mora na oportunidade ─
+alter table public.crm_leads add column if not exists nome_da_venda text not null default '';
+update public.crm_leads l set nome_da_venda = s.name
+  from public.crm_sales s
+ where s.id = public.fn_venda_principal(l.id) and coalesce(s.name, '') <> '' and l.nome_da_venda = '';
+
+-- ── 1. Dados: venda concluída sem parcela ganha a parcela recebida ──────────
+\if :modelo_antigo_de_vendas
+insert into public.crm_sale_payments
+  (organization_id, sale_id, lead_id, number, due_on, paid_on, amount_cents, status)
+select s.organization_id, s.id, s.lead_id, 1,
+       coalesce(s.paid_on::date, s.closed_on::date, current_date),
+       coalesce(s.paid_on::date, s.closed_on::date, current_date),
+       s.amount_cents, 'recebida'
+  from public.crm_sales s
+ where s.status = 'concluida' and s.amount_cents > 0
+   and not exists (select 1 from public.crm_sale_payments p where p.sale_id = s.id);
+\endif
+
+-- Venda cancelada: as parcelas abertas dela saem.
+\if :modelo_antigo_de_vendas
+update public.crm_sale_payments p set status = 'cancelada'
+  from public.crm_sales s
+ where s.id = p.sale_id and s.status = 'cancelada' and p.status = 'prevista';
+\endif
+
+-- ── 2. sale_id deixa de ser obrigatório (a oportunidade é a dona) ───────────
+\if :modelo_antigo_de_vendas
+alter table public.crm_sale_items alter column sale_id drop not null;
+alter table public.crm_sale_payments alter column sale_id drop not null;
+\endif
+
+-- ── 3. O espelho sai: triggers de crm_sales e do card ───────────────────────
+drop trigger if exists trg_card_origem_para_vendas on public.crm_leads;
+drop trigger if exists trg_card_para_venda on public.crm_leads;
+drop trigger if exists trg_lead_venda_minima on public.crm_leads;
+drop trigger if exists trg_lead_won_sale on public.crm_leads;
+
+drop trigger if exists trg_ciclo_apos_venda on public.crm_sales;
+drop trigger if exists trg_com_pagamento_apos_venda on public.crm_sales;
+drop trigger if exists trg_crm_sales_after_write on public.crm_sales;
+drop trigger if exists trg_crm_sales_before_write on public.crm_sales;
+drop trigger if exists trg_crm_sales_recurrence_default on public.crm_sales;
+drop trigger if exists trg_crm_sales_valor_do_lead on public.crm_sales;
+drop trigger if exists trg_venda_muda_de_card on public.crm_sales;
+drop trigger if exists trg_venda_origem_do_card on public.crm_sales;
+drop trigger if exists trg_venda_para_campos_do_card on public.crm_sales;
+drop trigger if exists trg_venda_para_card on public.crm_sales;
+
+-- Várias oportunidades abertas por pessoa e funil.
+drop index if exists public.uniq_crm_leads_open_contact_pipeline;
+
+-- ── 4. Valor: o card é a soma dos itens (sem itens, o valor é o digitado) ───
+create or replace function public.fn_crm_sale_items_after_write()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead uuid := coalesce(new.lead_id, old.lead_id);
+  v_total bigint; v_n integer;
+begin
+  if v_lead is null or coalesce(current_setting('m1.valor_sync', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+  select coalesce(sum(amount_cents), 0), count(*) into v_total, v_n
+    from public.crm_sale_items where lead_id = v_lead;
+  if v_n > 0 then
+    perform set_config('m1.valor_sync', 'on', true);
+    update public.crm_leads
+       set value_cents = nullif(v_total, 0)
+     where id = v_lead and value_cents is distinct from nullif(v_total, 0);
+    perform set_config('m1.valor_sync', 'off', true);
+  end if;
+  return coalesce(new, old);
+end
+$f$;
+
+create or replace function public.fn_crm_leads_valor_before()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_n integer; v_primeiro uuid; v_outros bigint; v_total bigint;
+begin
+  if coalesce(current_setting('m1.valor_sync', true), '') = 'on' then
+    return new;
+  end if;
+  if new.value_cents is not distinct from old.value_cents then
+    return new;
+  end if;
+  select count(*) into v_n from public.crm_sale_items where lead_id = new.id;
+  if v_n > 0 then
+    -- Com produtos, o valor é a soma deles: o primeiro absorve a diferença digitada.
+    select id into v_primeiro from public.crm_sale_items
+     where lead_id = new.id order by position, created_at limit 1;
+    select coalesce(sum(amount_cents), 0) into v_outros
+      from public.crm_sale_items where lead_id = new.id and id <> v_primeiro;
+    perform set_config('m1.valor_sync', 'on', true);
+    update public.crm_sale_items
+       set amount_cents = greatest(coalesce(new.value_cents, 0) - v_outros, 0)
+     where id = v_primeiro;
+    perform set_config('m1.valor_sync', 'off', true);
+    select coalesce(sum(amount_cents), 0) into v_total from public.crm_sale_items where lead_id = new.id;
+    new.value_cents := nullif(v_total, 0);
+  end if;
+  return new;
+end
+$f$;
+
+create or replace function public.fn_crm_leads_valor_inicial()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  return new;
+end
+$f$;
+
+-- ── 5. Recorrência: ligar a assinatura a deixa ativa; perder a desliga ──────
+create or replace function public.fn_crm_leads_recurrence_default()
+returns trigger language plpgsql set search_path = public as $f$
+begin
+  if new.is_recurring and (tg_op = 'INSERT' or old.is_recurring is distinct from true) then
+    new.recurrence_active := true;
+  end if;
+  if new.status = 'lost' then
+    new.recurrence_active := false;
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists trg_crm_leads_recurrence_default on public.crm_leads;
+create trigger trg_crm_leads_recurrence_default
+  before insert or update of is_recurring, status on public.crm_leads
+  for each row execute function public.fn_crm_leads_recurrence_default();
+
+-- ── 6. O resumo do contato, calculado das oportunidades e das parcelas ──────
+create or replace function public.fn_crm_sales_refresh_contact(p_org uuid, p_contact uuid)
+returns void language plpgsql security definer set search_path = public as $f$
+declare
+  v_ltv bigint; v_prev bigint; v_int bigint; v_n integer; v_first date; v_last date;
+begin
+  with ops as (
+    select l.id, l.status, coalesce(l.value_cents, 0) as valor,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'recebida'), 0) as pago,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'prevista'), 0) as previsto,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'cancelada'), 0) as cancelado,
+           count(p.id) filter (where p.status <> 'cancelada') as parcelas,
+           count(p.id) filter (where p.status = 'recebida') as recebidas,
+           min(p.paid_on) filter (where p.status = 'recebida') as primeira,
+           max(p.paid_on) filter (where p.status = 'recebida') as ultima
+      from public.crm_leads l
+      left join public.crm_sale_payments p on p.lead_id = l.id
+     where l.organization_id = p_org and l.contact_id = p_contact
+     group by l.id, l.status, l.value_cents
+  )
+  select
+    coalesce(sum(pago), 0),
+    coalesce(sum(previsto) filter (where status <> 'lost'), 0),
+    -- Possível venda: o valor das abertas sem parcela + o das parcelas canceladas.
+    coalesce(sum(valor) filter (where status = 'open' and parcelas = 0), 0)
+      + coalesce(sum(cancelado), 0),
+    count(*) filter (where recebidas > 0)::integer,
+    min(primeira),
+    max(ultima)
+    into v_ltv, v_prev, v_int, v_n, v_first, v_last
+    from ops;
+
+  update public.contacts
+     set ltv_cents = v_ltv,
+         ltv_forecast_cents = v_ltv + v_prev,
+         interest_cents = v_int,
+         sales_count = v_n,
+         last_purchase_on = v_last,
+         first_purchase_on = v_first
+   where id = p_contact and organization_id = p_org;
+end
+$f$;
+
+-- ── 6b. O resumo do contato acompanha a oportunidade (valor, situação, contato) ─
+create or replace function public.fn_lead_refresh_contato()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if tg_op <> 'DELETE' and new.contact_id is not null then
+    perform public.fn_crm_sales_refresh_contact(new.organization_id, new.contact_id);
+  end if;
+  if tg_op in ('DELETE', 'UPDATE') and old.contact_id is not null
+     and (tg_op = 'DELETE' or old.contact_id is distinct from new.contact_id) then
+    perform public.fn_crm_sales_refresh_contact(old.organization_id, old.contact_id);
+  end if;
+  return null;
+end
+$f$;
+revoke execute on function public.fn_lead_refresh_contato() from public, anon, authenticated;
+
+drop trigger if exists trg_lead_refresh_contato on public.crm_leads;
+create trigger trg_lead_refresh_contato
+  after insert or delete or update of value_cents, status, contact_id on public.crm_leads
+  for each row execute function public.fn_lead_refresh_contato();
+
+-- ── 7. Parcelas: o card e o contato acompanham ──────────────────────────────
+create or replace function public.fn_crm_sale_payments_after_write()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead uuid := coalesce(new.lead_id, old.lead_id);
+  v_ult date; v_contact uuid; v_org uuid;
+begin
+  if v_lead is null then
+    return coalesce(new, old);
+  end if;
+  select max(paid_on) filter (where status = 'recebida') into v_ult
+    from public.crm_sale_payments where lead_id = v_lead;
+  select contact_id, organization_id into v_contact, v_org from public.crm_leads where id = v_lead;
+  if not found then
+    return coalesce(new, old);
+  end if;
+  update public.crm_leads set paid_on = v_ult where id = v_lead and paid_on is distinct from v_ult;
+  -- A primeira parcela recebida (mesmo um sinal) faz a oportunidade virar Comprou.
+  if tg_op <> 'DELETE' and new.status = 'recebida' then
+    update public.crm_leads l
+       set stage_id = w.id
+      from (
+        select st.id, st.pipeline_id from public.crm_stages st
+         where st.is_won and not st.is_archived
+         order by st.position
+      ) w
+     where l.id = v_lead and l.status = 'open' and w.pipeline_id = l.pipeline_id;
+  end if;
+  if v_contact is not null then
+    perform public.fn_crm_sales_refresh_contact(v_org, v_contact);
+    perform public.fn_contato_recalcula_ciclo(v_org, v_contact);
+  end if;
+  return coalesce(new, old);
+end
+$f$;
+
+create or replace function public.fn_crm_payment_deleted_refresh()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  return old;
+end
+$f$;
+
+create or replace function public.fn_lead_atualiza_com_pagamento(p_lead uuid)
+returns void language plpgsql security definer set search_path = public as $f$
+begin
+  if p_lead is null then return; end if;
+  update public.crm_leads l
+     set com_pagamento = exists (
+           select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida'
+         )
+   where l.id = p_lead
+     and l.com_pagamento is distinct from exists (
+           select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida'
+         );
+end
+$f$;
+
+create or replace function public.fn_com_pagamento_apos_parcela()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  perform public.fn_lead_atualiza_com_pagamento(coalesce(new.lead_id, old.lead_id));
+  return null;
+end
+$f$;
+
+create or replace function public.fn_historico_status_do_pagamento()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_contact uuid;
+begin
+  if tg_op = 'UPDATE' and new.status is not distinct from old.status then
+    return new;
+  end if;
+  select contact_id into v_contact from public.crm_leads where id = new.lead_id;
+  insert into public.crm_historico_de_estados
+    (organization_id, entidade, entidade_id, contact_id, de, para, autor, autor_tipo)
+  values
+    (new.organization_id, 'pagamento', new.id, v_contact,
+     case when tg_op = 'UPDATE' then old.status end, new.status,
+     auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+  return new;
+end
+$f$;
+
+create or replace function public.fn_crm_payment_forma_padrao()
+returns trigger language plpgsql as $f$
+begin
+  if new.forma is null then
+    select nullif(payment_method, '') into new.forma from public.crm_leads where id = new.lead_id;
+  end if;
+  return new;
+end
+$f$;
+
+-- ── 8. Campanha com ticket: a oportunidade nasce com os produtos e o valor ──
+create or replace function public.fn_lead_interest_sale()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_c record; v_ids uuid[]; v_n integer; v_parte bigint; v_resto bigint; v_i integer := 0;
+  v_pid uuid; v_nome text;
+begin
+  if new.demand_campaign_id is null or new.contact_id is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.demand_campaign_id is not distinct from new.demand_campaign_id then
+    return new;
+  end if;
+  select c.id, c.product_id, c.product_ids, c.ticket_cents into v_c
+    from public.demand_campaigns c
+   where c.id = new.demand_campaign_id and c.organization_id = new.organization_id;
+  if not found or coalesce(v_c.ticket_cents, 0) <= 0 then
+    return new;
+  end if;
+  v_ids := case
+    when cardinality(v_c.product_ids) > 0 then v_c.product_ids
+    when v_c.product_id is not null then array[v_c.product_id]
+    else '{}'::uuid[]
+  end;
+  v_n := cardinality(v_ids);
+  if v_n = 0 then return new; end if;
+  if exists (select 1 from public.crm_sale_items i where i.lead_id = new.id) then
+    return new;
+  end if;
+  perform set_config('m1.valor_sync', 'on', true);
+  v_parte := v_c.ticket_cents / v_n;
+  v_resto := v_c.ticket_cents - v_parte * v_n;
+  foreach v_pid in array v_ids loop
+    select coalesce(nullif(p.title, ''), 'Produto') into v_nome
+      from public.marketing_pages p where p.id = v_pid;
+    insert into public.crm_sale_items
+      (organization_id, lead_id, product_id, product_name, amount_cents, position)
+    values
+      (new.organization_id, new.id, v_pid, coalesce(v_nome, 'Produto'),
+       v_parte + case when v_i = 0 then v_resto else 0 end, v_i);
+    v_i := v_i + 1;
+  end loop;
+  update public.crm_leads set value_cents = v_c.ticket_cents where id = new.id;
+  perform set_config('m1.valor_sync', 'off', true);
+  return new;
+end
+$f$;
+
+-- ── 9. Comprou só com pagamento recebido ────────────────────────────────────
+create or replace function public.fn_crm_lead_close_on_stage() returns trigger
+    language plpgsql
+    set search_path to 'public', 'pg_temp'
+    as $$
+declare
+  v_is_won  boolean;
+  v_is_lost boolean;
+  v_qual    text;
+begin
+  if tg_op = 'UPDATE'
+     and new.stage_id is not distinct from old.stage_id
+     and new.status   is not distinct from old.status then
+    return new;
+  end if;
+
+  select is_won, is_lost, qualification into v_is_won, v_is_lost, v_qual
+    from public.crm_stages where id = new.stage_id;
+
+  if v_is_won then
+    if (tg_op = 'INSERT' or old.status is distinct from 'won')
+       and not exists (
+         select 1 from public.crm_sale_payments p where p.lead_id = new.id and p.status = 'recebida'
+       ) then
+      raise exception 'comprou_exige_pagamento' using errcode = '22023',
+        hint = 'Registre ao menos um pagamento recebido (mesmo só o sinal) antes de mover para Comprou.';
+    end if;
+    new.status := 'won';
+    new.closed_at := coalesce(new.closed_at, now());
+  elsif v_is_lost or v_qual = 'disqualified' then
+    new.status := 'lost';
+    new.closed_at := coalesce(new.closed_at, now());
+    if tg_op = 'UPDATE' and old.status is distinct from 'lost' then
+      new.lost_from_stage_id := coalesce(new.lost_from_stage_id, old.stage_id);
+    end if;
+  else
+    if tg_op = 'UPDATE' and old.status in ('won','lost') then
+      new.status := 'open';
+      new.closed_at := null;
+      new.lost_from_stage_id := null;
+    end if;
+  end if;
+  return new;
+end$$;
+
+-- ── 10. O ciclo de vida, agora das oportunidades e parcelas ─────────────────
+create or replace function public.fn_contato_recalcula_ciclo(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_padrao integer;
+  v_hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+  v_abertas integer; v_valor bigint; v_proximo date;
+  v_ops integer; v_desq integer;
+  v_ja_pagou boolean; v_ativo boolean; v_assinatura boolean;
+  v_anterior text; v_novo text; v_motivo text;
+begin
+  select coalesce(nullif(settings ->> 'janela_ativo_meses', '')::integer, 6)
+    into v_padrao from public.organizations where id = p_org;
+  v_padrao := least(60, greatest(1, coalesce(v_padrao, 6)));
+
+  select ciclo_de_vida into v_anterior from public.contacts where id = p_contact and organization_id = p_org;
+
+  with ops as (
+    select l.id, l.status, l.value_cents, s.tipo,
+           exists (
+             select 1 from public.crm_sale_payments p
+              where p.lead_id = l.id and p.status = 'recebida'
+           ) as pago
+      from public.crm_leads l
+      left join public.crm_stages s on s.id = l.stage_id
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select
+    count(*) filter (where (status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado')
+                        or (status = 'won' and not pago)),
+    coalesce(sum(value_cents) filter (where status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado'), 0),
+    count(*),
+    count(*) filter (where tipo = 'desqualificado')
+    into v_abertas, v_valor, v_ops, v_desq
+    from ops;
+
+  select min(p.due_on) into v_proximo
+    from public.crm_sale_payments p
+    join public.crm_leads l on l.id = p.lead_id
+   where l.organization_id = p_org and l.contact_id = p_contact
+     and p.status = 'prevista' and l.status <> 'lost';
+
+  with pagos as (
+    select l.id as venda, coalesce(p.paid_on, l.paid_on) as quando,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.lead_id = l.id),
+             v_padrao) as janela
+      from public.crm_leads l
+      join public.crm_sale_payments p on p.lead_id = l.id and p.status = 'recebida'
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select count(*) > 0,
+         coalesce(bool_or(quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date), false)
+    into v_ja_pagou, v_ativo
+    from pagos;
+
+  select exists (
+    select 1 from public.crm_leads l
+     where l.organization_id = p_org and l.contact_id = p_contact
+       and l.is_recurring and l.recurrence_active and l.status <> 'lost'
+       and exists (select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida')
+  ) into v_assinatura;
+
+  if v_ativo or v_assinatura then
+    v_novo := 'ativo';
+    v_motivo := case when v_assinatura then 'Assinatura ativa' else 'Pagamento dentro da janela de cliente ativo' end;
+  elsif v_ja_pagou then
+    if v_abertas > 0 then
+      v_novo := 'em_reativacao';
+      v_motivo := 'Ex-cliente com nova oportunidade aberta';
+    else
+      v_novo := 'ex_cliente';
+      v_motivo := 'Já pagou, mas está fora da janela de cliente ativo';
+    end if;
+  elsif v_abertas > 0 then
+    v_novo := 'em_negociacao';
+    v_motivo := 'Tem oportunidade aberta e ainda não pagou';
+  elsif v_ops = 0 then
+    v_novo := 'novo_lead';
+    v_motivo := 'Entrou e ainda não tem oportunidade';
+  elsif v_desq = v_ops then
+    v_novo := 'desqualificado';
+    v_motivo := 'Todas as oportunidades foram desqualificadas';
+  else
+    v_novo := 'nunca_comprou';
+    v_motivo := 'Todas as oportunidades terminaram sem compra';
+  end if;
+
+  update public.contacts
+     set ciclo_de_vida = v_novo,
+         ciclo_motivo = v_motivo,
+         oportunidades_abertas = v_abertas,
+         valor_em_aberto_cents = v_valor,
+         proximo_vencimento = v_proximo,
+         ciclo_atualizado_em = case when v_anterior is distinct from v_novo then now() else ciclo_atualizado_em end
+   where id = p_contact and organization_id = p_org
+     and (ciclo_de_vida is distinct from v_novo
+          or ciclo_motivo is distinct from v_motivo
+          or oportunidades_abertas is distinct from v_abertas
+          or valor_em_aberto_cents is distinct from v_valor
+          or proximo_vencimento is distinct from v_proximo);
+
+  if v_anterior is distinct from v_novo then
+    insert into public.crm_historico_de_estados
+      (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+    values (p_org, 'pessoa', p_contact, p_contact, v_anterior, v_novo, v_motivo,
+            auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+    if v_novo = 'ativo' and v_anterior in ('ex_cliente', 'em_reativacao') then
+      perform public.fn_contato_soma_tag(p_contact, p_org, 'Reativado');
+    end if;
+  end if;
+end
+$$;
+
+revoke all on function public.fn_contato_recalcula_ciclo(uuid, uuid) from public, anon, authenticated;
+
+-- ── 11. A conferência passa a olhar só a oportunidade ───────────────────────
+create or replace function public.fn_oportunidade_unica_divergencias()
+returns table (tipo text, quantidade bigint)
+language sql stable security definer set search_path = public as $f$
+  select 'item_sem_lead_id'::text, count(*) from public.crm_sale_items where lead_id is null
+  union all
+  select 'parcela_sem_lead_id', count(*) from public.crm_sale_payments where lead_id is null
+  union all
+  select 'comprou_sem_pagamento', count(*) from public.crm_leads l
+   join public.crm_stages s on s.id = l.stage_id
+   where s.is_won and not exists (
+     select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida'
+   )
+$f$;
+revoke execute on function public.fn_oportunidade_unica_divergencias() from public, anon, authenticated;
+grant execute on function public.fn_oportunidade_unica_divergencias() to service_role;
+
+select public.fn_ciclo_recalcula_todos(null);
+
+do $$
+declare r record;
+begin
+  for r in select distinct organization_id, contact_id from public.crm_leads where contact_id is not null loop
+    perform public.fn_crm_sales_refresh_contact(r.organization_id, r.contact_id);
+  end loop;
+end
+$$;
+
+notify pgrst, 'reload schema';
+
+-- ── 12. Métricas e relatórios, das oportunidades e das parcelas ─────────────
+create or replace function public.fn_vendas_por_produto(p_org uuid, p_from date, p_to date)
+returns table(product_id uuid, nome text, vendas integer, interesse_cents bigint, recebido_cents bigint, a_receber_cents bigint)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  with itens as (
+    select i.product_id, i.product_name, i.amount_cents as item_cents,
+           l.id as lead_id, l.status, coalesce(l.value_cents, 0) as valor_cents,
+           coalesce(l.closed_at::date, l.paid_on) as fechada_em
+      from public.crm_sale_items i
+      join public.crm_leads l on l.id = i.lead_id
+     where i.organization_id = p_org and l.status <> 'lost'
+  ),
+  parcelas as (
+    select p.lead_id,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'recebida' and p.paid_on between p_from and p_to), 0) as recebido,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'prevista' and p.due_on between p_from and p_to), 0) as previsto,
+           bool_or(p.status = 'recebida') as paga
+      from public.crm_sale_payments p
+     where p.organization_id = p_org
+     group by p.lead_id
+  )
+  select it.product_id,
+         max(it.product_name) as nome,
+         count(distinct it.lead_id) filter (
+           where coalesce(pa.paga, false) and it.fechada_em between p_from and p_to
+         )::integer as vendas,
+         coalesce(sum(it.item_cents) filter (where not coalesce(pa.paga, false) and pa.lead_id is null), 0)::bigint as interesse_cents,
+         coalesce(sum(case when it.valor_cents > 0
+                           then pa.recebido * it.item_cents / it.valor_cents else 0 end), 0)::bigint as recebido_cents,
+         coalesce(sum(case when it.valor_cents > 0
+                           then pa.previsto * it.item_cents / it.valor_cents else 0 end), 0)::bigint as a_receber_cents
+    from itens it
+    left join parcelas pa on pa.lead_id = it.lead_id
+   group by it.product_id;
+$f$;
+
+create or replace function public.fn_demand_campaigns_resultados(p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo')
+returns table(campaign_id uuid, investido numeric, leads integer, vendas integer, recebido bigint, a_receber bigint)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  select c.id,
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.campaign_id = c.id and d.day between p_from and p_to), 0),
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and (l.pipeline_id = c.pipeline_id or l.demand_campaign_id = c.id)
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_leads l
+               where l.organization_id = p_org and l.demand_campaign_id = c.id and l.status <> 'lost'
+                 and (select min(p.paid_on) from public.crm_sale_payments p
+                       where p.lead_id = l.id and p.status = 'recebida') between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where l.demand_campaign_id = c.id and p.status = 'recebida'
+                and l.status <> 'lost' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where l.demand_campaign_id = c.id and p.status = 'prevista'
+                and l.status <> 'lost' and p.due_on between p_from and p_to), 0)
+  from public.demand_campaigns c
+  where c.organization_id = p_org;
+$f$;
+
+create or replace function public.fn_metricas_do_crm(p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo')
+returns table(leads integer, vendas integer, recebido bigint, a_receber bigint, investido numeric)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  select
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_leads l
+               where l.organization_id = p_org and l.status <> 'lost'
+                 and (select min(p.paid_on) from public.crm_sale_payments p
+                       where p.lead_id = l.id and p.status = 'recebida') between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where p.organization_id = p_org and p.status = 'recebida'
+                and l.status <> 'lost' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where p.organization_id = p_org and p.status = 'prevista'
+                and l.status <> 'lost' and p.due_on between p_from and p_to), 0),
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.organization_id = p_org and d.day between p_from and p_to), 0);
+$f$;
+
+create or replace function public.fn_lead_valor_somado(p_lead uuid)
+returns bigint language sql stable set search_path to 'public' as $f$
+  select coalesce((select sum(amount_cents) from public.crm_sale_items where lead_id = p_lead), 0)::bigint
+$f$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0637 ----
+
+-- ── 1. Itens e parcelas: só a oportunidade ──────────────────────────────────
+delete from public.crm_sale_items where lead_id is null;
+delete from public.crm_sale_payments where lead_id is null;
+
+drop trigger if exists trg_crm_sale_items_lead_id on public.crm_sale_items;
+drop trigger if exists trg_crm_sale_payments_lead_id on public.crm_sale_payments;
+drop function if exists public.fn_item_ou_parcela_lead_id();
+
+alter table public.crm_sale_items drop column if exists sale_id;
+alter table public.crm_sale_payments drop column if exists sale_id;
+alter table public.crm_sale_items alter column lead_id set not null;
+alter table public.crm_sale_payments alter column lead_id set not null;
+
+-- ── 2. A tabela de vendas e o espelho ───────────────────────────────────────
+drop table if exists public.crm_sales cascade;
+
+drop function if exists public.fn_card_origem_para_vendas();
+drop function if exists public.fn_sync_card_para_venda();
+drop function if exists public.fn_sync_venda_para_card();
+drop function if exists public.fn_venda_origem_do_card();
+drop function if exists public.fn_venda_para_campos_do_card();
+drop function if exists public.fn_venda_muda_de_card();
+drop function if exists public.fn_lead_venda_minima();
+drop function if exists public.fn_lead_won_sale();
+drop function if exists public.fn_ciclo_apos_venda();
+drop function if exists public.fn_com_pagamento_apos_venda();
+drop function if exists public.fn_crm_sales_after_write();
+drop function if exists public.fn_crm_sales_before_write();
+drop function if exists public.fn_crm_sales_recurrence_default();
+drop function if exists public.fn_crm_sales_valor_do_lead();
+drop function if exists public.fn_lead_definir_valor(uuid, bigint);
+drop function if exists public.fn_venda_principal(uuid);
+
+-- ── 3. O card não precisa mais marcar "venda adicional" ─────────────────────
+alter table public.crm_leads drop column if exists venda_adicional;
+
+-- ── 4. A conferência passa a só olhar o essencial ───────────────────────────
+create or replace function public.fn_oportunidade_unica_divergencias()
+returns table (tipo text, quantidade bigint)
+language sql stable security definer set search_path = public as $f$
+  select 'comprou_sem_pagamento'::text, count(*) from public.crm_leads l
+   join public.crm_stages s on s.id = l.stage_id
+   where s.is_won and not exists (
+     select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida'
+   )
+$f$;
+revoke execute on function public.fn_oportunidade_unica_divergencias() from public, anon, authenticated;
+grant execute on function public.fn_oportunidade_unica_divergencias() to service_role;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0638 ----
+
+alter table public.contacts add column if not exists ativo_ate date;
+alter table public.crm_leads
+  add column if not exists proxima_acao text not null default '',
+  add column if not exists proxima_acao_em date;
+
+comment on column public.contacts.ativo_ate is
+  'Fim da janela de cliente ativo (último pagamento + janela do produto): a próxima recompra prevista. Nulo em assinatura ativa e em quem não é ativo.';
+
+create or replace function public.fn_contato_recalcula_ciclo(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_padrao integer;
+  v_hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+  v_abertas integer; v_valor bigint; v_proximo date;
+  v_ops integer; v_desq integer;
+  v_ja_pagou boolean; v_ativo boolean; v_assinatura boolean;
+  v_anterior text; v_novo text; v_motivo text;
+  v_ativo_ate date;
+begin
+  select coalesce(nullif(settings ->> 'janela_ativo_meses', '')::integer, 6)
+    into v_padrao from public.organizations where id = p_org;
+  v_padrao := least(60, greatest(1, coalesce(v_padrao, 6)));
+
+  select ciclo_de_vida into v_anterior from public.contacts where id = p_contact and organization_id = p_org;
+
+  with ops as (
+    select l.id, l.status, l.value_cents, s.tipo,
+           exists (
+             select 1 from public.crm_sale_payments p
+              where p.lead_id = l.id and p.status = 'recebida'
+           ) as pago
+      from public.crm_leads l
+      left join public.crm_stages s on s.id = l.stage_id
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select
+    count(*) filter (where (status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado')
+                        or (status = 'won' and not pago)),
+    coalesce(sum(value_cents) filter (where status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado'), 0),
+    count(*),
+    count(*) filter (where tipo = 'desqualificado')
+    into v_abertas, v_valor, v_ops, v_desq
+    from ops;
+
+  select min(p.due_on) into v_proximo
+    from public.crm_sale_payments p
+    join public.crm_leads l on l.id = p.lead_id
+   where l.organization_id = p_org and l.contact_id = p_contact
+     and p.status = 'prevista' and l.status <> 'lost';
+
+  with pagos as (
+    select l.id as venda, coalesce(p.paid_on, l.paid_on) as quando,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.lead_id = l.id),
+             v_padrao) as janela
+      from public.crm_leads l
+      join public.crm_sale_payments p on p.lead_id = l.id and p.status = 'recebida'
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select count(*) > 0,
+         coalesce(bool_or(quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date), false),
+         max((quando + (janela || ' months')::interval)::date)
+           filter (where quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date)
+    into v_ja_pagou, v_ativo, v_ativo_ate
+    from pagos;
+
+  select exists (
+    select 1 from public.crm_leads l
+     where l.organization_id = p_org and l.contact_id = p_contact
+       and l.is_recurring and l.recurrence_active and l.status <> 'lost'
+       and exists (select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida')
+  ) into v_assinatura;
+
+  if v_ativo or v_assinatura then
+    v_novo := 'ativo';
+    v_motivo := case
+      when v_assinatura then 'Assinatura ativa'
+      else 'Pagou dentro da janela de cliente ativo, até ' || to_char(v_ativo_ate, 'DD/MM/YYYY')
+    end;
+  elsif v_ja_pagou then
+    if v_abertas > 0 then
+      v_novo := 'em_reativacao';
+      v_motivo := 'Ex-cliente com nova oportunidade aberta';
+    else
+      v_novo := 'ex_cliente';
+      v_motivo := 'Já pagou, mas está fora da janela de cliente ativo';
+    end if;
+  elsif v_abertas > 0 then
+    v_novo := 'em_negociacao';
+    v_motivo := 'Tem oportunidade aberta e ainda não pagou';
+  elsif v_ops = 0 then
+    v_novo := 'novo_lead';
+    v_motivo := 'Entrou e ainda não tem oportunidade';
+  elsif v_desq = v_ops then
+    v_novo := 'desqualificado';
+    v_motivo := 'Todas as oportunidades foram desqualificadas';
+  else
+    v_novo := 'nunca_comprou';
+    v_motivo := 'Todas as oportunidades terminaram sem compra';
+  end if;
+
+  update public.contacts
+     set ciclo_de_vida = v_novo,
+         ciclo_motivo = v_motivo,
+         oportunidades_abertas = v_abertas,
+         valor_em_aberto_cents = v_valor,
+         proximo_vencimento = v_proximo,
+         ativo_ate = case when v_novo = 'ativo' and not v_assinatura then v_ativo_ate end,
+         ciclo_atualizado_em = case when v_anterior is distinct from v_novo then now() else ciclo_atualizado_em end
+   where id = p_contact and organization_id = p_org
+     and (ciclo_de_vida is distinct from v_novo
+          or ciclo_motivo is distinct from v_motivo
+          or oportunidades_abertas is distinct from v_abertas
+          or valor_em_aberto_cents is distinct from v_valor
+          or proximo_vencimento is distinct from v_proximo
+          or ativo_ate is distinct from case when v_novo = 'ativo' and not v_assinatura then v_ativo_ate end);
+
+  if v_anterior is distinct from v_novo then
+    insert into public.crm_historico_de_estados
+      (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+    values (p_org, 'pessoa', p_contact, p_contact, v_anterior, v_novo, v_motivo,
+            auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+    if v_novo = 'ativo' and v_anterior in ('ex_cliente', 'em_reativacao') then
+      perform public.fn_contato_soma_tag(p_contact, p_org, 'Reativado');
+    end if;
+  end if;
+end
+$$;
+
+revoke all on function public.fn_contato_recalcula_ciclo(uuid, uuid) from public, anon, authenticated;
+
+-- ── Parcela recebida: o evento que leva cada mensalidade à plataforma de anúncio ──
+create or replace function public.fn_parcela_recebida_emite_evento()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.status = 'recebida' and new.lead_id is not null
+     and (tg_op = 'INSERT' or old.status is distinct from 'recebida') then
+    perform public.fn_log_event(new.organization_id, 'lead.payment_received',
+      jsonb_build_object('lead_id', new.lead_id, 'payment_id', new.id,
+                         'amount_cents', new.amount_cents, 'paid_on', new.paid_on));
+  end if;
+  return null;
+end
+$f$;
+revoke execute on function public.fn_parcela_recebida_emite_evento() from public, anon, authenticated;
+
+drop trigger if exists trg_parcela_recebida_emite_evento on public.crm_sale_payments;
+create trigger trg_parcela_recebida_emite_evento
+  after insert or update of status on public.crm_sale_payments
+  for each row execute function public.fn_parcela_recebida_emite_evento();
+
+select public.fn_ciclo_recalcula_todos(null);
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0639 ----
+
+-- ── 1. A lixeira ────────────────────────────────────────────────────────────
+create table if not exists public.crm_lixeira (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  tipo text not null default 'cliente',
+  contact_id uuid not null,
+  nome text not null default '',
+  telefone text,
+  email text,
+  resumo jsonb not null default '{}'::jsonb,
+  snapshot jsonb not null,
+  excluido_por uuid references auth.users(id) on delete set null,
+  excluido_em timestamptz not null default now(),
+  expira_em timestamptz not null default (now() + interval '7 days'),
+  constraint crm_lixeira_tipo_check check (tipo in ('cliente'))
+);
+
+create index if not exists crm_lixeira_org_idx on public.crm_lixeira (organization_id, excluido_em desc);
+create index if not exists crm_lixeira_expira_idx on public.crm_lixeira (expira_em);
+
+alter table public.crm_lixeira enable row level security;
+
+drop policy if exists crm_lixeira_select on public.crm_lixeira;
+create policy crm_lixeira_select on public.crm_lixeira
+  for select using (
+    public.fn_is_platform_admin()
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'agent'))
+  );
+
+drop policy if exists crm_lixeira_insert on public.crm_lixeira;
+create policy crm_lixeira_insert on public.crm_lixeira
+  for insert with check (
+    (organization_id in (select public.fn_user_org_ids()))
+    and public.fn_role_at_least(organization_id, 'agent')
+  );
+
+drop policy if exists crm_lixeira_delete on public.crm_lixeira;
+create policy crm_lixeira_delete on public.crm_lixeira
+  for delete using (
+    (organization_id in (select public.fn_user_org_ids()))
+    and public.fn_role_at_least(organization_id, 'agent')
+  );
+
+revoke all on public.crm_lixeira from anon;
+grant select, insert, delete on public.crm_lixeira to authenticated;
+
+-- ── 2. Inserir uma linha guardada (sem as colunas geradas) ─────────────────
+create or replace function public.fn_inserir_da_lixeira(p_tabela regclass, p_linha jsonb)
+returns void language plpgsql set search_path = public as $f$
+declare
+  v_cols text;
+  v_linha jsonb := p_linha;
+  r record;
+  v_existe boolean;
+begin
+  -- Referência opcional a algo que já não existe (ex.: a demanda da conversa, que saiu junto com o
+  -- cliente) volta vazia, em vez de impedir a restauração.
+  for r in
+    select att.attname as coluna,
+           ref.oid::regclass as tabela_ref,
+           (select a2.attname from pg_attribute a2
+             where a2.attrelid = c.confrelid and a2.attnum = c.confkey[1]) as coluna_ref,
+           not att.attnotnull as opcional
+      from pg_constraint c
+      join pg_attribute att on att.attrelid = c.conrelid and att.attnum = c.conkey[1]
+      join pg_class ref on ref.oid = c.confrelid
+     where c.conrelid = p_tabela and c.contype = 'f' and array_length(c.conkey, 1) = 1
+  loop
+    continue when not r.opcional;
+    continue when (v_linha ->> r.coluna) is null;
+    execute format('select exists (select 1 from %s where %I = ($1 ->> %L)::%s)',
+                   r.tabela_ref, r.coluna_ref, r.coluna,
+                   (select format_type(a3.atttypid, a3.atttypmod) from pg_attribute a3
+                     where a3.attrelid = p_tabela and a3.attname = r.coluna))
+      into v_existe using v_linha;
+    if not v_existe then
+      v_linha := jsonb_set(v_linha, array[r.coluna], 'null'::jsonb);
+    end if;
+  end loop;
+
+  select string_agg(quote_ident(a.attname), ', ' order by a.attnum)
+    into v_cols
+    from pg_attribute a
+   where a.attrelid = p_tabela and a.attnum > 0 and not a.attisdropped
+     and a.attgenerated = '' and a.attidentity = ''
+     and v_linha ? a.attname;
+  if v_cols is null then return; end if;
+  execute format(
+    'insert into %s (%s) select %s from jsonb_populate_record(null::%s, $1)',
+    p_tabela, v_cols, v_cols, p_tabela
+  ) using v_linha;
+end
+$f$;
+
+-- ── 3. Excluir o cliente (e tudo que depende dele) para a lixeira ──────────
+create or replace function public.fn_excluir_cliente_para_lixeira(
+  p_contact_id uuid, p_organization_id uuid
+) returns boolean language plpgsql set search_path = public, pg_temp as $f$
+declare
+  v_contato jsonb;
+  v_leads uuid[];
+  v_snap jsonb;
+  v_nome text;
+  v_ltv bigint;
+begin
+  select to_jsonb(c), coalesce(nullif(btrim(c.display_name), ''), nullif(btrim(c.name), ''), c.phone_number, '—'),
+         coalesce(c.ltv_cents, 0)
+    into v_contato, v_nome, v_ltv
+    from public.contacts c
+   where c.id = p_contact_id and c.organization_id = p_organization_id;
+  if v_contato is null then
+    return false;
+  end if;
+
+  select coalesce(array_agg(id), '{}') into v_leads
+    from public.crm_leads where contact_id = p_contact_id and organization_id = p_organization_id;
+
+  v_snap := jsonb_build_object(
+    'contato', v_contato,
+    'oportunidades', coalesce((select jsonb_agg(to_jsonb(l)) from public.crm_leads l where l.id = any (v_leads)), '[]'),
+    'itens', coalesce((select jsonb_agg(to_jsonb(i)) from public.crm_sale_items i where i.lead_id = any (v_leads)), '[]'),
+    'parcelas', coalesce((select jsonb_agg(to_jsonb(p)) from public.crm_sale_payments p where p.lead_id = any (v_leads)), '[]'),
+    'tarefas', coalesce((select jsonb_agg(to_jsonb(t)) from public.crm_tasks t
+                          where t.organization_id = p_organization_id
+                            and (t.contact_id = p_contact_id or t.lead_id = any (v_leads))), '[]'),
+    'notas', coalesce((select jsonb_agg(to_jsonb(n)) from public.lead_notes n where n.contact_id = p_contact_id), '[]'),
+    'atividades', coalesce((select jsonb_agg(to_jsonb(a)) from public.crm_lead_activities a
+                              where a.organization_id = p_organization_id
+                                and (a.contact_id = p_contact_id or a.lead_id = any (v_leads))), '[]'),
+    'conversas', coalesce((select jsonb_agg(to_jsonb(cv)) from public.conversations cv
+                             where cv.contact_id = p_contact_id and cv.organization_id = p_organization_id), '[]'),
+    'mensagens', coalesce((select jsonb_agg(to_jsonb(m)) from public.messages m
+                             where m.contact_id = p_contact_id and m.organization_id = p_organization_id), '[]'),
+    'compromissos', coalesce((select jsonb_agg(to_jsonb(ap)) from public.calendar_appointments ap
+                                where ap.contact_id = p_contact_id and ap.organization_id = p_organization_id), '[]'),
+    'historico', coalesce((select jsonb_agg(to_jsonb(h)) from public.crm_historico_de_estados h
+                             where h.contact_id = p_contact_id and h.organization_id = p_organization_id), '[]')
+  );
+
+  insert into public.crm_lixeira
+    (organization_id, contact_id, nome, telefone, email, resumo, snapshot, excluido_por)
+  values (
+    p_organization_id, p_contact_id, v_nome,
+    v_contato ->> 'phone_number', v_contato ->> 'email',
+    jsonb_build_object(
+      'oportunidades', coalesce(array_length(v_leads, 1), 0),
+      'parcelas', jsonb_array_length(v_snap -> 'parcelas'),
+      'pago_cents', v_ltv,
+      'mensagens', jsonb_array_length(v_snap -> 'mensagens')
+    ),
+    v_snap, auth.uid()
+  );
+
+  -- Tudo que depende do cliente sai junto (mesmo com venda paga).
+  delete from public.messages where contact_id = p_contact_id and organization_id = p_organization_id;
+  delete from public.conversations where contact_id = p_contact_id and organization_id = p_organization_id;
+  delete from public.calendar_appointments where contact_id = p_contact_id and organization_id = p_organization_id;
+  delete from public.crm_tasks
+   where organization_id = p_organization_id
+     and (contact_id = p_contact_id or lead_id = any (v_leads));
+  delete from public.crm_lead_activities
+   where organization_id = p_organization_id
+     and (contact_id = p_contact_id or lead_id = any (v_leads));
+  delete from public.crm_historico_de_estados
+   where organization_id = p_organization_id and contact_id = p_contact_id;
+  delete from public.crm_leads
+   where organization_id = p_organization_id and contact_id = p_contact_id;
+  delete from public.contacts
+   where id = p_contact_id and organization_id = p_organization_id;
+  return found;
+end
+$f$;
+
+-- ── 4. Restaurar da lixeira ─────────────────────────────────────────────────
+create or replace function public.fn_restaurar_cliente_da_lixeira(
+  p_item uuid, p_organization_id uuid
+) returns uuid language plpgsql set search_path = public, pg_temp as $f$
+declare
+  v_item public.crm_lixeira%rowtype;
+  v_snap jsonb;
+  v_linha jsonb;
+  v_contact uuid;
+begin
+  select * into v_item from public.crm_lixeira
+   where id = p_item and organization_id = p_organization_id;
+  if not found then
+    return null;
+  end if;
+  v_snap := v_item.snapshot;
+  v_contact := v_item.contact_id;
+
+  -- Restaurar não dispara evento nem rotina: o que volta é o que existia.
+  perform set_config('m1.restaurando', 'on', true);
+  perform set_config('m1.valor_sync', 'on', true);
+
+  perform public.fn_inserir_da_lixeira('public.contacts', v_snap -> 'contato');
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'conversas') loop
+    perform public.fn_inserir_da_lixeira('public.conversations', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'oportunidades') loop
+    perform public.fn_inserir_da_lixeira('public.crm_leads', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'itens') loop
+    perform public.fn_inserir_da_lixeira('public.crm_sale_items', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'parcelas') loop
+    perform public.fn_inserir_da_lixeira('public.crm_sale_payments', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'mensagens') loop
+    perform public.fn_inserir_da_lixeira('public.messages', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'compromissos') loop
+    perform public.fn_inserir_da_lixeira('public.calendar_appointments', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'tarefas') loop
+    perform public.fn_inserir_da_lixeira('public.crm_tasks', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'notas') loop
+    perform public.fn_inserir_da_lixeira('public.lead_notes', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'atividades') loop
+    perform public.fn_inserir_da_lixeira('public.crm_lead_activities', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'historico') loop
+    perform public.fn_inserir_da_lixeira('public.crm_historico_de_estados', v_linha);
+  end loop;
+
+  perform set_config('m1.valor_sync', 'off', true);
+  perform set_config('m1.restaurando', 'off', true);
+
+  -- O resumo e o ciclo de vida voltam calculados do que acabou de voltar.
+  perform public.fn_crm_sales_refresh_contact(p_organization_id, v_contact);
+  perform public.fn_contato_recalcula_ciclo(p_organization_id, v_contact);
+
+  delete from public.crm_lixeira where id = p_item;
+  return v_contact;
+end
+$f$;
+
+-- ── 5. Esvaziar o que venceu (a rotina diária chama) ────────────────────────
+create or replace function public.fn_lixeira_esvaziar()
+returns integer language plpgsql security definer set search_path = public as $f$
+declare
+  n integer;
+begin
+  delete from public.crm_lixeira where expira_em < now();
+  get diagnostics n = row_count;
+  return n;
+end
+$f$;
+revoke execute on function public.fn_lixeira_esvaziar() from public, anon, authenticated;
+grant execute on function public.fn_lixeira_esvaziar() to service_role;
+
+-- ── 6. Comprou-sem-pagamento e venda de interesse não valem na restauração ─
+
+create or replace function public.fn_crm_lead_close_on_stage() returns trigger
+    language plpgsql
+    set search_path to 'public', 'pg_temp'
+    as $$
+declare
+  v_is_won  boolean;
+  v_is_lost boolean;
+  v_qual    text;
+begin
+  -- Restauração da lixeira: a linha volta como estava.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return new;
+  end if;
+  if tg_op = 'UPDATE'
+     and new.stage_id is not distinct from old.stage_id
+     and new.status   is not distinct from old.status then
+    return new;
+  end if;
+
+  select is_won, is_lost, qualification into v_is_won, v_is_lost, v_qual
+    from public.crm_stages where id = new.stage_id;
+
+  if v_is_won then
+    if (tg_op = 'INSERT' or old.status is distinct from 'won')
+       and not exists (
+         select 1 from public.crm_sale_payments p where p.lead_id = new.id and p.status = 'recebida'
+       ) then
+      raise exception 'comprou_exige_pagamento' using errcode = '22023',
+        hint = 'Registre ao menos um pagamento recebido (mesmo só o sinal) antes de mover para Comprou.';
+    end if;
+    new.status := 'won';
+    new.closed_at := coalesce(new.closed_at, now());
+  elsif v_is_lost or v_qual = 'disqualified' then
+    new.status := 'lost';
+    new.closed_at := coalesce(new.closed_at, now());
+    if tg_op = 'UPDATE' and old.status is distinct from 'lost' then
+      new.lost_from_stage_id := coalesce(new.lost_from_stage_id, old.stage_id);
+    end if;
+  else
+    if tg_op = 'UPDATE' and old.status in ('won','lost') then
+      new.status := 'open';
+      new.closed_at := null;
+      new.lost_from_stage_id := null;
+    end if;
+  end if;
+  return new;
+end$$;
+
+create or replace function public.fn_lead_interest_sale()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_c record; v_ids uuid[]; v_n integer; v_parte bigint; v_resto bigint; v_i integer := 0;
+  v_pid uuid; v_nome text;
+begin
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return new;
+  end if;
+  if new.demand_campaign_id is null or new.contact_id is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.demand_campaign_id is not distinct from new.demand_campaign_id then
+    return new;
+  end if;
+  select c.id, c.product_id, c.product_ids, c.ticket_cents into v_c
+    from public.demand_campaigns c
+   where c.id = new.demand_campaign_id and c.organization_id = new.organization_id;
+  if not found or coalesce(v_c.ticket_cents, 0) <= 0 then
+    return new;
+  end if;
+  v_ids := case
+    when cardinality(v_c.product_ids) > 0 then v_c.product_ids
+    when v_c.product_id is not null then array[v_c.product_id]
+    else '{}'::uuid[]
+  end;
+  v_n := cardinality(v_ids);
+  if v_n = 0 then return new; end if;
+  if exists (select 1 from public.crm_sale_items i where i.lead_id = new.id) then
+    return new;
+  end if;
+  perform set_config('m1.valor_sync', 'on', true);
+  v_parte := v_c.ticket_cents / v_n;
+  v_resto := v_c.ticket_cents - v_parte * v_n;
+  foreach v_pid in array v_ids loop
+    select coalesce(nullif(p.title, ''), 'Produto') into v_nome
+      from public.marketing_pages p where p.id = v_pid;
+    insert into public.crm_sale_items
+      (organization_id, lead_id, product_id, product_name, amount_cents, position)
+    values
+      (new.organization_id, new.id, v_pid, coalesce(v_nome, 'Produto'),
+       v_parte + case when v_i = 0 then v_resto else 0 end, v_i);
+    v_i := v_i + 1;
+  end loop;
+  update public.crm_leads set value_cents = v_c.ticket_cents where id = new.id;
+  perform set_config('m1.valor_sync', 'off', true);
+  return new;
+end
+$f$;
+
+-- ── 7. Gatilhos de evento e rotina: silenciosos na restauração ──────────────
+CREATE OR REPLACE FUNCTION public.fn_emit_message_event()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_event text;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+  if new.direction = 'inbound' then
+    if exists (select 1 from public.conversations c
+               where c.id = new.conversation_id and c.organization_id = new.organization_id and c.is_group) then
+      v_event := 'message.group_received';
+    else
+      v_event := 'message.received';
+    end if;
+  else
+    v_event := case new.status
+                 when 'sending' then 'message.sending'
+                 when 'sent' then 'message.sent'
+                 when 'failed' then 'message.failed'
+                 else 'message.outbound'
+               end;
+  end if;
+
+  perform public.fn_log_event(
+    new.organization_id, v_event,
+    jsonb_build_object(
+      'message_id', new.id, 'conversation_id', new.conversation_id,
+      'contact_id', new.contact_id, 'direction', new.direction,
+      'type', new.type, 'status', new.status, 'external_id', new.external_id,
+      'channel_session_id', new.channel_session_id,
+      'body_preview', "left"(new.body, 280)
+    )
+  );
+  return new;
+end$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_demanda_abre_no_inbound()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+ perform public.fn_service_inbound(new.id); return new; end; $function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_message_service_lock()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ if new.direction='inbound' and new.contact_id is not null then perform public.fn_service_lock(new.organization_id,new.contact_id); end if;
+ return new;
+end; $function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_reply_inbound_revision()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ if new.direction='inbound' then
+  update public.conversations set reply_context_revision=reply_context_revision+1 where organization_id=new.organization_id and id=new.conversation_id and contact_id=new.contact_id;
+ end if;
+ return new;
+end;$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_appointment_inbound()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare a record;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ if auth.uid() is null and old.service_revision is null and new.service_revision is not null and new.direction='inbound' then
+  perform public.fn_service_lock(new.organization_id,new.contact_id);
+  for a in select * from public.calendar_appointments where organization_id=new.organization_id and contact_id=new.contact_id
+   and status='no_show' and outcome_recorded_at is not null and new.sent_at>=date_trunc('second',outcome_recorded_at) for update
+  loop
+   insert into public.appointment_recovery_receipts(organization_id,appointment_id,appointment_revision,result,invalidated_at)
+    values(a.organization_id,a.id,a.revision,'stale',clock_timestamp())
+    on conflict(organization_id,appointment_id,appointment_revision) do update set invalidated_at=excluded.invalidated_at;
+   update public.followup_enrollments set status='cancelled',cancel_reason='O cliente respondeu. Revise o próximo passo.',completed_at=now(),next_eval_at=null,claimed_until=null
+    where organization_id=new.organization_id and contact_id=new.contact_id and appointment_id=a.id and appointment_revision=a.revision
+     and status in ('active','waiting_reply','paused_handoff','paused_manual');
+  end loop;
+ end if;
+ return new;
+end; $function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_emit_conversation_routing()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ perform public.fn_request_channel_routing(new.organization_id,new.id);
+ return null;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_meet_minimize_runtime()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ new:=jsonb_populate_record(new,regexp_replace(to_jsonb(new)::text,'https://meet[.]google[.]com/[a-zA-Z0-9-]+',case when tg_table_name='outbound_copies' then '[meet-link]' else '[link da reunião disponível na Agenda]' end,'g')::jsonb);
+ return new;
+end;$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_service_stamp_status()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ if old.status is distinct from new.status and
+   (new.status in ('closed','resolved','archived') or old.status in ('closed','resolved','archived')) then
+   new.service_revision:=old.service_revision+1;
+   if new.status in ('closed','resolved','archived') then
+     new.service_closed_at:=clock_timestamp();
+     if old.last_handoff_at is null then new.bot_silenced_until:=null; end if;
+   else
+     if new.service_started_at is not distinct from old.service_started_at then new.service_started_at:=clock_timestamp(); end if;
+     if new.current_demanda_id is not distinct from old.current_demanda_id then new.current_demanda_id:=null; end if;
+     if new.status<>'claimed' then
+       new.assigned_to_user_id:=null; new.assigned_to_user_name:=null; new.assigned_at:=null;
+       new.assignee_kind:=null; new.active_ai_agent_id:=null;
+     end if;
+   end if;
+ end if;
+ return new;
+end; $function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_marcar_contato_como_cliente()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid;
+  v_ligado boolean;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+  if tg_op = 'DELETE' then
+    v_org := old.organization_id;
+  else
+    v_org := new.organization_id;
+  end if;
+
+  -- Espera a ligação em voo commitar. O SELECT abaixo é outro comando, então
+  -- em READ COMMITTED tira snapshot novo e enxerga a chave já gravada.
+  perform pg_advisory_xact_lock_shared(hashtextextended(v_org::text, 262));
+
+  -- Comparar com 'true'::jsonb nunca lança erro. Um `::boolean` abortaria a
+  -- marcação do horário se alguém gravasse lixo na chave.
+  select (o.settings -> 'crm' -> 'cliente_pela_agenda') = 'true'::jsonb
+    into v_ligado
+    from public.organizations o
+   where o.id = v_org;
+
+  if v_ligado is not true then
+    return null;
+  end if;
+
+  if tg_op = 'INSERT' then
+    perform public.fn_recalcular_cliente_do_contato(v_org, new.contact_id, true);
+  elsif tg_op = 'UPDATE' then
+    if new.contact_id is not null then
+      -- O CONTATO DO HORÁRIO MUDOU — e a condição `is distinct from` tem DUAS
+      -- causas, não uma. A primeira é o repontamento de `fn_mesclar_contatos`
+      -- (X → Y): o horário só trocou de cadastro, e a escrita no vencedor não é
+      -- a virada que as automações devem ver. A segunda é o PRIMEIRO vínculo de
+      -- um horário que nasceu sem contato (null → Y), e esse é reconhecimento
+      -- de verdade: é a primeira vez que este contato tem horário, e emite como
+      -- um INSERT emitiria. Medido antes desta linha: no caminho null → Y o
+      -- contato virava cliente, ganhava a etiqueta, ficava com
+      -- `client_recognized_at` carimbado — e NENHUM `contact.tag_added` saía,
+      -- nem ali nem nunca mais, porque o carimbo não volta a null.
+      perform public.fn_recalcular_cliente_do_contato(
+        v_org, new.contact_id,
+        old.contact_id is not distinct from new.contact_id or old.contact_id is null);
+    end if;
+    if old.contact_id is not null and old.contact_id is distinct from new.contact_id then
+      perform public.fn_recalcular_cliente_do_contato(v_org, old.contact_id, false);
+    end if;
+  else
+    perform public.fn_recalcular_cliente_do_contato(v_org, old.contact_id, false);
+  end if;
+
+  return null;
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_appointment_stamp()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare changed boolean; actor uuid;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ if new.contact_id is not null and not exists(select 1 from public.contacts where id=new.contact_id and organization_id=new.organization_id) then
+  raise exception 'appointment_contact_scope' using errcode='23503'; end if;
+ if new.conversation_id is not null and not exists(select 1 from public.conversations where id=new.conversation_id and organization_id=new.organization_id and contact_id=new.contact_id and not is_group and (auth.uid() is null or public.fn_can_view_conversation(organization_id,assigned_to_user_id))) then
+  raise exception 'appointment_conversation_scope' using errcode='23503'; end if;
+ if tg_op='INSERT' then
+  new.revision:=1;
+  -- Legado importado sem autoria não vira fato certificado.
+  new.outcome_source_kind:=null; new.outcome_user_id:=null; new.outcome_message_id:=null;
+  new.outcome_recorded_at:=null;
+  return new;
+ end if;
+ changed:=row(new.starts_at,new.ends_at,new.status,new.contact_id,new.conversation_id) is distinct from row(old.starts_at,old.ends_at,old.status,old.contact_id,old.conversation_id);
+ new.revision:=old.revision+case when changed then 1 else 0 end;
+ new.revision_started_at:=case when changed then clock_timestamp() else old.revision_started_at end;
+ if changed then new.confirmation_next_at:=null; end if;
+ if new.status is distinct from old.status and new.status in ('completed','no_show') then
+  actor:=auth.uid();
+  if actor is null or not public.fn_role_at_least(new.organization_id,'agent') or not public.fn_support_write_allowed(new.organization_id) then
+   raise exception 'appointment_human_confirmation_required' using errcode='42501'; end if;
+  if new.starts_at>now() then raise exception 'appointment_not_started' using errcode='22023'; end if;
+  new.outcome_user_id:=actor; new.outcome_recorded_at:=clock_timestamp();
+  new.outcome_source_kind:=case when new.outcome_message_id is null then 'user' else 'contact_message' end;
+  if new.outcome_message_id is not null and not exists(
+   select 1 from public.messages m join public.conversations c on c.id=m.conversation_id and c.organization_id=m.organization_id
+   where m.id=new.outcome_message_id and m.organization_id=new.organization_id and m.contact_id=new.contact_id
+    and (new.conversation_id is null or m.conversation_id=new.conversation_id)
+    and m.direction='inbound' and m.service_revision is not null and m.service_revision=c.service_revision
+    and m.demanda_id is not distinct from c.current_demanda_id and m.created_at>=old.revision_started_at
+    and not c.is_group and public.fn_can_view_conversation(c.organization_id,c.assigned_to_user_id)
+  ) then raise exception 'appointment_message_not_evidence' using errcode='42501'; end if;
+ elsif changed then
+  new.outcome_source_kind:=null; new.outcome_user_id:=null; new.outcome_message_id:=null;
+  new.outcome_recorded_at:=null;
+ else
+  new.outcome_source_kind:=old.outcome_source_kind;
+  -- SET NULL por retenção da FK é erosão de referência, não nova autoria.
+  new.outcome_user_id:=case when new.outcome_user_id is null and not exists(select 1 from auth.users where id=old.outcome_user_id) then null else old.outcome_user_id end;
+  new.outcome_message_id:=case when new.outcome_message_id is null and not exists(select 1 from public.messages where id=old.outcome_message_id and organization_id=old.organization_id) then null else old.outcome_message_id end;
+  new.outcome_recorded_at:=old.outcome_recorded_at;
+ end if;
+ return new;
+end; $function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_carimbar_ida_ao_google()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+  -- `now()` e não `new.updated_at`: os dois são o instante de início da
+  -- transação, então o valor é o mesmo — e usar `now()` remove a dependência de
+  -- ORDEM entre este trigger e o de `updated_at`.
+  if new.google_synced_at is not null
+     and (tg_op = 'INSERT' or new.google_synced_at is distinct from old.google_synced_at) then
+    new.google_synced_at := now();
+  end if;
+  return new;
+end
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_google_projection_stamp()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare changed boolean; inbound boolean; decision boolean; redacted boolean;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ redacted:=new.contact_id is not null and exists(select 1 from public.contacts where organization_id=new.organization_id and id=new.contact_id and is_anonymized);
+ if redacted then
+  new.google_base_projection:=null;new.google_conflict:=null;new.google_pending_write:=null;new.google_claim_token:=null;new.google_claim_until:=null;new.google_etag:=null;new.guest_email:=null;
+  if tg_op='UPDATE' then new.google_claim_epoch:=old.google_claim_epoch+1;new.google_local_revision:=old.google_local_revision;new.google_synced_local_revision:=old.google_local_revision;end if;
+  return new;
+ end if;
+ if tg_op='INSERT' then
+  new.google_local_revision:=1;new.google_synced_local_revision:=0;
+  if auth.uid() is not null then
+   new.google_base_projection:=null;new.google_etag:=null;new.google_pending_write:=null;new.google_conflict:=null;
+   new.google_claim_token:=null;new.google_claim_epoch:=0;new.google_claim_until:=null;
+   new.google_connection_id:=null;new.google_calendar_id:=null;new.google_event_id:=null;
+  end if;
+  return new;
+ end if;
+ decision:=auth.uid()=old.owner_user_id and public.fn_role_at_least(new.organization_id,'agent') and public.fn_support_write_allowed(new.organization_id)
+  and old.google_conflict is not null and new.google_conflict-'resolution'=old.google_conflict-'resolution'
+  and new.google_conflict->'resolution'->>'actor_id'=auth.uid()::text
+  and new.google_conflict->'resolution'->>'choice' in ('google','local','preserve_remote')
+  and old.google_conflict->>'revision'=old.revision::text and old.google_conflict->>'local_revision'=old.google_local_revision::text
+  and old.google_conflict->>'etag' is not distinct from old.google_etag;
+ if auth.uid() is not null and (row(new.google_synced_at,new.google_sync_error) is distinct from row(old.google_synced_at,old.google_sync_error)
+  or (new.google_next_attempt_at is distinct from old.google_next_attempt_at and not coalesce(auth.uid()=old.owner_user_id and public.fn_role_at_least(new.organization_id,'agent') and public.fn_support_write_allowed(new.organization_id)
+    and new.google_next_attempt_at<=clock_timestamp() and (old.google_conflict is null or decision),false))) then
+  raise exception 'google_metadata_private' using errcode='42501';end if;
+ if auth.uid() is not null and ((new.google_conflict is distinct from old.google_conflict and not coalesce(decision,false)) or row(new.google_base_projection,new.google_pending_write,new.google_claim_token,new.google_claim_epoch,new.google_claim_until,new.google_synced_local_revision,new.google_etag,new.google_connection_id,new.google_calendar_id,new.google_event_id)
+  is distinct from row(old.google_base_projection,old.google_pending_write,old.google_claim_token,old.google_claim_epoch,old.google_claim_until,old.google_synced_local_revision,old.google_etag,old.google_connection_id,old.google_calendar_id,old.google_event_id)) then
+  raise exception 'google_metadata_private' using errcode='42501';
+ end if;
+ changed:=row(new.starts_at,new.ends_at,new.time_zone,new.status='cancelled',new.title,new.description,new.location_kind,new.location_details,new.guest_email)
+  is distinct from row(old.starts_at,old.ends_at,old.time_zone,old.status='cancelled',old.title,old.description,old.location_kind,old.location_details,old.guest_email);
+ -- Única entrada que modifica base e domínio juntos é o núcleo service-only.
+ -- Não há GUC ou flag no body público que suprima revisão.
+ inbound:=row(new.title,new.description,new.location_kind,new.location_details,new.guest_email) is not distinct from row(old.title,old.description,old.location_kind,old.location_details,old.guest_email) and auth.uid() is null and new.google_base_projection is distinct from old.google_base_projection
+  and (new.google_base_projection->'shared'->>'starts_at')::timestamptz=new.starts_at
+  and (new.google_base_projection->'shared'->>'ends_at')::timestamptz=new.ends_at
+  and new.google_base_projection->'shared'->>'time_zone'=new.time_zone
+  and (new.google_base_projection->'shared'->>'cancelled')::boolean=(new.status='cancelled');
+ new.google_local_revision:=old.google_local_revision+case when changed and not coalesce(inbound,false) then 1 else 0 end;
+ if changed then new.google_next_attempt_at:=now(); end if;
+ return new;
+end;$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_meet_delivery_enqueue()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare jid uuid; b jsonb;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ -- A MESMA ORDEM DE TRAVA das ~20 irmãs: contato PRIMEIRO, job_queue depois.
+ -- Sem esta linha, este gatilho já segurava a linha do compromisso (é BEFORE/
+ -- AFTER na própria calendar_appointments) e ia travar job_queue sem o mutex do
+ -- contato, enquanto fn_meet_redact_contact (0229) pega o mutex do contato e só
+ -- então mexe em job_queue. Duas ordens opostas sobre os mesmos dois recursos =
+ -- deadlock (40P01) sob concorrência, e quem paga é o cliente com anonimização
+ -- LGPD acontecendo enquanto um link de reunião é entregue.
+ perform public.fn_service_lock(new.organization_id,new.contact_id);
+ -- ⚠️ `status` ENTRA AQUI, e a falta dele era um buraco REAL que só apareceu
+ -- ao abrir a entrega para compromisso sem Meet.
+ --
+ -- A guarda olhava só `meeting_state='cancelled'` — o estado do LINK, não do
+ -- compromisso. Enquanto a entrega exigia link pronto isso bastava por
+ -- acidente: cancelar o compromisso cancelava o link junto. Sem Meet não há
+ -- link para cancelar, e um compromisso CANCELADO passava a enfileirar
+ -- entrega. O porteiro do envio recusaria depois (`a.status<>'cancelled'`),
+ -- então o cliente não receberia nada — mas o job nasceria para morrer
+ -- bloqueado, e a tela mostraria uma entrega a caminho que nunca sai.
+ --
+ -- Achado do @paulolimajr77, e foi o teste DELE que o pegou aqui.
+ if new.status='cancelled' or new.meeting_state='cancelled' or new.meeting_delivery->>'state' in ('blocked','stale') then
+  update public.job_queue set status='failed',locked_at=null,locked_by=null,payload='{}',last_error='meet_delivery_stale'
+   where organization_id=new.organization_id and id=new.meeting_delivery_job_id and kind='transactional_delivery' and status in ('pending','running');
+  return new;
+ end if;
+ if new.meeting_state='failed' then perform public.fn_meet_notice(new.organization_id,new.id,'meeting_failed');end if;
+ -- ⛔ ESPERAR O LINK VALE SÓ ONDE O LOCAL É O MEET.
+ --
+ -- Esta é a exigência mais fácil de esquecer e a pior de esquecer: num
+ -- compromisso PRESENCIAL o `meeting_state` é `not_requested` para sempre,
+ -- então a entrega era autorizada, o gatilho passava por aqui, devolvia sem
+ -- enfileirar nada, e a entrega ficava em `waiting_for_link` PARA SEMPRE — em
+ -- silêncio, sem job, sem aviso e sem erro. Foi o teste do autor que a achou.
+ --
+ -- Onde o local É o Meet, nada muda: sem link pronto não sai job, porque
+ -- mandar uma reunião sem como entrar nela é pior que não mandar.
+ if (new.location_kind='google_meet' and new.meeting_state<>'ready')
+  or new.meeting_delivery->>'state'<>'waiting_for_link' then return new;end if;
+ b:=new.meeting_delivery->'service_boundary';
+ if not public.fn_meet_boundary_current(b) then
+  update public.calendar_appointments set meeting_delivery=meeting_delivery||'{"state":"stale","error":"service_boundary_stale"}' where organization_id=new.organization_id and id=new.id;
+  perform public.fn_meet_notice(new.organization_id,new.id,'service_boundary_stale');return new;
+ end if;
+ jid:=gen_random_uuid();
+ insert into public.job_queue(id,organization_id,contact_id,kind,payload,run_after)
+ values(jid,new.organization_id,new.contact_id,'transactional_delivery',jsonb_build_object('appointment_id',new.id,'meeting_request_id',new.meeting_request_id,
+  'delivery_generation',new.meeting_delivery->>'generation','service_boundary',b,
+  -- O MOTIVO decide a FRASE que o cliente lê. Ausente = `primeiro_envio`,
+  -- que é o comportamento de antes desta migration e o certo para toda
+  -- entrega que já estava na fila quando ela foi aplicada.
+  'motivo',coalesce(new.meeting_delivery->>'motivo','primeiro_envio')),
+  -- ANTIRREPETIÇÃO: a correção ESPERA antes de sair, e uma remarcação nova
+  -- dentro da janela substitui esta. Sem a espera, arrastar o compromisso na
+  -- grade viraria uma mensagem por arrasto.
+  coalesce((new.meeting_delivery->>'nao_antes_de')::timestamptz, now()));
+ update public.calendar_appointments set meeting_delivery_job_id=jid,meeting_delivery=meeting_delivery||'{"state":"queued"}'
+  where organization_id=new.organization_id and id=new.id;
+ return new;
+end;$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_meet_stamp()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare redacted boolean; j public.job_queue; b jsonb;
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+ if current_user in ('authenticated','anon') then
+  if tg_op='INSERT' then
+   if new.meeting_delivery<>'{"state":"none"}'::jsonb or new.meeting_request_id is not null or new.meeting_url is not null or new.meeting_state<>'not_requested' or new.meeting_requested_at is not null or new.meeting_received_at is not null or new.meeting_ready_at is not null or new.meeting_attempts<>0 or new.meeting_last_error is not null or new.meeting_next_attempt_at is not null or new.meeting_delivery_job_id is not null then raise exception 'meet_metadata_private' using errcode='42501';end if;
+  elsif row(new.meeting_state,new.meeting_request_id,new.meeting_requested_at,new.meeting_received_at,new.meeting_ready_at,new.meeting_attempts,new.meeting_last_error,new.meeting_next_attempt_at,new.meeting_delivery,new.meeting_delivery_job_id,new.meeting_url)
+   is distinct from row(old.meeting_state,old.meeting_request_id,old.meeting_requested_at,old.meeting_received_at,old.meeting_ready_at,old.meeting_attempts,old.meeting_last_error,old.meeting_next_attempt_at,old.meeting_delivery,old.meeting_delivery_job_id,old.meeting_url) then
+   raise exception 'meet_metadata_private' using errcode='42501';
+  end if;
+ end if;
+ select is_anonymized into redacted from public.contacts where id=new.contact_id and organization_id=new.organization_id;
+ if (redacted or new.status='cancelled' or new.location_kind<>'google_meet') and (new.location_kind='google_meet' or new.meeting_state<>'not_requested') then
+  if new.location_kind='google_meet' or new.meeting_state<>'not_requested' or new.meeting_requested_at is not null or new.meeting_received_at is not null or new.meeting_ready_at is not null or new.meeting_attempts<>0 or new.meeting_last_error is not null or new.meeting_next_attempt_at is not null or new.meeting_delivery_job_id is not null then new.meeting_state:='cancelled';end if;
+  new.meeting_request_id:=null;new.meeting_url:=null;new.meeting_last_error:=null;new.meeting_next_attempt_at:=null;
+  new.meeting_delivery:=jsonb_build_object('state',case when redacted then 'blocked' else 'stale' end);
+ elsif new.location_kind='google_meet' and new.meeting_state='not_requested' then
+  new.meeting_state:='pending';new.meeting_request_id:=gen_random_uuid();new.meeting_next_attempt_at:=now();
+ end if;
+ if tg_op='INSERT' and new.meeting_delivery ? 'booking_claim' then
+  perform public.fn_service_lock(new.organization_id,new.contact_id);
+  select * into j from public.job_queue where organization_id=new.organization_id and id=(new.meeting_delivery->>'source_operation_id')::uuid for update;
+  b:=new.meeting_delivery->'service_boundary';
+  if j.contact_id is distinct from new.contact_id or j.status is distinct from 'running' or j.kind not in ('inbound_turn','followup_turn','case_reply_turn','operator_turn')
+   or j.locked_by is distinct from new.meeting_delivery->'booking_claim'->>'worker_id' or j.locked_at is distinct from (new.meeting_delivery->'booking_claim'->>'acquired_at')::timestamptz
+   or j.payload->'service_boundary' is distinct from b or not public.fn_meet_boundary_current(b) or b->>'conversation_id' is distinct from new.conversation_id::text then
+   raise exception 'meet_booking_stale' using errcode='40001';end if;
+  if new.meeting_delivery->'authorized_by'->>'kind' is distinct from 'ai_agent' then raise exception 'meet_booking_origin_invalid' using errcode='42501';end if;
+  new.meeting_delivery:=new.meeting_delivery-'booking_claim';
+ end if;
+ if new.meeting_delivery ? 'generation' and (tg_op='INSERT' or new.meeting_delivery->>'generation' is distinct from old.meeting_delivery->>'generation') then
+  new.meeting_delivery:=new.meeting_delivery||jsonb_build_object('channel_session_id',(select channel_session_id from public.conversations where organization_id=new.organization_id and contact_id=new.contact_id and id::text=new.meeting_delivery->'service_boundary'->>'conversation_id'));
+ end if;
+ if new.meeting_state='pending' and new.meeting_next_attempt_at is not null then new.google_next_attempt_at:=least(new.google_next_attempt_at,new.meeting_next_attempt_at);end if;
+ return new;
+end;$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_contact_first_approach()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+  if new.direction = 'outbound' then
+    update public.contacts
+       set first_approached_at = coalesce(new.sent_at, new.created_at, now())
+     where id = new.contact_id
+       and organization_id = new.organization_id
+       and first_approached_at is null;
+  end if;
+  return new;
+end
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_update_last_activity_at()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+  -- LISTA POSITIVA: só isto conta como "alguém tocou este negócio". Tipo que
+  -- não está aqui NÃO quebra o silêncio — inclusive tipo que ainda não existe.
+  -- Ver o cabeçalho da 0079 antes de acrescentar linha nesta lista.
+  if new.type not in (
+    'ai_turn',              -- a IA falou com o cliente
+    'note',                 -- alguém registrou trabalho no negócio
+    'lead_edited',          -- humano mexeu nos dados
+    'stage_changed',        -- humano moveu o negócio
+    'next_action_approved', -- humano decidiu agir
+    -- (0235) Uma ligação ATENDIDA é interação, e das mais fortes: alguém falou
+    -- com o cliente. Sem esta linha o Radar de Risco seguia marcando como frio
+    -- quem tinha acabado de passar vinte minutos ao telefone, e a IA propunha
+    -- "retomar contato" com quem nunca ficou sem contato.
+    --
+    -- `voice_call_missed` NÃO entra, e a ausência é a regra e não esquecimento:
+    -- telefone que tocou sem resposta é constatação de silêncio, não quebra
+    -- dele. É exatamente a assimetria que a 0079 existe para preservar.
+    'voice_call'
+  ) then
+    return new;
+  end if;
+
+  update public.crm_leads
+     set last_activity_at = greatest(coalesce(last_activity_at, '-infinity'::timestamptz), new.performed_at)
+   where id = new.lead_id;
+
+  if new.contact_id is not null then
+    update public.contacts
+       set last_activity_at = greatest(coalesce(last_activity_at, '-infinity'::timestamptz), new.performed_at)
+     where id = new.contact_id;
+  end if;
+  return new;
+end$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_crm_tasks_historico()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_motivo text := nullif(btrim(coalesce(current_setting('m1.motivo', true), '')), '');
+begin
+  -- Restauração da lixeira: o histórico volta sem disparar eventos nem rotinas.
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.cronograma_lado is not null then
+      insert into public.crm_task_historico (organization_id, task_id, tipo, para_prazo, situacao, autor)
+      values (new.organization_id, new.id, 'entrou_no_cronograma', new.due_date, new.status, auth.uid());
+    end if;
+    return new;
+  end if;
+
+  if old.cronograma_lado is null and new.cronograma_lado is not null then
+    insert into public.crm_task_historico (organization_id, task_id, tipo, para_prazo, situacao, autor)
+    values (new.organization_id, new.id, 'entrou_no_cronograma', new.due_date, new.status, auth.uid());
+  elsif old.cronograma_lado is not null and new.cronograma_lado is null then
+    insert into public.crm_task_historico (organization_id, task_id, tipo, de_prazo, situacao, autor)
+    values (new.organization_id, new.id, 'saiu_do_cronograma', old.due_date, new.status, auth.uid());
+  end if;
+
+  if new.cronograma_lado is null then return new; end if;
+
+  if old.due_date is distinct from new.due_date then
+    insert into public.crm_task_historico
+      (organization_id, task_id, tipo, de_prazo, para_prazo, situacao, motivo, autor)
+    values (new.organization_id, new.id, 'prazo_alterado', old.due_date, new.due_date,
+            new.status, v_motivo, auth.uid());
+  end if;
+
+  if old.status is distinct from new.status then
+    if new.status = 'done' then
+      insert into public.crm_task_historico
+        (organization_id, task_id, tipo, de_prazo, situacao, motivo, autor)
+      values (new.organization_id, new.id, 'concluida', new.due_date, new.status, v_motivo, auth.uid());
+    elsif new.status = 'cancelled' then
+      insert into public.crm_task_historico
+        (organization_id, task_id, tipo, de_prazo, situacao, motivo, autor)
+      values (new.organization_id, new.id, 'cancelada', new.due_date, new.status, v_motivo, auth.uid());
+    elsif old.status in ('done', 'cancelled') then
+      insert into public.crm_task_historico
+        (organization_id, task_id, tipo, de_prazo, situacao, motivo, autor)
+      values (new.organization_id, new.id, 'reaberta', new.due_date, new.status, v_motivo, auth.uid());
+    end if;
+  end if;
+  return new;
+end
+$function$
+;
+
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0640 ----
+
+-- ── 1. Parcela → linha do tempo ─────────────────────────────────────────────
+create or replace function public.fn_parcela_na_linha_do_tempo()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead record;
+  v_tipo text;
+  v_razao text;
+  v_extra jsonb := '{}'::jsonb;
+begin
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return null;
+  end if;
+  select l.id, l.contact_id, l.organization_id into v_lead
+    from public.crm_leads l where l.id = new.lead_id;
+  if not found then return null; end if;
+
+  if tg_op = 'INSERT' then
+    v_tipo := case new.status when 'recebida' then 'payment_received'
+                              when 'cancelada' then null
+                              else 'payment_committed' end;
+  else
+    if new.status is distinct from old.status then
+      v_tipo := case new.status when 'recebida' then 'payment_received'
+                                when 'cancelada' then 'payment_cancelled'
+                                else 'payment_committed' end;
+    elsif new.due_on is distinct from old.due_on and new.status = 'prevista' then
+      v_tipo := 'payment_rescheduled';
+      v_extra := jsonb_build_object('de', old.due_on, 'para', new.due_on);
+    elsif new.amount_cents is distinct from old.amount_cents then
+      v_tipo := 'payment_value_changed';
+      v_extra := jsonb_build_object('de_cents', old.amount_cents, 'para_cents', new.amount_cents);
+    end if;
+  end if;
+  if v_tipo is null then return null; end if;
+
+  v_razao := 'Parcela ' || new.number || ' · R$ '
+          || replace(to_char(new.amount_cents / 100.0, 'FM999G999G990D00'), ',', 'X')
+          || ' · vence ' || to_char(new.due_on, 'DD/MM/YYYY');
+  v_razao := replace(replace(replace(v_razao, '.', ','), 'X', '.'), ',', ',');
+
+  insert into public.crm_lead_activities
+    (organization_id, lead_id, contact_id, source_module, source_id, type, payload, reason,
+     performed_by_user_id, actor_kind)
+  values
+    (v_lead.organization_id, v_lead.id, v_lead.contact_id, 'vendas', new.id, v_tipo,
+     jsonb_build_object('payment_id', new.id, 'number', new.number, 'amount_cents', new.amount_cents,
+                        'due_on', new.due_on, 'paid_on', new.paid_on, 'forma', new.forma) || v_extra,
+     v_razao, auth.uid(), case when auth.uid() is null then 'system' else 'user' end);
+  return null;
+end
+$f$;
+revoke execute on function public.fn_parcela_na_linha_do_tempo() from public, anon, authenticated;
+
+drop trigger if exists trg_parcela_na_linha_do_tempo on public.crm_sale_payments;
+create trigger trg_parcela_na_linha_do_tempo
+  after insert or update of status, due_on, amount_cents on public.crm_sale_payments
+  for each row execute function public.fn_parcela_na_linha_do_tempo();
+
+-- ── 2. A oportunidade que virou Comprou pelo pagamento também entra na linha do tempo ──
+create or replace function public.fn_parcela_leva_a_comprou()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead record;
+begin
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return null;
+  end if;
+  if new.stage_id is not distinct from old.stage_id then return null; end if;
+  -- Quem move pelo quadro ou pela lista já registra a própria linha; aqui só o que o banco fez.
+  if coalesce(current_setting('m1.comprou_pelo_pagamento', true), '') <> 'on' then return null; end if;
+  insert into public.crm_lead_activities
+    (organization_id, lead_id, contact_id, source_module, type, payload, reason, actor_kind)
+  select new.organization_id, new.id, new.contact_id, 'vendas', 'stage_changed',
+         jsonb_build_object('de_stage_id', old.stage_id, 'para_stage_id', new.stage_id),
+         'Primeiro pagamento recebido: virou Comprou', 'system';
+  return null;
+end
+$f$;
+revoke execute on function public.fn_parcela_leva_a_comprou() from public, anon, authenticated;
+
+drop trigger if exists trg_parcela_leva_a_comprou on public.crm_leads;
+create trigger trg_parcela_leva_a_comprou
+  after update of stage_id on public.crm_leads
+  for each row execute function public.fn_parcela_leva_a_comprou();
+
+-- O sinaliza-dor: a função que move a oportunidade pelo pagamento liga a marca só nesse update.
+create or replace function public.fn_crm_sale_payments_after_write()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  v_lead uuid := coalesce(new.lead_id, old.lead_id);
+  v_ult date; v_contact uuid; v_org uuid;
+begin
+  if v_lead is null then
+    return coalesce(new, old);
+  end if;
+  select max(paid_on) filter (where status = 'recebida') into v_ult
+    from public.crm_sale_payments where lead_id = v_lead;
+  select contact_id, organization_id into v_contact, v_org from public.crm_leads where id = v_lead;
+  if not found then
+    return coalesce(new, old);
+  end if;
+  update public.crm_leads set paid_on = v_ult where id = v_lead and paid_on is distinct from v_ult;
+  -- A primeira parcela recebida (mesmo um sinal) faz a oportunidade virar Comprou.
+  if tg_op <> 'DELETE' and new.status = 'recebida' then
+    perform set_config('m1.comprou_pelo_pagamento', 'on', true);
+    update public.crm_leads l
+       set stage_id = w.id
+      from (
+        select st.id, st.pipeline_id from public.crm_stages st
+         where st.is_won and not st.is_archived
+         order by st.position
+      ) w
+     where l.id = v_lead and l.status = 'open' and w.pipeline_id = l.pipeline_id;
+    perform set_config('m1.comprou_pelo_pagamento', 'off', true);
+  end if;
+  if v_contact is not null then
+    perform public.fn_crm_sales_refresh_contact(v_org, v_contact);
+    perform public.fn_contato_recalcula_ciclo(v_org, v_contact);
+  end if;
+  return coalesce(new, old);
+end
+$f$;
+
+-- ── 3. Mudança de ciclo de vida na linha do tempo ──────────────────────────
+create or replace function public.fn_contato_recalcula_ciclo(p_org uuid, p_contact uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_padrao integer;
+  v_hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+  v_abertas integer; v_valor bigint; v_proximo date;
+  v_ops integer; v_desq integer;
+  v_ja_pagou boolean; v_ativo boolean; v_assinatura boolean;
+  v_anterior text; v_novo text; v_motivo text;
+  v_ativo_ate date;
+begin
+  select coalesce(nullif(settings ->> 'janela_ativo_meses', '')::integer, 6)
+    into v_padrao from public.organizations where id = p_org;
+  v_padrao := least(60, greatest(1, coalesce(v_padrao, 6)));
+
+  select ciclo_de_vida into v_anterior from public.contacts where id = p_contact and organization_id = p_org;
+
+  with ops as (
+    select l.id, l.status, l.value_cents, s.tipo,
+           exists (
+             select 1 from public.crm_sale_payments p
+              where p.lead_id = l.id and p.status = 'recebida'
+           ) as pago
+      from public.crm_leads l
+      left join public.crm_stages s on s.id = l.stage_id
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select
+    count(*) filter (where (status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado')
+                        or (status = 'won' and not pago)),
+    coalesce(sum(value_cents) filter (where status = 'open' and coalesce(tipo, 'aberta') <> 'desqualificado'), 0),
+    count(*),
+    count(*) filter (where tipo = 'desqualificado')
+    into v_abertas, v_valor, v_ops, v_desq
+    from ops;
+
+  select min(p.due_on) into v_proximo
+    from public.crm_sale_payments p
+    join public.crm_leads l on l.id = p.lead_id
+   where l.organization_id = p_org and l.contact_id = p_contact
+     and p.status = 'prevista' and l.status <> 'lost';
+
+  with pagos as (
+    select l.id as venda, coalesce(p.paid_on, l.paid_on) as quando,
+           coalesce(
+             (select max(c.janela_ativo_meses)
+                from public.crm_sale_items i
+                join public.marketing_pages c on c.id = i.product_id
+               where i.lead_id = l.id),
+             v_padrao) as janela
+      from public.crm_leads l
+      join public.crm_sale_payments p on p.lead_id = l.id and p.status = 'recebida'
+     where l.organization_id = p_org and l.contact_id = p_contact
+  )
+  select count(*) > 0,
+         coalesce(bool_or(quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date), false),
+         max((quando + (janela || ' months')::interval)::date)
+           filter (where quando is not null and quando >= (v_hoje - (janela || ' months')::interval)::date)
+    into v_ja_pagou, v_ativo, v_ativo_ate
+    from pagos;
+
+  select exists (
+    select 1 from public.crm_leads l
+     where l.organization_id = p_org and l.contact_id = p_contact
+       and l.is_recurring and l.recurrence_active and l.status <> 'lost'
+       and exists (select 1 from public.crm_sale_payments p where p.lead_id = l.id and p.status = 'recebida')
+  ) into v_assinatura;
+
+  if v_ativo or v_assinatura then
+    v_novo := 'ativo';
+    v_motivo := case
+      when v_assinatura then 'Assinatura ativa'
+      else 'Pagou dentro da janela de cliente ativo, até ' || to_char(v_ativo_ate, 'DD/MM/YYYY')
+    end;
+  elsif v_ja_pagou then
+    if v_abertas > 0 then
+      v_novo := 'em_reativacao';
+      v_motivo := 'Ex-cliente com nova oportunidade aberta';
+    else
+      v_novo := 'ex_cliente';
+      v_motivo := 'Já pagou, mas está fora da janela de cliente ativo';
+    end if;
+  elsif v_abertas > 0 then
+    v_novo := 'em_negociacao';
+    v_motivo := 'Tem oportunidade aberta e ainda não pagou';
+  elsif v_ops = 0 then
+    v_novo := 'novo_lead';
+    v_motivo := 'Entrou e ainda não tem oportunidade';
+  elsif v_desq = v_ops then
+    v_novo := 'desqualificado';
+    v_motivo := 'Todas as oportunidades foram desqualificadas';
+  else
+    v_novo := 'nunca_comprou';
+    v_motivo := 'Todas as oportunidades terminaram sem compra';
+  end if;
+
+  update public.contacts
+     set ciclo_de_vida = v_novo,
+         ciclo_motivo = v_motivo,
+         oportunidades_abertas = v_abertas,
+         valor_em_aberto_cents = v_valor,
+         proximo_vencimento = v_proximo,
+         ativo_ate = case when v_novo = 'ativo' and not v_assinatura then v_ativo_ate end,
+         ciclo_atualizado_em = case when v_anterior is distinct from v_novo then now() else ciclo_atualizado_em end
+   where id = p_contact and organization_id = p_org
+     and (ciclo_de_vida is distinct from v_novo
+          or ciclo_motivo is distinct from v_motivo
+          or oportunidades_abertas is distinct from v_abertas
+          or valor_em_aberto_cents is distinct from v_valor
+          or proximo_vencimento is distinct from v_proximo
+          or ativo_ate is distinct from case when v_novo = 'ativo' and not v_assinatura then v_ativo_ate end);
+
+  if v_anterior is distinct from v_novo then
+    insert into public.crm_historico_de_estados
+      (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+    values (p_org, 'pessoa', p_contact, p_contact, v_anterior, v_novo, v_motivo,
+            auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+    -- A mudança de ciclo também entra na linha do tempo (no negócio mais recente da pessoa).
+    if v_anterior is not null and coalesce(current_setting('m1.restaurando', true), '') <> 'on' then
+      insert into public.crm_lead_activities
+        (organization_id, lead_id, contact_id, source_module, type, payload, reason,
+         performed_by_user_id, actor_kind)
+      select p_org, l.id, p_contact, 'vendas', 'lifecycle_changed',
+             jsonb_build_object('de', v_anterior, 'para', v_novo),
+             v_motivo, auth.uid(), case when auth.uid() is null then 'system' else 'user' end
+        from public.crm_leads l
+       where l.organization_id = p_org and l.contact_id = p_contact
+       order by l.created_at desc limit 1;
+    end if;
+    if v_novo = 'ativo' and v_anterior in ('ex_cliente', 'em_reativacao') then
+      perform public.fn_contato_soma_tag(p_contact, p_org, 'Reativado');
+    end if;
+  end if;
+end
+$$;
+
+revoke all on function public.fn_contato_recalcula_ciclo(uuid, uuid) from public, anon, authenticated;
+
+-- ── 4. Parcela atrasada: uma vez por parcela (a rotina diária chama) ───────
+create or replace function public.fn_registrar_parcelas_atrasadas()
+returns integer language plpgsql security definer set search_path = public as $f$
+declare
+  n integer;
+begin
+  insert into public.crm_lead_activities
+    (organization_id, lead_id, contact_id, source_module, source_id, type, payload, reason, actor_kind)
+  select p.organization_id, l.id, l.contact_id, 'vendas', p.id, 'payment_overdue',
+         jsonb_build_object('payment_id', p.id, 'number', p.number, 'amount_cents', p.amount_cents,
+                            'due_on', p.due_on),
+         'Parcela ' || p.number || ' venceu em ' || to_char(p.due_on, 'DD/MM/YYYY') || ' e não foi paga',
+         'system'
+    from public.crm_sale_payments p
+    join public.crm_leads l on l.id = p.lead_id
+   where p.status = 'prevista'
+     and p.due_on < (now() at time zone 'America/Sao_Paulo')::date
+     and l.status <> 'lost'
+     and not exists (
+       select 1 from public.crm_lead_activities a
+        where a.lead_id = l.id and a.type = 'payment_overdue' and a.source_id = p.id
+     );
+  get diagnostics n = row_count;
+  return n;
+end
+$f$;
+revoke execute on function public.fn_registrar_parcelas_atrasadas() from public, anon, authenticated;
+grant execute on function public.fn_registrar_parcelas_atrasadas() to service_role;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0641 ----
+
+create or replace function public.fn_campanha_da_oportunidade(
+  p_org uuid, p_pipeline uuid, p_origem uuid
+) returns uuid
+language sql stable set search_path = public as $f$
+  select coalesce(
+    (select c.id from public.demand_campaigns c
+      where c.organization_id = p_org and c.pipeline_id is not null and c.pipeline_id = p_pipeline
+      order by c.created_at, c.id limit 1),
+    p_origem
+  )
+$f$;
+
+-- ── Leads por dia: onde a oportunidade entrou ───────────────────────────────
+create or replace function public.fn_demand_campaign_leads_by_day(
+  p_org uuid, p_pipeline uuid, p_from date, p_to date,
+  p_tz text default 'America/Sao_Paulo', p_campaign uuid default null
+) returns table(day date, leads integer)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  select (l.created_at at time zone p_tz)::date as day,
+         count(distinct coalesce(l.contact_id, l.id))::integer as leads
+    from public.crm_leads l
+   where l.organization_id = p_org
+     and (
+       (p_campaign is not null
+        and public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = p_campaign)
+       or (p_campaign is null and p_pipeline is not null and l.pipeline_id = p_pipeline)
+     )
+     and (l.created_at at time zone p_tz)::date between p_from and p_to
+   group by 1
+   order by 1;
+$f$;
+
+-- ── Resultados por campanha: leads e dinheiro da campanha dona do funil ─────
+create or replace function public.fn_demand_campaigns_resultados(
+  p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo'
+) returns table(campaign_id uuid, investido numeric, leads integer, vendas integer, recebido bigint, a_receber bigint)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  select c.id,
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.campaign_id = c.id and d.day between p_from and p_to), 0),
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_leads l
+               where l.organization_id = p_org and l.status <> 'lost'
+                 and public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                 and (select min(p.paid_on) from public.crm_sale_payments p
+                       where p.lead_id = l.id and p.status = 'recebida') between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                and p.status = 'recebida'
+                and l.status <> 'lost' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                and p.status = 'prevista'
+                and l.status <> 'lost' and p.due_on between p_from and p_to), 0)
+  from public.demand_campaigns c
+  where c.organization_id = p_org;
+$f$;
+
+-- ── A tag da campanha dona do funil entra junto com a do funil ──────────────
+create or replace function public.fn_lead_tag_do_funil()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_nome text;
+  v_campanha text;
+begin
+  if new.contact_id is null then return new; end if;
+  select name into v_nome from public.crm_pipelines where id = new.pipeline_id;
+  if v_nome is not null then
+    perform public.fn_contato_soma_tag(new.contact_id, new.organization_id,
+                                       'Funil: ' || public.fn_inicial_maiuscula(v_nome));
+  end if;
+  select c.name into v_campanha
+    from public.demand_campaigns c
+   where c.organization_id = new.organization_id and c.pipeline_id = new.pipeline_id
+   order by c.created_at, c.id limit 1;
+  if v_campanha is not null then
+    perform public.fn_contato_soma_tag(new.contact_id, new.organization_id,
+                                       'Campanha: ' || public.fn_inicial_maiuscula(v_campanha));
+  end if;
+  return new;
+end
+$$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0642 ----
+
+-- ── 1. Perder a oportunidade cancela o que estava previsto ──────────────────
+create or replace function public.fn_oportunidade_perdida_cancela_previstas()
+returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.status = 'lost' and old.status is distinct from 'lost' then
+    update public.crm_sale_payments
+       set status = 'cancelada'
+     where lead_id = new.id and status = 'prevista';
+  end if;
+  return null;
+end
+$f$;
+revoke execute on function public.fn_oportunidade_perdida_cancela_previstas() from public, anon, authenticated;
+
+drop trigger if exists trg_oportunidade_perdida_cancela_previstas on public.crm_leads;
+create trigger trg_oportunidade_perdida_cancela_previstas
+  after update of stage_id, status on public.crm_leads
+  for each row execute function public.fn_oportunidade_perdida_cancela_previstas();
+
+-- ── 2. Vendas por produto: o recebido conta mesmo na oportunidade perdida ───
+create or replace function public.fn_vendas_por_produto(p_org uuid, p_from date, p_to date)
+returns table(product_id uuid, nome text, vendas integer, interesse_cents bigint, recebido_cents bigint, a_receber_cents bigint)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  with itens as (
+    select i.product_id, i.product_name, i.amount_cents as item_cents,
+           l.id as lead_id, l.status, coalesce(l.value_cents, 0) as valor_cents,
+           coalesce(l.closed_at::date, l.paid_on) as fechada_em
+      from public.crm_sale_items i
+      join public.crm_leads l on l.id = i.lead_id
+     where i.organization_id = p_org
+  ),
+  parcelas as (
+    select p.lead_id,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'recebida' and p.paid_on between p_from and p_to), 0) as recebido,
+           coalesce(sum(p.amount_cents) filter (where p.status = 'prevista' and p.due_on between p_from and p_to), 0) as previsto,
+           bool_or(p.status = 'recebida') as paga
+      from public.crm_sale_payments p
+     where p.organization_id = p_org
+     group by p.lead_id
+  )
+  select it.product_id,
+         max(it.product_name) as nome,
+         count(distinct it.lead_id) filter (
+           where coalesce(pa.paga, false) and it.fechada_em between p_from and p_to
+         )::integer as vendas,
+         coalesce(sum(it.item_cents) filter (
+           where it.status <> 'lost' and not coalesce(pa.paga, false) and pa.lead_id is null), 0)::bigint as interesse_cents,
+         coalesce(sum(case when it.valor_cents > 0
+                           then pa.recebido * it.item_cents / it.valor_cents else 0 end), 0)::bigint as recebido_cents,
+         coalesce(sum(case when it.valor_cents > 0 and it.status <> 'lost'
+                           then pa.previsto * it.item_cents / it.valor_cents else 0 end), 0)::bigint as a_receber_cents
+    from itens it
+    left join parcelas pa on pa.lead_id = it.lead_id
+   group by it.product_id;
+$f$;
+
+-- ── 3. Campanhas: o faturamento e as vendas incluem o recebido de perdidas ──
+create or replace function public.fn_demand_campaigns_resultados(
+  p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo'
+) returns table(campaign_id uuid, investido numeric, leads integer, vendas integer, recebido bigint, a_receber bigint)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  select c.id,
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.campaign_id = c.id and d.day between p_from and p_to), 0),
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_leads l
+               where l.organization_id = p_org
+                 and public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                 and (select min(p.paid_on) from public.crm_sale_payments p
+                       where p.lead_id = l.id and p.status = 'recebida') between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                and p.status = 'recebida' and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where public.fn_campanha_da_oportunidade(l.organization_id, l.pipeline_id, l.demand_campaign_id) = c.id
+                and p.status = 'prevista'
+                and l.status <> 'lost' and p.due_on between p_from and p_to), 0)
+  from public.demand_campaigns c
+  where c.organization_id = p_org;
+$f$;
+
+create or replace function public.fn_metricas_do_crm(p_org uuid, p_from date, p_to date, p_tz text default 'America/Sao_Paulo')
+returns table(leads integer, vendas integer, recebido bigint, a_receber bigint, investido numeric)
+language sql stable set search_path to 'public', 'pg_temp' as $f$
+  select
+    coalesce((select count(distinct coalesce(l.contact_id, l.id))::integer
+                from public.crm_leads l
+               where l.organization_id = p_org
+                 and (l.created_at at time zone p_tz)::date between p_from and p_to), 0),
+    coalesce((select count(*)::integer from public.crm_leads l
+               where l.organization_id = p_org
+                 and (select min(p.paid_on) from public.crm_sale_payments p
+                       where p.lead_id = l.id and p.status = 'recebida') between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+              where p.organization_id = p_org and p.status = 'recebida'
+                and p.paid_on between p_from and p_to), 0),
+    coalesce((select sum(p.amount_cents)::bigint from public.crm_sale_payments p
+               join public.crm_leads l on l.id = p.lead_id
+              where p.organization_id = p_org and p.status = 'prevista'
+                and l.status <> 'lost' and p.due_on between p_from and p_to), 0),
+    coalesce((select sum(d.spend) from public.demand_campaign_days d
+               where d.organization_id = p_org and d.day between p_from and p_to), 0);
+$f$;
+
+notify pgrst, 'reload schema';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0643 ----
+
+create table if not exists public.payment_fee_settings (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  -- 'pix' | 'cartao_credito' | 'cartao_debito' | 'outra:<slug>' (formas criadas pela empresa)
+  forma text not null check (length(forma) between 2 and 80),
+  -- nome mostrado; só obrigatório nas formas criadas pela empresa
+  name text,
+  is_custom boolean not null default false,
+  is_active boolean not null default true,
+  -- quem paga a taxa: o cliente final (soma no preço) ou a empresa (custo variável)
+  payer text not null default 'company' check (payer in ('client', 'company')),
+  -- taxa percentual em centésimos de ponto (299 = 2,99%)
+  percent_bps integer not null default 0 check (percent_bps between 0 and 10000),
+  -- taxa fixa por cobrança, em centavos
+  fixed_cents integer not null default 0 check (fixed_cents >= 0),
+  -- só cartão de crédito: {"1": 299, "2": 449, ...} taxa em bps por número de parcelas
+  installment_bps jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists payment_fee_settings_org_forma_key
+  on public.payment_fee_settings (organization_id, forma);
+
+alter table public.payment_fee_settings enable row level security;
+
+drop policy if exists tenant_isolation_payment_fee_settings_read on public.payment_fee_settings;
+create policy tenant_isolation_payment_fee_settings_read on public.payment_fee_settings
+  for select
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin());
+
+drop policy if exists tenant_isolation_payment_fee_settings_write on public.payment_fee_settings;
+create policy tenant_isolation_payment_fee_settings_write on public.payment_fee_settings
+  for all
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin_full())
+  with check (
+    public.fn_is_platform_admin_full()
+    or (organization_id in (select public.fn_user_org_ids())
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+do $$
+begin
+  if exists (select 1 from pg_proc where proname = 'fn_touch_updated_at') then
+    drop trigger if exists trg_payment_fee_settings_touch on public.payment_fee_settings;
+    create trigger trg_payment_fee_settings_touch before update on public.payment_fee_settings
+      for each row execute function public.fn_touch_updated_at();
+  end if;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0644 ----
+
+-- ── 1. Só o histórico do cliente, só da empresa de quem chama ──────────────
+create or replace function public.fn_historico_apagar_do_contato(
+  p_organization_id uuid, p_contact_id uuid
+) returns void language plpgsql security definer set search_path = public, pg_temp as $f$
+begin
+  if p_organization_id not in (select public.fn_user_org_ids()) then
+    raise exception 'permission denied' using errcode = '42501';
+  end if;
+  delete from public.crm_historico_de_estados
+   where organization_id = p_organization_id and contact_id = p_contact_id;
+end
+$f$;
+revoke execute on function public.fn_historico_apagar_do_contato(uuid, uuid) from public, anon;
+grant execute on function public.fn_historico_apagar_do_contato(uuid, uuid) to authenticated, service_role;
+
+create or replace function public.fn_historico_inserir_da_lixeira(
+  p_organization_id uuid, p_linha jsonb
+) returns void language plpgsql security definer set search_path = public, pg_temp as $f$
+begin
+  if p_organization_id not in (select public.fn_user_org_ids()) then
+    raise exception 'permission denied' using errcode = '42501';
+  end if;
+  -- Só linhas da própria empresa (a cópia da lixeira é da empresa de quem chama).
+  if (p_linha ->> 'organization_id')::uuid is distinct from p_organization_id then
+    raise exception 'linha de outra empresa' using errcode = '42501';
+  end if;
+  perform public.fn_inserir_da_lixeira('public.crm_historico_de_estados', p_linha);
+end
+$f$;
+revoke execute on function public.fn_historico_inserir_da_lixeira(uuid, jsonb) from public, anon;
+grant execute on function public.fn_historico_inserir_da_lixeira(uuid, jsonb) to authenticated, service_role;
+
+create or replace function public.fn_recalcula_cliente_restaurado(
+  p_organization_id uuid, p_contact_id uuid
+) returns void language plpgsql security definer set search_path = public, pg_temp as $f$
+begin
+  if p_organization_id not in (select public.fn_user_org_ids()) then
+    raise exception 'permission denied' using errcode = '42501';
+  end if;
+  perform public.fn_crm_sales_refresh_contact(p_organization_id, p_contact_id);
+  perform public.fn_contato_recalcula_ciclo(p_organization_id, p_contact_id);
+end
+$f$;
+revoke execute on function public.fn_recalcula_cliente_restaurado(uuid, uuid) from public, anon;
+grant execute on function public.fn_recalcula_cliente_restaurado(uuid, uuid) to authenticated, service_role;
+
+-- ── 2. Excluir e restaurar passam pelas funções acima ──────────────────────
+create or replace function public.fn_excluir_cliente_para_lixeira(
+  p_contact_id uuid, p_organization_id uuid
+) returns boolean language plpgsql set search_path = public, pg_temp as $f$
+declare
+  v_contato jsonb;
+  v_leads uuid[];
+  v_snap jsonb;
+  v_nome text;
+  v_ltv bigint;
+begin
+  select to_jsonb(c), coalesce(nullif(btrim(c.display_name), ''), nullif(btrim(c.name), ''), c.phone_number, '—'),
+         coalesce(c.ltv_cents, 0)
+    into v_contato, v_nome, v_ltv
+    from public.contacts c
+   where c.id = p_contact_id and c.organization_id = p_organization_id;
+  if v_contato is null then
+    return false;
+  end if;
+
+  select coalesce(array_agg(id), '{}') into v_leads
+    from public.crm_leads where contact_id = p_contact_id and organization_id = p_organization_id;
+
+  v_snap := jsonb_build_object(
+    'contato', v_contato,
+    'oportunidades', coalesce((select jsonb_agg(to_jsonb(l)) from public.crm_leads l where l.id = any (v_leads)), '[]'),
+    'itens', coalesce((select jsonb_agg(to_jsonb(i)) from public.crm_sale_items i where i.lead_id = any (v_leads)), '[]'),
+    'parcelas', coalesce((select jsonb_agg(to_jsonb(p)) from public.crm_sale_payments p where p.lead_id = any (v_leads)), '[]'),
+    'tarefas', coalesce((select jsonb_agg(to_jsonb(t)) from public.crm_tasks t
+                          where t.organization_id = p_organization_id
+                            and (t.contact_id = p_contact_id or t.lead_id = any (v_leads))), '[]'),
+    'notas', coalesce((select jsonb_agg(to_jsonb(n)) from public.lead_notes n where n.contact_id = p_contact_id), '[]'),
+    'atividades', coalesce((select jsonb_agg(to_jsonb(a)) from public.crm_lead_activities a
+                              where a.organization_id = p_organization_id
+                                and (a.contact_id = p_contact_id or a.lead_id = any (v_leads))), '[]'),
+    'conversas', coalesce((select jsonb_agg(to_jsonb(cv)) from public.conversations cv
+                             where cv.contact_id = p_contact_id and cv.organization_id = p_organization_id), '[]'),
+    'mensagens', coalesce((select jsonb_agg(to_jsonb(m)) from public.messages m
+                             where m.contact_id = p_contact_id and m.organization_id = p_organization_id), '[]'),
+    'compromissos', coalesce((select jsonb_agg(to_jsonb(ap)) from public.calendar_appointments ap
+                                where ap.contact_id = p_contact_id and ap.organization_id = p_organization_id), '[]'),
+    'historico', coalesce((select jsonb_agg(to_jsonb(h)) from public.crm_historico_de_estados h
+                             where h.contact_id = p_contact_id and h.organization_id = p_organization_id), '[]')
+  );
+
+  insert into public.crm_lixeira
+    (organization_id, contact_id, nome, telefone, email, resumo, snapshot, excluido_por)
+  values (
+    p_organization_id, p_contact_id, v_nome,
+    v_contato ->> 'phone_number', v_contato ->> 'email',
+    jsonb_build_object(
+      'oportunidades', coalesce(array_length(v_leads, 1), 0),
+      'parcelas', jsonb_array_length(v_snap -> 'parcelas'),
+      'pago_cents', v_ltv,
+      'mensagens', jsonb_array_length(v_snap -> 'mensagens')
+    ),
+    v_snap, auth.uid()
+  );
+
+  -- Tudo que depende do cliente sai junto (mesmo com venda paga).
+  delete from public.messages where contact_id = p_contact_id and organization_id = p_organization_id;
+  delete from public.conversations where contact_id = p_contact_id and organization_id = p_organization_id;
+  delete from public.calendar_appointments where contact_id = p_contact_id and organization_id = p_organization_id;
+  delete from public.crm_tasks
+   where organization_id = p_organization_id
+     and (contact_id = p_contact_id or lead_id = any (v_leads));
+  delete from public.crm_lead_activities
+   where organization_id = p_organization_id
+     and (contact_id = p_contact_id or lead_id = any (v_leads));
+  perform public.fn_historico_apagar_do_contato(p_organization_id, p_contact_id);
+  delete from public.crm_leads
+   where organization_id = p_organization_id and contact_id = p_contact_id;
+  delete from public.contacts
+   where id = p_contact_id and organization_id = p_organization_id;
+  return found;
+end
+$f$;
+
+create or replace function public.fn_restaurar_cliente_da_lixeira(
+  p_item uuid, p_organization_id uuid
+) returns uuid language plpgsql set search_path = public, pg_temp as $f$
+declare
+  v_item public.crm_lixeira%rowtype;
+  v_snap jsonb;
+  v_linha jsonb;
+  v_contact uuid;
+begin
+  select * into v_item from public.crm_lixeira
+   where id = p_item and organization_id = p_organization_id;
+  if not found then
+    return null;
+  end if;
+  v_snap := v_item.snapshot;
+  v_contact := v_item.contact_id;
+
+  -- Restaurar não dispara evento nem rotina: o que volta é o que existia.
+  perform set_config('m1.restaurando', 'on', true);
+  perform set_config('m1.valor_sync', 'on', true);
+
+  perform public.fn_inserir_da_lixeira('public.contacts', v_snap -> 'contato');
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'conversas') loop
+    perform public.fn_inserir_da_lixeira('public.conversations', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'oportunidades') loop
+    perform public.fn_inserir_da_lixeira('public.crm_leads', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'itens') loop
+    perform public.fn_inserir_da_lixeira('public.crm_sale_items', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'parcelas') loop
+    perform public.fn_inserir_da_lixeira('public.crm_sale_payments', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'mensagens') loop
+    perform public.fn_inserir_da_lixeira('public.messages', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'compromissos') loop
+    perform public.fn_inserir_da_lixeira('public.calendar_appointments', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'tarefas') loop
+    perform public.fn_inserir_da_lixeira('public.crm_tasks', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'notas') loop
+    perform public.fn_inserir_da_lixeira('public.lead_notes', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'atividades') loop
+    perform public.fn_inserir_da_lixeira('public.crm_lead_activities', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'historico') loop
+    perform public.fn_historico_inserir_da_lixeira(p_organization_id, v_linha);
+  end loop;
+
+  perform set_config('m1.valor_sync', 'off', true);
+  perform set_config('m1.restaurando', 'off', true);
+
+  -- O resumo e o ciclo de vida voltam calculados do que acabou de voltar.
+  perform public.fn_recalcula_cliente_restaurado(p_organization_id, v_contact);
+
+  delete from public.crm_lixeira where id = p_item;
+  return v_contact;
+end
+$f$;
+
+-- ── 3. Restaurar não duplica o histórico (ele volta da cópia, não do gatilho) ──
+create or replace function public.fn_historico_etapa_da_oportunidade() returns trigger
+  language plpgsql security definer set search_path to 'public' as $f$
+declare
+  v_de text;
+  v_para text;
+begin
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.stage_id is not distinct from old.stage_id then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' then
+    select name into v_de from public.crm_stages where id = old.stage_id;
+  end if;
+  select name into v_para from public.crm_stages where id = new.stage_id;
+  insert into public.crm_historico_de_estados
+    (organization_id, entidade, entidade_id, contact_id, de, para, motivo, autor, autor_tipo)
+  values
+    (new.organization_id, 'oportunidade', new.id, new.contact_id, v_de, coalesce(v_para, '—'),
+     case when new.status = 'lost' then new.lost_reason when new.status = 'won' then new.won_reason end,
+     auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+  return new;
+end
+$f$;
+
+create or replace function public.fn_historico_status_do_pagamento() returns trigger
+  language plpgsql security definer set search_path to 'public' as $f$
+declare
+  v_contact uuid;
+begin
+  if coalesce(current_setting('m1.restaurando', true), '') = 'on' then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.status is not distinct from old.status then
+    return new;
+  end if;
+  select contact_id into v_contact from public.crm_leads where id = new.lead_id;
+  insert into public.crm_historico_de_estados
+    (organization_id, entidade, entidade_id, contact_id, de, para, autor, autor_tipo)
+  values
+    (new.organization_id, 'pagamento', new.id, v_contact,
+     case when tg_op = 'UPDATE' then old.status end, new.status,
+     auth.uid(), case when auth.uid() is null then 'sistema' else 'usuario' end);
+  return new;
+end
+$f$;
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0645 ----
+
+create or replace function public.fn_restaurar_cliente_da_lixeira(
+  p_item uuid, p_organization_id uuid
+) returns uuid language plpgsql set search_path = public, pg_temp as $f$
+declare
+  v_item public.crm_lixeira%rowtype;
+  v_snap jsonb;
+  v_linha jsonb;
+  v_contact uuid;
+  v_novo uuid;
+  v_c jsonb;
+  v_existente uuid;
+  v_mesclou boolean := false;
+begin
+  select * into v_item from public.crm_lixeira
+   where id = p_item and organization_id = p_organization_id;
+  if not found then
+    return null;
+  end if;
+  v_snap := v_item.snapshot;
+  v_contact := v_item.contact_id;
+  v_c := v_snap -> 'contato';
+
+  -- O lead já voltou a falar e ganhou um cadastro novo (mesmo telefone, e-mail ou identidade)?
+  -- Então o antigo é MESCLADO no novo, sem precisar apagar nada.
+  select n.id into v_novo
+    from public.contacts n
+   where n.organization_id = p_organization_id
+     and n.is_merged_into is null
+     and n.id <> v_contact
+     and (
+       (nullif(v_c ->> 'phone_number', '') is not null and n.phone_number = v_c ->> 'phone_number')
+       or (nullif(v_c ->> 'email_normalized', '') is not null and n.email_normalized = v_c ->> 'email_normalized')
+       or (nullif(v_c ->> 'cpf_hash', '') is not null and n.cpf_hash = v_c ->> 'cpf_hash')
+       or (nullif(v_c ->> 'wa_identity', '') is not null and n.wa_identity = v_c ->> 'wa_identity')
+       or (nullif(v_c ->> 'wa_lid', '') is not null and n.wa_lid = v_c ->> 'wa_lid')
+       or (nullif(v_c ->> 'social_identity', '') is not null and n.social_identity = v_c ->> 'social_identity')
+     )
+   order by n.created_at desc
+   limit 1;
+
+  if v_novo is not null then
+    v_mesclou := true;
+    -- Tudo que era do cliente antigo passa a ser do cadastro novo.
+    v_snap := replace(v_snap::text, v_contact::text, v_novo::text)::jsonb;
+    -- Conversa do mesmo canal que já existe no cadastro novo: as mensagens antigas entram nela.
+    for v_linha in select * from jsonb_array_elements(v_snap -> 'conversas') loop
+      select cv.id into v_existente
+        from public.conversations cv
+       where cv.organization_id = p_organization_id
+         and cv.contact_id = v_novo
+         and cv.channel_session_id is not distinct from nullif(v_linha ->> 'channel_session_id', '')::uuid
+         and cv.is_group = coalesce((v_linha ->> 'is_group')::boolean, false)
+         and cv.id <> (v_linha ->> 'id')::uuid
+       limit 1;
+      if v_existente is not null then
+        v_snap := replace(v_snap::text, v_linha ->> 'id', v_existente::text)::jsonb;
+      end if;
+    end loop;
+    v_contact := v_novo;
+  end if;
+
+  -- Restaurar não dispara evento nem rotina: o que volta é o que existia.
+  perform set_config('m1.restaurando', 'on', true);
+  perform set_config('m1.valor_sync', 'on', true);
+
+  if v_mesclou then
+    -- O cadastro mais antigo manda na origem e no nome; o novo mantém os canais e o que preencheu.
+    update public.contacts n set
+      tags = (select coalesce(array_agg(distinct x), '{}')
+                from unnest(coalesce(n.tags, '{}') || coalesce(
+                  array(select jsonb_array_elements_text(coalesce(v_c -> 'tags', '[]'::jsonb))), '{}')) as x),
+      name = coalesce(nullif(btrim(v_c ->> 'name'), ''), n.name),
+      display_name = coalesce(nullif(btrim(v_c ->> 'display_name'), ''), n.display_name),
+      email = coalesce(n.email, nullif(v_c ->> 'email', '')),
+      source = coalesce(nullif(v_c ->> 'source', ''), n.source),
+      source_metadata = coalesce(v_c -> 'source_metadata', n.source_metadata),
+      custom_fields = coalesce(v_c -> 'custom_fields', '{}'::jsonb) || coalesce(n.custom_fields, '{}'::jsonb),
+      created_at = least(n.created_at, coalesce((v_c ->> 'created_at')::timestamptz, n.created_at)),
+      first_approached_at = least(n.first_approached_at, (v_c ->> 'first_approached_at')::timestamptz),
+      is_mql = n.is_mql or coalesce((v_c ->> 'is_mql')::boolean, false),
+      dono_user_id = coalesce(n.dono_user_id, nullif(v_c ->> 'dono_user_id', '')::uuid)
+     where n.id = v_novo;
+  else
+    perform public.fn_inserir_da_lixeira('public.contacts', v_snap -> 'contato');
+  end if;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'conversas') loop
+    if not exists (select 1 from public.conversations where id = (v_linha ->> 'id')::uuid) then
+      perform public.fn_inserir_da_lixeira('public.conversations', v_linha);
+    end if;
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'oportunidades') loop
+    perform public.fn_inserir_da_lixeira('public.crm_leads', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'itens') loop
+    perform public.fn_inserir_da_lixeira('public.crm_sale_items', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'parcelas') loop
+    perform public.fn_inserir_da_lixeira('public.crm_sale_payments', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'mensagens') loop
+    perform public.fn_inserir_da_lixeira('public.messages', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'compromissos') loop
+    perform public.fn_inserir_da_lixeira('public.calendar_appointments', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'tarefas') loop
+    perform public.fn_inserir_da_lixeira('public.crm_tasks', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'notas') loop
+    perform public.fn_inserir_da_lixeira('public.lead_notes', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'atividades') loop
+    perform public.fn_inserir_da_lixeira('public.crm_lead_activities', v_linha);
+  end loop;
+  for v_linha in select * from jsonb_array_elements(v_snap -> 'historico') loop
+    perform public.fn_historico_inserir_da_lixeira(p_organization_id, v_linha);
+  end loop;
+
+  perform set_config('m1.valor_sync', 'off', true);
+  perform set_config('m1.restaurando', 'off', true);
+
+  -- O resumo e o ciclo de vida voltam calculados do que acabou de voltar.
+  perform public.fn_recalcula_cliente_restaurado(p_organization_id, v_contact);
+
+  delete from public.crm_lixeira where id = p_item;
+  return v_contact;
+end
+$f$;
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0646 ----
+
+create or replace function public.fn_lixeira_usuario_existe(p_id uuid)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $f$
+  select exists (select 1 from auth.users where id = p_id);
+$f$;
+revoke execute on function public.fn_lixeira_usuario_existe(uuid) from public, anon;
+grant execute on function public.fn_lixeira_usuario_existe(uuid) to authenticated, service_role;
+
+create or replace function public.fn_inserir_da_lixeira(p_tabela regclass, p_linha jsonb)
+returns void language plpgsql set search_path = public as $f$
+declare
+  v_cols text;
+  v_linha jsonb := p_linha;
+  r record;
+  v_existe boolean;
+begin
+  -- Referência opcional a algo que já não existe (ex.: a demanda da conversa, que saiu junto com o
+  -- cliente) volta vazia, em vez de impedir a restauração.
+  for r in
+    select att.attname as coluna,
+           ref.oid::regclass as tabela_ref,
+           (select a2.attname from pg_attribute a2
+             where a2.attrelid = c.confrelid and a2.attnum = c.confkey[1]) as coluna_ref,
+           not att.attnotnull as opcional
+      from pg_constraint c
+      join pg_attribute att on att.attrelid = c.conrelid and att.attnum = c.conkey[1]
+      join pg_class ref on ref.oid = c.confrelid
+     where c.conrelid = p_tabela and c.contype = 'f' and array_length(c.conkey, 1) = 1
+  loop
+    continue when not r.opcional;
+    continue when (v_linha ->> r.coluna) is null;
+    if r.tabela_ref::text = 'auth.users' then
+      -- A tabela de usuários não é legível para quem restaura: pergunta por uma função fechada.
+      v_existe := public.fn_lixeira_usuario_existe((v_linha ->> r.coluna)::uuid);
+    else
+      execute format('select exists (select 1 from %s where %I = ($1 ->> %L)::%s)',
+                     r.tabela_ref, r.coluna_ref, r.coluna,
+                     (select format_type(a3.atttypid, a3.atttypmod) from pg_attribute a3
+                       where a3.attrelid = p_tabela and a3.attname = r.coluna))
+        into v_existe using v_linha;
+    end if;
+    if not v_existe then
+      v_linha := jsonb_set(v_linha, array[r.coluna], 'null'::jsonb);
+    end if;
+  end loop;
+
+  select string_agg(quote_ident(a.attname), ', ' order by a.attnum)
+    into v_cols
+    from pg_attribute a
+   where a.attrelid = p_tabela and a.attnum > 0 and not a.attisdropped
+     and a.attgenerated = '' and a.attidentity = ''
+     and v_linha ? a.attname;
+  if v_cols is null then return; end if;
+  execute format(
+    'insert into %s (%s) select %s from jsonb_populate_record(null::%s, $1)',
+    p_tabela, v_cols, v_cols, p_tabela
+  ) using v_linha;
+end
+$f$;
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0647 ----
+
+alter table public.crm_leads
+  add column if not exists comprou_de_stage_id uuid references public.crm_stages(id) on delete set null;
+
+create or replace function public.fn_crm_sale_payments_after_write()
+returns trigger language plpgsql security definer set search_path to 'public' as $f$
+declare
+  v_lead uuid := coalesce(new.lead_id, old.lead_id);
+  v_ult date; v_contact uuid; v_org uuid;
+  v_pipeline uuid; v_stage uuid; v_status text; v_stage_ganha boolean;
+  v_volta uuid;
+begin
+  if v_lead is null then
+    return coalesce(new, old);
+  end if;
+  select max(paid_on) filter (where status = 'recebida') into v_ult
+    from public.crm_sale_payments where lead_id = v_lead;
+  select contact_id, organization_id, pipeline_id, stage_id, status, comprou_de_stage_id
+    into v_contact, v_org, v_pipeline, v_stage, v_status, v_volta
+    from public.crm_leads where id = v_lead;
+  if not found then
+    return coalesce(new, old);
+  end if;
+  update public.crm_leads set paid_on = v_ult where id = v_lead and paid_on is distinct from v_ult;
+
+  -- IDA: a primeira parcela recebida (mesmo um sinal) faz a oportunidade virar Comprou, e a etapa de
+  -- onde ela veio fica guardada para o caminho de volta.
+  if tg_op <> 'DELETE' and new.status = 'recebida' then
+    perform set_config('m1.comprou_pelo_pagamento', 'on', true);
+    update public.crm_leads l
+       set comprou_de_stage_id = l.stage_id,
+           stage_id = w.id
+      from (
+        select st.id, st.pipeline_id from public.crm_stages st
+         where st.is_won and not st.is_archived
+         order by st.position
+      ) w
+     where l.id = v_lead and l.status = 'open' and w.pipeline_id = l.pipeline_id;
+    perform set_config('m1.comprou_pelo_pagamento', 'off', true);
+
+  -- VOLTA: não restou nenhuma parcela recebida e a oportunidade está em Comprou.
+  elsif v_status = 'won'
+        and not exists (
+          select 1 from public.crm_sale_payments p where p.lead_id = v_lead and p.status = 'recebida'
+        ) then
+    select is_won into v_stage_ganha from public.crm_stages where id = v_stage;
+    if coalesce(v_stage_ganha, false) then
+      -- A etapa de antes (se ainda existe, aberta e do mesmo funil) ou a primeira etapa aberta.
+      select s.id into v_volta
+        from public.crm_stages s
+       where s.id = v_volta and s.pipeline_id = v_pipeline
+         and not s.is_won and not s.is_lost and not s.is_archived;
+      if v_volta is null then
+        select s.id into v_volta
+          from public.crm_stages s
+         where s.pipeline_id = v_pipeline and not s.is_won and not s.is_lost
+           and not s.is_archived and s.qualification is null
+         order by s.position
+         limit 1;
+      end if;
+      if v_volta is not null then
+        -- Mover para uma etapa aberta reabre (status open, sem data de fechamento).
+        update public.crm_leads
+           set stage_id = v_volta, comprou_de_stage_id = null, won_reason = null
+         where id = v_lead;
+      end if;
+    end if;
+  end if;
+
+  if v_contact is not null then
+    perform public.fn_crm_sales_refresh_contact(v_org, v_contact);
+    perform public.fn_contato_recalcula_ciclo(v_org, v_contact);
+  end if;
+  return coalesce(new, old);
+end
+$f$;
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0648 ----
+
+alter table public.calendar_appointments
+  add column if not exists client_confirmation text,
+  add column if not exists client_confirmed_at timestamptz,
+  add column if not exists confirmation_alerted_at timestamptz;
+
+alter table public.calendar_appointments
+  drop constraint if exists calendar_appointments_client_confirmation_check;
+alter table public.calendar_appointments
+  add constraint calendar_appointments_client_confirmation_check
+  check (client_confirmation is null or client_confirmation in ('confirmed', 'reschedule', 'cancel'));
+
+-- A resposta vale para a REVISÃO atual: remarcou, a confirmação antiga não vale mais.
+create or replace function public.fn_calendar_limpa_confirmacao_ao_remarcar()
+returns trigger language plpgsql set search_path = public as $f$
+begin
+  if tg_op = 'UPDATE'
+     and (new.starts_at is distinct from old.starts_at or new.ends_at is distinct from old.ends_at)
+     and new.client_confirmation is not distinct from old.client_confirmation then
+    new.client_confirmation := null;
+    new.client_confirmed_at := null;
+    new.confirmation_alerted_at := null;
+  end if;
+  return new;
+end
+$f$;
+
+drop trigger if exists trg_calendar_limpa_confirmacao_ao_remarcar on public.calendar_appointments;
+create trigger trg_calendar_limpa_confirmacao_ao_remarcar
+  before update on public.calendar_appointments
+  for each row execute function public.fn_calendar_limpa_confirmacao_ao_remarcar();
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0649 ----
+
+create table if not exists public.calendar_event_type_attendants (
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  event_type_id uuid not null references public.calendar_event_types(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- menor = primeiro; desempata a distribuição entre atendentes com a mesma carga
+  priority integer not null default 100 check (priority between 0 and 10000),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (event_type_id, user_id)
+);
+
+create index if not exists calendar_event_type_attendants_org_user_idx
+  on public.calendar_event_type_attendants (organization_id, user_id);
+
+alter table public.calendar_event_type_attendants enable row level security;
+
+drop policy if exists tenant_isolation_calendar_event_type_attendants_read on public.calendar_event_type_attendants;
+create policy tenant_isolation_calendar_event_type_attendants_read on public.calendar_event_type_attendants
+  for select
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin());
+
+drop policy if exists tenant_isolation_calendar_event_type_attendants_write on public.calendar_event_type_attendants;
+create policy tenant_isolation_calendar_event_type_attendants_write on public.calendar_event_type_attendants
+  for all
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin_full())
+  with check (
+    public.fn_is_platform_admin_full()
+    or (organization_id in (select public.fn_user_org_ids())
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+do $$
+begin
+  if exists (select 1 from pg_proc where proname = 'fn_touch_updated_at') then
+    drop trigger if exists trg_calendar_event_type_attendants_touch on public.calendar_event_type_attendants;
+    create trigger trg_calendar_event_type_attendants_touch before update on public.calendar_event_type_attendants
+      for each row execute function public.fn_touch_updated_at();
+  end if;
+end $$;
+
+-- Quem já era responsável de um tipo continua sendo atendente dele.
+insert into public.calendar_event_type_attendants (organization_id, event_type_id, user_id, priority)
+select t.organization_id, t.id, t.default_owner_user_id, 100
+  from public.calendar_event_types t
+ where t.default_owner_user_id is not null
+   and exists (
+     select 1 from public.user_organizations m
+      where m.organization_id = t.organization_id
+        and m.user_id = t.default_owner_user_id
+        and m.revoked_at is null)
+on conflict do nothing;
+
+notify pgrst, 'reload schema';
 
 -- ---- migration 0650 ----
 create or replace function public.fn_demand_campaigns_estado(
@@ -52169,3 +57689,89 @@ alter table public.lead_notes
 create index if not exists idx_lead_notes_ativas
   on public.lead_notes (organization_id, contact_id, created_at desc)
   where archived_at is null;
+
+-- ---- travas do modo somente leitura do suporte, depois de toda tabela (migration 0274) ----
+--
+-- ⚠️ ESTA CHAMADA É O ÚLTIMO BLOCO DO ARQUIVO. Tabela nova, coluna
+-- `organization_id` nova, RLS ligada ou grant a `authenticated` entram ANTES
+-- dela: é o que faz a primeira aplicação do arquivo chegar ao mesmo conjunto de
+-- travas que a segunda. Vigiado, com o baseline aplicado UMA vez, por
+-- tests/invariants/travas-de-suporte-cobrem-toda-tabela-na-instalacao.test.ts.
+-- A definição da função está antes da varredura de anon.
+do $f$ begin perform public.fn_aplicar_travas_de_suporte(); end $f$;
+
+-- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
+--
+-- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
+-- função entra ANTES dele — quem o empurrar para o meio desarma a cura para tudo
+-- que vier depois. (O último bloco do arquivo é a chamada das travas do suporte,
+-- migration 0274, que não cria função.)
+-- Vigiado por `tests/unit/varredura-anon-e-o-ultimo-bloco.test.ts`.
+--
+-- A 0108 revogou anon numa LISTA de 8 funções, medida num banco instalado do
+-- ZERO. Quem ATUALIZA tem outro estado: o `ALTER DEFAULT PRIVILEGES ... GRANT
+-- ALL ON FUNCTIONS TO anon` do corpo deste arquivo grava uma entrada em
+-- `pg_default_acl` que fica no catálogo PARA SEMPRE, e a partir daí toda função
+-- criada em `public` nasce com EXECUTE para anon — inclusive as deste apêndice.
+--
+-- Medido numa VPS real (2026-08-07), comparando com o que um install fresco
+-- produz: 6 definer expostas a anon e 5 a authenticated, entre elas
+-- `fn_decrypt_oauth` — alcançável pela anon key, que vai para o browser.
+--
+-- Lista conserta o estoque e reabre no próximo `create function`. Esta varredura
+-- é auto-curativa e roda DEPOIS de tudo que cria função, então cura no mesmo run
+-- em que o defeito nasceria. Desfazer o ALTER DEFAULT PRIVILEGES não serve: ele
+-- vem do `pg_dump` do Supabase e é reescrito a cada re-aplicação.
+--
+-- As duas origens de EXECUTE (a mesma lição da 0108): grant DIRETO a anon, que
+-- `revoke from public` não remove; e grant a PUBLIC, do qual anon HERDA, que
+-- `revoke from anon` não remove. O privilégio EFETIVO de authenticated e
+-- service_role é medido ANTES e devolvido depois — tira anon sem tirar leitura.
+do $$
+declare
+  f record;
+  tinha_auth boolean;
+  tinha_service boolean;
+begin
+  if to_regrole('anon') is null then
+    return;
+  end if;
+
+  for f in
+    select p.oid, p.oid::regprocedure as assinatura
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.prosecdef
+  loop
+    tinha_auth := to_regrole('authenticated') is not null
+                  and has_function_privilege('authenticated', f.oid, 'EXECUTE');
+    tinha_service := to_regrole('service_role') is not null
+                     and has_function_privilege('service_role', f.oid, 'EXECUTE');
+
+    execute format('revoke execute on function %s from public, anon', f.assinatura);
+
+    if tinha_auth then
+      execute format('grant execute on function %s to authenticated', f.assinatura);
+    end if;
+    if tinha_service then
+      execute format('grant execute on function %s to service_role', f.assinatura);
+    end if;
+  end loop;
+end $$;
+
+-- regra 2 (authenticated): as 5 que o update abriu e o install não abre. Aqui não
+-- cabe varredura — `authenticated` PRECISA de EXECUTE nos helpers de RLS e em
+-- `retrieve_top_k_chunks` (num install fresco ele tem). É julgamento por função,
+-- e o alvo de cada linha é o valor que um install fresco produz, medido.
+revoke execute on function public.fn_audit_log_row() from authenticated;
+revoke execute on function public.fn_decrypt_oauth(bytea) from authenticated;
+revoke execute on function public.fn_encrypt_oauth(text) from authenticated;
+revoke execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) from authenticated;
+revoke execute on function public.fn_update_budget_consumption() from authenticated;
+
+grant execute on function public.fn_audit_log_row() to service_role;
+grant execute on function public.fn_decrypt_oauth(bytea) to service_role;
+grant execute on function public.fn_encrypt_oauth(text) to service_role;
+grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
+grant execute on function public.fn_update_budget_consumption() to service_role;
