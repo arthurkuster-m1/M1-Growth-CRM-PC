@@ -1,6 +1,6 @@
 ---
 impacto: nada_mudou
-secao: melhorado
+secao: alterado
 titulo: Inbox mais limpo — Opções no topo da conversa, Lembrar com data e hora livres e sugestão de resposta por "/"
 ---
 

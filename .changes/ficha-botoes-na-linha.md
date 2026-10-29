@@ -1,6 +1,6 @@
 ---
 impacto: nada_mudou
-secao: melhorado
+secao: alterado
 titulo: Botões da ficha do lead dividem a linha com o conteúdo em vez de ocupar uma linha só para eles
 ---
 
