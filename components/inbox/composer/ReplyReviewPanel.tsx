@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -20,9 +20,12 @@ type Draft = {
 export function ReplyReviewPanel({
   conversationId,
   disabled,
+  gatilho = 0,
 }: {
   conversationId: string;
   disabled?: boolean;
+  /** Sobe a cada "/ Sugerir resposta com IA" escolhido no campo de texto. */
+  gatilho?: number;
 }) {
   const t = useT(),
     qc = useQueryClient(),
@@ -60,6 +63,14 @@ export function ReplyReviewPanel({
       setBusy(false);
     }
   }
+  const gatilhoVisto = useRef(gatilho);
+  useEffect(() => {
+    if (gatilho === gatilhoVisto.current) return;
+    gatilhoVisto.current = gatilho;
+    void generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gatilho]);
+
   async function decide(action: "approve" | "reject") {
     if (!draft) return;
     setBusy(true);
@@ -104,6 +115,9 @@ export function ReplyReviewPanel({
     stale: "Sugestão obsoleta: a conversa mudou",
     failed: "Não foi possível concluir a sugestão ou o envio",
   };
+  // Sem sugestão em curso nem aviso, o bloco não ocupa espaço: o pedido nasce do "/" no campo.
+  if (!draft && !busy && !notice) return null;
+
   return (
     <section
       className="mb-3 space-y-2 rounded-md border bg-muted/30 p-3"

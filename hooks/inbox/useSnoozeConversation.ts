@@ -3,10 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 
-interface SnoozeArgs {
-  conversation_id: string;
-  duration_hours: 1 | 3 | 24;
-}
+type SnoozeArgs = { conversation_id: string } & (
+  | { duration_hours: 1 | 3 | 24 }
+  /** O "Outro": a data e a hora escolhidas (ISO com fuso). */
+  | { snooze_until: string }
+);
 
 interface CancelArgs {
   conversation_id: string;
@@ -24,7 +25,9 @@ export function useSnoozeConversation() {
     mutationFn: async (args: SnoozeArgs) =>
       apiClient.post<{ data: { snooze_until: string } }>(
         `/api/v1/conversations/${args.conversation_id}/snooze`,
-        { duration_hours: args.duration_hours },
+        "duration_hours" in args
+          ? { duration_hours: args.duration_hours }
+          : { snooze_until: args.snooze_until },
       ),
     onError: showApiError,
     onSuccess: (_data, args) => invalidate(args.conversation_id),

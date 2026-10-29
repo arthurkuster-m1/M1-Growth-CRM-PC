@@ -54,7 +54,10 @@ vi.mock("@/hooks/contacts/usePersonalContact", () => ({
 }));
 vi.mock("@/components/kanban/OwnerBadge", () => ({ OwnerBadge: () => null }));
 vi.mock("@/components/inbox/ReassignDialog", () => ({ ReassignDialog: () => null }));
-vi.mock("@/components/inbox/SnoozeButton", () => ({ SnoozeButton: () => null }));
+vi.mock("@/components/inbox/SnoozeButton", () => ({
+  SnoozeButton: () => null,
+  LembreteOutroDialog: () => null,
+}));
 vi.mock("@/components/inbox/JanelaSelo", () => ({ JanelaSelo: () => null }));
 vi.mock("@/components/inbox/ChannelLogo", () => ({ ChannelLogo: () => null }));
 vi.mock("@/hooks/voice/useVoiceSessionStatus", () => ({
@@ -111,34 +114,43 @@ beforeEach(() => {
   desmarcarMutate.mockReset();
 });
 
+/** As ações do cabeçalho moram no menu "Opções": abre antes de procurar. */
+async function abrirOpcoes() {
+  await userEvent.click(screen.getByRole("button", { name: "Opções" }));
+}
+
 describe("gate do botão pessoal no cabeçalho", () => {
-  it("atendente não vê nem marcar nem desmarcar", () => {
+  it("atendente não vê nem marcar nem desmarcar", async () => {
     papel.atual = "agent";
     const { unmount } = render(<ConversationHeader conversation={conversa(false)} />);
+    await abrirOpcoes();
     expect(screen.queryByTestId("marcar-pessoal")).toBeNull();
     expect(screen.queryByTestId("desmarcar-pessoal")).toBeNull();
     unmount();
   });
 
-  it("gerente vê marcar no contato normal", () => {
+  it("gerente vê marcar no contato normal", async () => {
     papel.atual = "manager";
     const { unmount } = render(<ConversationHeader conversation={conversa(false)} />);
+    await abrirOpcoes();
     expect(screen.getByTestId("marcar-pessoal")).toBeTruthy();
     expect(screen.queryByTestId("desmarcar-pessoal")).toBeNull();
     unmount();
   });
 
-  it("gerente vê desmarcar (e não marcar) no contato pessoal", () => {
+  it("gerente vê desmarcar (e não marcar) no contato pessoal", async () => {
     papel.atual = "manager";
     const { unmount } = render(<ConversationHeader conversation={conversa(true)} />);
+    await abrirOpcoes();
     expect(screen.getByTestId("desmarcar-pessoal")).toBeTruthy();
     expect(screen.queryByTestId("marcar-pessoal")).toBeNull();
     unmount();
   });
 
-  it("sem contato, sem botão para ninguém", () => {
+  it("sem contato, sem botão para ninguém", async () => {
     papel.atual = "manager";
     const { unmount } = render(<ConversationHeader conversation={conversa(null)} />);
+    await abrirOpcoes();
     expect(screen.queryByTestId("marcar-pessoal")).toBeNull();
     expect(screen.queryByTestId("desmarcar-pessoal")).toBeNull();
     unmount();
@@ -148,6 +160,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
     papel.atual = "manager";
     const user = userEvent.setup();
     const { unmount } = render(<ConversationHeader conversation={conversa(false)} />);
+    await abrirOpcoes();
     await user.click(screen.getByTestId("marcar-pessoal"));
     expect(marcarMutate).not.toHaveBeenCalled();
     expect(await screen.findByText("Marcar este contato como pessoal?")).toBeTruthy();
@@ -158,6 +171,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
     papel.atual = "manager";
     const user = userEvent.setup();
     const { unmount } = render(<ConversationHeader conversation={conversa(true)} />);
+    await abrirOpcoes();
     await user.click(screen.getByTestId("desmarcar-pessoal"));
     expect(desmarcarMutate).toHaveBeenCalledTimes(1);
     unmount();
