@@ -74,16 +74,16 @@ export default async function TagsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("Tags")}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t(
-            "As etiquetas que os agentes, o Inbox e o funil usam nesta organização. Renomear ou juntar corrige também as regras de agente que escrevem a etiqueta, na mesma operação.",
+            "As tags que os agentes, o Inbox e o funil usam nesta organização. Renomear ou juntar corrige também as regras de agente que escrevem a tag, na mesma operação.",
           )}
         </p>
       </header>
 
       {error ? (
-        // A falha NÃO vira lista vazia: "nenhuma etiqueta" e "não consegui ler"
+        // A falha NÃO vira lista vazia: "nenhuma tag" e "não consegui ler"
         // levam o operador a decisões opostas (uma convida a criar tudo de novo).
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
-          {t("Não foi possível carregar as etiquetas agora. Recarregue a página.")}
+          {t("Não foi possível carregar as tags agora. Recarregue a página.")}
         </div>
       ) : (
         <PainelDeTags tags={(data ?? []) as LinhaDeVocabulario[]} idioma={idioma} />

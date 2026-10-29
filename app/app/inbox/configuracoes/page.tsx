@@ -21,7 +21,7 @@ export default async function ConfiguracoesDoInboxPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t("Configurações do Inbox")}</h1>
         <p className="text-sm text-muted-foreground">
-          {t("Etiquetas do filtro, respostas rápidas e os números de atendimento.")}
+          {t("Tags do filtro, respostas rápidas e os números de atendimento.")}
         </p>
       </header>
       <ConfiguracoesDoInboxClient podeEditar={gerente} canShare={gerente} currentUserId={user.id} />

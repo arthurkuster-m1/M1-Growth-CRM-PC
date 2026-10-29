@@ -47,7 +47,7 @@ export function ConfiguracoesDoInboxClient({ podeEditar, canShare, currentUserId
       </Link>
       <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
         <TabsList>
-          <TabsTrigger value="etiquetas">{t("Etiquetas")}</TabsTrigger>
+          <TabsTrigger value="etiquetas">{t("Tags")}</TabsTrigger>
           <TabsTrigger value="respostas">{t("Respostas rápidas")}</TabsTrigger>
           <TabsTrigger value="numeros">{t("Números")}</TabsTrigger>
         </TabsList>
@@ -111,14 +111,14 @@ function EtiquetasDoFiltro({ podeEditar }: { podeEditar: boolean }) {
     <section className="flex max-w-2xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {t("Escolha o que aparece no filtro de tags do Inbox. Para criar, renomear ou recolorir, use o editor de etiquetas.")}
+          {t("Escolha o que aparece no filtro de tags do Inbox. Para criar, renomear ou recolorir, use o editor de tags.")}
         </p>
         <Button asChild variant="outline" size="sm">
-          <Link href="/app/settings/tags">{t("Editar etiquetas")}</Link>
+          <Link href="/app/settings/tags">{t("Editar tags")}</Link>
         </Button>
       </div>
       {grupos.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t("Ainda não há etiquetas.")}</p>
+        <p className="text-sm text-muted-foreground">{t("Ainda não há tags.")}</p>
       )}
       {grupos.map((g) => {
         const categoriaVisivel = !config.categorias_ocultas.includes(g.id);
@@ -140,7 +140,7 @@ function EtiquetasDoFiltro({ podeEditar }: { podeEditar: boolean }) {
                   <li key={tag} className="flex items-center justify-between gap-3">
                     <ChipDeEtiqueta tag={tag} contorno />
                     <Switch
-                      aria-label={`${t("Mostrar etiqueta")} ${tag}`}
+                      aria-label={`${t("Mostrar tag")} ${tag}`}
                       checked={visivel}
                       disabled={!podeEditar || salvar.isPending || !categoriaVisivel}
                       onCheckedChange={(v) => alternaTag(tag, v)}
@@ -196,7 +196,7 @@ function NumerosDeAtendimento({ podeEditar }: { podeEditar: boolean }) {
   return (
     <section className="flex max-w-2xl flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        {t("Dê um nome e uma cor a cada número. Eles aparecem como etiquetas coloridas no rodapé da lista de conversas. Para conectar um número novo, vá em Conexões.")}
+        {t("Dê um nome e uma cor a cada número. Eles aparecem como tags coloridas no rodapé da lista de conversas. Para conectar um número novo, vá em Conexões.")}
       </p>
       {(canais ?? []).length === 0 && (
         <p className="text-sm text-muted-foreground">{t("Nenhum número conectado.")}</p>

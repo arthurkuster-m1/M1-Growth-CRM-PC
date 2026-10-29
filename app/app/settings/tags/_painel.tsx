@@ -27,7 +27,7 @@
  * achar "reclamação" numa fila de duzentas conversas antes de ler o texto, e é a
  * que denuncia a duplicata que a contagem de uso não mostra ("orçamento" e
  * "orçamento novo" em dois tons do mesmo verde). O lugar de decidir isso é a
- * tela que já responde "onde esta etiqueta está usada" — não um painel de tema,
+ * tela que já responde "onde esta tag está usada" — não um painel de tema,
  * porque quem escolhe a cor aqui é quem arruma o vocabulário.
  *
  * ── Por que os tons têm NOME, e a fileira não é um seletor de cor ───────────
@@ -49,6 +49,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { invalidarCoresDasEtiquetas } from "@/components/tags/CoresDasEtiquetas";
 import { cn } from "@/lib/utils";
 import { PALETA_DE_ETIQUETAS, normalizarCorDeEtiqueta } from "@/lib/tags/cor-da-etiqueta";
@@ -97,10 +99,10 @@ const NOME_DO_TOM: Record<string, string> = {
 
 /** Cada recusa do servidor vira uma frase que diz O QUE FAZER. */
 const ERRO_EM_PORTUGUES: Record<string, string> = {
-  validation_failed: "Confira a etiqueta, o novo nome e a cor.",
-  forbidden: "Só um gerente ou administrador da organização pode mudar as etiquetas.",
+  validation_failed: "Confira a tag, o novo nome e a cor.",
+  forbidden: "Só um gerente ou administrador da organização pode mudar as tags.",
   unauthenticated: "Sua sessão expirou. Entre de novo.",
-  mfa_required: "Confirme o segundo fator para mudar as etiquetas.",
+  mfa_required: "Confirme o segundo fator para mudar as tags.",
   forbidden_tenant: "Você não está em nenhuma organização ativa.",
 };
 
@@ -118,6 +120,11 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
   const [filtro, setFiltro] = useState("");
   const [agrupar, setAgrupar] = useState(false);
   const [ordem, setOrdem] = useState<"padrao" | "nome" | "categoria" | "uso">("padrao");
+  // Seleção em massa: as tags marcadas e a operação que está sendo montada para elas.
+  const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
+  const [lote, setLote] = useState<"definir_cor" | "juntar" | "excluir" | null>(null);
+  const [loteDestino, setLoteDestino] = useState("");
+  const [loteCor, setLoteCor] = useState<string | null>(null);
 
   const grupos = useMemo(() => {
     const posicao = (tag: string) => {
@@ -125,8 +132,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
       const i = id ? config.categorias.findIndex((c) => c.id === id) : -1;
       return i < 0 ? config.categorias.length : i;
     };
-    const uso = (l: LinhaDeVocabulario) =>
-      l.uso_em_contatos + l.uso_em_leads + l.uso_em_conversas;
+    const uso = (l: LinhaDeVocabulario) => l.uso_em_contatos + l.uso_em_leads + l.uso_em_conversas;
     const filtradas = tags.filter((l) =>
       filtro === ""
         ? true
@@ -138,10 +144,10 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
       ordem === "padrao"
         ? 0
         : ordem === "categoria"
-        ? posicao(a.tag) - posicao(b.tag) || a.tag.localeCompare(b.tag)
-        : ordem === "uso"
-          ? uso(b) - uso(a) || a.tag.localeCompare(b.tag)
-          : a.tag.localeCompare(b.tag),
+          ? posicao(a.tag) - posicao(b.tag) || a.tag.localeCompare(b.tag)
+          : ordem === "uso"
+            ? uso(b) - uso(a) || a.tag.localeCompare(b.tag)
+            : a.tag.localeCompare(b.tag),
     );
     if (!agrupar) return [{ chave: "todas", titulo: null as string | null, linhas: ordenadas }];
     const porCategoria = new Map<string, LinhaDeVocabulario[]>();
@@ -163,7 +169,82 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
     [tags, alvo],
   );
 
+  const visiveis = useMemo(() => grupos.flatMap((g) => g.linhas), [grupos]);
+  const todasMarcadas = visiveis.length > 0 && visiveis.every((l) => marcadas.has(l.tag));
+  const algumaMarcada = visiveis.some((l) => marcadas.has(l.tag));
+  const linhasMarcadas = useMemo(() => tags.filter((l) => marcadas.has(l.tag)), [tags, marcadas]);
+  const destinosDoLote = useMemo(() => tags.filter((l) => !marcadas.has(l.tag)), [tags, marcadas]);
+  const alternarMarca = (tag: string) =>
+    setMarcadas((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(tag)) novo.delete(tag);
+      else novo.add(tag);
+      return novo;
+    });
+  const alternarTodas = () =>
+    setMarcadas(todasMarcadas ? new Set() : new Set(visiveis.map((l) => l.tag)));
+  function abrirLote(qual: "definir_cor" | "juntar" | "excluir") {
+    setAlvo(null);
+    setLote(qual);
+    setLoteDestino("");
+    setLoteCor(null);
+  }
+  function fecharLote() {
+    setLote(null);
+  }
+
+  /** Aplica a operação a cada tag marcada, uma de cada vez (o servidor opera uma tag por chamada). */
+  async function enviarLote() {
+    if (!lote || linhasMarcadas.length === 0) return;
+    setOcupado(true);
+    let feitas = 0;
+    let falhas = 0;
+    let codigoDaFalha = "";
+    try {
+      for (const linha of linhasMarcadas) {
+        const resposta = await fetch("/api/v1/tags/vocabulario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: lote,
+            tag: linha.tag,
+            destino: lote === "juntar" ? loteDestino : null,
+            ...(lote === "definir_cor" ? { cor: loteCor } : {}),
+          }),
+        }).catch(() => null);
+        if (resposta?.ok) {
+          feitas += 1;
+        } else {
+          falhas += 1;
+          if (!codigoDaFalha) {
+            const corpo = (await resposta?.json().catch(() => null)) as {
+              error?: { code?: string };
+            } | null;
+            codigoDaFalha = corpo?.error?.code ?? "internal_error";
+          }
+        }
+      }
+    } finally {
+      setOcupado(false);
+    }
+    if (lote === "definir_cor") invalidarCoresDasEtiquetas(queryClient);
+    // O número entra fora do `t()` (a frase montada em runtime não casa o dicionário).
+    if (falhas === 0) {
+      toast.success(`${feitas} ${t("tag(s) atualizada(s).")}`);
+    } else {
+      toast.error(
+        `${feitas} ${t("de")} ${feitas + falhas} ${t("tag(s) atualizada(s).")} ${t(
+          ERRO_EM_PORTUGUES[codigoDaFalha] ?? "Não foi possível concluir agora. Tente de novo.",
+        )}`,
+      );
+    }
+    setMarcadas(new Set());
+    setLote(null);
+    router.refresh();
+  }
+
   function abrir(linha: LinhaDeVocabulario, qual: AcaoDeVocabulario) {
+    setLote(null);
     setAlvo(linha);
     setAcao(qual);
     setDestino("");
@@ -192,12 +273,15 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
           ...(acao === "definir_cor" ? { cor } : {}),
         }),
       });
-      const corpo = (await resposta.json().catch(() => null)) as
-        | { data?: Record<string, number | string | boolean | null>; error?: { code?: string } }
-        | null;
+      const corpo = (await resposta.json().catch(() => null)) as {
+        data?: Record<string, number | string | boolean | null>;
+        error?: { code?: string };
+      } | null;
       if (!resposta.ok) {
         const codigo = corpo?.error?.code ?? "internal_error";
-        toast.error(t(ERRO_EM_PORTUGUES[codigo] ?? "Não foi possível concluir agora. Tente de novo."));
+        toast.error(
+          t(ERRO_EM_PORTUGUES[codigo] ?? "Não foi possível concluir agora. Tente de novo."),
+        );
         return;
       }
       const dados = corpo?.data ?? {};
@@ -207,7 +291,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
         // do provider. Sem esta invalidação o operador trocaria a cor, voltaria
         // para o Inbox e veria a antiga até o `staleTime` de 5 min vencer.
         invalidarCoresDasEtiquetas(queryClient);
-        toast.success(t("Cor da etiqueta atualizada."));
+        toast.success(t("Cor da tag atualizada."));
         setAlvo(null);
         router.refresh();
         return;
@@ -220,8 +304,8 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
       // não acusa (ele só registra literal sem substituição).
       toast.success(
         acao === "excluir"
-          ? `${t("Etiqueta removida de")} ${alterados} ${t("registro(s).")}`
-          : `${t("Etiqueta atualizada em")} ${alterados} ${t("registro(s) e em")} ${Number(dados.regras ?? 0)} ${t("regra(s) de agente.")}`,
+          ? `${t("Tag removida de")} ${alterados} ${t("registro(s).")}`
+          : `${t("Tag atualizada em")} ${alterados} ${t("registro(s) e em")} ${Number(dados.regras ?? 0)} ${t("regra(s) de agente.")}`,
       );
       setAlvo(null);
       router.refresh();
@@ -231,7 +315,9 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
       // como "nada aconteceu" — enquanto a operação pode ter sido aplicada no
       // servidor. O caminho de erro do SERVIDOR já era tratado acima.
       toast.error(
-        t("Não foi possível falar com o servidor. Recarregue a página e confira antes de tentar de novo."),
+        t(
+          "Não foi possível falar com o servidor. Recarregue a página e confira antes de tentar de novo.",
+        ),
       );
     } finally {
       setOcupado(false);
@@ -242,7 +328,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
     return (
       <Card className="p-6 text-sm text-muted-foreground">
         {t(
-          "Nenhuma etiqueta nesta organização ainda. Elas aparecem aqui conforme os agentes, o Inbox e o funil usarem.",
+          "Nenhuma tag nesta organização ainda. Elas aparecem aqui conforme os agentes, o Inbox e o funil usarem.",
         )}
       </Card>
     );
@@ -253,10 +339,11 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">
           <span className="text-muted-foreground">{t("Categoria")}</span>
-          <select
+          <SelectDoApp
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="h-9 rounded-xl border bg-card px-2"
+            aria-label={t("Categoria")}
+            className="min-w-40"
           >
             <option value="">{t("Todas")}</option>
             {config.categorias.map((c) => (
@@ -265,32 +352,70 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
               </option>
             ))}
             <option value="__sem__">{t("Sem categoria")}</option>
-          </select>
+          </SelectDoApp>
         </label>
         <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">{t("Ordenar por")}</span>
-          <select
+          <span className="whitespace-nowrap text-muted-foreground">{t("Ordenar por")}</span>
+          <SelectDoApp
             value={ordem}
             onChange={(e) => setOrdem(e.target.value as "padrao" | "nome" | "categoria" | "uso")}
-            className="h-9 rounded-xl border bg-card px-2"
+            aria-label={t("Ordenar por")}
+            className="min-w-36"
           >
             <option value="padrao">{t("Padrão")}</option>
             <option value="nome">{t("Nome")}</option>
             <option value="categoria">{t("Categoria")}</option>
             <option value="uso">{t("Mais usadas")}</option>
-          </select>
+          </SelectDoApp>
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={agrupar} onChange={(e) => setAgrupar(e.target.checked)} />
+          <CaixaRedonda checked={agrupar} onChange={(e) => setAgrupar(e.target.checked)} />
           {t("Agrupar por categoria")}
         </label>
       </div>
+      {marcadas.size > 0 ? (
+        <div
+          data-testid="barra-de-tags-em-massa"
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-sm"
+        >
+          <span className="font-medium">
+            {marcadas.size} {t("selecionada(s)")}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => abrirLote("definir_cor")}>
+            {t("Cor")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => abrirLote("juntar")}>
+            {t("Juntar em…")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => abrirLote("excluir")}>
+            {t("Excluir")}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setMarcadas(new Set());
+              setLote(null);
+            }}
+          >
+            {t("Limpar seleção")}
+          </Button>
+        </div>
+      ) : null}
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
-          <caption className="sr-only">{t("Etiquetas da organização e onde são usadas")}</caption>
+          <caption className="sr-only">{t("Tags da organização e onde são usadas")}</caption>
           <thead className="bg-muted/50 text-left">
             <tr>
-              <th className="p-3 font-medium">{t("Etiqueta")}</th>
+              <th className="w-10 p-3">
+                <CaixaRedonda
+                  checked={todasMarcadas}
+                  parcial={algumaMarcada && !todasMarcadas}
+                  onChange={alternarTodas}
+                  aria-label={t("Selecionar todas as tags da lista")}
+                />
+              </th>
+              <th className="p-3 font-medium">{t("Tag")}</th>
               <th className="p-3 font-medium">{t("Categoria")}</th>
               <th className="p-3 font-medium">{t("Contatos")}</th>
               <th className="p-3 font-medium">{t("Leads")}</th>
@@ -304,57 +429,78 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
               <Fragment key={g.chave}>
                 {g.titulo ? (
                   <tr className="bg-muted/40">
-                    <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold">
-                      {g.titulo} <span className="font-normal text-muted-foreground">({g.linhas.length})</span>
+                    <td colSpan={8} className="px-3 py-1.5 text-xs font-semibold">
+                      {g.titulo}{" "}
+                      <span className="font-normal text-muted-foreground">({g.linhas.length})</span>
                     </td>
                   </tr>
                 ) : null}
                 {g.linhas.map((linha) => (
-              <tr key={linha.tag} className="border-t border-border/60">
-                <td className="p-3">
-                  {/* A cor do SERVIDOR, não a do cache do chip: esta lista acabou
+                  <tr
+                    key={linha.tag}
+                    className={cn(
+                      "border-t border-border/60",
+                      marcadas.has(linha.tag) && "bg-primary/5",
+                    )}
+                  >
+                    <td className="w-10 p-3">
+                      <CaixaRedonda
+                        checked={marcadas.has(linha.tag)}
+                        onChange={() => alternarMarca(linha.tag)}
+                        aria-label={`${t("Selecionar")} ${linha.tag}`}
+                      />
+                    </td>
+                    <td className="p-3">
+                      {/* A cor do SERVIDOR, não a do cache do chip: esta lista acabou
                       de ler o vocabulário, e mostrar o que a outra leitura
                       devolveu seria a tela discordando de si mesma por alguns
                       segundos. */}
-                  <ChipDeEtiqueta tag={linha.tag} cor={linha.cor ?? corDaCategoria(linha.tag, config)} />
-                  {!linha.no_vocabulario && (
-                    // Em uso e fora do vocabulário curado: existe em algum
-                    // registro sem passar por nenhuma tela de cadastro. Dar cor
-                    // (o botão ao lado) traz a etiqueta para o vocabulário —
-                    // escolher como ela aparece É curá-la.
-                    <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                      {t("em uso, fora do vocabulário")}
-                    </span>
-                  )}
-                </td>
-                <td className="p-3 text-xs text-muted-foreground">
-                  {categoriaDaTag(linha.tag, config)?.nome ?? "—"}
-                </td>
-                <td className="p-3 tabular-nums">{linha.uso_em_contatos}</td>
-                <td className="p-3 tabular-nums">{linha.uso_em_leads}</td>
-                <td className="p-3 tabular-nums">{linha.uso_em_conversas}</td>
-                <td className="p-3 tabular-nums">
-                  {linha.em_regras > 0 ? (
-                    <span className="font-medium">{linha.em_regras}</span>
-                  ) : (
-                    <span className="text-muted-foreground">0</span>
-                  )}
-                </td>
-                <td className="flex flex-wrap gap-2 p-3">
-                  <Button size="sm" variant="outline" onClick={() => abrir(linha, "definir_cor")}>
-                    {t("Cor")}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => abrir(linha, "renomear")}>
-                    {t("Renomear")}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => abrir(linha, "juntar")}>
-                    {t("Juntar")}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => abrir(linha, "excluir")}>
-                    {t("Excluir")}
-                  </Button>
-                </td>
-              </tr>
+                      <ChipDeEtiqueta
+                        tag={linha.tag}
+                        cor={linha.cor ?? corDaCategoria(linha.tag, config)}
+                      />
+                      {!linha.no_vocabulario && (
+                        // Em uso e fora do vocabulário curado: existe em algum
+                        // registro sem passar por nenhuma tela de cadastro. Dar cor
+                        // (o botão ao lado) traz a etiqueta para o vocabulário —
+                        // escolher como ela aparece É curá-la.
+                        <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                          {t("em uso, fora do vocabulário")}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3 text-xs text-muted-foreground">
+                      {categoriaDaTag(linha.tag, config)?.nome ?? "—"}
+                    </td>
+                    <td className="p-3 tabular-nums">{linha.uso_em_contatos}</td>
+                    <td className="p-3 tabular-nums">{linha.uso_em_leads}</td>
+                    <td className="p-3 tabular-nums">{linha.uso_em_conversas}</td>
+                    <td className="p-3 tabular-nums">
+                      {linha.em_regras > 0 ? (
+                        <span className="font-medium">{linha.em_regras}</span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </td>
+                    <td className="flex flex-wrap gap-2 p-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => abrir(linha, "definir_cor")}
+                      >
+                        {t("Cor")}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => abrir(linha, "renomear")}>
+                        {t("Renomear")}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => abrir(linha, "juntar")}>
+                        {t("Juntar")}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => abrir(linha, "excluir")}>
+                        {t("Excluir")}
+                      </Button>
+                    </td>
+                  </tr>
                 ))}
               </Fragment>
             ))}
@@ -363,11 +509,105 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
         {tags.length >= TETO_DA_LISTA && (
           <p className="border-t border-border/60 p-3 text-sm text-muted-foreground">
             {t(
-              "Mostrando as 500 primeiras etiquetas em ordem alfabética. Se a que você procura não está aqui, arrume primeiro as que aparecem.",
+              "Mostrando as 500 primeiras tags em ordem alfabética. Se a que você procura não está aqui, arrume primeiro as que aparecem.",
             )}
           </p>
         )}
       </Card>
+
+      {lote && linhasMarcadas.length > 0 && (
+        <Card className="flex flex-col gap-4 p-4" data-testid="painel-de-tags-em-massa">
+          <p className="text-sm">
+            {lote === "excluir" && (
+              <>
+                {t("Excluir")} <strong>{linhasMarcadas.length}</strong> {t("tag(s) de")}{" "}
+                {linhasMarcadas.reduce((n, l) => n + l.uso_em_contatos, 0)} {t("contato(s),")}{" "}
+                {linhasMarcadas.reduce((n, l) => n + l.uso_em_leads, 0)} {t("lead(s) e")}{" "}
+                {linhasMarcadas.reduce((n, l) => n + l.uso_em_conversas, 0)} {t("conversa(s).")}
+              </>
+            )}
+            {lote === "juntar" && (
+              <>
+                {t("Juntar")} <strong>{linhasMarcadas.length}</strong>{" "}
+                {t("tag(s) em uma tag existente:")}
+              </>
+            )}
+            {lote === "definir_cor" && (
+              <>
+                {t("Cor para")} <strong>{linhasMarcadas.length}</strong> {t("tag(s):")}
+              </>
+            )}
+          </p>
+          {lote === "excluir" && linhasMarcadas.some((l) => l.em_regras > 0) && (
+            <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              {t("Atenção:")} {linhasMarcadas.reduce((n, l) => n + l.em_regras, 0)}{" "}
+              {t(
+                "regra(s) de agente continuam escrevendo estas tags. Excluir aqui não apaga a regra — o agente vai recriar a tag no próximo atendimento.",
+              )}
+            </p>
+          )}
+          {lote === "juntar" && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="destino-da-juncao-em-massa">{t("Tag de destino")}</Label>
+              <SelectDoApp
+                id="destino-da-juncao-em-massa"
+                aria-label={t("Tag de destino")}
+                value={loteDestino}
+                onChange={(e) => setLoteDestino(e.target.value)}
+              >
+                <option value="">{t("Escolha a tag que fica")}</option>
+                {destinosDoLote.map((l) => (
+                  <option key={l.tag} value={l.tag}>
+                    {l.tag}
+                  </option>
+                ))}
+              </SelectDoApp>
+            </div>
+          )}
+          {lote === "definir_cor" && (
+            <div className="flex flex-wrap items-center gap-2">
+              {PALETA_DE_ETIQUETAS.map((tom) => (
+                <button
+                  key={tom}
+                  type="button"
+                  onClick={() => setLoteCor(tom)}
+                  aria-pressed={loteCor === tom}
+                  aria-label={t(NOME_DO_TOM[tom] ?? tom)}
+                  title={tom}
+                  className={cn(
+                    "size-7 rounded-full border-2 transition-transform",
+                    loteCor === tom
+                      ? "border-foreground ring-2 ring-ring ring-offset-1 ring-offset-background"
+                      : "border-transparent hover:scale-110",
+                  )}
+                  style={{ backgroundColor: tom }}
+                />
+              ))}
+              <Button
+                type="button"
+                size="sm"
+                variant={loteCor === null ? "default" : "outline"}
+                aria-pressed={loteCor === null}
+                onClick={() => setLoteCor(null)}
+              >
+                {t("Sem cor")}
+              </Button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button
+              onClick={enviarLote}
+              disabled={ocupado || (lote === "juntar" && loteDestino === "")}
+              variant={lote === "excluir" ? "destructive" : "default"}
+            >
+              {ocupado ? t("Aplicando...") : t("Confirmar")}
+            </Button>
+            <Button variant="ghost" onClick={fecharLote} disabled={ocupado}>
+              {t("Cancelar")}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {alvo && (
         <Card className="flex flex-col gap-4 p-4">
@@ -381,7 +621,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
             )}
             {acao === "juntar" && (
               <>
-                {t("Juntar")} <strong>{alvo.tag}</strong> {t("em outra etiqueta existente:")}
+                {t("Juntar")} <strong>{alvo.tag}</strong> {t("em outra tag existente:")}
               </>
             )}
             {acao === "excluir" && (
@@ -393,8 +633,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
             )}
             {acao === "definir_cor" && (
               <>
-                {t("Cor")} <strong>{alvo.tag}</strong>{" "}
-                {t("nas listas e nos filtros:")}
+                {t("Cor")} <strong>{alvo.tag}</strong> {t("nas listas e nos filtros:")}
               </>
             )}
           </p>
@@ -404,30 +643,30 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
               <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                 {t("Atenção:")} {alvo.em_regras}{" "}
                 {t(
-                  "regra(s) de agente continuam escrevendo esta etiqueta. Excluir aqui não apaga a regra — o agente vai recriar a etiqueta no próximo atendimento.",
+                  "regra(s) de agente continuam escrevendo esta tag. Excluir aqui não apaga a regra — o agente vai recriar a tag no próximo atendimento.",
                 )}
               </p>
             )
           ) : acao === "juntar" ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="destino-da-juncao">{t("Etiqueta de destino")}</Label>
-              <select
+              <Label htmlFor="destino-da-juncao">{t("Tag de destino")}</Label>
+              <SelectDoApp
                 id="destino-da-juncao"
-                className="h-9 rounded-xl border border-input bg-background px-2 text-sm"
+                aria-label={t("Tag de destino")}
                 value={destino}
                 onChange={(evento) => setDestino(evento.target.value)}
               >
-                <option value="">{t("Escolha a etiqueta que fica")}</option>
+                <option value="">{t("Escolha a tag que fica")}</option>
                 {destinos.map((linha) => (
                   <option key={linha.tag} value={linha.tag}>
                     {linha.tag}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
             </div>
           ) : acao === "definir_cor" ? (
             <div className="flex flex-col gap-3">
-              <Label>{t("Cor da etiqueta")}</Label>
+              <Label>{t("Cor da tag")}</Label>
               <div className="flex flex-wrap items-center gap-2">
                 {PALETA_DE_ETIQUETAS.map((tom) => (
                   <button
@@ -482,7 +721,10 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
           <div className="flex gap-2">
             <Button
               onClick={enviar}
-              disabled={ocupado || (acao !== "excluir" && acao !== "definir_cor" && destino.trim().length === 0)}
+              disabled={
+                ocupado ||
+                (acao !== "excluir" && acao !== "definir_cor" && destino.trim().length === 0)
+              }
               variant={acao === "excluir" ? "destructive" : "default"}
             >
               {ocupado ? t("Aplicando...") : t("Confirmar")}

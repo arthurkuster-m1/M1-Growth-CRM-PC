@@ -83,7 +83,7 @@ describe("painel de Tags — a cor (issue #1271)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Âmbar" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cor da etiqueta atualizada."));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cor da tag atualizada."));
     expect(corpoEnviado()).toEqual({
       acao: "definir_cor",
       tag: "vip",
@@ -103,7 +103,7 @@ describe("painel de Tags — a cor (issue #1271)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sem cor" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cor da etiqueta atualizada."));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cor da tag atualizada."));
     expect(corpoEnviado()).toEqual({ acao: "definir_cor", tag: "obra", destino: null, cor: null });
   });
 
@@ -136,7 +136,7 @@ describe("painel de Tags — a cor (issue #1271)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Confira a etiqueta, o novo nome e a cor."),
+      expect(toast.error).toHaveBeenCalledWith("Confira a tag, o novo nome e a cor."),
     );
     expect(toast.success).not.toHaveBeenCalled();
     // O diálogo continua aberto para tentar de novo.

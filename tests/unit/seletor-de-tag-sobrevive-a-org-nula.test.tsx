@@ -107,6 +107,6 @@ describe("seletor de etiqueta x vocabulário voltando a undefined (dublês que r
 
     const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole("button", { name: GATILHO }));
-    expect(screen.getByRole("menuitemcheckbox", { name: /apagada/ })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /apagada/ })).toBeInTheDocument();
   });
 });
