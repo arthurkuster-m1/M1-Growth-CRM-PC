@@ -254,35 +254,6 @@ export function TopoDoLead({
               )}
             </button>
           ) : null}
-          {telefone && !contact.is_anonymized ? (
-            <>
-              <a
-                href={`tel:${telefone}`}
-                aria-label={t("Ligar")}
-                title={t("Ligar")}
-                className={botaoIcone}
-              >
-                <Phone size={14} aria-hidden />
-              </a>
-              {contact.conversa ? (
-                <Link
-                  href={`/app/inbox?id=${contact.conversa.id}`}
-                  aria-label={t("Abrir no Inbox")}
-                  title={t("Abrir no Inbox")}
-                  className={`${botaoIcone} relative`}
-                >
-                  <ChatCircle size={14} aria-hidden />
-                  {contact.conversa.unread > 0 ? (
-                    <span className="absolute -top-1 -right-1 min-w-4 rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground tabular-nums">
-                      {contact.conversa.unread}
-                    </span>
-                  ) : null}
-                </Link>
-              ) : (
-                <AbrirConversaDoLead contactId={contact.id} phone={telefone} variante="icone" />
-              )}
-            </>
-          ) : null}
         </div>
         {ciclo.data && ehCicloDeVida(ciclo.data.ciclo_de_vida) ? (
           <Popover>
@@ -461,6 +432,25 @@ export function TopoDoLead({
 
       {!contact.is_anonymized ? (
         <div className="flex flex-wrap items-center gap-2">
+          {telefone ? (
+            <a href={`tel:${telefone}`} className={botao}>
+              <Phone size={15} aria-hidden />
+              {t("Ligar")}
+            </a>
+          ) : null}
+          {contact.conversa ? (
+            <Link href={`/app/inbox?id=${contact.conversa.id}`} className={botao}>
+              <ChatCircle size={15} aria-hidden />
+              {t("Inbox")}
+              {contact.conversa.unread > 0 ? (
+                <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground tabular-nums">
+                  {contact.conversa.unread}
+                </span>
+              ) : null}
+            </Link>
+          ) : (
+            <AbrirConversaDoLead contactId={contact.id} phone={telefone} variante="botao" />
+          )}
           {podeEditar ? (
             <>
               <button type="button" className={botao} onClick={() => setAcaoAberta(true)}>
