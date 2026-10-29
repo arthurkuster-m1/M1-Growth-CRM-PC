@@ -5,13 +5,17 @@
  * número; escolher um filtra a lista (o mesmo `channel_session_id` do filtro de cima).
  */
 import Link from "next/link";
-import { Gear } from "@phosphor-icons/react";
+import { Bell, Gear, X } from "@phosphor-icons/react";
+import { useState } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
 import { useConfigDoInbox } from "@/hooks/inbox/useConfigDoInbox";
+import { useNotificationPermission } from "@/hooks/notifications/useNotificationPermission";
 import { nomeDoNumero } from "@/lib/inbox/configuracao";
 import { cn } from "@/lib/utils";
+
+const CHAVE_AVISO_NOTIFICACAO = "inbox-aviso-notificacao-dispensado";
 
 interface Props {
   numeroEscolhido?: string;
@@ -23,12 +27,53 @@ export function RodapeDaLista({ numeroEscolhido, aoEscolherNumero }: Props) {
   const { data: canais } = useChannelSessions({ refetchInterval: 60_000 });
   const config = useConfigDoInbox();
   const ativos = (canais ?? []).filter((c) => c.metadata?.disabled !== true);
+  const { permission, request } = useNotificationPermission();
+  const [dispensado, setDispensado] = useState(() => {
+    try {
+      return window.localStorage.getItem(CHAVE_AVISO_NOTIFICACAO) === "1";
+    } catch {
+      return false;
+    }
+  });
+  // Só pergunta quando o navegador ainda não decidiu; bloqueado ou sem suporte não adianta oferecer.
+  const oferecerAvisos = permission === "default" && !dispensado;
 
   return (
     <div
       data-testid="rodape-da-lista"
       className="shrink-0 space-y-2 border-t border-border bg-card px-3 py-2"
     >
+      {oferecerAvisos && (
+        <div
+          data-testid="ativar-notificacoes"
+          className="flex items-center gap-2 rounded-lg bg-accent-soft px-2.5 py-2 text-xs"
+        >
+          <Bell size={16} aria-hidden className="shrink-0" />
+          <span className="min-w-0 flex-1">{t("Receber aviso de novas mensagens neste aparelho")}</span>
+          <button
+            type="button"
+            onClick={() => void request()}
+            className="shrink-0 rounded-full bg-primary px-2.5 py-1 font-medium text-primary-foreground"
+          >
+            {t("Ativar")}
+          </button>
+          <button
+            type="button"
+            aria-label={t("Agora não")}
+            onClick={() => {
+              try {
+                window.localStorage.setItem(CHAVE_AVISO_NOTIFICACAO, "1");
+              } catch {
+                /* sem storage, o aviso volta na próxima visita */
+              }
+              setDispensado(true);
+            }}
+            className="shrink-0 text-text-muted hover:text-text"
+          >
+            <X size={14} aria-hidden />
+          </button>
+        </div>
+      )}
       {ativos.length >= 2 && (
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("Número em atendimento")}>
           <ChipDoNumero
