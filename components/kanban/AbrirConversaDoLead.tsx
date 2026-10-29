@@ -48,7 +48,7 @@ interface Props {
   contactId?: string | null;
   phone?: string | null;
   /** `card` = linha compacta do funil; `dossie` = bloco do painel do lead. */
-  variante?: "card" | "dossie" | "botao";
+  variante?: "card" | "dossie" | "botao" | "icone";
 }
 
 /**
@@ -74,9 +74,7 @@ export function AbrirConversaDoLead({ contactId, phone, variante = "card" }: Pro
   // Sem telefone nenhum a rota não tem o que abrir — e a spec da #1993 pede
   // que o clique NÃO vá ao servidor nesse caso, e que o motivo apareça.
   const podeAbrir = telefone.length > 0;
-  const semTelefone = t(
-    "Sem telefone no contato: cadastre um telefone para abrir a conversa.",
-  );
+  const semTelefone = t("Sem telefone no contato: cadastre um telefone para abrir a conversa.");
 
   if (!temAlvo) return null;
 
@@ -129,9 +127,7 @@ export function AbrirConversaDoLead({ contactId, phone, variante = "card" }: Pro
                 ? t("Abrir conversa no Inbox")
                 : t("Abrir conversa")}
           </span>
-          {!podeAbrir && (
-            <span className="block text-[11px] text-text-muted">{semTelefone}</span>
-          )}
+          {!podeAbrir && <span className="block text-[11px] text-text-muted">{semTelefone}</span>}
         </span>
         {podeAbrir && !abrindo && (
           <ArrowRight
@@ -141,6 +137,22 @@ export function AbrirConversaDoLead({ contactId, phone, variante = "card" }: Pro
             aria-hidden
           />
         )}
+      </button>
+    );
+  }
+
+  if (variante === "icone") {
+    return (
+      <button
+        type="button"
+        onClick={() => void abrir()}
+        disabled={!podeAbrir || abrindo}
+        aria-busy={abrindo}
+        aria-label={t("Abrir no Inbox")}
+        title={podeAbrir ? t("Abrir conversa no Inbox") : semTelefone}
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <ChatCircle size={14} aria-hidden />
       </button>
     );
   }
