@@ -14,7 +14,12 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
 
   const lead = ctx.context.lead as { id: string; contact_id?: string; tags?: string[] } | undefined;
   const contact = ctx.context.contact as { id: string; tags?: string[] } | undefined;
-  const target = lead
+  // `alvo: "contato"` põe a tag no CONTATO mesmo quando o evento traz um lead: é onde a ficha, a
+  // lista e o filtro do Inbox leem as tags. Sem ele, o comportamento de sempre (lead, se houver).
+  const noContato = config.alvo === "contato" && contact;
+  const target = noContato
+    ? { table: "contacts", row: contact, event: "contact.tag_added", kind: "contact" }
+    : lead
     ? { table: "crm_leads", row: lead, event: "lead.tag_added", kind: "crm_lead" }
     : contact
       ? { table: "contacts", row: contact, event: "contact.tag_added", kind: "contact" }

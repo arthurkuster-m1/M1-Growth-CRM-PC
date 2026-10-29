@@ -20,7 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash, CaretUp, CaretDown } from "@/lib/ui/icons";
-import { acoesQueFechamLaco, createAutomationRuleSchema, TRIGGER_EVENTS } from "@/lib/schemas/webhooks";
+import {
+  acoesQueFechamLaco,
+  createAutomationRuleSchema,
+  TRIGGER_EVENTS,
+} from "@/lib/schemas/webhooks";
 import {
   DIAS_MAX,
   DIAS_MIN,
@@ -504,13 +508,17 @@ export function RuleEditor({ open, onOpenChange, rule, modelo = null }: Props) {
             {ehGatilhoDeTempo ? (
               <div className="space-y-3 rounded-sm border border-border p-3">
                 <p className="text-sm text-muted-foreground">
-                  {triggerEvent === GATILHO_SILENCIO
+                  {triggerEvent === GATILHO_SILENCIO && configDoTempo.unidade === "horas"
                     ? t(
-                        "O lembrete sai quando se passarem N dias sem mensagem na direção escolhida. Chegando mensagem nova, o relógio zera — e um novo silêncio de N dias gera outro lembrete. Nada é enviado ao cliente.",
+                        "O lembrete sai quando se passarem N horas sem mensagem na direção escolhida (a verificação roda de hora em hora). Chegando mensagem nova, o relógio zera — e um novo silêncio de N horas gera outro lembrete. Nada é enviado ao cliente.",
                       )
-                    : t(
-                        "O lembrete sai quando se passarem N dias com o card na mesma etapa. Mudando a etapa, o relógio zera. Nada é enviado ao cliente.",
-                      )}
+                    : triggerEvent === GATILHO_SILENCIO
+                      ? t(
+                          "O lembrete sai quando se passarem N dias sem mensagem na direção escolhida. Chegando mensagem nova, o relógio zera — e um novo silêncio de N dias gera outro lembrete. Nada é enviado ao cliente.",
+                        )
+                      : t(
+                          "O lembrete sai quando se passarem N dias com o card na mesma etapa. Mudando a etapa, o relógio zera. Nada é enviado ao cliente.",
+                        )}
                 </p>
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="w-40 space-y-1">
@@ -700,9 +708,7 @@ export function RuleEditor({ open, onOpenChange, rule, modelo = null }: Props) {
                   <button
                     type="button"
                     className="text-xs text-muted-foreground underline underline-offset-4"
-                    onClick={() =>
-                      setAdvancedRows((prev) => ({ ...prev, [idx]: !isAdvanced }))
-                    }
+                    onClick={() => setAdvancedRows((prev) => ({ ...prev, [idx]: !isAdvanced }))}
                   >
                     {isAdvanced ? t("usar campo da lista") : t("usar campo avançado")}
                   </button>
@@ -777,7 +783,10 @@ export function RuleEditor({ open, onOpenChange, rule, modelo = null }: Props) {
                 {/* Os gatilhos de ganho/perda/reabertura/responsável não oferecem
                     as ações que regravam o lead: fechariam laço (#1528). */}
                 {(Object.keys(ACTION_LABELS) as ActionType[])
-                  .filter((actionType) => !acoesQueFechamLaco(triggerEvent, [{ type: actionType }]).length)
+                  .filter(
+                    (actionType) =>
+                      !acoesQueFechamLaco(triggerEvent, [{ type: actionType }]).length,
+                  )
                   .map((actionType) => (
                     <SelectItem key={actionType} value={actionType}>
                       {t(ACTION_LABELS[actionType])}

@@ -53,7 +53,9 @@ export function RulesTab() {
 
   const toggleActive = (rule: AutomationRuleRow, checked: boolean) => {
     qc.setQueryData<{ data: AutomationRuleRow[] }>(RULES_QUERY_KEY, (old) =>
-      old ? { data: old.data.map((r) => (r.id === rule.id ? { ...r, is_active: checked } : r)) } : old,
+      old
+        ? { data: old.data.map((r) => (r.id === rule.id ? { ...r, is_active: checked } : r)) }
+        : old,
     );
     update.mutate(
       { id: rule.id, is_active: checked },
@@ -82,6 +84,25 @@ export function RulesTab() {
     setEditorOpen(true);
   };
 
+  const modelosDeTag = (
+    <div className="space-y-2" data-testid="modelos-de-tag">
+      <p className="text-sm font-medium">{t("Modelos prontos de tag")}</p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {MODELOS_DE_TAG.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => abrirModelo(m)}
+            className="rounded-xl border border-border bg-card/50 p-3 text-left transition-colors hover:bg-secondary/60"
+          >
+            <span className="block text-sm font-semibold">{t(m.titulo)}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">{t(m.descricao)}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div className="grid gap-3 pt-4 sm:grid-cols-2">
@@ -93,44 +114,37 @@ export function RulesTab() {
 
   if (rules.length === 0) {
     return (
-      <div className="flex justify-center pt-10">
-        <Card className="max-w-md">
-          <CardHeader className="items-center text-center">
-            <Robot className="mb-2 h-10 w-10 text-accent" />
-            <CardTitle>{t("Crie sua primeira automação")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              {t("Ex.: quando entrar um contato novo, enviar uma mensagem de boas-vindas.")}
-            </p>
-            <Button onClick={openCreate}>
-              <Plus /> {t("Nova automação")}
-            </Button>
-          </CardContent>
-        </Card>
-        <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} modelo={modelo} />
+      <div className="space-y-6 pt-6">
+        {modelosDeTag}
+        <div className="flex justify-center pt-4">
+          <Card className="max-w-md">
+            <CardHeader className="items-center text-center">
+              <Robot className="mb-2 h-10 w-10 text-accent" />
+              <CardTitle>{t("Crie sua primeira automação")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                {t("Ex.: quando entrar um contato novo, enviar uma mensagem de boas-vindas.")}
+              </p>
+              <Button onClick={openCreate}>
+                <Plus /> {t("Nova automação")}
+              </Button>
+            </CardContent>
+          </Card>
+          <RuleEditor
+            open={editorOpen}
+            onOpenChange={setEditorOpen}
+            rule={editing}
+            modelo={modelo}
+          />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="space-y-2" data-testid="modelos-de-tag">
-        <p className="text-sm font-medium">{t("Modelos prontos de tag")}</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {MODELOS_DE_TAG.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => abrirModelo(m)}
-              className="rounded-xl border border-border bg-card/50 p-3 text-left transition-colors hover:bg-secondary/60"
-            >
-              <span className="block text-sm font-semibold">{t(m.titulo)}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">{t(m.descricao)}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {modelosDeTag}
       <div className="flex sm:justify-end">
         <Button onClick={openCreate} className="w-full sm:w-auto">
           <Plus /> {t("Nova automação")}

@@ -59,7 +59,7 @@ export const MODELOS_DE_TAG: readonly ModeloDeRegra[] = [
       name: "Tag para lead sem atendimento em 24h",
       trigger_event: "lead.silent_for",
       conditions: [],
-      actions: [{ type: "add_tag", config: { tags: ["sem atendimento"] } }],
+      actions: [{ type: "add_tag", config: { tags: ["sem atendimento"], alvo: "contato" } }],
       trigger_config: {
         dias: 24,
         unidade: "horas",

@@ -33,7 +33,7 @@ export type ActionItem =
       type: "send_ai_message";
       config: { agent_id: string; channel_session_id: string; instruction: string };
     }
-  | { type: "add_tag"; config: { tags: string[] } }
+  | { type: "add_tag"; config: { tags: string[]; alvo?: "lead" | "contato" } }
   | { type: "assign_owner"; config: { user_id: string } }
   | { type: "call_webhook"; config: { url: string; secret?: string; secret_enc?: string; include_owner?: boolean } }
   | { type: "start_message_flow"; config: { flow_pointer_id: string } }
@@ -323,7 +323,10 @@ function SendAiMessageForm({
   );
 }
 
-function AddTagForm({ config, onChange }: FormProps<{ tags: string[] }>) {
+function AddTagForm({
+  config,
+  onChange,
+}: FormProps<{ tags: string[]; alvo?: "lead" | "contato" }>) {
   const t = useT();
   const [text, setText] = React.useState(config.tags.join(", "));
   return (
@@ -337,10 +340,21 @@ function AddTagForm({ config, onChange }: FormProps<{ tags: string[] }>) {
             .split(",")
             .map((t) => t.trim())
             .filter(Boolean);
-          onChange({ tags });
+          onChange({ ...config, tags });
         }}
         placeholder="boas-vindas, novo-lead"
       />
+      <label className="mt-2 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={config.alvo === "contato"}
+          onChange={(e) => {
+            const { alvo: _alvo, ...resto } = config;
+            onChange(e.target.checked ? { ...resto, alvo: "contato" } : resto);
+          }}
+        />
+        {t("Pôr a tag no contato (aparece na ficha, na lista e no filtro do Inbox)")}
+      </label>
     </div>
   );
 }
