@@ -33,6 +33,7 @@ import { CaretLeft, ChatCircle, IdentificationCard, MagnifyingGlass, X } from "@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { RodapeDaLista } from "@/components/inbox/RodapeDaLista";
 import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
 import type { AvisoDeRascunho } from "@/lib/inbox/rascunho-sugerido";
 import { buscaValeConsulta } from "@/lib/inbox/termo-de-busca";
@@ -489,6 +490,10 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
             onLimparFiltros={limparFiltrosAuxiliares}
           />
         </div>
+        <RodapeDaLista
+          numeroEscolhido={filterValue.channel_session_id}
+          aoEscolherNumero={(id) => setFilterValue({ ...filterValue, channel_session_id: id })}
+        />
       </div>
 
       {/*
