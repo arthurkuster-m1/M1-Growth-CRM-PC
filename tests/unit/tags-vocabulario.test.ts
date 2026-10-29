@@ -201,7 +201,7 @@ describe("fatia S4 — vocabulário de tags (contrato do que foi escrito)", () =
     expect(painel).toContain(`const TETO_DA_LISTA = ${teto};`);
     expect(painel).toContain("tags.length >= TETO_DA_LISTA");
     // E a frase do aviso nomeia o mesmo número — quem lê a tela não abre o SQL.
-    expect(painel).toContain(`Mostrando as ${teto} primeiras etiquetas`);
+    expect(painel).toContain(`Mostrando as ${teto} primeiras tags`);
   });
 
   it("a rota usa ok()/fail(), exige manager e chama a operação transacional", () => {

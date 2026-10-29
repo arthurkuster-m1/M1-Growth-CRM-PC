@@ -12,17 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { PontoDaEtiqueta } from "@/components/tags/PontoDaEtiqueta";
 import { useCategoriasDeTags } from "@/components/tags/CoresDasEtiquetas";
@@ -30,10 +21,7 @@ import { useConfigDoInbox } from "@/hooks/inbox/useConfigDoInbox";
 import { categoriaDaTag } from "@/lib/tags/categorias";
 import { chaveDaEtiqueta } from "@/lib/tags/cor-da-etiqueta";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
-import {
-  type ModoDeEtiqueta,
-  marcadoresEscolhidos,
-} from "@/lib/inbox/marcador-da-conversa";
+import { type ModoDeEtiqueta, marcadoresEscolhidos } from "@/lib/inbox/marcador-da-conversa";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useContactTagVocabulary } from "@/hooks/contacts/useContactTagVocabulary";
 import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags";
@@ -118,8 +106,10 @@ export function InboxFilters({ value, onChange }: Props) {
       const selected = list.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
       if (selected) {
         const selectedCenter =
-          selected.getBoundingClientRect().left - list.getBoundingClientRect().left +
-          list.scrollLeft + selected.offsetWidth / 2;
+          selected.getBoundingClientRect().left -
+          list.getBoundingClientRect().left +
+          list.scrollLeft +
+          selected.offsetWidth / 2;
         const maxScroll = Math.max(0, list.scrollWidth - list.clientWidth);
         list.scrollLeft = Math.max(0, Math.min(maxScroll, selectedCenter - list.clientWidth / 2));
       }
@@ -302,6 +292,8 @@ export function InboxFilters({ value, onChange }: Props) {
     ...vocabularioDoSeletor.filter((tag) => !escondida(tag)),
     ...etiquetasForaDoVocabulario,
   ];
+  const [buscaDeTag, setBuscaDeTag] = useState("");
+  const termoDeTag = buscaDeTag.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
   const alternaEtiqueta = (tag: string) => {
     const escolhida = etiquetas.includes(tag);
     const proximas = escolhida ? etiquetas.filter((t) => t !== tag) : [...etiquetas, tag];
@@ -359,7 +351,7 @@ export function InboxFilters({ value, onChange }: Props) {
             <MagnifyingGlass
               size={15}
               weight="regular"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-subtle"
               aria-hidden
             />
             {/* "última mensagem", e não "mensagem": a busca alcança apenas
@@ -385,7 +377,7 @@ export function InboxFilters({ value, onChange }: Props) {
             onClick={() => onChange({ ...value, onlyUnread: !value.onlyUnread })}
             className={cn(
               "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
               value.onlyUnread
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-border bg-transparent text-text-muted hover:bg-surface-elevated",
@@ -402,7 +394,7 @@ export function InboxFilters({ value, onChange }: Props) {
             onClick={() => onChange({ ...value, onlyGroups: !value.onlyGroups })}
             className={cn(
               "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
               value.onlyGroups
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-border bg-transparent text-text-muted hover:bg-surface-elevated",
@@ -445,103 +437,127 @@ export function InboxFilters({ value, onChange }: Props) {
             )}
 
             {mostrarSeletorDeTag && (
-              <DropdownMenu>
+              <Popover>
                 {/*
-                  ⚠️ POR QUE ISTO DEIXOU DE SER UM `Select` (#1274).
-                  O `Select` do Radix é de escolha ÚNICA e — o que mata a
-                  multi-seleção — FECHA o menu a cada item escolhido. Para uma
-                  etiqueta só isso era certo; para duas, o operador teria de
-                  reabrir o menu entre a primeira e a segunda, e o custo do
-                  segundo clique é o que faz a feature parecer idiota. O
-                  `DropdownMenuCheckboxItem` marca e NÃO fecha, que é a
-                  diferença entre um filtro de duas etiquetas e um formulário.
-
-                  O gatilho continua com `aria-label="Filtrar por tag"` e a MESMA
-                  aparência de cápsula, porque quem procura este controle no
-                  Inbox (e o teste `inbox-filtro-de-tag-nao-desmonta`, que
-                  vigia a desmontagem) não pode ver o filtro mudar de figura.
+                  O seletor de tags é o MESMO desenho do seletor de campanhas do CRM
+                  (`SeletorDeFunis`): um botão que abre um popup com busca, a opção "Todas" e uma
+                  caixa redonda por tag — nenhuma, uma, duas ou mais. O popup NÃO fecha a cada
+                  clique (quem escolhe duas tags não reabre o menu entre a primeira e a segunda), e
+                  o gatilho segue com `aria-label="Filtrar por tag"` para quem procura o controle.
                 */}
-                <DropdownMenuTrigger asChild>
+                <PopoverTrigger asChild>
                   <button
                     type="button"
                     className={cn(
                       "h-8 min-w-0 flex-1 truncate rounded-full border border-transparent bg-surface-elevated px-3 text-left text-xs shadow-none",
-                      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
                       etiquetas.length > 0 && "border-accent bg-accent-soft text-accent",
                     )}
                     aria-label={t("Filtrar por tag")}
                   >
                     {etiquetas.length > 0 ? (
                       <span className="inline-flex items-center gap-1">
-                        {/* O CHIP da primeira etiqueta + o resto resumido: a coluna
-                            é de 280 px e três chips não cabem. A cor continua sendo
-                            a mesma que a lista mostra ao lado — mesma razão do
-                            `border-accent`, que é o que faz o filtro ativo se
-                            reconhecer de relance. */}
                         <ChipDeEtiqueta tag={etiquetas[0]!} className="h-5 px-1.5 text-[11px]" />
                         {etiquetas.length > 1 && (
-                          <span className="tabular-nums text-[11px]">+{etiquetas.length - 1}</span>
+                          <span className="text-[11px] tabular-nums">+{etiquetas.length - 1}</span>
                         )}
                       </span>
                     ) : (
                       t("Todas as tags")
                     )}
                   </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuLabel>{t("Todas as tags")}</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => onChange({ ...value, tag: undefined, tagMode: undefined })}
-                  >
-                    {t("Todas as tags")}
-                  </DropdownMenuItem>
-                  {/*
-                    O E/OU só aparece havendo DUAS etiquetas. Com uma só o parâmetro
-                    não muda o resultado, e um botão que não muda nada é um
-                    controle morto — a mesma razão pela qual o seletor some quando
-                    a organização não tem vocabulário.
-                  */}
-                  {etiquetas.length > 1 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      {/* Rádio, e não item comum: marca o modo ATIVO (e só ele) e
-                          expõe `aria-checked` a quem usa leitor de tela. */}
-                      <DropdownMenuRadioGroup
-                        value={value.tagMode === "ou" ? "ou" : "e"}
-                        onValueChange={(modo) =>
-                          onChange({ ...value, tagMode: modo === "ou" ? "ou" : undefined })
-                        }
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  collisionPadding={12}
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  className="max-h-[min(var(--radix-popover-content-available-height),80dvh)] w-[min(calc(100vw-1.5rem),320px)] overflow-y-auto overscroll-contain p-2"
+                >
+                  <label className="relative block">
+                    <span className="sr-only">{t("Buscar tag")}</span>
+                    <MagnifyingGlass
+                      size={14}
+                      aria-hidden
+                      className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <input
+                      value={buscaDeTag}
+                      onChange={(e) => setBuscaDeTag(e.target.value)}
+                      placeholder={t("Buscar tag")}
+                      className="h-9 w-full rounded-xl border bg-background pr-2 pl-8 text-sm outline-hidden focus:border-primary/50"
+                    />
+                  </label>
+                  <div className="mt-2">
+                    <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium hover:bg-secondary">
+                      <CaixaRedonda
+                        checked={etiquetas.length === 0}
+                        onChange={() => onChange({ ...value, tag: undefined, tagMode: undefined })}
+                      />
+                      {t("Todas as tags")}
+                    </label>
+                    {/* O E/OU só aparece havendo DUAS tags: com uma só o parâmetro não muda o
+                        resultado, e um botão que não muda nada é um controle morto. */}
+                    {etiquetas.length > 1 && (
+                      <div
+                        role="radiogroup"
+                        aria-label={t("Como combinar as tags")}
+                        className="my-1 flex flex-col gap-0.5 border-y py-1"
                       >
-                        <DropdownMenuRadioItem value="e">{t("Todas (E)")}</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="ou">
-                          {t("Qualquer uma (OU)")}
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  {/* As órfãs entram na lista: sem elas o gatilho mostraria o
-                      resumo de um filtro cujas opções não estão mais lá, e o
-                      operador não teria como tirá-las. */}
-                  {opcoesDoSeletor.map((tag) => (
-                    <DropdownMenuCheckboxItem
-                      key={tag}
-                      checked={etiquetas.includes(tag)}
-                      onCheckedChange={() => alternaEtiqueta(tag)}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      {/* Ponto, não chip: a opção é uma linha de 280 px que já
-                          divide espaço com o filtro de número. O nome continua
-                          sendo o que se lê; a cor só acelera o reconhecimento
-                          de quem já conhece o vocabulário da operação. */}
-                      <span className="inline-flex items-center gap-2">
-                        <PontoDaEtiqueta tag={tag} />
-                        {tag}
-                      </span>
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                        {(
+                          [
+                            ["e", t("Todas (E)")],
+                            ["ou", t("Qualquer uma (OU)")],
+                          ] as const
+                        ).map(([modo, rotulo]) => (
+                          <label
+                            key={modo}
+                            className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-secondary"
+                          >
+                            <input
+                              type="radio"
+                              name="modo-das-tags"
+                              checked={(value.tagMode === "ou" ? "ou" : "e") === modo}
+                              onChange={() =>
+                                onChange({ ...value, tagMode: modo === "ou" ? "ou" : undefined })
+                              }
+                              className="size-4 accent-[var(--primary)]"
+                            />
+                            {rotulo}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {/* As órfãs entram na lista: sem elas o gatilho mostraria o resumo de um filtro
+                        cujas opções não estão mais lá, e o operador não teria como tirá-las. */}
+                    {opcoesDoSeletor
+                      .filter(
+                        (tag) =>
+                          termoDeTag === "" ||
+                          tag
+                            .normalize("NFD")
+                            .replace(/[̀-ͯ]/g, "")
+                            .toLowerCase()
+                            .includes(termoDeTag),
+                      )
+                      .map((tag) => (
+                        <label
+                          key={tag}
+                          className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-secondary"
+                        >
+                          <CaixaRedonda
+                            checked={etiquetas.includes(tag)}
+                            onChange={() => alternaEtiqueta(tag)}
+                            data-opcao-de-tag
+                          />
+                          <span className="inline-flex min-w-0 items-center gap-2">
+                            <PontoDaEtiqueta tag={tag} />
+                            <span className="truncate">{tag}</span>
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         )}
@@ -560,7 +576,7 @@ export function InboxFilters({ value, onChange }: Props) {
               type="button"
               onClick={() => moveTab(-1)}
               aria-label={t("Aba anterior")}
-              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
             >
               <CaretLeft size={13} aria-hidden />
             </button>
@@ -570,7 +586,7 @@ export function InboxFilters({ value, onChange }: Props) {
           <TabsList
             ref={tabsListRef}
             onScroll={updateMoreTabs}
-            className="h-auto min-w-0 flex-1 justify-between gap-2 rounded-none bg-transparent p-0 [scrollbar-width:none]"
+            className="h-auto min-w-0 flex-1 [scrollbar-width:none] justify-between gap-2 rounded-none bg-transparent p-0"
           >
             {tabs.map((tab) => {
               const meta = INBOX_TABS.find((t) => t.value === tab)!;
@@ -579,11 +595,11 @@ export function InboxFilters({ value, onChange }: Props) {
                 <TabsTrigger
                   key={tab}
                   value={tab}
-                  className="shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pb-2 pt-1 text-xs font-medium text-text-muted data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
+                  className="shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pt-1 pb-2 text-xs font-medium text-text-muted data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
                 >
                   {t(meta.label)}
                   {typeof count === "number" && count > 0 && (
-                    <span className="text-[11px] tabular-nums text-text-subtle">{count}</span>
+                    <span className="text-[11px] text-text-subtle tabular-nums">{count}</span>
                   )}
                 </TabsTrigger>
               );
@@ -594,7 +610,7 @@ export function InboxFilters({ value, onChange }: Props) {
               type="button"
               onClick={() => moveTab(1)}
               aria-label={t("Próxima aba")}
-              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
             >
               <CaretRight size={13} aria-hidden />
             </button>

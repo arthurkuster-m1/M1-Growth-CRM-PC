@@ -60,7 +60,7 @@ const GATILHO = "Filtrar por tag";
  * tela de reading usa.
  *
  * O `Select` do Radix é `role="combobox"` e as opções dele são `role="option"`.
- * O `DropdownMenu` é `role="menu"` com `role="menuitemcheckbox"`, porque é
+ * O `DropdownMenu` é `role="menu"` com `role="checkbox"`, porque é
  * multi-seleção: o item MARCA e NÃO fecha, que é o defeito que o `Select`
  * tinha (a segunda escolha exigiria reabrir o menu).
  *
@@ -94,8 +94,8 @@ async function abreOMenu() {
   const user = userEvent.setup({ delay: null });
   const tela = render(<InboxFilters value={VALUE} onChange={() => {}} />);
   await user.click(screen.getByRole("button", { name: GATILHO }));
-  expect(screen.getByRole("menuitemcheckbox", { name: /vip/ })).toBeInTheDocument();
-  expect(screen.getByRole("menuitemcheckbox", { name: /retorno/ })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: /vip/ })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: /retorno/ })).toBeInTheDocument();
   return tela;
 }
 
@@ -114,7 +114,7 @@ describe("o menu de etiqueta aberto sobrevive à oscilação do vocabulário", (
     // por isso que se procura o gatilho com `hidden: true`: o que se afirma aqui
     // é que ele não DESMONTOU, e não que esteja exposto à leitura de tela.
     expect(gatilho(true)).toBeInTheDocument();
-    expect(screen.getByRole("menuitemcheckbox", { name: /vip/ })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /vip/ })).toBeInTheDocument();
   });
 
   it("vocabulário voltando VAZIO por um render não derruba o menu", async () => {
@@ -131,7 +131,7 @@ describe("o menu de etiqueta aberto sobrevive à oscilação do vocabulário", (
     // por isso que se procura o gatilho com `hidden: true`: o que se afirma aqui
     // é que ele não DESMONTOU, e não que esteja exposto à leitura de tela.
     expect(gatilho(true)).toBeInTheDocument();
-    expect(screen.getByRole("menuitemcheckbox", { name: /vip/ })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /vip/ })).toBeInTheDocument();
   });
 });
 
@@ -182,20 +182,20 @@ describe("o modo E/OU marca só o modo ativo (#1274)", () => {
     );
     await user.click(screen.getByRole("button", { name: GATILHO }));
     return {
-      e: screen.getByRole("menuitemradio", { name: "Todas (E)" }),
-      ou: screen.getByRole("menuitemradio", { name: "Qualquer uma (OU)" }),
+      e: screen.getByRole("radio", { name: "Todas (E)" }),
+      ou: screen.getByRole("radio", { name: "Qualquer uma (OU)" }),
     };
   }
 
   it("com OU ativo, só o OU está marcado", async () => {
     const { e, ou } = await abreComDuas("ou");
-    expect(ou).toHaveAttribute("aria-checked", "true");
-    expect(e).toHaveAttribute("aria-checked", "false");
+    expect(ou).toBeChecked();
+    expect(e).not.toBeChecked();
   });
 
   it("sem modo (E, o padrão), só o E está marcado", async () => {
     const { e, ou } = await abreComDuas();
-    expect(e).toHaveAttribute("aria-checked", "true");
-    expect(ou).toHaveAttribute("aria-checked", "false");
+    expect(e).toBeChecked();
+    expect(ou).not.toBeChecked();
   });
 });
