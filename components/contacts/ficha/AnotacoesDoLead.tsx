@@ -37,6 +37,7 @@ export function AnotacoesDoLead({
   podeEditar,
   semBloco = false,
   semLista = false,
+  semNova = false,
   aoAdicionar,
 }: {
   contactId: string;
@@ -47,6 +48,8 @@ export function AnotacoesDoLead({
   semBloco?: boolean;
   /** Só o formulário de nova anotação (para o atalho do topo da ficha). */
   semLista?: boolean;
+  /** Só a lista (a nova anotação se cria no topo da página). */
+  semNova?: boolean;
   aoAdicionar?: () => void;
 }) {
   const t = useT();
@@ -113,7 +116,7 @@ export function AnotacoesDoLead({
 
   return (
     <div className="grid gap-4">
-      {podeEditar
+      {podeEditar && !semNova
         ? cartao(
             semBloco ? "" : t("Nova anotação"),
             "yellow",

@@ -14,14 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CampoInline } from "@/components/contacts/ficha/CampoInline";
 import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { TopoDoLead } from "@/components/contacts/ficha/TopoDoLead";
-import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
-import { EstiloDosBlocos } from "@/components/contacts/ficha/BlocoDaFicha";
-import { CompromissosETarefasDoLead } from "@/components/contacts/ficha/CompromissosETarefasDoLead";
-import { CadastroDoLead } from "@/components/contacts/ficha/CadastroDoLead";
-import { OportunidadesDoLead } from "@/components/contacts/ficha/OportunidadesDoLead";
-import { PainelDaVisaoGeral } from "@/components/contacts/ficha/PainelDaVisaoGeral";
+import { VisaoGeralDoLead } from "@/components/contacts/ficha/VisaoGeralDoLead";
 import { LinhaDoTempoDoLead } from "@/components/contacts/ficha/LinhaDoTempoDoLead";
-import { VendasDaFicha } from "@/components/contacts/ficha/VendasDaFicha";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AvisoDeNaoSalvoProvider,
@@ -54,7 +48,6 @@ import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { AnonymizeDialog } from "@/components/contacts/AnonymizeDialog";
 import { PropostasDeDado } from "@/components/contacts/PropostasDeDado";
-import { RoteirosDoContato } from "@/components/contacts/RoteirosDoContato";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { origemDoContato } from "@/lib/leads/origem-do-contato";
 import { DialButton } from "@/components/voice/DialButton";
@@ -396,36 +389,16 @@ function ContactDetailInner({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <EstiloDosBlocos.Provider value="cartao">
-            <PainelDaVisaoGeral
-              contactId={contactId}
-              aoAbrir={irParaAba}
-              podeEditar={podeEditarFicha}
-            />
-          </EstiloDosBlocos.Provider>
-          <div className="mt-4">
-            <RoteirosDoContato contactId={contactId} />
-          </div>
-          {/* O que era a aba Cadastro: cadastro, links, qualificação, origem, ciclo, datas e tags,
-              cada um num toggle (fechado = só o título). */}
-          <div className="mt-4">
-            <EstiloDosBlocos.Provider value="toggle">
-              <div className="grid gap-4">
-                <CompromissosETarefasDoLead contactId={contactId} podeEditar={podeEditarFicha} />
-                <OportunidadesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
-                <VendasDaFicha contactId={contactId} nome={displayName} />
-                <AnotacoesDoLead contactId={contactId} podeEditar={podeEditarFicha} />
-                <CadastroDoLead
-                  contact={contact}
-                  origem={origem}
-                  podeEditar={podeEditarFicha}
-                  camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
-                  clientesLigado={clientesLigado}
-                  podeGerirCategorias={Boolean(podeMarcarPessoal)}
-                />
-              </div>
-            </EstiloDosBlocos.Provider>
-          </div>
+          <VisaoGeralDoLead
+            contactId={contactId}
+            nome={displayName}
+            contact={contact}
+            origem={origem}
+            podeEditar={podeEditarFicha}
+            camposDefinidos={camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null)}
+            clientesLigado={clientesLigado}
+            podeGerirCategorias={Boolean(podeMarcarPessoal)}
+          />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">

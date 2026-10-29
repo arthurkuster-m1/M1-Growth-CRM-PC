@@ -1,6 +1,5 @@
 "use client";
 
-import { CicloDeVidaDoLead } from "@/components/contacts/ficha/CicloDeVidaDoLead";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,10 +17,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDadosDosNegocios, useQualificacaoDoContato } from "@/components/contacts/ficha/dados-da-ficha";
+import {
+  useDadosDosNegocios,
+  useQualificacaoDoContato,
+} from "@/components/contacts/ficha/dados-da-ficha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
-import { QualificacaoDoLead } from "@/components/leads/QualificacaoDoLead";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ import type { Contact } from "@/lib/types/contacts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { OrigemEmCascata } from "@/components/contacts/ficha/OrigemEmCascata";
 import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
-import { Plus, Trash, X } from "@/lib/ui/icons";
+import { Plus, Trash } from "@/lib/ui/icons";
 
 interface OrigemLida {
   origem: string;
@@ -118,7 +119,9 @@ export function CadastroDoLead({
   // ── Links ──
   const [links, setLinks] = useState<LinksDoContato>(() => lerLinks(contact.custom_fields));
   async function salvarLinks() {
-    const invalidos = TIPOS_DE_LINK.filter((l) => links[l.id]?.trim() && !normalizarLink(links[l.id]));
+    const invalidos = TIPOS_DE_LINK.filter(
+      (l) => links[l.id]?.trim() && !normalizarLink(links[l.id]),
+    );
     if (invalidos.length > 0) {
       toast.error(t("Confira os links marcados: só endereços http(s) valem."));
       return;
@@ -130,6 +133,47 @@ export function CadastroDoLead({
       /* o hook já avisou */
     }
   }
+
+  const [novoLink, setNovoLink] = useState<{ tipo: TipoDeLink; url: string } | null>(null);
+  async function gravarLinks(proximos: LinksDoContato) {
+    try {
+      await atualizar.mutateAsync({ custom_fields: aplicarLinks(contact.custom_fields, proximos) });
+      return true;
+    } catch {
+      return false; // o hook já avisou
+    }
+  }
+  async function adicionarLink() {
+    if (!novoLink) return;
+    const valor = novoLink.url.trim();
+    if (!normalizarLink(valor)) {
+      toast.error(t("Confira o link: só endereços http(s) valem."));
+      return;
+    }
+    const proximos = { ...links, [novoLink.tipo]: valor };
+    if (await gravarLinks(proximos)) {
+      setLinks(proximos);
+      setNovoLink(null);
+      toast.success(t("Link salvo."));
+    }
+  }
+  async function removerLink(tipo: TipoDeLink) {
+    const proximos = { ...links };
+    delete proximos[tipo];
+    if (await gravarLinks(proximos)) setLinks(proximos);
+  }
+
+  // A data até quando o cliente conta como ativo (a próxima recompra prevista).
+  const cicloQ = useQuery({
+    queryKey: ["contato-ciclo", contact.id],
+    staleTime: 15_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{ data: { ativo_ate: string | null } }>(
+          `/api/v1/contacts/${contact.id}/ciclo`,
+        )
+      ).data,
+  });
 
   // ── Campos personalizados (do contato + de cada funil, juntos; dá para criar e apagar) ──
   const rotulosGuardados =
@@ -230,12 +274,18 @@ export function CadastroDoLead({
 
   // ── Origem (editável, com confirmação) ──
   const manualAtual =
-    contact.source_metadata && typeof (contact.source_metadata as Record<string, unknown>).origem_manual === "object"
-      ? ((contact.source_metadata as Record<string, unknown>).origem_manual as Record<string, string>)
+    contact.source_metadata &&
+    typeof (contact.source_metadata as Record<string, unknown>).origem_manual === "object"
+      ? ((contact.source_metadata as Record<string, unknown>).origem_manual as Record<
+          string,
+          string
+        >)
       : {};
   const paginaDosFunis =
     negocios.dados
-      .map((n) => n.campanhas.flatMap((c) => c.landing_pages).find((p) => p.id === n.landing_page_id))
+      .map((n) =>
+        n.campanhas.flatMap((c) => c.landing_pages).find((p) => p.id === n.landing_page_id),
+      )
       .find(Boolean)?.nome ?? null;
   const origemAtual = {
     origem: origem.origem,
@@ -267,7 +317,9 @@ export function CadastroDoLead({
       const arvore = opcoesDeOrigem.data?.campanhas ?? [];
       const camp = arvore.find((c) => c.nome === origemEdit.campanha.trim());
       const conj = camp?.conjuntos.find((c) => c.nome === origemEdit.conjunto.trim());
-      const todosAnuncios = camp ? [...camp.conjuntos.flatMap((c) => c.anuncios), ...camp.anuncios_soltos] : [];
+      const todosAnuncios = camp
+        ? [...camp.conjuntos.flatMap((c) => c.anuncios), ...camp.anuncios_soltos]
+        : [];
       const anun = todosAnuncios.find((a) => a.nome === origemEdit.anuncio.trim());
       const pag = camp?.paginas.find((p) => p.nome === origemEdit.lp.trim());
       manual.campanha_id = camp?.id ?? "";
@@ -344,144 +396,94 @@ export function CadastroDoLead({
             />
           </div>
         </div>
-      </BlocoDaFicha>
-
-      <BlocoDaFicha
-        titulo={t("Links")}
-        cor="purple"
-        acao={
-          podeEditar ? (
-            <Button size="sm" variant="outline" disabled={atualizar.isPending} onClick={() => void salvarLinks()}>
-              {t("Salvar links")}
-            </Button>
-          ) : null
-        }
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {TIPOS_DE_LINK.map((l) => (
-            <div key={l.id} className="grid gap-1">
-              <Label className="text-xs">{l.rotulo}</Label>
-              <Input
-                value={links[l.id as TipoDeLink] ?? ""}
-                disabled={!podeEditar}
-                placeholder="https://…"
-                onChange={(e) => setLinks((a) => ({ ...a, [l.id]: e.target.value }))}
-              />
-            </div>
-          ))}
-        </div>
-      </BlocoDaFicha>
-
-      <BlocoDaFicha
-        titulo={t("Qualificação")}
-        cor="green"
-      >
-        <QualificacaoDoLead contactId={contact.id} semTitulo semDatas />
-
         <div className="mt-4 border-t pt-4">
-          <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("Campos personalizados")}
-          </h3>
-          {juntos.size === 0 && novos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("Nenhum campo ainda. Adicione abaixo o que ajuda a qualificar este lead.")}
-            </p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[...juntos.entries()]
-                .filter(([k]) => !removidos.has(k))
-                .map(([k, v]) => (
-                  <div key={k} className="grid gap-1">
-                    <Label className="text-xs">{rotuloDoCampo(k)}</Label>
-                    <div className="flex gap-1">
-                      <Input
-                        value={edicao[k] ?? texto(v)}
-                        disabled={!podeEditar || Array.isArray(v)}
-                        onChange={(e) => setEdicao((a) => ({ ...a, [k]: e.target.value }))}
-                      />
-                      {podeEditar ? (
-                        <button
-                          type="button"
-                          aria-label={`${t("Apagar campo")} ${rotuloDoCampo(k)}`}
-                          onClick={() => setRemovidos((a) => new Set(a).add(k))}
-                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
-                        >
-                          <Trash size={14} aria-hidden />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              {novos.map((n) => (
-                <div key={n.chave} className="grid gap-1">
-                  <Label className="text-xs">
-                    {n.rotulo} <span className="text-primary">· {t("novo")}</span>
-                  </Label>
-                  <div className="flex gap-1">
-                    <Input
-                      value={n.valor}
-                      onChange={(e) =>
-                        setNovos((a) =>
-                          a.map((x) => (x.chave === n.chave ? { ...x, valor: e.target.value } : x)),
-                        )
-                      }
-                    />
+          <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("Links")}
+          </p>
+          {TIPOS_DE_LINK.some((l) => links[l.id]?.trim()) ? (
+            <ul className="grid gap-2">
+              {TIPOS_DE_LINK.filter((l) => links[l.id]?.trim()).map((l) => (
+                <li key={l.id} className="flex items-center gap-2">
+                  <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">
+                    {l.rotulo}
+                  </span>
+                  <Input
+                    value={links[l.id as TipoDeLink] ?? ""}
+                    disabled={!podeEditar}
+                    placeholder="https://…"
+                    onChange={(e) => setLinks((a) => ({ ...a, [l.id]: e.target.value }))}
+                    onBlur={() => void salvarLinks()}
+                    className="h-9"
+                  />
+                  {podeEditar ? (
                     <button
                       type="button"
-                      aria-label={`${t("Remover")} ${n.rotulo}`}
-                      onClick={() => setNovos((a) => a.filter((x) => x.chave !== n.chave))}
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+                      aria-label={`${t("Remover")} ${l.rotulo}`}
+                      onClick={() => void removerLink(l.id as TipoDeLink)}
+                      className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
                     >
-                      <X size={14} aria-hidden />
+                      <Trash size={14} aria-hidden />
                     </button>
-                  </div>
-                </div>
+                  ) : null}
+                </li>
               ))}
-            </div>
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("Nenhum link cadastrado.")}</p>
           )}
           {podeEditar ? (
-            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-              <Input
-                value={novoNome}
-                maxLength={60}
-                placeholder={t("Nome do campo (ex.: Renda mensal)")}
-                onChange={(e) => setNovoNome(e.target.value)}
-              />
-              <Input
-                value={novoValor}
-                maxLength={500}
-                placeholder={t("Valor")}
-                onChange={(e) => setNovoValor(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && juntarNovo()}
-              />
-              <Button type="button" variant="outline" disabled={!novoNome.trim()} onClick={juntarNovo}>
-                <Plus size={14} weight="bold" aria-hidden className="mr-1" />
-                {t("Adicionar campo")}
-              </Button>
-            </div>
-          ) : null}
-          {podeEditar && sujoCampos ? (
-            <div className="mt-3 flex flex-wrap items-center justify-end gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
-              <span className="mr-auto text-xs text-muted-foreground">
-                {t("Você alterou campos e ainda não salvou.")}
-              </span>
+            novoLink ? (
+              <form
+                className="mt-2 flex flex-wrap items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void adicionarLink();
+                }}
+              >
+                <select
+                  aria-label={t("De onde é o link")}
+                  value={novoLink.tipo}
+                  onChange={(e) => setNovoLink({ ...novoLink, tipo: e.target.value as TipoDeLink })}
+                  className="h-9 rounded-xl border bg-card px-2 text-sm"
+                >
+                  {TIPOS_DE_LINK.filter((l) => !links[l.id]?.trim()).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.rotulo}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  autoFocus
+                  value={novoLink.url}
+                  placeholder="https://…"
+                  onChange={(e) => setNovoLink({ ...novoLink, url: e.target.value })}
+                  className="h-9 min-w-0 flex-1 basis-48"
+                />
+                <Button type="submit" size="sm" disabled={!novoLink.url.trim()}>
+                  {t("Adicionar")}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setNovoLink(null)}>
+                  {t("Cancelar")}
+                </Button>
+              </form>
+            ) : TIPOS_DE_LINK.some((l) => !links[l.id]?.trim()) ? (
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
-                disabled={atualizar.isPending}
-                onClick={() => {
-                  setEdicao({});
-                  setRemovidos(new Set());
-                  setNovos([]);
-                }}
+                variant="outline"
+                className="mt-2"
+                onClick={() =>
+                  setNovoLink({
+                    tipo: (TIPOS_DE_LINK.find((l) => !links[l.id]?.trim())?.id ??
+                      "site") as TipoDeLink,
+                    url: "",
+                  })
+                }
               >
-                {t("Descartar")}
+                <Plus size={14} weight="bold" aria-hidden className="mr-1" />
+                {t("Adicionar link")}
               </Button>
-              <Button size="sm" disabled={atualizar.isPending} onClick={() => void salvarCampos()}>
-                {t("Salvar campos")}
-              </Button>
-            </div>
+            ) : null
           ) : null}
         </div>
       </BlocoDaFicha>
@@ -591,13 +593,14 @@ export function CadastroDoLead({
         </AlertDialogContent>
       </AlertDialog>
 
-      <CicloDeVidaDoLead contactId={contact.id} podeEditar={podeEditar} />
-
       <BlocoDaFicha titulo={t("Datas")} cor="yellow">
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <CampoLido rotulo={t("Criado em")} valor={dia(contact.created_at)} />
           <CampoLido rotulo={t("Entrou no CRM em")} valor={dia(qual.data?.entrou_em, true)} />
-          <CampoLido rotulo={t("Primeira abordagem")} valor={dia(qual.data?.primeira_abordagem, true)} />
+          <CampoLido
+            rotulo={t("Primeira abordagem")}
+            valor={dia(qual.data?.primeira_abordagem, true)}
+          />
           <CampoLido
             rotulo={t("Primeira compra")}
             valor={
@@ -610,6 +613,10 @@ export function CadastroDoLead({
           {clientesLigado && contact.first_service_at ? (
             <CampoLido rotulo={t("Cliente desde")} valor={dia(contact.first_service_at)} />
           ) : null}
+          <CampoLido
+            rotulo={t("Ativo até (próxima compra)")}
+            valor={cicloQ.data?.ativo_ate ? dia(cicloQ.data.ativo_ate) : "—"}
+          />
         </dl>
       </BlocoDaFicha>
 

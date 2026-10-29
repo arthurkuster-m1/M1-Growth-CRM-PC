@@ -36,13 +36,7 @@ const rotuloDaChave = (k: string) =>
  * personalizados (só o nome do campo e o valor). Os três atalhos de ícone — conversa no Inbox,
  * ligar e abrir a página do cliente — ficam no fim do mesmo campo, como na página do compromisso.
  */
-export function ClienteDaOportunidade({
-  contactId,
-  nome,
-}: {
-  contactId: string;
-  nome: string;
-}) {
+export function ClienteDaOportunidade({ contactId, nome }: { contactId: string; nome: string }) {
   const t = useT();
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -86,7 +80,10 @@ export function ClienteDaOportunidade({
             <CaretDown
               size={12}
               aria-hidden
-              className={cn("shrink-0 text-text-subtle transition-transform", !aberto && "-rotate-90")}
+              className={cn(
+                "shrink-0 text-text-subtle transition-transform",
+                !aberto && "-rotate-90",
+              )}
             />
           </button>
           <span className="flex shrink-0 items-center gap-0.5">
@@ -173,7 +170,10 @@ export function ScoreDaOportunidade({
   const mql = etapa?.qualification === "mql";
   if (!etapa && !ganho && !perdido) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" data-testid="score-da-oportunidade">
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+      data-testid="score-da-oportunidade"
+    >
       <span className="text-xs font-medium text-muted-foreground">{t("Score")}</span>
       {mql ? <Tag cor="roxo">MQL</Tag> : null}
       {probabilidade === null ? (
@@ -260,7 +260,10 @@ export function CompromissosDaOportunidade({
       ) : (
         <ul className="flex flex-col gap-2">
           {lista.map((c) => {
-            const status = statusDoCompromisso({ status: c.situacao, remarcado_para: null }, vendeu);
+            const status = statusDoCompromisso(
+              { status: c.situacao, remarcado_para: null },
+              vendeu,
+            );
             const { dia, hora } = quando(c.iniciaEm);
             const comecou = Date.parse(c.iniciaEm) <= agora;
             return (
@@ -303,7 +306,10 @@ export function CompromissosDaOportunidade({
                         id: opcao,
                         rotulo: t(rotulo),
                         desabilitado: soDepois && !comecou,
-                        dica: soDepois && !comecou ? t("Disponível quando a reunião começar") : undefined,
+                        dica:
+                          soDepois && !comecou
+                            ? t("Disponível quando a reunião começar")
+                            : undefined,
                         aoEscolher: () =>
                           opcao === "confirmed"
                             ? c.situacao === "pending"
@@ -365,7 +371,8 @@ export function TarefasDaOportunidade({
   podeEditar = true,
 }: {
   contactId: string | null;
-  leadId: string;
+  /** Sem oportunidade: as tarefas do cliente todo (e a nova nasce só com o cliente). */
+  leadId?: string;
   podeEditar?: boolean;
 }) {
   const t = useT();
@@ -378,16 +385,18 @@ export function TarefasDaOportunidade({
   const [titulo, setTitulo] = useState("");
   const [dia, setDia] = useState("");
   const consulta = useQuery({
-    queryKey: ["crm_tasks", "da-oportunidade", leadId],
+    queryKey: ["crm_tasks", "da-oportunidade", leadId ?? `contato:${contactId}`],
     staleTime: 10_000,
     queryFn: async () =>
       (
         await apiClient.get<{ data: { tasks: TarefaDaOportunidade[] } }>(
-          `/api/v1/tasks?lead_id=${leadId}`,
+          leadId ? `/api/v1/tasks?lead_id=${leadId}` : `/api/v1/tasks?contact_id=${contactId}`,
         )
       ).data.tasks,
   });
-  const abertas = (consulta.data ?? []).filter((x) => x.status === "pending" || x.status === "in_progress");
+  const abertas = (consulta.data ?? []).filter(
+    (x) => x.status === "pending" || x.status === "in_progress",
+  );
   const recarregar = () => void qc.invalidateQueries({ queryKey: ["crm_tasks"] });
   const concluir = useMutation({
     mutationFn: (id: string) => apiClient.patch(`/api/v1/tasks/${id}`, { status: "done" }),
@@ -399,7 +408,7 @@ export function TarefasDaOportunidade({
       apiClient.post("/api/v1/tasks", {
         title: titulo.trim(),
         due_date: dia ? new Date(`${dia}T09:00:00`).toISOString() : null,
-        lead_id: leadId,
+        lead_id: leadId ?? null,
         contact_id: contactId,
         priority: "medium",
       }),
@@ -412,7 +421,9 @@ export function TarefasDaOportunidade({
     onError: showApiError,
   });
   const prazo = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : t("Sem prazo");
+    iso
+      ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+      : t("Sem prazo");
 
   return (
     <div className="grid gap-2" data-testid="tarefas-da-oportunidade">
@@ -454,7 +465,10 @@ export function TarefasDaOportunidade({
                 </div>
                 <span
                   aria-hidden
-                  className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", COR_DA_PRIORIDADE[x.priority])}
+                  className={cn(
+                    "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                    COR_DA_PRIORIDADE[x.priority],
+                  )}
                 />
               </li>
             );

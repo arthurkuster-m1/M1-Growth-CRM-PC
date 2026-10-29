@@ -22,20 +22,34 @@ import { toast } from "sonner";
 
 import { BlocoDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import { invalidarCategoriasDeTags, useCategoriasDeTags, useCorDaEtiqueta } from "@/components/tags/CoresDasEtiquetas";
+import {
+  invalidarCategoriasDeTags,
+  useCategoriasDeTags,
+  useCorDaEtiqueta,
+} from "@/components/tags/CoresDasEtiquetas";
 import { SeletorDeTagsEmMassa } from "@/components/clientes/SeletorDeTagsEmMassa";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { normalizarTag, normalizarTags } from "@/lib/contacts/tag-normalizada";
-import { categoriaDaTag, type CategoriaDeTag, type ConfigDeCategorias } from "@/lib/tags/categorias";
+import {
+  categoriaDaTag,
+  type CategoriaDeTag,
+  type ConfigDeCategorias,
+} from "@/lib/tags/categorias";
 import { chaveDaEtiqueta, PALETA_DE_ETIQUETAS } from "@/lib/tags/cor-da-etiqueta";
-import { Plus, Trash, X } from "@/lib/ui/icons";
+import { PencilSimple, Plus, Trash, X } from "@/lib/ui/icons";
 import type { Contact } from "@/lib/types/contacts";
 
 const SEM_CATEGORIA = "__sem__";
@@ -79,7 +93,10 @@ function lerFiltrosGuardados(): FiltroDeTags[] {
 }
 
 const semAcento = (x: string) =>
-  x.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  x
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 
 /** A tag passa pelo filtro? (categoria escolhida ou não; texto contido ou não.) */
 function passaNoFiltro(f: FiltroDeTags, idDaCategoria: string, tag: string): boolean {
@@ -125,7 +142,11 @@ function ChipArrastavel({
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+      }}
       {...attributes}
       {...listeners}
       className="touch-none"
@@ -150,7 +171,12 @@ function ChipArrastavel({
           <PopoverContent align="start" className="w-72 p-3">
             <p className="mb-1 text-xs font-medium text-muted-foreground">{t("Nome da tag")}</p>
             <div className="flex gap-1">
-              <Input value={nome} maxLength={60} onChange={(e) => setNome(e.target.value)} className="h-8" />
+              <Input
+                value={nome}
+                maxLength={60}
+                onChange={(e) => setNome(e.target.value)}
+                className="h-8"
+              />
               <Button
                 size="sm"
                 disabled={!nome.trim() || normalizarTag(nome) === tag}
@@ -318,7 +344,9 @@ function FiltrosPersonalizados({
                   className="inline-flex items-center gap-1.5 rounded-full border-[1.5px] px-2.5 py-1 text-xs font-medium"
                   style={{
                     borderColor: marcado ? o.cor : undefined,
-                    backgroundColor: marcado ? `color-mix(in srgb, ${o.cor} 16%, transparent)` : undefined,
+                    backgroundColor: marcado
+                      ? `color-mix(in srgb, ${o.cor} 16%, transparent)`
+                      : undefined,
                   }}
                 >
                   <span className="size-2 rounded-full" style={{ backgroundColor: o.cor }} />
@@ -371,7 +399,11 @@ function LinhaDeCategoriaArrastavel({ categoria }: { categoria: CategoriaDeTag }
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+      }}
       {...attributes}
       {...listeners}
       className="flex cursor-grab touch-none items-center gap-2 rounded-xl border border-l-4 bg-card px-3 py-2 text-sm active:cursor-grabbing"
@@ -450,7 +482,11 @@ function OrdemDasCategorias({
         </p>
         {podeGuardar ? (
           <label className="mt-3 flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={guardar} onChange={(e) => setGuardar(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={guardar}
+              onChange={(e) => setGuardar(e.target.checked)}
+            />
             {t("Guardar esta ordem para todos")}
           </label>
         ) : null}
@@ -477,26 +513,34 @@ function OrdemDasCategorias({
   );
 }
 
-function GerenciarCategorias({
-  aberto,
+/**
+ * Edita UMA categoria (ou cria uma nova): nome, cor e, nas que não vêm de fábrica, apagar. No
+ * celular abre como o resto do app (cantos arredondados) e sem puxar o teclado: só se digita
+ * quando a pessoa toca no nome.
+ */
+function EditorDeCategoria({
+  categoriaId,
   aoFechar,
   config,
 }: {
-  aberto: boolean;
+  /** O id da categoria a editar; `null` = categoria nova. */
+  categoriaId: string | null;
   aoFechar: () => void;
   config: ConfigDeCategorias;
 }) {
   const t = useT();
   const queryClient = useQueryClient();
-  const [lista, setLista] = useState<CategoriaDeTag[]>(() => config.categorias.map((c) => ({ ...c })));
+  const existente = categoriaId ? config.categorias.find((c) => c.id === categoriaId) : undefined;
+  const [nome, setNome] = useState(existente?.nome ?? "");
+  const [cor, setCor] = useState(existente?.cor ?? PALETA_DE_ETIQUETAS[5]!);
   const [salvando, setSalvando] = useState(false);
 
-  async function salvar() {
+  async function gravar(categorias: CategoriaDeTag[], tags = config.tags) {
     setSalvando(true);
     try {
-      await gravarConfig({ categorias: lista, tags: config.tags });
+      await gravarConfig({ categorias, tags });
       invalidarCategoriasDeTags(queryClient);
-      toast.success(t("Categorias salvas"));
+      toast.success(t("Categoria salva"));
       aoFechar();
     } catch (e) {
       showApiError(e);
@@ -504,85 +548,194 @@ function GerenciarCategorias({
       setSalvando(false);
     }
   }
+  function salvar() {
+    const limpo = nome.trim();
+    if (!limpo) return;
+    if (existente) {
+      void gravar(
+        config.categorias.map((c) => (c.id === existente.id ? { ...c, nome: limpo, cor } : c)),
+      );
+    } else {
+      void gravar([...config.categorias, { id: `c_${Date.now().toString(36)}`, nome: limpo, cor }]);
+    }
+  }
+  function apagar() {
+    if (!existente || existente.padrao) return;
+    // As tags que estavam nela ficam sem categoria.
+    const tags = Object.fromEntries(
+      Object.entries(config.tags).filter(([, id]) => id !== existente.id),
+    );
+    void gravar(
+      config.categorias.filter((c) => c.id !== existente.id),
+      tags,
+    );
+  }
 
   return (
-    <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
+    <Dialog open onOpenChange={(a) => !a && aoFechar()}>
+      <DialogContent
+        className="w-[calc(100vw-1.5rem)] max-w-md rounded-2xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle>{t("Categorias de tags")}</DialogTitle>
-          <DialogDescription>
-            {t("Cada categoria tem uma cor, e todas as tags dela usam essa cor.")}
-          </DialogDescription>
+          <DialogTitle>{existente ? t("Editar categoria") : t("Nova categoria")}</DialogTitle>
+          <DialogDescription>{t("Todas as tags da categoria usam a cor dela.")}</DialogDescription>
         </DialogHeader>
-        <ul className="grid gap-3">
-          {lista.map((c, i) => (
-            <li key={c.id} className="rounded-xl border border-l-4 p-3" style={{ borderLeftColor: c.cor }}>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={c.nome}
-                  maxLength={40}
-                  onChange={(e) =>
-                    setLista((a) => a.map((x, k) => (k === i ? { ...x, nome: e.target.value } : x)))
-                  }
-                  className="h-8"
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
+            <label
+              className="text-xs font-medium text-muted-foreground"
+              htmlFor="nome-da-categoria"
+            >
+              {t("Nome")}
+            </label>
+            <Input
+              id="nome-da-categoria"
+              value={nome}
+              maxLength={40}
+              placeholder={t("Nome da categoria")}
+              onChange={(e) => setNome(e.target.value)}
+              className="h-10 rounded-xl"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <p className="text-xs font-medium text-muted-foreground">{t("Cor")}</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("Cor")}>
+              {PALETA_DE_ETIQUETAS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={cor === c}
+                  aria-label={c}
+                  onClick={() => setCor(c)}
+                  className="size-8 rounded-full border-2"
+                  style={{
+                    backgroundColor: c,
+                    borderColor: cor === c ? "var(--foreground)" : "transparent",
+                  }}
                 />
-                {c.padrao ? null : (
-                  <button
-                    type="button"
-                    aria-label={`${t("Apagar")} ${c.nome}`}
-                    onClick={() => setLista((a) => a.filter((_, k) => k !== i))}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
-                  >
-                    <Trash size={14} aria-hidden />
-                  </button>
-                )}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("Cor")}>
-                {PALETA_DE_ETIQUETAS.map((cor) => (
-                  <button
-                    key={cor}
-                    type="button"
-                    role="radio"
-                    aria-checked={c.cor === cor}
-                    aria-label={cor}
-                    onClick={() =>
-                      setLista((a) => a.map((x, k) => (k === i ? { ...x, cor } : x)))
-                    }
-                    className="size-6 rounded-full border-2"
-                    style={{
-                      backgroundColor: cor,
-                      borderColor: c.cor === cor ? "var(--foreground)" : "transparent",
-                    }}
-                  />
-                ))}
-              </div>
-            </li>
-          ))}
-        </ul>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            setLista((a) => [
-              ...a,
-              { id: `c_${Date.now().toString(36)}`, nome: t("Nova categoria"), cor: PALETA_DE_ETIQUETAS[5]! },
-            ])
-          }
-        >
-          <Plus size={14} weight="bold" aria-hidden className="mr-1" />
-          {t("Nova categoria")}
-        </Button>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={aoFechar} disabled={salvando}>
-            {t("Cancelar")}
-          </Button>
-          <Button onClick={() => void salvar()} disabled={salvando || lista.some((c) => !c.nome.trim())}>
-            {salvando ? t("Salvando…") : t("Salvar categorias")}
-          </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {existente && !existente.padrao ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-error-fg"
+              disabled={salvando}
+              onClick={apagar}
+            >
+              <Trash size={14} aria-hidden className="mr-1" />
+              {t("Apagar")}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={aoFechar} disabled={salvando}>
+              {t("Cancelar")}
+            </Button>
+            <Button onClick={salvar} disabled={salvando || !nome.trim()}>
+              {salvando ? t("Salvando…") : t("Salvar")}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * O seletor "Categorias": UM botão que abre uma caixa com todas as categorias. Clicar numa filtra as
+ * tags do lead por ela; o lápis ao final de cada uma edita só aquela; "Nova categoria" cria outra
+ * (quem pode gerir). É filtro e gerenciador no mesmo lugar.
+ */
+function SeletorDeCategorias({
+  config,
+  filtro,
+  aoFiltrar,
+  podeGerir,
+  aoEditar,
+}: {
+  config: ConfigDeCategorias;
+  filtro: string;
+  aoFiltrar: (id: string) => void;
+  podeGerir: boolean;
+  /** `null` = nova categoria. */
+  aoEditar: (id: string | null) => void;
+}) {
+  const t = useT();
+  const [aberto, setAberto] = useState(false);
+  const atual =
+    filtro === SEM_CATEGORIA
+      ? t("Sem categoria")
+      : (config.categorias.find((c) => c.id === filtro)?.nome ?? "");
+  const linha = (id: string, rotulo: string, cor?: string, editavel = false) => (
+    <li key={id} className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => {
+          aoFiltrar(id);
+          setAberto(false);
+        }}
+        aria-pressed={filtro === id}
+        className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-secondary ${
+          filtro === id ? "bg-secondary font-medium" : ""
+        }`}
+      >
+        <span
+          aria-hidden
+          className="inline-block size-2.5 shrink-0 rounded-full border"
+          style={cor ? { backgroundColor: cor, borderColor: cor } : undefined}
+        />
+        <span className="min-w-0 truncate">{rotulo}</span>
+      </button>
+      {editavel && podeGerir ? (
+        <button
+          type="button"
+          aria-label={`${t("Editar categoria")} ${rotulo}`}
+          onClick={() => {
+            setAberto(false);
+            aoEditar(id);
+          }}
+          className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          <PencilSimple size={14} aria-hidden />
+        </button>
+      ) : null}
+    </li>
+  );
+  return (
+    <Popover open={aberto} onOpenChange={setAberto}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline">
+          {atual ? `${t("Categorias")}: ${atual}` : t("Categorias")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(92vw,320px)] rounded-2xl p-2">
+        <ul className="grid gap-0.5">
+          {linha("", t("Todas as categorias"))}
+          {config.categorias.map((c) => linha(c.id, c.nome, c.cor, true))}
+          {linha(SEM_CATEGORIA, t("Sem categoria"))}
+        </ul>
+        {podeGerir ? (
+          <button
+            type="button"
+            onClick={() => {
+              setAberto(false);
+              aoEditar(null);
+            }}
+            className="mt-1 flex w-full items-center gap-2 rounded-lg border-t px-2.5 py-2 text-left text-sm text-primary hover:bg-secondary"
+          >
+            <Plus size={14} weight="bold" aria-hidden />
+            {t("Nova categoria")}
+          </button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -615,7 +768,8 @@ export function TagsDoLead({
   });
   const [agrupar, setAgrupar] = useState(false);
   const [filtro, setFiltro] = useState<string>("");
-  const [gerenciando, setGerenciando] = useState(false);
+  // `undefined` = fechado; `null` = categoria nova; um id = editar essa categoria.
+  const [editandoCategoria, setEditandoCategoria] = useState<string | null | undefined>(undefined);
   // Filtros personalizados (nome + categorias + texto), guardados neste navegador.
   const [meusFiltros, setMeusFiltros] = useState<FiltroDeTags[]>([]);
   useEffect(() => setMeusFiltros(lerFiltrosGuardados()), []);
@@ -675,7 +829,9 @@ export function TagsDoLead({
   }
   async function moverDeCategoria(tag: string, categoriaId: string) {
     const novo: ConfigDeCategorias = { categorias: config.categorias, tags: { ...config.tags } };
-    const chave = chaveDaEtiqueta(tag).replace(/:\s*\d+x$/, "").trim();
+    const chave = chaveDaEtiqueta(tag)
+      .replace(/:\s*\d+x$/, "")
+      .trim();
     if (categoriaId === SEM_CATEGORIA) delete novo.tags[chave];
     else novo.tags[chave] = categoriaId;
     try {
@@ -723,22 +879,19 @@ export function TagsDoLead({
       cor="red"
       acao={
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label={t("Filtrar por categoria")}
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            className="h-8 rounded-xl border bg-card px-2 text-xs"
-          >
-            <option value="">{t("Todas as categorias")}</option>
-            {config.categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-            <option value={SEM_CATEGORIA}>{t("Sem categoria")}</option>
-          </select>
+          <SeletorDeCategorias
+            config={config}
+            filtro={filtro}
+            aoFiltrar={setFiltro}
+            podeGerir={podeGerirCategorias}
+            aoEditar={setEditandoCategoria}
+          />
           <label className="flex items-center gap-1.5 text-xs">
-            <input type="checkbox" checked={agrupar} onChange={(e) => setAgrupar(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={agrupar}
+              onChange={(e) => setAgrupar(e.target.checked)}
+            />
             {t("Agrupar")}
           </label>
           <FiltrosPersonalizados
@@ -756,17 +909,13 @@ export function TagsDoLead({
               aoAplicar={aplicarOrdemDasCategorias}
             />
           ) : null}
-          {podeGerirCategorias ? (
-            <Button size="sm" variant="outline" onClick={() => setGerenciando(true)}>
-              {t("Categorias")}
-            </Button>
-          ) : null}
         </div>
       }
     >
       {filtroPersonalizado ? (
         <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-          {t("Filtro ativo")}: <strong className="text-foreground">{filtroPersonalizado.nome}</strong>
+          {t("Filtro ativo")}:{" "}
+          <strong className="text-foreground">{filtroPersonalizado.nome}</strong>
           <button
             type="button"
             className="font-medium text-primary hover:underline"
@@ -783,7 +932,11 @@ export function TagsDoLead({
       ) : agrupar ? (
         <div className="grid gap-3">
           {grupos.map((g) => (
-            <div key={g.id} className="rounded-xl border border-l-4 p-2.5" style={{ borderLeftColor: g.categoria?.cor }}>
+            <div
+              key={g.id}
+              className="rounded-xl border border-l-4 p-2.5"
+              style={{ borderLeftColor: g.categoria?.cor }}
+            >
               <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {g.categoria?.nome ?? t("Sem categoria")} · {g.itens.length}
               </p>
@@ -836,8 +989,12 @@ export function TagsDoLead({
         </Popover>
       ) : null}
 
-      {gerenciando ? (
-        <GerenciarCategorias aberto aoFechar={() => setGerenciando(false)} config={config} />
+      {editandoCategoria !== undefined ? (
+        <EditorDeCategoria
+          categoriaId={editandoCategoria}
+          aoFechar={() => setEditandoCategoria(undefined)}
+          config={config}
+        />
       ) : null}
     </BlocoDaFicha>
   );
