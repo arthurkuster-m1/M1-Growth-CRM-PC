@@ -149,7 +149,7 @@ function ChipArrastavel({
       }}
       {...attributes}
       {...listeners}
-      className="touch-none"
+      className="max-w-full min-w-0 touch-none"
     >
       <Popover
         open={aberto}
@@ -162,7 +162,7 @@ function ChipArrastavel({
           <button
             type="button"
             title={categoria ? `${t("Categoria")}: ${categoria.nome}` : t("Sem categoria")}
-            className="cursor-grab rounded-full focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
+            className="block max-w-full min-w-0 cursor-grab rounded-2xl text-left focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-hidden"
           >
             <ChipDeEtiqueta tag={tag} cor={cor} contorno />
           </button>
@@ -853,7 +853,7 @@ export function TagsDoLead({
   const chips = (lista: string[]) => (
     <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
       <SortableContext items={lista} strategy={horizontalListSortingStrategy}>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {lista.map((tag) => (
             <ChipArrastavel
               key={tag}
@@ -876,8 +876,8 @@ export function TagsDoLead({
   return (
     <BlocoDaFicha titulo={t("Tags")} cor="red">
       {/* As ferramentas ficam no fim da mesma linha das tags, sem uma linha só para elas. */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 basis-64">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 max-w-full flex-1 basis-64">
           {filtroPersonalizado ? (
             <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
               {t("Filtro ativo")}:{" "}
@@ -914,7 +914,7 @@ export function TagsDoLead({
             chips(visiveis)
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <SeletorDeCategorias
             config={config}
             filtro={filtro}

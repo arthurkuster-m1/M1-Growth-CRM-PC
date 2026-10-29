@@ -67,7 +67,12 @@ export function ChipDeEtiqueta({ tag, cor, contorno, className, children, ...pro
     return (
       <Badge
         variant="secondary"
-        className={cn("border-[1.5px] bg-transparent text-foreground", !c && "border-border", className)}
+        className={cn(
+          // Nome comprido quebra de linha dentro do chip em vez de estourar a coluna.
+          "h-auto max-w-full min-w-0 rounded-2xl border-[1.5px] bg-transparent text-left break-words whitespace-normal text-foreground",
+          !c && "border-border",
+          className,
+        )}
         style={
           c
             ? {
@@ -85,7 +90,7 @@ export function ChipDeEtiqueta({ tag, cor, contorno, className, children, ...pro
             style={{ backgroundColor: c }}
           />
         ) : null}
-        <span className="inline-block first-letter:uppercase">{tag}</span>
+        <span className="inline-block min-w-0 first-letter:uppercase">{tag}</span>
         {children}
       </Badge>
     );

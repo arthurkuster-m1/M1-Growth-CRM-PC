@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -97,16 +98,16 @@ export function OportunidadeNaFicha({
           }}
           className="h-8 w-full min-w-0 rounded-lg border bg-background px-2 text-sm outline-hidden focus:border-primary/60"
         />
-        <input
-          type="date"
-          value={dia}
-          disabled={!podeEditar}
-          aria-label={t("Data da próxima ação")}
-          onChange={(e) => {
-            setDia(e.target.value);
-            void gravar(texto, e.target.value);
+        <CampoDeData
+          valor={dia}
+          aoMudar={(novo) => {
+            setDia(novo);
+            void gravar(texto, novo);
           }}
-          className="h-8 w-full min-w-0 rounded-lg border bg-background px-2 text-sm"
+          rotulo={t("Data da próxima ação")}
+          placeholder={t("Escolher data")}
+          desabilitado={!podeEditar}
+          className="w-full"
         />
       </div>
     </div>
