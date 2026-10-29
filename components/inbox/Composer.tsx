@@ -205,8 +205,12 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   function autoresize() {
     const ta = taRef.current;
     if (!ta) return;
+    // O campo CRESCE com o texto (até 40% da altura da tela), em vez de ganhar barra de rolagem
+    // ao lado: só passa disso — aí sim — rola por dentro.
+    const teto = Math.max(160, Math.round(window.innerHeight * 0.4));
     ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+    ta.style.height = `${Math.min(ta.scrollHeight, teto)}px`;
+    ta.style.overflowY = ta.scrollHeight > teto ? "auto" : "hidden";
   }
 
   /**
@@ -585,7 +589,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 : t("Enter envia · Shift+Enter quebra linha")
             }
             className={cn(
-              "max-h-40 min-h-9 flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm",
+              "max-h-[40dvh] min-h-9 flex-1 resize-none overflow-y-hidden rounded-xl border border-input bg-background px-3 py-2 text-sm",
               "placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden",
             )}
             disabled={mode === "note" ? isDisabled : respostaBarrada}
