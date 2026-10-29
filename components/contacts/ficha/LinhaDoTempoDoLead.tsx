@@ -158,7 +158,7 @@ export function RegistrarAcaoDoLead({
         envolver(
         <>
           <Select value={acao ?? ""} onValueChange={(v) => escolher(v as IdDaAcao)}>
-            <SelectTrigger className="w-full sm:w-72">
+            <SelectTrigger className="w-full sm:max-w-72">
               <SelectValue placeholder={t("Escolher ação")} />
             </SelectTrigger>
             <SelectContent>
