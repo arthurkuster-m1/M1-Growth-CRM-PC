@@ -47,19 +47,36 @@ export const GATILHO_ETAPA_PARADA = "lead.stage_stale";
  *
  * `da_equipe` = a equipe não manda mensagem (última saída velha);
  * `do_cliente` = o cliente não responde (última entrada velha);
- * `qualquer` = ninguém falou (última mensagem de qualquer lado velha).
+ * `qualquer` = ninguém falou (última mensagem de qualquer lado velha);
+ * `sem_atendimento` = o cliente escreveu e a equipe ainda não respondeu (a última mensagem
+ * do cliente é mais nova que a última resposta nossa, e já tem N de espera).
  */
-export const DIRECOES_DO_SILENCIO = ["da_equipe", "do_cliente", "qualquer"] as const;
+export const DIRECOES_DO_SILENCIO = [
+  "da_equipe",
+  "do_cliente",
+  "qualquer",
+  "sem_atendimento",
+] as const;
 export type DirecaoDoSilencio = (typeof DIRECOES_DO_SILENCIO)[number];
 
 /** Dez anos de silêncio é dedo no teclado, não regra. Abaixo de 1 dia é flood. */
 export const DIAS_MIN = 1;
 export const DIAS_MAX = 3650;
 
+/** A unidade do tempo do silêncio: dias (padrão, e o que toda regra antiga guarda) ou horas. */
+export const UNIDADES_DO_SILENCIO = ["dias", "horas"] as const;
+export type UnidadeDoSilencio = (typeof UNIDADES_DO_SILENCIO)[number];
+
+/** Em horas o teto é 30 dias: acima disso a unidade certa é dias. */
+export const HORAS_MIN = 1;
+export const HORAS_MAX = 720;
+
 /** O que a regra guarda em `automation_rules.trigger_config` — silêncio. */
 export interface ConfigDoSilencio {
-  /** Dias sem mensagem na direção escolhida. */
+  /** Quantidade de `unidade` (dias, por padrão) sem mensagem na direção escolhida. */
   dias: number;
+  /** Ausente nas regras antigas = dias. */
+  unidade: UnidadeDoSilencio;
   direcao: DirecaoDoSilencio;
   /** Recorte de funil. `null` = todos os funis da organização. */
   pipeline_id: string | null;
@@ -98,16 +115,25 @@ function booleano(v: unknown, padrao = false): boolean {
  */
 export function configDoSilencio(bruto: unknown): ConfigDoSilencio | null {
   if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return null;
-  const { dias, direcao, pipeline_id: pipelineId, proteger_pela_agenda: proteger } =
-    bruto as Record<string, unknown>;
+  const {
+    dias,
+    unidade: unidadeBruta,
+    direcao,
+    pipeline_id: pipelineId,
+    proteger_pela_agenda: proteger,
+  } = bruto as Record<string, unknown>;
   if (!Number.isInteger(dias)) return null;
   const n = dias as number;
-  if (n < DIAS_MIN || n > DIAS_MAX) return null;
+  const unidade: UnidadeDoSilencio = unidadeBruta === "horas" ? "horas" : "dias";
+  if (unidadeBruta !== undefined && unidadeBruta !== "dias" && unidadeBruta !== "horas") return null;
+  if (unidade === "dias" && (n < DIAS_MIN || n > DIAS_MAX)) return null;
+  if (unidade === "horas" && (n < HORAS_MIN || n > HORAS_MAX)) return null;
   if (typeof direcao !== "string" || !(DIRECOES_DO_SILENCIO as readonly string[]).includes(direcao)) {
     return null;
   }
   return {
     dias: n,
+    unidade,
     direcao: direcao as DirecaoDoSilencio,
     pipeline_id: textoOuNulo(pipelineId),
     proteger_pela_agenda: booleano(proteger),
@@ -138,7 +164,7 @@ export function configDaEtapaParada(bruto: unknown): ConfigDaEtapaParada | null 
 export function colunaDaDirecao(direcao: DirecaoDoSilencio): string {
   return direcao === "da_equipe"
     ? "last_outbound_at"
-    : direcao === "do_cliente"
+    : direcao === "do_cliente" || direcao === "sem_atendimento"
       ? "last_inbound_at"
       : "last_message_at";
 }
@@ -159,10 +185,12 @@ export function ancoraDoSilencio(
   nascidoEm: string,
   agora: Date,
   dias: number,
+  unidade: UnidadeDoSilencio = "dias",
 ): string | null {
   const referencia = Date.parse(ultimaMensagem ?? "") || Date.parse(nascidoEm);
   if (Number.isNaN(referencia)) return null;
-  if (agora.getTime() - referencia < dias * 86_400_000) return null;
+  const passoEmMs = unidade === "horas" ? 3_600_000 : 86_400_000;
+  if (agora.getTime() - referencia < dias * passoEmMs) return null;
   return new Date(referencia).toISOString();
 }
 

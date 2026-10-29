@@ -192,7 +192,7 @@ async function handle(req: NextRequest): Promise<Response> {
           // trocaria o teto por um URL que o banco recusa.
           const { data: conversas, error: erroConversas } = await admin
             .from("conversations")
-            .select(`contact_id, ${coluna}`)
+            .select(`contact_id, last_outbound_at, ${coluna}`)
             .eq("organization_id", org)
             .in("contact_id", contatos)
             .limit(1_000);
@@ -207,16 +207,30 @@ async function handle(req: NextRequest): Promise<Response> {
           for (const conversa of (conversas ?? []) as unknown as Array<Record<string, unknown>>) {
             const valor = conversa[coluna];
             if (typeof valor !== "string" || !valor) continue;
+            // "Sem atendimento": só conta a conversa em que a última palavra é do cliente.
+            if (silencio.direcao === "sem_atendimento") {
+              const resposta = conversa.last_outbound_at;
+              if (typeof resposta === "string" && resposta >= valor) continue;
+            }
             const atual = ultimaPorContato.get(conversa.contact_id as string);
             if (!atual || valor > atual) ultimaPorContato.set(conversa.contact_id as string, valor);
           }
 
           for (const lead of leads) {
+            // "Sem atendimento" exige uma mensagem do cliente ainda sem resposta; sem ela não há
+            // espera a medir (e o nascimento do negócio não serve de referência).
+            if (
+              silencio.direcao === "sem_atendimento" &&
+              !ultimaPorContato.has(lead.contact_id as string)
+            ) {
+              continue;
+            }
             const ancora = ancoraDoSilencio(
               ultimaPorContato.get(lead.contact_id as string) ?? null,
               lead.created_at as string,
               agora,
               silencio.dias,
+              silencio.unidade,
             );
             if (ancora) candidatos.push({ leadId: lead.id as string, contactId: lead.contact_id as string, ancora });
           }
@@ -332,7 +346,11 @@ async function handle(req: NextRequest): Promise<Response> {
             dias: silencio?.dias ?? etapa?.dias ?? null,
             ancora: candidato.ancora,
             ...(silencio
-              ? { direcao: silencio.direcao, silencio_desde: candidato.ancora }
+              ? {
+                  direcao: silencio.direcao,
+                  unidade: silencio.unidade,
+                  silencio_desde: candidato.ancora,
+                }
               : { etapa_desde: candidato.ancora }),
           },
           p_metadata: { actor_kind: "system", source: "cron/lead-time-triggers" },

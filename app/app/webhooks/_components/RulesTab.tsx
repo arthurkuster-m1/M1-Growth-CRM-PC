@@ -29,6 +29,7 @@ import {
 import { TRIGGER_LABELS, type TriggerEvent } from "./labels";
 import { RuleEditor } from "./RuleEditor";
 import { useT } from "@/hooks/i18n/useT";
+import { MODELOS_DE_TAG, type ModeloDeRegra } from "@/lib/automation/modelos-de-tag";
 
 const RULES_QUERY_KEY = ["automation-rules"];
 
@@ -45,6 +46,7 @@ export function RulesTab() {
 
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AutomationRuleRow | null>(null);
+  const [modelo, setModelo] = React.useState<ModeloDeRegra["regra"] | null>(null);
   const [deleting, setDeleting] = React.useState<AutomationRuleRow | null>(null);
 
   const rules = data?.data ?? [];
@@ -64,10 +66,18 @@ export function RulesTab() {
 
   const openCreate = () => {
     setEditing(null);
+    setModelo(null);
+    setEditorOpen(true);
+  };
+
+  const abrirModelo = (m: ModeloDeRegra) => {
+    setEditing(null);
+    setModelo(m.regra);
     setEditorOpen(true);
   };
 
   const openEdit = (rule: AutomationRuleRow) => {
+    setModelo(null);
     setEditing(rule);
     setEditorOpen(true);
   };
@@ -98,13 +108,29 @@ export function RulesTab() {
             </Button>
           </CardContent>
         </Card>
-        <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} />
+        <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} modelo={modelo} />
       </div>
     );
   }
 
   return (
     <div className="space-y-4 pt-4">
+      <div className="space-y-2" data-testid="modelos-de-tag">
+        <p className="text-sm font-medium">{t("Modelos prontos de tag")}</p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {MODELOS_DE_TAG.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => abrirModelo(m)}
+              className="rounded-xl border border-border bg-card/50 p-3 text-left transition-colors hover:bg-secondary/60"
+            >
+              <span className="block text-sm font-semibold">{t(m.titulo)}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{t(m.descricao)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex sm:justify-end">
         <Button onClick={openCreate} className="w-full sm:w-auto">
           <Plus /> {t("Nova automação")}
@@ -160,7 +186,7 @@ export function RulesTab() {
         ))}
       </div>
 
-      <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} />
+      <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} modelo={modelo} />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

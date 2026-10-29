@@ -30,6 +30,7 @@ describe("a configuração dos dois gatilhos", () => {
   it("lê silêncio completo e aplica os padrões", () => {
     expect(configDoSilencio({ dias: 7, direcao: "da_equipe" })).toEqual({
       dias: 7,
+      unidade: "dias",
       direcao: "da_equipe",
       pipeline_id: null,
       proteger_pela_agenda: false,
@@ -124,5 +125,35 @@ describe("a trava: uma vez por episódio, e o rearme quando a âncora muda", () 
       { leadId: "l2", ancora: dias(9) },
     ];
     expect(naoDisparadosTemporais(candidatos, emitidos, "r1").map((c) => c.leadId)).toEqual(["l2"]);
+  });
+});
+
+describe("silêncio em horas e a direção 'sem atendimento'", () => {
+  const horas = (n: number) => new Date(AGORA.getTime() - n * 3_600_000).toISOString();
+
+  it("lê horas, recusa unidade desconhecida e respeita o teto de 720 horas", () => {
+    expect(configDoSilencio({ dias: 24, unidade: "horas", direcao: "sem_atendimento" })).toMatchObject({
+      dias: 24,
+      unidade: "horas",
+      direcao: "sem_atendimento",
+    });
+    expect(configDoSilencio({ dias: 24, unidade: "minutos", direcao: "da_equipe" })).toBeNull();
+    expect(configDoSilencio({ dias: 721, unidade: "horas", direcao: "da_equipe" })).toBeNull();
+    expect(configDoSilencio({ dias: 720, unidade: "horas", direcao: "da_equipe" })).not.toBeNull();
+  });
+
+  it("regra antiga, sem unidade, continua sendo em dias", () => {
+    expect(configDoSilencio({ dias: 3650, direcao: "qualquer" })?.unidade).toBe("dias");
+  });
+
+  it("a âncora em horas só sai depois de N horas", () => {
+    expect(ancoraDoSilencio(horas(23), horas(100), AGORA, 24, "horas")).toBeNull();
+    expect(ancoraDoSilencio(horas(25), horas(100), AGORA, 24, "horas")).toBe(horas(25));
+    // sem a unidade, 24 é 24 DIAS (o que toda regra antiga espera)
+    expect(ancoraDoSilencio(horas(25), horas(100), AGORA, 24)).toBeNull();
+  });
+
+  it("'sem atendimento' olha a última mensagem do cliente", () => {
+    expect(colunaDaDirecao("sem_atendimento")).toBe("last_inbound_at");
   });
 });
