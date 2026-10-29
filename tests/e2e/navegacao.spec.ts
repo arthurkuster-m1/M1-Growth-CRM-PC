@@ -90,8 +90,8 @@ test.describe("navegação agrupada", () => {
     // Organização não aparece como título aqui: seu hub (Configurações) vive no
     // rodapé fixo — ver o teste de dobra abaixo.
     const titulos = sidebar(page).getByRole("heading");
-    // Só o Marketing é toggle: Inbox, Agenda, CRM etc. são links soltos e "Agentes de IA" é UM link.
-    await expect(titulos).toHaveText(["Marketing"]);
+    // Dois toggles (Marketing e Atendimento); Início, Tarefas, Agentes de IA, Conexões e Financeiro são links soltos.
+    await expect(titulos).toHaveText(["Marketing", "Atendimento"]);
 
     await page.screenshot({
       path: path.join(EVIDENCE, "nav-sidebar-agrupado.png"),

@@ -79,13 +79,34 @@ export function SidebarContent({
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
   // O CRM não é mais um grupo com toggle: a página CRM (Clientes) vem solta, logo abaixo de Início,
   // e o que sobrou do grupo só é alcançado pelo ⌘K.
-  // Só o Marketing é toggle. Atendimento (Inbox e Agenda) subiu para junto de Início e CRM, e o
-  // grupo de IA virou UM link — "Agentes de IA", que leva à página "Ver tudo em IA".
-  const grupos = todos.filter((g) => g.group.id === "marketing");
+  // Dois toggles: Marketing (sem Automações) e Atendimento (Inbox, Agenda, CRM e Automações juntos).
+  // Os demais destinos — Agentes de IA, Conexões e Financeiro — são cabeçalhos em negrito que levam
+  // direto à página, sem abrir (mesmo desenho do cabeçalho de um toggle, sem a seta).
+  const itemDe = (href: string) => todos.flatMap(({ items }) => items).find((i) => i.href === href);
+  const marketing = todos.find((g) => g.group.id === "marketing");
+  const itensDeAtendimento = ["/app/inbox", "/app/agenda", "/app/clientes", "/app/automacoes"]
+    .map(itemDe)
+    .filter((i): i is NonNullable<typeof i> => Boolean(i));
+  const grupos = [
+    ...(marketing
+      ? [
+          {
+            group: marketing.group,
+            items: marketing.items.filter((i) => i.href !== "/app/automacoes"),
+          },
+        ]
+      : []),
+    ...(itensDeAtendimento.length > 0
+      ? [
+          {
+            group: { id: "atendimento", label: "Atendimento" } as (typeof todos)[number]["group"],
+            items: itensDeAtendimento,
+          },
+        ]
+      : []),
+  ];
   // Conexões é a última porta solta do menu (abaixo dos grupos); Webhooks vive dentro dela.
   const temConexoes = todos.some(({ items }) => items.some((i) => i.href === "/app/connections"));
-  const tem = (href: string) => todos.some(({ items }) => items.some((i) => i.href === href));
-  const temCrm = tem("/app/clientes");
   const temIA = todos.some((g) => g.group.id === "ia");
   const rodape = todos.find((g) => g.group.id === GRUPO_NO_RODAPE)?.group.hub;
 
@@ -311,17 +332,8 @@ export function SidebarContent({
         <div className="space-y-0.5">
           {[
             { href: "/app/inicio", rotulo: t("Início"), Icone: House },
-            ...(tem("/app/inbox")
-              ? [{ href: "/app/inbox", rotulo: t("Inbox"), Icone: Inbox, contador: "fila" as const }]
-              : []),
-            ...(tem("/app/agenda")
-              ? [{ href: "/app/agenda", rotulo: t("Agenda"), Icone: CalendarBlank }]
-              : []),
-            ...(temCrm ? [{ href: "/app/clientes", rotulo: t("CRM"), Icone: Users }] : []),
             { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
-            { href: "/app/financas", rotulo: t("Financeiro"), Icone: CurrencyDollar },
-          ].map(({ href, rotulo, Icone, ...resto }) => {
-            const contador = "contador" in resto ? resto.contador : undefined;
+          ].map(({ href, rotulo, Icone }) => {
             const ativo = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
@@ -345,7 +357,6 @@ export function SidebarContent({
                   aria-hidden
                 />
                 {!collapsed && <span className="truncate">{rotulo}</span>}
-                {contador === "fila" && <ContadorDaFila compacto={collapsed} />}
               </Link>
             );
           })}
@@ -460,72 +471,58 @@ export function SidebarContent({
             </div>
           );
         })}
-        {temIA &&
-          (() => {
-            const href = "/app/ai";
-            const rotulo = t("Agentes de IA");
-            const ativo = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <div className="space-y-0.5">
-                <Link
-                  href={href}
-                  title={collapsed ? rotulo : undefined}
-                  aria-current={ativo ? "page" : undefined}
-                  onClick={onNavigate}
-                  className={cn(
-                    "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                    ativo
-                      ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                      : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                    collapsed && "justify-center px-2",
-                  )}
+        {/* Agentes de IA, Conexões e Financeiro: cabeçalho em negrito, no desenho do título de um
+            toggle (azulejo + rótulo), mas que leva direto à página — sem seta e sem abrir. */}
+        {[
+          temIA
+            ? { href: "/app/ai", rotulo: t("Agentes de IA"), Icone: Robot, extra: "casos" as const }
+            : null,
+          temConexoes
+            ? {
+                href: "/app/connections",
+                rotulo: t("Conexões"),
+                Icone: PlugsConnected,
+                extra: "saude" as const,
+              }
+            : null,
+          { href: "/app/financas", rotulo: t("Financeiro"), Icone: CurrencyDollar, extra: null },
+        ].map((d) => {
+          if (!d) return null;
+          const { href, rotulo, Icone, extra } = d;
+          const ativo = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              title={collapsed ? rotulo : undefined}
+              aria-current={ativo ? "page" : undefined}
+              onClick={onNavigate}
+              className={cn(
+                "relative flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase transition-colors",
+                ativo
+                  ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
+                  : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+                collapsed && "justify-center px-2",
+              )}
+            >
+              <span className="flex items-center gap-2.5">
+                <span
+                  aria-hidden
+                  className="grid h-6 w-6 place-items-center rounded-lg bg-accent-soft text-primary"
                 >
-                  <Robot
-                    size={18}
-                    weight={ativo ? "fill" : "regular"}
-                    className={ativo ? "text-primary" : undefined}
-                    aria-hidden
-                  />
-                  {!collapsed && <span className="truncate">{rotulo}</span>}
-                  <ContadorDeCasos compacto={collapsed} />
-                </Link>
-              </div>
-            );
-          })()}
-        {temConexoes &&
-          (() => {
-            const href = "/app/connections";
-            const rotulo = t("Conexões");
-            const ativo = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <div className="space-y-0.5">
-                <Link
-                  href={href}
-                  title={collapsed ? rotulo : undefined}
-                  aria-current={ativo ? "page" : undefined}
-                  onClick={onNavigate}
-                  className={cn(
-                    "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                    ativo
-                      ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                      : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                    collapsed && "justify-center px-2",
-                  )}
-                >
-                  <PlugsConnected
-                    size={18}
-                    weight={ativo ? "fill" : "regular"}
-                    className={ativo ? "text-primary" : undefined}
-                    aria-hidden
-                  />
-                  {!collapsed && <span className="truncate">{rotulo}</span>}
-                  <ConnectionHealthDot
-                    className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
-                  />
-                </Link>
-              </div>
-            );
-          })()}
+                  <Icone size={14} weight="fill" />
+                </span>
+                {!collapsed && <span className="truncate">{rotulo}</span>}
+              </span>
+              {extra === "casos" && <ContadorDeCasos compacto={collapsed} />}
+              {extra === "saude" && (
+                <ConnectionHealthDot
+                  className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
+                />
+              )}
+            </Link>
+          );
+        })}
       </nav>
       <div className="border-t p-2">
         {rodape && (
