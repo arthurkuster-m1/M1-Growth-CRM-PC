@@ -2515,6 +2515,63 @@ export function ClientesCRM({
         .map((n) => ({ id: n, rotulo: n })),
     },
   ];
+  // ── Campos personalizados ───────────────────────────────────────────────────────
+  // Todo campo que algum lead tem (idade, faturamento…) vira uma propriedade: aparece no menu de
+  // colunas, no filtro, na ordem e no agrupamento. Ficam escondidas até alguém ligar.
+  const camposPersonalizados = (() => {
+    const mapa = new Map<string, { rotulo: string; numerico: boolean }>();
+    for (const l of dados?.clientes ?? []) {
+      const rotulos =
+        l.campos && typeof l.campos._rotulos === "object" && l.campos._rotulos
+          ? (l.campos._rotulos as Record<string, string>)
+          : {};
+      for (const [chave, valor] of Object.entries(l.campos ?? {})) {
+        if (chave.startsWith("_") || chave.startsWith("link_")) continue;
+        if (valor === null || valor === "" || typeof valor === "object") continue;
+        const ehNumero = !Number.isNaN(Number(String(valor).replace(",", ".")));
+        const atual = mapa.get(chave);
+        mapa.set(chave, {
+          rotulo:
+            atual?.rotulo ??
+            rotulos[chave] ??
+            chave.replace(/[_-]+/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+          numerico: (atual?.numerico ?? true) && ehNumero,
+        });
+      }
+    }
+    return [...mapa.entries()]
+      .map(([chave, v]) => ({ chave, ...v }))
+      .sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR"));
+  })();
+  colunas.push(
+    ...camposPersonalizados.map((c): ColunaDoMotor<Linha> => ({
+      id: `cf:${c.chave}`,
+      titulo: c.rotulo,
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 170,
+      padrao: false,
+      celula: (l) => (
+        <span className="block truncate px-2 text-sm">
+          {l.campos?.[c.chave] === undefined || l.campos[c.chave] === null
+            ? "—"
+            : String(l.campos[c.chave])}
+        </span>
+      ),
+    })),
+  );
+  todosOsCampos.push(
+    ...camposPersonalizados.map((c) => ({
+      id: `cf:${c.chave}`,
+      titulo: c.rotulo,
+      tipo: (c.numerico ? "numero" : "texto") as "numero" | "texto",
+      valorDe: (l: Linha) => {
+        const v = l.campos?.[c.chave];
+        if (v === undefined || v === null || v === "") return c.numerico ? null : "";
+        return c.numerico ? Number(String(v).replace(",", ".")) : String(v);
+      },
+    })),
+  );
+
   // Etapa e situação são de UM funil: na lista "Todos" não há uma só etapa por lead.
   const campos = todosOsCampos
     // Em Oportunidades cada linha É uma oportunidade, então a etapa sempre faz sentido.
