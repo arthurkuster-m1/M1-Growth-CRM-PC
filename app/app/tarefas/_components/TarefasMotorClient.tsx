@@ -1276,6 +1276,7 @@ export function TarefasMotorClient({
                             ordenacao: direcao ? [{ campo: coluna.id, direcao }] : undefined,
                             agrupar: preferencias.agrupar,
                             agruparPor: preferencias.agruparPor,
+                            ordemDosGrupos: preferencias.ordemDosGrupos,
                           }),
                       }
                     : undefined

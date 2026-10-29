@@ -499,6 +499,25 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
               />
             </>
           ) : null}
+          {consulta.agrupar ? (
+            <>
+              <p className="mt-3 mb-2 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+                {t("Ordem dos grupos")}
+              </p>
+              <Escolha
+                valor={consulta.ordemDosGrupos ?? "asc"}
+                rotulo={t("Ordem dos grupos")}
+                largura="w-full"
+                aoEscolher={(v) =>
+                  aoMudar({ ...consulta, ordemDosGrupos: v === "desc" ? "desc" : undefined })
+                }
+                opcoes={[
+                  { id: "asc", rotulo: t("Do primeiro ao último") },
+                  { id: "desc", rotulo: t("Do último ao primeiro") },
+                ]}
+              />
+            </>
+          ) : null}
           <BotaoAplicar rotulo={t("Aplicar")} aoClicar={() => setAbertoGrupo(false)} />
         </PopoverContent>
       </Popover>

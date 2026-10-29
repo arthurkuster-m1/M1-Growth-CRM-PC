@@ -39,6 +39,7 @@ export function useConsultaEmRascunho({
         ordenacao: rascunho.ordenacao,
         agrupar: rascunho.agrupar,
         agruparPor: rascunho.agruparPor,
+        ordemDosGrupos: rascunho.ordemDosGrupos,
       }
     : salvas;
 
@@ -57,6 +58,7 @@ export function useConsultaEmRascunho({
       ordenacao: consulta.ordenacao,
       agrupar: consulta.agrupar,
       agruparPor: consulta.agruparPor,
+      ordemDosGrupos: consulta.ordemDosGrupos,
     }));
     resetar();
   };

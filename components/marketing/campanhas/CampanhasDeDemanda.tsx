@@ -809,6 +809,7 @@ export function CampanhasDeDemanda() {
                 ordenacao: preferencias.ordenacao,
                 agrupar: preferencias.agrupar,
                 agruparPor: preferencias.agruparPor,
+                ordemDosGrupos: preferencias.ordemDosGrupos,
               }}
               aoMudar={mudarConsulta}
             />
@@ -839,6 +840,7 @@ export function CampanhasDeDemanda() {
                   ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
                   agrupar: preferencias.agrupar,
                   agruparPor: preferencias.agruparPor,
+                  ordemDosGrupos: preferencias.ordemDosGrupos,
                 })
               }
               ordenacao={preferencias.ordenacao}

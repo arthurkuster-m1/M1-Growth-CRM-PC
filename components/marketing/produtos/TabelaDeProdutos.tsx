@@ -579,6 +579,7 @@ export function TabelaDeProdutos({
           ordenacao: preferencias.ordenacao,
           agrupar: preferencias.agrupar,
           agruparPor: preferencias.agruparPor,
+          ordemDosGrupos: preferencias.ordemDosGrupos,
         }}
         aoMudar={mudarConsulta}
       />
@@ -590,6 +591,7 @@ export function TabelaDeProdutos({
               ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
               agrupar: preferencias.agrupar,
               agruparPor: preferencias.agruparPor,
+              ordemDosGrupos: preferencias.ordemDosGrupos,
             })
           }
           ordenacao={preferencias.ordenacao}

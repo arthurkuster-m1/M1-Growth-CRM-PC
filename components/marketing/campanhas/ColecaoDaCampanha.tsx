@@ -244,6 +244,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
       ordenacao: c.ordenacao?.length ? c.ordenacao : undefined,
       agrupar: c.agrupar,
       agruparPor: c.agrupar && c.agruparPor !== "dia" ? c.agruparPor : undefined,
+      ordemDosGrupos: c.agrupar && c.ordemDosGrupos === "desc" ? "desc" : undefined,
     }));
   }
 
@@ -418,6 +419,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
                 ordenacao: preferencias.ordenacao,
                 agrupar: preferencias.agrupar,
                 agruparPor: preferencias.agruparPor,
+                ordemDosGrupos: preferencias.ordemDosGrupos,
               }}
               aoMudar={mudarConsulta}
             />
@@ -471,6 +473,7 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
               ordenacao: proximaOrdenacao(preferencias.ordenacao, coluna),
               agrupar: preferencias.agrupar,
               agruparPor: preferencias.agruparPor,
+              ordemDosGrupos: preferencias.ordemDosGrupos,
             })
           }
           ordenacao={preferencias.ordenacao}

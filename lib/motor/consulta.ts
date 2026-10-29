@@ -220,6 +220,8 @@ export const consultaSchema = z
     agrupar: idDeCampo.optional(),
     /** Campo de data agrupado por dia, semana (começa na segunda) ou mês. Padrão: dia. */
     agruparPor: z.enum(["dia", "semana", "mes"]).optional(),
+    /** A ordem em que os grupos aparecem: a de sempre (`asc`) ou invertida (`desc`). */
+    ordemDosGrupos: z.enum(["asc", "desc"]).optional(),
   })
   .strict();
 export type ConsultaDaTabela = z.infer<typeof consultaSchema>;
@@ -240,6 +242,7 @@ export function normalizarConsulta(c: ConsultaDaTabela | undefined): ConsultaDaT
     ...(c?.ordenacao?.length ? { ordenacao: c.ordenacao } : {}),
     ...(c?.agrupar ? { agrupar: c.agrupar } : {}),
     ...(c?.agrupar && c.agruparPor && c.agruparPor !== "dia" ? { agruparPor: c.agruparPor } : {}),
+    ...(c?.agrupar && c.ordemDosGrupos === "desc" ? { ordemDosGrupos: "desc" as const } : {}),
   };
 }
 
@@ -468,6 +471,8 @@ export function agrupar<T>(
   linhas: readonly T[],
   campo: CampoConsultavel<T> | undefined,
   granularidade: "dia" | "semana" | "mes" = "dia",
+  /** Inverte a ordem dos grupos ("Sem valor" continua por último). */
+  inverter = false,
 ): GrupoDeLinhas<T>[] | null {
   if (!campo || !TIPOS_AGRUPAVEIS.includes(campo.tipo)) return null;
   const mapa = new Map<string, T[]>();
@@ -491,10 +496,11 @@ export function agrupar<T>(
   return [...mapa.entries()]
     .sort(([a], [b]) => {
       if (a === "" || b === "") return a === "" ? 1 : -1;
-      if (campo.ordemDoValor) return posicao(a) - posicao(b);
-      if (campo.tipo === "data") return a.localeCompare(b);
-      if (campo.tipo === "numero") return Number(a) - Number(b);
-      return rotulo(a).localeCompare(rotulo(b), "pt-BR", { numeric: true });
+      const sentido = inverter ? -1 : 1;
+      if (campo.ordemDoValor) return sentido * (posicao(a) - posicao(b));
+      if (campo.tipo === "data") return sentido * a.localeCompare(b);
+      if (campo.tipo === "numero") return sentido * (Number(a) - Number(b));
+      return sentido * rotulo(a).localeCompare(rotulo(b), "pt-BR", { numeric: true });
     })
     .map(([chave, lista]) => ({ chave, rotulo: rotulo(chave), linhas: lista }));
 }
@@ -509,7 +515,7 @@ export function aplicarConsulta<T>(
   const c = consulta ?? {};
   const final = ordenar(filtrar(linhas, campos, c.filtros, contexto), campos, c.ordenacao);
   const campoDoGrupo = c.agrupar ? campos.find((k) => k.id === c.agrupar) : undefined;
-  const grupos = agrupar(final, campoDoGrupo, c.agruparPor);
+  const grupos = agrupar(final, campoDoGrupo, c.agruparPor, c.ordemDosGrupos === "desc");
   return { linhas: grupos ? grupos.flatMap((g) => g.linhas) : final, grupos };
 }
 

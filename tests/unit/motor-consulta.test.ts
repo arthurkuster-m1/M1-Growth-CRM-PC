@@ -272,6 +272,34 @@ describe("agrupamento", () => {
     expect(g[0]!.rotulo).toBe("FAZER");
   });
 
+  it("inverte a ordem dos grupos e mantém 'sem valor' por último", () => {
+    const ls = [
+      L("a", { status: "feito" }),
+      L("b"),
+      L("c", { status: "fazer" }),
+      L("d", { status: "andando" }),
+    ];
+    const campo = campos.find((c) => c.id === "status");
+    expect(agrupar(ls, campo)!.map((x) => x.chave)).toEqual(["fazer", "andando", "feito", ""]);
+    expect(agrupar(ls, campo, "dia", true)!.map((x) => x.chave)).toEqual([
+      "feito",
+      "andando",
+      "fazer",
+      "",
+    ]);
+  });
+
+  it("a consulta guarda a ordem invertida só quando há agrupamento", () => {
+    expect(normalizarConsulta({ agrupar: "status", ordemDosGrupos: "desc" })).toEqual({
+      agrupar: "status",
+      ordemDosGrupos: "desc",
+    });
+    expect(normalizarConsulta({ ordemDosGrupos: "desc" })).toEqual({});
+    expect(normalizarConsulta({ agrupar: "status", ordemDosGrupos: "asc" })).toEqual({
+      agrupar: "status",
+    });
+  });
+
   it("caixa vira dois grupos; campo inexistente devolve null", () => {
     const g = agrupar(
       [L("a", { feita: true }), L("b")],
