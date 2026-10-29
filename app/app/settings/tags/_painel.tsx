@@ -355,7 +355,7 @@ export function PainelDeTags({ tags, idioma }: { tags: LinhaDeVocabulario[]; idi
           </SelectDoApp>
         </label>
         <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">{t("Ordenar por")}</span>
+          <span className="whitespace-nowrap text-muted-foreground">{t("Ordenar por")}</span>
           <SelectDoApp
             value={ordem}
             onChange={(e) => setOrdem(e.target.value as "padrao" | "nome" | "categoria" | "uso")}
