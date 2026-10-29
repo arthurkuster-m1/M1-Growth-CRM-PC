@@ -38,5 +38,13 @@ export default defineConfig({
         "test-service-role-key-not-a-placeholder-1234567890-1234567890",
     },
   },
-  resolve: { alias: { "@": path.resolve(__dirname, ".") } },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "."),
+      // `server-only` não é dependência do projeto: o Next o resolve para o módulo vazio, e os
+      // invariantes que importam código de servidor (lib/marketing/*-servidor.ts…) rodam como
+      // servidor. É o mesmo alias do vitest.config.ts — sem ele 8 arquivos nem coletavam.
+      "server-only": path.resolve(__dirname, "node_modules/next/dist/compiled/server-only/empty.js"),
+    },
+  },
 });

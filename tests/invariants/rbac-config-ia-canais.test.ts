@@ -231,7 +231,11 @@ describe("0150 — a dívida de RBAC não cresce", () => {
       select coalesce(string_agg(distinct tablename, ',' order by tablename), '') from pg_policies
        where schemaname = 'public'
          and cmd = 'ALL'
-         and (coalesce(qual, '') || coalesce(with_check, '')) not like '%role_at_least%';
+         and (coalesce(qual, '') || coalesce(with_check, '')) not like '%role_at_least%'
+         -- Policy por LINHA PRÓPRIA (user_id = auth.uid()) não é "só tenancy": quem escreve é a
+         -- própria pessoa, nas próprias linhas (preferência de visão, visões arquivadas), e o
+         -- papel dela na organização não muda isso.
+         and (coalesce(qual, '') || coalesce(with_check, '')) not like '%user_id = auth.uid()%';
     `)
       .trim()
       .split(",")

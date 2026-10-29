@@ -67,6 +67,14 @@ const ANON_PERMITIDO: readonly Excecao[] = [];
  */
 const AUTHENTICATED_PERMITIDO: readonly Excecao[] = [
   {
+    fn: "fn_definir_colegas_podem_ver_agenda(uuid,boolean)",
+    razao:
+      "app/actions/settings/definirVerAgendaDosColegas.ts chama com o client da SESSÃO do admin " +
+      "(supabase.rpc). A função recusa antes de qualquer escrita: auth.uid() não nulo, " +
+      "fn_role_at_least(p_org, 'admin'), fn_support_write_allowed e fn_session_mfa_proven; " +
+      "o UPDATE é fechado por id da organização.",
+  },
+  {
     fn: "fn_honorarios_parcela_pagar(uuid,uuid,uuid,uuid)",
     razao:
       "POST app/api/v1/honorarios/parcelas/[id]/pagar/route.ts usa createClient da " +

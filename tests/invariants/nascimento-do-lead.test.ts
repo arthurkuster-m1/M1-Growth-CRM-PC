@@ -185,8 +185,11 @@ describe("o lead NASCE", () => {
          from crm_lead_activities where lead_id = $1`,
       [r.leadId],
     );
-    expect(rows, "uma linha na timeline, exatamente").toHaveLength(1);
-    const at = rows[0]!;
+    // Desde a 0640 a linha do tempo registra TUDO do lead (a entrada na etapa também vira linha):
+    // o que este caso afirma é que o nascimento deixa UMA atividade `lead_created`, do sistema.
+    const nascimentos = rows.filter((r) => r.type === "lead_created");
+    expect(nascimentos, "uma atividade de nascimento, exatamente").toHaveLength(1);
+    const at = nascimentos[0]!;
     expect(at.type).toBe("lead_created");
     // `system` e não `ai`: quem criou foi o runtime, e afirmar autoria da IA sem
     // lastro é o que a 0071 existe para impedir.

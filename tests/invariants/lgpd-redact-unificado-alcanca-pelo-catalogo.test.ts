@@ -263,6 +263,10 @@ const DECISOES: Record<string, Decisao> = {
     razao: "0494 (#1964): a LINHA e o estágio ficam (é o estado do negócio), mas next_action (texto) e qualification (jsonb) — texto livre que cita a pessoa — são zerados na virada de is_anonymized pelo gatilho fn_redigir_conversas_ao_anonimizar (a porta da 0391 que a app já usava em lib/lgpd/cascata.ts passo 7).",
   },
   // ── manter: a linha e o conteúdo ficam, por decisão ───────────────────────
+  crm_historico_de_estados: {
+    decidida: "manter",
+    razao: "0630: a trilha de estados (de → para, quando, quem) da pessoa, da oportunidade e do pagamento. de/para são vocabulário fechado (etapa, ciclo de vida, status) e o motivo repete o motivo de perda/cancelamento escolhido de uma lista; não há nome, telefone nem e-mail. O contact_id é `on delete set null`, então a linha também não prende o contato; apagar desfaria o histórico que a atribuição e o ciclo de vida leem.",
+  },
   before_send_traces: {
     decidida: "manter",
     razao: "Traço de decisão do gate de envio (vetoed_gate/vetoed_code) para auditoria de POR QUE a mensagem não saiu; é código de vocabulário, não o conteúdo enviado — o corpo mora em messages.",
