@@ -295,6 +295,44 @@ export async function GET(req: NextRequest): Promise<Response> {
     p_to: ate.data,
   });
 
+  // Por produto, o que a função do banco não traz: leads do período, faturamento total (valor das
+  // vendas) e, daí, taxa de conversão e ticket médio. Lido dos itens das vendas.
+  const diaNoFuso = (iso: string | null | undefined) =>
+    iso ? new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date(iso)) : null;
+  const [{ data: itensBrutos }, { data: pagasBrutas }] = await Promise.all([
+    a.supabase
+      .from("crm_sale_items")
+      .select("product_id, amount_cents, lead_id, crm_leads(created_at, closed_at, paid_on, status)")
+      .eq("organization_id", a.orgId)
+      .limit(20000),
+    a.supabase
+      .from("crm_sale_payments")
+      .select("lead_id")
+      .eq("organization_id", a.orgId)
+      .eq("status", "recebida")
+      .limit(50000),
+  ]);
+  const pagas = new Set(((pagasBrutas ?? []) as Array<{ lead_id: string }>).map((p) => p.lead_id));
+  const extra = new Map<string, { leads: Set<string>; vendidos: Set<string>; total: number }>();
+  for (const it of (itensBrutos ?? []) as unknown as Array<{
+    product_id: string;
+    amount_cents: number;
+    lead_id: string;
+    crm_leads: { created_at: string; closed_at: string | null; paid_on: string | null } | Array<{ created_at: string; closed_at: string | null; paid_on: string | null }> | null;
+  }>) {
+    const l = Array.isArray(it.crm_leads) ? it.crm_leads[0] : it.crm_leads;
+    if (!l) continue;
+    const e = extra.get(it.product_id) ?? { leads: new Set<string>(), vendidos: new Set<string>(), total: 0 };
+    const criado = diaNoFuso(l.created_at);
+    if (criado && criado >= de.data && criado <= ate.data) e.leads.add(it.lead_id);
+    const fechado = diaNoFuso(l.closed_at) ?? l.paid_on;
+    if (pagas.has(it.lead_id) && fechado && fechado >= de.data && fechado <= ate.data) {
+      if (!e.vendidos.has(it.lead_id)) e.vendidos.add(it.lead_id);
+      e.total += n(it.amount_cents);
+    }
+    extra.set(it.product_id, e);
+  }
+
   const recebido = somar(doPeriodo);
   const recebidoAnt = somar(doAnterior);
   const taxas = somarTaxas(doPeriodo);
@@ -339,12 +377,22 @@ export async function GET(req: NextRequest): Promise<Response> {
       vencidas,
       concentracaoTop10: recebido > 0 ? arred((top10 / recebido) * 100) : null,
       serie,
-      produtos: ((produtos ?? []) as Array<Record<string, unknown>>).map((r) => ({
-        nome: String(r.nome ?? ""),
-        vendas: n(r.vendas),
-        recebido: reais(r.recebido_cents),
-        aReceber: reais(r.a_receber_cents),
-      })),
+      produtos: ((produtos ?? []) as Array<Record<string, unknown>>).map((r) => {
+        const e = extra.get(String(r.product_id));
+        const leads = e?.leads.size ?? 0;
+        const vendas = n(r.vendas);
+        const faturamentoTotal = reais(e?.total ?? 0);
+        return {
+          nome: String(r.nome ?? ""),
+          leads,
+          vendas,
+          conversao: leads > 0 ? arred((vendas / leads) * 100) : null,
+          ticketMedio: vendas > 0 ? arred(faturamentoTotal / vendas) : null,
+          faturamentoTotal,
+          recebido: reais(r.recebido_cents),
+          aReceber: reais(r.a_receber_cents),
+        };
+      }),
     },
     { requestId: a.requestId },
   );

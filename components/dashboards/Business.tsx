@@ -61,7 +61,16 @@ export interface DadosDeBusiness {
   vencidas: number;
   concentracaoTop10: number | null;
   serie: Array<{ mes: string; recebido: number; saiu: number; previsto: number; taxas: number }>;
-  produtos: Array<{ nome: string; vendas: number; recebido: number; aReceber: number }>;
+  produtos: Array<{
+    nome: string;
+    leads: number;
+    vendas: number;
+    conversao: number | null;
+    ticketMedio: number | null;
+    faturamentoTotal: number;
+    recebido: number;
+    aReceber: number;
+  }>;
 }
 
 const NOME_DO_MES = [
@@ -327,28 +336,39 @@ export function Business({
       </Painel>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Painel titulo={t("Por produto")} nota={t("Vendas e faturamento do período")}>
-          {dados.produtos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("Nenhuma venda de produto no período.")}
-            </p>
-          ) : (
-            <TabelaDeDados
-              colunas={[
-                { titulo: t("Produto") },
-                { titulo: t("Vendas") },
-                { titulo: t("Recebido") },
-                { titulo: t("A receber") },
-              ]}
-              linhas={dados.produtos.map((p) => [
-                p.nome,
-                inteiro(p.vendas),
-                brl(p.recebido),
-                brl(p.aReceber),
-              ])}
-            />
-          )}
-        </Painel>
+        {/* Oito colunas: a tabela ocupa a largura toda. */}
+        <div className="min-w-0 lg:col-span-2">
+          <Painel titulo={t("Por produto")} nota={t("Leads, vendas e faturamento do período")}>
+            {dados.produtos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("Nenhuma venda de produto no período.")}
+              </p>
+            ) : (
+              <TabelaDeDados
+                colunas={[
+                  { titulo: t("Produtos") },
+                  { titulo: t("Leads") },
+                  { titulo: t("Vendas") },
+                  { titulo: t("Tx de Conversão") },
+                  { titulo: t("Ticket Médio") },
+                  { titulo: t("Faturamento Total") },
+                  { titulo: t("Valor Recebido") },
+                  { titulo: t("A Receber") },
+                ]}
+                linhas={dados.produtos.map((p) => [
+                  p.nome,
+                  inteiro(p.leads),
+                  inteiro(p.vendas),
+                  p.conversao === null ? "—" : pct(p.conversao),
+                  p.ticketMedio === null ? "—" : brl(p.ticketMedio),
+                  brl(p.faturamentoTotal),
+                  brl(p.recebido),
+                  brl(p.aReceber),
+                ])}
+              />
+            )}
+          </Painel>
+        </div>
         <Painel titulo={t("Saúde da carteira")} nota={t("Inadimplência e concentração")}>
           <GradeDeNumeros
             itens={[
