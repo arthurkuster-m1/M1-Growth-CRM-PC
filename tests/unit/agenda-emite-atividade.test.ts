@@ -416,7 +416,7 @@ describe("a agenda grava na timeline", () => {
     ).toEqual(["appointment_cancelled"]);
   });
 
-  it("remarcar conta o antigo como remarcado e o novo como marcado — nunca como cancelamento", async () => {
+  it("remarcar muda o PRÓPRIO compromisso: uma atividade `appointment_rescheduled`, nunca cancelamento", async () => {
     horarioOfertado = OUTRO_HORARIO;
     await alterarAgendamentoHandler(cliente(), ctx, { id: AGENDAMENTO, starts_at: OUTRO_HORARIO });
 
@@ -425,20 +425,15 @@ describe("a agenda grava na timeline", () => {
       tipos,
       "remarcar virou cancelamento: a timeline diria que o cliente desistiu, e ele só mudou de horário",
     ).not.toContain("appointment_cancelled");
-    // Remarcar cria um compromisso NOVO (decisão de 27/10/2026): nasce marcado, e o antigo
-    // fica registrado como remarcado (e como "não compareceu" no status).
-    expect(tipos).toEqual(
-      expect.arrayContaining(["appointment_scheduled", "appointment_rescheduled"]),
-    );
+    // Decisão de 30/10/2026: remarcar NÃO duplica — o mesmo compromisso muda de horário.
+    expect(tipos).toEqual(["appointment_rescheduled"]);
   });
 
-  it("remarcar cria o compromisso novo ligado ao antigo (`rescheduled_from_id`)", async () => {
+  it("remarcar não cria compromisso novo nem liga um ao outro", async () => {
     horarioOfertado = OUTRO_HORARIO;
     await alterarAgendamentoHandler(cliente(), ctx, { id: AGENDAMENTO, starts_at: OUTRO_HORARIO });
 
-    const novos = banco.inserido["calendar_appointments"] ?? [];
-    expect(novos).toHaveLength(1);
-    expect(novos[0]?.rescheduled_from_id).toBe(AGENDAMENTO);
+    expect(banco.inserido["calendar_appointments"] ?? []).toHaveLength(0);
   });
 });
 

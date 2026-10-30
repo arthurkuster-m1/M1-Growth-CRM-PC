@@ -261,7 +261,7 @@ export function CompromissosDaOportunidade({
         <ul className="flex flex-col gap-2">
           {lista.map((c) => {
             const status = statusDoCompromisso(
-              { status: c.situacao, remarcado_para: null },
+              { status: c.situacao },
               vendeu,
             );
             const { dia, hora } = quando(c.iniciaEm);

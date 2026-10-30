@@ -109,11 +109,6 @@ export interface MarcarInput {
    * é o worker de push.
    */
   guest_email?: string;
-  /**
-   * INTERNO — quem chama pela rota não manda isto (o schema da rota não o conhece). É o
-   * compromisso de que este nasceu por REMARCAÇÃO: o antigo fica como "não compareceu".
-   */
-  remarcado_de?: string;
 }
 
 export interface AlterarInput {
@@ -544,7 +539,6 @@ async function executarCriacaoDeAgendamento(
       // tela), e string vazia gravada seria um convidado sem e-mail — que faz o
       // Google recusar o EVENTO INTEIRO, não só o convidado.
       guest_email: input.guest_email || null,
-      rescheduled_from_id: input.remarcado_de ?? null,
       created_by_kind: autorParaCriacao(ctx.actor),
       created_by_user_id: ctx.actor.type === "user" ? ctx.actor.id : null,
       source: ctx.actor.type === "user" ? "ui" : "mcp",
@@ -588,13 +582,6 @@ async function executarCriacaoDeAgendamento(
   return criado as Record<string, unknown>;
 }
 
-/**
- * ⚠️ REMARCAR (decisão do dono do produto, 27/10/2026): o compromisso que ainda está de pé NÃO muda
- * de horário — ele vira "não compareceu" (conta no no-show) e nasce um compromisso NOVO, ligado a ele
- * por `rescheduled_from_id`. Cada compromisso é uma reunião de um cliente, com o próprio resultado.
- * Ver `remarcarCriandoOutro`. Antes disto a linha era a mesma mudando de horário; o que ainda segue
- * esse caminho é o compromisso que já tem resultado (realizado ou falta).
- */
 /**
  * O título que o compromisso ganha quando ninguém o escreveu: "R1 · Nome do cliente", onde o
  * número é a ordem da reunião daquele cliente. Sem cliente, devolve `null` e vale o nome do tipo.
@@ -749,18 +736,19 @@ export async function alterarAgendamentoHandler(
         fim: novoFim,
         ignorarAgendamentoId: atual.id as string,
       });
-      // REMARCAR CRIA OUTRO COMPROMISSO (decisão do dono do produto, 27/10/2026): o antigo fica como
-      // "não compareceu" — conta no no-show — e o novo nasce ligado a ele. Cada compromisso é uma
-      // reunião daquele cliente, com o próprio resultado. Só vale para o que ainda está de pé.
-      if (atual.status === "pending" || atual.status === "confirmed") {
-        return remarcarCriandoOutro(supabase, ctx, atual, input, novoInicio);
-      }
+      // REMARCAR MUDA O PRÓPRIO COMPROMISSO (decisão do dono do produto, 30/10/2026): o horário
+      // muda na mesma linha — sem duplicar e SEM contar como "não compareceu". O compromisso fica
+      // marcado como "Reagendado" (`rescheduled_at`) até alguém escolher outra situação.
+      mudanca.rescheduled_at = new Date().toISOString();
       mudanca.starts_at = novoInicio.toISOString();
       mudanca.ends_at = novoFim.toISOString();
       mudanca.time_zone = consulta.fusoDaRegra;
       transicao = "rescheduled";
     }
   }
+
+  // Escolher uma situação tira o "Reagendado" (ele é automático e dura até alguém decidir).
+  if (input.status !== undefined && mudanca.rescheduled_at === undefined) mudanca.rescheduled_at = null;
 
   if (input.status && input.status !== atual.status) {
     // ⚠️ DESFECHO É SOBRE O PASSADO. `completed` e `no_show` respondem "o que
@@ -874,87 +862,6 @@ export async function alterarAgendamentoHandler(
       metadata: { revision: salvo.revision, confirmation_next_at: salvo.confirmation_next_at },
     });
   return salvo as Record<string, unknown>;
-}
-
-/**
- * REMARCAR = o compromisso antigo vira "não compareceu" e nasce um NOVO, ligado a ele
- * (`rescheduled_from_id`), com o mesmo cliente, oportunidade, responsável, tipo e anotações.
- *
- * A ordem importa: o antigo sai primeiro (o "não compareceu" devolve o horário dele, e o novo pode
- * cair em cima — remarcar para 30 minutos depois, por exemplo); se o novo não puder ser criado, o
- * antigo volta ao estado de antes e a pessoa vê o erro. NÃO dispara o fluxo anti-no-show
- * ("você faltou"): o cliente remarcou, não sumiu.
- */
-async function remarcarCriandoOutro(
-  supabase: SB,
-  ctx: HandlerCtx,
-  atual: Record<string, unknown>,
-  input: AlterarInput,
-  novoInicio: Date,
-): Promise<Record<string, unknown>> {
-  const leadId = await leadJaVinculado(supabase, ctx, atual.id as string);
-  const antigo = await alteraComRevisao(
-    supabase,
-    ctx,
-    atual.id as string,
-    input.revision ?? Number(atual.revision),
-    { status: "no_show" },
-  );
-
-  let novo: Record<string, unknown>;
-  try {
-    novo = await executarCriacaoDeAgendamento(supabase, ctx, {
-      event_type_id: atual.event_type_id as string,
-      starts_at: novoInicio.toISOString(),
-      owner_user_id: (atual.owner_user_id as string | null) ?? undefined,
-      contact_id: (atual.contact_id as string | null) ?? undefined,
-      lead_id: leadId ?? undefined,
-      conversation_id: (atual.conversation_id as string | null) ?? undefined,
-      title: (input.title ?? (atual.title as string | null) ?? undefined) || undefined,
-      notes: input.notes ?? (atual.notes as string | null) ?? undefined,
-      description: (atual.description as string | null) ?? undefined,
-      location_details: (atual.location_details as string | null) ?? undefined,
-      guest_email: input.guest_email ?? (atual.guest_email as string | null) ?? undefined,
-      remarcado_de: atual.id as string,
-    });
-  } catch (erro) {
-    // O novo não nasceu: devolve o antigo ao que era, para a agenda não perder a reunião.
-    await alteraComRevisao(supabase, ctx, atual.id as string, Number(antigo.revision), {
-      status: atual.status,
-    }).catch(() => undefined);
-    throw erro;
-  }
-
-  await fecharOLaco(supabase, ctx, {
-    appointmentId: atual.id as string,
-    contactId: (atual.contact_id as string | null) ?? null,
-    leadId,
-    atividade: atividadeDaTransicao(atual.status as SituacaoAnterior, "rescheduled"),
-    // Sem gatilho de automação para o antigo: quem avisa o cliente é o `appointment.created` do
-    // NOVO compromisso. Os dois juntos mandariam duas mensagens para a mesma remarcação.
-    gatilho: null,
-    transicao: "rescheduled",
-    fusoDoCompromisso: String(antigo.time_zone),
-    nomeDoTipo: await nomeDoTipoDoCompromisso(supabase, ctx, atual.event_type_id as string | null),
-    outcome: {
-      revision: antigo.revision,
-      source_kind: antigo.outcome_source_kind,
-      message_id: antigo.outcome_message_id,
-      recorded_at: antigo.outcome_recorded_at,
-    },
-  });
-
-  void audit({
-    action: "agenda.appointment_rescheduled",
-    actorUserId: ctx.actor.type === "user" ? ctx.actor.id : null,
-    organizationId: ctx.organization_id,
-    resourceType: "calendar_appointment",
-    resourceId: atual.id as string,
-    requestId: ctx.requestId,
-    metadata: { novo_id: novo.id, antigo_status: "no_show" },
-  });
-
-  return { ...novo, remarcado_de: atual.id };
 }
 
 /**

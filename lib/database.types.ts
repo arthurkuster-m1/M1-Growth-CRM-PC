@@ -3322,6 +3322,7 @@ export type Database = {
           owner_user_id: string | null
           reminder_sent_at: string | null
           reminder_sent_offsets_minutes: number[]
+          rescheduled_at: string | null
           rescheduled_from_id: string | null
           source: string
           starts_at: string
@@ -3389,6 +3390,7 @@ export type Database = {
           owner_user_id?: string | null
           reminder_sent_at?: string | null
           reminder_sent_offsets_minutes?: number[]
+          rescheduled_at?: string | null
           rescheduled_from_id?: string | null
           source?: string
           starts_at: string
@@ -3456,6 +3458,7 @@ export type Database = {
           owner_user_id?: string | null
           reminder_sent_at?: string | null
           reminder_sent_offsets_minutes?: number[]
+          rescheduled_at?: string | null
           rescheduled_from_id?: string | null
           source?: string
           starts_at?: string
