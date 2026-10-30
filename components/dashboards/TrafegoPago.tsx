@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  AvisoDeVencidas,
+  FechamentoDoPeriodo,
+  type FechamentoDoDashboard,
+} from "@/components/dashboards/FechamentoDoPeriodo";
 import { useState } from "react";
 
 import {
@@ -29,6 +34,8 @@ import { useT } from "@/hooks/i18n/useT";
 export interface DadosDeTrafego {
   de: string;
   ate: string;
+  /** Vendas fechadas no período e quanto já voltou delas (por data de fechamento). */
+  fechamento: FechamentoDoDashboard;
   dias: DiaDeTrafego[];
   totais: Omit<DiaDeTrafego, "data">;
   totaisAnterior: Omit<DiaDeTrafego, "data">;
@@ -156,6 +163,10 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
 
   return (
     <div className="grid min-w-0 gap-4">
+      <AvisoDeVencidas
+        valor={dados.fechamento.vencido}
+        vendas={dados.fechamento.vendasComVencido}
+      />
       <Visoes
         valor={visao}
         aoMudar={setVisao}
@@ -175,7 +186,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
           valor={brl(a.recebido)}
           destaque
           variacao={<Variacao atual={a.recebido} anterior={p.recebido} />}
-          apoio={t("Parcelas recebidas no período")}
+          apoio={`${t("Faturamento Total")} ${brl(dados.fechamento.fechado)} · ${t("A Receber")} ${brl(dados.fechamento.aReceber)}`}
         />
         <Kpi
           rotulo={t("Investido no período")}
@@ -212,7 +223,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
           rotulo={t("Vendas")}
           valor={inteiro(a.vendas)}
           variacao={<Variacao atual={a.vendas} anterior={p.vendas} />}
-          apoio={`${t("Ticket Médio")} ${a.vendas > 0 ? brl(a.recebido / a.vendas) : "—"}`}
+          apoio={`${t("Ticket Médio")} ${dados.fechamento.ticketMedio === null ? "—" : brl(dados.fechamento.ticketMedio)}`}
         />
         <Kpi
           rotulo={t("CAC")}
@@ -305,6 +316,8 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
               />
             </Painel>
           </div>
+
+          <FechamentoDoPeriodo dados={dados.fechamento} />
 
           <Painel titulo={t("Detalhamento diário")} nota={`${dias.length} ${t("dias")}`}>
             <TabelaDeMetricas

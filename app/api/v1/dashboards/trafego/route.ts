@@ -6,6 +6,8 @@
  * Fontes: investimento e entrega vêm do Meta (`demand_campaign_days`); leads são pessoas do CRM;
  * vendas e faturamento vêm das parcelas RECEBIDAS, pela origem da venda.
  */
+import { resumoDeFechamento } from "@/lib/dashboards/fechamento";
+import { lerFechamento } from "@/lib/dashboards/fechamento-servidor";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -558,11 +560,24 @@ export async function GET(req: NextRequest): Promise<Response> {
     conjuntos.set(chave, c);
   }
 
+  // Fechamento do período (por data de fechamento): o fechado, o que já voltou, o que falta e o vencido.
+  const hojeLocal = new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(new Date());
+  const fech = await lerFechamento(a.supabase, a.orgId, de.data, ate.data, fuso, idsDeVendas);
+  const campanhaDaVenda = new Map(vendas.map((v) => [v.id, v.demand_campaign_id]));
+  const fechamento = {
+    ...resumoDeFechamento(fech.vendas, fech.parcelas, hojeLocal),
+    porCampanha: escolhidas.map((c) => {
+      const deste = fech.vendas.filter((v) => campanhaDaVenda.get(v.id) === c.id);
+      return { id: c.id, nome: c.name, ...resumoDeFechamento(deste, fech.parcelas, hojeLocal) };
+    }),
+  };
+
   return ok(
     {
       de: de.data,
       ate: ate.data,
       anterior,
+      fechamento,
       dias,
       totais: somarDias_(dias),
       totaisAnterior: somarDias_(diasAnteriores),
