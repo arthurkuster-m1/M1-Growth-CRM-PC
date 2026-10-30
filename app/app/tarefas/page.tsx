@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+import { HEADER_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -38,6 +41,7 @@ export default async function TarefasPage() {
       podeConfigurar={podeConfigurar}
       agoraIso={new Date().toISOString()}
       nomeDaOrganizacao={activeOrg.name ?? ""}
+      semTitulo={(await headers()).get(HEADER_EMBUTIDO) === "1"}
     />
   );
 }

@@ -212,7 +212,7 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
           rotulo={t("Vendas")}
           valor={inteiro(a.vendas)}
           variacao={<Variacao atual={a.vendas} anterior={p.vendas} />}
-          apoio={t("Com algo pago")}
+          apoio={`${t("Ticket Médio")} ${a.vendas > 0 ? brl(a.recebido / a.vendas) : "—"}`}
         />
         <Kpi
           rotulo={t("CAC")}

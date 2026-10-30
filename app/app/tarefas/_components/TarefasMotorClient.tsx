@@ -158,6 +158,8 @@ interface Props {
    * da página e com o layout próprio ("tarefas-do-lead").
    */
   contatoFixo?: { id: string; nome: string };
+  /** Modo agência: o quadro de um cliente não repete o título da página (ele vem uma vez, da agência). */
+  semTitulo?: boolean;
   /** Abre esta tarefa no painel ao montar (vindo da Visão geral da ficha). */
   abrirInicial?: string | null;
   /**
@@ -183,6 +185,7 @@ export function TarefasMotorClient({
   agoraIso,
   nomeDaOrganizacao = "",
   contatoFixo,
+  semTitulo = false,
   abrirInicial = null,
   soPainel = false,
   aoFecharPainel,
@@ -1023,6 +1026,9 @@ export function TarefasMotorClient({
     >
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
+          {semTitulo ? (
+            <div className="min-w-0" />
+          ) : (
           <div className="min-w-0">
             {contatoFixo ? (
               <h2 className="text-base font-semibold">{t("Tarefas deste lead")}</h2>
@@ -1033,6 +1039,7 @@ export function TarefasMotorClient({
               {t("Clique para editar. Arraste pelo ícone para reordenar.")}
             </p>
           </div>
+          )}
           {podeEditar ? (
             // Botão dividido, como no Notion: a parte grande cria em branco; a seta abre os modelos.
             <div className="flex shrink-0 items-stretch rounded-xl bg-primary shadow-sm">

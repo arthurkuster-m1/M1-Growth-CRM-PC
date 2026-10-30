@@ -19,6 +19,8 @@ export interface ClienteDaAgencia {
 }
 
 export const COOKIE_DA_SELECAO = "agencia_clientes";
+/** A ordem dos clientes que a pessoa escolheu (ids separados por vírgula). */
+export const COOKIE_DA_ORDEM = "agencia_ordem";
 
 /** O super-admin pleno (fora do modo suporte) enxerga toda organização ativa. */
 export const ehSuperAdminPleno = (u: Pick<AuthUser, "is_platform_admin" | "platform_admin_scope" | "support">) =>
@@ -42,7 +44,24 @@ export async function clientesDaAgencia(user: AuthUser): Promise<ClienteDaAgenci
       if (!porId.has(o.id)) porId.set(o.id, { id: o.id, name: o.name, role: "plataforma" });
     }
   }
-  return [...porId.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  const alfabetica = [...porId.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  return aplicarOrdem(alfabetica, await ordemSalva());
+}
+
+async function ordemSalva(): Promise<string[]> {
+  try {
+    return ((await cookies()).get(COOKIE_DA_ORDEM)?.value ?? "").split(",").filter(Boolean);
+  } catch {
+    return []; // fora de uma requisição
+  }
+}
+
+/** Os clientes na ordem escolhida pela pessoa; os que ela ainda não ordenou vêm depois, em ordem alfabética. */
+export function aplicarOrdem<T extends { id: string }>(clientes: readonly T[], ordem: readonly string[]): T[] {
+  const posicao = new Map(ordem.map((id, i) => [id, i]));
+  return [...clientes].sort(
+    (a, b) => (posicao.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (posicao.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+  );
 }
 
 /** Os clientes que a pessoa escolheu ver; sem escolha (ou só ids que perdeu), todos. */
