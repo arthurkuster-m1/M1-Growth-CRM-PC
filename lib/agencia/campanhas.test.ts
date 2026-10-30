@@ -14,8 +14,12 @@ describe("prazo da campanha", () => {
     });
   });
   it("contínua e sem data não têm prazo a contar", () => {
-    expect(prazoDaCampanha({ continuous: true, end_date: null }, "2026-10-30").tipo).toBe("continua");
-    expect(prazoDaCampanha({ continuous: false, end_date: null }, "2026-10-30").tipo).toBe("sem_prazo");
+    expect(prazoDaCampanha({ continuous: true, end_date: null }, "2026-10-30").tipo).toBe(
+      "continua",
+    );
+    expect(prazoDaCampanha({ continuous: false, end_date: null }, "2026-10-30").tipo).toBe(
+      "sem_prazo",
+    );
   });
 });
 

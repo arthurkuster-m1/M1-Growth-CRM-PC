@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import { Tag } from "@/components/agenda/CamposDoCompromisso";
-import { Etiqueta } from "@/components/motor/Etiqueta";
+import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import { TarefasDaAgencia } from "@/components/agencia/TarefasDaAgencia";
 import { useT } from "@/hooks/i18n/useT";
 import { agruparTarefas, grupoDaTarefa, type TarefaDaAgencia } from "@/lib/agencia/tarefas";
@@ -17,6 +17,7 @@ export interface CompromissoDaAgencia {
   fim: string;
   status: string;
   cliente: string;
+  cor: string;
   contato: string;
 }
 
@@ -26,12 +27,14 @@ export interface AlertaDaAgencia {
   corpo: string;
   severidade: string;
   cliente: string;
+  cor: string;
   em: string;
 }
 
 export interface ResumoDoCliente {
   id: string;
   nome: string;
+  cor: string;
   campanhasAtivas: number;
   leads: number;
 }
@@ -129,7 +132,7 @@ export function InicioDaAgencia({
                     className="rounded-lg bg-secondary px-1.5 py-1 text-[11px] leading-tight"
                   >
                     <span className="line-clamp-2">{x.titulo}</span>
-                    <span className="text-muted-foreground">{x.cliente}</span>
+                    <TagDoCliente nome={x.cliente} cor={x.cor} className="mt-0.5" />
                   </li>
                 ))}
                 {d.tarefas.length > 4 ? (
@@ -167,9 +170,7 @@ export function InicioDaAgencia({
                     <p className="line-clamp-2 text-xs text-muted-foreground">{a.corpo}</p>
                   ) : null}
                 </div>
-                <Etiqueta cor="blue" className="shrink-0">
-                  {a.cliente}
-                </Etiqueta>
+                <TagDoCliente nome={a.cliente} cor={a.cor} className="shrink-0" />
               </li>
             ))}
           </ul>
@@ -199,9 +200,7 @@ export function InicioDaAgencia({
                 <Tag cor={c.status === "confirmed" ? "azul" : "amarelo"} className="shrink-0">
                   {c.status === "confirmed" ? t("Confirmado") : t("Não confirmado")}
                 </Tag>
-                <Etiqueta cor="blue" className="shrink-0">
-                  {c.cliente}
-                </Etiqueta>
+                <TagDoCliente nome={c.cliente} cor={c.cor} className="shrink-0" />
               </li>
             ))}
           </ul>
@@ -213,7 +212,7 @@ export function InicioDaAgencia({
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {clientes.map((c) => (
             <div key={c.id} className="rounded-2xl border p-3">
-              <p className="truncate text-sm font-semibold">{c.nome}</p>
+              <TagDoCliente nome={c.nome} cor={c.cor} />
               <p className="text-xs text-muted-foreground">
                 {c.campanhasAtivas} {t("campanhas ativas")} · {c.leads} {t("leads")} ·{" "}
                 {abertas.filter((x) => x.clienteId === c.id).length} {t("tarefas abertas")}

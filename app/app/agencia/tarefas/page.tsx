@@ -1,3 +1,4 @@
+import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -37,13 +38,13 @@ export default async function TarefasDaAgenciaPage() {
           </p>
         </div>
         <SeletorDeClientes
-          clientes={todos.map((c) => ({ id: c.id, name: c.name }))}
+          clientes={todos.map((c) => ({ id: c.id, name: c.name, cor: c.cor }))}
           selecionados={escolhidosIds}
         />
       </header>
       {escolhidos.map((c) => (
         <section key={c.id} aria-label={c.name} className="grid gap-2">
-          <h2 className="text-base font-semibold">{c.name}</h2>
+          <h2><TagDoCliente nome={c.name} cor={c.cor} grande /></h2>
           <EmbutidoDoCliente caminho="/app/tarefas" clienteId={c.id} titulo={`${t("Tarefas")} · ${c.name}`} />
         </section>
       ))}

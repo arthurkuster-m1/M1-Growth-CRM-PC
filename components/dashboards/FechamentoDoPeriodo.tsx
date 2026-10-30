@@ -16,27 +16,6 @@ export type FechamentoDoDashboard = ResumoDeFechamento & {
 };
 
 /**
- * O AVISO DE PARCELAS VENCIDAS: dinheiro que devia ter entrado e não entrou. Não some: é o "fantasma"
- * que o faturamento recebido, sozinho, esconderia.
- */
-export function AvisoDeVencidas({ valor, vendas }: { valor: number; vendas?: number }) {
-  const t = useT();
-  if (valor <= 0) return null;
-  return (
-    <div
-      role="alert"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-warning/40 bg-warning-bg px-4 py-3 text-sm text-warning-fg"
-    >
-      <span className="font-semibold">{brl(valor)}</span>
-      <span>
-        {t("em parcelas vencidas e ainda não recebidas")}
-        {vendas ? ` (${vendas} ${t(vendas === 1 ? "venda" : "vendas")})` : ""}.
-      </span>
-    </div>
-  );
-}
-
-/**
  * O FECHAMENTO DO PERÍODO — por data de fechamento: das vendas fechadas no período, quanto vale o
  * fechado, quanto já voltou em dinheiro (até hoje), quanto falta e quanto disso está vencido. É a
  * régua para avaliar campanha: segue as vendas que ela gerou, não o caixa do mês.

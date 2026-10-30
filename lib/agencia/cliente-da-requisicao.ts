@@ -53,5 +53,6 @@ export async function clienteDaRequisicao(
   };
 }
 
-export const ehRecusa = (r: ClienteDaRequisicao | null | { response: Response }): r is { response: Response } =>
-  r !== null && "response" in r;
+export const ehRecusa = (
+  r: ClienteDaRequisicao | null | { response: Response },
+): r is { response: Response } => r !== null && "response" in r;

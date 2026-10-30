@@ -1,3 +1,4 @@
+import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -62,14 +63,14 @@ export default async function CampanhasDaAgenciaPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">{t("Campanhas por cliente")}</h2>
         <SeletorDeClientes
-          clientes={todos.map((c) => ({ id: c.id, name: c.name }))}
+          clientes={todos.map((c) => ({ id: c.id, name: c.name, cor: c.cor }))}
           selecionados={escolhidosIds}
         />
       </div>
       {escolhidos.map((c) => (
         <section key={c.id} aria-label={c.name} className="grid gap-2">
           <header className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold">{c.name}</h3>
+            <h3><TagDoCliente nome={c.name} cor={c.cor} grande /></h3>
             <OrigemDosLeads clienteId={c.id} nome={c.name} origem={origemDe.get(c.id) ?? "crm"} />
           </header>
           <EmbutidoDoCliente

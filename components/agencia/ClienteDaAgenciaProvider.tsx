@@ -30,7 +30,9 @@ export function ClienteDaAgenciaProvider({
   const caches = useRef(new Map<string, QueryClient>());
   let qc = caches.current.get(cliente.id);
   if (!qc) {
-    qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
+    qc = new QueryClient({
+      defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+    });
     caches.current.set(cliente.id, qc);
   }
   // Definido NO RENDER (e não em efeito): as consultas dos filhos disparam antes dos efeitos do pai.

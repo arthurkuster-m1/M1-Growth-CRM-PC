@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AvisoDeVencidas,
   FechamentoDoPeriodo,
   type FechamentoDoDashboard,
 } from "@/components/dashboards/FechamentoDoPeriodo";
@@ -163,10 +162,6 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
 
   return (
     <div className="grid min-w-0 gap-4">
-      <AvisoDeVencidas
-        valor={dados.fechamento.vencido}
-        vendas={dados.fechamento.vendasComVencido}
-      />
       <Visoes
         valor={visao}
         aoMudar={setVisao}

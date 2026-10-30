@@ -30,6 +30,9 @@ export function pedirAbrirNaAgencia(caminho: string): boolean {
 /** `true` se o quadro é a janela de uma campanha e pediu à mãe que a feche. */
 export function pedirFecharJanela(): boolean {
   if (!embutidoAtivo || !clienteDoQuadro) return false;
-  window.parent.postMessage({ tipo: TIPO_FECHAR_JANELA, cliente: clienteDoQuadro }, window.location.origin);
+  window.parent.postMessage(
+    { tipo: TIPO_FECHAR_JANELA, cliente: clienteDoQuadro },
+    window.location.origin,
+  );
   return true;
 }

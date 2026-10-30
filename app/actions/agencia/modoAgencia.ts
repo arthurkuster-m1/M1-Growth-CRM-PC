@@ -2,7 +2,12 @@
 import { cookies } from "next/headers";
 import { z } from "zod";
 
-import { clientesDaAgencia, COOKIE_DA_ORDEM, COOKIE_DA_SELECAO, ehSuperAdminPleno } from "@/lib/agencia/acesso";
+import {
+  clientesDaAgencia,
+  COOKIE_DA_ORDEM,
+  COOKIE_DA_SELECAO,
+  ehSuperAdminPleno,
+} from "@/lib/agencia/acesso";
 import { ORIGENS_DOS_LEADS } from "@/lib/agencia/campanhas";
 import { loadAuthUser } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -56,7 +61,9 @@ export async function definirOrigemDosLeads(orgId: string, origem: string): Prom
   const user = await loadAuthUser();
   if (!user) return { ok: false, error: "auth_required" };
   if (user.support) return { ok: false, error: "forbidden" };
-  const ok = z.string().uuid().safeParse(orgId).success && (ORIGENS_DOS_LEADS as readonly string[]).includes(origem);
+  const ok =
+    z.string().uuid().safeParse(orgId).success &&
+    (ORIGENS_DOS_LEADS as readonly string[]).includes(origem);
   if (!ok) return { ok: false, error: "invalid_request" };
   const membro = user.organizations.find((m) => m.organization_id === orgId);
   const pode = (membro && ROLE_RANK[membro.role] >= ROLE_RANK.manager) || ehSuperAdminPleno(user);
@@ -64,7 +71,10 @@ export async function definirOrigemDosLeads(orgId: string, origem: string): Prom
   const db = createAdminClient();
   const { data } = await db.from("organizations").select("settings").eq("id", orgId).maybeSingle();
   if (!data) return { ok: false, error: "not_found" };
-  const settings = { ...((data.settings as Record<string, unknown> | null) ?? {}), leads_source: origem };
+  const settings = {
+    ...((data.settings as Record<string, unknown> | null) ?? {}),
+    leads_source: origem,
+  };
   const { error } = await db.from("organizations").update({ settings }).eq("id", orgId);
   return error ? { ok: false, error: error.message } : { ok: true };
 }

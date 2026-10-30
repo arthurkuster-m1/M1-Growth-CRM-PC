@@ -1,5 +1,6 @@
 "use client";
 
+import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -12,6 +13,8 @@ import { cn } from "@/lib/utils";
 export interface OpcaoDeCliente {
   id: string;
   name: string;
+  /** A cor do cliente na agência (hex). */
+  cor?: string;
 }
 
 /**
@@ -78,7 +81,12 @@ export function SeletorDeClientes({
         >
           <Buildings size={15} aria-hidden className="shrink-0 text-muted-foreground" />
           <span className="max-w-[16rem] truncate">{rotulo}</span>
-          <CaretDown size={13} weight="bold" aria-hidden className="shrink-0 text-muted-foreground" />
+          <CaretDown
+            size={13}
+            weight="bold"
+            aria-hidden
+            className="shrink-0 text-muted-foreground"
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -122,7 +130,11 @@ export function SeletorDeClientes({
                     onChange={() => alternar(c.id)}
                     className="h-4 w-4 shrink-0 accent-primary"
                   />
-                  <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{c.name}</span>
+                  {c.cor ? (
+                    <TagDoCliente nome={c.name} cor={c.cor} />
+                  ) : (
+                    <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{c.name}</span>
+                  )}
                 </label>
                 <button
                   type="button"

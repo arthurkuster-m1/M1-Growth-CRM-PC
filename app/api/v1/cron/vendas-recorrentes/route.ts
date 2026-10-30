@@ -9,6 +9,7 @@
  *
  * Auth: `Authorization: Bearer <INTERNAL_CRON_SECRET>` (fail-closed).
  */
+import { avisarParcelasVencidas } from "@/lib/vendas-vencidas-servidor";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
@@ -184,5 +185,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { data: esvaziados } = await admin.rpc("fn_lixeira_esvaziar" as never, {} as never);
   if (typeof esvaziados === "number") lixeira = esvaziados;
 
-  return ok({ geradas, avisos, ciclos, atrasadas, lixeira }, { requestId });
+  // Junto da rodada diária: o aviso "Parcelas vencidas" de cada empresa na Central.
+  const vencidas = await avisarParcelasVencidas(admin, hoje);
+
+  return ok({ geradas, avisos, ciclos, atrasadas, lixeira, vencidas }, { requestId });
 }

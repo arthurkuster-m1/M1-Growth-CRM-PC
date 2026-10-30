@@ -103,7 +103,9 @@ export function MatrizDaEquipe({
         <tbody>
           {equipe.map((p) => (
             <tr key={p.id} className="border-t">
-              <td className="sticky left-0 bg-card px-3 py-2 font-medium whitespace-nowrap">{p.nome}</td>
+              <td className="sticky left-0 bg-card px-3 py-2 font-medium whitespace-nowrap">
+                {p.nome}
+              </td>
               {clientes.map((c) => (
                 <td key={c.id} className="px-3 py-2">
                   <Celula pessoa={p} cliente={c} />

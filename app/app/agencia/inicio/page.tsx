@@ -28,6 +28,7 @@ export default async function InicioDaAgenciaPage() {
   const agora = new Date();
   const ate = new Date(agora.getTime() + 7 * 86_400_000).toISOString();
   const nomeDe = new Map(escolhidos.map((c) => [c.id, c.name]));
+  const corDe = new Map(escolhidos.map((c) => [c.id, c.cor]));
   const [{ data: camps }, { data: leads }, { data: agenda }, { data: avisos }] = await Promise.all([
     db
       .from("demand_campaigns")
@@ -75,6 +76,7 @@ export default async function InicioDaAgenciaPage() {
     fim: a.ends_at,
     status: a.status,
     cliente: nomeDe.get(a.organization_id) ?? "",
+    cor: corDe.get(a.organization_id) ?? "#6b7684",
     contato: (Array.isArray(a.contacts) ? a.contacts[0]?.name : a.contacts?.name) ?? "",
   }));
   const alertas = (
@@ -92,6 +94,7 @@ export default async function InicioDaAgenciaPage() {
     corpo: a.body ?? "",
     severidade: a.severity ?? "info",
     cliente: nomeDe.get(a.organization_id) ?? "",
+    cor: corDe.get(a.organization_id) ?? "#6b7684",
     em: a.created_at,
   }));
   const conta = (linhas: Array<{ organization_id: string }> | null, id: string) =>
@@ -99,6 +102,7 @@ export default async function InicioDaAgenciaPage() {
   const clientes = escolhidos.map((c) => ({
     id: c.id,
     nome: c.name,
+    cor: c.cor,
     campanhasAtivas: conta(camps, c.id),
     leads: conta(leads, c.id),
   }));

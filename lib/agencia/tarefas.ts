@@ -14,6 +14,8 @@ export interface TarefaDaAgencia {
   adiamentos: number;
   clienteId: string;
   cliente: string;
+  /** A cor do cliente na agência (hex). */
+  cor: string;
 }
 
 export type GrupoDeTarefas = "atrasadas" | "hoje" | "semana" | "depois" | "sem_prazo" | "feitas";
@@ -65,7 +67,8 @@ export function agruparTarefas(
     if (!lista || lista.length === 0) return [];
     lista.sort(
       (a, b) =>
-        (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999") || a.cliente.localeCompare(b.cliente, "pt-BR"),
+        (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999") ||
+        a.cliente.localeCompare(b.cliente, "pt-BR"),
     );
     return [{ grupo, tarefas: lista }];
   });

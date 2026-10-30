@@ -39,7 +39,7 @@ export default async function DashboardsDaAgenciaPage({
           </p>
         </div>
         <SeletorDeClientes
-          clientes={todos.map((c) => ({ id: c.id, name: c.name }))}
+          clientes={todos.map((c) => ({ id: c.id, name: c.name, cor: c.cor }))}
           selecionados={escolhidosIds}
         />
       </header>

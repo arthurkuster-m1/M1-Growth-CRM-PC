@@ -24,9 +24,12 @@ export function CronogramaDaAgencia({
   inicial: string;
 }) {
   const t = useT();
-  const [id, setId] = useState(clientes.some((c) => c.id === inicial) ? inicial : (clientes[0]?.id ?? ""));
+  const [id, setId] = useState(
+    clientes.some((c) => c.id === inicial) ? inicial : (clientes[0]?.id ?? ""),
+  );
   const cliente = clientes.find((c) => c.id === id);
-  if (!cliente) return <p className="text-sm text-muted-foreground">{t("Nenhum cliente disponível.")}</p>;
+  if (!cliente)
+    return <p className="text-sm text-muted-foreground">{t("Nenhum cliente disponível.")}</p>;
   return (
     <div className="grid gap-4">
       <div role="tablist" aria-label={t("Cliente")} className="flex flex-wrap gap-1.5">

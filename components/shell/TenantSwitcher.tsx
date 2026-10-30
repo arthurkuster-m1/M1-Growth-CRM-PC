@@ -1,4 +1,6 @@
 "use client";
+import { TagDoCliente } from "@/components/agencia/TagDoCliente";
+import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -105,7 +107,7 @@ export function TenantSwitcher() {
             onClick={() => { void switchTo(org.organization_id); }}
             className="flex items-center justify-between"
           >
-            <span className="truncate">{org.organization_name}</span>
+            <TagDoCliente nome={org.organization_name} cor={corDoCliente(org.agencia_cor, org.organization_id)} />
             {active?.orgId === org.organization_id && !noModoAgencia && <span className="text-xs text-muted-foreground">✓</span>}
           </DropdownMenuItem>
         ))}
