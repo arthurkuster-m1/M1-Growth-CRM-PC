@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cab = new Map<string, string>();
 vi.mock("server-only", () => ({}));
-vi.mock("next/headers", () => ({ headers: async () => ({ get: (k: string) => cab.get(k.toLowerCase()) ?? null }) }));
+vi.mock("next/headers", () => ({
+  headers: async () => ({ get: (k: string) => cab.get(k.toLowerCase()) ?? null }),
+}));
 
 import type { UserOrgMembership } from "@/lib/auth/types";
 

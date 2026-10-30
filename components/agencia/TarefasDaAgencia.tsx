@@ -3,21 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Etiqueta } from "@/components/motor/Etiqueta";
+import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useT } from "@/hooks/i18n/useT";
 import { HEADER_CLIENTE_DA_AGENCIA } from "@/lib/agencia/cliente-da-aba";
-import {
-  agruparTarefas,
-  ROTULO_DO_GRUPO,
-  type TarefaDaAgencia,
-} from "@/lib/agencia/tarefas";
+import { agruparTarefas, ROTULO_DO_GRUPO, type TarefaDaAgencia } from "@/lib/agencia/tarefas";
 import { apiClient } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 const dia = (iso: string | null) =>
   iso
-    ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" })
+    ? new Date(iso).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: "America/Sao_Paulo",
+      })
     : "";
 
 /**
@@ -31,7 +31,9 @@ export function TarefasDaAgencia({ tarefas }: { tarefas: TarefaDaAgencia[] }) {
   const [feitas, setFeitas] = useState<Record<string, boolean>>({});
   const [salvando, setSalvando] = useState<string | null>(null);
 
-  const lista = tarefas.map((x) => (x.id in feitas ? { ...x, status: feitas[x.id] ? ("done" as const) : ("pending" as const) } : x));
+  const lista = tarefas.map((x) =>
+    x.id in feitas ? { ...x, status: feitas[x.id] ? ("done" as const) : ("pending" as const) } : x,
+  );
   const grupos = agruparTarefas(lista);
 
   async function alternar(x: TarefaDaAgencia) {
@@ -64,7 +66,8 @@ export function TarefasDaAgencia({ tarefas }: { tarefas: TarefaDaAgencia[] }) {
       {grupos.map((g) => (
         <section key={g.grupo} aria-label={t(ROTULO_DO_GRUPO[g.grupo])} className="grid gap-2">
           <h2 className="text-sm font-semibold">
-            {t(ROTULO_DO_GRUPO[g.grupo])} <span className="font-normal text-muted-foreground">({g.tarefas.length})</span>
+            {t(ROTULO_DO_GRUPO[g.grupo])}{" "}
+            <span className="font-normal text-muted-foreground">({g.tarefas.length})</span>
           </h2>
           <ul className="divide-y rounded-2xl border">
             {g.tarefas.map((x) => (
@@ -77,7 +80,12 @@ export function TarefasDaAgencia({ tarefas }: { tarefas: TarefaDaAgencia[] }) {
                   aria-label={`${t("Concluir")}: ${x.titulo}`}
                   className="h-4 w-4 shrink-0"
                 />
-                <span className={cn("min-w-0 flex-1 truncate text-sm", x.status === "done" && "text-muted-foreground line-through")}>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-sm",
+                    x.status === "done" && "text-muted-foreground line-through",
+                  )}
+                >
                   {x.titulo}
                 </span>
                 {x.adiamentos > 0 ? (
@@ -85,8 +93,10 @@ export function TarefasDaAgencia({ tarefas }: { tarefas: TarefaDaAgencia[] }) {
                     {t("adiada")} {x.adiamentos}×
                   </span>
                 ) : null}
-                <Etiqueta cor="blue" className="shrink-0">{x.cliente}</Etiqueta>
-                <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{dia(x.prazo)}</span>
+                <TagDoCliente nome={x.cliente} cor={x.cor} className="shrink-0" />
+                <span className="w-12 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                  {dia(x.prazo)}
+                </span>
               </li>
             ))}
           </ul>

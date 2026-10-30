@@ -1,3 +1,4 @@
+import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
 import "server-only";
 
 import { cookies } from "next/headers";
@@ -15,6 +16,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export interface ClienteDaAgencia {
   id: string;
   name: string;
+  /** A cor do cliente na agência (hex): a escolhida em Gerenciar organizações, ou uma da paleta. */
+  cor: string;
   role: Role | "plataforma";
 }
 
@@ -23,25 +26,37 @@ export const COOKIE_DA_SELECAO = "agencia_clientes";
 export const COOKIE_DA_ORDEM = "agencia_ordem";
 
 /** O super-admin pleno (fora do modo suporte) enxerga toda organização ativa. */
-export const ehSuperAdminPleno = (u: Pick<AuthUser, "is_platform_admin" | "platform_admin_scope" | "support">) =>
-  u.is_platform_admin && !u.support && u.platform_admin_scope !== "support_readonly";
+export const ehSuperAdminPleno = (
+  u: Pick<AuthUser, "is_platform_admin" | "platform_admin_scope" | "support">,
+) => u.is_platform_admin && !u.support && u.platform_admin_scope !== "support_readonly";
 
 export async function clientesDaAgencia(user: AuthUser): Promise<ClienteDaAgencia[]> {
   const porId = new Map<string, ClienteDaAgencia>();
   for (const m of user.organizations) {
     if (ROLE_RANK[m.role] >= ROLE_RANK.manager) {
-      porId.set(m.organization_id, { id: m.organization_id, name: m.organization_name, role: m.role });
+      porId.set(m.organization_id, {
+        id: m.organization_id,
+        name: m.organization_name,
+        cor: corDoCliente(m.agencia_cor, m.organization_id),
+        role: m.role,
+      });
     }
   }
   if (ehSuperAdminPleno(user)) {
     const { data } = await createAdminClient()
       .from("organizations")
-      .select("id, name")
+      .select("id, name:display_name, cor:settings->>agencia_cor")
       .eq("status", "active")
-      .order("name", { ascending: true })
+      .order("display_name", { ascending: true })
       .limit(500);
-    for (const o of (data ?? []) as Array<{ id: string; name: string }>) {
-      if (!porId.has(o.id)) porId.set(o.id, { id: o.id, name: o.name, role: "plataforma" });
+    for (const o of (data ?? []) as Array<{ id: string; name: string; cor: string | null }>) {
+      if (!porId.has(o.id))
+        porId.set(o.id, {
+          id: o.id,
+          name: o.name,
+          cor: corDoCliente(o.cor, o.id),
+          role: "plataforma",
+        });
     }
   }
   const alfabetica = [...porId.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
@@ -57,10 +72,15 @@ async function ordemSalva(): Promise<string[]> {
 }
 
 /** Os clientes na ordem escolhida pela pessoa; os que ela ainda não ordenou vêm depois, em ordem alfabética. */
-export function aplicarOrdem<T extends { id: string }>(clientes: readonly T[], ordem: readonly string[]): T[] {
+export function aplicarOrdem<T extends { id: string }>(
+  clientes: readonly T[],
+  ordem: readonly string[],
+): T[] {
   const posicao = new Map(ordem.map((id, i) => [id, i]));
   return [...clientes].sort(
-    (a, b) => (posicao.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (posicao.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    (a, b) =>
+      (posicao.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+      (posicao.get(b.id) ?? Number.MAX_SAFE_INTEGER),
   );
 }
 

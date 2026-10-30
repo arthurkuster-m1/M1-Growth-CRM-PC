@@ -28,8 +28,11 @@ function instalarCliente(clienteId: string): void {
         window.location.href,
       );
       if (url.origin === window.location.origin) {
-        const cabecalhos = new Headers(init?.headers ?? (entrada instanceof Request ? entrada.headers : undefined));
-        if (!cabecalhos.has(HEADER_CLIENTE_DA_AGENCIA)) cabecalhos.set(HEADER_CLIENTE_DA_AGENCIA, clienteId);
+        const cabecalhos = new Headers(
+          init?.headers ?? (entrada instanceof Request ? entrada.headers : undefined),
+        );
+        if (!cabecalhos.has(HEADER_CLIENTE_DA_AGENCIA))
+          cabecalhos.set(HEADER_CLIENTE_DA_AGENCIA, clienteId);
         cabecalhos.set(HEADER_EMBUTIDO, "1");
         return fetchOriginal!(entrada, { ...init, headers: cabecalhos });
       }
@@ -51,7 +54,11 @@ export function EmbutidoDaAgencia({ clienteId }: { clienteId: string }) {
     if (new URLSearchParams(window.location.search).get("_janela") === "1") return;
     const avisar = () =>
       window.parent?.postMessage(
-        { tipo: "agencia-altura", cliente: clienteId, altura: document.documentElement.scrollHeight },
+        {
+          tipo: "agencia-altura",
+          cliente: clienteId,
+          altura: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+        },
         window.location.origin,
       );
     avisar();
@@ -61,6 +68,9 @@ export function EmbutidoDaAgencia({ clienteId }: { clienteId: string }) {
   }, [clienteId]);
   useEffect(() => {
     document.documentElement.dataset.embutido = "1";
+    // O quadro cresce com o conteúdo: nada de rolagem interna.
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
     // Clique em "Abrir" de uma campanha: em vez de navegar dentro do quadro, a página-mãe abre a janela
     // da campanha. Captura (antes do Link do Next) para o clique não navegar.
     const aoClicar = (e: MouseEvent) => {

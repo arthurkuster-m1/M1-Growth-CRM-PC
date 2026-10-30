@@ -45,6 +45,8 @@ interface RawMembershipRow {
    * mexer no caminho de quem só precisa saber em que língua desenhar a tela.
    */
   interface_da_empresa: OrgJoinEmpresa | OrgJoinEmpresa[] | null;
+  /** A cor da agência para esta organização (`settings->>agencia_cor`). */
+  cor_da_agencia?: { agencia_cor: string | null } | Array<{ agencia_cor: string | null }> | null;
 }
 
 interface OrgJoin {
@@ -206,7 +208,7 @@ export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
           // issue #1341 acabou de engordar), e o alias traz só as portas da EMPRESA.
           // `timezone` veio do main (fuso da organização nas listas, #1290) e convive
           // com o alias: um embed por relação, sem renomear o que já existia.
-          "organization_id, role, interface_settings, accepted_at, organizations(display_name, locale, timezone, currency, country, status, suspended_kind), interface_da_empresa:organizations(interface_settings)",
+          "organization_id, role, interface_settings, accepted_at, organizations(display_name, locale, timezone, currency, country, status, suspended_kind), interface_da_empresa:organizations(interface_settings), cor_da_agencia:organizations(agencia_cor:settings->>agencia_cor)",
         )
         .eq("user_id", user.id)
         .is("revoked_at", null)
@@ -257,6 +259,8 @@ export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
     return {
       organization_id: row.organization_id,
       organization_name: org?.display_name ?? "—",
+      agencia_cor:
+        (Array.isArray(row.cor_da_agencia) ? row.cor_da_agencia[0] : row.cor_da_agencia)?.agencia_cor ?? null,
       role: row.role as Role,
       // EMPRESA ∩ VÍNCULO (migration 0367): a empresa escolhe o universo de
       // portas da instalação, o vínculo escolhe menos dentro dele. Até aqui o

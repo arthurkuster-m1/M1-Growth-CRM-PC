@@ -11,6 +11,7 @@ const t = (o: Partial<TarefaDaAgencia>): TarefaDaAgencia => ({
   adiamentos: 0,
   clienteId: "c",
   cliente: "Cliente",
+  cor: "#3b78d8",
   ...o,
 });
 
@@ -23,7 +24,10 @@ describe("grupos das tarefas da agência", () => {
     expect(grupoDaTarefa(t({}), AGORA)).toBe("sem_prazo");
   });
   it("concluída vai para o seu grupo e cancelada some", () => {
-    const g = agruparTarefas([t({ id: "a", status: "done" }), t({ id: "b", status: "cancelled" })], AGORA);
+    const g = agruparTarefas(
+      [t({ id: "a", status: "done" }), t({ id: "b", status: "cancelled" })],
+      AGORA,
+    );
     expect(g.map((x) => x.grupo)).toEqual(["feitas"]);
     expect(g[0]!.tarefas.map((x) => x.id)).toEqual(["a"]);
   });

@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { EVENTO_RECARREGAR_CLIENTE } from "@/components/agencia/JanelaDaCampanha";
-import {
-  PARAMETRO_CLIENTE_DA_AGENCIA,
-  PARAMETRO_EMBUTIDO,
-} from "@/lib/agencia/cliente-da-aba";
+import { PARAMETRO_CLIENTE_DA_AGENCIA, PARAMETRO_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
 
 /**
  * A página REAL de uma empresa (ex.: Campanhas, Tarefas) aberta "dentro" de um cliente, num quadro da
@@ -51,7 +48,9 @@ export function EmbutidoDoCliente({
       src={src}
       loading="lazy"
       style={{ height: altura }}
-      className="w-full rounded-2xl border bg-background"
+      scrolling="no"
+      // Fluido: sem moldura, sem fundo e sem barra de rolagem própria — parece parte da mesma página.
+      className="block w-full overflow-hidden border-0 bg-transparent"
     />
   );
 }

@@ -16,6 +16,7 @@ export async function tarefasDaAgencia(
 ): Promise<TarefaDaAgencia[]> {
   if (clientes.length === 0) return [];
   const nome = new Map(clientes.map((c) => [c.id, c.name]));
+  const cores = new Map(clientes.map((c) => [c.id, c.cor]));
   const desde = new Date(Date.now() - 14 * 86_400_000).toISOString();
   let consulta = createAdminClient()
     .from("crm_tasks")
@@ -28,14 +29,16 @@ export async function tarefasDaAgencia(
     .or(`status.in.(pending,in_progress),and(status.eq.done,updated_at.gte.${desde})`)
     .order("due_date", { ascending: true, nullsFirst: false })
     .limit(2000);
-  return ((data ?? []) as Array<{
-    id: string;
-    title: string;
-    status: TarefaDaAgencia["status"];
-    due_date: string | null;
-    adiamentos: number | null;
-    organization_id: string;
-  }>).map((r) => ({
+  return (
+    (data ?? []) as Array<{
+      id: string;
+      title: string;
+      status: TarefaDaAgencia["status"];
+      due_date: string | null;
+      adiamentos: number | null;
+      organization_id: string;
+    }>
+  ).map((r) => ({
     id: r.id,
     titulo: r.title,
     status: r.status,
@@ -43,5 +46,6 @@ export async function tarefasDaAgencia(
     adiamentos: r.adiamentos ?? 0,
     clienteId: r.organization_id,
     cliente: nome.get(r.organization_id) ?? "",
+    cor: cores.get(r.organization_id) ?? "#6b7684",
   }));
 }

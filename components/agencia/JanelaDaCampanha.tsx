@@ -5,7 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
 import { PARAMETRO_CLIENTE_DA_AGENCIA, PARAMETRO_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
-import { ehCaminhoDeCampanha, TIPO_ABRIR_NA_AGENCIA, TIPO_FECHAR_JANELA } from "@/lib/agencia/embutido";
+import {
+  ehCaminhoDeCampanha,
+  TIPO_ABRIR_NA_AGENCIA,
+  TIPO_FECHAR_JANELA,
+} from "@/lib/agencia/embutido";
 
 export const EVENTO_RECARREGAR_CLIENTE = "agencia-recarregar-cliente";
 
@@ -27,7 +31,8 @@ export function JanelaDaCampanha({ nomes }: { nomes: Record<string, string> }) {
 
   const fechar = useCallback((clienteId: string | null) => {
     setAberta(null);
-    if (clienteId) window.dispatchEvent(new CustomEvent(EVENTO_RECARREGAR_CLIENTE, { detail: clienteId }));
+    if (clienteId)
+      window.dispatchEvent(new CustomEvent(EVENTO_RECARREGAR_CLIENTE, { detail: clienteId }));
   }, []);
 
   useEffect(() => {
@@ -48,13 +53,17 @@ export function JanelaDaCampanha({ nomes }: { nomes: Record<string, string> }) {
       if (empilhou.current) {
         empilhou.current = false;
         setAberta((atual) => {
-          if (atual) window.dispatchEvent(new CustomEvent(EVENTO_RECARREGAR_CLIENTE, { detail: atual.clienteId }));
+          if (atual)
+            window.dispatchEvent(
+              new CustomEvent(EVENTO_RECARREGAR_CLIENTE, { detail: atual.clienteId }),
+            );
           return null;
         });
       }
     };
     function pedirParaFechar() {
-      if (empilhou.current) window.history.back(); // dispara o popstate, que fecha
+      if (empilhou.current)
+        window.history.back(); // dispara o popstate, que fecha
       else fechar(null);
     }
     window.addEventListener("message", ouvir);

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AvisoDeVencidas,
   FechamentoDoPeriodo,
   type FechamentoDoDashboard,
 } from "@/components/dashboards/FechamentoDoPeriodo";
@@ -128,7 +127,6 @@ export function Business({
 
   return (
     <div className="grid min-w-0 gap-4">
-      <AvisoDeVencidas valor={dados.vencidas} />
       <GradeDeKpis className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           rotulo={t("Entrou (recebido)")}

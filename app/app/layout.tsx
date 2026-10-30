@@ -262,7 +262,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const shell = embutido && clienteEmbutido ? (
     <ProvedorDaOcupacaoDoRodape>
       <EmbutidoDaAgencia clienteId={clienteEmbutido} />
-      <div className="min-w-0 bg-background p-3">{children}</div>
+      <div className="min-w-0 bg-transparent">{children}</div>
     </ProvedorDaOcupacaoDoRodape>
   ) : (
     <ProvedorDaOcupacaoDoRodape>

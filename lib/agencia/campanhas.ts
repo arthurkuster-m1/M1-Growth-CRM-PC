@@ -53,7 +53,8 @@ export function verbaDaCampanha(
   if (c.continuous || !c.start_date || !c.end_date) return { total: null, periodo };
   const dias = emDias(c.start_date, c.end_date) + 1;
   if (dias <= 0) return { total: null, periodo };
-  const fator = c.budget_period === "diario" ? dias : c.budget_period === "semanal" ? dias / 7 : dias / 30.4375;
+  const fator =
+    c.budget_period === "diario" ? dias : c.budget_period === "semanal" ? dias / 7 : dias / 30.4375;
   return { total: Math.round(b * fator * 100) / 100, periodo };
 }
 
