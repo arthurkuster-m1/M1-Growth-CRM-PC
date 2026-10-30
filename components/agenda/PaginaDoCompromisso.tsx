@@ -828,7 +828,20 @@ function PaginaExistente({
                     className="min-w-0 rounded-2xl border border-border bg-card/50 p-3 sm:p-4"
                     data-testid="secao-venda"
                   >
-                    <h3 className="mb-2 text-base font-semibold">{t("Venda")}</h3>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="text-base font-semibold">{t("Venda")}</h3>
+                      {/* Abre só a página da venda (a oportunidade tem o seu próprio botão). */}
+                      <button
+                        type="button"
+                        data-testid="abrir-venda"
+                        aria-label={t("Abrir a venda")}
+                        title={t("Abrir a venda")}
+                        onClick={() => setEditandoVenda({})}
+                        className="grid size-8 place-items-center rounded-lg border border-border hover:bg-secondary"
+                      >
+                        <ArrowSquareOut size={14} aria-hidden />
+                      </button>
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:flex-nowrap">
                       <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
                         <TituloDaOportunidadeDoCompromisso venda={venda} podeEditar={podeEditar} />
@@ -1072,7 +1085,7 @@ function TituloDaOportunidadeDoCompromisso({
   return (
     <TituloDaOportunidade
       // Mesmo campo e mesmo dado do título; aqui só no tamanho de um texto normal.
-      className="text-sm font-normal"
+      className="w-full text-sm font-normal"
       valor={rascunho ?? nome}
       desabilitado={!podeEditar}
       aoMudar={setRascunho}
