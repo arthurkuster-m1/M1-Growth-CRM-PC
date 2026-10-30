@@ -6,6 +6,8 @@ import { ROLE_RANK } from "@/lib/auth/types";
 import { ConexoesShell } from "@/components/connections/ConexoesShell";
 import { canalGraphParceiroLigado, GRAPH_PARTNER_LABEL } from "@/lib/channels/graph-parceiro/credentials";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { existeConexaoDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Conexões" };
@@ -24,6 +26,10 @@ export default async function ConnectionsPage() {
     process.env.WAHA_API_BASE_URL && key && key !== "dev_plaintext_change_me",
   );
 
+  // A conexão de leitura do Meta Ads (aba ao lado de Webhooks). Admin client para LER, como a tela
+  // antiga: a tabela não tem policy para o browser, e o token nunca é lido nem decifrado aqui.
+  const metaAds = await existeConexaoDeLeitura(createAdminClient(), activeOrg.orgId, "meta_ads");
+
   return (
     <div className="flex h-full flex-col gap-5 p-4 sm:gap-6 sm:p-6">
       <header>
@@ -37,6 +43,8 @@ export default async function ConnectionsPage() {
       </header>
       <ConexoesShell
         wahaConfigured={wahaConfigured}
+        metaAds={{ conectada: metaAds.conectada, contaPadrao: metaAds.contaPadrao }}
+        idioma={idioma}
         graphParceiro={canalGraphParceiroLigado() ? { label: GRAPH_PARTNER_LABEL } : null}
       />
     </div>

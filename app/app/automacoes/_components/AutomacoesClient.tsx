@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { useCallback, useSyncExternalStore } from "react";
 
+import { InterruptorAiDecide } from "@/app/app/settings/automacoes/_interruptor";
+import type { Idioma } from "@/lib/i18n/idiomas";
 import { ActivityTab } from "@/app/app/webhooks/_components/ActivityTab";
 import { RulesTab } from "@/app/app/webhooks/_components/RulesTab";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +16,13 @@ import { ArrowRight } from "@/lib/ui/icons";
  * histórico que viviam em Conexões › Webhooks); Follow-ups e Ajustes são portas para as telas que
  * já existem, para ninguém precisar saber onde cada automação mora.
  */
-export function AutomacoesClient() {
+export function AutomacoesClient({
+  freioDaIa,
+  idioma,
+}: {
+  freioDaIa: { ligado: boolean; erroDeLeitura: boolean };
+  idioma: Idioma;
+}) {
   const t = useT();
   // As abas do Radix geram ids por `useId`; com SSR os ids divergem na hidratação — mesmo padrão
   // da tela de Webhooks: esqueleto no servidor, abas depois de montar.
@@ -42,18 +50,34 @@ export function AutomacoesClient() {
       <TabsContent value="followups" className="mt-0">
         <Porta
           titulo={t("Follow-ups da IA")}
-          texto={t("Como o agente retoma uma conversa que esfriou, para nenhuma morrer no silêncio.")}
+          texto={t(
+            "Como o agente retoma uma conversa que esfriou, para nenhuma morrer no silêncio.",
+          )}
           href="/app/ai/followups"
           rotulo={t("Abrir Follow-ups")}
         />
       </TabsContent>
-      <TabsContent value="ajustes" className="mt-0">
-        <Porta
-          titulo={t("Freio do passo \"a IA decide\"")}
-          texto={t("Liga ou desliga, para a empresa inteira, o passo em que a IA escolhe entre as opções de uma regra.")}
-          href="/app/settings/automacoes"
-          rotulo={t("Abrir ajustes")}
-        />
+      <TabsContent value="ajustes" className="mt-0 flex max-w-2xl flex-col gap-3">
+        <div>
+          <h2 className="text-base font-semibold">{t('Freio do passo "a IA decide"')}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "O freio único do passo em que a IA escolhe entre as opções de uma regra, para a empresa inteira.",
+            )}
+          </p>
+        </div>
+        {freioDaIa.erroDeLeitura ? (
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/40 p-4 text-sm text-destructive"
+          >
+            {t(
+              "Não consegui ler agora o estado deste interruptor. Enquanto ele não puder ser lido, nenhum passo a IA decide consulta o modelo. Recarregue a página; se continuar, avise quem cuida da instalação.",
+            )}
+          </p>
+        ) : (
+          <InterruptorAiDecide ligado={freioDaIa.ligado} idioma={idioma} />
+        )}
       </TabsContent>
     </Tabs>
   );

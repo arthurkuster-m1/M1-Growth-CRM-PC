@@ -9,6 +9,8 @@ import { CanalOficialClient } from "./CanalOficialClient";
 import { ConnectionsClient } from "./ConnectionsClient";
 import { TemplatesClient } from "./TemplatesClient";
 import { TemplatesParceiroClient } from "./TemplatesParceiroClient";
+import { FormularioDeMetaAds } from "@/app/app/settings/meta-ads/_form";
+import type { Idioma } from "@/lib/i18n/idiomas";
 import { WebhooksClient } from "@/app/app/webhooks/_components/WebhooksClient";
 import { useT } from "@/hooks/i18n/useT";
 import { rotaDeTemplates } from "@/lib/channels/templates-fonte";
@@ -39,8 +41,13 @@ import { rotaDeTemplates } from "@/lib/channels/templates-fonte";
 export function ConexoesShell({
   wahaConfigured,
   graphParceiro = null,
+  metaAds,
+  idioma,
 }: {
   wahaConfigured: boolean;
+  /** A conexão de LEITURA da conta de anúncios (aba Meta Ads); lida no servidor. */
+  metaAds: { conectada: boolean; contaPadrao: string | null };
+  idioma: Idioma;
   /**
    * O canal parceiro que espelha a Cloud API (recorte do #1130) é OPCIONAL DA
    * INSTALAÇÃO e nasce desligado (decisão do dono, doc 54). `null` = a
@@ -62,9 +69,11 @@ export function ConexoesShell({
         ? "oficial"
         : abaParam === "webhooks"
           ? "webhooks"
-          : abaParam === "graph" && graphParceiro
-            ? "graph"
-            : "numeros";
+          : abaParam === "meta-ads"
+            ? "meta-ads"
+            : abaParam === "graph" && graphParceiro
+              ? "graph"
+              : "numeros";
   const sub = params.get("sub") === "templates" ? "templates" : "conexao";
 
   const irPara = (proximaAba: string, proximaSub?: string): void => {
@@ -87,7 +96,35 @@ export function ConexoesShell({
         <TabsTrigger value="sociais">{t("Redes sociais")}</TabsTrigger>
         {graphParceiro && <TabsTrigger value="graph">{graphParceiro.label}</TabsTrigger>}
         <TabsTrigger value="webhooks">{t("Webhooks")}</TabsTrigger>
+        <TabsTrigger value="meta-ads">{t("Meta Ads")}</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="meta-ads" className="mt-0 flex max-w-3xl flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          {t(
+            "Conecte um token de acesso para o sistema ler o desempenho das suas campanhas e mostrá-lo nos Dashboards. É uma conexão só de leitura: nada é criado, pausado ou alterado na sua conta de anúncios.",
+          )}
+        </p>
+        {/* A permissão exata está escrita aqui porque é o erro nº 1 desta integração: um token sem
+            `ads_read` conecta, salva, e só falha na hora de abrir a tabela. */}
+        <div className="rounded-md border border-sky-500/40 bg-sky-500/10 p-4 text-sm">
+          {t(
+            "O token precisa da permissão ads_read. Gere-o no Meta for Developers, na sua conta de aplicativo, e cole abaixo — ele fica guardado criptografado e nunca é mostrado de volta.",
+          )}
+        </div>
+        <FormularioDeMetaAds
+          conectada={metaAds.conectada}
+          contaPadrao={metaAds.contaPadrao}
+          idioma={idioma}
+        />
+        {metaAds.conectada && (
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "Para trocar apenas a conta padrão, deixe o campo do token em branco — o token guardado é mantido.",
+            )}
+          </p>
+        )}
+      </TabsContent>
 
       <TabsContent value="webhooks" className="mt-0">
         {/* Webhooks era página própria (/app/webhooks); agora é mais uma conexão. */}

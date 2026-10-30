@@ -205,7 +205,7 @@ export async function updateAdInsightsConnection(
     },
   });
 
-  revalidatePath("/app/settings/meta-ads");
+  revalidatePath("/app/connections");
   revalidatePath("/app/ads/meta");
   return { ok: true };
 }
@@ -252,7 +252,7 @@ export async function disconnectAdInsights(): Promise<UpdateAdInsightsConnection
     metadata: { platform: "meta_ads" },
   });
 
-  revalidatePath("/app/settings/meta-ads");
+  revalidatePath("/app/connections");
   revalidatePath("/app/ads/meta");
   return { ok: true };
 }

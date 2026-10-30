@@ -149,9 +149,13 @@ function MenuFlutuante({
     const r = el.getBoundingClientRect();
     const dx = r.left - x;
     const dy = r.top - y;
+    // Sem espaço embaixo, o menu abre PARA CIMA do ponto clicado (encostado nele) em vez de
+    // ser empurrado para o meio da tela.
+    const cabeEmbaixo = y + r.height <= window.innerHeight - 8;
+    const yEscolhido = cabeEmbaixo ? y : y - r.height - 32;
     setPos({
       x: Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) - dx,
-      y: Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) - dy,
+      y: Math.max(8, Math.min(yEscolhido, window.innerHeight - r.height - 8)) - dy,
     });
   }, [x, y]);
 

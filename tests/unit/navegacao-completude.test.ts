@@ -81,6 +81,20 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "redirect para /app/clientes?visao=vendas: Vendas virou uma visão da página CRM",
   "/app/marketing/geracao-de-demanda/resultados":
     "redirect para /app/marketing/dashboards?painel=trafego: os resultados das campanhas viraram o Dashboard de Tráfego Pago; mantido por links salvos",
+  "/app/settings/tenant/agenda":
+    "os Tipos de agendamento são configuração da Agenda e vivem DENTRO dela (ConteudoDaConfiguracaoDaAgenda); a rota segue como o endereço direto da mesma tela",
+  "/app/settings/tenant/financeiro":
+    "o catálogo financeiro (contas e formas de pagamento) virou a aba \"Contas e formas de pagamento\" de Finanças; a rota segue como o endereço direto da mesma tela",
+  "/app/settings/automacoes":
+    "o freio do passo \"a IA decide\" vive na aba Ajustes de Automações; a rota segue como o endereço direto da mesma tela",
+  "/app/settings/meta-ads":
+    "a conexão do Meta Ads virou a aba \"Meta Ads\" de Conexões, ao lado de Webhooks; a rota segue como o endereço direto da mesma tela",
+  "/app/settings/marca":
+    "a marca foi incorporada à página \"Sua empresa e marca\" (/app/settings/tenant); a rota segue como o endereço direto do mesmo formulário",
+  "/app/settings/billing":
+    "tela \"Em breve\" que saiu do menu por decisão do dono (a cobrança virou Vendas); a rota segue de pé, sem porta",
+  "/app/settings/voip-trunk":
+    "FUTURO: Trunk SIP (voz por IA) ainda não é oferecido ao cliente; saiu do menu e da busca por decisão do dono e está anotado no plano (docs/plano-futuro.md)",
   "/app/settings/atualizacao":
     "porta é o rodapé de versão (VersionFooter), que aparece justamente quando há versão nova — melhor que um card fixo. Além disso é só do dono do servidor (is_platform_admin), papel que o registro não modela",
 };
