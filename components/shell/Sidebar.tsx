@@ -610,6 +610,7 @@ function ItensDoModoAgencia({
   const { user } = useAuth();
   const ehSuperAdmin = user.is_platform_admin && !user.support;
   const itens = [
+    { href: "/app/agencia/inicio", rotulo: t("Início"), Icone: House },
     { href: "/app/agencia/campanhas", rotulo: t("Campanhas"), Icone: Megaphone },
     { href: "/app/agencia/cronograma", rotulo: t("Cronograma e semana"), Icone: CalendarBlank },
     { href: "/app/agencia/dashboards", rotulo: t("Dashboards"), Icone: ChartLineUp },
