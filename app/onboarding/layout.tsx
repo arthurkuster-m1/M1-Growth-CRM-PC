@@ -12,7 +12,6 @@ import { ICONE_DESENHADO, iconeDaAba } from "@/lib/branding/icone";
 import { marcaDaSaida } from "@/lib/branding/saida";
 import { baseDoStorage } from "@/lib/branding/logo";
 import { passosVisiveis } from "@/lib/onboarding/passos";
-import { env } from "@/lib/env";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +29,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
 
   // Os passos que ESTA instalação oferece, com o que já foi resolvido. O
   // indicador não decide mais nada sozinho — ele desenha o que recebe.
-  const passos = passosVisiveis({ lojaLigada: env.NUVEMSHOP_ENABLED }).map((p) => ({
+  const passos = passosVisiveis({}).map((p) => ({
     segmento: p.segmento,
     rotulo: p.rotulo,
     cumprido: p.cumprido(state),

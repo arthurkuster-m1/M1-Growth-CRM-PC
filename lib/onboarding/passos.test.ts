@@ -16,8 +16,7 @@ import {
 } from "@/lib/onboarding/passos";
 import type { OnboardingState } from "@/lib/schemas/onboarding";
 
-const SEM_LOJA: ContextoDoPasso = { lojaLigada: false };
-const COM_LOJA: ContextoDoPasso = { lojaLigada: true };
+const SEM_LOJA: ContextoDoPasso = {};
 
 const VAZIO: OnboardingState = {};
 
@@ -27,12 +26,7 @@ describe("passos visíveis", () => {
     expect(segmentos).not.toContain("connect-nuvemshop");
   });
 
-  it("quem liga a integração vê o passo (a regra não é 'esconder sempre')", () => {
-    const segmentos = passosVisiveis(COM_LOJA).map((p) => p.segmento);
-    expect(segmentos).toContain("connect-nuvemshop");
-  });
-
-  it("a ordem é a mesma nos dois casos, menos o passo que não existe", () => {
+  it("a ordem dos passos", () => {
     expect(passosVisiveis(SEM_LOJA).map((p) => p.segmento)).toEqual([
       "welcome",
       "connect-whatsapp",
@@ -63,7 +57,6 @@ describe("próximo passo", () => {
       whatsapp: { status: "WORKING" },
     };
     expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("setup-ai");
-    expect(proximoPasso(s, COM_LOJA)?.segmento).toBe("connect-nuvemshop");
   });
 
   it("passo PULADO conta como resolvido — senão o wizard entra em laço", () => {

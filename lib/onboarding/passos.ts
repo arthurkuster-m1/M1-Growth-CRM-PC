@@ -34,10 +34,8 @@ export interface PassoDoOnboarding {
   pulado: (state: OnboardingState) => boolean;
 }
 
-export interface ContextoDoPasso {
-  /** A integração de loja está ligada nesta instalação? */
-  lojaLigada: boolean;
-}
+/** Hoje nenhum passo depende de algo da instalação; o contexto fica para o próximo que depender. */
+export type ContextoDoPasso = Record<string, never>;
 
 /** Um passo marcado no estado — com ou sem `skipped`. */
 function marcado(valor: unknown): boolean {
@@ -64,13 +62,6 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
     existe: () => true,
     cumprido: (s) => marcado(s.whatsapp),
     pulado: (s) => foiPulado(s.whatsapp),
-  },
-  {
-    segmento: "connect-nuvemshop",
-    rotulo: "Sua loja",
-    existe: (ctx) => ctx.lojaLigada,
-    cumprido: (s) => marcado(s.nuvemshop),
-    pulado: (s) => foiPulado(s.nuvemshop),
   },
   {
     segmento: "setup-ai",

@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { MagnifyingGlass } from "@/lib/ui/icons";
+import { searchable, type NavDestination } from "@/lib/navigation/registry";
 import {
-  NAV_GROUPS,
-  searchable,
-  type NavDestination,
-  type NavGroupId,
-} from "@/lib/navigation/registry";
+  GRUPOS_DA_PALETA,
+  grupoDaPaleta,
+  posicaoNoMenu,
+  type GrupoDaPaleta,
+} from "@/lib/navigation/grupos-da-paleta";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,8 +30,8 @@ function normalizar(texto: string): string {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-const ROTULO_GRUPO = new Map(NAV_GROUPS.map((g) => [g.id, g.label]));
-const ORDEM_GRUPO = new Map(NAV_GROUPS.map((g, i) => [g.id, i]));
+const ROTULO_GRUPO = new Map<string, string>(GRUPOS_DA_PALETA.map((g) => [g.id, g.label]));
+const ORDEM_GRUPO = new Map<string, number>(GRUPOS_DA_PALETA.map((g, i) => [g.id, i]));
 
 export function CommandPalette({
   open,
@@ -97,17 +98,17 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
 
   // Lista dos grupos disponíveis nos destinos visíveis
   const categoriasDisponiveis = useMemo(() => {
-    const gruposNoCatalogo = new Set(visiveis.map((v) => v.group));
-    return NAV_GROUPS.filter((g) => gruposNoCatalogo.has(g.id));
+    const gruposNoCatalogo = new Set(visiveis.map((v) => grupoDaPaleta(v)));
+    return GRUPOS_DA_PALETA.filter((g) => gruposNoCatalogo.has(g.id));
   }, [visiveis]);
 
   const resultados = useMemo(() => {
     const termo = normalizar(busca.trim());
     const filtrados = visiveis.filter((d) => {
-      const casaCategoria = categoriaAtiva === "todos" || d.group === categoriaAtiva;
+      const casaCategoria = categoriaAtiva === "todos" || grupoDaPaleta(d) === categoriaAtiva;
       if (!casaCategoria) return false;
       if (!termo) return true;
-      return normalizar(`${d.label} ${d.description} ${ROTULO_GRUPO.get(d.group) ?? ""}`).includes(
+      return normalizar(`${d.label} ${d.description} ${ROTULO_GRUPO.get(grupoDaPaleta(d)) ?? ""}`).includes(
         termo,
       );
     });
@@ -117,15 +118,17 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
     // andam por este array, pulariam de uma seção para outra. Ordenado pelo
     // NAV_GROUPS, a ordem do array é a ordem da tela. O sort é estável.
     return [...filtrados].sort(
-      (a, b) => (ORDEM_GRUPO.get(a.group) ?? 0) - (ORDEM_GRUPO.get(b.group) ?? 0),
+      (a, b) =>
+        (ORDEM_GRUPO.get(grupoDaPaleta(a)) ?? 0) - (ORDEM_GRUPO.get(grupoDaPaleta(b)) ?? 0) ||
+        posicaoNoMenu(a.href) - posicaoNoMenu(b.href),
     );
   }, [busca, visiveis, categoriaAtiva]);
 
   // Agrupamento para exibição visual estruturada quando não há busca específica digitada
   const resultadosAgrupados = useMemo(() => {
-    const map = new Map<NavGroupId, NavDestination[]>();
+    const map = new Map<GrupoDaPaleta, NavDestination[]>();
     for (const item of resultados) {
-      const g = item.group;
+      const g = grupoDaPaleta(item);
       const lista = map.get(g) ?? [];
       lista.push(item);
       map.set(g, lista);
@@ -213,7 +216,7 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
           {t("Todas")} ({visiveis.length})
         </button>
         {categoriasDisponiveis.map((cat) => {
-          const qtd = visiveis.filter((v) => v.group === cat.id).length;
+          const qtd = visiveis.filter((v) => grupoDaPaleta(v) === cat.id).length;
           return (
             <button
               key={cat.id}
@@ -361,7 +364,7 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
                         secundario,
                       )}
                     >
-                      {t(ROTULO_GRUPO.get(d.group) ?? "")}
+                      {t(ROTULO_GRUPO.get(grupoDaPaleta(d)) ?? "")}
                     </span>
                   </div>
                   {/* Duas linhas, não uma cortada: a palavra que a pessoa buscou

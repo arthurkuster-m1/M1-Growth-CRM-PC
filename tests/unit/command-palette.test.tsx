@@ -139,11 +139,27 @@ describe("CommandPalette", () => {
   it("no catálogo, abre pelo primeiro grupo da tela e a seta segue a ordem dela", async () => {
     const user = userEvent.setup();
     abrir();
-    // A ordem é a dos grupos do menu (Marketing vem primeiro): agrupar pela 1ª aparição no
-    // catálogo punha outro grupo no topo, e a seta andava pela lista plana, pulando de seção.
+    // A ordem é a do MENU LATERAL: Início e Tarefas primeiro, depois Marketing. Agrupar pela 1ª
+    // aparição no catálogo punha outro grupo no topo, e a seta andava pela lista plana, pulando de
+    // seção.
     const opcoes = screen.getAllByRole("option");
-    expect(opcoes[0]?.getAttribute("data-href")).toBe("/app/marketing/estrategia");
+    expect(opcoes[0]?.getAttribute("data-href")).toBe("/app/inicio");
+    expect(opcoes[1]?.getAttribute("data-href")).toBe("/app/tarefas");
     await user.keyboard("{ArrowDown}{Enter}");
     expect(push).toHaveBeenCalledWith(opcoes[1]?.getAttribute("data-href"));
+  });
+
+  it("agrupa como o menu lateral: Automações e CRM em Atendimento, Finanças à parte", () => {
+    abrir();
+    const grupo = (href: string) =>
+      screen
+        .getAllByRole("option")
+        .find((o) => o.getAttribute("data-href") === href)
+        ?.closest('[role="group"]')
+        ?.getAttribute("aria-label");
+    expect(grupo("/app/automacoes")).toBe("Atendimento");
+    expect(grupo("/app/clientes")).toBe("Atendimento");
+    expect(grupo("/app/financas")).toBe("Financeiro");
+    expect(grupo("/app/inicio")).toBe("Início e Tarefas");
   });
 });

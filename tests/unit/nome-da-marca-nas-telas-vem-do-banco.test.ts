@@ -63,22 +63,4 @@ describe("o nome em texto do onboarding/welcome/get-started vem do BANCO", () =>
       ).toBe(false);
     }
   });
-
-  it("o onboarding (connect-nuvemshop), que é client, lê do CONTEXTO do banco", () => {
-    // O `_client.tsx` não pode chamar `marcaDaSaida` (server-only); o caminho
-    // certo lá é `useMarcaDaInstalacao()` do contexto que o layout raiz monta a
-    // partir da marca RESOLVIDA — banco incluído.
-    const fonte = fs.readFileSync(
-      path.join(process.cwd(), "app/onboarding/connect-nuvemshop/_client.tsx"),
-      "utf8",
-    );
-    expect(fonte).toContain("useMarcaDaInstalacao()");
-    // Comentário não conta: o arquivo documenta POR QUE não usa `branding()`.
-    const semComentarios = fonte
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .split("\n")
-      .filter((linha) => !linha.trimStart().startsWith("//"))
-      .join("\n");
-    expect(semComentarios).not.toContain("branding()");
-  });
 });

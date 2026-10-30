@@ -591,30 +591,6 @@ export const NAV_CATALOG = [
     sidebar: true,
     healthDot: true,
   },
-  {
-    // Não tinha link nenhum no app inteiro: só se chegava digitando a URL.
-    href: "/app/integrations/nuvemshop",
-    label: "Nuvemshop",
-    description: "Conecte a loja para trazer pedidos e clientes para dentro do CRM.",
-    icon: "Storefront",
-    group: "canais",
-    // A página não filtra por papel, mas as Server Actions de conectar e
-    // desconectar exigem admin — mostrar a um viewer seria oferecer botão morto.
-    minRole: "admin",
-    // SEM `sidebar`: fora do menu lateral por decisão do dono do produto — a
-    // integração não é usada nesta instalação e ocupava uma linha de "Canais"
-    // toda vez que alguém abria o app.
-    //
-    // Continua sendo DESTINO, e é por isso que a linha some em vez do bloco
-    // inteiro: `searchable()` (abaixo) filtra só por papel, então a tela segue
-    // no ⌘K; a rota, a página e as Server Actions ficam intactas; e
-    // `tests/unit/navegacao-completude.test.ts` continua vendo uma porta para
-    // `/app/integrations/nuvemshop` — apagar a entrada exigiria justificá-la na
-    // allowlist de "rota sem porta", que é coisa de rota morta, e esta não está.
-    //
-    // ⚠️ O grupo "canais" não tem hub, então o ⌘K passa a ser a ÚNICA porta
-    // navegável. Para voltar a mostrá-la, basta devolver `sidebar: true`.
-  },
 
   // ---- Análise saiu do menu (outubro/2026) ----
   //
