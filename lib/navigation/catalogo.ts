@@ -331,49 +331,6 @@ export const NAV_CATALOG = [
     // Módulo opcional da instalação, desligado por padrão (doc 68, #1621).
     modulo: "crm_b2b",
   },
-  {
-    // A promessa que o comentário da Agenda fazia desde que ela nasceu. Aqui se
-    // decide O QUE se pode marcar, quanto dura e quem atende — e é isto que a
-    // tela de marcar e o agente de IA oferecem ao cliente.
-    //
-    // Nasceu porque a `calendar_event_types` tinha dez categorias no CHECK,
-    // duração, buffers e antecedência mínima, e NÃO havia como criar ou editar
-    // um tipo por lugar nenhum: a organização recebia três semeados e ficava com
-    // eles para sempre.
-    href: "/app/settings/tenant/agenda",
-    label: "Tipos de agendamento",
-    description: "O que se pode marcar, quanto dura, onde acontece e quem atende.",
-    icon: "CalendarBlank",
-    group: "organizacao",
-    // "Sua empresa", junto de Atendimento e Empresa: é configuração do NEGÓCIO,
-    // não da conta de quem está logado. O gate `navegacao-registry` cobra a
-    // seção em todo grupo que tem hub, e sem ela o destino não aparece no hub.
-    section: "Sua empresa",
-    // SEM `sidebar`, como as outras DEZ entradas de "organizacao": este grupo
-    // tem hub, e se chega às telas dele por "Configurações". Eu tinha posto
-    // `sidebar: true` e a cerca reprovou dizendo "a tela existe e não tem porta
-    // na navegação" — a porta existia, era outra.
-  },
-  {
-    // O catálogo financeiro: contas, formas de pagamento e plano de contas.
-    //
-    // Fica em "Sua empresa" pelo mesmo motivo dos tipos de agendamento — é onde
-    // o negócio se DESCREVE, não onde o dia acontece. E vem ANTES de qualquer
-    // tela de venda porque a forma de pagamento é quem decide em que conta a
-    // entrada cai quando uma comanda é fechada: sem esta camada, a comanda não
-    // tem onde depositar.
-    href: "/app/settings/tenant/financeiro",
-    label: "Financeiro",
-    description: "Contas, formas de pagamento e como cada lançamento é classificado.",
-    icon: "ChartBar",
-    group: "organizacao",
-    section: "Sua empresa",
-    // Leitura para a organização, escrita para manager+ (é a RLS que decide).
-    // `viewer` aqui e não `manager`: quem só olha precisa conferir para onde o
-    // dinheiro vai, e esconder a tela não esconde o dado — só torna a
-    // conferência impossível.
-    minRole: "viewer",
-  },
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
   {
@@ -601,6 +558,15 @@ export const NAV_CATALOG = [
 
   // ---- Organização — conta, empresa, acesso ----
   {
+    href: "/app/settings/tenant",
+    label: "Sua empresa e marca",
+    description: "Dados da empresa, nome e cor da marca, retenção de dados e encarregado de LGPD.",
+    icon: "Buildings",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "admin",
+  },
+  {
     href: "/app/settings/profile",
     label: "Perfil",
     description: "Seu nome, idioma, fuso horário e avatar.",
@@ -645,21 +611,6 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
-    // A porta do freio POR EMPRESA do passo `ai_decide` (issue #2367). O #2228
-    // criou o passo e o deixou opcional POR REGRA; sem esta tela, desligar de
-    // uma vez todos os `ai_decide` de uma organização só existiria como
-    // `UPDATE` à mão no `organizations.settings` — o anti-exemplo de "toda
-    // configuração tem superfície" (docs/doctrine/restricao-de-canal.md).
-    href: "/app/settings/automacoes",
-    label: "Automações",
-    description:
-      "O freio único do passo em que a IA escolhe entre as opções de uma regra, para a empresa inteira.",
-    icon: "FlowArrow",
-    group: "organizacao",
-    section: "Sua empresa",
-    minRole: "manager",
-  },
-  {
     // A porta que faltava para o vocabulário de etiquetas (issue #852). Até
     // aqui a etiqueta só ENTRAva no vocabulário — cada agente escrevia a que
     // quisesse em `add_tag` — e não havia por onde corrigir, juntar as duas
@@ -695,15 +646,6 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
-    href: "/app/settings/tenant",
-    label: "Organização",
-    description: "Dados da empresa, retenção de dados e encarregado de LGPD.",
-    icon: "Buildings",
-    group: "organizacao",
-    section: "Sua empresa",
-    minRole: "admin",
-  },
-  {
     // Mora em Organização e não em Canais de propósito: o que se configura aqui
     // é a CONTA DE ANÚNCIOS da empresa — dinheiro e identidade comercial, ao lado
     // de billing e API tokens. Canais é por onde se FALA com o cliente, e os dois
@@ -722,49 +664,6 @@ export const NAV_CATALOG = [
     minRole: "admin",
   },
   {
-    // Vizinha de Conversões, e SEPARADA dela de propósito. As duas conectam "a
-    // Meta" e a tentação de fundi-las é real — mas são credenciais de escopos
-    // diferentes, em tabelas diferentes (0214), com consequências opostas
-    // quando vencem: o token de leitura vencido deixa uma tela vazia, o de
-    // conversões vencido faz a empresa parar de reportar vendas sem sintoma.
-    // Uma tela só, com dois campos de token parecidos, é como se cola o token
-    // errado no campo errado e se perde uma semana achando que quebrou.
-    href: "/app/settings/meta-ads",
-    label: "Meta Ads",
-    description: "Conectar a conta de anúncios para ler o desempenho das campanhas.",
-    icon: "Megaphone",
-    group: "organizacao",
-    section: "Sua empresa",
-    // `admin` pelo mesmo critério da vizinha, mesmo o token sendo só de
-    // leitura: ele expõe orçamento e performance da conta inteira, e quem
-    // apenas LÊ a tela (`manager`) não precisa poder trocar a credencial.
-    minRole: "admin",
-  },
-  {
-    href: "/app/settings/marca",
-    label: "Marca",
-    description: "O nome e a cor que sua empresa mostra dentro do sistema.",
-    icon: "Palette",
-    group: "organizacao",
-    section: "Sua empresa",
-    // `admin` pelo mesmo motivo da linha de cima: o que se edita ali é
-    // identidade da empresa, e dá-lo a `manager` o colocaria abaixo de billing e
-    // de API tokens na mesma prancheta.
-    minRole: "admin",
-    // SEM `sidebar`: fica só no hub. Trocar a marca é tarefa de uma vez, e
-    // agrupar o menu já o fez crescer — duas telas a mais estouraram a dobra em
-    // 900px, medido pelo e2e `navegacao.spec.ts`.
-  },
-  {
-    href: "/app/settings/billing",
-    label: "Billing",
-    description: "Plano e cobrança.",
-    icon: "Receipt",
-    group: "organizacao",
-    section: "Sua empresa",
-    minRole: "admin",
-  },
-  {
     href: "/app/lgpd/requests",
     label: "LGPD",
     description: "Pedidos de exportação e exclusão de dados feitos por clientes.",
@@ -778,15 +677,6 @@ export const NAV_CATALOG = [
     label: "API Tokens",
     description: "Chaves para outro sistema conversar com o seu CRM.",
     icon: "Lock",
-    group: "organizacao",
-    section: "Dados e acesso",
-    minRole: "admin",
-  },
-  {
-    href: "/app/settings/voip-trunk",
-    label: "Trunk SIP",
-    description: "Credenciais do provedor SIP para chamadas de voz por IA.",
-    icon: "Phone",
     group: "organizacao",
     section: "Dados e acesso",
     minRole: "admin",

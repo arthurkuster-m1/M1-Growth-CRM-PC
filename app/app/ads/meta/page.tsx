@@ -86,7 +86,7 @@ export default async function MetaAdsPage() {
           {podeConectar && (
             <a
               className="mt-4 inline-block rounded-md border px-4 py-2 font-medium underline-offset-2 hover:bg-muted"
-              href="/app/settings/meta-ads"
+              href="/app/connections?aba=meta-ads"
             >
               {t("Conectar conta de anúncios")}
             </a>

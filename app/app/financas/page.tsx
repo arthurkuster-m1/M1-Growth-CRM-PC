@@ -6,6 +6,9 @@ import { moedaDaOrganizacao } from "@/lib/catalogo/moeda-da-org";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 
+import { CatalogoFinanceiro } from "@/app/app/settings/tenant/financeiro/_client";
+
+import { FinancasAbas } from "./_abas";
 import { Faturamento } from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +52,15 @@ export default async function Page() {
           {t("Quanto entrou, de que forma, e quanto cada pessoa tem a receber.")}
         </p>
       </div>
-      <Faturamento podeLancar={ROLE_RANK[org.role] >= ROLE_RANK.agent} moedaDaOrg={moedaDaOrg} />
+      <FinancasAbas
+        visao={
+          <Faturamento
+            podeLancar={ROLE_RANK[org.role] >= ROLE_RANK.agent}
+            moedaDaOrg={moedaDaOrg}
+          />
+        }
+        contas={<CatalogoFinanceiro podeEditar={ROLE_RANK[org.role] >= ROLE_RANK.manager} />}
+      />
     </div>
   );
 }
