@@ -22,6 +22,15 @@ export const definirClienteDaAgencia = (id: string | null): void => {
   atual = id;
 };
 
+/**
+ * Libera o cliente SÓ se ainda for o `id` dado. Ao trocar de cliente, o provedor novo define o seu id
+ * ANTES de o antigo desmontar; limpar sem conferir apagaria o id novo e as chamadas seguintes sairiam
+ * sem cliente (e voltariam os dados da empresa da sessão).
+ */
+export const liberarClienteDaAgencia = (id: string): void => {
+  if (atual === id) atual = null;
+};
+
 /** O header a carimbar numa chamada a `url`, ou `null` quando não se aplica. */
 export const clienteDaAgenciaParaUrl = (url: string): string | null =>
   atual && PREFIXOS_COM_CLIENTE_DA_AGENCIA.some((p) => url.startsWith(p)) ? atual : null;

@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 
-import { definirClienteDaAgencia } from "@/lib/agencia/cliente-da-aba";
+import { definirClienteDaAgencia, liberarClienteDaAgencia } from "@/lib/agencia/cliente-da-aba";
 
 interface ClienteAtivo {
   id: string;
@@ -35,7 +35,10 @@ export function ClienteDaAgenciaProvider({
   }
   // Definido NO RENDER (e não em efeito): as consultas dos filhos disparam antes dos efeitos do pai.
   definirClienteDaAgencia(cliente.id);
-  useEffect(() => () => definirClienteDaAgencia(null), []);
+  useEffect(() => {
+    const id = cliente.id;
+    return () => liberarClienteDaAgencia(id);
+  }, [cliente.id]);
   return (
     <Ctx.Provider value={cliente}>
       <QueryClientProvider client={qc}>{children}</QueryClientProvider>
