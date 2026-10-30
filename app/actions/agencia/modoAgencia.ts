@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { z } from "zod";
 
-import { clientesDaAgencia, COOKIE_DA_SELECAO, ehSuperAdminPleno } from "@/lib/agencia/acesso";
+import { clientesDaAgencia, COOKIE_DA_ORDEM, COOKIE_DA_SELECAO, ehSuperAdminPleno } from "@/lib/agencia/acesso";
 import { ORIGENS_DOS_LEADS } from "@/lib/agencia/campanhas";
 import { loadAuthUser } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -20,6 +20,24 @@ export async function salvarClientesDaAgencia(ids: string[]): Promise<Resultado>
   const permitidos = new Set((await clientesDaAgencia(user)).map((c) => c.id));
   const validos = parsed.data.filter((id) => permitidos.has(id));
   (await cookies()).set(COOKIE_DA_SELECAO, validos.join(","), {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: cookieSecure(),
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  return { ok: true };
+}
+
+/** Guarda a ordem em que a pessoa quer ver os clientes (só ids que ela pode acessar). */
+export async function salvarOrdemDosClientes(ids: string[]): Promise<Resultado> {
+  const user = await loadAuthUser();
+  if (!user) return { ok: false, error: "auth_required" };
+  const parsed = z.array(z.string().uuid()).max(500).safeParse(ids);
+  if (!parsed.success) return { ok: false, error: "invalid_request" };
+  const permitidos = new Set((await clientesDaAgencia(user)).map((c) => c.id));
+  const validos = [...new Set(parsed.data)].filter((id) => permitidos.has(id));
+  (await cookies()).set(COOKIE_DA_ORDEM, validos.join(","), {
     httpOnly: true,
     sameSite: "strict",
     secure: cookieSecure(),
