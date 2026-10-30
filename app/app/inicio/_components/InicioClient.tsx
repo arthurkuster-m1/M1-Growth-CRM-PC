@@ -284,7 +284,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         tipo: "agenda",
         refId: a.id,
         status: statusDoCompromisso(
-          { status: a.situacao, reagendado: a.reagendado },
+          { status: a.situacao },
           Boolean(a.leadId && compraramPorLead.get(a.leadId)),
         ),
       });

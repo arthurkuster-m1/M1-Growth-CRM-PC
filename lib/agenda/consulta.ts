@@ -512,13 +512,6 @@ export interface AgendamentoListado {
    */
   tipo?: { slug: string; nome: string } | null;
   /**
-   * O compromisso que ELE virou ao ser reagendado (o novo nasce ligado a este pelo
-   * `rescheduled_from_id`); `null` quando nunca foi reagendado. É o que faz a tela dizer "Reagendado".
-   */
-  remarcadoPara?: string | null;
-  /** Quando foi reagendado NA MESMA linha (o jeito de hoje); `null` se nunca foi. */
-  reagendadoEm?: string | null;
-  /**
    * COMO e ONDE se atende — o mesmo par `location_kind`/`location_details` que
    * `lib/agenda/locais.ts` rotula na tela. Entrego os VALORES, não o rótulo:
    * quem lê é um integrante externo que tem o próprio vocabulário, e o rótulo
@@ -850,7 +843,7 @@ export async function listaAgendamentos(
   let q = supabase
     .from("calendar_appointments")
     .select(
-      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, location_kind, location_details, client_confirmation, rescheduled_at, calendar_event_types(id, name, slug), contacts(name, display_name)",
+      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, location_kind, location_details, client_confirmation, calendar_event_types(id, name, slug), contacts(name, display_name)",
     )
     .eq("organization_id", organizationId)
     .order("starts_at", { ascending: true })
@@ -968,22 +961,6 @@ export async function listaAgendamentos(
     }
   }
 
-  // Quem foi reagendado: o novo compromisso aponta para o antigo. Uma consulta a mais, só com a página.
-  const remarcadoPorAntigo = new Map<string, string>();
-  if (pagina.length > 0) {
-    const { data: novos } = await supabase
-      .from("calendar_appointments")
-      .select("id, rescheduled_from_id")
-      .eq("organization_id", organizationId)
-      .in(
-        "rescheduled_from_id",
-        pagina.map((l) => String(l.id)),
-      );
-    for (const n of (novos ?? []) as Array<{ id: unknown; rescheduled_from_id: unknown }>) {
-      if (n.rescheduled_from_id) remarcadoPorAntigo.set(String(n.rescheduled_from_id), String(n.id));
-    }
-  }
-
   return {
     ok: true,
     agendamentos: pagina.map((l) => {
@@ -1017,8 +994,6 @@ export async function listaAgendamentos(
         tipo: tipo ? { slug: texto(tipo.slug) ?? "", nome: texto(tipo.name) ?? "" } : null,
         local: { tipo: texto(l.location_kind), descricao: texto(l.location_details) },
         leadIds: vinculosPorAlvo?.get(String(l.id)) ?? [],
-        remarcadoPara: remarcadoPorAntigo.get(String(l.id)) ?? null,
-        reagendadoEm: (l as { rescheduled_at?: string | null }).rescheduled_at ?? null,
       } satisfies AgendamentoListado;
     }),
     proximo:

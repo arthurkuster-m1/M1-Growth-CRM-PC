@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { statusDoCompromisso } from "./PaginaDoCompromisso";
 
 describe("status único do compromisso", () => {
-  const base = { reagendado: false };
+  const base = {};
   it("junta situação e resultado: quem compareceu mostra se comprou", () => {
     expect(statusDoCompromisso({ ...base, status: "completed" }, true).rotulo).toBe(
       "Compareceu e Comprou",
@@ -23,10 +23,5 @@ describe("status único do compromisso", () => {
   });
   it("cancelado é um dos seis status", () => {
     expect(statusDoCompromisso({ ...base, status: "cancelled" }, false).rotulo).toBe("Cancelado");
-  });
-  it("o compromisso reagendado mostra Reagendado (automático), sem virar falta", () => {
-    expect(statusDoCompromisso({ status: "confirmed", reagendado: true }, false).rotulo).toBe(
-      "Reagendado",
-    );
   });
 });

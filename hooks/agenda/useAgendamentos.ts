@@ -30,8 +30,6 @@ interface AgendamentoListado {
   tipo?: { slug: string; nome: string } | null;
   /** As oportunidades ligadas à reunião. */
   leadIds?: string[];
-  remarcadoPara?: string | null;
-  reagendadoEm?: string | null;
 }
 
 export interface RecorteDaGrade {
@@ -107,12 +105,6 @@ export function useAgendamentos(recorte: RecorteDaGrade | null) {
           quemSeraAtendido: a.contatoNome ?? undefined,
           tipo: a.tipo?.nome || undefined,
           leadId: a.leadIds?.[0],
-          // "Reagendado": o jeito de hoje (mudou de horário na mesma linha e segue pendente ou
-          // confirmado) ou o antigo (o compromisso que foi duplicado e ficou para trás).
-          reagendado: Boolean(
-            a.remarcadoPara ||
-              (a.reagendadoEm && (a.situacao === "pending" || a.situacao === "confirmed")),
-          ),
         }));
       } catch (err) {
         showApiError(err);
