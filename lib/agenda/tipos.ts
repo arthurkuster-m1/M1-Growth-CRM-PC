@@ -93,7 +93,7 @@ export const SITUACOES_DO_AGENDAMENTO = [
 export type SituacaoDoAgendamento = (typeof SITUACOES_DO_AGENDAMENTO)[number];
 
 export const ROTULO_DA_SITUACAO: Record<SituacaoDoAgendamento, string> = {
-  pending: "Aguardando confirmação",
+  pending: "Não confirmado",
   confirmed: "Confirmado",
   cancelled: "Cancelado",
   completed: "Realizado",

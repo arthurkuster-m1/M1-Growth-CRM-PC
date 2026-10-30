@@ -204,6 +204,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     ate: parsed.data.ate ?? null,
     situacao: parsed.data.situacao ?? null,
     limite: parsed.data.limite ?? 200,
+    // O Início precisa da oportunidade de cada reunião para dizer se quem compareceu comprou.
+    comLeadIds: true,
   });
 
   if (!resultado.ok) {
