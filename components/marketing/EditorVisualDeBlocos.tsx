@@ -137,13 +137,21 @@ function MenuFlutuante({
   const ref = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState({ x, y });
 
-  // Mantém o menu inteiro dentro da janela.
+  // Mantém o menu inteiro dentro da janela — e ONDE FOI PEDIDO. Dentro de uma janela/página com
+  // `transform` (a página do compromisso), `position: fixed` deixa de ser relativo à tela e passa
+  // a ser relativo a ela: o menu nascia longe do "+". Mede-se onde ele de fato caiu e soma-se a
+  // diferença, o que vale com ou sem esse deslocamento.
   useLayoutEffect(() => {
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
+    const el = ref.current;
+    if (!el) return;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    const r = el.getBoundingClientRect();
+    const dx = r.left - x;
+    const dy = r.top - y;
     setPos({
-      x: Math.max(8, Math.min(x, window.innerWidth - r.width - 8)),
-      y: Math.max(8, Math.min(y, window.innerHeight - r.height - 8)),
+      x: Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) - dx,
+      y: Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) - dy,
     });
   }, [x, y]);
 

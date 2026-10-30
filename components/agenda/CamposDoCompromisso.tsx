@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/hooks/i18n/useT";
 import { ROTULO_DO_LOCAL } from "@/lib/agenda/propriedades-do-compromisso";
-import { ArrowSquareOut, Copy, PencilSimple } from "@/lib/ui/icons";
+import { ArrowSquareOut, Copy } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /** Um campo da página: o nome em cima, pequeno, e o valor numa caixa — nada de coluna estreita. */
@@ -71,7 +71,6 @@ export const Tag = React.forwardRef<
       )}
     >
       <span className="truncate">{children}</span>
-      {editavel ? <PencilSimple size={11} aria-hidden className="shrink-0 opacity-70" /> : null}
     </span>
   );
 });
