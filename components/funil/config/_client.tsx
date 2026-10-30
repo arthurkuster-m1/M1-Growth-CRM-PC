@@ -23,8 +23,6 @@ import { modoDeReabertura } from "@/lib/leads/reabertura";
 import { CATEGORIAS_DE_PERDA } from "@/lib/schemas/leads";
 import { customFieldSchema, type CustomFieldDef } from "@/lib/schemas/settings";
 import { Plus, Trash } from "@/lib/ui/icons";
-import { AgentMappingSection, ancoraDoMapeamento } from "./_mapping";
-import { StagesSection, ancoraDasEtapas } from "./_stages";
 
 export interface PipelineRow {
   id: string;
@@ -152,59 +150,6 @@ function readWonReasons(settings: Record<string, unknown> | null): string[] {
   const r = (settings as { won_reasons?: unknown } | null)?.won_reasons;
   return Array.isArray(r) ? r.filter((v): v is string => typeof v === "string") : [];
 }
-export function PipelinesClient({
-  pipelines,
-  etapas = {},
-  podeEditarConfig,
-}: {
-  pipelines: PipelineRow[];
-  /**
-   * As etapas de cada funil por id de funil — o que o editor de `obrigatorio_em`
-   * oferece como "exigir ao entrar aqui". Opcional só para os testes que não
-   * exercitam esta regra; a página sempre manda.
-   */
-  etapas?: Record<string, EtapaDoFunil[]>;
-  /** Vocabulário/custom fields são admin (a server action recusa o resto). */
-  podeEditarConfig: boolean;
-}) {
-  const t = useT();
-  if (pipelines.length === 0) {
-    // ⚠️ NÃO PROMETA UM CAMINHO QUE NÃO EXISTE. Criar funil não é feito por
-    // nenhuma tela, rota ou action deste produto — só por script de instalação;
-    // e como o instalador não provisiona funil, ESTE é o estado de toda
-    // instalação nova. O texto anterior mandava "crie um no quadro", e o quadro
-    // vazio manda "Ir para Configurações": pingue-pongue fechado, com o usuário
-    // procurando um botão que não existe em lugar nenhum.
-    return (
-      <Card className="p-6 text-sm leading-relaxed text-muted-foreground">
-        {t("Você ainda não tem nenhum funil. Enquanto for assim, o agente atende normalmente, mas não tem para onde levar o card de ninguém — não há etapas para onde mover. Criar o funil é feito por quem instalou o sistema, direto no banco; depois ele aparece aqui para você escolher a etapa de cada passo.")}
-      </Card>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-4">
-      {pipelines.map((p) => (
-        <Card key={p.id} className="space-y-6 p-6">
-          <header>
-            <h2 className="text-base font-semibold">{p.name}</h2>
-            <p className="text-xs text-muted-foreground">/{p.slug}</p>
-          </header>
-          {/* As ETAPAS vêm primeiro, e a ordem é a do raciocínio de quem
-              configura: primeiro o quadro existe do jeito da sua operação,
-              depois se decide o que o assistente faz com ele. Invertido, a
-              primeira coisa que o dono da clínica vê é um mapeamento sobre
-              colunas de e-commerce que ele nem sabia que dava para trocar. */}
-          <StagesSection pipelineId={p.id} ancoraMapeamento={ancoraDoMapeamento(p.id)} />
-          <div className="border-t border-border pt-6">
-            <AgentMappingSection pipelineId={p.id} ancoraEtapas={ancoraDasEtapas(p.id)} />
-          </div>
-          {podeEditarConfig && <PipelineEditor pipeline={p} etapas={etapas[p.id] ?? []} />}
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 export function PipelineEditor({
   pipeline,
   etapas,

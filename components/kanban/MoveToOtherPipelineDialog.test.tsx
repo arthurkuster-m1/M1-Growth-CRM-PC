@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MoveToOtherPipelineDialog } from "@/components/kanban/MoveToOtherPipelineDialog";
 
 // Polyfills que o Radix Select exige e o jsdom não tem (mesmo padrão de
-// app/app/settings/tenant/pipelines/_stages.test.tsx).
+// components/funil/config/_stages.test.tsx).
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
 window.HTMLElement.prototype.setPointerCapture = vi.fn();

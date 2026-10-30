@@ -237,7 +237,7 @@
       "col": 2,
       "type": "frontend",
       "label": "Mapa do funil",
-      "sublabel": "tela (settings/tenant/pipelines)"
+      "sublabel": "funil da campanha (aba Agente)"
     },
     {
       "id": "stagehint",

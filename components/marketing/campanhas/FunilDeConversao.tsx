@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Switch } from "@/components/ui/switch";
 import { ConfiguracaoDoFunil } from "@/components/funil/ConfiguracaoDoFunil";
-import { ancoraDasEtapas, JanelaDaEtapa } from "@/app/app/settings/tenant/pipelines/_stages";
+import { ancoraDasEtapas, JanelaDaEtapa } from "@/components/funil/config/_stages";
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { apiClient } from "@/lib/api/client";

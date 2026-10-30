@@ -389,7 +389,7 @@ const DA_EMPRESA: RecursoOpcional[] = [
     nivel: "organizacao",
     padrao: "desligado",
     quemDecide: "manager",
-    href: "/app/settings/tenant/pipelines",
+    href: "/app/marketing/geracao-de-demanda",
     ler: varia,
   },
   {
@@ -399,7 +399,7 @@ const DA_EMPRESA: RecursoOpcional[] = [
     nivel: "organizacao",
     padrao: "desligado",
     quemDecide: "manager",
-    href: "/app/settings/tenant/pipelines",
+    href: "/app/marketing/geracao-de-demanda",
     ler: varia,
   },
   {
