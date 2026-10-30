@@ -82,15 +82,16 @@ type Detalhe = {
 };
 
 /**
- * O STATUS ÚNICO do compromisso, sempre um destes cinco: Não confirmado, Confirmado, Compareceu e
- * Comprou, Compareceu e Não comprou, Não compareceu. Quem compareceu mostra se comprou ou não pela
- * venda da oportunidade. (O compromisso remarcado fica como "Não compareceu", que é o que ele é no
- * banco; "Cancelado" só existe para o que foi cancelado e some das listas de trabalho.)
+ * O STATUS ÚNICO do compromisso, sempre um destes SEIS que se escolhem: Não confirmado, Confirmado,
+ * Compareceu e Comprou, Compareceu e Não comprou, Não compareceu e Cancelado — mais "Reagendado",
+ * que é AUTOMÁTICO: o compromisso que foi reagendado fica assim e não se escolhe. Quem compareceu
+ * mostra se comprou ou não pela venda da oportunidade.
  */
 export function statusDoCompromisso(
   a: Pick<Detalhe, "status"> & { remarcado_para?: string | null },
   vendeu: boolean,
 ): { rotulo: string; cor: CorDaTag } {
+  if (a.remarcado_para) return { rotulo: "Reagendado", cor: "roxo" };
   switch (a.status) {
     case "pending":
       return { rotulo: "Não confirmado", cor: "amarelo" };
@@ -245,6 +246,25 @@ function PaginaExistente({
     void qc.invalidateQueries({ queryKey: ["venda-da-oportunidade"] });
     void consulta.refetch();
   };
+  // Cancelar pede o MOTIVO (é o que a equipe lê ao ver o horário vago): o status "Cancelado" do
+  // seletor abre esta janelinha em vez de gravar direto.
+  const [cancelando, setCancelando] = React.useState(false);
+  const [motivoDoCancelamento, setMotivoDoCancelamento] = React.useState("");
+  const cancelar = useMutation({
+    mutationFn: async () =>
+      apiClient.delete("/api/v1/agenda/agendamentos", {
+        id,
+        revision: a?.revision,
+        reason: motivoDoCancelamento.trim(),
+      }),
+    onSuccess: () => {
+      toast.success(t("Compromisso cancelado."));
+      setCancelando(false);
+      setMotivoDoCancelamento("");
+      recarregar();
+    },
+    onError: showApiError,
+  });
   const reagendar = useMutation({
     mutationFn: async (iso: string) =>
       apiClient.patch<{ data: { id?: string } }>("/api/v1/agenda/agendamentos", {
@@ -541,35 +561,48 @@ function PaginaExistente({
               <div className="grid gap-4 sm:grid-cols-2">
                 <Campo rotulo={t("Status")}>
                   <div className="flex flex-wrap items-center gap-2">
-                    {podeEditar && a.status !== "cancelled" && !a.remarcado_para ? (
+                    {podeEditar && !a.remarcado_para ? (
                       <MenuDeOpcoes
                         gatilho={
                           <Tag data-testid="status-do-compromisso" cor={statusUnico.cor} editavel>
                             {t(statusUnico.rotulo)}
                           </Tag>
                         }
+                        // As SEIS situações, o tempo todo (até o confirmado pode voltar a "Não
+                        // confirmado", e o cancelado pode ser reaberto). "Reagendado" não aparece:
+                        // é automático, do reagendamento.
                         opcoes={(
                           [
+                            ["pending", "Não confirmado", false],
                             ["confirmed", "Confirmado", false],
                             ["comprou", "Compareceu e Comprou", true],
                             ["nao_comprou", "Compareceu e Não comprou", true],
                             ["no_show", "Não compareceu", true],
+                            ["cancelled", "Cancelado", false],
                           ] as const
                         ).map(([opcao, rotulo, soDepois]) => ({
                           id: opcao,
                           rotulo: t(rotulo),
                           desabilitado:
-                            salvar.isPending || acoes.resultado.isPending || (soDepois && !comecou),
+                            salvar.isPending ||
+                            acoes.resultado.isPending ||
+                            statusUnico.rotulo === rotulo ||
+                            (soDepois && !comecou),
                           dica:
-                            soDepois && !comecou
-                              ? t("Disponível quando a reunião começar")
-                              : undefined,
-                          aoEscolher: () =>
-                            opcao === "confirmed"
-                              ? a.status === "pending"
+                            statusUnico.rotulo === rotulo
+                              ? t("Situação atual")
+                              : soDepois && !comecou
+                                ? t("Disponível quando a reunião começar")
+                                : undefined,
+                          aoEscolher: () => {
+                            if (opcao === "cancelled") return setCancelando(true);
+                            if (opcao === "pending") return salvar.mutate({ status: "pending" });
+                            if (opcao === "confirmed")
+                              return a.status === "pending"
                                 ? acoes.confirmar.mutate(a.id)
-                                : salvar.mutate({ status: "confirmed" })
-                              : acoes.resultado.mutate({ id: a.id, opcao, leadId: a.lead_id }),
+                                : salvar.mutate({ status: "confirmed" });
+                            return acoes.resultado.mutate({ id: a.id, opcao, leadId: a.lead_id });
+                          },
                         }))}
                       />
                     ) : (
@@ -1025,6 +1058,40 @@ function PaginaExistente({
             }}
           />
         ) : null}
+
+        <Dialog open={cancelando} onOpenChange={(v) => !cancelar.isPending && setCancelando(v)}>
+          <DialogContent className="max-w-md">
+            <DialogTitle>{t("Cancelar o compromisso")}</DialogTitle>
+            <DialogDescription>
+              {t("Conte o motivo: é o que a equipe lê ao ver o horário vago.")}
+            </DialogDescription>
+            <textarea
+              value={motivoDoCancelamento}
+              onChange={(e) => setMotivoDoCancelamento(e.target.value)}
+              maxLength={500}
+              rows={3}
+              aria-label={t("Motivo do cancelamento")}
+              placeholder={t("Ex.: o cliente avisou que não vem")}
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                disabled={cancelar.isPending}
+                onClick={() => setCancelando(false)}
+              >
+                {t("Voltar")}
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={cancelar.isPending || motivoDoCancelamento.trim().length < 3}
+                onClick={() => cancelar.mutate()}
+              >
+                {cancelar.isPending ? t("Cancelando…") : t("Cancelar compromisso")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {editandoVenda && venda ? (
           <DialogoDaVenda

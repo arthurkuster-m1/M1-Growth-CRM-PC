@@ -110,7 +110,7 @@ const alterarSchema = z
      * `rescheduled` NÃO entra aqui: remarcar se pede mandando `starts_at`, e é
      * movimento próprio — não uma situação que se escolhe.
      */
-    status: z.enum(["confirmed", "completed", "no_show"]).optional(),
+    status: z.enum(["pending", "confirmed", "completed", "no_show"]).optional(),
     notes: z.string().max(2000).optional(),
     title: z.string().trim().min(1).max(200).optional(),
     guest_email: emailDoConvidado.optional(),

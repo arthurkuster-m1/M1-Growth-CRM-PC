@@ -512,6 +512,11 @@ export interface AgendamentoListado {
    */
   tipo?: { slug: string; nome: string } | null;
   /**
+   * O compromisso que ELE virou ao ser reagendado (o novo nasce ligado a este pelo
+   * `rescheduled_from_id`); `null` quando nunca foi reagendado. É o que faz a tela dizer "Reagendado".
+   */
+  remarcadoPara?: string | null;
+  /**
    * COMO e ONDE se atende — o mesmo par `location_kind`/`location_details` que
    * `lib/agenda/locais.ts` rotula na tela. Entrego os VALORES, não o rótulo:
    * quem lê é um integrante externo que tem o próprio vocabulário, e o rótulo
@@ -961,6 +966,22 @@ export async function listaAgendamentos(
     }
   }
 
+  // Quem foi reagendado: o novo compromisso aponta para o antigo. Uma consulta a mais, só com a página.
+  const remarcadoPorAntigo = new Map<string, string>();
+  if (pagina.length > 0) {
+    const { data: novos } = await supabase
+      .from("calendar_appointments")
+      .select("id, rescheduled_from_id")
+      .eq("organization_id", organizationId)
+      .in(
+        "rescheduled_from_id",
+        pagina.map((l) => String(l.id)),
+      );
+    for (const n of (novos ?? []) as Array<{ id: unknown; rescheduled_from_id: unknown }>) {
+      if (n.rescheduled_from_id) remarcadoPorAntigo.set(String(n.rescheduled_from_id), String(n.id));
+    }
+  }
+
   return {
     ok: true,
     agendamentos: pagina.map((l) => {
@@ -994,6 +1015,7 @@ export async function listaAgendamentos(
         tipo: tipo ? { slug: texto(tipo.slug) ?? "", nome: texto(tipo.name) ?? "" } : null,
         local: { tipo: texto(l.location_kind), descricao: texto(l.location_details) },
         leadIds: vinculosPorAlvo?.get(String(l.id)) ?? [],
+        remarcadoPara: remarcadoPorAntigo.get(String(l.id)) ?? null,
       } satisfies AgendamentoListado;
     }),
     proximo:
