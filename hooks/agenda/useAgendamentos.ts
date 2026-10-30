@@ -30,6 +30,7 @@ interface AgendamentoListado {
   tipo?: { slug: string; nome: string } | null;
   /** As oportunidades ligadas à reunião. */
   leadIds?: string[];
+  remarcadoPara?: string | null;
 }
 
 export interface RecorteDaGrade {
@@ -105,6 +106,7 @@ export function useAgendamentos(recorte: RecorteDaGrade | null) {
           quemSeraAtendido: a.contatoNome ?? undefined,
           tipo: a.tipo?.nome || undefined,
           leadId: a.leadIds?.[0],
+          remarcadoPara: a.remarcadoPara ?? null,
         }));
       } catch (err) {
         showApiError(err);

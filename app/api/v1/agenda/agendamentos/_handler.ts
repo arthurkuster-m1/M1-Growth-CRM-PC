@@ -122,7 +122,7 @@ export interface AlterarInput {
   outcome_message_id?: string;
   confirmation_next_at?: string;
   starts_at?: string;
-  status?: "confirmed" | "completed" | "no_show";
+  status?: "pending" | "confirmed" | "completed" | "no_show";
   notes?: string;
   /** Título do compromisso (o nome que aparece no topo da página e na agenda). */
   title?: string;
@@ -636,6 +636,7 @@ export async function alterarAgendamentoHandler(
     "owner_user_id",
     "contact_id",
     "starts_at",
+    "ends_at",
     "status",
     "time_zone",
     "title",
@@ -656,17 +657,42 @@ export async function alterarAgendamentoHandler(
       ctx.requestId,
       "O compromisso mudou. Recarregue antes de confirmar.",
     );
-  if (atual.status === "cancelled") {
+  // Cancelado só se REABRE escolhendo uma situação (o seletor de status da página do compromisso
+  // oferece as seis o tempo todo). Qualquer OUTRA mudança num cancelado segue recusada.
+  const reabrindo = atual.status === "cancelled" && input.status !== undefined;
+  if (atual.status === "cancelled" && !reabrindo) {
     throw new ApiError(
       422,
       "agenda_ja_cancelado",
       undefined,
       ctx.requestId,
-      "Este agendamento foi cancelado. Marque um novo em vez de reabrir este.",
+      "Este agendamento foi cancelado. Para mexer nele, escolha uma situação (por exemplo, Confirmado).",
     );
   }
 
   const mudanca: Record<string, unknown> = {};
+  if (reabrindo) {
+    // Voltar a ocupar o horário exige que ele ainda esteja livre — o cancelamento o devolveu ao pool.
+    if (input.status === "pending" || input.status === "confirmed") {
+      const { data: tipoDoCancelado } = await supabase
+        .from("calendar_event_types")
+        .select("id")
+        .eq("organization_id", ctx.organization_id)
+        .eq("id", (atual.event_type_id as string | null) ?? "")
+        .maybeSingle();
+      if (tipoDoCancelado) {
+        await exigeHorarioLivre(supabase, ctx, {
+          eventTypeId: tipoDoCancelado.id as string,
+          donoId: atual.owner_user_id as string,
+          inicio: new Date(atual.starts_at as string),
+          fim: new Date(atual.ends_at as string),
+          ignorarAgendamentoId: atual.id as string,
+        });
+      }
+    }
+    mudanca.cancellation_reason = null;
+    mudanca.cancelled_at = null;
+  }
   if (input.status === "completed" || input.status === "no_show") {
     if (ctx.actor.type !== "user")
       throw new ApiError(

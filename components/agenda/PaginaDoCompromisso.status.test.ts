@@ -21,9 +21,12 @@ describe("status único do compromisso", () => {
       "Não compareceu",
     );
   });
-  it("o compromisso remarcado é uma falta no banco e mostra Não compareceu", () => {
+  it("cancelado é um dos seis status", () => {
+    expect(statusDoCompromisso({ ...base, status: "cancelled" }, false).rotulo).toBe("Cancelado");
+  });
+  it("o compromisso reagendado mostra Reagendado (automático), mesmo sendo uma falta no banco", () => {
     expect(statusDoCompromisso({ status: "no_show", remarcado_para: "novo" }, false).rotulo).toBe(
-      "Não compareceu",
+      "Reagendado",
     );
   });
 });

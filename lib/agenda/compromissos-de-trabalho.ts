@@ -6,10 +6,11 @@ import type { Agendamento } from "@/components/agenda/tipos";
  * A rota também entrega a ocupação das outras agendas do Google (`origem: "google_sync"`):
  * blocos anônimos "Ocupado" — o treino, a meditação, o que for pessoal. Eles precisam existir
  * na grade da Agenda e nos horários livres (para não marcar cliente por cima), mas não são
- * trabalho, então telas que mostram "o que tenho para fazer" (o Início) ficam sem eles.
+ * trabalho, então telas que mostram "o que tenho para fazer" (o Início) ficam sem eles. O cancelado
+ * FICA: é um status como os outros e aparece com a sua tag.
  */
 export function compromissosDeTrabalho<T extends Pick<Agendamento, "origem" | "situacao">>(
   lista: readonly T[],
 ): T[] {
-  return lista.filter((a) => a.origem !== "google_sync" && a.situacao !== "cancelled");
+  return lista.filter((a) => a.origem !== "google_sync");
 }
