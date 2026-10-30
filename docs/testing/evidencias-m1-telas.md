@@ -52,3 +52,14 @@ Prova pela tela da página do compromisso (tags sem lápis, menu do + dos blocos
 
 - `evidence/pagina-do-compromisso/01-pagina.png`
 - `evidence/pagina-do-compromisso/02-menu-do-mais.png`
+
+## `evidence/configuracoes/`
+
+Prova pela tela da busca na ordem do menu e das Configurações reorganizadas (hub, Sua empresa e marca, abas em Finanças, Automações e Conexões).
+
+- `evidence/configuracoes/01-busca.png`
+- `evidence/configuracoes/02-hub.png`
+- `evidence/configuracoes/03-sua-empresa-e-marca.png`
+- `evidence/configuracoes/04-financas-contas.png`
+- `evidence/configuracoes/05-automacoes-ajustes.png`
+- `evidence/configuracoes/06-conexoes-meta-ads.png`
