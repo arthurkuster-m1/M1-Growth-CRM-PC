@@ -39,6 +39,8 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "funis são gerenciados dentro das campanhas; tela a revisar — a página CRM abre o quadro de cada funil",
   "/app/agencia/campanhas":
     "porta própria: o item \"Modo agência\" do seletor de organizações (TenantSwitcher), só para quem gere mais de um cliente; ganha as demais telas do modo nas próximas fases",
+  "/app/agencia/cronograma":
+    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma), aberta pelo item \"Modo agência\" do seletor de organizações",
   "/app/contacts":
     "a lista de contatos virou a visão Clientes da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app/calls": "não será usada; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
