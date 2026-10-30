@@ -9,7 +9,12 @@
  * O valor é limpo ao sair da tela do modo agência (`ClienteDaAgenciaProvider`).
  */
 export const HEADER_CLIENTE_DA_AGENCIA = "X-Agencia-Cliente";
-export const PREFIXO_COM_CLIENTE_DA_AGENCIA = "/api/v1/marketing/cronograma";
+/** As famílias de rota que sabem atender "outro cliente" (todas passam por `clienteDaRequisicao`). */
+export const PREFIXOS_COM_CLIENTE_DA_AGENCIA = [
+  "/api/v1/marketing/cronograma",
+  "/api/v1/dashboards",
+  "/api/v1/demand-campaigns",
+] as const;
 
 let atual: string | null = null;
 
@@ -19,4 +24,4 @@ export const definirClienteDaAgencia = (id: string | null): void => {
 
 /** O header a carimbar numa chamada a `url`, ou `null` quando não se aplica. */
 export const clienteDaAgenciaParaUrl = (url: string): string | null =>
-  atual && url.startsWith(PREFIXO_COM_CLIENTE_DA_AGENCIA) ? atual : null;
+  atual && PREFIXOS_COM_CLIENTE_DA_AGENCIA.some((p) => url.startsWith(p)) ? atual : null;

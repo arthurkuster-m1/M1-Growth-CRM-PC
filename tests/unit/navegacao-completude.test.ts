@@ -41,6 +41,8 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "porta própria: o item \"Modo agência\" do seletor de organizações (TenantSwitcher), só para quem gere mais de um cliente; ganha as demais telas do modo nas próximas fases",
   "/app/agencia/cronograma":
     "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma), aberta pelo item \"Modo agência\" do seletor de organizações",
+  "/app/agencia/dashboards":
+    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma ⇄ Dashboards), aberta pelo item \"Modo agência\" do seletor de organizações",
   "/app/contacts":
     "a lista de contatos virou a visão Clientes da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app/calls": "não será usada; MARCADA PARA EXCLUIR ao final da reorganização do CRM",

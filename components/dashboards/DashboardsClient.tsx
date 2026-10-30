@@ -7,6 +7,7 @@ import { Atendimento, type DadosDeAtendimento } from "@/components/dashboards/At
 import { PerdasPanel } from "@/components/dashboards/PerdasPanel";
 import { PrevisaoPanel } from "@/components/dashboards/PrevisaoPanel";
 import { Relatorios } from "@/components/dashboards/atividades/Relatorios";
+import { useClienteDaAgencia } from "@/components/agencia/ClienteDaAgenciaProvider";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { Business, type DadosDeBusiness } from "@/components/dashboards/Business";
@@ -54,6 +55,9 @@ export function DashboardsClient({
   );
   const { atalhos, hoje } = useAtalhosDePeriodo();
   const papel = useActiveOrg()?.role;
+  // No modo agência só valem os painéis cujos dados já sabem de qual cliente falar; os demais
+  // (Comercial, Atividades, Previsão e Perdas) leem a empresa da sessão e ficam de fora.
+  const noModoAgencia = useClienteDaAgencia() !== null;
   const podeVerPerdas = papel !== undefined && ROLE_RANK[papel] >= ROLE_RANK.manager;
   const [janela, setJanela] = useState(() => ({ de: `${hoje.slice(0, 7)}-01`, ate: hoje }));
   const [campanhas, setCampanhas] = useState<string[]>([]);
@@ -112,7 +116,9 @@ export function DashboardsClient({
       icone: <ClockCounterClockwise size={16} weight="duotone" aria-hidden />,
     },
   ];
-  const abas = todasAsAbas.filter((a) => !ocultos.includes(a.id));
+  const abas = todasAsAbas.filter(
+    (a) => !ocultos.includes(a.id) && !(noModoAgencia && (a.id === "comercial" || a.id === "atividades")),
+  );
   // Se o painel escolhido foi escondido, cai no primeiro que sobrou.
   const painel: Painel = abas.some((a) => a.id === escolhido)
     ? escolhido
@@ -370,8 +376,8 @@ export function DashboardsClient({
             {/* Vindos da página Desempenho: a previsão do que ainda vai ser vendido (funil aberto,
                 ponderado pela chance de fechar) e o porquê de cada perda no período escolhido.
                 Perdas é do gerente para cima (o funil inteiro). */}
-            <PrevisaoPanel />
-            {podeVerPerdas ? <PerdasPanel periodo={janela} /> : null}
+            {noModoAgencia ? null : <PrevisaoPanel />}
+            {podeVerPerdas && !noModoAgencia ? <PerdasPanel periodo={janela} /> : null}
           </div>
         )
       ) : null}

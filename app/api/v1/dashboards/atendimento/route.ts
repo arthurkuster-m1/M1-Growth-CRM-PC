@@ -27,6 +27,7 @@ import { media, mediana } from "@/lib/dashboards/business";
 import { periodoAnterior } from "@/lib/dashboards/trafego";
 import { chaveDoDia, inicioDoDia, partesNoFuso, somarDias } from "@/lib/inicio/datas";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { clienteDaRequisicao, ehRecusa } from "@/lib/agencia/cliente-da-requisicao";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -61,9 +62,13 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (!de.success || !ate.success || de.data > ate.data) {
     return fail("validation_failed", "Período inválido.", 422, { requestId });
   }
-  const orgId = authz.org.orgId;
-  const podeVerNomes = roleAtLeast(authz.org.role, "agent");
-  const supabase = await createClient();
+  // MODO AGÊNCIA: os dados de outro cliente (reconferido no servidor).
+  const outro = await clienteDaRequisicao(authz.user, authz.org.orgId, false, (x) => x, requestId);
+  if (outro && ehRecusa(outro)) return outro.response;
+  const orgId = outro?.orgId ?? authz.org.orgId;
+  const papelNoCliente = outro ? (outro.role === "plataforma" ? "admin" : outro.role) : authz.org.role;
+  const podeVerNomes = roleAtLeast(papelNoCliente, "agent");
+  const supabase = outro?.supabase ?? (await createClient());
 
   const { data: org } = await supabase
     .from("organizations")
@@ -280,7 +285,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       parados24h: maisDe24h.length,
       parados7d: maisDe7d.length,
       lista,
-      podeEditarHorario: roleAtLeast(authz.org.role, "manager"),
+      podeEditarHorario: roleAtLeast(papelNoCliente, "manager"),
     },
     { requestId },
   );
@@ -298,6 +303,10 @@ export async function PUT(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("manager", { requestId, resource: "metrics" });
   if (!authz.ok) return authz.response;
+  // MODO AGÊNCIA: a empresa de outro cliente (reconferida no servidor).
+  const outro = await clienteDaRequisicao(authz.user, authz.org.orgId, true, (x) => x, requestId);
+  if (outro && ehRecusa(outro)) return outro.response;
+  const orgAlvo = outro?.orgId ?? authz.org.orgId;
   const corpo = horarioSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success || corpo.data.inicio >= corpo.data.fim) {
     return fail("validation_failed", "Horário inválido.", 422, { requestId });
@@ -307,7 +316,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
   const { data: atual } = await admin
     .from("organizations")
     .select("settings")
-    .eq("id", authz.org.orgId)
+    .eq("id", orgAlvo)
     .maybeSingle();
   const settings = (atual?.settings ?? {}) as Record<string, unknown>;
   const { error } = await admin
@@ -322,7 +331,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
         },
       },
     })
-    .eq("id", authz.org.orgId);
+    .eq("id", orgAlvo);
   if (error) return fail("internal_error", "Erro ao salvar o horário.", 500, { requestId });
   return ok({ salvo: true }, { requestId });
 }

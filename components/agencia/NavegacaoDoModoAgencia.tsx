@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const TELAS = [
   { href: "/app/agencia/campanhas", rotulo: "Campanhas" },
   { href: "/app/agencia/cronograma", rotulo: "Cronograma e semana" },
+  { href: "/app/agencia/dashboards", rotulo: "Dashboards" },
 ] as const;
 
 export function NavegacaoDoModoAgencia() {
