@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { HEADER_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -47,6 +49,8 @@ export default async function CampanhaPage({ params }: { params: Promise<{ id: s
   const org = await resolveActiveOrg(user);
   if (!org) notFound();
   const t = (texto: string) => traduzir(texto, user.idioma);
+  // MODO AGÊNCIA: a janela da campanha mostra só o cadastro/diário (sem banner nem atalhos).
+  if ((await headers()).get(HEADER_EMBUTIDO) === "1") return <DetalheDaCampanha id={id} />;
   const { nome, funilId } = await nomeDaCampanha(id);
 
   return (

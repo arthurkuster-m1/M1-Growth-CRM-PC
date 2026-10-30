@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { JanelaDaCampanha } from "@/components/agencia/JanelaDaCampanha";
+import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { ChartBar, Megaphone } from "@/lib/ui/icons";
 import { EmbutidoDoCliente } from "@/components/agencia/EmbutidoDoCliente";
 import { OrigemDosLeads } from "@/components/agencia/OrigemDosLeads";
 import { SeletorDeClientes } from "@/components/agencia/SeletorDeClientes";
@@ -35,32 +38,48 @@ export default async function CampanhasDaAgenciaPage() {
     ((orgs ?? []) as Array<{ id: string; settings: unknown }>).map((o) => [o.id, origemDosLeads(o.settings)]),
   );
 
+  const nomes = Object.fromEntries(escolhidos.map((c) => [c.id, c.name]));
+
   return (
-    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            {t("Modo agência")}
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Campanhas")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("A página de Campanhas de cada cliente, uma tabela por cliente.")}
-          </p>
-        </div>
+    <PaginaDeMarketing
+      tom="blue"
+      larga
+      icone={<Megaphone weight="duotone" aria-hidden />}
+      superior={t("Modo agência")}
+      titulo={t("Campanhas")}
+      descricao={t("As campanhas de todos os clientes, com o funil e os resultados de cada uma.")}
+    >
+      <section aria-label={t("Telas relacionadas")} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <AtalhoEmDestaque
+          voltarPara={{ href: "/app/agencia/campanhas", rotulo: t("Campanhas") }}
+          href="/app/agencia/dashboards?painel=trafego"
+          titulo={t("Resultados das campanhas")}
+          descricao={t("Dashboard de Tráfego Pago de cada cliente, com troca rápida")}
+          icone={<ChartBar weight="duotone" aria-hidden />}
+          tom="blue"
+        />
+      </section>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">{t("Campanhas por cliente")}</h2>
         <SeletorDeClientes
           clientes={todos.map((c) => ({ id: c.id, name: c.name }))}
           selecionados={escolhidosIds}
         />
-      </header>
+      </div>
       {escolhidos.map((c) => (
         <section key={c.id} aria-label={c.name} className="grid gap-2">
           <header className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">{c.name}</h2>
+            <h3 className="text-base font-semibold">{c.name}</h3>
             <OrigemDosLeads clienteId={c.id} nome={c.name} origem={origemDe.get(c.id) ?? "crm"} />
           </header>
-          <EmbutidoDoCliente caminho="/app/marketing/geracao-de-demanda" clienteId={c.id} titulo={`${t("Campanhas")} · ${c.name}`} />
+          <EmbutidoDoCliente
+            caminho="/app/marketing/geracao-de-demanda"
+            clienteId={c.id}
+            titulo={`${t("Campanhas")} · ${c.name}`}
+          />
         </section>
       ))}
-    </div>
+      <JanelaDaCampanha nomes={nomes} />
+    </PaginaDeMarketing>
   );
 }
