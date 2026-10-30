@@ -1,3 +1,4 @@
+import { clienteDoPedido } from "@/lib/agencia/cliente-do-pedido";
 import { cache } from "react";
 import { combinarInterfaces } from "@/lib/navigation/interface";
 /**
@@ -343,7 +344,13 @@ export const orgAtivaSemPortao = cache(async (authUser: AuthUser): Promise<Activ
     };
   }
   const store = await cookies();
-  const ativo = escolherMembroAtivo(authUser.organizations, store.get(ACTIVE_ORG_COOKIE)?.value);
+  // MODO AGÊNCIA: o pedido pode operar OUTRA organização da própria pessoa (header validado contra
+  // as associações dela). Sem header, vale o cookie, como sempre.
+  const doPedido = await clienteDoPedido(authUser.organizations);
+  const ativo = escolherMembroAtivo(
+    authUser.organizations,
+    doPedido ?? store.get(ACTIVE_ORG_COOKIE)?.value,
+  );
   if (!ativo) return null;
   return {
     orgId: ativo.organization_id,

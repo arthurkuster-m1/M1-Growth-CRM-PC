@@ -3,6 +3,7 @@
  *      funis (para o seletor) e, para a agência, a última análise e o último planejamento.
  * POST /api/v1/demand-campaigns — cria uma campanha (manager+).
  */
+import { origemDosLeads } from "@/lib/agencia/campanhas";
 import { type NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
@@ -83,7 +84,7 @@ export async function GET(): Promise<Response> {
   if (campanhas.length > 0) {
     const { data: org } = await a.supabase
       .from("organizations")
-      .select("timezone")
+      .select("timezone, settings")
       .eq("id", a.orgId)
       .maybeSingle();
     const { data: estados } = await a.supabase.rpc("fn_demand_campaigns_estado", {
@@ -101,8 +102,24 @@ export async function GET(): Promise<Response> {
         }>
       ).map((e) => [e.campaign_id, e]),
     );
+    // Cliente sem Inbox/CRM (modo agência): os leads são as conversas iniciadas que o Meta informa, dia a dia.
+    const leadsDoMeta = new Map<string, number>();
+    if (origemDosLeads(org?.settings) === "meta") {
+      const { data: dias } = await a.supabase
+        .from("demand_campaign_days")
+        .select("campaign_id, day, leads")
+        .eq("organization_id", a.orgId)
+        .in("campaign_id", (campanhas as CampanhaDeDemanda[]).map((c) => c.id))
+        .limit(50000);
+      for (const d of (dias ?? []) as Array<{ campaign_id: string; day: string; leads: number }>) {
+        const e = porId.get(d.campaign_id);
+        if (e && (d.day < e.de || d.day > e.ate)) continue;
+        leadsDoMeta.set(d.campaign_id, (leadsDoMeta.get(d.campaign_id) ?? 0) + (Number(d.leads) || 0));
+      }
+    }
     for (const c of campanhas as CampanhaDeDemanda[]) {
       const e = porId.get(c.id);
+      if (e && origemDosLeads(org?.settings) === "meta") e.leads = leadsDoMeta.get(c.id) ?? 0;
       c.estado = e
         ? { de: e.de, ate: e.ate, investido: Number(e.spend) || 0, leads: Number(e.leads) || 0 }
         : null;
