@@ -111,6 +111,7 @@ import type {
   ParticipacaoDoCliente,
   VendaAtivaDoCliente,
 } from "@/app/api/v1/clientes/route";
+import { corDaEtapa as corDaEtapaDoFunil } from "@/lib/funil/cores-da-etapa";
 import { STATUS_DA_VENDA, type Venda } from "@/lib/vendas";
 interface Funil {
   id: string;
@@ -121,6 +122,7 @@ interface Etapa {
   id: string;
   pipeline_id: string;
   name: string;
+  color?: string | null;
   position: number;
   is_won: boolean;
   is_lost: boolean;
@@ -151,7 +153,6 @@ interface Linha extends ClienteDaLista {
   chave: string;
 }
 
-const PALETA: CorDaOpcao[] = ["blue", "purple", "orange", "yellow", "pink", "brown", "gray"];
 const TODOS = "todos";
 const ROTULO_DA_VENDA: Record<string, string> = {
   interesse: "Possível venda",
@@ -583,7 +584,7 @@ export function ClientesCRM({
   };
 
   const corDaEtapa = (e: Etapa | undefined): CorDaOpcao =>
-    !e ? "gray" : e.is_won ? "green" : e.is_lost ? "red" : PALETA[e.position % PALETA.length]!;
+    !e ? "gray" : corDaEtapaDoFunil(e);
   const dia = (iso: string | null) =>
     iso
       ? new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "2-digit", year: "numeric" })

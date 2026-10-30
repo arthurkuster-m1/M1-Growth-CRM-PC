@@ -8,6 +8,7 @@ import type { Stage } from "@/lib/kanban/types";
 import { buildCardInput } from "@/lib/kanban/card-state";
 import { intervaloDaColuna } from "@/lib/kanban/selecao";
 import { formatSomaPorMoeda, formatValorDoNegocio, MOEDA_PADRAO, somaPorMoeda } from "@/lib/money";
+import { corDaEtapa as corDaEtapaDoFunil, hexDaCor } from "@/lib/funil/cores-da-etapa";
 import { KanbanCard, type GestoDeSelecao } from "./KanbanCard";
 
 interface StageColumnProps {
@@ -129,9 +130,16 @@ export function StageColumn({
     ancora.current = null;
     onSelectMany?.(idsVisiveis, !todosSelecionados);
   };
-  const accentStyle: CSSProperties | undefined = stage.color
-    ? { backgroundColor: stage.color }
-    : undefined;
+  const accentStyle: CSSProperties = {
+    backgroundColor: hexDaCor(
+      corDaEtapaDoFunil({
+        name: stage.name,
+        color: stage.color,
+        is_won: stage.is_won,
+        is_lost: stage.is_lost,
+      }),
+    ),
+  };
 
   return (
     <div
@@ -194,7 +202,7 @@ export function StageColumn({
               )}
             />
             <span
-              className={cn("h-2 w-2 rounded-full", !stage.color && "bg-text-muted/40")}
+              className="h-2 w-2 rounded-full"
               style={accentStyle}
               aria-hidden
             />

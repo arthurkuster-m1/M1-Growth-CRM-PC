@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
 
   const { data: etapasDoFunil } = await supabase
     .from("crm_stages")
-    .select("id, name, position, is_won, is_lost, is_archived")
+    .select("id, name, color, position, is_won, is_lost, is_archived")
     .eq("organization_id", orgId)
     .eq("pipeline_id", (lead as { pipeline_id: string }).pipeline_id)
     .order("position", { ascending: true });
@@ -162,6 +162,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
           (etapasDoFunil ?? []) as Array<{
             id: string;
             name: string;
+            color: string | null;
             is_won: boolean;
             is_lost: boolean;
             is_archived: boolean;
@@ -172,6 +173,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
           .map((e) => ({
             id: e.id,
             nome: e.name,
+            color: e.color,
             ganho: e.is_won,
             perdido: e.is_lost,
             position: e.position,

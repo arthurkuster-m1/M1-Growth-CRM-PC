@@ -75,7 +75,7 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     // tempo cada uma leva — e sem ela aqui, o POST de criação seria a única
     // superfície que escreve um dado que nenhuma leitura devolve.
     .select(
-      "id, name, position, is_won, is_lost, expected_duration_hours, win_probability, qualification, avisar_na_central",
+      "id, name, color, position, is_won, is_lost, expected_duration_hours, win_probability, qualification, avisar_na_central",
     )
     .eq("organization_id", authz.org.orgId)
     .eq("pipeline_id", id)

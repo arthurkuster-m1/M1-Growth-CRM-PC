@@ -21,12 +21,16 @@ import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { apiClient } from "@/lib/api/client";
 import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
+import { SeletorDeCorDaEtapa } from "@/components/funil/SeletorDeCorDaEtapa";
+import { BASE_DA_COR } from "@/lib/motor/cores";
+import { corDaEtapa } from "@/lib/funil/cores-da-etapa";
 import { ArrowRight, Plus } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface Etapa {
   id: string;
   name: string;
+  color?: string | null;
   position: number;
   is_won: boolean;
   is_lost: boolean;
@@ -107,10 +111,33 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   const [semAcesso, setSemAcesso] = useState(false);
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [modeloEscolhido, setModeloEscolhido] = useState("");
+  /** As cores que a pessoa trocou nas etapas do modelo escolhido (índice da etapa → hex). */
+  const [coresDoModelo, setCoresDoModelo] = useState<Record<number, string>>({});
   const [gerenciando, setGerenciando] = useState(false);
   const [recomecando, setRecomecando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const router = useRouter();
+
+  const etapasDoModeloEscolhido: {
+    name: string;
+    color?: string | null;
+    is_won?: boolean;
+    is_lost?: boolean;
+  }[] = modeloFixoDoId(modeloEscolhido)
+    ? modeloFixoDoId(modeloEscolhido)!.stages
+    : (modelos.find((m) => m.id === modeloEscolhido)?.stages ?? []).flatMap((s) => {
+        const e = s as { name?: unknown; color?: unknown; is_won?: unknown; is_lost?: unknown };
+        return typeof e.name === "string"
+          ? [
+              {
+                name: e.name,
+                color: typeof e.color === "string" ? e.color : null,
+                is_won: e.is_won === true,
+                is_lost: e.is_lost === true,
+              },
+            ]
+          : [];
+      });
 
   const carregarModelos = useCallback(async () => {
     try {
@@ -147,6 +174,14 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
     try {
       await apiClient.post(`/api/v1/demand-campaigns/${c.id}/funnel`, {
         template_id: modeloId,
+        ...(Object.keys(coresDoModelo).length > 0
+          ? {
+              cores: Array.from(
+                { length: Math.max(...Object.keys(coresDoModelo).map(Number)) + 1 },
+                (_, i) => coresDoModelo[i] ?? null,
+              ),
+            }
+          : {}),
       });
       await queryClient.invalidateQueries({ queryKey: ["demand-campaigns"] });
       router.refresh();
@@ -250,16 +285,34 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                     rotulo: `${m.name} (${m.stages.length} ${t("etapas")})`,
                   })),
                 ]}
-                aoEscolher={setModeloEscolhido}
+                aoEscolher={(id) => {
+                  setModeloEscolhido(id);
+                  setCoresDoModelo({});
+                }}
               />
-              {modeloFixoDoId(modeloEscolhido) ? (
+              {etapasDoModeloEscolhido.length > 0 ? (
                 <div className="rounded-lg bg-secondary/60 p-2.5 text-xs text-muted-foreground">
-                  <p>{t(modeloFixoDoId(modeloEscolhido)!.descricao)}</p>
+                  {modeloFixoDoId(modeloEscolhido) ? (
+                    <p>{t(modeloFixoDoId(modeloEscolhido)!.descricao)}</p>
+                  ) : null}
                   <p className="mt-1 font-medium text-foreground">
-                    {modeloFixoDoId(modeloEscolhido)!
-                      .stages.map((e) => t(e.name))
-                      .join(" → ")}
+                    {t("Escolha a cor de cada etapa")}
                   </p>
+                  <ul className="mt-1.5 grid gap-1">
+                    {etapasDoModeloEscolhido.map((e, i) => (
+                      <li key={`${e.name}-${i}`} className="flex items-center gap-2">
+                        <SeletorDeCorDaEtapa
+                          etapa={{
+                            ...e,
+                            color: coresDoModelo[i] ?? e.color ?? null,
+                          }}
+                          aoEscolher={(hex) => setCoresDoModelo((c) => ({ ...c, [i]: hex }))}
+                          rotulo={`${t("Cor da etapa")} ${t(e.name)}`}
+                        />
+                        <span className="truncate text-sm text-foreground">{t(e.name)}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
               {modelos.length > 0 ? (
@@ -411,7 +464,12 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                                 : "bg-secondary text-foreground hover:bg-secondary/70",
                     )}
                   >
-                    <span className="font-mono text-[11px] font-semibold tabular-nums opacity-80">
+                    <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums opacity-80">
+                      <span
+                        aria-hidden
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: BASE_DA_COR[corDaEtapa(e)] }}
+                      />
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span className="truncate text-sm font-semibold">{e.name}</span>
@@ -461,6 +519,16 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       aoGravar={(name) => void mexer(atual.id, { name })}
                     />
                   </label>
+                  <div className="block">
+                    <span className="mb-1 block text-xs text-muted-foreground">
+                      {t("Cor da etapa")}
+                    </span>
+                    <SeletorDeCorDaEtapa
+                      etapa={atual}
+                      desabilitado={!podeEditar}
+                      aoEscolher={(hex) => void mexer(atual.id, { color: hex })}
+                    />
+                  </div>
                   <label className="block">
                     <span className="mb-1 block text-xs text-muted-foreground">
                       {t("O que acontece nesta etapa")}

@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
+import { corDaEtapa as corDaEtapaDoFunil, hexDaCor } from "@/lib/funil/cores-da-etapa";
 import { faltaParaPagar, mensagemDaFalta } from "@/lib/vendas-pagamento";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
@@ -55,16 +56,6 @@ import {
   type ParcelaDaVenda,
   type Venda,
 } from "@/lib/vendas";
-
-const PALETA_DE_ETAPAS: CorDaOpcao[] = [
-  "blue",
-  "purple",
-  "orange",
-  "yellow",
-  "pink",
-  "brown",
-  "gray",
-];
 
 const COR_DO_STATUS: Record<StatusDaVenda, CorDaOpcao> = {
   interesse: "purple",
@@ -354,14 +345,15 @@ export function DialogoDaVenda({
   const negocio: typeof negocioProp =
     dadosDoLead && leadDaVenda
       ? {
-          etapas: (dadosDoLead.negocio.etapas ?? []).map((e, i) => ({
+          etapas: (dadosDoLead.negocio.etapas ?? []).map((e) => ({
             id: e.id,
             nome: e.nome,
-            cor: e.ganho
-              ? ("green" as CorDaOpcao)
-              : e.perdido
-                ? ("red" as CorDaOpcao)
-                : PALETA_DE_ETAPAS[(e.position ?? i) % PALETA_DE_ETAPAS.length]!,
+            cor: corDaEtapaDoFunil({
+              name: e.nome,
+              color: e.color,
+              is_won: e.ganho,
+              is_lost: e.perdido,
+            }),
           })),
           etapaId: dadosDoLead.negocio.etapa_id ?? null,
           aoMoverEtapa: moverEtapaDaOportunidade,
@@ -664,8 +656,10 @@ export function DialogoDaVenda({
   const ehVenda = modo === "venda";
   const etapaDoFunil = (dadosDoLead?.negocio.etapas ?? []).find((e) => e.id === etapaAtualId);
   const oportunidadePerdida = dadosDoLead?.negocio.status === "lost";
-  const corDaEtapaTag = (e?: { ganho?: boolean; perdido?: boolean }) =>
-    e?.ganho ? ("verde" as const) : e?.perdido ? ("vermelho" as const) : ("azul" as const);
+  const hexDaEtapaTag = (e?: { nome?: string; color?: string | null; ganho?: boolean; perdido?: boolean }) =>
+    hexDaCor(
+      corDaEtapaDoFunil({ name: e?.nome, color: e?.color, is_won: e?.ganho, is_lost: e?.perdido }),
+    );
   const itensValidos = itens.filter((i) => i.produtoId !== "");
   // Pago exige produto, responsável e forma de pagamento (o servidor também recusa).
   const parcelasDaTela = parcelas.length === 0 || total <= 0 ? parcelas : parcelasAjustadas();
@@ -1254,7 +1248,7 @@ export function DialogoDaVenda({
                         gatilho={
                           <Tag
                             data-testid="etapa-da-oportunidade"
-                            cor={corDaEtapaTag(etapaDoFunil)}
+                            hex={hexDaEtapaTag(etapaDoFunil)}
                             editavel
                           >
                             {negocio.etapas.find((e) => e.id === etapaAtualId)?.nome ??
@@ -1264,6 +1258,7 @@ export function DialogoDaVenda({
                         opcoes={negocio.etapas.map((e) => ({
                           id: e.id,
                           rotulo: e.nome,
+                          hex: e.cor ? hexDaCor(e.cor) : null,
                           desabilitado: e.id === etapaAtualId,
                           aoEscolher: () => {
                             setEtapaId(e.id);
