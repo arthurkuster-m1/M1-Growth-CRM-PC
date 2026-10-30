@@ -52,19 +52,28 @@ export function EmbutidoDaAgencia({ clienteId }: { clienteId: string }) {
   useLayoutEffect(() => {
     // A janela de uma campanha (pop-up) tem altura própria: não mexe na altura do quadro da tabela.
     if (new URLSearchParams(window.location.search).get("_janela") === "1") return;
-    const avisar = () =>
+    let ultima = -1;
+    const avisar = () => {
+      // A altura do CONTEÚDO (o corpo), nunca a do quadro: assim ela também encolhe.
+      const altura = Math.ceil(document.body.getBoundingClientRect().height);
+      if (altura === ultima) return;
+      ultima = altura;
       window.parent?.postMessage(
-        {
-          tipo: "agencia-altura",
-          cliente: clienteId,
-          altura: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
-        },
+        { tipo: "agencia-altura", cliente: clienteId, altura },
         window.location.origin,
       );
+    };
     avisar();
     const observador = new ResizeObserver(avisar);
     observador.observe(document.body);
-    return () => observador.disconnect();
+    window.addEventListener("load", avisar);
+    // Rede de segurança: conteúdo que cresce sem disparar o observador (fontes, imagens, tabelas).
+    const intervalo = window.setInterval(avisar, 500);
+    return () => {
+      observador.disconnect();
+      window.removeEventListener("load", avisar);
+      window.clearInterval(intervalo);
+    };
   }, [clienteId]);
   useEffect(() => {
     document.documentElement.dataset.embutido = "1";
