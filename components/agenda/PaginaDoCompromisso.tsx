@@ -72,9 +72,8 @@ type Detalhe = {
   cliente: { nome: string | null; telefone: string | null; email: string | null } | null;
   blocos?: Bloco[] | null;
   tipo: { id: string; nome: string; slug: string; cor?: string | null } | null;
-  remarcado_para?: string | null;
-  /** Quando foi reagendado na mesma linha (o jeito de hoje). */
-  reagendado_em?: string | null;
+  /** Quantas vezes foi reagendado (vira a notinha embaixo do status). */
+  reschedule_count?: number;
   oportunidade_titulo?: string | null;
   responsavel_id: string | null;
   eh_responsavel: boolean;
@@ -84,16 +83,15 @@ type Detalhe = {
 };
 
 /**
- * O STATUS ÚNICO do compromisso, sempre um destes SEIS que se escolhem: Não confirmado, Confirmado,
- * Compareceu e Comprou, Compareceu e Não comprou, Não compareceu e Cancelado — mais "Reagendado",
- * que é AUTOMÁTICO: o compromisso que foi reagendado fica assim e não se escolhe. Quem compareceu
- * mostra se comprou ou não pela venda da oportunidade.
+ * O STATUS ÚNICO do compromisso, sempre um destes SEIS: Não confirmado, Confirmado, Compareceu e
+ * Comprou, Compareceu e Não comprou, Não compareceu e Cancelado. NÃO existe status "Reagendado": o
+ * reagendamento vira a notinha "reagendado N vezes" (`reschedule_count`) e o compromisso volta a
+ * Confirmado. Quem compareceu mostra se comprou ou não pela venda da oportunidade.
  */
 export function statusDoCompromisso(
-  a: Pick<Detalhe, "status"> & { reagendado?: boolean },
+  a: Pick<Detalhe, "status">,
   vendeu: boolean,
 ): { rotulo: string; cor: CorDaTag } {
-  if (a.reagendado) return { rotulo: "Reagendado", cor: "roxo" };
   switch (a.status) {
     case "pending":
       return { rotulo: "Não confirmado", cor: "amarelo" };
@@ -275,7 +273,7 @@ function PaginaExistente({
         starts_at: iso,
       }),
     onSuccess: (r) => {
-      toast.success(t("Compromisso reagendado: o horário antigo ficou como não compareceu."));
+      toast.success(t("Compromisso reagendado."));
       const novo = r.data?.id;
       if (novo && novo !== id) setIdLocal(novo);
       recarregar();
@@ -464,14 +462,10 @@ function PaginaExistente({
   const etapasDoFunil = oport.data?.etapas ?? [];
   const etapaAtual = etapasDoFunil.find((e) => e.id === oport.data?.lead?.stage_id) ?? null;
   const vendeu = !!venda && VENDIDAS.has(venda.status);
-  // "Reagendado" é automático: o compromisso que mudou de horário (e segue pendente ou confirmado)
-  // ou o antigo, que ficou para trás num reagendamento duplicado.
-  const reagendado = Boolean(
-    a && (a.remarcado_para || (a.reagendado_em && ["pending", "confirmed"].includes(a.status))),
-  );
-  const statusUnico = a
-    ? statusDoCompromisso({ status: a.status, reagendado }, vendeu)
+    const statusUnico = a
+    ? statusDoCompromisso(a, vendeu)
     : { rotulo: "", cor: "cinza" as CorDaTag };
+  const vezesReagendado = a?.reschedule_count ?? 0;
   const fimDoCompromisso = a
     ? new Intl.DateTimeFormat(tag, {
         timeZone: a.time_zone,
@@ -570,7 +564,7 @@ function PaginaExistente({
               <div className="grid gap-4 sm:grid-cols-2">
                 <Campo rotulo={t("Status")}>
                   <div className="flex flex-wrap items-center gap-2">
-                    {podeEditar && !a.remarcado_para ? (
+                    {podeEditar && a.status !== "cancelled" ? (
                       <MenuDeOpcoes
                         gatilho={
                           <Tag data-testid="status-do-compromisso" cor={statusUnico.cor} editavel>
@@ -578,8 +572,7 @@ function PaginaExistente({
                           </Tag>
                         }
                         // As SEIS situações, o tempo todo (até o confirmado pode voltar a "Não
-                        // confirmado", e o cancelado pode ser reaberto). "Reagendado" não aparece:
-                        // é automático, do reagendamento.
+                        // confirmado"). Cancelado é TRAVADO: quem foi cancelado não tem menu.
                         opcoes={(
                           [
                             ["pending", "Não confirmado", false],
@@ -607,7 +600,7 @@ function PaginaExistente({
                             if (opcao === "cancelled") return setCancelando(true);
                             if (opcao === "pending") return salvar.mutate({ status: "pending" });
                             if (opcao === "confirmed")
-                              return a.status === "pending" && !reagendado
+                              return a.status === "pending"
                                 ? acoes.confirmar.mutate(a.id)
                                 : salvar.mutate({ status: "confirmed" });
                             return acoes.resultado.mutate({ id: a.id, opcao, leadId: a.lead_id });
@@ -621,6 +614,18 @@ function PaginaExistente({
                       <Tag cor="verde">{t("Cliente confirmou")}</Tag>
                     )}
                   </div>
+                  {vezesReagendado > 0 ? (
+                    <p
+                      data-testid="nota-de-reagendamento"
+                      className="mt-1 text-xs text-text-muted"
+                    >
+                      {vezesReagendado === 1
+                        ? t("Reagendado uma vez")
+                        : vezesReagendado === 2
+                          ? t("Reagendado duas vezes")
+                          : `${t("Reagendado")} ${vezesReagendado} ${t("vezes")}`}
+                    </p>
+                  ) : null}
                 </Campo>
 
                 <div className="min-w-0">

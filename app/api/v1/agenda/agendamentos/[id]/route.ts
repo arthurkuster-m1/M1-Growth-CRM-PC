@@ -230,16 +230,16 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   // enquanto ela não existe a página abre normalmente com o modelo do tipo.
   const blocosLinha = await db
     .from("calendar_appointments")
-    .select("blocos, rescheduled_at" as never)
+    .select("blocos, reschedule_count" as never)
     .eq("organization_id", org)
     .eq("id", id)
     .maybeSingle();
   const blocosDoCompromisso = blocosLinha.error
     ? null
     : ((blocosLinha.data as { blocos?: unknown } | null)?.blocos ?? null);
-  const reagendadoEm = blocosLinha.error
-    ? null
-    : ((blocosLinha.data as { rescheduled_at?: string | null } | null)?.rescheduled_at ?? null);
+  const vezesReagendado = blocosLinha.error
+    ? 0
+    : Number((blocosLinha.data as { reschedule_count?: number | null } | null)?.reschedule_count ?? 0);
   const cliente = cli.data as {
     name?: string | null;
     display_name?: string | null;
@@ -271,7 +271,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
         }
       : null,
     remarcado_para: (sucessor.data as { id?: string } | null)?.id ?? null,
-    reagendado_em: reagendadoEm,
+    reschedule_count: vezesReagendado,
     responsavel_id: owner_user_id,
     eh_responsavel: owner_user_id === auth.user.id,
   };

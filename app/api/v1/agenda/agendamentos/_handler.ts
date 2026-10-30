@@ -644,42 +644,19 @@ export async function alterarAgendamentoHandler(
       ctx.requestId,
       "O compromisso mudou. Recarregue antes de confirmar.",
     );
-  // Cancelado só se REABRE escolhendo uma situação (o seletor de status da página do compromisso
-  // oferece as seis o tempo todo). Qualquer OUTRA mudança num cancelado segue recusada.
-  const reabrindo = atual.status === "cancelled" && input.status !== undefined;
-  if (atual.status === "cancelled" && !reabrindo) {
+  // Cancelado é TRAVADO (decisão do dono, 30/10/2026): não se reabre nem se altera. Para voltar a
+  // atender, marca-se OUTRO compromisso — mesmo que no mesmo horário.
+  if (atual.status === "cancelled") {
     throw new ApiError(
       422,
       "agenda_ja_cancelado",
       undefined,
       ctx.requestId,
-      "Este agendamento foi cancelado. Para mexer nele, escolha uma situação (por exemplo, Confirmado).",
+      "Este agendamento foi cancelado. Marque um novo em vez de reabrir este.",
     );
   }
 
   const mudanca: Record<string, unknown> = {};
-  if (reabrindo) {
-    // Voltar a ocupar o horário exige que ele ainda esteja livre — o cancelamento o devolveu ao pool.
-    if (input.status === "pending" || input.status === "confirmed") {
-      const { data: tipoDoCancelado } = await supabase
-        .from("calendar_event_types")
-        .select("id")
-        .eq("organization_id", ctx.organization_id)
-        .eq("id", (atual.event_type_id as string | null) ?? "")
-        .maybeSingle();
-      if (tipoDoCancelado) {
-        await exigeHorarioLivre(supabase, ctx, {
-          eventTypeId: tipoDoCancelado.id as string,
-          donoId: atual.owner_user_id as string,
-          inicio: new Date(atual.starts_at as string),
-          fim: new Date(atual.ends_at as string),
-          ignorarAgendamentoId: atual.id as string,
-        });
-      }
-    }
-    mudanca.cancellation_reason = null;
-    mudanca.cancelled_at = null;
-  }
   if (input.status === "completed" || input.status === "no_show") {
     if (ctx.actor.type !== "user")
       throw new ApiError(
@@ -737,18 +714,20 @@ export async function alterarAgendamentoHandler(
         ignorarAgendamentoId: atual.id as string,
       });
       // REMARCAR MUDA O PRÓPRIO COMPROMISSO (decisão do dono do produto, 30/10/2026): o horário
-      // muda na mesma linha — sem duplicar e SEM contar como "não compareceu". O compromisso fica
-      // marcado como "Reagendado" (`rescheduled_at`) até alguém escolher outra situação.
+      // muda na mesma linha — sem duplicar e SEM contar como "não compareceu". Não existe status
+      // "Reagendado": o compromisso volta a "Confirmado" (se estava pendente, confirmado ou faltou) e
+      // o banco soma 1 em `reschedule_count`, que vira a notinha "reagendado N vezes" e a medida
+      // dos dashboards (quantos reagendam, quantos cancelam depois, quantos se realizam).
       mudanca.rescheduled_at = new Date().toISOString();
+      if (["pending", "confirmed", "no_show"].includes(atual.status as string)) {
+        mudanca.status = "confirmed";
+      }
       mudanca.starts_at = novoInicio.toISOString();
       mudanca.ends_at = novoFim.toISOString();
       mudanca.time_zone = consulta.fusoDaRegra;
       transicao = "rescheduled";
     }
   }
-
-  // Escolher uma situação tira o "Reagendado" (ele é automático e dura até alguém decidir).
-  if (input.status !== undefined && mudanca.rescheduled_at === undefined) mudanca.rescheduled_at = null;
 
   if (input.status && input.status !== atual.status) {
     // ⚠️ DESFECHO É SOBRE O PASSADO. `completed` e `no_show` respondem "o que
