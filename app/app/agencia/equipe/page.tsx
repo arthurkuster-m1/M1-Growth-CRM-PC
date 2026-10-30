@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { MatrizDaEquipe } from "@/components/agencia/MatrizDaEquipe";
-import { NavegacaoDoModoAgencia } from "@/components/agencia/NavegacaoDoModoAgencia";
 import { clientesDaAgencia, ehSuperAdminPleno } from "@/lib/agencia/acesso";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -66,7 +65,6 @@ export default async function EquipeDaAgenciaPage() {
 
   return (
     <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
-      <NavegacaoDoModoAgencia />
       <header>
         <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           {t("Modo agência")}

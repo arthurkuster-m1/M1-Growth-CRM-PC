@@ -28,6 +28,10 @@ vi.mock("@/hooks/auth/AuthProvider", () => ({
 vi.mock("./OrganizationTransitionProvider", () => ({
   useOrganizationTransition: () => ({ begin: vi.fn(), cancel: vi.fn() }),
 }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/app/inbox",
+  useRouter: () => ({ push: vi.fn() }),
+}));
 vi.mock("@/app/actions/shell/setActiveOrg", () => ({ setActiveOrg: vi.fn() }));
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (s: string) => s }));
 
