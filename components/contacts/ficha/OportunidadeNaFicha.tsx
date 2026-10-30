@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { corDaEtapa as corDaEtapaDoFunil } from "@/lib/funil/cores-da-etapa";
 import { nomeDaVenda, type Venda } from "@/lib/vendas";
 
 /**
@@ -67,8 +68,8 @@ export function OportunidadeNaFicha({
   const negocio = negocios.dados[0];
   const etapas = negocio?.negocio.etapas ?? [];
   const etapaAtualId = negocio?.negocio.etapa_id ?? venda.etapa_id ?? "";
-  const corDaEtapa = (e: { ganho: boolean; perdido: boolean }): "green" | "red" | "blue" =>
-    e.ganho ? "green" : e.perdido ? "red" : "blue";
+  const corDaEtapa = (e: { nome: string; color?: string | null; ganho: boolean; perdido: boolean }) =>
+    corDaEtapaDoFunil({ name: e.nome, color: e.color, is_won: e.ganho, is_lost: e.perdido });
 
   /** Etapa em andamento: move aqui mesmo. Ganho e perda pedem pagamento/motivo — abrem a oportunidade. */
   async function mudarEtapa(id: string) {

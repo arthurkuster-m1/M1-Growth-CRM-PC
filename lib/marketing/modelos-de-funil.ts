@@ -11,6 +11,11 @@ export const etapaDoModeloSchema = z.object({
   win_probability: z.number().int().min(0).max(100).nullable(),
   expected_duration_hours: z.number().int().min(1).max(8760).nullable(),
   qualification: z.enum(["mql", "disqualified"]).nullable(),
+  /** A cor da etapa (hex da paleta); sem ela, vale a padrão do nome/papel. */
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullish(),
   /**
    * O slug que a etapa nasce com. É ele que liga a etapa ao resto do sistema: `agendado` é a etapa
    * para onde o compromisso marcado leva o negócio, `reuniao-realizada` a do resultado da reunião.
@@ -47,6 +52,16 @@ export const renomearModeloSchema = z
   .refine((v) => v.name !== undefined || v.stages !== undefined, { message: "Nada para alterar." });
 
 export const criarFunilDaCampanhaSchema = z.object({
+  /** As cores escolhidas para as etapas do modelo, na ordem delas (`null` = a padrão). */
+  cores: z
+    .array(
+      z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .nullable(),
+    )
+    .max(30)
+    .optional(),
   /** O id de um modelo da empresa (uuid) ou de um modelo fixo (`fixo:<chave>`). */
   template_id: z
     .union([z.string().uuid(), z.string().regex(/^fixo:[a-z0-9-]{1,60}$/)])

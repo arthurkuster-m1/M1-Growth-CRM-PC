@@ -13,6 +13,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { hexPadraoDaEtapa } from "@/lib/funil/cores-da-etapa";
 import { slugDeNome } from "@/lib/leads/stage-editing";
 import { autorizarCampanhas, campanhaNaoEncontrada } from "@/lib/marketing/campanhas-servidor";
 import {
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       pipeline_id: pipelineId,
       name: e.name,
       slug,
+      color: corpo.data.cores?.[i] ?? e.color ?? hexPadraoDaEtapa(e),
       position: (i + 1) * 1000,
       is_won: e.is_won,
       is_lost: e.is_lost,

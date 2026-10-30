@@ -52,13 +52,15 @@ export interface DepsDeEtapa {
 
 /** As colunas que a tela e as regras usam. `position` entra: a reordenação calcula em cima dela. */
 const COLUNAS =
-  "id, name, slug, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, qualification, last_change_actor_kind, last_change_at";
+  "id, name, slug, color, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, qualification, last_change_actor_kind, last_change_at";
 
 /** A etapa como sai para quem lê — inclui a autoria da última mudança de configuração. */
 export interface EtapaVisivel {
   id: string;
   name: string;
   slug: string;
+  /** Cor da etapa (hex da paleta), escolhida ao montar o funil; `null` = a padrão do nome/papel. */
+  color: string | null;
   position: number;
   is_won: boolean;
   is_lost: boolean;
@@ -91,6 +93,7 @@ export interface EtapaVisivel {
 }
 
 type EtapaLida = EtapaEditavel & {
+  color?: string | null;
   avisar_na_central?: boolean | null;
   qualification?: "mql" | "disqualified" | null;
   last_change_actor_kind: string | null;
@@ -142,6 +145,7 @@ export function corpo(etapas: EtapaLida[]): { etapas: EtapaVisivel[] } {
         id: e.id,
         name: e.name,
         slug: e.slug,
+        color: e.color ?? null,
         position: e.position,
         is_won: e.is_won,
         is_lost: e.is_lost,
@@ -324,6 +328,8 @@ export async function criarEtapa(
 
 export interface PedidoDeEdicao {
   name?: string;
+  /** Cor da etapa (hex `#rrggbb`); `null` volta à padrão. */
+  color?: string | null;
   is_won?: boolean;
   is_lost?: boolean;
   /**
@@ -433,7 +439,9 @@ export async function atualizarEtapa(
     avisar_na_central?: boolean;
     expected_duration_hours?: number | null;
     qualification?: "mql" | "disqualified" | null;
+    color?: string | null;
   } = {};
+  if (pedido.color !== undefined) patchDoAlvo.color = pedido.color;
   if (pedido.qualification !== undefined) patchDoAlvo.qualification = pedido.qualification;
   if (pedido.name !== undefined) patchDoAlvo.name = pedido.name.trim();
   // `undefined` não viaja; `null` limpa a calibração de propósito.

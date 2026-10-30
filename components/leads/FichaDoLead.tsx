@@ -67,6 +67,7 @@ export interface DadosDoLead {
     etapas?: Array<{
       id: string;
       nome: string;
+      color?: string | null;
       ganho: boolean;
       perdido: boolean;
       position?: number | null;

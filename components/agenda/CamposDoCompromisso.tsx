@@ -87,6 +87,8 @@ export function MenuDeOpcoes({
     rotulo: string;
     desabilitado?: boolean;
     dica?: string;
+    /** Cor própria (hex): a opção aparece como a tag colorida (a etapa do funil). */
+    hex?: string | null;
     aoEscolher: () => void;
   }>;
   alinhar?: "start" | "end";
@@ -112,7 +114,7 @@ export function MenuDeOpcoes({
             }}
             className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm hover:bg-secondary disabled:opacity-50"
           >
-            {o.rotulo}
+            {o.hex ? <Tag hex={o.hex}>{o.rotulo}</Tag> : o.rotulo}
           </button>
         ))}
       </PopoverContent>

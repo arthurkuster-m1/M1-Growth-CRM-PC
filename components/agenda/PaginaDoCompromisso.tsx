@@ -37,6 +37,7 @@ import { AtalhosDaOportunidade } from "./AtalhosDaOportunidade";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { corDoTipo } from "@/lib/agenda/cor-do-tipo";
 import { BotaoExcluir, useAcoesDoCompromisso } from "./AcoesDoCompromisso";
+import { corDaEtapa as corDaEtapaDoFunil, hexDaCor } from "@/lib/funil/cores-da-etapa";
 import { Campo, LocalEditavel, MenuDeOpcoes, Tag, type CorDaTag } from "./CamposDoCompromisso";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import type { PedidoDeNovoCompromisso } from "@/lib/agenda/abrir-novo";
@@ -134,8 +135,8 @@ type EtapaDoFunil = {
   qualification: "mql" | "disqualified" | null;
 };
 /** Sem cor própria, a etapa de ganho é verde, a de perda vermelha, e as demais azuis. */
-const corDaEtapa = (e: Pick<EtapaDoFunil, "is_won" | "is_lost">): CorDaTag =>
-  e.is_won ? "verde" : e.is_lost ? "vermelho" : "azul";
+const hexDaEtapa = (e: Pick<EtapaDoFunil, "name" | "color" | "is_won" | "is_lost">): string =>
+  hexDaCor(corDaEtapaDoFunil(e));
 
 /**
  * O título do compromisso, no topo da página: um campo que se edita no lugar (grava ao sair
@@ -824,8 +825,7 @@ function PaginaExistente({
                                 gatilho={
                                   <Tag
                                     data-testid="etapa-da-oportunidade"
-                                    hex={etapaAtual.color}
-                                    cor={corDaEtapa(etapaAtual)}
+                                    hex={hexDaEtapa(etapaAtual)}
                                     editavel
                                   >
                                     {etapaAtual.name}
@@ -834,12 +834,13 @@ function PaginaExistente({
                                 opcoes={etapasDoFunil.map((e) => ({
                                   id: e.id,
                                   rotulo: e.name,
+                                  hex: hexDaEtapa(e),
                                   desabilitado: e.id === etapaAtual.id || mudarEtapa.isPending,
                                   aoEscolher: () => mudarEtapa.mutate(e),
                                 }))}
                               />
                             ) : (
-                              <Tag hex={etapaAtual.color} cor={corDaEtapa(etapaAtual)}>
+                              <Tag hex={hexDaEtapa(etapaAtual)}>
                                 {etapaAtual.name}
                               </Tag>
                             )

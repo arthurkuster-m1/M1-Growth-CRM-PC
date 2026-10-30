@@ -41,6 +41,12 @@ interface RouteCtx {
 const bodySchema = z
   .object({
     name: z.string().min(1).max(80).optional(),
+    /** Cor da etapa (hex da paleta); `null` volta à padrão do nome/papel. */
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .nullable()
+      .optional(),
     is_won: z.boolean().optional(),
     is_lost: z.boolean().optional(),
     depois_de: z.string().min(1).nullable().optional(),

@@ -34,6 +34,8 @@ const daEtapa = (pipelineId: string, stageId: string) =>
 /** O que o PATCH aceita. `depois_de` é o vizinho da ESQUERDA (`null` = primeira coluna). */
 export interface PatchDeEtapa {
   name?: string;
+  /** Cor da etapa (hex da paleta); `null` volta à padrão. */
+  color?: string | null;
   is_won?: boolean;
   is_lost?: boolean;
   depois_de?: string | null;
