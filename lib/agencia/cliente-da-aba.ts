@@ -9,6 +9,10 @@
  * O valor é limpo ao sair da tela do modo agência (`ClienteDaAgenciaProvider`).
  */
 export const HEADER_CLIENTE_DA_AGENCIA = "X-Agencia-Cliente";
+/** Parâmetros de URL que abrem uma página "dentro" de um cliente (o proxy os vira header). */
+export const PARAMETRO_CLIENTE_DA_AGENCIA = "_cliente";
+export const PARAMETRO_EMBUTIDO = "_embed";
+export const HEADER_EMBUTIDO = "x-agencia-embutido";
 /** As famílias de rota que sabem atender "outro cliente" (todas passam por `clienteDaRequisicao`). */
 export const PREFIXOS_COM_CLIENTE_DA_AGENCIA = [
   "/api/v1/marketing/cronograma",

@@ -6,6 +6,12 @@ import { env } from "@/lib/env";
 import { fetchDoServidor } from "@/lib/supabase/fetch-do-servidor";
 import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
 import { isPublicPath } from "@/lib/auth/public-paths";
+import {
+  HEADER_CLIENTE_DA_AGENCIA,
+  HEADER_EMBUTIDO,
+  PARAMETRO_CLIENTE_DA_AGENCIA,
+  PARAMETRO_EMBUTIDO,
+} from "@/lib/agencia/cliente-da-aba";
 import { CABECALHO_SEM_CSS, PARAMETRO_SEM_CSS } from "@/lib/branding/sem-css-personalizado";
 import {
   verifyImpersonateCookieEdge,
@@ -23,6 +29,17 @@ export async function proxy(request: NextRequest) {
     CABECALHO_SEM_CSS,
     request.nextUrl.searchParams.has(PARAMETRO_SEM_CSS) ? "1" : "0",
   );
+  // MODO AGÊNCIA: uma página aberta "dentro" de um cliente (`?_cliente=<uuid>&_embed=1`, num iframe da
+  // própria aplicação) vira header para os Server Components. Só a NAVEGAÇÃO por documento usa o
+  // parâmetro; as chamadas de API e as navegações suaves carregam o header direto (o iframe o
+  // carimba). O id nunca vale sozinho: `clienteDoPedido` o confere contra as associações da pessoa.
+  const clienteDaUrl = request.nextUrl.searchParams.get(PARAMETRO_CLIENTE_DA_AGENCIA);
+  if (clienteDaUrl) request.headers.set(HEADER_CLIENTE_DA_AGENCIA, clienteDaUrl);
+  if (request.nextUrl.searchParams.get(PARAMETRO_EMBUTIDO) === "1") {
+    request.headers.set(HEADER_EMBUTIDO, "1");
+  } else if (!request.headers.get(HEADER_CLIENTE_DA_AGENCIA)) {
+    request.headers.delete(HEADER_EMBUTIDO); // um header forjado não liga o modo embutido
+  }
   const response = NextResponse.next({ request: { headers: request.headers } });
 
   // Inject X-Request-Id for downstream correlation (audit log, error wrappers).

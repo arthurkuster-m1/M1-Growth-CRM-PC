@@ -1,7 +1,9 @@
 import type { Viewport } from "next";
 import { InterfaceRefresh } from "@/hooks/auth/InterfaceRefresh";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { EmbutidoDaAgencia } from "@/components/agencia/EmbutidoDaAgencia";
+import { HEADER_CLIENTE_DA_AGENCIA, HEADER_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
 import { isMfaEnrolled, loadAuthUser, requiresMfa, resolveActiveOrg } from "@/lib/auth/server";
 import { DEFAULT_VISIBILITY_MODE, roleAtLeast, type VisibilityMode } from "@/lib/auth/types";
 import { clientePelaAgendaLigado } from "@/lib/schemas/settings";
@@ -252,7 +254,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // ou seja: o painel é IRMÃO do `AppShell`, não filho dele. Um provedor por
   // dentro do `VoiceCallProvider` deixaria o painel de fora — ele declararia o
   // que ocupa e ninguém descontaria, que é exatamente o defeito da #1305.
-  const shell = (
+  // MODO AGÊNCIA: a página aberta num iframe "dentro" de um cliente não tem a casca (menu, barra
+  // de cima, alertas): só o conteúdo, para ser empilhado na visão da agência.
+  const cabecalhos = await headers();
+  const embutido = cabecalhos.get(HEADER_EMBUTIDO) === "1";
+  const clienteEmbutido = embutido ? cabecalhos.get(HEADER_CLIENTE_DA_AGENCIA) : null;
+  const shell = embutido && clienteEmbutido ? (
+    <ProvedorDaOcupacaoDoRodape>
+      <EmbutidoDaAgencia clienteId={clienteEmbutido} />
+      <div className="min-w-0 bg-background p-3">{children}</div>
+    </ProvedorDaOcupacaoDoRodape>
+  ) : (
     <ProvedorDaOcupacaoDoRodape>
       <VoiceCallProvider>
         <AppShell
