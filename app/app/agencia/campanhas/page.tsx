@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { NavegacaoDoModoAgencia } from "@/components/agencia/NavegacaoDoModoAgencia";
 import { SeletorDeClientes } from "@/components/agencia/SeletorDeClientes";
 import { TabelaDeCampanhasDaAgencia } from "@/components/agencia/TabelaDeCampanhasDaAgencia";
 import { clientesDaAgencia, clientesSelecionados } from "@/lib/agencia/acesso";
@@ -35,6 +36,7 @@ export default async function CampanhasDaAgenciaPage({
 
   return (
     <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <NavegacaoDoModoAgencia />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">

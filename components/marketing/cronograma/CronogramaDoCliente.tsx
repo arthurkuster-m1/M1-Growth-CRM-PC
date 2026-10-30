@@ -17,6 +17,7 @@ import {
   type SelecaoDoCronograma,
 } from "@/components/marketing/cronograma/PainelDoCronograma";
 import { rotulosDoCronograma } from "@/components/marketing/cronograma/rotulos";
+import { useClienteDaAgencia } from "@/components/agencia/ClienteDaAgenciaProvider";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { useBaixarImagem, useCronograma } from "@/hooks/marketing/useCronograma";
@@ -67,7 +68,11 @@ export function CronogramaDoCliente() {
 
   const c = useCronograma(inicio, aba === "historico");
   const acoes = useEdicaoDoCronograma(c, c.dados?.itens ?? [], c.dados?.metas ?? []);
-  const empresa = useActiveOrg()?.name ?? "";
+  // No modo agência a empresa é o cliente que está aberto, e compartilhar fica de fora (o link
+  // público é da empresa da sessão).
+  const clienteDaAgencia = useClienteDaAgencia();
+  const empresaDaSessao = useActiveOrg()?.name ?? "";
+  const empresa = clienteDaAgencia?.name ?? empresaDaSessao;
   const rotulos = useMemo(() => rotulosDoCronograma(t, empresa), [t, empresa]);
 
   if (c.carregando) {
@@ -274,14 +279,16 @@ export function CronogramaDoCliente() {
           ) : null}
           {podeEditar ? (
             <>
-              <button
-                type="button"
-                onClick={() => setCompartilhando(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
-              >
-                <ShareNetwork size={16} aria-hidden />
-                {t("Compartilhar")}
-              </button>
+              {clienteDaAgencia ? null : (
+                <button
+                  type="button"
+                  onClick={() => setCompartilhando(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
+                >
+                  <ShareNetwork size={16} aria-hidden />
+                  {t("Compartilhar")}
+                </button>
+              )}
               <button
                 type="button"
                 aria-pressed={editando}
@@ -437,7 +444,7 @@ export function CronogramaDoCliente() {
 
       {podeEditar && aba === "semana" ? <AutoavaliacaoDaSemana inicioDaSemana={inicio} /> : null}
 
-      {podeEditar ? (
+      {podeEditar && !clienteDaAgencia ? (
         <CompartilharPagina
           aberto={compartilhando}
           aoFechar={() => setCompartilhando(false)}

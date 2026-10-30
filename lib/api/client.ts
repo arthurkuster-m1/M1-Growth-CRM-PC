@@ -4,6 +4,7 @@ import { ApiError, type ApiErrorBody } from "@/lib/api/types";
 import { mostrarAvisoOrgDivergente } from "@/lib/auth/aviso-org-divergente";
 import { CODIGO_ORG_DIVERGENTE, HEADER_ORG_DA_ABA, orgDaAba } from "@/lib/auth/org-da-aba";
 import { randomId } from "@/lib/random-id";
+import { clienteDaAgenciaParaUrl, HEADER_CLIENTE_DA_AGENCIA } from "@/lib/agencia/cliente-da-aba";
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -259,6 +260,10 @@ async function request<T>(
   if (body !== undefined && body !== null) {
     headers["Content-Type"] ??= "application/json";
   }
+
+  // Modo agência: o cliente cujo cronograma esta tela está editando (só nas rotas do cronograma).
+  const clienteDaAgencia = clienteDaAgenciaParaUrl(path);
+  if (clienteDaAgencia) headers[HEADER_CLIENTE_DA_AGENCIA] ??= clienteDaAgencia;
 
   if (MUTATING_METHODS.has(method)) {
     headers["Idempotency-Key"] ??= opts.idempotencyKey ?? randomId();
