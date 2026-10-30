@@ -1,5 +1,6 @@
 "use client";
 
+import { pedirAbrirNaAgencia } from "@/lib/agencia/embutido";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -1056,7 +1057,7 @@ export function CampanhasDeDemanda() {
           const c = await criar(entrada);
           if (c) {
             setNova(false);
-            router.push(`${BASE}/${c.id}`);
+            if (!pedirAbrirNaAgencia(`${BASE}/${c.id}`)) router.push(`${BASE}/${c.id}`);
           }
         }}
       />

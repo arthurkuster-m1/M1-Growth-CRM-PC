@@ -1,5 +1,6 @@
 "use client";
 
+import { pedirFecharJanela } from "@/lib/agencia/embutido";
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import Link from "next/link";
@@ -871,7 +872,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             aoFechar={() => setApagando(false)}
             aoConfirmar={async (destino) => {
               if (await apagar([c.id], destino)) {
-                router.push("/app/marketing/geracao-de-demanda");
+                if (!pedirFecharJanela()) router.push("/app/marketing/geracao-de-demanda");
               }
             }}
           />

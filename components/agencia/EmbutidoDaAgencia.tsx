@@ -2,7 +2,12 @@
 
 import { useEffect, useLayoutEffect } from "react";
 
-import { definirClienteDaAgencia, HEADER_CLIENTE_DA_AGENCIA } from "@/lib/agencia/cliente-da-aba";
+import {
+  definirClienteDaAgencia,
+  HEADER_CLIENTE_DA_AGENCIA,
+  HEADER_EMBUTIDO,
+} from "@/lib/agencia/cliente-da-aba";
+import { marcarEmbutido, pedirAbrirNaAgencia } from "@/lib/agencia/embutido";
 
 let fetchOriginal: typeof window.fetch | null = null;
 
@@ -13,6 +18,7 @@ let fetchOriginal: typeof window.fetch | null = null;
  */
 function instalarCliente(clienteId: string): void {
   definirClienteDaAgencia(clienteId);
+  marcarEmbutido(clienteId);
   if (fetchOriginal) return;
   fetchOriginal = window.fetch.bind(window);
   window.fetch = (entrada, init) => {
@@ -24,6 +30,7 @@ function instalarCliente(clienteId: string): void {
       if (url.origin === window.location.origin) {
         const cabecalhos = new Headers(init?.headers ?? (entrada instanceof Request ? entrada.headers : undefined));
         if (!cabecalhos.has(HEADER_CLIENTE_DA_AGENCIA)) cabecalhos.set(HEADER_CLIENTE_DA_AGENCIA, clienteId);
+        cabecalhos.set(HEADER_EMBUTIDO, "1");
         return fetchOriginal!(entrada, { ...init, headers: cabecalhos });
       }
     } catch {
@@ -40,6 +47,8 @@ function instalarCliente(clienteId: string): void {
 export function EmbutidoDaAgencia({ clienteId }: { clienteId: string }) {
   instalarCliente(clienteId);
   useLayoutEffect(() => {
+    // A janela de uma campanha (pop-up) tem altura própria: não mexe na altura do quadro da tabela.
+    if (new URLSearchParams(window.location.search).get("_janela") === "1") return;
     const avisar = () =>
       window.parent?.postMessage(
         { tipo: "agencia-altura", cliente: clienteId, altura: document.documentElement.scrollHeight },
@@ -52,6 +61,21 @@ export function EmbutidoDaAgencia({ clienteId }: { clienteId: string }) {
   }, [clienteId]);
   useEffect(() => {
     document.documentElement.dataset.embutido = "1";
+    // Clique em "Abrir" de uma campanha: em vez de navegar dentro do quadro, a página-mãe abre a janela
+    // da campanha. Captura (antes do Link do Next) para o clique não navegar.
+    const aoClicar = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (pedirAbrirNaAgencia(url.pathname)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener("click", aoClicar, true);
+    return () => document.removeEventListener("click", aoClicar, true);
   }, []);
   return null;
 }

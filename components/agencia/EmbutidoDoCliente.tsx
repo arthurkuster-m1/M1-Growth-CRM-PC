@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { EVENTO_RECARREGAR_CLIENTE } from "@/components/agencia/JanelaDaCampanha";
 import {
   PARAMETRO_CLIENTE_DA_AGENCIA,
   PARAMETRO_EMBUTIDO,
@@ -22,6 +23,15 @@ export function EmbutidoDoCliente({
   titulo: string;
 }) {
   const [altura, setAltura] = useState(480);
+  // Muda a cada fechamento da janela de uma campanha deste cliente: o quadro recarrega e mostra o que foi editado.
+  const [versao, setVersao] = useState(0);
+  useEffect(() => {
+    const recarregar = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === clienteId) setVersao((v) => v + 1);
+    };
+    window.addEventListener(EVENTO_RECARREGAR_CLIENTE, recarregar);
+    return () => window.removeEventListener(EVENTO_RECARREGAR_CLIENTE, recarregar);
+  }, [clienteId]);
   useEffect(() => {
     const ouvir = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
@@ -36,6 +46,7 @@ export function EmbutidoDoCliente({
   const src = `${caminho}?${PARAMETRO_CLIENTE_DA_AGENCIA}=${encodeURIComponent(clienteId)}&${PARAMETRO_EMBUTIDO}=1`;
   return (
     <iframe
+      key={versao}
       title={titulo}
       src={src}
       loading="lazy"

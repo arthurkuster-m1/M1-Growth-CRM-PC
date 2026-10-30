@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+import { HEADER_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
 
 import { CampanhasDeDemanda } from "@/components/marketing/campanhas/CampanhasDeDemanda";
 import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
@@ -20,6 +23,8 @@ export default async function GeracaoDeDemandaPage() {
   const org = await resolveActiveOrg(user);
   if (!org) redirect("/app");
   const t = (texto: string) => traduzir(texto, user.idioma);
+  // MODO AGÊNCIA: o quadro de um cliente mostra SÓ a tabela (o banner e os atalhos são da página da agência).
+  if ((await headers()).get(HEADER_EMBUTIDO) === "1") return <CampanhasDeDemanda />;
 
   return (
     <PaginaDeMarketing
