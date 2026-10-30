@@ -47,6 +47,8 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma ⇄ Dashboards ⇄ Tarefas), aberta pelo \"Modo agência\", uma entrada da lista do seletor de organizações (com menu lateral próprio)",
   "/app/agencia/equipe":
     "porta própria: a navegação do modo agência (aba Equipe e clientes, só do super-admin), aberta pelo \"Modo agência\", uma entrada da lista do seletor de organizações (com menu lateral próprio)",
+  "/app/agencia/inicio":
+    "porta própria: o \"Início\" do menu lateral do Modo agência, aberta pela entrada \"Modo agência\" do seletor de organizações",
   "/app/contacts":
     "a lista de contatos virou a visão Clientes da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app/calls": "não será usada; MARCADA PARA EXCLUIR ao final da reorganização do CRM",

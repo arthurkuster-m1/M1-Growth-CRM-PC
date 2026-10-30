@@ -11,15 +11,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 export async function tarefasDaAgencia(
   clientes: readonly ClienteDaAgencia[],
+  /** No Início, entram também as tarefas atribuídas a esta pessoa (não só as marcadas "da agência"). */
+  opcoes: { minhas?: string } = {},
 ): Promise<TarefaDaAgencia[]> {
   if (clientes.length === 0) return [];
   const nome = new Map(clientes.map((c) => [c.id, c.name]));
   const desde = new Date(Date.now() - 14 * 86_400_000).toISOString();
-  const { data } = await createAdminClient()
+  let consulta = createAdminClient()
     .from("crm_tasks")
     .select("id, title, status, due_date, adiamentos, organization_id, updated_at")
-    .in("organization_id", [...nome.keys()])
-    .eq("cronograma_lado", "agencia")
+    .in("organization_id", [...nome.keys()]);
+  consulta = opcoes.minhas
+    ? consulta.or(`cronograma_lado.eq.agencia,assigned_to.eq.${opcoes.minhas}`)
+    : consulta.eq("cronograma_lado", "agencia");
+  const { data } = await consulta
     .or(`status.in.(pending,in_progress),and(status.eq.done,updated_at.gte.${desde})`)
     .order("due_date", { ascending: true, nullsFirst: false })
     .limit(2000);
