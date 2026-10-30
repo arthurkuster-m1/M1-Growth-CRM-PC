@@ -93,7 +93,7 @@ export function TenantSwitcher() {
         {temModoAgencia && (
           <DropdownMenuItem
             data-testid="modo-agencia"
-            onClick={() => router.push("/app/agencia/inicio")}
+            onClick={() => router.push("/app/agencia/campanhas")}
             className="flex items-center justify-between"
           >
             <span className="truncate">{t("Modo agência")}</span>
