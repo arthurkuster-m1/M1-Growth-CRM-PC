@@ -91,8 +91,6 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "a conexão do Meta Ads virou a aba \"Meta Ads\" de Conexões, ao lado de Webhooks; a rota segue como o endereço direto da mesma tela",
   "/app/settings/marca":
     "a marca foi incorporada à página \"Sua empresa e marca\" (/app/settings/tenant); a rota segue como o endereço direto do mesmo formulário",
-  "/app/settings/billing":
-    "tela \"Em breve\" que saiu do menu por decisão do dono (a cobrança virou Vendas); a rota segue de pé, sem porta",
   "/app/settings/voip-trunk":
     "FUTURO: Trunk SIP (voz por IA) ainda não é oferecido ao cliente; saiu do menu e da busca por decisão do dono e está anotado no plano (docs/plano-futuro.md)",
   "/app/settings/atualizacao":
