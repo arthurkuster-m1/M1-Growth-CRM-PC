@@ -205,12 +205,19 @@ export function PipelinesClient({
   );
 }
 
-function PipelineEditor({
+export function PipelineEditor({
   pipeline,
   etapas,
+  visao,
 }: {
   pipeline: PipelineRow;
   etapas: EtapaDoFunil[];
+  /**
+   * Qual parte do editor aparece. As duas partes compartilham o mesmo estado e o mesmo botão de
+   * salvar: a outra fica só escondida (não desmontada), para que salvar de uma nunca grave o
+   * valor velho da outra.
+   */
+  visao?: "motivos" | "campos";
 }) {
   const t = useT();
   const v = pipeline.vocabulary ?? {};
@@ -317,9 +324,10 @@ function PipelineEditor({
     .filter((s) => s.length > 0);
 
   return (
-    <div className="space-y-4 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold">{t("Vocabulário e campos")}</h3>
+    <div className={visao ? "space-y-4" : "space-y-4 border-t border-border pt-6"}>
+      {visao ? null : <h3 className="text-sm font-semibold">{t("Vocabulário e campos")}</h3>}
 
+      <div hidden={visao === "campos"} className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="space-y-1">
           <Label className="text-xs">Lead</Label>
@@ -465,7 +473,9 @@ function PipelineEditor({
         </p>
       </div>
 
-      <div className="space-y-2">
+      </div>
+
+      <div hidden={visao === "motivos"} className="space-y-2">
         <Label className="text-xs">{t("Campos do lead neste funil")}</Label>
         <p className="text-xs text-muted-foreground">
           {t("Aparecem no dossiê do negócio. No follow-up, você escolhe em qual campo gravar a resposta.")}
@@ -637,7 +647,7 @@ function PipelineEditor({
 
       <div className="flex sm:justify-end">
         <Button onClick={handleSave} disabled={isPending} className="w-full sm:w-auto">
-          {isPending ? t("Salvando…") : t("Salvar vocabulário e campos")}
+          {isPending ? t("Salvando…") : visao === "motivos" ? t("Salvar motivos e regras") : visao === "campos" ? t("Salvar campos") : t("Salvar vocabulário e campos")}
         </Button>
       </div>
     </div>

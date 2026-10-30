@@ -16,7 +16,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Switch } from "@/components/ui/switch";
-import { JanelaDaEtapa } from "@/app/app/settings/tenant/pipelines/_stages";
+import { ConfiguracaoDoFunil } from "@/components/funil/ConfiguracaoDoFunil";
+import { ancoraDasEtapas, JanelaDaEtapa } from "@/app/app/settings/tenant/pipelines/_stages";
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { apiClient } from "@/lib/api/client";
@@ -434,6 +435,7 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
         ) : (
           <>
             <ol
+              id={c.pipeline_id ? ancoraDasEtapas(c.pipeline_id) : undefined}
               aria-label={t("Etapas do funil, da primeira à última")}
               className="flex overflow-x-auto pb-1"
             >
@@ -634,6 +636,8 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
           </>
         )}
       </section>
+
+      {podeEditar && c.pipeline_id ? <ConfiguracaoDoFunil pipelineId={c.pipeline_id} /> : null}
 
       {podeEditar ? (
         <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-emerald-500 bg-card p-4 shadow-sm">
