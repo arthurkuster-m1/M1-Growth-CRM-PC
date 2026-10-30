@@ -4444,6 +4444,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          linked_organization_id: string | null
           ai_authorized_at: string | null
           ai_authorized_reason: string | null
           anonymized_at: string | null
@@ -4489,6 +4490,7 @@ export type Database = {
           wa_lid: string | null
         }
         Insert: {
+          linked_organization_id?: string | null
           ai_authorized_at?: string | null
           ai_authorized_reason?: string | null
           anonymized_at?: string | null
@@ -4533,6 +4535,7 @@ export type Database = {
           wa_lid?: string | null
         }
         Update: {
+          linked_organization_id?: string | null
           ai_authorized_at?: string | null
           ai_authorized_reason?: string | null
           anonymized_at?: string | null

@@ -1,5 +1,6 @@
 "use client";
 
+import { OrganizacaoVinculada } from "@/components/contacts/ficha/OrganizacaoVinculada";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -489,6 +490,7 @@ export function CadastroDoLead({
             ) : null
           ) : null}
         </div>
+        <OrganizacaoVinculada contactId={contact.id} />
       </BlocoDaFicha>
 
       <BlocoDaFicha
