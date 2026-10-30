@@ -82,18 +82,18 @@ type Detalhe = {
 };
 
 /**
- * O STATUS ÚNICO do compromisso: o que a situação do banco e o resultado da reunião diziam em dois
- * lugares agora é uma tag só. Quem compareceu mostra se comprou ou não pela venda da oportunidade;
- * o compromisso que foi remarcado mostra "Remarcado".
+ * O STATUS ÚNICO do compromisso, sempre um destes cinco: Não confirmado, Confirmado, Compareceu e
+ * Comprou, Compareceu e Não comprou, Não compareceu. Quem compareceu mostra se comprou ou não pela
+ * venda da oportunidade. (O compromisso remarcado fica como "Não compareceu", que é o que ele é no
+ * banco; "Cancelado" só existe para o que foi cancelado e some das listas de trabalho.)
  */
 export function statusDoCompromisso(
-  a: Pick<Detalhe, "status" | "remarcado_para">,
+  a: Pick<Detalhe, "status"> & { remarcado_para?: string | null },
   vendeu: boolean,
 ): { rotulo: string; cor: CorDaTag } {
-  if (a.remarcado_para) return { rotulo: "Remarcado", cor: "roxo" };
   switch (a.status) {
     case "pending":
-      return { rotulo: "Aguardando confirmação", cor: "amarelo" };
+      return { rotulo: "Não confirmado", cor: "amarelo" };
     case "confirmed":
       return { rotulo: "Confirmado", cor: "azul" };
     case "completed":
@@ -107,7 +107,7 @@ export function statusDoCompromisso(
   }
 }
 
-const VENDIDAS = new Set([
+export const VENDIDAS = new Set([
   "comprometida",
   "concluida",
   "recorrencia_ativa",

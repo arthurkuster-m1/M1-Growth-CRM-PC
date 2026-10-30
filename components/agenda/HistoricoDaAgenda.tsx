@@ -30,7 +30,7 @@ import { dataDeParede } from "@/lib/agenda/fuso";
  */
 const ABAS = [
   { id: "proximos", rotulo: "Próximos" },
-  { id: "aguardando", rotulo: "Aguardando confirmação" },
+  { id: "aguardando", rotulo: "Não confirmado" },
   { id: "passados", rotulo: "Passados" },
   { id: "cancelados", rotulo: "Cancelados" },
 ] as const;

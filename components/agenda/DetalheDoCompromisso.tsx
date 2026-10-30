@@ -192,7 +192,7 @@ export function DetalheDoCompromisso({
               {t(
                 (
                   {
-                    pending: "Aguardando confirmação",
+                    pending: "Não confirmado",
                     confirmed: "Agendado",
                     completed: "Compareceu",
                     no_show: "Faltou",

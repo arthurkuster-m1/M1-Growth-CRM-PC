@@ -21,7 +21,7 @@ interface Compromisso {
 }
 
 const ROTULO: Record<string, string> = {
-  pending: "Aguardando confirmação",
+  pending: "Não confirmado",
   confirmed: "Agendado",
   completed: "Compareceu",
   no_show: "Faltou",

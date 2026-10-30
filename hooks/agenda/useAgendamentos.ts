@@ -28,6 +28,8 @@ interface AgendamentoListado {
   contatoNome: string | null;
   /** O tipo de atendimento de que o compromisso nasceu (ausente no bloco do Google). */
   tipo?: { slug: string; nome: string } | null;
+  /** As oportunidades ligadas à reunião. */
+  leadIds?: string[];
 }
 
 export interface RecorteDaGrade {
@@ -102,6 +104,7 @@ export function useAgendamentos(recorte: RecorteDaGrade | null) {
           // mantém o wire tolerante a servidor mais velho que o cliente.
           quemSeraAtendido: a.contatoNome ?? undefined,
           tipo: a.tipo?.nome || undefined,
+          leadId: a.leadIds?.[0],
         }));
       } catch (err) {
         showApiError(err);

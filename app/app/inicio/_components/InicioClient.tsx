@@ -3,10 +3,16 @@
 import { abrirNovoCompromisso } from "@/lib/agenda/abrir-novo";
 import { compromissosDeTrabalho } from "@/lib/agenda/compromissos-de-trabalho";
 
+import { useQueries } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { PaginaDoCompromisso } from "@/components/agenda/PaginaDoCompromisso";
+import { Tag } from "@/components/agenda/CamposDoCompromisso";
+import {
+  PaginaDoCompromisso,
+  statusDoCompromisso,
+  VENDIDAS,
+} from "@/components/agenda/PaginaDoCompromisso";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { resumoDoAlerta } from "@/lib/ai/alerta-resumo";
 import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorClient";
@@ -17,6 +23,8 @@ import { useAgendamentos } from "@/hooks/agenda/useAgendamentos";
 import { useAgentInbox, type AgentInboxItem } from "@/hooks/ai/useAgentInbox";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { apiClient } from "@/lib/api/client";
+import type { Venda } from "@/lib/vendas";
 import { useTarefasDoMotor } from "@/hooks/tarefas/useTarefasDoMotor";
 import {
   chaveDoDia,
@@ -79,6 +87,8 @@ type Evento = {
   tipo: "agenda" | "tarefa";
   /** O id de verdade (do compromisso ou da tarefa), para abrir no lugar. */
   refId: string;
+  /** O status da reunião (só em agendamento): uma das cinco tags. */
+  status?: { rotulo: string; cor: Parameters<typeof Tag>[0]["cor"] };
 };
 
 function Vazio({ titulo, texto }: { titulo: string; texto?: string }) {
@@ -233,6 +243,30 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
   const { atrasadas, hoje: deHoje } = tarefasDoDia(daAgenda, hoje, fuso);
   const tarefasDoDiaLista = [...atrasadas, ...deHoje];
 
+  // Quem compareceu mostra se comprou: a venda vem da oportunidade da reunião (só das concluídas).
+  const leadsDosConcluidos = [
+    ...new Set(
+      compromissosDeTrabalho(agenda.data ?? [])
+        .filter((a) => a.situacao === "completed" && a.leadId)
+        .map((a) => a.leadId as string),
+    ),
+  ];
+  const vendasDosLeads = useQueries({
+    queries: leadsDosConcluidos.map((leadId) => ({
+      queryKey: ["venda-da-oportunidade", leadId],
+      staleTime: 30_000,
+      queryFn: async () =>
+        (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?lead=${leadId}`)).data
+          .vendas[0] ?? null,
+    })),
+  });
+  const compraramPorLead = new Map(
+    leadsDosConcluidos.map((leadId, i) => [
+      leadId,
+      Boolean(vendasDosLeads[i]?.data && VENDIDAS.has(vendasDosLeads[i]!.data!.status)),
+    ]),
+  );
+
   // ── eventos do calendário (agendamentos + prazos de tarefas) ────────────────
   const eventos = useMemo(() => {
     const lista: Evento[] = [];
@@ -249,6 +283,10 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
         detalhe: a.quemSeraAtendido,
         tipo: "agenda",
         refId: a.id,
+        status: statusDoCompromisso(
+          { status: a.situacao },
+          Boolean(a.leadId && compraramPorLead.get(a.leadId)),
+        ),
       });
     }
     for (const tarefa of tarefas.tarefas) {
@@ -268,7 +306,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
       });
     }
     return lista.sort((x, y) => x.inicio - y.inicio);
-  }, [agenda.data, tarefas.tarefas, semana, fuso, fmtHora, t]);
+  }, [agenda.data, tarefas.tarefas, semana, fuso, fmtHora, t, compraramPorLead]);
 
   const diasComEvento = new Set(eventos.map((e) => e.dia));
   const diasVisiveis = modo === "dia" ? [selecionada] : semana;
@@ -555,7 +593,17 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                                 {e.hora}
                               </span>
                               <div className="pointer-events-none min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">{e.titulo}</p>
+                                {/* Título e tag na mesma linha; sem espaço, a tag desce para baixo do título. */}
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <p className="max-w-full min-w-0 truncate text-sm font-medium">
+                                    {e.titulo}
+                                  </p>
+                                  {e.status ? (
+                                    <Tag cor={e.status.cor} className="shrink-0 px-2 py-0.5 text-[11px]">
+                                      {t(e.status.rotulo)}
+                                    </Tag>
+                                  ) : null}
+                                </div>
                                 <p className="truncate text-xs text-muted-foreground">
                                   {e.detalhe || t(e.tipo === "agenda" ? "Agendamento" : "Tarefa")}
                                 </p>

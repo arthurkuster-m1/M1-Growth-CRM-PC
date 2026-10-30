@@ -79,6 +79,8 @@ export type Agendamento = {
   local?: string;
   origem: OrigemDoAgendamento;
   situacao: SituacaoDoAgendamento;
+  /** A oportunidade da reunião (a primeira ligada), quando a lista a traz. */
+  leadId?: string;
 };
 
 /** Um horário oferecido pelo painel de marcação. */
