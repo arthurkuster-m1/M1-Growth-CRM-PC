@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Buildings,
   CalendarBlank,
+  ChartLineUp,
   CaretDoubleLeft,
   CaretDoubleRight,
   CaretDown,
@@ -15,6 +16,7 @@ import {
   House,
   Inbox,
   Kanban,
+  Megaphone,
   ListChecks,
   PlugsConnected,
   Robot,
@@ -66,6 +68,8 @@ export function SidebarContent({
   // escolha de idioma virar algo visível no primeiro clique.
   const t = useT();
   const pathname = usePathname();
+  // MODO AGÊNCIA: é uma "organização" própria — dentro dela o menu é o da agência, não o de uma empresa.
+  const noModoAgencia = pathname === "/app/agencia" || pathname.startsWith("/app/agencia/");
   const [isPending, startTransition] = useTransition();
   const { user, activeOrg } = useAuth();
   const todos = sidebarGroups(
@@ -327,205 +331,226 @@ export function SidebarContent({
         className="flex-1 space-y-3 overflow-y-auto px-3 py-2 max-md:flex max-md:flex-col max-md:justify-between max-md:gap-3 max-md:space-y-0 max-md:py-3"
         aria-label={t("Navegação principal")}
       >
-        {/* Visual M1: itens SOLTOS, acima dos grupos. As portas também estão no catálogo
+        {noModoAgencia ? (
+          <ItensDoModoAgencia collapsed={collapsed} pathname={pathname} onNavigate={onNavigate} />
+        ) : (
+          <>
+            {/* Visual M1: itens SOLTOS, acima dos grupos. As portas também estão no catálogo
             (⌘K e teste de completude); aqui só são desenhadas. */}
-        <div className="space-y-0.5">
-          {[
-            { href: "/app/inicio", rotulo: t("Início"), Icone: House },
-            { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
-          ].map(({ href, rotulo, Icone }) => {
-            const ativo = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={collapsed ? rotulo : undefined}
-                aria-current={ativo ? "page" : undefined}
-                onClick={onNavigate}
-                className={cn(
-                  "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                  ativo
-                    ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                  collapsed && "justify-center px-2",
-                )}
-              >
-                <Icone
-                  size={18}
-                  weight={ativo ? "fill" : "regular"}
-                  className={ativo ? "text-primary" : undefined}
-                  aria-hidden
-                />
-                {!collapsed && <span className="truncate">{rotulo}</span>}
-              </Link>
-            );
-          })}
-        </div>
-        {grupos.map(({ group, items }) => {
-          const tituloId = `nav-grupo-${group.id}`;
-          // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra
-          // seus itens — não há onde desenhar cabeçalho nem seta para fechá-lo.
-          const aberto = collapsed || !gruposFechados.has(group.id);
-          return (
-            <div key={group.id} className="space-y-1">
-              {/* Colapsado, o sidebar tem 64px: seis rótulos ali seriam ilegíveis.
-                  Vira um filete separador, que preserva o agrupamento sem texto. */}
-              {collapsed ? (
-                <div aria-hidden className="mx-2 border-t first:hidden" />
-              ) : (
-                <h2 id={tituloId}>
-                  <button
-                    type="button"
-                    onClick={() => toggleGrupo(group.id)}
-                    aria-expanded={aberto}
-                    className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-card/60 hover:text-foreground"
+            <div className="space-y-0.5">
+              {[
+                { href: "/app/inicio", rotulo: t("Início"), Icone: House },
+                { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
+              ].map(({ href, rotulo, Icone }) => {
+                const ativo = pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    title={collapsed ? rotulo : undefined}
+                    aria-current={ativo ? "page" : undefined}
+                    onClick={onNavigate}
+                    className={cn(
+                      "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                      ativo
+                        ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                        : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                      collapsed && "justify-center px-2",
+                    )}
                   >
-                    <span className="flex items-center gap-2.5">
-                      <span
-                        aria-hidden
-                        className="grid h-6 w-6 place-items-center rounded-lg bg-accent-soft text-primary"
-                      >
-                        {(() => {
-                          const IconeDoGrupo = ICONE_DO_GRUPO[group.id] ?? Kanban;
-                          return <IconeDoGrupo size={14} weight="fill" />;
-                        })()}
-                      </span>
-                      {t(group.label)}
-                    </span>
-                    <CaretDown
-                      size={12}
-                      weight="bold"
-                      className={cn(
-                        "shrink-0 text-text-subtle transition-transform",
-                        !aberto && "-rotate-90",
-                      )}
+                    <Icone
+                      size={18}
+                      weight={ativo ? "fill" : "regular"}
+                      className={ativo ? "text-primary" : undefined}
                       aria-hidden
                     />
-                  </button>
-                </h2>
-              )}
-              {aberto && (
-                <ul
-                  aria-labelledby={collapsed ? undefined : tituloId}
-                  aria-label={collapsed ? t(group.label) : undefined}
-                  className="space-y-1"
-                >
-                  {items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          title={collapsed ? t(item.label) : undefined}
-                          aria-current={isActive ? "page" : undefined}
-                          onClick={onNavigate}
-                          className={cn(
-                            "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                            isActive
-                              ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                              : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                            collapsed && "justify-center px-2",
-                          )}
-                        >
-                          <Icon
-                            size={18}
-                            weight={isActive ? "fill" : "regular"}
-                            className={isActive ? "text-primary" : undefined}
-                            aria-hidden
-                          />
-                          {!collapsed && <span className="truncate">{t(item.label)}</span>}
-                          {item.healthDot && (
-                            <ConnectionHealthDot
-                              className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
-                            />
-                          )}
-                          {item.contador === "casos" && <ContadorDeCasos compacto={collapsed} />}
-                          {item.contador === "fila" && <ContadorDaFila compacto={collapsed} />}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                  {group.hub && (
-                    <li>
-                      <Link
-                        href={group.hub.href}
-                        title={collapsed ? t(group.hub.label) : undefined}
-                        aria-current={pathname === group.hub.href ? "page" : undefined}
-                        onClick={onNavigate}
-                        className={cn(
-                          "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                          pathname === group.hub.href
-                            ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                            : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                          collapsed && "justify-center px-2",
-                        )}
-                      >
-                        <ArrowRight size={18} aria-hidden />
-                        {!collapsed && <span className="truncate">{t(group.hub.label)}</span>}
-                      </Link>
-                    </li>
-                  )}
-                </ul>
-              )}
+                    {!collapsed && <span className="truncate">{rotulo}</span>}
+                  </Link>
+                );
+              })}
             </div>
-          );
-        })}
-        {/* Agentes de IA, Conexões e Financeiro: cabeçalho em negrito, no desenho do título de um
+            {grupos.map(({ group, items }) => {
+              const tituloId = `nav-grupo-${group.id}`;
+              // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra
+              // seus itens — não há onde desenhar cabeçalho nem seta para fechá-lo.
+              const aberto = collapsed || !gruposFechados.has(group.id);
+              return (
+                <div key={group.id} className="space-y-1">
+                  {/* Colapsado, o sidebar tem 64px: seis rótulos ali seriam ilegíveis.
+                  Vira um filete separador, que preserva o agrupamento sem texto. */}
+                  {collapsed ? (
+                    <div aria-hidden className="mx-2 border-t first:hidden" />
+                  ) : (
+                    <h2 id={tituloId}>
+                      <button
+                        type="button"
+                        onClick={() => toggleGrupo(group.id)}
+                        aria-expanded={aberto}
+                        className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-card/60 hover:text-foreground"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <span
+                            aria-hidden
+                            className="grid h-6 w-6 place-items-center rounded-lg bg-accent-soft text-primary"
+                          >
+                            {(() => {
+                              const IconeDoGrupo = ICONE_DO_GRUPO[group.id] ?? Kanban;
+                              return <IconeDoGrupo size={14} weight="fill" />;
+                            })()}
+                          </span>
+                          {t(group.label)}
+                        </span>
+                        <CaretDown
+                          size={12}
+                          weight="bold"
+                          className={cn(
+                            "shrink-0 text-text-subtle transition-transform",
+                            !aberto && "-rotate-90",
+                          )}
+                          aria-hidden
+                        />
+                      </button>
+                    </h2>
+                  )}
+                  {aberto && (
+                    <ul
+                      aria-labelledby={collapsed ? undefined : tituloId}
+                      aria-label={collapsed ? t(group.label) : undefined}
+                      className="space-y-1"
+                    >
+                      {items.map((item) => {
+                        const isActive =
+                          pathname === item.href || pathname.startsWith(item.href + "/");
+                        const Icon = item.icon;
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              title={collapsed ? t(item.label) : undefined}
+                              aria-current={isActive ? "page" : undefined}
+                              onClick={onNavigate}
+                              className={cn(
+                                "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                                isActive
+                                  ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                                collapsed && "justify-center px-2",
+                              )}
+                            >
+                              <Icon
+                                size={18}
+                                weight={isActive ? "fill" : "regular"}
+                                className={isActive ? "text-primary" : undefined}
+                                aria-hidden
+                              />
+                              {!collapsed && <span className="truncate">{t(item.label)}</span>}
+                              {item.healthDot && (
+                                <ConnectionHealthDot
+                                  className={cn(
+                                    collapsed ? "absolute top-1.5 right-1.5" : "ml-auto",
+                                  )}
+                                />
+                              )}
+                              {item.contador === "casos" && (
+                                <ContadorDeCasos compacto={collapsed} />
+                              )}
+                              {item.contador === "fila" && <ContadorDaFila compacto={collapsed} />}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                      {group.hub && (
+                        <li>
+                          <Link
+                            href={group.hub.href}
+                            title={collapsed ? t(group.hub.label) : undefined}
+                            aria-current={pathname === group.hub.href ? "page" : undefined}
+                            onClick={onNavigate}
+                            className={cn(
+                              "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                              pathname === group.hub.href
+                                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                              collapsed && "justify-center px-2",
+                            )}
+                          >
+                            <ArrowRight size={18} aria-hidden />
+                            {!collapsed && <span className="truncate">{t(group.hub.label)}</span>}
+                          </Link>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+            {/* Agentes de IA, Conexões e Financeiro: cabeçalho em negrito, no desenho do título de um
             toggle (azulejo + rótulo), mas que leva direto à página — sem seta e sem abrir. */}
-        {[
-          temIA
-            ? { href: "/app/ai", rotulo: t("Agentes de IA"), Icone: Robot, extra: "casos" as const }
-            : null,
-          temConexoes
-            ? {
-                href: "/app/connections",
-                rotulo: t("Conexões"),
-                Icone: PlugsConnected,
-                extra: "saude" as const,
-              }
-            : null,
-          { href: "/app/financas", rotulo: t("Financeiro"), Icone: CurrencyDollar, extra: null },
-        ].map((d) => {
-          if (!d) return null;
-          const { href, rotulo, Icone, extra } = d;
-          const ativo = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? rotulo : undefined}
-              aria-current={ativo ? "page" : undefined}
-              onClick={onNavigate}
-              className={cn(
-                "relative flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase transition-colors",
-                ativo
-                  ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
-                  : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
-                collapsed && "justify-center px-2",
-              )}
-            >
-              <span className="flex items-center gap-2.5">
-                <span
-                  aria-hidden
-                  className="grid h-6 w-6 place-items-center rounded-lg bg-accent-soft text-primary"
+            {[
+              temIA
+                ? {
+                    href: "/app/ai",
+                    rotulo: t("Agentes de IA"),
+                    Icone: Robot,
+                    extra: "casos" as const,
+                  }
+                : null,
+              temConexoes
+                ? {
+                    href: "/app/connections",
+                    rotulo: t("Conexões"),
+                    Icone: PlugsConnected,
+                    extra: "saude" as const,
+                  }
+                : null,
+              {
+                href: "/app/financas",
+                rotulo: t("Financeiro"),
+                Icone: CurrencyDollar,
+                extra: null,
+              },
+            ].map((d) => {
+              if (!d) return null;
+              const { href, rotulo, Icone, extra } = d;
+              const ativo = pathname === href || pathname.startsWith(href + "/");
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  title={collapsed ? rotulo : undefined}
+                  aria-current={ativo ? "page" : undefined}
+                  onClick={onNavigate}
+                  className={cn(
+                    "relative flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase transition-colors",
+                    ativo
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
+                      : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+                    collapsed && "justify-center px-2",
+                  )}
                 >
-                  <Icone size={14} weight="fill" />
-                </span>
-                {!collapsed && <span className="truncate">{rotulo}</span>}
-              </span>
-              {extra === "casos" && <ContadorDeCasos compacto={collapsed} />}
-              {extra === "saude" && (
-                <ConnectionHealthDot
-                  className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
-                />
-              )}
-            </Link>
-          );
-        })}
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      aria-hidden
+                      className="grid h-6 w-6 place-items-center rounded-lg bg-accent-soft text-primary"
+                    >
+                      <Icone size={14} weight="fill" />
+                    </span>
+                    {!collapsed && <span className="truncate">{rotulo}</span>}
+                  </span>
+                  {extra === "casos" && <ContadorDeCasos compacto={collapsed} />}
+                  {extra === "saude" && (
+                    <ConnectionHealthDot
+                      className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
       <div className="border-t p-2">
-        {rodape && (
+        {rodape && !noModoAgencia && (
           <Link
             href={rodape.href}
             title={collapsed ? t(rodape.label) : undefined}
@@ -565,6 +590,69 @@ export function SidebarContent({
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * O menu do MODO AGÊNCIA — a agência como uma organização própria: cada item é uma tela que mostra
+ * TODOS os clientes (ou os escolhidos no seletor da tela). Equipe e clientes é só do super-admin.
+ */
+function ItensDoModoAgencia({
+  collapsed,
+  pathname,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const t = useT();
+  const { user } = useAuth();
+  const ehSuperAdmin = user.is_platform_admin && !user.support;
+  const itens = [
+    { href: "/app/agencia/campanhas", rotulo: t("Campanhas"), Icone: Megaphone },
+    { href: "/app/agencia/cronograma", rotulo: t("Cronograma e semana"), Icone: CalendarBlank },
+    { href: "/app/agencia/dashboards", rotulo: t("Dashboards"), Icone: ChartLineUp },
+    { href: "/app/agencia/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
+    ...(ehSuperAdmin
+      ? [{ href: "/app/agencia/equipe", rotulo: t("Equipe e clientes"), Icone: Users }]
+      : []),
+  ];
+  return (
+    <div className="space-y-0.5">
+      {collapsed ? null : (
+        <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          {t("Modo agência")}
+        </p>
+      )}
+      {itens.map(({ href, rotulo, Icone }) => {
+        const ativo = pathname === href || pathname.startsWith(href + "/");
+        return (
+          <Link
+            key={href}
+            href={href}
+            title={collapsed ? rotulo : undefined}
+            aria-current={ativo ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+              ativo
+                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+              collapsed && "justify-center px-2",
+            )}
+          >
+            <Icone
+              size={18}
+              weight={ativo ? "fill" : "regular"}
+              className={ativo ? "text-primary" : undefined}
+              aria-hidden
+            />
+            {!collapsed && <span className="truncate">{rotulo}</span>}
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 

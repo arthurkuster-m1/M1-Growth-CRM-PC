@@ -40,13 +40,13 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/agencia/campanhas":
     "porta própria: o item \"Modo agência\" do seletor de organizações (TenantSwitcher), só para quem gere mais de um cliente; ganha as demais telas do modo nas próximas fases",
   "/app/agencia/cronograma":
-    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma), aberta pelo item \"Modo agência\" do seletor de organizações",
+    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma), aberta pelo \"Modo agência\", uma entrada da lista do seletor de organizações (com menu lateral próprio)",
   "/app/agencia/dashboards":
-    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma ⇄ Dashboards), aberta pelo item \"Modo agência\" do seletor de organizações",
+    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma ⇄ Dashboards), aberta pelo \"Modo agência\", uma entrada da lista do seletor de organizações (com menu lateral próprio)",
   "/app/agencia/tarefas":
-    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma ⇄ Dashboards ⇄ Tarefas), aberta pelo item \"Modo agência\" do seletor de organizações",
+    "porta própria: a navegação do modo agência (Campanhas ⇄ Cronograma ⇄ Dashboards ⇄ Tarefas), aberta pelo \"Modo agência\", uma entrada da lista do seletor de organizações (com menu lateral próprio)",
   "/app/agencia/equipe":
-    "porta própria: a navegação do modo agência (aba Equipe e clientes, só do super-admin), aberta pelo item \"Modo agência\" do seletor de organizações",
+    "porta própria: a navegação do modo agência (aba Equipe e clientes, só do super-admin), aberta pelo \"Modo agência\", uma entrada da lista do seletor de organizações (com menu lateral próprio)",
   "/app/contacts":
     "a lista de contatos virou a visão Clientes da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app/calls": "não será usada; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
