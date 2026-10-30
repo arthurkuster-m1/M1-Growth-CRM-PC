@@ -11,6 +11,7 @@ const TELAS = [
   { href: "/app/agencia/campanhas", rotulo: "Campanhas" },
   { href: "/app/agencia/cronograma", rotulo: "Cronograma e semana" },
   { href: "/app/agencia/dashboards", rotulo: "Dashboards" },
+  { href: "/app/agencia/tarefas", rotulo: "Tarefas" },
 ] as const;
 
 export function NavegacaoDoModoAgencia() {
