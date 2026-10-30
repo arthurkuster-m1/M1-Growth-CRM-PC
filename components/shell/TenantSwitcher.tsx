@@ -90,6 +90,12 @@ export function TenantSwitcher() {
             {active?.orgId === org.organization_id && <span className="text-xs text-muted-foreground">✓</span>}
           </DropdownMenuItem>
         ))}
+        {(user.is_platform_admin ||
+          user.organizations.filter((o) => o.role === "admin" || o.role === "manager").length > 1) && (
+          <DropdownMenuItem asChild>
+            <Link href="/app/agencia/campanhas" data-testid="modo-agencia">{t("Modo agência")}</Link>
+          </DropdownMenuItem>
+        )}
         {user.is_platform_admin && <DropdownMenuItem asChild>
           <Link href="/admin/tenants">{t("Gerenciar organizações")}</Link>
         </DropdownMenuItem>}
