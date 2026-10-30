@@ -81,8 +81,8 @@ export type Agendamento = {
   situacao: SituacaoDoAgendamento;
   /** A oportunidade da reunião (a primeira ligada), quando a lista a traz. */
   leadId?: string;
-  /** O compromisso novo que este virou ao ser reagendado (status "Reagendado", automático). */
-  remarcadoPara?: string | null;
+  /** Status "Reagendado": automático, vale até alguém escolher outra situação. */
+  reagendado?: boolean;
 };
 
 /** Um horário oferecido pelo painel de marcação. */

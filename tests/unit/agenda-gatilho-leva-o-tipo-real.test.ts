@@ -312,14 +312,14 @@ describe("os quatro gatilhos de agenda levam o tipo de atendimento real", () => 
     ).toBe(NOME_DO_TIPO);
   });
 
-  it("remarcar — o compromisso NOVO anuncia appointment.created com o tipo real, e o antigo não anuncia nada", async () => {
+  it("remarcar — o MESMO compromisso anuncia appointment.rescheduled com o tipo real", async () => {
     horarioOfertado = OUTRO_HORARIO;
 
     await alterarAgendamentoHandler(cliente(), ctx, { id: AGENDAMENTO, starts_at: OUTRO_HORARIO });
 
-    // Um gatilho só: os dois (criado + remarcado) mandariam duas mensagens para o mesmo cliente.
+    // Um gatilho só, e é o de remarcado: o compromisso não é mais duplicado (30/10/2026).
     const { event_type, payload } = oGatilho();
-    expect(event_type).toBe("appointment.created");
+    expect(event_type).toBe("appointment.rescheduled");
     expect(
       payload.event_type_name,
       "a remarcação anuncia um nome genérico: quem quis avisar só a cliente de um tipo específico recebe uma regra que não dispara nunca",

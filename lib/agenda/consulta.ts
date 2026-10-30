@@ -516,6 +516,8 @@ export interface AgendamentoListado {
    * `rescheduled_from_id`); `null` quando nunca foi reagendado. É o que faz a tela dizer "Reagendado".
    */
   remarcadoPara?: string | null;
+  /** Quando foi reagendado NA MESMA linha (o jeito de hoje); `null` se nunca foi. */
+  reagendadoEm?: string | null;
   /**
    * COMO e ONDE se atende — o mesmo par `location_kind`/`location_details` que
    * `lib/agenda/locais.ts` rotula na tela. Entrego os VALORES, não o rótulo:
@@ -848,7 +850,7 @@ export async function listaAgendamentos(
   let q = supabase
     .from("calendar_appointments")
     .select(
-      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, location_kind, location_details, client_confirmation, calendar_event_types(id, name, slug), contacts(name, display_name)",
+      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, location_kind, location_details, client_confirmation, rescheduled_at, calendar_event_types(id, name, slug), contacts(name, display_name)",
     )
     .eq("organization_id", organizationId)
     .order("starts_at", { ascending: true })
@@ -1016,6 +1018,7 @@ export async function listaAgendamentos(
         local: { tipo: texto(l.location_kind), descricao: texto(l.location_details) },
         leadIds: vinculosPorAlvo?.get(String(l.id)) ?? [],
         remarcadoPara: remarcadoPorAntigo.get(String(l.id)) ?? null,
+        reagendadoEm: (l as { rescheduled_at?: string | null }).rescheduled_at ?? null,
       } satisfies AgendamentoListado;
     }),
     proximo:

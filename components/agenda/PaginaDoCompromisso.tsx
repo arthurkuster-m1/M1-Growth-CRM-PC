@@ -73,6 +73,8 @@ type Detalhe = {
   blocos?: Bloco[] | null;
   tipo: { id: string; nome: string; slug: string; cor?: string | null } | null;
   remarcado_para?: string | null;
+  /** Quando foi reagendado na mesma linha (o jeito de hoje). */
+  reagendado_em?: string | null;
   oportunidade_titulo?: string | null;
   responsavel_id: string | null;
   eh_responsavel: boolean;
@@ -88,10 +90,10 @@ type Detalhe = {
  * mostra se comprou ou não pela venda da oportunidade.
  */
 export function statusDoCompromisso(
-  a: Pick<Detalhe, "status"> & { remarcado_para?: string | null },
+  a: Pick<Detalhe, "status"> & { reagendado?: boolean },
   vendeu: boolean,
 ): { rotulo: string; cor: CorDaTag } {
-  if (a.remarcado_para) return { rotulo: "Reagendado", cor: "roxo" };
+  if (a.reagendado) return { rotulo: "Reagendado", cor: "roxo" };
   switch (a.status) {
     case "pending":
       return { rotulo: "Não confirmado", cor: "amarelo" };
@@ -462,7 +464,14 @@ function PaginaExistente({
   const etapasDoFunil = oport.data?.etapas ?? [];
   const etapaAtual = etapasDoFunil.find((e) => e.id === oport.data?.lead?.stage_id) ?? null;
   const vendeu = !!venda && VENDIDAS.has(venda.status);
-  const statusUnico = a ? statusDoCompromisso(a, vendeu) : { rotulo: "", cor: "cinza" as CorDaTag };
+  // "Reagendado" é automático: o compromisso que mudou de horário (e segue pendente ou confirmado)
+  // ou o antigo, que ficou para trás num reagendamento duplicado.
+  const reagendado = Boolean(
+    a && (a.remarcado_para || (a.reagendado_em && ["pending", "confirmed"].includes(a.status))),
+  );
+  const statusUnico = a
+    ? statusDoCompromisso({ status: a.status, reagendado }, vendeu)
+    : { rotulo: "", cor: "cinza" as CorDaTag };
   const fimDoCompromisso = a
     ? new Intl.DateTimeFormat(tag, {
         timeZone: a.time_zone,
@@ -598,7 +607,7 @@ function PaginaExistente({
                             if (opcao === "cancelled") return setCancelando(true);
                             if (opcao === "pending") return salvar.mutate({ status: "pending" });
                             if (opcao === "confirmed")
-                              return a.status === "pending"
+                              return a.status === "pending" && !reagendado
                                 ? acoes.confirmar.mutate(a.id)
                                 : salvar.mutate({ status: "confirmed" });
                             return acoes.resultado.mutate({ id: a.id, opcao, leadId: a.lead_id });

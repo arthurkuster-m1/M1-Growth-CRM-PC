@@ -230,13 +230,16 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   // enquanto ela não existe a página abre normalmente com o modelo do tipo.
   const blocosLinha = await db
     .from("calendar_appointments")
-    .select("blocos" as never)
+    .select("blocos, rescheduled_at" as never)
     .eq("organization_id", org)
     .eq("id", id)
     .maybeSingle();
   const blocosDoCompromisso = blocosLinha.error
     ? null
     : ((blocosLinha.data as { blocos?: unknown } | null)?.blocos ?? null);
+  const reagendadoEm = blocosLinha.error
+    ? null
+    : ((blocosLinha.data as { rescheduled_at?: string | null } | null)?.rescheduled_at ?? null);
   const cliente = cli.data as {
     name?: string | null;
     display_name?: string | null;
@@ -268,6 +271,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
         }
       : null,
     remarcado_para: (sucessor.data as { id?: string } | null)?.id ?? null,
+    reagendado_em: reagendadoEm,
     responsavel_id: owner_user_id,
     eh_responsavel: owner_user_id === auth.user.id,
   };

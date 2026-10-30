@@ -609,11 +609,9 @@ describe("remarcar — a mesma regra", () => {
     return { ...agendamento(MEU_INICIO, MEU_FIM), id: MEU_COMPROMISSO };
   }
 
-  /** Remarcar cria OUTRO compromisso (ligado ao antigo): é o horário dele que prova o destino. */
+  /** Remarcar MUDA o próprio compromisso (não duplica): é o horário dele que prova o destino. */
   function horarioDoNovo(banco: Banco): unknown {
-    return banco.tabelas.calendar_appointments!.find(
-      (l) => l.rescheduled_from_id === MEU_COMPROMISSO,
-    )?.starts_at;
+    return banco.tabelas.calendar_appointments!.find((l) => l.id === MEU_COMPROMISSO)?.starts_at;
   }
 
   function horarioDoMeu(banco: Banco): unknown {
