@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  AvisoDeVencidas,
+  FechamentoDoPeriodo,
+  type FechamentoDoDashboard,
+} from "@/components/dashboards/FechamentoDoPeriodo";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -32,6 +37,8 @@ import { useT } from "@/hooks/i18n/useT";
 export interface DadosDeBusiness {
   de: string;
   ate: string;
+  /** Vendas fechadas no período e quanto já voltou delas (por data de fechamento). */
+  fechamento: FechamentoDoDashboard;
   mesesAtivo: number;
   recebido: number;
   recebidoAnterior: number;
@@ -121,12 +128,13 @@ export function Business({
 
   return (
     <div className="grid min-w-0 gap-4">
+      <AvisoDeVencidas valor={dados.vencidas} />
       <GradeDeKpis className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           rotulo={t("Entrou (recebido)")}
           valor={brl(dados.recebido)}
           variacao={<Variacao atual={dados.recebido} anterior={dados.recebidoAnterior} />}
-          apoio={t("Parcelas pagas no período")}
+          apoio={`${t("Faturamento Total")} ${brl(dados.fechamento.fechado)} · ${t("A Receber")} ${brl(dados.fechamento.aReceber)}`}
         />
         <Kpi
           rotulo={t("Saiu (mídia)")}
@@ -334,6 +342,8 @@ export function Business({
           {t("O tempo médio de resposta está no dashboard de Atendimento.")}
         </p>
       </Painel>
+
+      <FechamentoDoPeriodo dados={dados.fechamento} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Oito colunas: a tabela ocupa a largura toda. */}

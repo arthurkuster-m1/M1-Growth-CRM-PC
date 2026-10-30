@@ -7,6 +7,8 @@
  * Definições: faturamento = parcelas RECEBIDAS no período; venda = venda com algo pago, no dia da
  * 1ª parcela; cliente = pessoa com compra paga; LTV = só o recebido.
  */
+import { resumoDeFechamento } from "@/lib/dashboards/fechamento";
+import { lerFechamento } from "@/lib/dashboards/fechamento-servidor";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -342,11 +344,14 @@ export async function GET(req: NextRequest): Promise<Response> {
   const vendas = contaVendas(de.data, ate.data);
   const vendasAnt = contaVendas(ant.de, ant.ate);
 
+  const fech = await lerFechamento(a.supabase, a.orgId, de.data, ate.data, fuso);
+
   return ok(
     {
       de: de.data,
       ate: ate.data,
       anterior: ant,
+      fechamento: resumoDeFechamento(fech.vendas, fech.parcelas, hoje),
       mesesAtivo,
       recebido,
       recebidoAnterior: recebidoAnt,
