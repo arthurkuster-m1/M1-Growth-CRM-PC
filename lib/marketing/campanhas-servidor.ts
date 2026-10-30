@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import { clienteDaRequisicao, ehRecusa } from "@/lib/agencia/cliente-da-requisicao";
 import { fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
@@ -21,6 +22,20 @@ export async function autorizarCampanhas(papel: "viewer" | "manager", escrita: b
   });
   if (!authz.ok) return { ok: false as const, response: authz.response };
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
+  // MODO AGÊNCIA: os dados de outro cliente (reconferido no servidor).
+  const outro = await clienteDaRequisicao(authz.user, authz.org.orgId, escrita, t, requestId);
+  if (outro && ehRecusa(outro)) return { ok: false as const, response: outro.response };
+  if (outro) {
+    return {
+      ok: true as const,
+      requestId,
+      orgId: outro.orgId,
+      userId: authz.user.id,
+      podeEditar: outro.podeEditar,
+      t,
+      supabase: outro.supabase,
+    };
+  }
   const supabase = await createClient();
   const ehGestao =
     roleAtLeast(authz.org.role, "manager") || (authz.user.is_platform_admin && !authz.user.support);

@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { clienteDaRequisicao, ehRecusa } from "@/lib/agencia/cliente-da-requisicao";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
@@ -26,11 +27,15 @@ export async function GET(): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("viewer", { requestId, resource: "metrics" });
   if (!authz.ok) return authz.response;
+  // MODO AGÊNCIA: a empresa de outro cliente (reconferida no servidor).
+  const outro = await clienteDaRequisicao(authz.user, authz.org.orgId, false, (x) => x, requestId);
+  if (outro && ehRecusa(outro)) return outro.response;
+  const orgAlvo = outro?.orgId ?? authz.org.orgId;
   const admin = createAdminClient();
   const { data } = await admin
     .from("organizations")
     .select("settings")
-    .eq("id", authz.org.orgId)
+    .eq("id", orgAlvo)
     .maybeSingle();
   return ok(
     { ocultos: lerOcultos(data?.settings), podeEditar: authz.user.is_platform_admin },
@@ -53,12 +58,16 @@ export async function PUT(req: NextRequest): Promise<Response> {
   }
   const corpo = corpoSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success) return fail("validation_failed", "Lista inválida.", 422, { requestId });
+  // MODO AGÊNCIA: a empresa de outro cliente (reconferida no servidor).
+  const outro = await clienteDaRequisicao(authz.user, authz.org.orgId, true, (x) => x, requestId);
+  if (outro && ehRecusa(outro)) return outro.response;
+  const orgAlvo = outro?.orgId ?? authz.org.orgId;
 
   const admin = createAdminClient();
   const { data: atual } = await admin
     .from("organizations")
     .select("settings")
-    .eq("id", authz.org.orgId)
+    .eq("id", orgAlvo)
     .maybeSingle();
   const settings = (atual?.settings ?? {}) as Record<string, unknown>;
   const anteriores = lerOcultos(settings);
@@ -74,14 +83,14 @@ export async function PUT(req: NextRequest): Promise<Response> {
         },
       },
     })
-    .eq("id", authz.org.orgId);
+    .eq("id", orgAlvo);
   if (error) return fail("internal_error", "Erro ao salvar.", 500, { requestId });
   await audit({
-    organizationId: authz.org.orgId,
+    organizationId: orgAlvo,
     actorUserId: authz.user.id,
     action: "dashboards.visibility_changed",
     resourceType: "organizations",
-    resourceId: authz.org.orgId,
+    resourceId: orgAlvo,
     requestId,
     metadata: { antes: anteriores, depois: ocultos },
   });
