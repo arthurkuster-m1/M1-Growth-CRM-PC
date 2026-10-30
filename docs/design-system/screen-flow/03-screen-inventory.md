@@ -235,6 +235,7 @@ não.
 
 <!-- inventario:nao-construido:inicio -->
 - `/onboarding/mfa-setup` (#7)
+- `/onboarding/connect-nuvemshop` (#9) — **retirada**: a integração Nuvemshop saiu do produto (outubro/2026)
 - `/onboarding/configure-ai` (#10) — o passo existe como `/onboarding/setup-ai`
 - `/app/pipelines` (#16) — o board é `/app/kanban`; a gestão de funis é `/app/settings/tenant/pipelines`
 - `/app/pipelines/[pipelineId]/settings` (#18)
@@ -260,6 +261,7 @@ não.
 - `/app/integrations/whatsapp/[id]` (#45)
 - `/app/integrations/whatsapp/[id]/qr` (#46)
 - `/app/integrations/whatsapp/new` (#47)
+- `/app/integrations/nuvemshop` (#48) — **retirada**: a integração Nuvemshop saiu do produto (outubro/2026)
 - `/app/integrations/nuvemshop/connect` (#49)
 - `/app/integrations/nuvemshop/sync` (#50)
 - `/app/integrations/nuvemshop/webhooks` (#51)
