@@ -55,12 +55,15 @@ const DialogContent = React.forwardRef<
           // Saiu também o `duration-200`: era duração de TRANSIÇÃO, e aqui não
           // havia transição nenhuma para durar.
           //
+          // No celular a janela NÃO encosta nas bordas da tela: sobra 12px de cada lado e os cantos
+          // são arredondados, como os demais cartões do app (antes ia de ponta a ponta, quadrada).
+          //
           // ⚠️ `translate-x-[-50%] translate-y-[-50%]` FICAM. É a centralização,
           // e ela não pode depender da animação rodar. Os keyframes de
           // `ds-modal` animam a mesma propriedade `translate` e terminam no
           // mesmo `-50% -50%`, então o modal nunca sai do centro — o porquê
           // inteiro está no bloco do modal em `app/globals.css`.
-          "ds-modal fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto border bg-background p-6 shadow-lg sm:rounded-2xl",
+          "ds-modal fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-3xl border bg-background p-6 shadow-lg sm:w-full",
           className,
         )}
         {...props}

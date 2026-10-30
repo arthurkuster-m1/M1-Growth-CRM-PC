@@ -37,7 +37,9 @@ export function RegistrarAcaoEmMassaDialog({
           <DialogDescription>
             {leadId
               ? t("A ação entra na atividade desta oportunidade e no histórico do lead.")
-              : `${t("A ação entra na linha do tempo dos")} ${contatoIds.length} ${t("leads selecionados.")}`}
+              : contatoIds.length === 1
+                ? t("A ação entra na linha do tempo deste lead.")
+                : `${t("A ação entra na linha do tempo dos")} ${contatoIds.length} ${t("leads selecionados.")}`}
           </DialogDescription>
         </DialogHeader>
         <RegistrarAcaoDoLead
