@@ -100,6 +100,6 @@ export async function updatePipelineConfig(
     },
   });
 
-  revalidatePath("/app/settings/tenant/pipelines");
+  revalidatePath("/app/marketing/geracao-de-demanda");
   return { ok: true };
 }

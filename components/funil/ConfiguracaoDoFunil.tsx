@@ -6,9 +6,9 @@ import {
   PipelineEditor,
   type EtapaDoFunil,
   type PipelineRow,
-} from "@/app/app/settings/tenant/pipelines/_client";
-import { AgentMappingSection } from "@/app/app/settings/tenant/pipelines/_mapping";
-import { ancoraDasEtapas } from "@/app/app/settings/tenant/pipelines/_stages";
+} from "@/components/funil/config/_client";
+import { AgentMappingSection } from "@/components/funil/config/_mapping";
+import { ancoraDasEtapas } from "@/components/funil/config/_stages";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { createClient } from "@/lib/supabase/browser";

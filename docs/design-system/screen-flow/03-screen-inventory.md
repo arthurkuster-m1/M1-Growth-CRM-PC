@@ -329,7 +329,7 @@ envelhecer. Quem precisar da verdade de hoje roda o script.
 | `/app/settings/atendimento` | governança de atendimento |
 | `/app/settings/atualizacao` | atualização self-service (só dono do servidor) |
 | `/app/settings/canal-oficial`, `/app/settings/templates` | redirects para `/app/connections` |
-| `/app/settings/tenant/pipelines` | gestão de funis |
+| (removida) `/app/settings/tenant/pipelines` | a gestão de funis vive agora no funil da campanha |
 | `/app/settings/tenant/whatsapp` | redirect legado para `/app/connections` |
 | `/onboarding/setup-ai` | o `configure-ai` do plano, com outro nome |
 | `/admin` | entrada do painel de plataforma |

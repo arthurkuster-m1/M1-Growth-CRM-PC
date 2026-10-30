@@ -42,7 +42,7 @@
       "lane": "humano",
       "col": 1,
       "type": "frontend",
-      "label": "/app/webhooks · /app/settings/tenant/pipelines",
+      "label": "/app/webhooks · funil da campanha",
       "sublabel": "entradas automáticas · regras · etapas do funil"
     },
     {

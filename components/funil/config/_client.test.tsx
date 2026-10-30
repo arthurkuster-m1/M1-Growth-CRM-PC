@@ -51,12 +51,31 @@ globalThis.ResizeObserver = class {
 
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 import {
-  PipelinesClient,
+  PipelineEditor,
   TIPOS_DE_CAMPO,
   tipoTemOpcoes,
   type EtapaDoFunil,
   type PipelineRow,
 } from "./_client";
+
+/** O editor de cada funil, como o funil da campanha o monta (só admin edita). */
+function PipelinesClient({
+  pipelines,
+  etapas = {},
+  podeEditarConfig,
+}: {
+  pipelines: PipelineRow[];
+  etapas?: Record<string, EtapaDoFunil[]>;
+  podeEditarConfig: boolean;
+}) {
+  return (
+    <>
+      {podeEditarConfig
+        ? pipelines.map((p) => <PipelineEditor key={p.id} pipeline={p} etapas={etapas[p.id] ?? []} />)
+        : null}
+    </>
+  );
+}
 
 /** Um funil de clínica: o campo que importa é a lista de procedimentos, e ela é múltipla. */
 const FUNIL: PipelineRow = {
