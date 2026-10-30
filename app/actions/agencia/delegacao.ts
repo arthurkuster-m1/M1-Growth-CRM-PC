@@ -1,4 +1,5 @@
 "use server";
+import { supportWriteError } from "@/lib/impersonate/support";
 import { z } from "zod";
 
 import { clientesDaAgencia, ehSuperAdminPleno } from "@/lib/agencia/acesso";
@@ -31,6 +32,8 @@ export async function definirAcessoDoCliente(
   const user = await loadAuthUser();
   if (!user) return { ok: false, error: "auth_required" };
   if (!ehSuperAdminPleno(user)) return { ok: false, error: "forbidden" };
+  const erroDeSuporte = supportWriteError(user.support);
+  if (erroDeSuporte) return { ok: false, error: erroDeSuporte };
   if (await mfaEmDivida()) return { ok: false, error: "mfa_required" };
   if (parsed.data.userId === user.id) return { ok: false, error: "forbidden" };
 

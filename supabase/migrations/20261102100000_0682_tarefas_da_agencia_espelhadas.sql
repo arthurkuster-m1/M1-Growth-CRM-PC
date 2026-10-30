@@ -98,8 +98,10 @@ begin
   end if;
   -- UPDATE
   if new.mirror_task_id is null then
-    -- Marcou "da agência" na empresa do cliente (ou ligou o contato depois): nasce a cópia.
-    perform public.fn_tarefa_criar_espelho(new);
+    -- Se tinha cópia e a ligação foi desfeita (a cópia foi apagada ou desligada), não recria.
+    if old.mirror_task_id is null then
+      perform public.fn_tarefa_criar_espelho(new);
+    end if;
     return new;
   end if;
   -- Desmarcou "da agência" na empresa do cliente: a cópia da agência sai e as duas se desligam.
