@@ -1,6 +1,6 @@
 # PLANO DO M1 GROWTH CRM
 
-Atualizado em 17/10/2026. Este é o plano-mãe. O plano detalhado da aba Marketing continua em
+Atualizado em 31/10/2026 (a base é de 17/10; as seções de 27 a 31/10 e as frentes 16 e 17 são novas). Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
 
@@ -217,6 +217,23 @@ Detalhe em `MODELO-AGENDA-M1.md` e `PLANO-AGENDA-EQUIPE-M1.md`.
 - **Build:** import acima de `"use client"` derrubou 3 builds (18/10); corrigido. Regra: rodar `next build`
   antes de mesclar. Teste de Funis quebrado desde 18/10 corrigido.
 
+### Reagendamento, funil, Modo agência e dashboards — 27 a 31/10/2026
+- **Agenda:** reagendar muda o MESMO compromisso (volta a "Confirmado", conta `reschedule_count`, nota "Reagendado N vezes"
+  na página do compromisso); sem o status "Reagendado"; **cancelado fica travado** (para retomar, cria-se outro).
+  Seis status fixos. Migrations 0680 e 0681.
+- **Funil da campanha:** **cor de cada etapa** (escolhida ao criar o funil, igual em toda tag e seletor); Motivos, Campos
+  e Agente do funil passaram para dentro do funil da campanha, e a tela Configurações › Funis saiu.
+- **Dashboards:** Ticket Médio no Tráfego Pago; tabela de produtos do Business com Leads, Tx de Conversão, Ticket Médio,
+  Faturamento Total, Recebido e A Receber; faturamento recebido com fechado e a receber na descrição; painel
+  **Fechamento do período** (por data de fechamento). **Parcelas vencidas** viram aviso na Central (um por empresa).
+- **Modo agência** (plano em `docs/PLANO-MODO-AGENCIA.md`): uma "organização" à parte no seletor, com menu próprio:
+  Campanhas (banner único, uma tabela por cliente, campanha em pop-up), Cronograma e semana, Dashboards, Tarefas e Equipe
+  e clientes. Seletor de clientes (vários, com ordem), tag colorida por cliente (cor escolhida em Gerenciar organizações),
+  acesso = ser membro manager/admin do cliente, delegação por pessoa. Duas empresas de exemplo (Clínica Aurora e
+  Casa Bela Móveis) com campanhas, leads e vendas fictícios.
+- **Tarefas da agência espelhadas** (migration 0682): ligando o contato do CRM da agência à organização do cliente, a
+  tarefa da agência aparece também na empresa do cliente (e as marcadas "da agência" lá aparecem na agência), sincronizadas.
+
 ## 1B. PRÓXIMOS PASSOS (atualizado em 22/10/2026)
 1. **Ctrl+Z que falta:** criar produto, venda e lead; clientes pela lixeira (já restaura). Apagar campanha,
    oportunidade e venda é apagamento definitivo (sem volta) — decidir se vale ganhar lixeira.
@@ -289,6 +306,8 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 | 13 | **Barra de pesquisa** | Evoluir a paleta de comandos | **A fazer** | O que deve ser pesquisável (leads, tarefas, produtos, páginas)? |
 | 14 | **Visão multi-tenant (ADM)** | Organizações e visualizações na área `/admin` | **A fazer** | O que você precisa ver de todos os clientes de uma vez? |
 | 15 | **Financeiro completo** | Contas, fluxo de caixa, DRE e recorrência | **Parcial.** Vendas, parcelas, faturamento recebido e a receber existem; faltam contas a receber (cobrança), fluxo de caixa, DRE | Hoje existe `/app/faturamento`. Que relatórios importam? |
+| 16 | **Central de avisos, alertas e notificações** (plano à parte: `docs/PLANO-AVISOS-M1.md`) | Verificar e revisar TODOS os avisos; tirar a Central de dentro de "Agentes de IA" (hoje é "Alertas" em `/app/ai/inbox`) e dar a ela um lugar próprio; juntar com o sino e as notificações | **A fazer** | Quais avisos importam? Quem recebe cada um? Por onde (sino, push, e-mail)? |
+| 17 | **Tarefas: visões padrão** | Visões prontas ao criar uma aba: **Pendentes** (atrasadas + hoje + próximos 1 a 2 dias) e **Minhas tarefas** (designadas a mim), mais as que forem aprovadas (ver abaixo) | **A fazer** | Aprovar a lista de visões; quais já nascem abertas? |
 
 ### Detalhes das frentes
 
@@ -306,6 +325,25 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 8). Plano detalhado: `docs/PLANO-CAMPANHAS-M1.md`.
 
 **8. CRM**: cuidado, leads alimentam Inbox, automações, follow-up, IA e webhooks.
+
+**16. Central de avisos, alertas e notificações**: hoje a Central mora em Agentes de IA (menu "Alertas", `/app/ai/inbox`) e
+guarda ~40 tipos de aviso (`agent_inbox_items`); o sino do topo, as notificações do navegador, os sons e o push do celular
+são outra camada (Configurações › Notificações). Revisar todos os avisos (o que ainda faz sentido, texto, gravidade,
+quem recebe, o que o botão faz), tirar a Central de dentro de "Agentes de IA" e unir sino + Central + notificações num
+só desenho. Plano e perguntas em `docs/PLANO-AVISOS-M1.md`.
+
+**17. Tarefas: visões padrão** (propostas — o Arthur aprova a lista):
+- **Pendentes** (padrão da tabela): atrasadas + vencem hoje + vencem nos próximos 1 a 2 dias; ordenada por prazo.
+- **Minhas tarefas**: designadas a mim, não concluídas.
+- **Atrasadas**: só o que já venceu (a que mais cobra).
+- **Esta semana**: de domingo a sábado, agrupada por dia.
+- **Sem responsável**: tarefas que ninguém assumiu (evita tarefa órfã).
+- **Aguardando o cliente**: tarefas "do cliente" no cronograma (o que depende dele).
+- **Da agência**: tarefas da agência dos clientes (a base do Modo agência).
+- **Por cliente**: agrupada por cliente, só abertas.
+- **Concluídas recentes**: últimos 7 dias (para a revisão da semana).
+Mecânica: a visão nasce no "+" das abas (como o "Radar" das Oportunidades em `lib/clientes/modelos-de-visao.ts`): um clique
+cria a aba com o filtro pronto; se já existe, abre. "Minhas tarefas" usa o usuário logado.
 
 ### Ligações entre as frentes
 - 4 (geração de demanda) cria as campanhas e os funis que o CRM (8) usa; definir os dois juntos.
