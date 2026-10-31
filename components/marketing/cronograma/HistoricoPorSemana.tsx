@@ -89,6 +89,10 @@ export function HistoricoPorSemana() {
             </button>
             {aberta ? (
               <div className="grid gap-4 border-t px-4 py-3 text-sm">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ListaDoLado titulo={t("Tarefas da agência")} itens={s.agencia} />
+                  <ListaDoLado titulo={t("Tarefas do cliente")} itens={s.cliente} />
+                </div>
                 {s.topicos.length > 0 ? (
                   <div className="grid gap-1.5">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase">
@@ -103,10 +107,6 @@ export function HistoricoPorSemana() {
                     </ul>
                   </div>
                 ) : null}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <ListaDoLado titulo={t("Tarefas da agência")} itens={s.agencia} />
-                  <ListaDoLado titulo={t("Tarefas do cliente")} itens={s.cliente} />
-                </div>
               </div>
             ) : null}
           </li>
