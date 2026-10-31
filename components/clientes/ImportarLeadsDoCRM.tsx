@@ -1,15 +1,28 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { campoDaColuna, normalizarCabecalho } from "@/lib/leads/colunas-da-planilha";
@@ -20,7 +33,15 @@ import {
   textoDoArquivo,
   xlsDe,
 } from "@/lib/leads/tabela-de-importacao";
-import { Trash, UploadSimple } from "@/lib/ui/icons";
+import {
+  ArrowDown,
+  ArrowUp,
+  Plus,
+  SlidersHorizontal,
+  Trash,
+  UploadSimple,
+  X,
+} from "@/lib/ui/icons";
 
 import type { FunilDoPopup, EtapaDoPopup } from "./NovoLeadDoCRM";
 import {
@@ -29,8 +50,11 @@ import {
   type ResumoDaImportacaoDoCRM,
 } from "./usarFunisComCampos";
 
-const LINHAS_INICIAIS = 10;
+const LINHAS_INICIAIS = 5;
 const MAX_LINHAS = 500;
+
+/** Sempre na tabela, nesta ordem: o nome e a forma de achar a pessoa (telefone ou e-mail). */
+const FIXAS = ["titulo", "telefone", "email"] as const;
 
 const vazia = (n: number) => Array.from({ length: n }, () => "");
 
@@ -74,20 +98,26 @@ export function ImportarLeadsDoCRM({
   const [novaColuna, setNovaColuna] = useState("");
   const definicoes = funilId ? camposDoFunil(funilId) : [];
 
-  const colunas = useMemo(
-    () => [
-      ...COLUNAS_DO_LEAD.map((c) => ({ id: c.id as string, rotulo: t(c.rotulo), cabecalho: c.rotulo })),
-      ...definicoes.map((d) => ({ id: `campo:${d.key}`, rotulo: d.label, cabecalho: d.label })),
-      ...colunasExtras
-        .filter((nome) => !definicoes.some((d) => d.label.toLowerCase() === nome.toLowerCase()))
-        .map((nome) => ({ id: `extra:${nome}`, rotulo: nome, cabecalho: nome })),
-    ],
-    // `t` é identidade; as definições mudam com o funil.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [funilId, definicoes.length, colunasExtras],
-  );
+  // TODAS as propriedades que cabem na tabela: as do cadastro do lead (as mesmas da tabela de
+  // Clientes), os campos do funil escolhido e os campos personalizados.
+  const todas = [
+    ...COLUNAS_DO_LEAD.map((c) => ({
+      id: c.id as string,
+      rotulo: t(c.rotulo),
+      cabecalho: c.rotulo,
+    })),
+    ...definicoes.map((d) => ({ id: `campo:${d.key}`, rotulo: d.label, cabecalho: d.label })),
+    ...colunasExtras
+      .filter((nome) => !definicoes.some((d) => d.label.toLowerCase() === nome.toLowerCase()))
+      .map((nome) => ({ id: `extra:${nome}`, rotulo: nome, cabecalho: nome })),
+  ];
+  // As que a pessoa escolheu, na ordem dela. Começa com nome, telefone e e-mail.
+  const [escolhidas, setEscolhidas] = useState<string[]>([...FIXAS]);
+  const colunas = escolhidas
+    .map((id) => todas.find((c) => c.id === id))
+    .filter((c): c is (typeof todas)[number] => c !== undefined);
   const [linhas, setLinhas] = useState<string[][]>(() =>
-    Array.from({ length: LINHAS_INICIAIS }, () => vazia(COLUNAS_DO_LEAD.length)),
+    Array.from({ length: LINHAS_INICIAIS }, () => vazia(FIXAS.length)),
   );
   /** Quanto custou captar esta lista (opcional): vai para o investimento e o CPL da fonte. */
   const [custo, setCusto] = useState("");
@@ -107,6 +137,52 @@ export function ImportarLeadsDoCRM({
   /** Cada linha tem sempre `ncols` células (o funil pode ter mudado as colunas). */
   const ajustada = (l: string[]) =>
     l.length === ncols ? l : [...l.slice(0, ncols), ...vazia(Math.max(0, ncols - l.length))];
+
+  /** Muda quais colunas aparecem e em que ordem, levando junto o que já foi digitado. */
+  function aplicarColunas(novos: string[]) {
+    const antigos = colunas.map((c) => c.id);
+    setLinhas((atual) =>
+      atual.map((l) =>
+        novos.map((id) => {
+          const i = antigos.indexOf(id);
+          return i >= 0 ? (l[i] ?? "") : "";
+        }),
+      ),
+    );
+    setEscolhidas(novos);
+  }
+  function adicionarColuna(id: string) {
+    if (!escolhidas.includes(id)) aplicarColunas([...escolhidas, id]);
+  }
+  function tirarColuna(id: string) {
+    if ((FIXAS as readonly string[]).includes(id)) return;
+    aplicarColunas(escolhidas.filter((x) => x !== id));
+  }
+  function moverColuna(id: string, passo: -1 | 1) {
+    const i = escolhidas.indexOf(id);
+    const j = i + passo;
+    if (i < FIXAS.length || j < FIXAS.length || j >= escolhidas.length) return;
+    const novo = [...escolhidas];
+    [novo[i], novo[j]] = [novo[j]!, novo[i]!];
+    aplicarColunas(novo);
+  }
+  function criarColunaPersonalizada(nome: string) {
+    const limpo = nome.trim();
+    if (!limpo) return;
+    if (!colunasExtras.includes(limpo)) setColunasExtras((a) => [...a, limpo]);
+    const id = `extra:${limpo}`;
+    if (!escolhidas.includes(id)) {
+      // A coluna nova ainda não está em `todas` neste render: monta as linhas à mão.
+      const antigos = colunas.map((c) => c.id);
+      const novos = [...escolhidas, id];
+      setLinhas((atual) =>
+        atual.map((l) =>
+          novos.map((x) => (antigos.indexOf(x) >= 0 ? (l[antigos.indexOf(x)] ?? "") : "")),
+        ),
+      );
+      setEscolhidas(novos);
+    }
+  }
 
   function editar(r: number, c: number, valor: string) {
     setLinhas((atual) =>
@@ -148,58 +224,62 @@ export function ImportarLeadsDoCRM({
         return;
       }
       const cab = celulas[0]!;
-      // Cada coluna do arquivo vai para a coluna da tabela que tem o mesmo nome.
-      const destino = cab.map((titulo) => {
+      const acharEm = (lista: Array<{ id: string; cabecalho: string }>, titulo: string) => {
         const campo = campoDaColuna(titulo);
-        if (campo) return colunas.findIndex((c) => c.id === campo);
+        if (campo) return lista.find((c) => c.id === campo)?.id ?? null;
         const alvo = normalizarCabecalho(titulo);
-        return colunas.findIndex(
-          (c) => c.id.startsWith("campo:") && normalizarCabecalho(c.cabecalho) === alvo,
+        return (
+          lista.find(
+            (c) =>
+              (c.id.startsWith("campo:") || c.id.startsWith("extra:")) &&
+              normalizarCabecalho(c.cabecalho) === alvo,
+          )?.id ?? null
         );
-      });
-      // Coluna que não é do cadastro vira coluna personalizada (campo personalizado do lead).
+      };
+      // Coluna do arquivo que não é do cadastro vira coluna personalizada (campo personalizado do lead).
       const novas = cab
         .map((c) => c.trim())
-        .filter((c, i) => destino[i] === -1 && c !== "")
+        .filter((c) => c !== "" && acharEm(todas, c) === null)
         .filter((c, i, a) => a.indexOf(c) === i);
       const todasExtras = [...new Set([...colunasExtras, ...novas])];
-      const colunasFinais = [
-        ...colunas.filter((c) => !c.id.startsWith("extra:")),
+      const listaFinal = [
+        ...todas.filter((c) => !c.id.startsWith("extra:")),
         ...todasExtras
           .filter((nome) => !definicoes.some((d) => d.label.toLowerCase() === nome.toLowerCase()))
           .map((nome) => ({ id: `extra:${nome}`, rotulo: nome, cabecalho: nome })),
       ];
       setColunasExtras(todasExtras);
-      const destinoFinal = cab.map((titulo) => {
-        const campo = campoDaColuna(titulo);
-        if (campo) return colunasFinais.findIndex((c) => c.id === campo);
-        const alvo = normalizarCabecalho(titulo);
-        return colunasFinais.findIndex(
-          (c) =>
-            (c.id.startsWith("campo:") || c.id.startsWith("extra:")) &&
-            normalizarCabecalho(c.cabecalho) === alvo,
-        );
-      });
-      const nCols = colunasFinais.length;
+      const destinoDe = cab.map((titulo) => acharEm(listaFinal, titulo));
+      // As colunas do arquivo entram na tabela; as que a pessoa já tinha escolhida continuam.
+      const finais = [...escolhidas];
+      for (const id of destinoDe) if (id && !finais.includes(id)) finais.push(id);
+      const nCols = finais.length;
       const dados = celulas.slice(1, MAX_LINHAS + 1).map((cels) => {
         const l = vazia(nCols);
         cels.forEach((v, i) => {
-          const d = destinoFinal[i];
-          if (d !== undefined && d >= 0) l[d] = v.trim();
+          const id = destinoDe[i];
+          const d = id ? finais.indexOf(id) : -1;
+          if (d >= 0) l[d] = v.trim();
         });
         return l;
       });
+      setEscolhidas(finais);
       setLinhas(
         dados.length >= LINHAS_INICIAIS
           ? dados
-          : [...dados, ...Array.from({ length: LINHAS_INICIAIS - dados.length }, () => vazia(nCols))],
+          : [
+              ...dados,
+              ...Array.from({ length: LINHAS_INICIAIS - dados.length }, () => vazia(nCols)),
+            ],
       );
       setAviso(
         `${dados.length} ${t("linhas lidas do arquivo.")}` +
           (novas.length > 0
             ? ` ${t("Colunas novas viraram campos personalizados:")} ${novas.join(", ")}.`
             : "") +
-          (celulas.length - 1 > MAX_LINHAS ? ` ${t("Só as primeiras 500 linhas entram por vez.")}` : ""),
+          (celulas.length - 1 > MAX_LINHAS
+            ? ` ${t("Só as primeiras 500 linhas entram por vez.")}`
+            : ""),
       );
     });
     if (arquivoRef.current) arquivoRef.current.value = "";
@@ -262,7 +342,9 @@ export function ImportarLeadsDoCRM({
           setCusto("");
           void queryClient.invalidateQueries({ queryKey: ["dashboard-prospeccao"] });
         } catch {
-          toast.error(t("Os leads entraram, mas o custo não foi lançado (só gerente lança custo)."));
+          toast.error(
+            t("Os leads entraram, mas o custo não foi lançado (só gerente lança custo)."),
+          );
         }
       }
       if (r.erros.length === 0) {
@@ -283,7 +365,7 @@ export function ImportarLeadsDoCRM({
 
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-full flex-col overflow-y-auto overflow-x-hidden sm:max-w-5xl sm:overflow-hidden">
+      <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-full flex-col overflow-x-hidden overflow-y-auto sm:max-w-5xl sm:overflow-hidden">
         <DialogHeader>
           <DialogTitle>{t("Importar leads")}</DialogTitle>
           <DialogDescription>
@@ -301,8 +383,8 @@ export function ImportarLeadsDoCRM({
               onValueChange={(v) => {
                 setFunilId(v === "__sem__" ? "" : v);
                 setEtapaId("");
-                // Colunas do funil novo: as células personalizadas recomeçam.
-                setLinhas((atual) => atual.map((l) => l.slice(0, COLUNAS_DO_LEAD.length)));
+                // Os campos do funil anterior saem da tabela (cada funil tem os seus).
+                aplicarColunas(escolhidas.filter((id) => !id.startsWith("campo:")));
               }}
             >
               <SelectTrigger className="w-full sm:w-64">
@@ -319,22 +401,25 @@ export function ImportarLeadsDoCRM({
             </Select>
           </div>
           {funilId ? (
-          <div className="space-y-1.5">
-            <Label>{t("Etapa padrão")}</Label>
-            <Select value={etapaId || "inicial"} onValueChange={(v) => setEtapaId(v === "inicial" ? "" : v)}>
-              <SelectTrigger className="w-full sm:w-52">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inicial">{t("Primeira etapa do funil")}</SelectItem>
-                {etapasAbertas.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-1.5">
+              <Label>{t("Etapa padrão")}</Label>
+              <Select
+                value={etapaId || "inicial"}
+                onValueChange={(v) => setEtapaId(v === "inicial" ? "" : v)}
+              >
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inicial">{t("Primeira etapa do funil")}</SelectItem>
+                  {etapasAbertas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : null}
 
           <div className="space-y-1.5">
@@ -350,9 +435,11 @@ export function ImportarLeadsDoCRM({
                 onChange={(e) => setFonteDoCusto(e.target.value)}
               />
               <datalist id="fontes-do-custo-da-importacao">
-                {["Extração de leads", "Importação de planilha", "Base de clientes", "Evento"].map((f) => (
-                  <option key={f} value={f} />
-                ))}
+                {["Extração de leads", "Importação de planilha", "Base de clientes", "Evento"].map(
+                  (f) => (
+                    <option key={f} value={f} />
+                  ),
+                )}
               </datalist>
               <Input
                 value={custo}
@@ -374,6 +461,136 @@ export function ImportarLeadsDoCRM({
             onChange={(e) => aoEscolherArquivo(e.target.files?.[0])}
           />
           <div className="ml-auto flex flex-wrap gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" data-testid="colunas-da-importacao">
+                  <SlidersHorizontal size={16} aria-hidden className="mr-1.5" />
+                  {t("Colunas")} ({colunas.length})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                collisionPadding={8}
+                className="max-h-[var(--radix-popover-content-available-height)] w-[min(94vw,420px)] overflow-y-auto overscroll-contain p-3"
+              >
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {t(
+                    "Escolha as propriedades da tabela e a ordem delas. Nome, telefone e e-mail estão sempre aqui.",
+                  )}
+                </p>
+                <ul className="mb-3 grid gap-1">
+                  {colunas.map((c, i) => {
+                    const fixa = i < FIXAS.length;
+                    return (
+                      <li
+                        key={c.id}
+                        className="flex min-h-9 items-center gap-1 rounded-lg bg-secondary/50 pr-1 pl-3 text-sm"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{c.rotulo}</span>
+                        {fixa ? (
+                          <span className="pr-2 text-xs text-muted-foreground">{t("sempre")}</span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              aria-label={`${t("Subir")} ${c.rotulo}`}
+                              disabled={i <= FIXAS.length}
+                              onClick={() => moverColuna(c.id, -1)}
+                              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-card disabled:opacity-30"
+                            >
+                              <ArrowUp size={14} aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`${t("Descer")} ${c.rotulo}`}
+                              disabled={i === colunas.length - 1}
+                              onClick={() => moverColuna(c.id, 1)}
+                              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-card disabled:opacity-30"
+                            >
+                              <ArrowDown size={14} aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`${t("Tirar")} ${c.rotulo}`}
+                              onClick={() => tirarColuna(c.id)}
+                              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-card hover:text-error-fg"
+                            >
+                              <X size={14} aria-hidden />
+                            </button>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {(() => {
+                  const jaTem = new Set(escolhidas);
+                  const livres = todas.filter((c) => !jaTem.has(c.id));
+                  const rotulosJa = new Set(todas.map((c) => c.rotulo.toLowerCase()));
+                  const existentes = rotulosDeTodosOsCampos.filter(
+                    (r) => !rotulosJa.has(r.toLowerCase()),
+                  );
+                  return (
+                    <div className="grid gap-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("Adicionar propriedade")}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {livres.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => adicionarColuna(c.id)}
+                            className="rounded-full border px-2.5 py-0.5 text-xs hover:bg-secondary"
+                          >
+                            + {c.rotulo}
+                          </button>
+                        ))}
+                        {existentes.map((r) => (
+                          <button
+                            key={`ex:${r}`}
+                            type="button"
+                            onClick={() => criarColunaPersonalizada(r)}
+                            className="rounded-full border border-dashed px-2.5 py-0.5 text-xs hover:bg-secondary"
+                          >
+                            + {r}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-1 flex gap-2">
+                        <input
+                          value={novaColuna}
+                          maxLength={60}
+                          placeholder={t("Novo campo personalizado (ex.: Idade, Faturamento)")}
+                          aria-label={t("Nome do novo campo personalizado")}
+                          onChange={(e) => setNovaColuna(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && novaColuna.trim()) {
+                              criarColunaPersonalizada(novaColuna);
+                              setNovaColuna("");
+                            }
+                          }}
+                          className="h-9 min-w-0 flex-1 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!novaColuna.trim()}
+                          onClick={() => {
+                            criarColunaPersonalizada(novaColuna);
+                            setNovaColuna("");
+                          }}
+                        >
+                          <Plus size={14} weight="bold" aria-hidden className="mr-1" />
+                          {t("Criar")}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
             <Button type="button" variant="outline" onClick={() => arquivoRef.current?.click()}>
               <UploadSimple size={16} aria-hidden className="mr-1.5" />
               {t("Importar arquivo CSV")}
@@ -387,53 +604,6 @@ export function ImportarLeadsDoCRM({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={novaColuna}
-            maxLength={60}
-            placeholder={t("Nova coluna personalizada (ex.: Renda, Cidade)")}
-            aria-label={t("Nome da nova coluna personalizada")}
-            onChange={(e) => setNovaColuna(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && novaColuna.trim()) {
-                setColunasExtras((a) => (a.includes(novaColuna.trim()) ? a : [...a, novaColuna.trim()]));
-                setNovaColuna("");
-              }
-            }}
-            className="h-9 w-full rounded-xl sm:w-72 border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!novaColuna.trim()}
-            onClick={() => {
-              setColunasExtras((a) => (a.includes(novaColuna.trim()) ? a : [...a, novaColuna.trim()]));
-              setNovaColuna("");
-            }}
-          >
-            {t("+ Adicionar coluna")}
-          </Button>
-        </div>
-        {(() => {
-          const jaTem = new Set(colunas.map((c) => c.rotulo.toLowerCase()));
-          const sugestoes = rotulosDeTodosOsCampos.filter((r) => !jaTem.has(r.toLowerCase()));
-          return sugestoes.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">{t("Campos personalizados já existentes:")}</span>
-              {sugestoes.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setColunasExtras((a) => (a.includes(r) ? a : [...a, r]))}
-                  className="rounded-full border px-2.5 py-0.5 text-xs hover:bg-secondary"
-                >
-                  + {r}
-                </button>
-              ))}
-            </div>
-          ) : null;
-        })()}
         {aviso ? <p className="text-xs text-muted-foreground">{aviso}</p> : null}
         <p className="text-xs text-muted-foreground">
           {t(
@@ -447,7 +617,10 @@ export function ImportarLeadsDoCRM({
               <tr>
                 <th className="w-10 px-2 py-2 text-center font-medium">#</th>
                 {colunas.map((c, i) => (
-                  <th key={c.id} className="min-w-36 px-2 py-2 text-left font-medium whitespace-nowrap">
+                  <th
+                    key={c.id}
+                    className="min-w-36 px-2 py-2 text-left font-medium whitespace-nowrap"
+                  >
                     {c.rotulo}
                     {i === 0 ? " *" : ""}
                   </th>
@@ -460,7 +633,9 @@ export function ImportarLeadsDoCRM({
                 const l = ajustada(linha);
                 return (
                   <tr key={r} className="border-t">
-                    <td className="px-2 text-center text-xs text-muted-foreground tabular-nums">{r + 1}</td>
+                    <td className="px-2 text-center text-xs text-muted-foreground tabular-nums">
+                      {r + 1}
+                    </td>
                     {colunas.map((c, ci) => (
                       <td key={c.id} className="p-0">
                         <input
@@ -503,7 +678,11 @@ export function ImportarLeadsDoCRM({
             variant="ghost"
             size="sm"
             disabled={MAX_LINHAS <= linhas.length}
-            onClick={() => setLinhas((a) => [...a, ...Array.from({ length: 5 }, () => vazia(ncols))].slice(0, MAX_LINHAS))}
+            onClick={() =>
+              setLinhas((a) =>
+                [...a, ...Array.from({ length: 5 }, () => vazia(ncols))].slice(0, MAX_LINHAS),
+              )
+            }
           >
             {t("+ Adicionar 5 linhas")}
           </Button>
@@ -533,9 +712,9 @@ export function ImportarLeadsDoCRM({
         {resumo ? (
           <div className="max-h-40 overflow-y-auto rounded-xl border p-3 text-sm" role="status">
             <p className="font-medium">
-              {resumo.contatos_criados} {t("novos")} · {resumo.contatos_atualizados} {t("atualizados")} ·{" "}
-              {resumo.cards_criados} {t("no funil")} · {resumo.sem_funil} {t("só guardados")} ·{" "}
-              {resumo.erros.length} {t("avisos")}
+              {resumo.contatos_criados} {t("novos")} · {resumo.contatos_atualizados}{" "}
+              {t("atualizados")} · {resumo.cards_criados} {t("no funil")} · {resumo.sem_funil}{" "}
+              {t("só guardados")} · {resumo.erros.length} {t("avisos")}
             </p>
             <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
               {resumo.erros.map((e, i) => (
@@ -551,7 +730,11 @@ export function ImportarLeadsDoCRM({
           <Button type="button" variant="ghost" onClick={aoFechar} disabled={enviando}>
             {resumo ? t("Fechar") : t("Cancelar")}
           </Button>
-          <Button type="button" onClick={() => void adicionar()} disabled={enviando || preenchidas.length === 0}>
+          <Button
+            type="button"
+            onClick={() => void adicionar()}
+            disabled={enviando || preenchidas.length === 0}
+          >
             {enviando ? t("Adicionando…") : t("Adicionar Leads ao CRM")}
           </Button>
         </div>
