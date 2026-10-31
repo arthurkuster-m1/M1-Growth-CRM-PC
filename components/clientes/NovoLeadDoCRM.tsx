@@ -13,16 +13,29 @@ import {
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
 import { useCatalogoDeProdutos } from "@/hooks/vendas/useCatalogoDeProdutos";
 import { apiClient } from "@/lib/api/client";
 import type { CampanhaOpcao } from "@/lib/marketing/origem-opcoes";
+import { proximoTelefone } from "@/lib/contacts/mascara-de-telefone";
 import { MOEDA_PADRAO, simboloDaMoeda } from "@/lib/money";
 import { Plus, X } from "@/lib/ui/icons";
 import { enviarLeadsParaOCRM, useCamposDosFunis } from "./usarFunisComCampos";
@@ -90,8 +103,6 @@ export function NovoLeadDoCRM({
         }>("/api/v1/marketing/origem-opcoes")
       ).data,
   });
-  const [etiquetas, setEtiquetas] = useState("");
-  const [nascimento, setNascimento] = useState("");
   // Começa SEM funil; quem quer, escolhe.
   const [funilId, setFunilId] = useState(funilInicial ? SEM_FUNIL : SEM_FUNIL);
   const [etapaId, setEtapaId] = useState("");
@@ -115,8 +126,6 @@ export function NovoLeadDoCRM({
     setTelefone("");
     setEmail("");
     setOrigem(ORIGEM_VAZIA);
-    setEtiquetas("");
-    setNascimento("");
     setFunilId(SEM_FUNIL);
     setEtapaId("");
     setProdutoId("");
@@ -151,8 +160,6 @@ export function NovoLeadDoCRM({
         "Anúncio",
         "Landing page",
         "Posicionamento",
-        "Etiquetas",
-        "Nascimento",
       ];
       const lin: string[] = [
         nome.trim(),
@@ -164,12 +171,16 @@ export function NovoLeadDoCRM({
         origem.anuncio,
         origem.lp,
         origem.posicionamento,
-        etiquetas.replace(/,/g, ";"),
-        nascimento,
       ];
       if (comFunil) {
         const produto = produtos.find((p) => p.id === produtoId);
-        cab.push("Produto", "Valor da venda", "Status da venda", "Previsão de fechamento", "Observações");
+        cab.push(
+          "Produto",
+          "Valor da venda",
+          "Status da venda",
+          "Previsão de fechamento",
+          "Observações",
+        );
         lin.push(produto?.nome ?? "", valor.trim(), statusDaVenda, previsao, descricao.trim());
         for (const d of definicoes) {
           cab.push(d.label);
@@ -214,23 +225,45 @@ export function NovoLeadDoCRM({
 
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && aoFechar()}>
-      <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-full overflow-x-hidden overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{t("Novo lead")}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 overflow-x-hidden overflow-y-auto rounded-3xl bg-background p-4 sm:rounded-3xl sm:p-6">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="sr-only">{t("Novo lead")}</DialogTitle>
+          <DialogDescription className="sr-only">
             {t(
               "Basta o nome e o telefone ou o e-mail: o lead fica guardado, sem funil e sem venda. O resto é opcional.",
             )}
           </DialogDescription>
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {t("Novo lead")}
+          </p>
+          <Input
+            id="nl-nome"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            autoFocus
+            aria-label={t("Nome")}
+            placeholder={t("Nome do lead")}
+            className="h-12 rounded-xl text-lg font-semibold"
+          />
         </DialogHeader>
 
-        <div className="grid min-w-0 gap-5">
-          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-blue-500 p-4 sm:grid-cols-2">
-            <h3 className="text-sm font-semibold sm:col-span-2">{t("Contato")}</h3>
-            <div className="min-w-0 space-y-1.5 sm:col-span-2">
-              <Label htmlFor="nl-nome">{t("Nome")} *</Label>
-              <Input id="nl-nome" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
-            </div>
+        <div
+          className="grid min-w-0 gap-3"
+          onKeyDown={(e) => {
+            // Enter em qualquer campo de texto do cadastro salva o lead (não em caixas de pop-ups).
+            if (
+              e.key === "Enter" &&
+              !e.nativeEvent.isComposing &&
+              e.target instanceof HTMLInputElement &&
+              e.currentTarget.contains(e.target)
+            ) {
+              e.preventDefault();
+              if (!enviando) void criar();
+            }
+          }}
+        >
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:grid-cols-2 sm:p-4">
+            <h3 className="text-base font-semibold sm:col-span-2">{t("Contato")}</h3>
             <div className="min-w-0 space-y-1.5">
               <Label htmlFor="nl-tel">{t("Telefone (WhatsApp)")}</Label>
               <Input
@@ -238,7 +271,7 @@ export function NovoLeadDoCRM({
                 inputMode="tel"
                 placeholder="(11) 99999-8888"
                 value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
+                onChange={(e) => setTelefone((ant) => proximoTelefone(ant, e.target.value))}
               />
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -255,8 +288,8 @@ export function NovoLeadDoCRM({
             </p>
           </section>
 
-          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-orange-500 p-4">
-            <h3 className="text-sm font-semibold">{t("Origem")}</h3>
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:p-4">
+            <h3 className="text-base font-semibold">{t("Origem")}</h3>
             <OrigemEmCascata
               valor={origem}
               aoMudar={setOrigem}
@@ -272,25 +305,10 @@ export function NovoLeadDoCRM({
             </p>
           </section>
 
-          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-red-500 p-4 sm:grid-cols-2">
-            <h3 className="text-sm font-semibold sm:col-span-2">{t("Tags e nascimento")}</h3>
-            <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="nl-tags">{t("Tags (separadas por vírgula)")}</Label>
-              <Input
-                id="nl-tags"
-                placeholder="vip, base-2025"
-                value={etiquetas}
-                onChange={(e) => setEtiquetas(e.target.value)}
-              />
-            </div>
-            <div className="min-w-0 space-y-1.5">
-              <Label>{t("Nascimento")}</Label>
-              <CampoDeData valor={nascimento} aoMudar={setNascimento} rotulo={t("Nascimento")} className="w-full" />
-            </div>
-          </section>
-
-          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-purple-500 p-4 sm:grid-cols-2">
-            <h3 className="text-sm font-semibold sm:col-span-2">{t("Funil e venda (opcional)")}</h3>
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:grid-cols-2 sm:p-4">
+            <h3 className="text-base font-semibold sm:col-span-2">
+              {t("Funil e venda (opcional)")}
+            </h3>
             <div className="min-w-0 space-y-1.5">
               <Label>{t("Funil")}</Label>
               <Select
@@ -342,7 +360,9 @@ export function NovoLeadDoCRM({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground sm:col-span-2">
-                {t("Sem funil, o lead não tem venda. Escolha um funil para registrar a venda dele.")}
+                {t(
+                  "Sem funil, o lead não tem venda. Escolha um funil para registrar a venda dele.",
+                )}
               </p>
             )}
 
@@ -433,9 +453,9 @@ export function NovoLeadDoCRM({
             ) : null}
           </section>
 
-          <section className="grid min-w-0 gap-3 rounded-2xl border border-l-4 border-l-pink-500 p-4">
+          <section className="grid min-w-0 gap-3 rounded-2xl border border-border bg-card/50 p-3 sm:p-4">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">{t("Campos personalizados (opcional)")}</h3>
+              <h3 className="text-base font-semibold">{t("Campos personalizados (opcional)")}</h3>
               <Button
                 type="button"
                 size="sm"
@@ -459,7 +479,9 @@ export function NovoLeadDoCRM({
                       maxLength={60}
                       placeholder={t("Nome do campo")}
                       onChange={(e) =>
-                        setLivres((a) => a.map((x, k) => (k === i ? { ...x, nome: e.target.value } : x)))
+                        setLivres((a) =>
+                          a.map((x, k) => (k === i ? { ...x, nome: e.target.value } : x)),
+                        )
                       }
                     />
                     <Input
@@ -467,7 +489,9 @@ export function NovoLeadDoCRM({
                       maxLength={500}
                       placeholder={t("Valor")}
                       onChange={(e) =>
-                        setLivres((a) => a.map((x, k) => (k === i ? { ...x, valor: e.target.value } : x)))
+                        setLivres((a) =>
+                          a.map((x, k) => (k === i ? { ...x, valor: e.target.value } : x)),
+                        )
                       }
                     />
                     <button
@@ -485,14 +509,17 @@ export function NovoLeadDoCRM({
           </section>
 
           {problemas.length > 0 ? (
-            <div role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm">
+            <div
+              role="alert"
+              className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm"
+            >
               {problemas.map((p) => (
                 <p key={p}>{p}</p>
               ))}
             </div>
           ) : null}
 
-          <div className="flex justify-end gap-2">
+          <div className="sticky -bottom-4 z-10 -mx-4 flex justify-end gap-2 border-t bg-background px-4 py-3 sm:-bottom-6 sm:-mx-6 sm:px-6">
             <Button type="button" variant="ghost" onClick={aoFechar} disabled={enviando}>
               {t("Cancelar")}
             </Button>
