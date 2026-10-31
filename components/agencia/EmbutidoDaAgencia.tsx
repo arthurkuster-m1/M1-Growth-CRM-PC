@@ -75,6 +75,37 @@ export function EmbutidoDaAgencia({ clienteId }: { clienteId: string }) {
       window.clearInterval(intervalo);
     };
   }, [clienteId]);
+  // Um pop-up (diálogo) aberto dentro do quadro ficava apertado: avisa a página-mãe, que estende o
+  // quadro à janela inteira enquanto o pop-up estiver aberto.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("_janela") === "1") return;
+    let aberto = false;
+    const checar = () => {
+      const agora = document.querySelector('.ds-cortina[data-state="open"]') !== null;
+      if (agora === aberto) return;
+      aberto = agora;
+      window.parent?.postMessage(
+        { tipo: "agencia-modal", cliente: clienteId, aberto },
+        window.location.origin,
+      );
+    };
+    const observador = new MutationObserver(checar);
+    observador.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state"],
+    });
+    return () => {
+      observador.disconnect();
+      if (aberto) {
+        window.parent?.postMessage(
+          { tipo: "agencia-modal", cliente: clienteId, aberto: false },
+          window.location.origin,
+        );
+      }
+    };
+  }, [clienteId]);
   useEffect(() => {
     document.documentElement.dataset.embutido = "1";
     // O quadro cresce com o conteúdo: nada de rolagem interna.

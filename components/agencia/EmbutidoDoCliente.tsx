@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { EVENTO_RECARREGAR_CLIENTE } from "@/components/agencia/JanelaDaCampanha";
 import { PARAMETRO_CLIENTE_DA_AGENCIA, PARAMETRO_EMBUTIDO } from "@/lib/agencia/cliente-da-aba";
@@ -24,6 +24,10 @@ export function EmbutidoDoCliente({
   const [pronto, setPronto] = useState(false);
   // Muda a cada fechamento da janela de uma campanha deste cliente: o quadro recarrega e mostra o que foi editado.
   const [versao, setVersao] = useState(0);
+  // Um pop-up aberto dentro do quadro: o quadro ocupa a janela inteira até ele fechar.
+  const [modal, setModal] = useState(false);
+  // As alturas que chegam com o pop-up aberto são da janela inteira: não valem para o quadro.
+  const modalRef = useRef(false);
   useEffect(() => {
     const recarregar = (e: Event) => {
       if ((e as CustomEvent<string>).detail === clienteId) {
@@ -37,8 +41,23 @@ export function EmbutidoDoCliente({
   useEffect(() => {
     const ouvir = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      const d = e.data as { tipo?: string; cliente?: string; altura?: number } | null;
-      if (d?.tipo === "agencia-altura" && d.cliente === clienteId && typeof d.altura === "number") {
+      const d = e.data as {
+        tipo?: string;
+        cliente?: string;
+        altura?: number;
+        aberto?: boolean;
+      } | null;
+      if (d?.tipo === "agencia-modal" && d.cliente === clienteId) {
+        modalRef.current = d.aberto === true;
+        setModal(d.aberto === true);
+        return;
+      }
+      if (
+        !modalRef.current &&
+        d?.tipo === "agencia-altura" &&
+        d.cliente === clienteId &&
+        typeof d.altura === "number"
+      ) {
         setAltura(Math.max(120, Math.ceil(d.altura)));
         setPronto(true);
       }
@@ -53,7 +72,8 @@ export function EmbutidoDoCliente({
   }, [clienteId]);
   const src = `${caminho}?${PARAMETRO_CLIENTE_DA_AGENCIA}=${encodeURIComponent(clienteId)}&${PARAMETRO_EMBUTIDO}=1`;
   return (
-    <div className="relative">
+    // Com o pop-up aberto o quadro sai do fluxo (fixo, na janela toda); este espaço guarda o lugar.
+    <div className="relative" style={modal && pronto ? { height: altura } : undefined}>
       {pronto ? null : (
         <div className="h-60 animate-pulse rounded-2xl bg-secondary/60" aria-busy="true" />
       )}
@@ -63,7 +83,9 @@ export function EmbutidoDoCliente({
         src={src}
         style={
           pronto
-            ? { height: altura }
+            ? modal
+              ? { position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 60 }
+              : { height: altura }
             : // Carregando: renderiza fora do fluxo, com uma altura de partida, e escondido.
               {
                 position: "absolute",
