@@ -5,4 +5,4 @@ titulo: Cronograma: o histórico da semana mostra as anotações da revisão sem
 ---
 
 Ao abrir uma semana no Histórico do cronograma, os tópicos anotados na autoavaliação daquela
-semana aparecem acima das tarefas da agência e do cliente.
+semana aparecem abaixo das tarefas da agência e do cliente.
