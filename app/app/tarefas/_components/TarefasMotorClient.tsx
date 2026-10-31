@@ -1033,16 +1033,96 @@ export function TarefasMotorClient({
     );
   }
 
+  // O botão dividido da Nova tarefa: no Modo agência (sem título) ele vai para a linha dos filtros.
+  const botaoNova = podeEditar ? (
+    // Botão dividido, como no Notion: a parte grande cria em branco; a seta abre os modelos.
+    <div className="flex shrink-0 items-stretch rounded-xl bg-primary shadow-sm">
+      <button
+        aria-label={t("Nova tarefa")}
+        type="button"
+        onClick={() => novaTarefa()}
+        className="inline-flex h-9 items-center gap-2 rounded-l-xl px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
+      >
+        <Plus size={16} weight="bold" aria-hidden />
+        <span className="hidden sm:inline">{t("Nova tarefa")}</span>
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={t("Modelos de tarefa")}
+            title={t("Modelos de tarefa")}
+            className="grid h-9 w-8 place-items-center rounded-r-xl border-l border-primary-foreground/25 text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
+          >
+            <CaretDown size={14} weight="bold" aria-hidden />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          {modelos.length > 0 ? (
+            <>
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                {t("Criar a partir de um modelo")}
+              </p>
+              {modelos.map((m) => (
+                <DropdownMenuItem
+                  key={m.id}
+                  className="gap-2"
+                  onSelect={() => void novaDoModelo(m)}
+                >
+                  {m.repeat_enabled ? (
+                    <ArrowsClockwise size={14} className="shrink-0 text-primary" aria-hidden />
+                  ) : null}
+                  <span className="truncate">{m.name}</span>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
+          {planos.length > 0 ? (
+            <>
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                {t("Criar a partir de um plano")}
+              </p>
+              {planos.map((p) => (
+                <DropdownMenuItem
+                  key={p.id}
+                  className="gap-2"
+                  onSelect={() => setPlanoEmAplicacao(p)}
+                >
+                  <TreeStructure size={14} className="shrink-0 text-primary" aria-hidden />
+                  <span className="truncate">{p.nome}</span>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
+          <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(true)}>
+            <Plus size={14} aria-hidden />
+            {t("Novo modelo")}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(false)}>
+            <ArrowsClockwise size={14} aria-hidden />
+            {t("Gerenciar modelos e repetições")}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" onSelect={() => setPlanosAberto(true)}>
+            <ListChecks size={14} aria-hidden />
+            {t("Gerenciar planos de tarefa")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ) : null;
+
   return (
     <div
       className={
-        contatoFixo
-          ? "flex w-full min-w-0 flex-col gap-4"
+        contatoFixo || semTitulo
+          ? "flex w-full min-w-0 flex-col gap-3"
           : "mx-auto flex w-full max-w-none min-w-0 flex-col gap-4 p-4 sm:px-8 sm:py-6 2xl:px-12"
       }
     >
       <header className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className={semTitulo ? "hidden" : "flex items-start justify-between gap-3"}>
           {semTitulo ? (
             <div className="min-w-0" />
           ) : (
@@ -1057,88 +1137,7 @@ export function TarefasMotorClient({
               </p>
             </div>
           )}
-          {podeEditar ? (
-            // Botão dividido, como no Notion: a parte grande cria em branco; a seta abre os modelos.
-            <div className="flex shrink-0 items-stretch rounded-xl bg-primary shadow-sm">
-              <button
-                aria-label={t("Nova tarefa")}
-                type="button"
-                onClick={() => novaTarefa()}
-                className="inline-flex h-9 items-center gap-2 rounded-l-xl px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
-              >
-                <Plus size={16} weight="bold" aria-hidden />
-                <span className="hidden sm:inline">{t("Nova tarefa")}</span>
-              </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t("Modelos de tarefa")}
-                    title={t("Modelos de tarefa")}
-                    className="grid h-9 w-8 place-items-center rounded-r-xl border-l border-primary-foreground/25 text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
-                  >
-                    <CaretDown size={14} weight="bold" aria-hidden />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  {modelos.length > 0 ? (
-                    <>
-                      <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                        {t("Criar a partir de um modelo")}
-                      </p>
-                      {modelos.map((m) => (
-                        <DropdownMenuItem
-                          key={m.id}
-                          className="gap-2"
-                          onSelect={() => void novaDoModelo(m)}
-                        >
-                          {m.repeat_enabled ? (
-                            <ArrowsClockwise
-                              size={14}
-                              className="shrink-0 text-primary"
-                              aria-hidden
-                            />
-                          ) : null}
-                          <span className="truncate">{m.name}</span>
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                    </>
-                  ) : null}
-                  {planos.length > 0 ? (
-                    <>
-                      <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                        {t("Criar a partir de um plano")}
-                      </p>
-                      {planos.map((p) => (
-                        <DropdownMenuItem
-                          key={p.id}
-                          className="gap-2"
-                          onSelect={() => setPlanoEmAplicacao(p)}
-                        >
-                          <TreeStructure size={14} className="shrink-0 text-primary" aria-hidden />
-                          <span className="truncate">{p.nome}</span>
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                    </>
-                  ) : null}
-                  <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(true)}>
-                    <Plus size={14} aria-hidden />
-                    {t("Novo modelo")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" onSelect={() => abrirModelos(false)}>
-                    <ArrowsClockwise size={14} aria-hidden />
-                    {t("Gerenciar modelos e repetições")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" onSelect={() => setPlanosAberto(true)}>
-                    <ListChecks size={14} aria-hidden />
-                    {t("Gerenciar planos de tarefa")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : null}
+          {semTitulo ? null : botaoNova}
         </div>
         <AbasDeVisualizacao
           abas={abas}
@@ -1219,6 +1218,7 @@ export function TarefasMotorClient({
           aoMudar={mudarConsulta}
           salvamento={salvamento}
         />
+        {semTitulo ? <div className="ml-auto shrink-0 pl-2">{botaoNova}</div> : null}
       </div>
 
       {visualizacao === "calendario" ? (
