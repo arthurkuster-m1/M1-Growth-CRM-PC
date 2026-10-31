@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { JanelaDaCampanha } from "@/components/agencia/JanelaDaCampanha";
-import { AtalhoEmDestaque, PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
-import { ChartBar, Megaphone } from "@/lib/ui/icons";
+import { PaginaDeMarketing } from "@/components/marketing/PaginaDeMarketing";
+import { Megaphone } from "@/lib/ui/icons";
 import { EmbutidoDoCliente } from "@/components/agencia/EmbutidoDoCliente";
 import { OrigemDosLeads } from "@/components/agencia/OrigemDosLeads";
 import { SeletorDeClientes } from "@/components/agencia/SeletorDeClientes";
@@ -34,9 +34,15 @@ export default async function CampanhasDaAgenciaPage() {
   const { data: orgs } = await createAdminClient()
     .from("organizations")
     .select("id, settings")
-    .in("id", escolhidos.map((c) => c.id));
+    .in(
+      "id",
+      escolhidos.map((c) => c.id),
+    );
   const origemDe = new Map(
-    ((orgs ?? []) as Array<{ id: string; settings: unknown }>).map((o) => [o.id, origemDosLeads(o.settings)]),
+    ((orgs ?? []) as Array<{ id: string; settings: unknown }>).map((o) => [
+      o.id,
+      origemDosLeads(o.settings),
+    ]),
   );
 
   const nomes = Object.fromEntries(escolhidos.map((c) => [c.id, c.name]));
@@ -50,18 +56,7 @@ export default async function CampanhasDaAgenciaPage() {
       titulo={t("Campanhas")}
       descricao={t("As campanhas de todos os clientes, com o funil e os resultados de cada uma.")}
     >
-      <section aria-label={t("Telas relacionadas")} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <AtalhoEmDestaque
-          voltarPara={{ href: "/app/agencia/campanhas", rotulo: t("Campanhas") }}
-          href="/app/agencia/dashboards?painel=trafego"
-          titulo={t("Resultados das campanhas")}
-          descricao={t("Dashboard de Tráfego Pago de cada cliente, com troca rápida")}
-          icone={<ChartBar weight="duotone" aria-hidden />}
-          tom="blue"
-        />
-      </section>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">{t("Campanhas por cliente")}</h2>
+      <div className="flex justify-end">
         <SeletorDeClientes
           clientes={todos.map((c) => ({ id: c.id, name: c.name, cor: c.cor }))}
           selecionados={escolhidosIds}
@@ -70,7 +65,9 @@ export default async function CampanhasDaAgenciaPage() {
       {escolhidos.map((c) => (
         <section key={c.id} aria-label={c.name} className="grid gap-2">
           <header className="flex flex-wrap items-center justify-between gap-2">
-            <h3><TagDoCliente nome={c.name} cor={c.cor} grande /></h3>
+            <h3>
+              <TagDoCliente nome={c.name} cor={c.cor} grande />
+            </h3>
             <OrigemDosLeads clienteId={c.id} nome={c.name} origem={origemDe.get(c.id) ?? "crm"} />
           </header>
           <EmbutidoDoCliente
