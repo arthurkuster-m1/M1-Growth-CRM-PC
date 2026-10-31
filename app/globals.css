@@ -1593,3 +1593,12 @@
     animation-iteration-count: infinite !important;
   }
 }
+
+/*
+  MODO AGÊNCIA (quadro incorporado): o <body> tem `min-h-dvh`, e dentro do quadro a "janela" é o próprio
+  iframe — então o corpo nunca encolhia abaixo da altura de partida e sobrava um vazio grande entre
+  um cliente e o próximo. Aqui a altura é a do CONTEÚDO, para o quadro acabar onde o conteúdo acaba.
+*/
+html[data-embutido="1"] body {
+  min-height: 0;
+}
