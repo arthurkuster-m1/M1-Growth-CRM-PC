@@ -75,6 +75,7 @@ import { opcaoDaTarefa, type CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { metasDaTarefa } from "@/lib/tarefas/campos-da-tarefa";
 import { tarefaDoModelo, type ModeloDeTarefa } from "@/lib/tarefas/modelos";
 import { tarefaQueNasce } from "@/lib/tarefas/nascer-com-filtros";
+import { modelosDeVisaoDeTarefas } from "@/lib/tarefas/modelos-de-visao";
 import { TIPOS_COM_OPCOES } from "@/lib/tarefas/propriedades";
 import {
   SITUACOES_DA_TAREFA,
@@ -190,7 +191,6 @@ export function TarefasMotorClient({
   soPainel = false,
   aoFecharPainel,
 }: Props) {
-  void usuarioId;
   const t = useT();
   const tag = useTagDeIdioma();
   const agora = useMemo(() => new Date(agoraIso), [agoraIso]);
@@ -633,6 +633,11 @@ export function TarefasMotorClient({
     }).then((v) => v && escolherAba(v.id));
   }
   const escolherAba = (id: string) => router.replace(`${caminho}?v=${id}`, { scroll: false });
+  // As visões prontas do "+": as de sempre, com o filtro já montado (a pessoa as edita e apaga depois).
+  const modelosDeVisao = useMemo(
+    () => modelosDeVisaoDeTarefas({ opcoes, usuarioId, comCronograma: podeConfigurar }),
+    [opcoes, usuarioId, podeConfigurar],
+  );
   const abas = ordemDasAbas.map((a) =>
     a.id === ID_DA_PADRAO
       ? {
@@ -1132,6 +1137,17 @@ export function TarefasMotorClient({
           aoCriar={(nome, tipo) =>
             void criarVisao({ name: nome, type: tipo }).then((v) => v && escolherAba(v.id))
           }
+          modelos={modelosDeVisao}
+          aoCriarModelo={(id) => {
+            const modelo = modelosDeVisao.find((m) => m.id === id);
+            if (!modelo) return;
+            // Já existe uma aba com o nome do modelo? Abre essa em vez de duplicar.
+            const existente = visoes.find((v) => v.name === modelo.nome);
+            if (existente) return escolherAba(existente.id);
+            void criarVisao({ name: modelo.nome, type: modelo.tipo, config: modelo.config }).then(
+              (v) => v && escolherAba(v.id),
+            );
+          }}
           aoConfigurar={() => setConfigurando(true)}
         />
       </header>

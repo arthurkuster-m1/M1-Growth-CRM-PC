@@ -211,6 +211,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
     hoje: t("Hoje"),
     ontem: t("Ontem"),
     amanha: t("Amanhã"),
+    depois_de_amanha: t("Depois de amanhã"),
     inicio_da_semana: t("Início desta semana"),
     fim_da_semana: t("Fim desta semana"),
     inicio_do_mes: t("Início deste mês"),
