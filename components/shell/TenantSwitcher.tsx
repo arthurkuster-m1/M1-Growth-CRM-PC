@@ -1,5 +1,6 @@
 "use client";
 import { TagDoCliente } from "@/components/agencia/TagDoCliente";
+import { destinoAoTrocarDeOrganizacao } from "@/lib/navigation/destino-ao-trocar-de-organizacao";
 import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -40,7 +41,7 @@ export function TenantSwitcher() {
       const result = await setActiveOrg(orgId);
       if (!result.ok) throw new Error(result.error);
       // Novo documento elimina QueryClient, subscriptions e respostas em voo.
-      window.location.assign("/app/inbox");
+      window.location.assign(destinoAoTrocarDeOrganizacao(pathname));
     } catch {
       transition.cancel();
       setPending(false);
