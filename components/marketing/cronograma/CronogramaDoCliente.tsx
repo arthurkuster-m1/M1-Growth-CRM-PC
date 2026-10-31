@@ -10,7 +10,7 @@ import {
   GavetaDoCronograma,
   type VistaDaGaveta,
 } from "@/components/marketing/cronograma/GavetaDoCronograma";
-import { HistoricoDaSemana } from "@/components/marketing/cronograma/HistoricoDaSemana";
+import { HistoricoPorSemana } from "@/components/marketing/cronograma/HistoricoPorSemana";
 import { TarefasAdiadas } from "@/components/marketing/cronograma/TarefasAdiadas";
 import {
   PainelDoCronograma,
@@ -66,7 +66,7 @@ export function CronogramaDoCliente() {
 
   const [gaveta, setGaveta] = useState<VistaDaGaveta | null>(null);
 
-  const c = useCronograma(inicio, aba === "historico");
+  const c = useCronograma(inicio, false);
   const acoes = useEdicaoDoCronograma(c, c.dados?.itens ?? [], c.dados?.metas ?? []);
   // No modo agência a empresa é o cliente que está aberto, e compartilhar fica de fora (o link
   // público é da empresa da sessão).
@@ -227,7 +227,7 @@ export function CronogramaDoCliente() {
           ))}
         </div>
 
-        {aba === "semana" || aba === "historico" ? (
+        {aba === "semana" ? (
           <div className="flex w-full items-center justify-between gap-1 sm:inline-flex sm:w-auto sm:justify-start">
             <button
               type="button"
@@ -337,7 +337,7 @@ export function CronogramaDoCliente() {
       ) : null}
 
       {aba === "historico" ? (
-        <HistoricoDaSemana eventos={c.historico} />
+        <HistoricoPorSemana />
       ) : aba === "adiadas" ? (
         <TarefasAdiadas empresa={empresa} />
       ) : (
