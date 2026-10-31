@@ -74,3 +74,15 @@ describe("histórico por semana, agência x cliente", () => {
     expect(s.nao_feitas).toBe(2);
   });
 });
+
+describe("anotações da revisão semanal", () => {
+  it("traz os tópicos da autoavaliação, mesmo numa semana sem tarefas", () => {
+    const r = resumoDasSemanas(
+      [],
+      [],
+      [{ semana_inicio: "2026-10-25", nota: 70, anotacoes: "- Funcionou X\n\n* Travou Y" }],
+      "2026-11-01",
+    );
+    expect(r[0]!.topicos).toEqual(["Funcionou X", "Travou Y"]);
+  });
+});

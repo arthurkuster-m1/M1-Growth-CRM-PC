@@ -1,3 +1,4 @@
+import { topicosDasAnotacoes } from "@/lib/marketing/autoavaliacao";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
 import {
   domingoDe,
@@ -39,6 +40,8 @@ export interface ResumoDaSemana {
   nao_feitas: number;
   /** Nota da autoavaliação (0–100); `null` = a semana não foi avaliada. */
   nota: number | null;
+  /** Os tópicos que a agência anotou na revisão semanal (autoavaliação), um por linha. */
+  topicos: string[];
 }
 
 const semanaDe = (iso: string) => domingoDe(chaveDoDia(new Date(iso), FUSO_DO_CRONOGRAMA));
@@ -53,7 +56,7 @@ const ORDEM: Record<SituacaoNaSemana, number> = { feita: 0, adiada: 1, nao_feita
 export function resumoDasSemanas(
   tarefas: readonly TarefaDoCronograma[],
   eventos: readonly EventoDaSemana[],
-  notas: ReadonlyArray<{ semana_inicio: string; nota: number }>,
+  notas: ReadonlyArray<{ semana_inicio: string; nota: number; anotacoes?: string }>,
   ateSemana: string,
 ): ResumoDaSemana[] {
   const limite = domingoDe(ateSemana);
@@ -61,7 +64,15 @@ export function resumoDasSemanas(
   const da = (semana: string) => {
     let r = mapa.get(semana);
     if (!r) {
-      r = { semana_inicio: semana, agencia: [], cliente: [], feitas: 0, nao_feitas: 0, nota: null };
+      r = {
+        semana_inicio: semana,
+        agencia: [],
+        cliente: [],
+        feitas: 0,
+        nao_feitas: 0,
+        nota: null,
+        topicos: [],
+      };
       mapa.set(semana, r);
     }
     return r;
@@ -107,7 +118,12 @@ export function resumoDasSemanas(
       motivo: e.motivo,
     });
   }
-  for (const n of notas) if (n.semana_inicio <= limite) da(n.semana_inicio).nota = n.nota;
+  for (const n of notas) {
+    if (n.semana_inicio > limite) continue;
+    const r = da(n.semana_inicio);
+    r.nota = n.nota;
+    r.topicos = topicosDasAnotacoes(n.anotacoes ?? "");
+  }
   const ordenar = (a: ItemDaSemana, b: ItemDaSemana) =>
     ORDEM[a.situacao] - ORDEM[b.situacao] || a.titulo.localeCompare(b.titulo);
   for (const r of mapa.values()) {
