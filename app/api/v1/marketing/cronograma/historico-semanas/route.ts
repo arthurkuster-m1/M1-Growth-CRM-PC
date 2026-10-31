@@ -36,7 +36,9 @@ export async function GET(): Promise<Response> {
       .limit(2000),
     a.supabase
       .from("crm_task_historico")
-      .select("id, task_id, tipo, de_prazo, para_prazo, motivo, created_at, crm_tasks(title)")
+      .select(
+        "id, task_id, tipo, de_prazo, para_prazo, motivo, created_at, crm_tasks(title, cronograma_lado)",
+      )
       .eq("organization_id", a.orgId)
       .gte("created_at", desdeIso)
       .order("created_at", { ascending: false })
@@ -55,9 +57,15 @@ export async function GET(): Promise<Response> {
 
   const evs: EventoDaSemana[] = (
     (eventos.data ?? []) as unknown as Array<
-      Omit<EventoDaSemana, "titulo"> & { crm_tasks: { title: string } | null }
+      Omit<EventoDaSemana, "titulo" | "lado"> & {
+        crm_tasks: { title: string; cronograma_lado: string | null } | null;
+      }
     >
-  ).map(({ crm_tasks, ...e }) => ({ ...e, titulo: crm_tasks?.title ?? null }));
+  ).map(({ crm_tasks, ...e }) => ({
+    ...e,
+    titulo: crm_tasks?.title ?? null,
+    lado: crm_tasks?.cronograma_lado === "cliente" ? ("cliente" as const) : ("agencia" as const),
+  }));
   const semanas = resumoDasSemanas(
     ((tarefas.data ?? []) as Array<Parameters<typeof tarefaDoCronograma>[0]>).map(
       tarefaDoCronograma,
