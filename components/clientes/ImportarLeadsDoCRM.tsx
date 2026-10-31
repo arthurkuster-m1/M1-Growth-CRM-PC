@@ -31,7 +31,6 @@ import {
   csvDe,
   lerTextoDeTabela,
   textoDoArquivo,
-  xlsDe,
 } from "@/lib/leads/tabela-de-importacao";
 import {
   ArrowDown,
@@ -285,7 +284,7 @@ export function ImportarLeadsDoCRM({
     if (arquivoRef.current) arquivoRef.current.value = "";
   }
 
-  function baixarModelo(formato: "csv" | "xls") {
+  function baixarModelo() {
     const exemplos: Record<string, string> = {
       titulo: "Maria Silva",
       telefone: "(11) 99999-8888",
@@ -308,8 +307,7 @@ export function ImportarLeadsDoCRM({
     };
     const exemplo = colunas.map((c) => exemplos[c.id] ?? "");
     const tabela = [colunas.map((c) => c.cabecalho), exemplo];
-    if (formato === "csv") baixar("modelo-de-leads.csv", csvDe(tabela), "text/csv;charset=utf-8");
-    else baixar("modelo-de-leads.xls", xlsDe(tabela), "application/vnd.ms-excel");
+    baixar("modelo-de-leads.csv", csvDe(tabela), "text/csv;charset=utf-8");
   }
 
   async function adicionar() {
@@ -595,11 +593,8 @@ export function ImportarLeadsDoCRM({
               <UploadSimple size={16} aria-hidden className="mr-1.5" />
               {t("Importar arquivo CSV")}
             </Button>
-            <Button type="button" variant="outline" onClick={() => baixarModelo("csv")}>
+            <Button type="button" variant="outline" onClick={() => baixarModelo()}>
               {t("Modelo CSV")}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => baixarModelo("xls")}>
-              {t("Modelo XLS")}
             </Button>
           </div>
         </div>
