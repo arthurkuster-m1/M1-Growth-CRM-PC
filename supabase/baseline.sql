@@ -57954,6 +57954,10 @@ create trigger trg_contacts_vinculou_organizacao
   after update of linked_organization_id on public.contacts
   for each row execute function public.fn_contacts_vinculou_organizacao();
 
+-- ---- comentários da campanha (migration 0683) ----
+alter table public.demand_campaigns add column if not exists comments text not null default '';
+comment on column public.demand_campaigns.comments is 'Comentários livres da agência sobre a campanha (tabela de Campanhas).';
+
 -- ---- endurecimento do que as migrations 0614-0649 deixaram aberto (migration 0679) ----
 -- 1. `anon` fora das tabelas que as migrations 0614-0649 criaram. O default do Supabase concede tudo
 --    a anon em toda tabela nova; a RLS já barra, mas privilégio que não se usa não se deixa de pé.

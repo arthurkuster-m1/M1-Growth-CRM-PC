@@ -53,14 +53,14 @@ export async function GET(): Promise<Response> {
   }
   const campanhas = ((data ?? []) as Array<Record<string, unknown>>).map(campanhaDaLinha);
 
-  // A última análise e o último planejamento de cada campanha (só quem é da agência as lê: a
+  // A última análise, o último planejamento e a última otimização de cada campanha (só quem é da agência as lê: a
   // RLS das notas já esconde o resto, e o cliente recebe `null`).
   if (a.podeEditar && campanhas.length > 0) {
     const { data: notas } = await a.supabase
       .from("demand_campaign_notes")
       .select("campaign_id, kind, note_date, body")
       .eq("organization_id", a.orgId)
-      .in("kind", ["analise", "planejamento"])
+      .in("kind", ["analise", "planejamento", "otimizacao"])
       .order("note_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(3000);
@@ -77,6 +77,7 @@ export async function GET(): Promise<Response> {
     for (const c of campanhas as CampanhaDeDemanda[]) {
       c.ultima_analise = ultimas.get(`${c.id}:analise`) ?? null;
       c.ultimo_planejamento = ultimas.get(`${c.id}:planejamento`) ?? null;
+      c.ultima_otimizacao = ultimas.get(`${c.id}:otimizacao`) ?? null;
     }
   }
 
@@ -109,12 +110,18 @@ export async function GET(): Promise<Response> {
         .from("demand_campaign_days")
         .select("campaign_id, day, leads")
         .eq("organization_id", a.orgId)
-        .in("campaign_id", (campanhas as CampanhaDeDemanda[]).map((c) => c.id))
+        .in(
+          "campaign_id",
+          (campanhas as CampanhaDeDemanda[]).map((c) => c.id),
+        )
         .limit(50000);
       for (const d of (dias ?? []) as Array<{ campaign_id: string; day: string; leads: number }>) {
         const e = porId.get(d.campaign_id);
         if (e && (d.day < e.de || d.day > e.ate)) continue;
-        leadsDoMeta.set(d.campaign_id, (leadsDoMeta.get(d.campaign_id) ?? 0) + (Number(d.leads) || 0));
+        leadsDoMeta.set(
+          d.campaign_id,
+          (leadsDoMeta.get(d.campaign_id) ?? 0) + (Number(d.leads) || 0),
+        );
       }
     }
     for (const c of campanhas as CampanhaDeDemanda[]) {
