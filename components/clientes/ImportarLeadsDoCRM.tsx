@@ -419,7 +419,9 @@ export function ImportarLeadsDoCRM({
               </Select>
             </div>
           ) : null}
+        </div>
 
+        <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
             <Label>{t("Custo desta lista (opcional)")}</Label>
             <div className="flex gap-2">
@@ -429,7 +431,7 @@ export function ImportarLeadsDoCRM({
                 list="fontes-do-custo-da-importacao"
                 placeholder={t("Fonte (igual à origem)")}
                 aria-label={t("Fonte do custo")}
-                className="w-40"
+                className="w-56 min-w-0"
                 onChange={(e) => setFonteDoCusto(e.target.value)}
               />
               <datalist id="fontes-do-custo-da-importacao">
@@ -528,33 +530,72 @@ export function ImportarLeadsDoCRM({
                   const existentes = rotulosDeTodosOsCampos.filter(
                     (r) => !rotulosJa.has(r.toLowerCase()),
                   );
+                  const grupoDe = (id: string): string => {
+                    if (id.startsWith("link_")) return "links";
+                    if (id.startsWith("campo:")) return "campos-do-funil";
+                    if (id.startsWith("extra:")) return "personalizados";
+                    if (
+                      [
+                        "origem",
+                        "campanha",
+                        "conjunto",
+                        "anuncio",
+                        "landing_page",
+                        "posicionamento",
+                      ].includes(id)
+                    )
+                      return "origem";
+                    if (["etiquetas", "nascimento"].includes(id)) return "cadastro";
+                    return "funil-e-venda";
+                  };
+                  const GRUPOS: Array<[string, string]> = [
+                    ["cadastro", t("Cadastro")],
+                    ["origem", t("Origem")],
+                    ["funil-e-venda", t("Funil e venda")],
+                    ["links", t("Links")],
+                    ["campos-do-funil", t("Campos do funil")],
+                    ["personalizados", t("Campos personalizados")],
+                  ];
+                  const chip = "rounded-full border px-2.5 py-0.5 text-xs hover:bg-secondary";
                   return (
-                    <div className="grid gap-2">
+                    <div className="grid gap-3">
                       <p className="text-xs font-medium text-muted-foreground">
                         {t("Adicionar propriedade")}
                       </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {livres.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => adicionarColuna(c.id)}
-                            className="rounded-full border px-2.5 py-0.5 text-xs hover:bg-secondary"
-                          >
-                            + {c.rotulo}
-                          </button>
-                        ))}
-                        {existentes.map((r) => (
-                          <button
-                            key={`ex:${r}`}
-                            type="button"
-                            onClick={() => criarColunaPersonalizada(r)}
-                            className="rounded-full border border-dashed px-2.5 py-0.5 text-xs hover:bg-secondary"
-                          >
-                            + {r}
-                          </button>
-                        ))}
-                      </div>
+                      {GRUPOS.map(([grupo, titulo]) => {
+                        const doGrupo = livres.filter((c) => grupoDe(c.id) === grupo);
+                        const sugeridas = grupo === "personalizados" ? existentes : [];
+                        if (doGrupo.length === 0 && sugeridas.length === 0) return null;
+                        return (
+                          <div key={grupo} className="grid gap-1.5">
+                            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                              {titulo}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {doGrupo.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => adicionarColuna(c.id)}
+                                  className={chip}
+                                >
+                                  + {c.rotulo}
+                                </button>
+                              ))}
+                              {sugeridas.map((r) => (
+                                <button
+                                  key={`ex:${r}`}
+                                  type="button"
+                                  onClick={() => criarColunaPersonalizada(r)}
+                                  className={`${chip} border-dashed`}
+                                >
+                                  + {r}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                       <div className="mt-1 flex gap-2">
                         <input
                           value={novaColuna}
