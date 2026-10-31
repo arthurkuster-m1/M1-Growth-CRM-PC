@@ -46,6 +46,8 @@ interface Props {
   podeEditar: boolean;
   /** A visualização de fábrica não muda de tipo e não se apaga. */
   ehPadrao: boolean;
+  /** A visualização de fábrica também pode ser apagada (a tela garante que sobra outra). */
+  podeApagarPadrao?: boolean;
   aoRenomear: (nome: string) => void;
   aoTrocarTipo: (tipo: TipoDeVisualizacao) => void;
   /** As propriedades, na ordem em que aparecem. Vazio: o tipo não usa propriedades. */
@@ -142,6 +144,7 @@ function Corpo({
   tipo,
   podeEditar,
   ehPadrao,
+  podeApagarPadrao,
   aoRenomear,
   aoTrocarTipo,
   propriedades,
@@ -319,7 +322,7 @@ function Corpo({
         </div>
       ) : null}
 
-      {podeEditar && !ehPadrao && (aoDuplicar || aoApagar) ? (
+      {podeEditar && (!ehPadrao || podeApagarPadrao) && (aoDuplicar || aoApagar) ? (
         <div className="divide-y rounded-2xl bg-secondary/60">
           {aoDuplicar ? (
             <button

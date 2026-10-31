@@ -32,3 +32,10 @@ export function reordenarAbas(
     .map((a, k) => ({ id: a.id, posicao: (k + 1) * PASSO_DAS_ABAS }))
     .filter((a) => antes.get(a.id) !== a.posicao);
 }
+
+/**
+ * A visualização de fábrica foi apagada? Só vale com outra visão salva de pé: sem nenhuma, a base
+ * volta sozinha, para a tela nunca ficar sem visão.
+ */
+export const baseDaTabelaOculta = (oculta: boolean | undefined, visoesSalvas: number): boolean =>
+  oculta === true && visoesSalvas > 0;
