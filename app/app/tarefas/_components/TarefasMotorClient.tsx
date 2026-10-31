@@ -40,7 +40,7 @@ import {
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
-import { abasNaOrdem, reordenarAbas } from "@/lib/motor/ordem-das-abas";
+import { abasNaOrdem, baseDaTabelaOculta, reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { useQuery } from "@tanstack/react-query";
@@ -592,16 +592,22 @@ export function TarefasMotorClient({
   const ID_DA_PADRAO = "padrao";
   // As abas na ordem da pessoa: a de fábrica guarda a posição dela nas preferências, as salvas em
   // `position` (arrastar uma aba renumera a fila).
+  // A "Tabela" de fábrica pode ser apagada (fica só escondida) desde que sobre outra visão.
+  const baseOculta = baseDaTabelaOculta(padrao.preferencias.oculta, visoes.length);
   const ordemDasAbas = abasNaOrdem([
-    { id: ID_DA_PADRAO, posicao: padrao.preferencias.posicao ?? -1_000_000 },
+    ...(baseOculta
+      ? []
+      : [{ id: ID_DA_PADRAO, posicao: padrao.preferencias.posicao ?? -1_000_000 }]),
     ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
   ]);
   const abaPedida = parametros.get("v");
   const visaoAtiva =
-    abaPedida === ID_DA_PADRAO
+    abaPedida === ID_DA_PADRAO && !baseOculta
       ? undefined
       : (visoes.find((v) => v.id === abaPedida) ??
-        (abaPedida ? undefined : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
+        (abaPedida && abaPedida !== ID_DA_PADRAO
+          ? undefined
+          : visoes.find((v) => v.id === ordemDasAbas[0]?.id)));
   const ativaId = visaoAtiva?.id ?? ID_DA_PADRAO;
   const reordenarAbasNaTela = (id: string, antesDeId: string | null) => {
     for (const { id: alvo, posicao } of reordenarAbas(ordemDasAbas, id, antesDeId)) {
@@ -632,6 +638,12 @@ export function TarefasMotorClient({
       config: origem.config,
     }).then((v) => v && escolherAba(v.id));
   }
+  // Apagou a última visão salva com a base escondida: a base volta, a tela nunca fica sem visão.
+  const restaurarBaseSeUltima = (id: string) => {
+    if (padrao.preferencias.oculta && visoes.every((v) => v.id === id)) {
+      padrao.atualizar((p) => ({ ...p, oculta: false }));
+    }
+  };
   const escolherAba = (id: string) => router.replace(`${caminho}?v=${id}`, { scroll: false });
   // As visões prontas do "+": as de sempre, com o filtro já montado (a pessoa as edita e apaga depois).
   const modelosDeVisao = useMemo(
@@ -1034,16 +1046,16 @@ export function TarefasMotorClient({
           {semTitulo ? (
             <div className="min-w-0" />
           ) : (
-          <div className="min-w-0">
-            {contatoFixo ? (
-              <h2 className="text-base font-semibold">{t("Tarefas deste lead")}</h2>
-            ) : (
-              <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
-            )}
-            <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
-              {t("Clique para editar. Arraste pelo ícone para reordenar.")}
-            </p>
-          </div>
+            <div className="min-w-0">
+              {contatoFixo ? (
+                <h2 className="text-base font-semibold">{t("Tarefas deste lead")}</h2>
+              ) : (
+                <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
+              )}
+              <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
+                {t("Clique para editar. Arraste pelo ícone para reordenar.")}
+              </p>
+            </div>
           )}
           {podeEditar ? (
             // Botão dividido, como no Notion: a parte grande cria em branco; a seta abre os modelos.
@@ -1451,9 +1463,13 @@ export function TarefasMotorClient({
         tipo={visualizacao}
         podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
+        podeApagarPadrao={!visaoAtiva && visoes.length > 0}
         aoArquivar={
           visaoAtiva && visaoAtiva.editavel === false
-            ? () => void arquivarVisao(visaoAtiva.id)
+            ? () => {
+                restaurarBaseSeUltima(visaoAtiva.id);
+                void arquivarVisao(visaoAtiva.id);
+              }
             : undefined
         }
         aoRenomear={(nome) =>
@@ -1509,7 +1525,7 @@ export function TarefasMotorClient({
               }))
         }
         aoDuplicar={visaoAtiva ? () => duplicarVisao(visaoAtiva.id) : undefined}
-        aoApagar={visaoAtiva ? () => setApagarVisaoId(visaoAtiva.id) : undefined}
+        aoApagar={visaoAtiva || visoes.length > 0 ? () => setApagarVisaoId(ativaId) : undefined}
       />
 
       {/* "Nova tarefa": o pop-up central, com todas as propriedades de uma vez (como o compromisso). */}
@@ -1558,8 +1574,15 @@ export function TarefasMotorClient({
             <AlertDialogAction
               onClick={() => {
                 if (apagarVisaoId) {
-                  if (apagarVisaoId === ativaId) escolherAba(ID_DA_PADRAO);
-                  void apagarVisao(apagarVisaoId);
+                  if (apagarVisaoId === ID_DA_PADRAO) {
+                    padrao.atualizar((p) => ({ ...p, oculta: true }));
+                    const primeira = ordemDasAbas.find((a) => a.id !== ID_DA_PADRAO);
+                    if (primeira) escolherAba(primeira.id);
+                  } else {
+                    if (apagarVisaoId === ativaId) escolherAba(ID_DA_PADRAO);
+                    restaurarBaseSeUltima(apagarVisaoId);
+                    void apagarVisao(apagarVisaoId);
+                  }
                 }
                 setApagarVisaoId(null);
               }}

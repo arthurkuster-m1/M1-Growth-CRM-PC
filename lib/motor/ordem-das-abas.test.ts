@@ -36,3 +36,12 @@ describe("ordem das abas", () => {
     expect(reordenarAbas(abas, "a", "zzz")).toEqual([]);
   });
 });
+
+import { baseDaTabelaOculta } from "./ordem-das-abas";
+describe("base da tabela apagada", () => {
+  it("só some com outra visão de pé", () => {
+    expect(baseDaTabelaOculta(true, 1)).toBe(true);
+    expect(baseDaTabelaOculta(true, 0)).toBe(false);
+    expect(baseDaTabelaOculta(undefined, 3)).toBe(false);
+  });
+});
