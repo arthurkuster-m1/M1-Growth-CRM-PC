@@ -45,6 +45,8 @@ export interface CampanhaDeDemanda {
   status: StatusDaCampanha;
   description: string;
   idea: string;
+  /** Comentários livres da agência sobre a campanha (preenchidos à mão). */
+  comments: string;
   objective: string;
   start_date: string | null;
   end_date: string | null;
@@ -80,6 +82,7 @@ export interface CampanhaDeDemanda {
   /** Da última nota de cada tipo (só a agência as recebe). */
   ultima_analise?: { data: string; texto: string } | null;
   ultimo_planejamento?: { data: string; texto: string } | null;
+  ultima_otimizacao?: { data: string; texto: string } | null;
   /** O resumo do período (investido e leads do CRM); só a listagem o traz. */
   estado?: EstadoDaCampanha | null;
 }
@@ -93,7 +96,7 @@ export interface EstadoDaCampanha {
 }
 
 export const COLUNAS_DA_CAMPANHA =
-  "id, name, channel, status, description, idea, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, goal_period, product_name, product_id, product_ids, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
+  "id, name, channel, status, description, idea, comments, objective, start_date, end_date, continuous, pipeline_id, owner_id, budget, budget_period, tax_pct, goal_leads, goal_cpl, goal_sales, goal_revenue, goal_period, product_name, product_id, product_ids, ticket_cents, platform, sheet_url, platform_campaigns, meta_account_id, meta_synced_at, meta_sync_error, optional_tabs, position, created_at";
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dinheiro = z.number().finite().min(0).max(1e10);
@@ -111,6 +114,7 @@ const camposSchema = z.object({
   // As notas guardam blocos (JSON do editor), então cabem mais que o texto puro de antes.
   description: z.string().trim().max(20000),
   idea: z.string().trim().max(4000),
+  comments: z.string().trim().max(4000),
   objective: z.string().trim().max(2000),
   start_date: dia.nullable(),
   end_date: dia.nullable(),

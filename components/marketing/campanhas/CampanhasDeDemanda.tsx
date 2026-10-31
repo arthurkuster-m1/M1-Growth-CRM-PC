@@ -457,6 +457,23 @@ export function CampanhasDeDemanda() {
         </span>
       ),
     },
+    {
+      id: "comentarios",
+      titulo: t("Comentários"),
+      icone: <TextAa size={14} aria-hidden />,
+      largura: 320,
+      celula: (c) => (
+        <CelulaDeTexto
+          valor={c.comments ?? ""}
+          rotulo={t("Comentários")}
+          vazioRotulo="—"
+          permitirVazio
+          caixaGrande
+          podeEditar={podeEditar}
+          aoSalvar={(comments) => void editar([c.id], { comments })}
+        />
+      ),
+    },
     ...(podeEditar
       ? ([
           {
@@ -481,6 +498,19 @@ export function CampanhasDeDemanda() {
               <span className="block truncate px-2 text-sm text-muted-foreground">
                 {c.ultimo_planejamento
                   ? `${c.ultimo_planejamento.data.slice(5).split("-").reverse().join("/")} | ${c.ultimo_planejamento.texto}`
+                  : "—"}
+              </span>
+            ),
+          },
+          {
+            id: "otimizacao",
+            titulo: t("Última otimização"),
+            icone: <TextAa size={14} aria-hidden />,
+            largura: 320,
+            celula: (c: CampanhaDeDemanda) => (
+              <span className="block truncate px-2 text-sm text-muted-foreground">
+                {c.ultima_otimizacao
+                  ? `${c.ultima_otimizacao.data.slice(5).split("-").reverse().join("/")} | ${c.ultima_otimizacao.texto}`
                   : "—"}
               </span>
             ),
