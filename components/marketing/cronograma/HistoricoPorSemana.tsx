@@ -88,9 +88,25 @@ export function HistoricoPorSemana() {
               </span>
             </button>
             {aberta ? (
-              <div className="grid gap-4 border-t px-4 py-3 text-sm md:grid-cols-2">
-                <ListaDoLado titulo={t("Tarefas da agência")} itens={s.agencia} />
-                <ListaDoLado titulo={t("Tarefas do cliente")} itens={s.cliente} />
+              <div className="grid gap-4 border-t px-4 py-3 text-sm">
+                {s.topicos.length > 0 ? (
+                  <div className="grid gap-1.5">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                      {t("Anotações da revisão semanal")}
+                    </h4>
+                    <ul className="list-disc pl-5">
+                      {s.topicos.map((tp, i) => (
+                        <li key={i} className="[overflow-wrap:anywhere]">
+                          {tp}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ListaDoLado titulo={t("Tarefas da agência")} itens={s.agencia} />
+                  <ListaDoLado titulo={t("Tarefas do cliente")} itens={s.cliente} />
+                </div>
               </div>
             ) : null}
           </li>
