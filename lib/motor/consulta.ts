@@ -67,6 +67,7 @@ export const DATAS_RELATIVAS = [
   "hoje",
   "ontem",
   "amanha",
+  "depois_de_amanha",
   "inicio_da_semana",
   "fim_da_semana",
   "inicio_do_mes",
@@ -112,6 +113,8 @@ export function resolverData(valor: string, hoje: string): string {
       return somarDias(hoje, -1);
     case "amanha":
       return somarDias(hoje, 1);
+    case "depois_de_amanha":
+      return somarDias(hoje, 2);
     case "inicio_da_semana":
       return segundaDaSemana(hoje);
     case "fim_da_semana":
