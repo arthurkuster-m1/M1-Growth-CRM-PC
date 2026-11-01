@@ -21,6 +21,25 @@ usa IA** (classificar a resposta, espera inteligente ou mensagem escrita pela IA
 mensagem, "se a resposta contém…" e espera fixa não precisa de agente**. Então o Anti-No-show com lembretes de texto
 fixo pode rodar **sem agente**; só o "entender em texto livre que o lead quer remarcar" depende de um agente.
 
+## 0-bis. Decisão do Arthur (01/11, noite): automações primeiro, SEM agente de IA
+Foco no desenvolvimento das automações **sem agente de IA**. A revisão dos agentes (`docs/PLANO-AGENTES-M1.md`) acontece
+depois, e só então a IA é integrada às automações "de forma melhor". Por isso:
+- **Fases 3 a 5 ficam sem IA:** modelos com texto fixo, modelo de mensagem, "se a resposta contém…" e espera fixa (o motor de
+  follow-up já roda assim, sem agente publicado). Nada de classificar por IA, espera inteligente ou mensagem escrita por IA.
+- **Nova fase 7 — Integrar a IA às automações:** depois da revisão dos agentes. Agente em modo Assistido primeiro; os passos de
+  IA entram nos fluxos que já existirem. Nenhuma automação sem IA precisa ser refeita para receber a IA depois.
+- A frente 11 (agentes) continua no plano, mas **não bloqueia** as automações.
+
+**Próximos passos de engenharia, em ordem (sem IA):**
+1. **Anti-No-show construído junto com o Arthur** (follow-up só com texto fixo e espera fixa): ele define, para o primeiro
+   cliente, número e horários dos lembretes, textos, o que fazer quando o lead responde (palavras como "remarcar", "não vou") e o
+   que a equipe recebe. Vira o fluxo padrão de modelo, copiável e editável por cliente.
+2. **Proteções:** botão geral "Pausar todas as automações", limite de mensagens por lead e por dia, e **modo de teste**
+   (mostrar o que a regra faria sem executar). O motor já tem trava de contato pessoal, ritmo (throttle) e janela do canal;
+   falta o freio geral e a simulação.
+3. **Editor visual** da regra pelo fluxo vertical (adicionar, reordenar, configurar), e depois espera e "se… senão".
+4. Demais modelos (lead que não respondeu, compareceu e não comprou, pós-venda), um por vez.
+
 ## 1. Inventário (fase 1, feita em 01/11)
 
 **Motor de regras** (`lib/automation`, tela `app/app/automacoes` + `app/app/webhooks/_components`): uma regra é
@@ -63,6 +82,7 @@ do **nome** (provisório; vira uma coluna própria na unificação). Código: `l
 | 4 | **Editor visual** da regra pelo fluxo vertical: "+" entre os passos, reordenar, painel lateral com os formulários que já existem; depois, espera e "se… senão" | A fazer |
 | 5 | **Catálogo novo de ações/gatilhos** (ver §5), sempre uma de cada vez | A fazer |
 | 6 | **Motor único**: decidir com dados de uso reais (quais automações o Arthur realmente roda) | A decidir |
+| 7 | **Integrar a IA às automações** (depois da revisão dos agentes; Assistido primeiro) | Depois da frente 11 |
 
 ## 5. Catálogo: o que considerar acrescentar (backlog, a decidir item a item)
 - **Ações:** avisar na Central de Avisos/push (casa com a frente 16); criar compromisso; mover etapa; enviar e-mail;
