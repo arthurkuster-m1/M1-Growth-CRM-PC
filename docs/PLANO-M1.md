@@ -1,6 +1,6 @@
 # PLANO DO M1 GROWTH CRM
 
-Atualizado em 31/10/2026 (a base é de 17/10; as seções de 27 a 31/10 e as frentes 16 e 17 são novas). Este é o plano-mãe. O plano detalhado da aba Marketing continua em
+Atualizado em 01/11/2026 (a base é de 17/10; as seções de 27/10 a 01/11 e as frentes 16 a 21 são novas; a §3-bis tem as frentes novas e atualizadas). Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
 
@@ -291,24 +291,27 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 
 | # | Frente | Escopo | Situação | O que você pode ir decidindo no planejamento |
 | --- | --- | --- | --- | --- |
-| 1 | **Dashboards** | Tráfego (Meta/Google), vendas, faturamento e meta × realizado do Planejamento num lugar só | **Parcial (D0 a D3 no ar, ver PLANO-DASHBOARDS).** Antes: Existem `/app/metrics`, `/app/ads/meta`, `/app/faturamento`; o CRM já mostra faturamento recebido, valor em aberto e LTV; campanhas mostram vendas e faturamento por anúncio e LP. Falta a tela única | Quais números mandam na tela inicial? Quais períodos? Quem vê o quê (agência × cliente)? |
+| 1 | **Dashboards** | Tráfego (Meta/Google), vendas, faturamento e meta × realizado do Planejamento num lugar só | **Parcial (D0 a D3 no ar, ver PLANO-DASHBOARDS).** Antes: Existem `/app/metrics`, `/app/ads/meta`, `/app/faturamento`; o CRM já mostra faturamento recebido, valor em aberto e LTV; campanhas mostram vendas e faturamento por anúncio e LP. Falta a tela única | Quais números mandam na tela inicial? Quais períodos? Quem vê o quê (agência × cliente)? **Atualizado em 01/11: ver §3-bis.** |
 | 2 | **Cronograma** | Feito | **Feito** | Só as melhorias futuras abaixo |
 | 3 | **IA ajudante** | Rascunho de página a partir do Kick Off e dos prompts do método (precisa de chave de IA) | **A fazer** | Quais páginas geram rascunho primeiro? Que modelo de IA e qual orçamento? |
 | 4 | **Geração de demanda** | Campanhas, criativos e textos com status; você já tem uma base | **Em andamento.** Cadastro, tabela, cards e linha do tempo; criativos do Meta com todas as variações; dia a dia automático; origem rastreável. Plano em `docs/PLANO-CAMPANHAS-M1.md` | Mande a base atual. Quais campos e quais status? |
 | 5 | **Inbox** | Ajustes visuais e conexões com "outros bancos" | **A fazer** | O que são esses "outros bancos"? Que ajustes visuais incomodam? |
-| 6 | **Equipe** | Pessoas, papéis e interface por empresa | **A fazer** (a equipe já aparece como responsável por lead e por venda) | Quais papéis existem de fato na agência e no cliente? |
-| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **Parcial, avançado** (prospecção ativa por ligação e WhatsApp, extração de leads, cadência, disparos com IA e continuação da conversa: código pronto, **aguardando teste** — ver PLANO-CADENCIA) (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? |
+| 6 | **Equipe** | Pessoas, papéis e interface por empresa | **A fazer** (a equipe já aparece como responsável por lead e por venda) | Quais papéis existem de fato na agência e no cliente? **Atualizado em 01/11: ver §3-bis.** |
+| 7 | **Prospecção** | Scraping de leads e disparos (API oficial e não oficial) com análise por ação e mensagem | **Parcial, avançado** (prospecção ativa por ligação e WhatsApp, extração de leads, cadência, disparos com IA e continuação da conversa: código pronto, **aguardando teste** — ver PLANO-CADENCIA) (base: `/app/prospecting`) | Quais fontes de leads? Qual volume? Como separar o risco do não oficial? **Atualizado em 01/11: ver §3-bis.** |
 | 8 | **CRM** (o maior) | Visualizações, funis, base de leads e de vendas, ligação com dashboards, rastreamento, CAPI e movimentação automática estilo Tintim | **Em andamento, avançado.** Faltam Hotmart, contas a receber, Lead Ads nativo, CAPI/movimentação automática (ver `docs/PLANO-CRM-M1.md`) | Já está no `PLANO-CRM-M1.md` do fork |
-| 9 | **Conexões e webhooks** | Formulários e LPs entrando como leads | **Parcial.** Receber lead já tratado (n8n/sistema próprio) e importação feitos; falta Lead Ads nativo e os eventos de CAPI | Quais LPs e formulários? Quais campos chegam? Que eventos viram CAPI? |
+| 9 | **Conexões e webhooks** | Formulários e LPs entrando como leads | **Parcial.** Receber lead já tratado (n8n/sistema próprio) e importação feitos; falta Lead Ads nativo e os eventos de CAPI | Quais LPs e formulários? Quais campos chegam? Que eventos viram CAPI? **Atualizado em 01/11: ver §3-bis.** |
 | 10 | **Agenda** | Ajustes visuais e de UX | **Em andamento** (Google, oportunidade, análises e anti no-show feitos; falta validar lembretes) | Liste o que incomoda hoje |
-| 11 | **Agentes de IA** | Revisar agentes e a fonte de conhecimento (as ofertas já alimentam) | **A fazer** | Quais agentes existem? Qual é o papel de cada um? |
-| 12 | **Configurações gerais** | Centralizar ajustes | **A fazer** (categorias e cores de tag já têm tela própria em Configurações › Tags) | O que está espalhado hoje? |
+| 11 | **Agentes de IA** | Revisar agentes e a fonte de conhecimento (as ofertas já alimentam) | **A fazer** | Quais agentes existem? Qual é o papel de cada um? **Atualizado em 01/11: ver §3-bis.** |
+| 12 | **Configurações gerais** | Centralizar ajustes | **A fazer** (categorias e cores de tag já têm tela própria em Configurações › Tags) | O que está espalhado hoje? **Atualizado em 01/11: ver §3-bis.** |
 | 13 | **Barra de pesquisa** | Evoluir a paleta de comandos | **A fazer** | O que deve ser pesquisável (leads, tarefas, produtos, páginas)? |
-| 14 | **Visão multi-tenant (ADM)** | Organizações e visualizações na área `/admin` | **A fazer** | O que você precisa ver de todos os clientes de uma vez? |
-| 15 | **Financeiro completo** | Contas, fluxo de caixa, DRE e recorrência | **Parcial.** Vendas, parcelas, faturamento recebido e a receber existem; faltam contas a receber (cobrança), fluxo de caixa, DRE | Hoje existe `/app/faturamento`. Que relatórios importam? |
-| 16 | **Central de avisos, alertas e notificações** (plano à parte: `docs/PLANO-AVISOS-M1.md`) | Verificar e revisar TODOS os avisos; tirar a Central de dentro de "Agentes de IA" (hoje é "Alertas" em `/app/ai/inbox`) e dar a ela um lugar próprio; juntar com o sino e as notificações | **A fazer** | Quais avisos importam? Quem recebe cada um? Por onde (sino, push, e-mail)? |
+| 14 | **Visão multi-tenant (ADM)** | Organizações e visualizações na área `/admin` | **A fazer** | O que você precisa ver de todos os clientes de uma vez? **Atualizado em 01/11: ver §3-bis.** |
+| 15 | **Financeiro completo** | Contas, fluxo de caixa, DRE e recorrência | **Parcial.** Vendas, parcelas, faturamento recebido e a receber existem; faltam contas a receber (cobrança), fluxo de caixa, DRE | Hoje existe `/app/faturamento`. Que relatórios importam? **Atualizado em 01/11: ver §3-bis.** |
+| 16 | **Central de avisos, alertas e notificações** (plano à parte: `docs/PLANO-AVISOS-M1.md`) | Verificar e revisar TODOS os avisos; tirar a Central de dentro de "Agentes de IA" (hoje é "Alertas" em `/app/ai/inbox`) e dar a ela um lugar próprio; juntar com o sino e as notificações | **A fazer** | Quais avisos importam? Quem recebe cada um? Por onde (sino, push, e-mail)? **Atualizado em 01/11: ver §3-bis.** |
 | 17 | **Tarefas: visões padrão** | Visões prontas ao criar uma aba: **Pendentes** (atrasadas + hoje + próximos 1 a 2 dias) e **Minhas tarefas** (designadas a mim), mais as que forem aprovadas (ver abaixo) | **Feito (31/10)** — modelos no "+" das abas; Pendentes = até 2 dias à frente | Ajustes finos conforme o uso |
 | 18 | **Go-live** (plano à parte: `docs/PLANO-GO-LIVE-M1.md`) | Colocar para rodar com clientes reais: banco de produção com backup, VPS, rotinas, WhatsApp, piloto | **A fazer** | VPS recomendada: 4 vCPU / 16 GB / 160 GB NVMe em São Paulo; WAHA Plus ou API oficial? |
+| 19 | **Automações e Fluxos de Follow Up** (inclui o Método Anti-No-show) | Deixar o painel de Automações com o visual dos fluxos de follow up (canvas) e organizar o Anti-No-show | **A fazer** (só planejar: ver §3-bis, item A) | Quais automações existem hoje e quais merecem virar fluxo visual? |
+| 20 | **App no celular** | Instalação, atualização ao vivo e notificações no celular | **Parcial** (instala como app; faltam atualização ao vivo em todas as telas e revisão das notificações) | Ver §3-bis, item J |
+| 21 | **Módulos por nicho** | Versões do app para outros modelos de negócio (clínicas veterinárias, agências de modelo) | **A fazer** | Começar por um "preset de nicho" ou por módulos com tela própria? |
 
 ### Detalhes das frentes
 
@@ -345,6 +348,109 @@ só desenho. Plano e perguntas em `docs/PLANO-AVISOS-M1.md`.
 - **Concluídas recentes**: últimos 7 dias (para a revisão da semana).
 Mecânica: a visão nasce no "+" das abas (como o "Radar" das Oportunidades em `lib/clientes/modelos-de-visao.ts`): um clique
 cria a aba com o filtro pronto; se já existe, abre. "Minhas tarefas" usa o usuário logado.
+
+### 3-bis. Frentes novas e atualizadas (01/11/2026)
+
+Sequência que eu sugiro (a decidir): 1) Configurações › Equipe (convite e criação de conta, bloqueia clientes
+reais), 2) Visões da equipe (segurança entre agência, empresário e funcionário), 3) Alertas, Central e
+Push, 4) App no celular com atualização ao vivo, 5) Dashboard Comercial, 6) Automações visuais e Anti-No-show,
+7) Aba multi-tenant (ADM), 8) Campanha de Prospecção (Disparos), 9) Conexões e Webhooks (limpeza),
+10) Agentes de IA, 11) Módulos por nicho, 12) Financeiro completo. O go-live fica no `docs/PLANO-GO-LIVE-M1.md`.
+
+**A. Automações (frente 19)** — *só planejar, sem executar.* Pergunta: dá para o painel de Automações ficar com o visual dos
+fluxos de follow up? **Provavelmente sim.** O editor de follow up (`app/app/ai/followups/[id]`) já é um canvas feito com
+`@xyflow/react`, com nós de Gatilho, Condição, Espera, Tarefa interna, Coleta, Classificação e Fim; o painel atual
+(`app/app/automacoes`) é uma central em lista de regras (lead, tags, tarefas, mensagens, webhooks). Plano:
+1. Inventariar as regras atuais (gatilho, condições, ações) e dizer quais cabem nos nós que já existem.
+2. Mostrar a regra existente como fluxo (somente leitura) reaproveitando o canvas e os nós; só depois permitir editar.
+3. Fazer o **Método Anti-No-show** como modelo pronto de fluxo (confirmação, lembretes, reagendamento e reversão do no-show).
+4. Decidir se follow-up e automação viram um lugar só (uma central, dois tipos de fluxo). A migração não pode quebrar regra em produção.
+
+**B. Alertas, Central de Avisos e Notificações Push (frente 16)** — detalhes no `docs/PLANO-AVISOS-M1.md`. Combinado:
+alerta e aviso da Central são **a mesma coisa** (uma fonte, vários destinos: Central, sino, push). Entregas, **no chat, antes de
+mexer em qualquer coisa**: (1) tabela com todas as configurações e ocasiões que geram alerta/aviso (de onde nasce, para
+quem vai, texto, link do clique, o que fazer com ele: manter, mudar, apagar, criar); (2) auditoria das notificações push
+(aparência, texto, ícone, link aberto ao clicar). A decisão de manter, criar ou apagar é sua, item por item.
+
+**C. Campanha de Prospecção (Disparos) (frente 7)** — *a descrever.* Já existe prospecção ativa por ligação e WhatsApp,
+extração de leads, cadência e disparos com IA. Quando você descrever, vou precisar de: de onde vem a lista, por qual canal
+(WAHA, número do cliente ou API oficial), mensagem e variações, janela e ritmo anti-banimento, aquecimento do número,
+resposta e opt-out, e a análise por ação e por mensagem.
+
+**D. Visões da equipe (frente 6) — quem vê e edita o quê**
+| | Super Adm (Agência M1: você e sua equipe) | Adm (empresário, dono da empresa cliente) | Membro (funcionário do cliente) |
+| --- | --- | --- | --- |
+| Alcance | Tudo, **incluindo** a visão multi-tenant (todos os clientes) | Só a própria empresa | Só a própria empresa, só as abas liberadas pelo Adm |
+| Início | Normal | Normal (vê e cria tarefas e compromissos) | Normal |
+| Tarefas | Tudo | Não vê a coluna Cronograma nem as tarefas marcadas para a agência; cria só tarefas e visualizações dele e da empresa | Igual ao Adm |
+| Estratégia, Cronograma, Campanhas | Edita | **Só vê** | **Só vê** (se a aba estiver liberada) |
+| Dashboards | Tudo | Só vê, muda o período e filtra | Só vê, muda o período e filtra (se liberada) |
+Pontos de projeto (decidir antes de construir):
+- Os papéis atuais são viewer < agent < manager < admin, mais o super-admin da plataforma. Hoje a sua equipe entra nas
+  empresas dos clientes como manager/admin (é assim que o Modo agência funciona), **o que é igual ao Adm do cliente**.
+  Precisamos de um marcador que diga "isto é da agência" (por exemplo, um vínculo da pessoa com a organização da agência),
+  porque só ele pode editar Estratégia, Cronograma e Campanhas.
+- "Não vê as tarefas da agência" tem de ser garantido **no banco** (política de acesso por linha), não só escondido na tela,
+  senão qualquer um enxerga pela API.
+- A escolha das abas do funcionário já tem base: `Interface` por empresa (`InterfaceEditor`, `lib/navigation/interface.ts`).
+  Falta virar escolha por pessoa feita pelo Adm.
+- "Só vê" nas telas de Estratégia, Cronograma e Campanhas hoje depende do papel (agent+ edita); vira uma regra própria.
+
+**E. Dashboard › aba Comercial (frente 1).** Métricas pedidas, todas separáveis por **Tráfego Pago × Prospecção Ativa** quando fizer sentido:
+1. Funil com todas as etapas de conversão, adaptado por empresa; padrão **Lead → Agendamento → Reunião → Venda**.
+2. Média de follow-ups feitos nos leads que chegam e não respondem.
+3. Distância média dos agendamentos (quantos dias para frente a reunião é marcada).
+4. Taxa de no-show registrada e os motivos.
+5. No-shows revertidos pelo follow-up (fez a reunião depois de faltar).
+6. Média de contatos necessários até o agendamento e até a venda.
+7. Taxa de conversão reunião → venda.
+8. Ticket médio negociado.
+Já temos a base de vários: status de comparecimento e o contador de reagendamentos (migration 0681), follow-ups e vendas.
+Falta definir como contar um "contato" (mensagem enviada, ligação, resposta?) e onde registrar o motivo do no-show.
+
+**F. Dashboard › aba Atendimento** — *a descrever.* Sugestões para você aprovar: tempo da primeira resposta, tempo médio
+de resposta, conversas sem resposta, volume por canal e por horário, passagem da IA para o humano, e produtividade por atendente.
+
+**G. Aba multi-tenant (ADM) (frente 14)**
+1. Configurações gerais.
+2. Equipe: configurações da equipe e das visualizações de cada tipo.
+3. Configurações do Modo Agência e visualização de todos os clientes em massa.
+4. Definição das visões por papel (Super Adm, Adm, Time), que é o item D acima.
+
+**H. Configurações › Equipe (frente 12) — prioridade alta.** Problemas relatados: o e-mail de convite não é enviado e, ao criar a
+conta, o sistema cria uma **empresa nova** em vez de entrar na empresa que convidou. Hipóteses a confirmar (não são
+diagnóstico): provedor de e-mail sem chave configurada neste ambiente; o aceite do convite cai no onboarding comum, que cria
+organização. Plano: reproduzir o percurso inteiro como cliente novo (convidar, receber, aceitar, entrar na empresa certa com o
+papel certo), corrigir na causa e deixar um teste que cubra o percurso. Convite deve também aceitar o aviso por link copiável
+quando não houver e-mail configurado.
+
+**I. Conexões e Webhooks (frente 9), Agentes de IA (11).** Organizar, deixar mais bonito e **remover o que não usamos**. Começa
+por um inventário (o que existe, o que está ligado em produção, o que ninguém usa) para você aprovar item por item antes de apagar.
+Agentes de IA: revisar quais existem e o papel de cada um; o Anti-No-show conversa com o item A.
+
+**J. App no celular (frente 20)** — suas três perguntas:
+1. **Como funciona a instalação?** É um **PWA** (aplicativo web progressivo): o "app" é o próprio site instalado pelo Chrome,
+   aberto em tela cheia, sem barra do navegador (o `manifest` do app já define `display: standalone` e o ícone). Não passa
+   por loja, **não é um app nativo**, e **atualiza sozinho** com o site (não precisa baixar versão). No iPhone o caminho é
+   Safari › Compartilhar › Adicionar à Tela de Início.
+2. **Atualização ao vivo.** Hoje só algumas telas ouvem o banco em tempo real (alertas, Inbox, ligações, admin). Plano: ligar o
+   **Realtime do Supabase** nas tabelas das telas principais (tarefas, leads e vendas, compromissos, campanhas), de modo que
+   uma edição apareça sem puxar para atualizar; atualizar também ao voltar para o app (visibilidade/foco) e ao reconectar a
+   internet. Para duas pessoas editando ao mesmo tempo: **conferir a versão do registro antes de gravar** e avisar
+   "este item foi alterado por outra pessoa" em vez de sobrescrever.
+3. **Notificações no celular.** Sim: o PWA recebe **push** (já existe a base: `lib/notifications/web_push.ts`, o service worker
+   `notify-sw.js` e a tela em Configurações › Notificações). Funcionam lead chegando, cobrar lead, "lead pagou?" etc. A ideia
+   fixa é **uma fonte só**: o mesmo evento vira aviso na Central **e** push no celular (item B). Limites: no iPhone o push só
+   funciona com o app **instalado** na tela inicial (iOS 16.4 ou mais novo) e o usuário precisa permitir; no Android funciona
+   pelo Chrome. O servidor precisa de chaves próprias de push (VAPID), que fazem parte da instalação na VPS nova.
+
+**K. Módulos por nicho (frente 21).** Versões do app para clínicas veterinárias e agências de modelo. A doutrina do projeto
+manda o núcleo continuar útil com zero extensões, e o mecanismo de extensões de hoje não tem tela, tabela nem menu próprios.
+Então eu começaria por um **preset de nicho** (vocabulário do funil, funis, campos do lead, tags, agentes e cronograma já
+montados para o nicho), que não exige código novo, e só depois, se fizer falta, módulos com tela e dados próprios.
+
+**L. Financeiro completo (frente 15).** Sem mudança de escopo: contas a receber (cobrança), fluxo de caixa e DRE, em cima das
+parcelas e vendas que já existem. Compartilha a fonte de venda com o CRM (frente 8) e com os Dashboards (frente 1).
 
 ### Ligações entre as frentes
 - 4 (geração de demanda) cria as campanhas e os funis que o CRM (8) usa; definir os dois juntos.
