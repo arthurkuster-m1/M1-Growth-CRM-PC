@@ -16,6 +16,7 @@ import { Etiqueta } from "@/components/motor/Etiqueta";
 import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
 import { useT } from "@/hooks/i18n/useT";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
+import { CaretDown } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { soDeDentro } from "@/lib/ui/so-de-dentro";
 
@@ -92,6 +93,16 @@ function Quadro<T>({
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
   );
   const [arrastando, setArrastando] = useState(false);
+  // Os cartões abertos (mostrando as propriedades): ficam no quadro, e não em cada cartão, para
+  // continuarem abertos depois de arrastar para outra coluna.
+  const [abertos, setAbertos] = useState<ReadonlySet<string>>(new Set());
+  const alternar = (id: string) =>
+    setAbertos((a) => {
+      const n = new Set(a);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
   const colunaDe = new Map<string, string>();
   for (const c of grupo.colunas) {
@@ -145,10 +156,10 @@ function Quadro<T>({
                   id={idDe(l)}
                   arrastavel={podeEditar}
                   aoAbrir={() => aoAbrir(l)}
+                  titulo={tituloDe(l)}
+                  aberto={abertos.has(idDe(l))}
+                  aoAlternar={colunas.length > 0 ? () => alternar(idDe(l)) : undefined}
                 >
-                  <p className="text-sm leading-snug font-semibold [overflow-wrap:anywhere]">
-                    {tituloDe(l)}
-                  </p>
                   {colunas.length > 0 ? (
                     <div
                       className="mt-1.5 flex flex-col gap-1"
@@ -233,13 +244,21 @@ function Cartao({
   id,
   arrastavel,
   aoAbrir,
+  titulo,
+  aberto,
+  aoAlternar,
   children,
 }: {
   id: string;
   arrastavel: boolean;
   aoAbrir: () => void;
+  titulo: string;
+  aberto: boolean;
+  /** Ausente = o cartão não tem propriedades para mostrar (sem seta). */
+  aoAlternar?: () => void;
   children: ReactNode;
 }) {
+  const t = useT();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id,
     disabled: !arrastavel,
@@ -258,12 +277,40 @@ function Cartao({
         transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
       }
       className={cn(
-        "min-w-0 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm",
+        "min-w-0 overflow-hidden rounded-xl border border-border bg-card px-3 py-2 shadow-sm",
         arrastavel && "cursor-grab active:cursor-grabbing",
         isDragging && "relative z-10 opacity-90 shadow-lg",
       )}
     >
-      {children}
+      <div className="flex items-start gap-1">
+        {/* Clicar no nome abre a página do lead; a seta só abre e fecha as propriedades. */}
+        <p className="min-w-0 flex-1 text-sm leading-snug font-semibold [overflow-wrap:anywhere]">
+          {titulo}
+        </p>
+        {aoAlternar ? (
+          <button
+            type="button"
+            aria-expanded={aberto}
+            aria-label={aberto ? t("Esconder as propriedades") : t("Mostrar as propriedades")}
+            onClick={(e) => {
+              e.stopPropagation();
+              aoAlternar();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="-mt-0.5 -mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary"
+          >
+            <CaretDown
+              size={14}
+              aria-hidden
+              className={cn("transition-transform", !aberto && "-rotate-90")}
+            />
+          </button>
+        ) : null}
+      </div>
+      {aberto ? children : null}
     </div>
   );
 }
