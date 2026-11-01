@@ -35,8 +35,8 @@ Regra: não abrir para cliente antes das fases 1 a 3 estarem marcadas. A fase 4 
 3. **Limites de memória para tudo o que é novo** (`mem_limit` nos contêineres do CRM, Supabase e WAHA) e ajuste de
    prioridade de OOM favorável ao n8n, para que um excesso do CRM nunca derrube o n8n. `restart: unless-stopped`
    no n8n, e swap de 4 GB como rede de segurança.
-4. **Proxy:** descobrir como o n8n é exposto hoje (Caddy, Traefik, nginx…) e **só acrescentar hosts novos** a ele
-   (ex.: `crm.seudominio.com`), sem mexer no host do n8n. Conferir antes: `curl` no webhook do n8n depois de cada passo.
+4. **Proxy:** o n8n é exposto pelo **nginx**. Só acrescentamos arquivos de host novos (ex.: `crm.seudominio.com`), sem
+   mexer no host do n8n, sempre com `nginx -t` e `nginx -s reload` (nunca restart). Conferir antes: `curl` no webhook do n8n depois de cada passo.
 5. **Monitor externo do webhook do n8n** (UptimeRobot, a cada 5 min, aviso no celular). Se ele cair, os leads param.
 6. **Teste do que entra:** após cada etapa, mandar um lead de teste por uma landing e conferir que chega no Excel.
 
@@ -49,6 +49,57 @@ Regra: não abrir para cliente antes das fases 1 a 3 estarem marcadas. A fase 4 
 - Primeiro apontar para uma organização de **teste**, depois para a do cliente. Um fluxo por vez.
 - Claude monta o nó (URL, corpo, mapeamento de campos e `external_id`) e entrega para o Arthur colar; **nenhum
   workflow de produção é alterado sem o OK dele**.
+
+## Ordem combinada (01/11/2026) — nada disto é executado agora
+
+1. **Primeiro:** terminar as edições e prioridades pendentes do app (frentes do `docs/PLANO-M1.md`).
+2. **Quando o Arthur disser que o app está ok:** limpeza geral de tudo o que não é usado (código, telas, dependências e
+   rotinas herdadas do DeskcommCRM), para deixar mais leve; otimizar a entrega (tamanho da imagem, build, carga das
+   telas); e preparar o pacote de instalação para ARM.
+3. **Só então:** o Arthur dá acesso à VPS em uma sessão e a instalação é feita por lá, seguindo o roteiro abaixo.
+4. **Fixo:** o n8n é exposto pelo **nginx**; ele continua intacto (ver "Protegendo o n8n").
+
+## Roteiro de instalação na VPS Oracle (para a sessão futura; só anotado, não executar antes do OK)
+
+**A. Só leitura (não altera nada)** — conhecer o terreno: contêineres e imagens em uso (`docker ps`, `docker stats
+--no-stream`), memória e disco (`free -h`, `df -h`), portas ocupadas (`ss -ltnp`), arquitetura (`uname -m`, deve ser
+`aarch64`), versão do Docker e do Compose, como o nginx está configurado (`/etc/nginx/sites-enabled/`, certificados),
+firewall (regras da Oracle e `iptables`), e onde ficam os dados do n8n.
+
+**B. Proteger antes de mexer** — backup de inicialização (boot volume) na Oracle; exportar workflows do n8n; copiar o
+volume do n8n e a `N8N_ENCRYPTION_KEY`; levar tudo para fora da VPS (R2/B2). Migrar a conta para Pay As You Go. Criar
+swap de 4 GB se não houver. Teste de fumaça do n8n (lead de teste chegando no Excel) e anotar o resultado.
+
+**C. Preparar o ambiente novo, em paralelo ao n8n** — pasta e projeto Docker próprios (`/opt/m1-crm`), rede própria,
+`mem_limit` em todos os serviços, `restart: unless-stopped`. Usar o modo `docker-compose.single-server.yml`
+(app, worker, agendador, Supabase, Redis, WAHA). **Atenção:** esse modo traz um Caddy que ocupa as portas 80 e 443, e
+elas já são do nginx. Na VPS, o Caddy não publica portas: o app e a API do Supabase escutam só em `127.0.0.1`
+(por exemplo 3001 e 8000) e o **nginx faz o proxy**. Imagens em versão **ARM64** (WAHA `noweb-arm`, as do Supabase
+conferidas uma a uma). Studio do Supabase e o banco **nunca** expostos à internet.
+
+**D. Segredos e banco** — gerar chaves novas (JWT do Supabase, anon, service role, senha do Postgres, chave de cifra
+dos segredos, chave da WAHA, token de cron), `.env` só na VPS com permissão 600. Aplicar o `supabase/baseline.sql`
+(`ON_ERROR_STOP=1`), rodar `bootstrap-owner`, conferir o isolamento entre organizações (RLS). Ajustar o Postgres para
+a máquina (memória compartilhada ~2 GB, conexões) e desligar o que não usamos (analytics, vector).
+
+**E. Publicar com o nginx, sem tocar no n8n** — domínios novos (por exemplo `crm.…` e `api.crm.…`), um arquivo novo em
+`sites-enabled` para cada, com `proxy_pass` para `127.0.0.1`, cabeçalhos de WebSocket (`Upgrade` e `Connection`, que o
+Realtime exige), `client_max_body_size` para envio de mídia e HTTPS pelo Let's Encrypt (certbot). Sempre
+`nginx -t` e depois `nginx -s reload` (recarrega sem derrubar conexões; **nunca** `restart`). Conferir o n8n depois.
+
+**F. Rotinas e backup** — agendar as rotinas do app (lembretes, follow-up, sincronia da Agenda, parcelas, retenção) e
+auditar uma a uma; backup diário (`pg_dump` + mídia + chaves) para fora da VPS, com teste de restauração num banco
+descartável; monitor externo no `/api/v1/health` do CRM e no webhook do n8n; Sentry.
+
+**G. WhatsApp** — um contêiner WAHA Core por cliente (ou WAHA Plus), cada um com limite de memória; parear por QR;
+conferir que as mensagens entram. Anti-banimento ligado.
+
+**H. Só então, os leads** — o ramo paralelo no n8n (HTTP Request com "On Error: Continue") apontando primeiro para uma
+organização de teste e depois para a do cliente, um fluxo por vez, conferindo o Excel a cada passo.
+
+**I. Plano de volta** — se algo der errado em qualquer etapa: desligar o projeto novo (`docker compose down`), remover
+o arquivo do nginx e recarregar; o n8n nunca foi tocado. Se o n8n falhar por qualquer motivo, restaurar do backup do
+passo B.
 
 ## Fase 1 — Dados e segurança (bloqueia tudo)
 
