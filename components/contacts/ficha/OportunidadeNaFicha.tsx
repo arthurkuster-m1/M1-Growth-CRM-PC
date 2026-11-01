@@ -106,9 +106,6 @@ export function OportunidadeNaFicha({
         <span className="block text-sm font-medium break-words">
           {nomeDaVenda(venda) || t("Oportunidade")}
         </span>
-        <span className="block text-xs break-words text-muted-foreground">
-          {[venda.funil, venda.origem].filter(Boolean).join(" · ") || "—"}
-        </span>
       </button>
       <div className="grid gap-1 px-3 pt-1.5 pb-2">
         <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
