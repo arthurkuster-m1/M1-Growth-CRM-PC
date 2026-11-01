@@ -184,3 +184,19 @@ describe("tarefasDoDia — tarefas com início", () => {
     expect(r.hoje).toEqual([]);
   });
 });
+
+import { tarefasDaAgenda } from "@/lib/inicio/tarefas-do-dia";
+
+describe("Início › Minha agenda × Toda a equipe", () => {
+  const lista = [
+    { id: "a", assigned_to: "eu" },
+    { id: "b", assigned_to: null },
+    { id: "c", assigned_to: "outro" },
+  ];
+  it("Minha agenda só traz as tarefas em que eu sou o responsável (sem responsável não é minha)", () => {
+    expect(tarefasDaAgenda(lista, "minhas", "eu").map((t) => t.id)).toEqual(["a"]);
+  });
+  it("Toda a equipe traz todas, inclusive as sem responsável", () => {
+    expect(tarefasDaAgenda(lista, "equipe", "eu").map((t) => t.id)).toEqual(["a", "b", "c"]);
+  });
+});

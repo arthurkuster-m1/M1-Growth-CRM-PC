@@ -47,3 +47,15 @@ export function tarefasDoDia(
   );
   return { atrasadas, hoje: deHoje };
 }
+
+/**
+ * Que tarefas entram na agenda do Início. "Minha agenda" = só as tarefas em que a pessoa é a
+ * RESPONSÁVEL: tarefa sem responsável não é de ninguém e não aparece aqui. "Toda a equipe" mostra tudo.
+ */
+export function tarefasDaAgenda<T extends { assigned_to: string | null }>(
+  tarefas: readonly T[],
+  escopo: "minhas" | "equipe",
+  usuarioId: string,
+): T[] {
+  return escopo === "equipe" ? [...tarefas] : tarefas.filter((t) => t.assigned_to === usuarioId);
+}
