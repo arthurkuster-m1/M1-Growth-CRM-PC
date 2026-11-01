@@ -120,6 +120,7 @@ export {
   Question,
   Keyboard,
   // followup flow builder (Task 6.2)
+  Lightning,
   GitBranch,
   Flag,
   TreeStructure,

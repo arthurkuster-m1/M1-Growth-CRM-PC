@@ -30,10 +30,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { PACING_DEFAULTS, type PacingKnobs } from "@/lib/agent-engine/pacing/defaults";
-import {
-  janelaDeEnvioAberta,
-  proximaAberturaDaJanela,
-} from "@/lib/agent-engine/pacing/engine";
+import { janelaDeEnvioAberta, proximaAberturaDaJanela } from "@/lib/agent-engine/pacing/engine";
 import { fusoDaJanela, parseWarmupCaps } from "@/lib/agent-engine/pacing/store";
 import { logger } from "@/lib/logger";
 

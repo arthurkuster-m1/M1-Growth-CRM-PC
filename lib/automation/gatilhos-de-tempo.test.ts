@@ -53,7 +53,9 @@ describe("a configuração dos dois gatilhos", () => {
     // Funil em branco NÃO é linha torta: é "todos os funis" (`null`), que é o
     // que a varredura usa para não recortar.
     expect(configDaEtapaParada({ dias: 30, pipeline_id: " " })?.pipeline_id).toBeNull();
-    expect(configDaEtapaParada({ dias: 30, pipeline_id: "p1", proteger_pela_agenda: true })).toEqual({
+    expect(
+      configDaEtapaParada({ dias: 30, pipeline_id: "p1", proteger_pela_agenda: true }),
+    ).toEqual({
       dias: 30,
       pipeline_id: "p1",
       stage_id: null,
@@ -132,7 +134,9 @@ describe("silêncio em horas e a direção 'sem atendimento'", () => {
   const horas = (n: number) => new Date(AGORA.getTime() - n * 3_600_000).toISOString();
 
   it("lê horas, recusa unidade desconhecida e respeita o teto de 720 horas", () => {
-    expect(configDoSilencio({ dias: 24, unidade: "horas", direcao: "sem_atendimento" })).toMatchObject({
+    expect(
+      configDoSilencio({ dias: 24, unidade: "horas", direcao: "sem_atendimento" }),
+    ).toMatchObject({
       dias: 24,
       unidade: "horas",
       direcao: "sem_atendimento",

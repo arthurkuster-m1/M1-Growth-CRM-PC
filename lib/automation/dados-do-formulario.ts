@@ -83,7 +83,10 @@ function acrescentar(
  * Nunca lança: sem funil, sem definição ou com a leitura falhando, devolve vazio
  * e o modelo recebe a chave crua, que é o que recebia antes.
  */
-async function rotulosDoFunil(ctx: ActionCtx, pipelineId: string | undefined): Promise<Map<string, string>> {
+async function rotulosDoFunil(
+  ctx: ActionCtx,
+  pipelineId: string | undefined,
+): Promise<Map<string, string>> {
   const rotulos = new Map<string, string>();
   if (!pipelineId) return rotulos;
   const { data } = await ctx.admin
@@ -124,8 +127,7 @@ export async function dadosDoFormularioDoContexto(ctx: ActionCtx): Promise<Dados
       }
     | undefined;
   const contact = ctx.context.contact as
-    | { name?: string | null; phone_number?: string | null; email?: string | null }
-    | undefined;
+    { name?: string | null; phone_number?: string | null; email?: string | null } | undefined;
 
   const dados: Record<string, string> = {};
   acrescentarContato(dados, contact as Record<string, unknown> | undefined);
@@ -144,9 +146,11 @@ export async function dadosDoFormularioDoContexto(ctx: ActionCtx): Promise<Dados
       .limit(1)
       .maybeSingle();
 
-    const captura = data as
-      | { fields: Record<string, unknown>; utm: Record<string, string>; source_name: string }
-      | null;
+    const captura = data as {
+      fields: Record<string, unknown>;
+      utm: Record<string, string>;
+      source_name: string;
+    } | null;
     if (captura) {
       acrescentar(dados, captura.fields, rotulos);
       acrescentar(dados, captura.utm);

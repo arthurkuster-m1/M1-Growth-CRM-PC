@@ -15,17 +15,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { PROVIDERS_DE_MENSAGEM } from "@/lib/channels/capabilities";
 
-
 /** Sessão viva da org: WORKING primeiro; senão qualquer uma não arquivada. */
 export async function sessaoProntaParaEnvio(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<string | null> {
   const listar = (soWorking: boolean, ignorarArquivadas: boolean) => {
-    let q = supabase
-      .from("channel_sessions")
-      .select("id")
-      .eq("organization_id", organizationId);
+    let q = supabase.from("channel_sessions").select("id").eq("organization_id", organizationId);
     // Voz não manda texto: escolher a linha de chamada aqui faria a automação
     // "enviar" por um canal sem transporte de mensagem (spec 18).
     q = q.in("provider", [...PROVIDERS_DE_MENSAGEM]);
@@ -49,5 +45,6 @@ export async function ensureConversation(
   contactId: string,
   channelSessionId: string,
 ): Promise<string> {
-  return (await beginServiceAtOrigin(admin, organizationId, contactId, channelSessionId)).conversation_id;
+  return (await beginServiceAtOrigin(admin, organizationId, contactId, channelSessionId))
+    .conversation_id;
 }

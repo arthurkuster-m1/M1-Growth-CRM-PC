@@ -44,9 +44,15 @@ describe("a régua é o fuso do TENANT, não o relógio de quem roda", () => {
 
   it("06h em São Paulo → fechada (adia)", async () => {
     const knobs = admin({
-      data: { throttle_ms: null, jitter_max_ms: null, window_start_hour: null,
-              window_end_hour: null, allow_sunday: null,
-              timezone: "America/Sao_Paulo", warmup_daily_caps: null },
+      data: {
+        throttle_ms: null,
+        jitter_max_ms: null,
+        window_start_hour: null,
+        window_end_hour: null,
+        allow_sunday: null,
+        timezone: "America/Sao_Paulo",
+        warmup_daily_caps: null,
+      },
       error: null,
     });
     expect(await adiarAteAJanelaAbrir(knobs, ORG, CANAL, INSTANTE)).not.toBeNull();
@@ -54,9 +60,15 @@ describe("a régua é o fuso do TENANT, não o relógio de quem roda", () => {
 
   it("18h em Tóquio → aberta (envia), no MESMO instante", async () => {
     const knobs = admin({
-      data: { throttle_ms: null, jitter_max_ms: null, window_start_hour: null,
-              window_end_hour: null, allow_sunday: null,
-              timezone: "Asia/Tokyo", warmup_daily_caps: null },
+      data: {
+        throttle_ms: null,
+        jitter_max_ms: null,
+        window_start_hour: null,
+        window_end_hour: null,
+        allow_sunday: null,
+        timezone: "Asia/Tokyo",
+        warmup_daily_caps: null,
+      },
       error: null,
     });
     expect(await adiarAteAJanelaAbrir(knobs, ORG, CANAL, INSTANTE)).toBeNull();
@@ -68,14 +80,20 @@ describe("as duas horas que a régua antiga errava, em Brasília", () => {
   // janela (22) e FECHAVA: o envio das 19h30 ficava represado até as 4h da
   // manhã. Dentro de 7h–22h no fuso do tenant, ele sai na hora.
   it("19h30 de Brasília envia — antes ficava represado até as 4h", async () => {
-    expect(await adiarAteAJanelaAbrir(SEM_LINHA, ORG, CANAL, new Date("2026-07-17T22:30:00Z")))
-      .toBeNull();
+    expect(
+      await adiarAteAJanelaAbrir(SEM_LINHA, ORG, CANAL, new Date("2026-07-17T22:30:00Z")),
+    ).toBeNull();
   });
 
   // 08:00Z = 05:00 em São Paulo. A régua antiga via "8h", achava que estava
   // dentro de 7h–22h e MANDAVA — mensagem no celular do cliente às 5h da manhã.
   it("05h de Brasília adia — antes mandava mensagem de madrugada", async () => {
-    const quando = await adiarAteAJanelaAbrir(SEM_LINHA, ORG, CANAL, new Date("2026-07-17T08:00:00Z"));
+    const quando = await adiarAteAJanelaAbrir(
+      SEM_LINHA,
+      ORG,
+      CANAL,
+      new Date("2026-07-17T08:00:00Z"),
+    );
     expect(quando).not.toBeNull();
 
     // A próxima abertura é 7h de São Paulo do MESMO dia = 10:00Z — mais um
@@ -94,26 +112,40 @@ describe("as duas horas que a régua antiga errava, em Brasília", () => {
 describe("o que o operador configurou em Conexões é o que vale", () => {
   it("janela apertada para 9h–18h fecha as 8h de Brasília", async () => {
     const knobs = admin({
-      data: { throttle_ms: null, jitter_max_ms: null, window_start_hour: 9,
-              window_end_hour: 18, allow_sunday: null,
-              timezone: "America/Sao_Paulo", warmup_daily_caps: null },
+      data: {
+        throttle_ms: null,
+        jitter_max_ms: null,
+        window_start_hour: 9,
+        window_end_hour: 18,
+        allow_sunday: null,
+        timezone: "America/Sao_Paulo",
+        warmup_daily_caps: null,
+      },
       error: null,
     });
     // 11:00Z = 08:00 em São Paulo: dentro do padrão 7h–22h, fora do 9h–18h dele.
-    expect(await adiarAteAJanelaAbrir(knobs, ORG, CANAL, new Date("2026-07-17T11:00:00Z")))
-      .not.toBeNull();
+    expect(
+      await adiarAteAJanelaAbrir(knobs, ORG, CANAL, new Date("2026-07-17T11:00:00Z")),
+    ).not.toBeNull();
   });
 
   it("domingo desligado adia o que cairia no domingo", async () => {
     const knobs = admin({
-      data: { throttle_ms: null, jitter_max_ms: null, window_start_hour: null,
-              window_end_hour: null, allow_sunday: false,
-              timezone: "America/Sao_Paulo", warmup_daily_caps: null },
+      data: {
+        throttle_ms: null,
+        jitter_max_ms: null,
+        window_start_hour: null,
+        window_end_hour: null,
+        allow_sunday: false,
+        timezone: "America/Sao_Paulo",
+        warmup_daily_caps: null,
+      },
       error: null,
     });
     // 2026-07-19 é domingo. 15:00Z = 12:00 em São Paulo, em plena janela.
-    expect(await adiarAteAJanelaAbrir(knobs, ORG, CANAL, new Date("2026-07-19T15:00:00Z")))
-      .not.toBeNull();
+    expect(
+      await adiarAteAJanelaAbrir(knobs, ORG, CANAL, new Date("2026-07-19T15:00:00Z")),
+    ).not.toBeNull();
   });
 });
 
@@ -123,7 +155,8 @@ describe("quem nunca abriu a tela de Conexões", () => {
   });
 
   it("erro de leitura falha ABERTO — segue com os defaults, e não cala", async () => {
-    const aviso = vi.spyOn(await import("@/lib/logger").then((m) => m.logger), "warn")
+    const aviso = vi
+      .spyOn(await import("@/lib/logger").then((m) => m.logger), "warn")
       .mockImplementation(() => {});
     const quebrado = admin({ data: null, error: { message: "connection reset" } });
 
