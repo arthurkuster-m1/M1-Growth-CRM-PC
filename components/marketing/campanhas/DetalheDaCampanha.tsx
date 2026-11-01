@@ -386,7 +386,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
               (x) => x !== velha,
             ),
           });
-          if (aba === velha) irParaAba("cadastro");
+          if (aba === velha) irParaAba("visao");
         }}
       />
 
@@ -474,7 +474,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
                   (x) => x !== aba,
                 ),
               });
-              irParaAba("cadastro");
+              irParaAba("visao");
             }}
             className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-error-fg"
           >

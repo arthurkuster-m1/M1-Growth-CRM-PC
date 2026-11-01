@@ -11,33 +11,34 @@ import {
   type DiaDaCampanha,
 } from "@/lib/marketing/campanhas-resumo";
 
-const campanha = (p: Partial<CampanhaDeDemanda> = {}): CampanhaDeDemanda => ({
-  id: "c1",
-  name: "Teste",
-  channel: "trafego_pago",
-  status: "ativa",
-  description: "",
-  idea: "",
-  objective: "",
-  start_date: "2026-09-01",
-  end_date: "2026-09-30",
-  continuous: false,
-  pipeline_id: null,
-  owner_id: null,
-  budget: 600,
-  budget_period: "total",
-  tax_pct: 12.5,
-  goal_leads: 150,
-  goal_cpl: null,
-  goal_sales: null,
-  goal_revenue: null,
-  platform: "",
-  sheet_url: "",
-  platform_campaigns: [],
-  position: 1,
-  created_at: "2026-09-01T00:00:00Z",
-  ...p,
-} as CampanhaDeDemanda);
+const campanha = (p: Partial<CampanhaDeDemanda> = {}): CampanhaDeDemanda =>
+  ({
+    id: "c1",
+    name: "Teste",
+    channel: "trafego_pago",
+    status: "ativa",
+    description: "",
+    idea: "",
+    objective: "",
+    start_date: "2026-09-01",
+    end_date: "2026-09-30",
+    continuous: false,
+    pipeline_id: null,
+    owner_id: null,
+    budget: 600,
+    budget_period: "total",
+    tax_pct: 12.5,
+    goal_leads: 150,
+    goal_cpl: null,
+    goal_sales: null,
+    goal_revenue: null,
+    platform: "",
+    sheet_url: "",
+    platform_campaigns: [],
+    position: 1,
+    created_at: "2026-09-01T00:00:00Z",
+    ...p,
+  }) as CampanhaDeDemanda;
 
 const dia = (p: Partial<DiaDaCampanha>): DiaDaCampanha => ({
   day: "2026-09-01",
@@ -373,16 +374,16 @@ describe("landing pages e abas (C-ajustes)", () => {
   });
   it("abas por tipo: anúncio tem LPs e criativos; contato direto tem abordagem", () => {
     expect(abasDaCampanha("trafego_pago", null)).toEqual([
-      "cadastro",
       "visao",
+      "cadastro",
       "dia",
       "landing",
       "criativos",
       "funil",
     ]);
     expect(abasDaCampanha("aproveitamento_de_base", null)).toEqual([
-      "cadastro",
       "visao",
+      "cadastro",
       "dia",
       "abordagem",
       "funil",
@@ -438,7 +439,7 @@ describe("páginas opcionais da campanha", () => {
     // A Cadência é onde a Prospecção abre; as demais abrem no cadastro.
     expect(abaValida(null, "prospeccao", null)).toBe("cadencia");
     expect(abaValida("funil", "prospeccao", null)).toBe("funil");
-    expect(abaValida(null, "indicacao", null)).toBe("cadastro");
+    expect(abaValida(null, "indicacao", null)).toBe("visao");
     expect(opcionaisDaCampanha("indicacao", null)).toEqual(["abordagem"]);
     // Extração e disparos só existem na campanha de Prospecção.
     expect(opcionaisDaCampanha("trafego_pago", ["landing", "extracao"])).toEqual(["landing"]);
@@ -446,7 +447,7 @@ describe("páginas opcionais da campanha", () => {
       "landing",
       "criativos",
     ]);
-    expect(abasDaCampanha("trafego_pago", [])).toEqual(["cadastro", "visao", "dia", "funil"]);
+    expect(abasDaCampanha("trafego_pago", [])).toEqual(["visao", "cadastro", "dia", "funil"]);
   });
 });
 

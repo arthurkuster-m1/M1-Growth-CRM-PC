@@ -1,9 +1,8 @@
 "use client";
 
 import { GrupoDeNumeros, NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { Painel } from "@/components/dashboards/base";
 import { FunilEmColunas } from "@/components/dashboards/funil";
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
 import { useT } from "@/hooks/i18n/useT";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/marketing/campanhas-resumo";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { agregadoDoDia, somarAgregados } from "@/lib/marketing/colunas-de-resultado";
+import { CaretDown } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
@@ -122,6 +122,84 @@ function Barra({
   );
 }
 
+const CHAVE_DAS_SECOES = "m1:campanha:secoes-abertas";
+
+function lerAbertas(): Record<string, boolean> {
+  try {
+    return JSON.parse(window.localStorage.getItem(CHAVE_DAS_SECOES) ?? "{}") as Record<
+      string,
+      boolean
+    >;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Uma seção da Visão geral que ABRE E FECHA: fechada mostra só o título (e o `resumo`, como a barra
+ * de progresso); aberta mostra o resto. Começa fechada e lembra, neste navegador, o que a pessoa abriu.
+ */
+function SecaoRecolhivel({
+  titulo,
+  nota,
+  resumo,
+  faixa,
+  children,
+}: {
+  titulo: string;
+  nota?: string;
+  resumo?: ReactNode;
+  faixa?: string;
+  children: ReactNode;
+}) {
+  const [aberta, setAberta] = useState(false);
+  useEffect(() => {
+    setAberta(lerAbertas()[titulo] === true);
+  }, [titulo]);
+  function alternar() {
+    const nova = !aberta;
+    setAberta(nova);
+    try {
+      window.localStorage.setItem(
+        CHAVE_DAS_SECOES,
+        JSON.stringify({ ...lerAbertas(), [titulo]: nova }),
+      );
+    } catch {
+      /* sem armazenamento: só não lembra */
+    }
+  }
+  return (
+    <section
+      className={cn(
+        "grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm",
+        faixa ? `border-l-4 ${faixa}` : "",
+      )}
+    >
+      <button
+        type="button"
+        aria-expanded={aberta}
+        onClick={alternar}
+        className="flex w-full items-center justify-between gap-2 text-left"
+      >
+        <span className="flex min-w-0 items-baseline gap-2">
+          <h3 className="text-sm font-semibold">{titulo}</h3>
+          {nota ? <span className="truncate text-xs text-muted-foreground">{nota}</span> : null}
+        </span>
+        <CaretDown
+          size={16}
+          aria-hidden
+          className={cn(
+            "shrink-0 text-muted-foreground transition-transform",
+            !aberta && "-rotate-90",
+          )}
+        />
+      </button>
+      {resumo}
+      {aberta ? children : null}
+    </section>
+  );
+}
+
 function Cartao({
   titulo,
   children,
@@ -132,17 +210,11 @@ function Cartao({
   tom?: Tom;
 }) {
   return (
-    <section
-      className={cn(
-        "grid grid-cols-1 gap-3 rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
-        FAIXA[tom],
-      )}
-    >
-      <h3 className="text-sm font-semibold">{titulo}</h3>
+    <SecaoRecolhivel titulo={titulo} faixa={FAIXA[tom]}>
       <GrupoDeNumeros>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{children}</div>
       </GrupoDeNumeros>
-    </section>
+    </SecaoRecolhivel>
   );
 }
 
@@ -227,8 +299,11 @@ export function ResumoDaCampanha({
   return (
     <div className="grid grid-cols-1 gap-3">
       {r.alertas.length > 0 ? (
-        <section className="grid grid-cols-1 gap-2 rounded-2xl border border-l-4 border-l-amber-500 bg-card p-4 shadow-sm">
-          <h3 className="text-sm font-semibold">{t("O que fazer agora")}</h3>
+        <SecaoRecolhivel
+          titulo={t("O que fazer agora")}
+          nota={`${r.alertas.length} ${r.alertas.length === 1 ? t("ponto") : t("pontos")}`}
+          faixa="border-l-amber-500"
+        >
           <ul className="grid grid-cols-1 gap-1.5">
             {r.alertas.map((a) => (
               <li
@@ -244,12 +319,13 @@ export function ResumoDaCampanha({
               </li>
             ))}
           </ul>
-        </section>
+        </SecaoRecolhivel>
       ) : null}
 
       {trafego ? (
-        <Painel titulo={t("Metas de leads")}>
-          <div className="grid gap-4">
+        <SecaoRecolhivel
+          titulo={t("Metas de leads")}
+          resumo={
             <Barra
               rotulo={t("Leads captados da meta")}
               detalhe={
@@ -260,6 +336,9 @@ export function ResumoDaCampanha({
               porcentagem={progressoLeads}
               tom="blue"
             />
+          }
+        >
+          <div className="grid gap-4">
             <FunilEmColunas
               colunas={[
                 {
@@ -365,7 +444,7 @@ export function ResumoDaCampanha({
               {t("Previsão = leads captados + verba restante ÷ CPL médio dos 3 últimos dias.")}
             </p>
           </div>
-        </Painel>
+        </SecaoRecolhivel>
       ) : null}
 
       <Cartao titulo={t("Dias")} tom="violet">
@@ -398,8 +477,9 @@ export function ResumoDaCampanha({
         />
       </Cartao>
 
-      <Painel titulo={t("Pace de gastos")}>
-        <div className="grid gap-4">
+      <SecaoRecolhivel
+        titulo={t("Pace de gastos")}
+        resumo={
           <Barra
             rotulo={t("Orçamento já gasto")}
             detalhe={
@@ -410,6 +490,9 @@ export function ResumoDaCampanha({
             porcentagem={orcamentoGasto}
             tom={orcamentoGasto !== null && orcamentoGasto > 100 ? "rose" : "green"}
           />
+        }
+      >
+        <div className="grid gap-4">
           <FunilEmColunas
             colunas={[
               {
@@ -455,10 +538,10 @@ export function ResumoDaCampanha({
             </p>
           ) : null}
         </div>
-      </Painel>
+      </SecaoRecolhivel>
 
       {trafego ? (
-        <Painel titulo={t("Funil completo")} nota={t("Na ordem em que acontece")}>
+        <SecaoRecolhivel titulo={t("Funil completo")} nota={t("Na ordem em que acontece")}>
           <FunilEmColunas
             colunas={[
               {
@@ -575,7 +658,7 @@ export function ResumoDaCampanha({
               },
             ]}
           />
-        </Painel>
+        </SecaoRecolhivel>
       ) : (
         <FunilDoCanal c={c} dias={dias} leads={r.funil.leads} investido={r.funil.investido} />
       )}
