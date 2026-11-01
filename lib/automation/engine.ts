@@ -64,7 +64,10 @@ interface RuleRow {
 }
 
 /** Hidrata o contexto avaliado pelas condições/ações a partir do entity do evento. */
-export async function buildContext(admin: SupabaseClient, row: EventRow): Promise<Record<string, unknown>> {
+export async function buildContext(
+  admin: SupabaseClient,
+  row: EventRow,
+): Promise<Record<string, unknown>> {
   const context: Record<string, unknown> = { event: row.payload };
   // Admin client bypassa RLS — todo lookup filtra organization_id do evento
   // (doutrina multi-tenant; um FK cross-org corrompido nunca vaza pro contexto).
@@ -214,10 +217,7 @@ async function registrarAdiamento(
 }
 
 /** O contato do evento, quando ele existe — direto ou via conversa. */
-async function contatoDoEvento(
-  admin: SupabaseClient,
-  row: EventRow,
-): Promise<string | null> {
+async function contatoDoEvento(admin: SupabaseClient, row: EventRow): Promise<string | null> {
   const direto = typeof row.payload.contact_id === "string" ? row.payload.contact_id : null;
   if (direto) return direto;
   const conversa =
@@ -239,10 +239,7 @@ async function contatoDoEvento(
  * caminho de sempre — calar por falta de leitura esconderia automação legítima
  * sem deixar rastro do porquê.
  */
-async function eventoEhDeContatoPessoal(
-  admin: SupabaseClient,
-  row: EventRow,
-): Promise<boolean> {
+async function eventoEhDeContatoPessoal(admin: SupabaseClient, row: EventRow): Promise<boolean> {
   try {
     const contatoId = await contatoDoEvento(admin, row);
     if (!contatoId) return false;
@@ -265,15 +262,19 @@ export async function runAutomationForEvent(
   const serviceBoundaries = new Map<string, Promise<ServiceBoundary>>();
   const requestId = row.metadata?.request_id;
   const causedByRule =
-    Boolean(row.metadata?.caused_by_rule) || (typeof requestId === "string" && requestId.startsWith("rule:"));
+    Boolean(row.metadata?.caused_by_rule) ||
+    (typeof requestId === "string" && requestId.startsWith("rule:"));
   if (causedByRule) {
     return { consumer_key: AUTOMATION_CONSUMER_KEY, status: "skipped", detail: "caused_by_rule" };
   }
 
   const expectedKind = EXPECTED_ENTITY_KIND[row.event_type];
   if (expectedKind && entidadeDoEvento(row) !== expectedKind) {
-
-    return { consumer_key: AUTOMATION_CONSUMER_KEY, status: "skipped", detail: "entity_kind_mismatch" };
+    return {
+      consumer_key: AUTOMATION_CONSUMER_KEY,
+      status: "skipped",
+      detail: "entity_kind_mismatch",
+    };
   }
 
   // Contato pessoal (spec 21, caminho 8): evento de pessoal não casa com regra
@@ -335,7 +336,16 @@ export async function runAutomationForEvent(
       const executor = getAction(action.type);
       if (!executor?.postponeUntil) continue;
       const until = await executor.postponeUntil(
-        { admin, serviceBoundaries, organizationId: row.organization_id, ruleId: rule.id, ruleName: rule.name, event: row, context, requestId: row.id },
+        {
+          admin,
+          serviceBoundaries,
+          organizationId: row.organization_id,
+          ruleId: rule.id,
+          ruleName: rule.name,
+          event: row,
+          context,
+          requestId: row.id,
+        },
         action.config ?? {},
       );
       if (until) {
@@ -426,7 +436,9 @@ export async function runAutomationForEvent(
     // A ordem importa: falha (+ skip) vence adiamento. Uma regra em que uma
     // ação falhou/pulou e outra ficou esperando é `partial` — quem lê precisa
     // saber que algo quebrou, não que está tudo a caminho.
-    const naoEnviadas = results.filter((r) => r.status === "failed" || r.status === "skipped").length;
+    const naoEnviadas = results.filter(
+      (r) => r.status === "failed" || r.status === "skipped",
+    ).length;
     const adiados = results.filter((r) => r.status === "postponed").length;
     const status =
       naoEnviadas > 0
@@ -462,7 +474,11 @@ export async function runAutomationForEvent(
 
     // run_count sem RPC de increment: read-modify-write é aceitável aqui
     // (contador informativo de UI, não invariante).
-    const { data: cur } = await admin.from("automation_rules").select("run_count").eq("id", rule.id).maybeSingle();
+    const { data: cur } = await admin
+      .from("automation_rules")
+      .select("run_count")
+      .eq("id", rule.id)
+      .maybeSingle();
     await admin
       .from("automation_rules")
       .update({ last_run_at: new Date().toISOString(), run_count: (cur?.run_count ?? 0) + 1 })

@@ -48,9 +48,7 @@ describe("checarGuardasDeContato", () => {
    * conceder consentimento em lugar nenhum.
    */
   it("sem objeto consent: PASSA — é o contato que nasceu pelo default, não uma recusa", () => {
-    const r = checarGuardasDeContato(
-      ctxComContato({ id: "c1", phone_number: "+5511999999999" }),
-    );
+    const r = checarGuardasDeContato(ctxComContato({ id: "c1", phone_number: "+5511999999999" }));
     expect(r).toEqual({ ok: true, contact: { id: "c1", phone_number: "+5511999999999" } });
   });
 

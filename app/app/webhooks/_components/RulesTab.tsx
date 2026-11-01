@@ -18,7 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Robot, Plus, Trash, PencilSimple } from "@/lib/ui/icons";
+import { Robot, Plus, Trash, PencilSimple, FlowArrow, GitBranch } from "@/lib/ui/icons";
+import Link from "next/link";
 import { SeloDeAutoria } from "@/components/operacao/SeloDeAutoria";
 import {
   useAutomationRules,
@@ -29,7 +30,20 @@ import {
 import { TRIGGER_LABELS, type TriggerEvent } from "./labels";
 import { RuleEditor } from "./RuleEditor";
 import { useT } from "@/hooks/i18n/useT";
-import { MODELOS_DE_TAG, type ModeloDeRegra } from "@/lib/automation/modelos-de-tag";
+import { FluxoVertical } from "@/components/automacoes/FluxoVertical";
+import { useFollowupFlows } from "@/hooks/followup/useFollowupFlows";
+import {
+  CATEGORIAS_DE_AUTOMACAO,
+  categoriaDaRegra,
+  categoriaDoFluxo,
+  tituloDaCategoria,
+  type CategoriaDeAutomacao,
+} from "@/lib/automation/categorias";
+import type { ModeloDeRegra } from "@/lib/automation/modelos-de-tag";
+import { MODELOS_DA_CENTRAL } from "@/lib/automation/modelos-prontos";
+import { passosDaRegra } from "@/lib/automation/passos-da-regra";
+import { cn } from "@/lib/utils";
+import { ACTION_LABELS, type ActionType } from "./labels";
 
 const RULES_QUERY_KEY = ["automation-rules"];
 
@@ -48,6 +62,10 @@ export function RulesTab() {
   const [editing, setEditing] = React.useState<AutomationRuleRow | null>(null);
   const [modelo, setModelo] = React.useState<ModeloDeRegra["regra"] | null>(null);
   const [deleting, setDeleting] = React.useState<AutomationRuleRow | null>(null);
+  const [categoria, setCategoria] = React.useState<CategoriaDeAutomacao | "todas">("todas");
+  const [comFluxo, setComFluxo] = React.useState<Record<string, boolean>>({});
+  // Os follow-ups da IA: vivem em outro motor, mas aparecem aqui na mesma lista (só leitura).
+  const fluxos = useFollowupFlows();
 
   const rules = data?.data ?? [];
 
@@ -84,23 +102,84 @@ export function RulesTab() {
     setEditorOpen(true);
   };
 
-  const modelosDeTag = (
-    <div className="space-y-2" data-testid="modelos-de-tag">
-      <p className="text-sm font-medium">{t("Modelos prontos de tag")}</p>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {MODELOS_DE_TAG.map((m) => (
+  const fluxosDeFollowup = fluxos.data ?? [];
+  const contagem = (c: CategoriaDeAutomacao) =>
+    rules.filter((r) => categoriaDaRegra(r) === c).length +
+    fluxosDeFollowup.filter((f) => categoriaDoFluxo(f.name) === c).length;
+  const regrasVisiveis = rules.filter(
+    (r) => categoria === "todas" || categoriaDaRegra(r) === categoria,
+  );
+  const fluxosVisiveis = fluxosDeFollowup.filter(
+    (f) => categoria === "todas" || categoriaDoFluxo(f.name) === categoria,
+  );
+  const modelosVisiveis = MODELOS_DA_CENTRAL.filter(
+    (m) => categoria === "todas" || m.categoria === categoria,
+  );
+
+  const filtroDeCategoria = (
+    <div className="flex flex-wrap gap-1.5" data-testid="categorias-de-automacao">
+      <button
+        type="button"
+        aria-pressed={categoria === "todas"}
+        onClick={() => setCategoria("todas")}
+        className={cn(
+          "rounded-full border px-3 py-1 text-xs font-medium",
+          categoria === "todas"
+            ? "border-primary bg-primary/10 text-primary"
+            : "hover:bg-secondary",
+        )}
+      >
+        {t("Todas")} ({rules.length + fluxosDeFollowup.length})
+      </button>
+      {CATEGORIAS_DE_AUTOMACAO.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          aria-pressed={categoria === c.id}
+          title={t(c.descricao)}
+          onClick={() => setCategoria(c.id)}
+          className={cn(
+            "rounded-full border px-3 py-1 text-xs font-medium",
+            categoria === c.id ? "border-primary bg-primary/10 text-primary" : "hover:bg-secondary",
+          )}
+        >
+          {t(c.titulo)} ({contagem(c.id)})
+        </button>
+      ))}
+    </div>
+  );
+
+  const modelosProntos = (
+    <div className="space-y-2" data-testid="modelos-prontos">
+      <p className="text-sm font-medium">{t("Modelos prontos")}</p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {modelosVisiveis.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => abrirModelo(m)}
             className="rounded-xl border border-border bg-card/50 p-3 text-left transition-colors hover:bg-secondary/60"
           >
+            <span className="mb-1 block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              {t(tituloDaCategoria(m.categoria))}
+            </span>
             <span className="block text-sm font-semibold">{t(m.titulo)}</span>
             <span className="mt-1 block text-xs text-muted-foreground">{t(m.descricao)}</span>
           </button>
         ))}
       </div>
+      {modelosVisiveis.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {t("Ainda não há modelo pronto nesta categoria.")}
+        </p>
+      ) : null}
     </div>
+  );
+  const modelosDeTag = (
+    <>
+      {filtroDeCategoria}
+      {modelosProntos}
+    </>
   );
 
   if (isLoading) {
@@ -151,7 +230,7 @@ export function RulesTab() {
         </Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {rules.map((r) => (
+        {regrasVisiveis.map((r) => (
           <Card key={r.id}>
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between gap-2">
@@ -160,6 +239,9 @@ export function RulesTab() {
                   {r.is_active ? t("Ativa") : t("Pausada")}
                 </Badge>
               </div>
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                {t(tituloDaCategoria(categoriaDaRegra(r)))}
+              </p>
               <p className="text-xs text-muted-foreground">{triggerLabel(r.trigger_event, t)}</p>
               <p className="text-xs text-muted-foreground">
                 {r.actions.length} {r.actions.length === 1 ? t("ação") : t("ações")}
@@ -168,37 +250,91 @@ export function RulesTab() {
                   do estado dela, não um detalhe de auditoria. */}
               <SeloDeAutoria kind={r.last_change_actor_kind} em={r.last_change_at} />
             </CardHeader>
-            <CardContent className="flex items-center justify-between gap-2">
-              <Switch
-                checked={r.is_active}
-                disabled={update.isPending}
-                onCheckedChange={(checked) => toggleActive(r, checked)}
-                aria-label={`${r.is_active ? t("Pausar") : t("Ligar")} ${r.name}`}
-              />
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => openEdit(r)}
-                  aria-label={t("Editar automação")}
-                >
-                  <PencilSimple />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleting(r)}
-                  aria-label={t("Excluir automação")}
-                >
-                  <Trash />
-                </Button>
+            <CardContent className="grid gap-3">
+              {comFluxo[r.id] ? (
+                <FluxoVertical
+                  passos={passosDaRegra(r, {
+                    gatilho: (id) => triggerLabel(id, t),
+                    acao: (id) => t(ACTION_LABELS[id as ActionType] ?? id),
+                  })}
+                />
+              ) : null}
+              <button
+                type="button"
+                aria-expanded={!!comFluxo[r.id]}
+                onClick={() => setComFluxo((a) => ({ ...a, [r.id]: !a[r.id] }))}
+                className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-primary hover:underline"
+              >
+                <GitBranch size={14} aria-hidden />
+                {comFluxo[r.id] ? t("Esconder o fluxo") : t("Ver como fluxo")}
+              </button>
+              <div className="flex items-center justify-between gap-2">
+                <Switch
+                  checked={r.is_active}
+                  disabled={update.isPending}
+                  onCheckedChange={(checked) => toggleActive(r, checked)}
+                  aria-label={`${r.is_active ? t("Pausar") : t("Ligar")} ${r.name}`}
+                />
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEdit(r)}
+                    aria-label={t("Editar automação")}
+                  >
+                    <PencilSimple />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeleting(r)}
+                    aria-label={t("Excluir automação")}
+                  >
+                    <Trash />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+      {regrasVisiveis.length === 0 ? (
+        <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
+          {t("Nenhuma automação nesta categoria ainda. Escolha um modelo pronto acima.")}
+        </p>
+      ) : null}
+
+      {fluxosVisiveis.length > 0 ? (
+        <div className="space-y-2" data-testid="followups-na-central">
+          <p className="text-sm font-medium">{t("Follow-ups da IA")}</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {fluxosVisiveis.map((f) => (
+              <Link
+                key={f.id}
+                href={`/app/ai/followups/${f.id}`}
+                className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3 transition-colors hover:bg-secondary/60"
+              >
+                <FlowArrow size={18} aria-hidden className="shrink-0 text-primary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{f.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t(tituloDaCategoria(categoriaDoFluxo(f.name)))}
+                  </span>
+                </span>
+                <Badge variant={f.status === "active" ? "success" : "neutral"}>
+                  {f.status === "active"
+                    ? t("Ativo")
+                    : f.status === "draft"
+                      ? t("Rascunho")
+                      : t("Pausado")}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} modelo={modelo} />
 

@@ -32,7 +32,7 @@ export const MODELOS_DE_TAG: readonly ModeloDeRegra[] = [
     id: "tag-por-texto",
     titulo: "Marcar quem enviar um texto",
     descricao:
-      "Ex.: o botão de WhatsApp da página de obrigado manda \"#obrigado\"; quem enviar ganha a tag.",
+      'Ex.: o botão de WhatsApp da página de obrigado manda "#obrigado"; quem enviar ganha a tag.',
     regra: {
       name: "Tag para quem enviou o texto da página de obrigado",
       trigger_event: "message.received",

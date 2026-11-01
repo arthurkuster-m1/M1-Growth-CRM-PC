@@ -49,8 +49,9 @@ describe("gatilhos de automação", () => {
     expect(daAgenda.size).toBeGreaterThan(0);
     for (const gatilho of daAgenda) {
       expect(TRIGGER_EVENTS as readonly string[], gatilho).toContain(gatilho);
-      expect(ENTIDADE_ESPERADA_POR_GATILHO[gatilho as keyof typeof ENTIDADE_ESPERADA_POR_GATILHO])
-        .toBe("calendar_appointment");
+      expect(
+        ENTIDADE_ESPERADA_POR_GATILHO[gatilho as keyof typeof ENTIDADE_ESPERADA_POR_GATILHO],
+      ).toBe("calendar_appointment");
     }
   });
 });

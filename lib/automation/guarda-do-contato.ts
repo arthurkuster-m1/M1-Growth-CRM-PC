@@ -66,12 +66,13 @@ interface ContatoDoContexto {
   id: string;
   is_blocked?: boolean;
   phone_number?: string | null;
-  consent?: { marketing?: { granted_at?: string | null; declined_at?: string | null } | null } | null;
+  consent?: {
+    marketing?: { granted_at?: string | null; declined_at?: string | null } | null;
+  } | null;
 }
 
 export type ResultadoDaGuarda =
-  | { ok: true; contact: ContatoLiberadoParaEnvio }
-  | { ok: false; reason: MotivoDeBloqueio };
+  { ok: true; contact: ContatoLiberadoParaEnvio } | { ok: false; reason: MotivoDeBloqueio };
 
 /**
  * Corre as 4 guardas, na ordem que mais barato falha primeiro (nenhum dado

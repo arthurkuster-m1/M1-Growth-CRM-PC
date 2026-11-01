@@ -130,7 +130,9 @@ describe("os seis casos da decisão 22-d (#1004, item 7)", () => {
   it("2. listado, e configurado pela INSTALAÇÃO → passa", async () => {
     banco.lista = ["10.1.0.0/16"];
 
-    await expect(motivoDaRecusaDeDestino("http://10.1.2.7:8080/v1", "instalacao")).resolves.toBeNull();
+    await expect(
+      motivoDaRecusaDeDestino("http://10.1.2.7:8080/v1", "instalacao"),
+    ).resolves.toBeNull();
   });
 
   it("3. listado, mas configurado por uma ORGANIZAÇÃO → recusa", async () => {

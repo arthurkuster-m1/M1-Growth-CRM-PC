@@ -29,14 +29,9 @@ export interface OpcaoDeDecisao {
 
 /** Por que a resposta não virou escolha — o motivo que vai para o run. */
 export type MotivoDaDecisao =
-  | "resposta_vazia"
-  | "sem_json"
-  | "escolha_ausente"
-  | "escolha_fora_do_conjunto";
+  "resposta_vazia" | "sem_json" | "escolha_ausente" | "escolha_fora_do_conjunto";
 
-export type DecisaoDeAcao =
-  | { ok: true; escolha: string }
-  | { ok: false; motivo: MotivoDaDecisao };
+export type DecisaoDeAcao = { ok: true; escolha: string } | { ok: false; motivo: MotivoDaDecisao };
 
 export interface EntradaDaDecisao {
   /** A instrução de quem montou a regra — o que a IA pondera ao escolher. */
@@ -57,7 +52,7 @@ const TETO_DO_CONTEXTO = 6000;
 const INSTRUCAO_FIXA =
   "Você é o decididor de uma automação de CRM (NÃO fala com o cliente e NÃO executa nada você mesmo). " +
   "Leia a instrução de quem montou a regra, o contexto do evento e as opções disponíveis, e escolha UMA opção. " +
-  "Responda SOMENTE com JSON, sem explicação: {\"escolha\": \"<id de UMA opção, exatamente como está na lista>\"}. " +
+  'Responda SOMENTE com JSON, sem explicação: {"escolha": "<id de UMA opção, exatamente como está na lista>"}. ' +
   "Escolha um id que exista na lista; fora da lista a automação não executa nada.";
 
 function formatarOpcoes(opcoes: readonly OpcaoDeDecisao[]): string {
@@ -87,7 +82,16 @@ const FICHA_DA_DECISAO = {
   evento: ["body_preview", "added_tags", "event_type_name", "status", "lost_reason", "won_reason"],
   // `title` fica de fora: neste produto o título do negócio nasce do nome do
   // contato e, sem nome, do telefone (nascimento-do-lead.ts, create-or-move-lead.ts).
-  lead: ["status", "value_cents", "currency", "tags", "custom_fields", "source", "won_reason", "lost_reason"],
+  lead: [
+    "status",
+    "value_cents",
+    "currency",
+    "tags",
+    "custom_fields",
+    "source",
+    "won_reason",
+    "lost_reason",
+  ],
   contact: ["tags"],
 } as const;
 
@@ -95,7 +99,8 @@ function projetar(origem: unknown, campos: readonly string[]): Record<string, un
   if (!origem || typeof origem !== "object") return undefined;
   const linha = origem as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const campo of campos) if (linha[campo] !== undefined && linha[campo] !== null) out[campo] = linha[campo];
+  for (const campo of campos)
+    if (linha[campo] !== undefined && linha[campo] !== null) out[campo] = linha[campo];
   return Object.keys(out).length ? out : undefined;
 }
 

@@ -53,17 +53,22 @@ export async function aiDecideLigado(
       .maybeSingle();
 
     if (error) {
-      logger.warn("ai_decide: não deu para ler o interruptor da empresa — o passo não decide agora", {
-        organizationId,
-        detalhe: error.message,
-      });
+      logger.warn(
+        "ai_decide: não deu para ler o interruptor da empresa — o passo não decide agora",
+        {
+          organizationId,
+          detalhe: error.message,
+        },
+      );
       return undefined;
     }
 
     const settings = (data as { settings?: unknown } | null)?.settings;
-    if (!settings || typeof settings !== "object" || Array.isArray(settings)) return AI_DECIDE_PADRAO;
+    if (!settings || typeof settings !== "object" || Array.isArray(settings))
+      return AI_DECIDE_PADRAO;
     const automacoes = (settings as Record<string, unknown>)[CHAVE_DAS_AUTOMACOES];
-    if (!automacoes || typeof automacoes !== "object" || Array.isArray(automacoes)) return AI_DECIDE_PADRAO;
+    if (!automacoes || typeof automacoes !== "object" || Array.isArray(automacoes))
+      return AI_DECIDE_PADRAO;
     const bruto = (automacoes as Record<string, unknown>).ai_decide;
     // Ausente, `null` ou lixo vindo de SQL/import: LIGADO. O interruptor desliga
     // quando o operador DESLIGA — nunca por omissão nem por valor ilegível.

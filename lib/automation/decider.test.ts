@@ -11,7 +11,11 @@ import { montarMensagemDaDecisao } from "@/lib/automation/decider";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
 const OPCOES = [
-  { id: "quente", rotulo: "Marcar como quente", acao: { type: "add_tag", config: { tags: ["quente"] } } },
+  {
+    id: "quente",
+    rotulo: "Marcar como quente",
+    acao: { type: "add_tag", config: { tags: ["quente"] } },
+  },
   { id: "frio", rotulo: "Marcar como frio", acao: { type: "add_tag", config: { tags: ["frio"] } } },
 ];
 
@@ -88,7 +92,11 @@ describe("montarMensagemDaDecisao: o prompt só leva a lista fixa", () => {
     const semNome = montarMensagemDaDecisao({
       instrucao: "Se quer parcelar, quente; senão, frio.",
       opcoes: OPCOES,
-      contexto: { event: EVENTO, lead: { ...LINHA_DO_LEAD, title: telefone }, contact: LINHA_DO_CONTATO },
+      contexto: {
+        event: EVENTO,
+        lead: { ...LINHA_DO_LEAD, title: telefone },
+        contact: LINHA_DO_CONTATO,
+      },
     });
     expect(semNome).not.toContain(telefone);
   });

@@ -93,7 +93,7 @@ export function faixasDeclaradas(entradas: readonly string[]): Faixa[] {
 export function listaCobreIp(ip: string, faixas: readonly Faixa[]): boolean {
   const alvo = ipv4ParaInteiro(ip);
   if (alvo === null) return false;
-  return faixas.some((f) => ((alvo & f.mascara) >>> 0) === ((f.base & f.mascara) >>> 0));
+  return faixas.some((f) => (alvo & f.mascara) >>> 0 === (f.base & f.mascara) >>> 0);
 }
 
 /** O `.env` como lista: vírgula separa, espaço em volta não conta, vazio é ausente. */
@@ -190,7 +190,9 @@ async function lerDoBanco(): Promise<readonly string[] | null> {
     if (!Array.isArray(bruto) || !bruto.every((e) => typeof e === "string")) return null;
     return bruto as string[];
   } catch (erro) {
-    avisarUmaVez("leitura|excecao", { detalhe: erro instanceof Error ? erro.message : String(erro) });
+    avisarUmaVez("leitura|excecao", {
+      detalhe: erro instanceof Error ? erro.message : String(erro),
+    });
     return null;
   }
 }
@@ -294,7 +296,8 @@ export async function motivoDaRecusaDeDestino(
   endereco: string,
   origem: OrigemDoDestino,
 ): Promise<string | null> {
-  const faixas = origem === "instalacao" ? faixasDeclaradas(await destinosInternosAutorizados()) : [];
+  const faixas =
+    origem === "instalacao" ? faixasDeclaradas(await destinosInternosAutorizados()) : [];
 
   try {
     assertSafeOutboundUrl(endereco);
@@ -345,7 +348,8 @@ export async function motivoDaRecusaDeDestino(
  */
 export function fetchParaDestinoDaOrganizacao(interno: typeof fetch = fetch): typeof fetch {
   return async (input, init) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const recusa = await motivoDaRecusaDeDestino(url, "organizacao");
     if (recusa) throw new Error(recusa);
     const res = await interno(input, { ...init, redirect: "manual" });

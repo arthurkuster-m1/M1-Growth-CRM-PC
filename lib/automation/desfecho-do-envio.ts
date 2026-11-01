@@ -43,7 +43,6 @@ export interface MensagemEnviada {
 /** Estados em que a mensagem SAIU. `sent` é o que o adapter confirma. */
 const SAIU = new Set(["sent", "delivered", "read"]);
 
-
 /**
  * Traduz o estado REAL da mensagem no desfecho que a automação registra.
  *
@@ -52,10 +51,7 @@ const SAIU = new Set(["sent", "delivered", "read"]);
  * quando a sessão volta a WORKING). Dizer que falhou faria quem lê desistir de
  * uma mensagem que está a caminho — o oposto do defeito, e igualmente mentiroso.
  */
-export function desfechoDoEnvio(
-  tipo: string,
-  mensagem: MensagemEnviada,
-): ActionResultDetail {
+export function desfechoDoEnvio(tipo: string, mensagem: MensagemEnviada): ActionResultDetail {
   const base = { message_id: mensagem.id };
 
   if (SAIU.has(mensagem.status)) {
@@ -74,8 +70,7 @@ export function desfechoDoEnvio(
         ...base,
         reason: motivo,
         explicacao:
-          fraseDaFalhaDeCanal(motivo) ??
-          "A mensagem está na fila e sai assim que o canal aceitar.",
+          fraseDaFalhaDeCanal(motivo) ?? "A mensagem está na fila e sai assim que o canal aceitar.",
       },
     };
   }

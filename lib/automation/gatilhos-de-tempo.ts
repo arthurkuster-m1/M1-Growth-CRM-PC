@@ -125,10 +125,14 @@ export function configDoSilencio(bruto: unknown): ConfigDoSilencio | null {
   if (!Number.isInteger(dias)) return null;
   const n = dias as number;
   const unidade: UnidadeDoSilencio = unidadeBruta === "horas" ? "horas" : "dias";
-  if (unidadeBruta !== undefined && unidadeBruta !== "dias" && unidadeBruta !== "horas") return null;
+  if (unidadeBruta !== undefined && unidadeBruta !== "dias" && unidadeBruta !== "horas")
+    return null;
   if (unidade === "dias" && (n < DIAS_MIN || n > DIAS_MAX)) return null;
   if (unidade === "horas" && (n < HORAS_MIN || n > HORAS_MAX)) return null;
-  if (typeof direcao !== "string" || !(DIRECOES_DO_SILENCIO as readonly string[]).includes(direcao)) {
+  if (
+    typeof direcao !== "string" ||
+    !(DIRECOES_DO_SILENCIO as readonly string[]).includes(direcao)
+  ) {
     return null;
   }
   return {
@@ -142,8 +146,12 @@ export function configDoSilencio(bruto: unknown): ConfigDoSilencio | null {
 
 export function configDaEtapaParada(bruto: unknown): ConfigDaEtapaParada | null {
   if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return null;
-  const { dias, pipeline_id: pipelineId, stage_id: stageId, proteger_pela_agenda: proteger } =
-    bruto as Record<string, unknown>;
+  const {
+    dias,
+    pipeline_id: pipelineId,
+    stage_id: stageId,
+    proteger_pela_agenda: proteger,
+  } = bruto as Record<string, unknown>;
   if (!Number.isInteger(dias)) return null;
   const n = dias as number;
   if (n < DIAS_MIN || n > DIAS_MAX) return null;
@@ -235,5 +243,7 @@ export function naoDisparadosTemporais(
   jaEmitidos: ReadonlySet<string>,
   regraId: string,
 ): Array<{ leadId: string; ancora: string }> {
-  return candidatos.filter((c) => !jaEmitidos.has(chaveDeDisparoTemporal(regraId, c.leadId, c.ancora)));
+  return candidatos.filter(
+    (c) => !jaEmitidos.has(chaveDeDisparoTemporal(regraId, c.leadId, c.ancora)),
+  );
 }
