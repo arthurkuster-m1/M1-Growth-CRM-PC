@@ -7,6 +7,49 @@ atender cliente real é infraestrutura, segurança dos dados e prova de uso. Lig
 
 Regra: não abrir para cliente antes das fases 1 a 3 estarem marcadas. A fase 4 (piloto) é o teste de verdade.
 
+## Decisões do Arthur (01/11/2026) — valem mais que o texto abaixo quando divergirem
+
+- **Onde roda:** a VPS Oracle Always Free já existente, em **São Paulo** (ARM, 4 núcleos, 24 GB, 200 GB). Tudo
+  junto nela: app, worker, agendador, Supabase **self-hosted** (modo `docker-compose.single-server.yml`), Redis,
+  WAHA e Caddy. Migrar a conta Oracle para **Pay As You Go** (continua gratuito dentro dos limites) para a
+  instância não ser recolhida por ociosidade.
+- **Custo mínimo até começar a vender:** sem Supabase Pro. O backup diário é nosso (ver Fase 1): `pg_dump` + mídia
+  + chaves, enviados para fora (Cloudflare R2 ou Backblaze B2) e com teste de restauração. Perda máxima: 24 h.
+- **Evolution API:** ninguém usa (só testes pessoais do Arthur). Pode sair sem plano de migração. Antes de remover,
+  conferir só se algum fluxo do n8n pessoal a chama.
+- **WhatsApp:** 1 número por cliente no plano gratuito = **um contêiner WAHA Core por cliente** (a verificar se o
+  app aceita um endereço de WAHA por canal; se não, é uma mudança pequena) ou WAHA Plus. API oficial da Meta como
+  opção para quem quiser disparar. "Só leitura" não poupa servidor (o custo é a conexão do número, não a tela);
+  se quiser, vira uma **permissão** (cliente vê as conversas, sem enviar).
+- **O n8n é crítico e não pode cair.** Ele recebe hoje os leads de todas as campanhas e landing pages dos clientes
+  e grava no Excel. Esse fluxo **continua como está**; só se **acrescenta** um ramo que também envia o lead ao CRM.
+  Regras de proteção abaixo.
+
+### Protegendo o n8n (vale para toda a instalação)
+
+1. **Ele é intocável até o último passo.** O app e o Supabase sobem em um projeto Docker **separado** (rede própria,
+   portas próprias). Não paramos, atualizamos nem reiniciamos o n8n durante a instalação.
+2. **Antes de qualquer mudança na VPS:** (a) backup de inicialização (boot volume) da Oracle; (b) exportar todos os
+   workflows do n8n; (c) copiar o volume de dados do n8n **e a `N8N_ENCRYPTION_KEY`** (sem ela as credenciais
+   guardadas não abrem numa restauração). Guardar fora da VPS.
+3. **Limites de memória para tudo o que é novo** (`mem_limit` nos contêineres do CRM, Supabase e WAHA) e ajuste de
+   prioridade de OOM favorável ao n8n, para que um excesso do CRM nunca derrube o n8n. `restart: unless-stopped`
+   no n8n, e swap de 4 GB como rede de segurança.
+4. **Proxy:** descobrir como o n8n é exposto hoje (Caddy, Traefik, nginx…) e **só acrescentar hosts novos** a ele
+   (ex.: `crm.seudominio.com`), sem mexer no host do n8n. Conferir antes: `curl` no webhook do n8n depois de cada passo.
+5. **Monitor externo do webhook do n8n** (UptimeRobot, a cada 5 min, aviso no celular). Se ele cair, os leads param.
+6. **Teste do que entra:** após cada etapa, mandar um lead de teste por uma landing e conferir que chega no Excel.
+
+### Como o lead entra no CRM sem arriscar o Excel
+
+- O CRM já recebe lead por URL (`/api/v1/webhooks/in/<token>`, fonte criada em Webhooks, aceita JSON de qualquer
+  formato e evita duplicar por `external_id`).
+- No n8n, **um ramo em paralelo** logo depois do gatilho (não em série): um nó HTTP Request para essa URL, com
+  **"On Error: Continue"**, para que uma falha do CRM nunca impeça o ramo do Excel.
+- Primeiro apontar para uma organização de **teste**, depois para a do cliente. Um fluxo por vez.
+- Claude monta o nó (URL, corpo, mapeamento de campos e `external_id`) e entrega para o Arthur colar; **nenhum
+  workflow de produção é alterado sem o OK dele**.
+
 ## Fase 1 — Dados e segurança (bloqueia tudo)
 
 - [ ] **[A]** Criar um projeto Supabase de **produção** (região sa-east-1), separado do de teste, em plano **Pro**
@@ -26,7 +69,7 @@ Regra: não abrir para cliente antes das fases 1 a 3 estarem marcadas. A fase 4 
 
 ## Fase 2 — Servidor estável
 
-- [ ] **[A]** Contratar a VPS recomendada abaixo (datacenter no Brasil) e apontar o domínio (DNS).
+- [ ] **[A]** Migrar a conta Oracle para Pay As You Go, tirar o backup de boot e exportar o n8n (ver "Protegendo o n8n"). Apontar o domínio (DNS) do CRM.
 - [ ] **[C]** Instalador `instalar-vps.sh` / roteiro de migração para a VPS nova: Caddy (HTTPS automático),
       serviço `systemd` do app, `worker` e `scheduler`, Redis, WAHA, firewall, swap e atualização por
       imagem publicada (o fluxo atual `build-m1` → release → `m1-puxar-build.timer`).
