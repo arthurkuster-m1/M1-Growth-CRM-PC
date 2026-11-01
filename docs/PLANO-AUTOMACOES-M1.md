@@ -5,6 +5,22 @@ gerenciados na aba Automações), **por categoria**, com **modelos prontos** (An
 **fluxo vertical** com espera e ramificação, e **motor único depois**, só quando houver dados de uso.
 Ele ainda não criou nenhuma automação: este é o momento mais barato de decidir a arquitetura (nada a migrar).
 
+## 0. Decisões do Arthur (01/11, tarde)
+1. **Quais mensagens ao cliente são automáticas e quais só lembram a equipe?** Não há regra geral. Isso se decide **dentro
+   de cada automação**, na hora de montar cada modelo. Cada modelo será construído **junto com o Arthur, um por vez**
+   (ele avisa quando for a hora). Vale para a Fase 3 inteira.
+2. **Anti-No-show:** quantidade de lembretes, horários antes da reunião e o que fazer quando o lead pede para remarcar
+   são definidos **manualmente por cliente**. Existe um fluxo **padrão de modelo**, mas **todo ele é editável e
+   personalizável** (cada cliente recebe a sua cópia). Consequência: o modelo é um ponto de partida que se **instala como
+   cópia** (como a galeria de follow-ups já faz), e nunca um fluxo compartilhado e travado.
+3. **Agente de IA publicado:** ainda **não existe**. O Arthur quer **revisar o funcionamento dos agentes antes** com o
+   Claude. Por isso a ordem da Fase 3 muda (ver §4): primeiro a revisão dos agentes, depois os modelos.
+
+**O que o código diz e ajuda nessa ordem** (`lib/followup/agent-followup-gate.ts`): um follow-up **só exige agente quando o grafo
+usa IA** (classificar a resposta, espera inteligente ou mensagem escrita pela IA). Fluxo só com **texto fixo, modelo de
+mensagem, "se a resposta contém…" e espera fixa não precisa de agente**. Então o Anti-No-show com lembretes de texto
+fixo pode rodar **sem agente**; só o "entender em texto livre que o lead quer remarcar" depende de um agente.
+
 ## 1. Inventário (fase 1, feita em 01/11)
 
 **Motor de regras** (`lib/automation`, tela `app/app/automacoes` + `app/app/webhooks/_components`): uma regra é
@@ -42,7 +58,8 @@ do **nome** (provisório; vira uma coluna própria na unificação). Código: `l
 | 1 | Inventário dos dois motores e catálogo/categorias | **Feita** (esta seção) |
 | 2 | **Central única** na aba Automações: filtro por categoria com contagem; regras e follow-ups na mesma lista; botão "Ver como fluxo" (coluna Quando → Se → Então, só leitura, serve no celular); modelos prontos por categoria | **Feita (1ª entrega, 01/11)** |
 | 2b | Modelos prontos que ficam válidos sem escolher canal ou pessoa (tarefas e tags): 9 novos (primeiro contato, lead sem resposta, lead parado na etapa, **Anti-No-show: recuperar quem faltou**, confirmar reunião marcada, follow-up de quem compareceu, pós-venda do negócio ganho, reativar negócio perdido, aniversário) | **Feita** |
-| 3 | **Follow-ups M1 com mensagem** (usam agente, janela de envio e anti-banimento): Anti-No-show completo (confirmação, lembretes antes da reunião, reagendamento, reversão do no-show), Lead que não respondeu (1º/2º/3º contato) e Compareceu e não comprou. A galeria de modelos hoje é só de clínica: criar o nicho "agência/comercial" | A fazer |
+| 3a | **Revisão dos agentes de IA, com o Arthur** (ver `docs/PLANO-AGENTES-M1.md`): o que existe, para que serve cada peça, qual agente a M1 precisa, chave de IA e custo. Pré-requisito para tudo que usa IA | **Próxima** |
+| 3b | **Modelos de follow-up M1, um por vez e construídos junto com o Arthur** (janela de envio e anti-banimento): Anti-No-show (cópia editável por cliente), Lead que não respondeu e Compareceu e não comprou. A galeria hoje é só de clínica: criar o nicho "agência/comercial" | A fazer |
 | 4 | **Editor visual** da regra pelo fluxo vertical: "+" entre os passos, reordenar, painel lateral com os formulários que já existem; depois, espera e "se… senão" | A fazer |
 | 5 | **Catálogo novo de ações/gatilhos** (ver §5), sempre uma de cada vez | A fazer |
 | 6 | **Motor único**: decidir com dados de uso reais (quais automações o Arthur realmente roda) | A decidir |
@@ -67,7 +84,6 @@ do **nome** (provisório; vira uma coluna própria na unificação). Código: `l
 - Categorias e passos da regra são funções puras com teste (`categorias`, `passos-da-regra`).
 - Prova pela tela (roteiro 23.139): criar a partir de um modelo, ver como fluxo, filtrar por categoria, ligar e pausar.
 
-## 8. Perguntas em aberto para o Arthur
-1. Quais mensagens ao cliente quer **automáticas** (e quais só lembram a equipe)? Isso decide a fase 3.
-2. Anti-No-show: quantos lembretes, em que horários antes da reunião, e o que fazer quando o lead pede para remarcar?
-3. Os follow-ups pedem um agente de IA publicado: já existe um para a M1?
+## 8. Perguntas em aberto
+1. (Respondida na §0: definido modelo a modelo.) 2. (Respondida: por cliente, editável.) 3. (Respondida: não há agente; revisar primeiro.)
+4. Para a revisão dos agentes: ver as perguntas em `docs/PLANO-AGENTES-M1.md`.
