@@ -34,7 +34,7 @@ import {
   saudacaoDaHora,
   somarDias,
 } from "@/lib/inicio/datas";
-import { tarefasDoDia } from "@/lib/inicio/tarefas-do-dia";
+import { tarefasDaAgenda, tarefasDoDia } from "@/lib/inicio/tarefas-do-dia";
 import { estaEncerrada, prazoSemHorario, type Tarefa } from "@/lib/tarefas/tipos";
 import {
   CalendarBlank,
@@ -237,9 +237,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
   const frase = frases[Number(hoje.replaceAll("-", "")) % frases.length]!;
 
   // ── tarefas do dia ──────────────────────────────────────────────────────────
-  const daAgenda = tarefas.tarefas.filter(
-    (tarefa) => escopo === "equipe" || !tarefa.assigned_to || tarefa.assigned_to === usuarioId,
-  );
+  const daAgenda = tarefasDaAgenda(tarefas.tarefas, escopo, usuarioId);
   const { atrasadas, hoje: deHoje } = tarefasDoDia(daAgenda, hoje, fuso);
   const tarefasDoDiaLista = [...atrasadas, ...deHoje];
 
