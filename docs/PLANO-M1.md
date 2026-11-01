@@ -308,6 +308,7 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 | 15 | **Financeiro completo** | Contas, fluxo de caixa, DRE e recorrência | **Parcial.** Vendas, parcelas, faturamento recebido e a receber existem; faltam contas a receber (cobrança), fluxo de caixa, DRE | Hoje existe `/app/faturamento`. Que relatórios importam? |
 | 16 | **Central de avisos, alertas e notificações** (plano à parte: `docs/PLANO-AVISOS-M1.md`) | Verificar e revisar TODOS os avisos; tirar a Central de dentro de "Agentes de IA" (hoje é "Alertas" em `/app/ai/inbox`) e dar a ela um lugar próprio; juntar com o sino e as notificações | **A fazer** | Quais avisos importam? Quem recebe cada um? Por onde (sino, push, e-mail)? |
 | 17 | **Tarefas: visões padrão** | Visões prontas ao criar uma aba: **Pendentes** (atrasadas + hoje + próximos 1 a 2 dias) e **Minhas tarefas** (designadas a mim), mais as que forem aprovadas (ver abaixo) | **Feito (31/10)** — modelos no "+" das abas; Pendentes = até 2 dias à frente | Ajustes finos conforme o uso |
+| 18 | **Go-live** (plano à parte: `docs/PLANO-GO-LIVE-M1.md`) | Colocar para rodar com clientes reais: banco de produção com backup, VPS, rotinas, WhatsApp, piloto | **A fazer** | VPS recomendada: 4 vCPU / 16 GB / 160 GB NVMe em São Paulo; WAHA Plus ou API oficial? |
 
 ### Detalhes das frentes
 
