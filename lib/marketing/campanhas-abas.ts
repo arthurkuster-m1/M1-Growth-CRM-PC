@@ -1,7 +1,7 @@
 import type { CanalDaCampanha } from "@/lib/marketing/campanhas";
 
 /**
- * AS SUBPÁGINAS da campanha. As fixas (cadastro, visão geral, dia a dia, funil de conversão)
+ * AS SUBPÁGINAS da campanha. As fixas (visão geral, cadastro, dia a dia, funil de conversão)
  * existem sempre; as OPCIONAIS (landing pages, criativos, abordagem) dependem da estratégia: o
  * padrão vem do tipo da campanha e a agência liga ou desliga cada uma com o "+".
  */
@@ -68,7 +68,7 @@ export function abasDaCampanha(
   canal: CanalDaCampanha,
   escolhidas: readonly string[] | null | undefined,
 ): AbaDaCampanha[] {
-  return ["cadastro", "visao", "dia", ...opcionaisDaCampanha(canal, escolhidas), "funil"];
+  return ["visao", "cadastro", "dia", ...opcionaisDaCampanha(canal, escolhidas), "funil"];
 }
 
 export function abaValida(
@@ -81,5 +81,5 @@ export function abaValida(
   if (pedida) return pedida;
   // A Cadência é a página principal da Prospecção: é onde a campanha abre.
   if (valor === null && canal === "prospeccao" && abas.includes("cadencia")) return "cadencia";
-  return "cadastro";
+  return "visao";
 }

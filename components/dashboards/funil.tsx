@@ -115,7 +115,7 @@ export function FunilEmColunas({
   }>;
 }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-3">
       <GrupoDeNumeros>
         {colunas.map((c) => (
           <div key={c.rotulo} className="overflow-hidden rounded-xl border bg-background">
@@ -130,16 +130,13 @@ export function FunilEmColunas({
             <GrupoDeNumeros>
               <dl className="divide-y">
                 {c.itens.map((i) => (
-                  <div
-                    key={i.rotulo}
-                    className="flex items-baseline justify-between gap-3 px-4 py-2.5"
-                  >
-                    <dt className="max-w-[55%] shrink-0 truncate text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <div key={i.rotulo} className="grid gap-0.5 px-4 py-2.5">
+                    <dt className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                       {i.rotulo}
                     </dt>
-                    <dd className="min-w-0 flex-1 text-right text-sm font-semibold tabular-nums">
+                    <dd className="min-w-0 text-base font-semibold tabular-nums">
                       {typeof i.valor === "string" ? (
-                        <NumeroQueCabe className="text-right">{i.valor}</NumeroQueCabe>
+                        <NumeroQueCabe>{i.valor}</NumeroQueCabe>
                       ) : (
                         i.valor
                       )}
