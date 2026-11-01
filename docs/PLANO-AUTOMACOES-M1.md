@@ -31,7 +31,7 @@ depois, e só então a IA é integrada às automações "de forma melhor". Por i
 - A frente 11 (agentes) continua no plano, mas **não bloqueia** as automações.
 
 **Próximos passos de engenharia, em ordem (sem IA):**
-1. **Anti-No-show construído junto com o Arthur** (follow-up só com texto fixo e espera fixa): ele define, para o primeiro
+1. **Anti-No-show** — rascunho pronto em `docs/MODELO-ANTI-NO-SHOW-M1.md` (descoberta: já existe no app em 3 camadas, sem IA; falta só configurar e, se aprovado, um botão "Aplicar o modelo"). O follow-up pós-falta exige agente armado, fica para a fase 7. Original: construído junto com o Arthur (follow-up só com texto fixo e espera fixa): ele define, para o primeiro
    cliente, número e horários dos lembretes, textos, o que fazer quando o lead responde (palavras como "remarcar", "não vou") e o
    que a equipe recebe. Vira o fluxo padrão de modelo, copiável e editável por cliente.
 2. **Proteções:** botão geral "Pausar todas as automações", limite de mensagens por lead e por dia, e **modo de teste**
