@@ -1,5 +1,8 @@
 # PLANO DO M1 GROWTH CRM
 
+> **Desde 02/11/2026 a trilha principal é o Go-Live MVP (frente 18, `docs/PLANO-GO-LIVE-MVP-M1.md`)**: revisar, limpar, subir na VPS nova e
+> operar a própria agência por 2 a 8 semanas até fechar um cliente. As demais frentes seguem em paralelo e não bloqueiam o MVP.
+
 Atualizado em 01/11/2026 (a base é de 17/10; as seções de 27/10 a 01/11 e as frentes 16 a 21 são novas; a §3-bis tem as frentes novas e atualizadas). Este é o plano-mãe. O plano detalhado da aba Marketing continua em
 `docs/PLANO-MARKETING-M1.md` (histórico). Os itens abaixo não precisam seguir a ordem: vamos
 trabalhando em cima, conforme a prioridade do Arthur.
@@ -308,7 +311,7 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 | 15 | **Financeiro completo** | Contas, fluxo de caixa, DRE e recorrência | **Parcial.** Vendas, parcelas, faturamento recebido e a receber existem; faltam contas a receber (cobrança), fluxo de caixa, DRE | Hoje existe `/app/faturamento`. Que relatórios importam? **Atualizado em 01/11: ver §3-bis.** |
 | 16 | **Central de avisos, alertas e notificações** (plano à parte: `docs/PLANO-AVISOS-M1.md`) | Verificar e revisar TODOS os avisos; tirar a Central de dentro de "Agentes de IA" (hoje é "Alertas" em `/app/ai/inbox`) e dar a ela um lugar próprio; juntar com o sino e as notificações | **A fazer** | Quais avisos importam? Quem recebe cada um? Por onde (sino, push, e-mail)? **Atualizado em 01/11: ver §3-bis.** |
 | 17 | **Tarefas: visões padrão** | Visões prontas ao criar uma aba: **Pendentes** (atrasadas + hoje + próximos 1 a 2 dias) e **Minhas tarefas** (designadas a mim), mais as que forem aprovadas (ver abaixo) | **Feito (31/10)** — modelos no "+" das abas; Pendentes = até 2 dias à frente | Ajustes finos conforme o uso |
-| 18 | **Go-live** (plano à parte: `docs/PLANO-GO-LIVE-M1.md`) | Colocar para rodar com clientes reais: banco de produção com backup, VPS, rotinas, WhatsApp, piloto | **A fazer** | VPS recomendada: 4 vCPU / 16 GB / 160 GB NVMe em São Paulo; WAHA Plus ou API oficial? |
+| 18 | **Go-live MVP — TRILHA PRINCIPAL** (planos: `docs/PLANO-GO-LIVE-MVP-M1.md` e `docs/PLANO-GO-LIVE-M1.md`) | Colocar para rodar com clientes reais: banco de produção com backup, VPS, rotinas, WhatsApp, piloto | **A fazer** | VPS recomendada: 4 vCPU / 16 GB / 160 GB NVMe em São Paulo; WAHA Plus ou API oficial? |
 | 19 | **Automações e Fluxos de Follow Up** (inclui o Método Anti-No-show) | Deixar o painel de Automações com o visual dos fluxos de follow up (canvas) e organizar o Anti-No-show | **Em andamento** (plano em `docs/PLANO-AUTOMACOES-M1.md`; Central por categoria e modelos prontos no ar em 01/11; próximo: follow-ups M1 e editor visual) | Quais automações existem hoje e quais merecem virar fluxo visual? |
 | 20 | **App no celular** | Instalação, atualização ao vivo e notificações no celular | **Parcial** (instala como app; faltam atualização ao vivo em todas as telas e revisão das notificações) | Ver §3-bis, item J |
 | 21 | **Módulos por nicho** | Versões do app para outros modelos de negócio (clínicas veterinárias, agências de modelo) | **A fazer** | Começar por um "preset de nicho" ou por módulos com tela própria? |

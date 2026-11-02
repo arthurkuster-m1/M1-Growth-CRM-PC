@@ -1,5 +1,8 @@
 # Plano de go-live do M1 Growth CRM (colocar para rodar com clientes reais)
 
+> **Trilha principal agora: `docs/PLANO-GO-LIVE-MVP-M1.md`** (a operação da própria agência, sozinho, 2 a 8 semanas, com a meta de fechar
+> um cliente). Este documento fica como **referência técnica** da infraestrutura (VPS, banco, nginx, n8n, backup, piloto com clientes).
+
 Criado em 01/11/2026. É o plano de **operação**: o produto já tem funcionalidade de sobra, o que falta para
 atender cliente real é infraestrutura, segurança dos dados e prova de uso. Ligado à frente 18 do
 `docs/PLANO-M1.md`. Quem faz cada item: **[A]** Arthur (precisa de conta, cartão ou decisão),
