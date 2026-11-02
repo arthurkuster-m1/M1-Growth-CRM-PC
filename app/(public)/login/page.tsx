@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { conviteDoNext } from "@/lib/auth/convite-no-signup";
+
 import { EntrarComGoogle } from "@/components/auth/EntrarComGoogle";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { marcaDaSaida } from "@/lib/branding/saida";
@@ -140,7 +142,7 @@ export default async function LoginPage({
         </div>
       )}
       <LoginForm next={next} />
-      <EntrarComGoogle next={next} />
+      <EntrarComGoogle next={next} convite={conviteDoNext(next) ?? undefined} />
       <div className="space-y-2 text-center text-sm">
         <p>
           <Link

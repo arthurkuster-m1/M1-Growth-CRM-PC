@@ -21,10 +21,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROLES, type Role } from "@/lib/schemas/team";
-import { descreverMotivoDaFalha } from "./motivo-da-falha";
+import { descreverMotivoDaFalha, descreverMotivoDoEmail } from "./motivo-da-falha";
 
 interface ResultState {
-  sent: Array<{ email: string; accept_url: string; email_dispatched: boolean; expires_at: string }>;
+  sent: Array<{
+    email: string;
+    accept_url: string;
+    email_dispatched: boolean;
+    email_error?: string;
+    expires_at: string;
+  }>;
   failed: Array<{ email: string; reason: string }>;
 }
 
@@ -128,10 +134,29 @@ export function InviteForm() {
                       <div className="text-xs text-muted-foreground">
                         {s.email_dispatched
                           ? t("Email enviado.")
-                          : t("Resend não configurado — link copiável abaixo (DEV).")}
+                          : `${t("O e-mail não saiu.")} ${t(descreverMotivoDoEmail(s.email_error))} ${t("O convite foi criado: copie o link abaixo e mande pelo WhatsApp.")}`}
                       </div>
                       {!s.email_dispatched ? (
-                        <code className="mt-1 block text-xs break-all">{s.accept_url}</code>
+                        <div className="mt-1 flex items-start gap-2">
+                          <code className="min-w-0 flex-1 text-xs break-all">{s.accept_url}</code>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              void navigator.clipboard
+                                .writeText(s.accept_url)
+                                .then(() => toast.success(t("Link copiado.")))
+                                .catch(() =>
+                                  toast.error(
+                                    t("Não foi possível copiar. Copie do texto ao lado."),
+                                  ),
+                                );
+                            }}
+                          >
+                            {t("Copiar link")}
+                          </Button>
+                        </div>
                       ) : null}
                     </li>
                   ))}
@@ -147,7 +172,9 @@ export function InviteForm() {
                   {result.failed.map((f) => (
                     <li key={f.email}>
                       <span className="font-medium">{f.email}</span>{" "}
-                      <span className="text-muted-foreground">— {t(descreverMotivoDaFalha(f.reason))}</span>
+                      <span className="text-muted-foreground">
+                        — {t(descreverMotivoDaFalha(f.reason))}
+                      </span>
                     </li>
                   ))}
                 </ul>
