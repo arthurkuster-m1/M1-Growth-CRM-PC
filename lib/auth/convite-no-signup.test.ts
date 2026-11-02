@@ -10,6 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { conviteDoNext } from "./convite-no-signup";
+
 import { decidirConviteDoSignup } from "@/lib/auth/convite-no-signup";
 import { signInviteToken, verifyInviteToken } from "@/lib/auth/invite-token";
 
@@ -96,9 +98,22 @@ describe("decidirConviteDoSignup", () => {
 
   it("metadata com lixo no lugar do token não vira convite nem quebra", () => {
     for (const lixo of [42, null, {}, [], "   "]) {
-      expect(decidirConviteDoSignup({ email: "a@b.test", user_metadata: { invite_token: lixo } })).toEqual(
-        { tipo: "provisionar" },
-      );
+      expect(
+        decidirConviteDoSignup({ email: "a@b.test", user_metadata: { invite_token: lixo } }),
+      ).toEqual({ tipo: "provisionar" });
     }
+  });
+});
+
+describe("conviteDoNext: o token que viaja no next da tela de login", () => {
+  it("acha o token do link de aceite, cru ou codificado", () => {
+    expect(conviteDoNext("/team/accept-invite/abc.def")).toBe("abc.def");
+    expect(conviteDoNext(encodeURIComponent("/team/accept-invite/abc.def"))).toBe("abc.def");
+  });
+  it("ignora qualquer outro destino", () => {
+    expect(conviteDoNext("/app/inbox")).toBeNull();
+    expect(conviteDoNext("https://outro.com/team/accept-invite/x")).toBeNull();
+    expect(conviteDoNext(null)).toBeNull();
+    expect(conviteDoNext("")).toBeNull();
   });
 });

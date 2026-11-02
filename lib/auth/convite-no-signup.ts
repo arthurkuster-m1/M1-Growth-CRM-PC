@@ -72,3 +72,25 @@ export function decidirConviteDoSignup(
 
   return { tipo: "convite", token: bruto, payload };
 }
+
+/**
+ * O token de convite que viaja DENTRO do `next` da tela de login.
+ *
+ * Quem é convidado e ainda não tem conta cai em `/team/accept-invite/<token>`, e dali o botão "Fazer
+ * login" leva a `/login?next=/team/accept-invite/<token>`. Quem escolhe "Entrar com Google" nessa tela
+ * passava só o `next`, sem `convite`: a volta do Google via uma conta nova sem vínculo e criava uma
+ * EMPRESA NOVA para a pessoa, em vez de aceitar o convite. Extrair o token do `next` fecha esse buraco
+ * sem depender de a tela lembrar de repassá-lo. Sem autoridade nenhuma: quem vale é a assinatura HMAC e a
+ * comparação com o e-mail, feitas depois em `decidirConviteDoSignup`.
+ */
+export function conviteDoNext(next: string | null | undefined): string | null {
+  if (!next) return null;
+  let caminho = next;
+  try {
+    caminho = decodeURIComponent(next);
+  } catch {
+    /* mantém o texto cru */
+  }
+  const m = /^\/team\/accept-invite\/([^/?#\s]+)/.exec(caminho);
+  return m?.[1] ?? null;
+}

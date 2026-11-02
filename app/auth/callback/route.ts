@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ensureTenantForUser, vinculoAtivo } from "@/lib/auth/provision";
 import { acessoFoiRevogado } from "@/lib/auth/vinculo-revogado";
-import { decidirConviteDoSignup } from "@/lib/auth/convite-no-signup";
+import { conviteDoNext, decidirConviteDoSignup } from "@/lib/auth/convite-no-signup";
 import { modoDeCadastro } from "@/lib/auth/politica-de-cadastro";
 import { aplicarConvite } from "@/lib/auth/aplicar-convite";
 import { respostaDePonte } from "@/lib/auth/ponte-de-volta";
@@ -74,7 +74,9 @@ export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next");
-  const convite = url.searchParams.get("convite");
+  // O convite vem do parâmetro próprio (cadastro) ou, quando a pessoa entrou pela tela de login depois de
+  // abrir o link do convite, de dentro do `next` (senão a conta nova ganhava uma empresa nova).
+  const convite = url.searchParams.get("convite") ?? conviteDoNext(url.searchParams.get("next"));
   const requestId = request.headers.get("x-request-id");
 
   // NUNCA usar url.origin aqui: é derivado do header Host, que o proxy/container
