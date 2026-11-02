@@ -40,6 +40,16 @@ Percurso a testar, como se fosse o primeiro cliente real, e anotar cada tropeço
 - **Critério de saída:** criar uma empresa, convidar o dono e o funcionário, e os dois entrarem na empresa certa com o acesso certo,
   **sem ajuda minha**.
 
+**Revisão do processo atual de criação de empresa (feita em 02/11, só leitura do código):**
+- **Como cria hoje:** `/admin` › Tenants › Nova empresa (só super-admin) cria a empresa **e** o convite do dono (papel Adm). Se o e-mail do
+  dono for o do próprio super-admin, ele já vira dono sem convite. O link do convite aparece na tela com botão "Copiar".
+- **Corrigido (PR #252):** convidado sem conta que entrava com **Google** pela tela de login criava uma **empresa nova** em vez de entrar na
+  que o convidou; e a tela de convite agora explica por que o e-mail não saiu e permite **copiar o link**.
+- **Ainda a decidir:** o convite vale só **24 horas** (`lib/auth/invite-token.ts`). Para cliente real sugiro **7 dias** (e o botão "Reenviar" já
+  existe em Equipe). E o e-mail só sai se o provedor estiver configurado em **Admin › E-mail**; sem isso, o link é copiado e mandado por WhatsApp.
+- **Suspensos (02/11):** a área de **Agentes de IA** e o **onboarding antigo** (ver `.changes/ia-e-onboarding-antigo-suspensos.md`). O novo
+  onboarding precisa cobrir: **aceite dos Termos de uso** e o **nome e fuso da empresa** (hoje feitos no passo "boas-vindas" antigo).
+
 ### 1.2 Revisão geral da área multi-tenant (`/admin`) — entender o que existe
 O Arthur percorre **cada tela** e responde para cada uma: *uso / não uso / não entendo*. O Claude explica o que for "não entendo" e
 registra o que mudar. Telas hoje: Dashboard, **Tenants (empresas)**, Usuários, Platform admins, Marca (white-label), E-mail, Google,

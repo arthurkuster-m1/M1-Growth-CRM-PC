@@ -10,6 +10,11 @@
  * `navegacao-registry.test.ts`; aqui é a superfície.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Estes testes cobrem o menu COM a área de IA ligada; a suspensão tem teste próprio (lib/navigation/suspensao.test.ts).
+vi.hoisted(() => {
+  process.env.M1_IA_SUSPENSA = "false";
+});
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { Sidebar } from "@/components/shell/Sidebar";

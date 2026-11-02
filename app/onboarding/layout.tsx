@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { ONBOARDING_ANTIGO_SUSPENSO } from "@/lib/onboarding/suspenso";
+
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { loadOnboardingState } from "@/app/actions/onboarding/_shared";
 import { Stepper } from "./_components/Stepper";
@@ -17,6 +19,8 @@ import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
+  // Onboarding antigo suspenso (`lib/onboarding/suspenso.ts`): quem tem empresa vai direto para o app.
+  if (ONBOARDING_ANTIGO_SUSPENSO && activeOrg) redirect("/app");
   // Acompanhamento observa a organização incompleta no shell com saída explícita.
   if (user.support) redirect("/app/inbox");
   // Sem organização o onboarding não tem o que mostrar — mas mandar para
@@ -76,7 +80,9 @@ export default async function OnboardingLayout({ children }: { children: React.R
                 />
               )}
               <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">{marcaDoIcone.nome}</p>
+                <p className="text-xs tracking-wider text-muted-foreground uppercase">
+                  {marcaDoIcone.nome}
+                </p>
                 <h1 className="text-lg font-semibold tracking-tight">{activeOrg.name}</h1>
               </div>
             </div>
