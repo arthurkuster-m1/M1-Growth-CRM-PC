@@ -1,3 +1,4 @@
+import { ONBOARDING_ANTIGO_SUSPENSO } from "@/lib/onboarding/suspenso";
 import type { Viewport } from "next";
 import { InterfaceRefresh } from "@/hooks/auth/InterfaceRefresh";
 import { redirect } from "next/navigation";
@@ -132,7 +133,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // Suspensão ANTES de onboarding: a org suspensa que nunca terminou o
     // onboarding ia para `/onboarding` e escapava da tela da suspensão.
     if (!ehOperante(orgRow?.status)) redirect("/account-suspended");
-    if (orgRow && !orgRow.onboarded_at && !user.support) redirect("/onboarding");
+    if (!ONBOARDING_ANTIGO_SUSPENSO && orgRow && !orgRow.onboarded_at && !user.support)
+      redirect("/onboarding");
     // G4-02: expõe visibility_mode ao client (inbox decide visões visíveis).
     // Fonte confiável (admin client, org do cookie validado) — nunca do body.
     const mode = (orgRow?.settings as { visibility_mode?: VisibilityMode } | null)?.visibility_mode;
@@ -259,23 +261,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cabecalhos = await headers();
   const embutido = cabecalhos.get(HEADER_EMBUTIDO) === "1";
   const clienteEmbutido = embutido ? cabecalhos.get(HEADER_CLIENTE_DA_AGENCIA) : null;
-  const shell = embutido && clienteEmbutido ? (
-    <ProvedorDaOcupacaoDoRodape>
-      <EmbutidoDaAgencia clienteId={clienteEmbutido} />
-      <div className="min-w-0 bg-transparent">{children}</div>
-    </ProvedorDaOcupacaoDoRodape>
-  ) : (
-    <ProvedorDaOcupacaoDoRodape>
-      <VoiceCallProvider>
-        <AppShell
-          sidebarCollapsed={collapsed}
-          podeAtender={Boolean(activeOrg && roleAtLeast(activeOrg.role, "agent"))}
-        >
-          {children}
-        </AppShell>
-      </VoiceCallProvider>
-    </ProvedorDaOcupacaoDoRodape>
-  );
+  const shell =
+    embutido && clienteEmbutido ? (
+      <ProvedorDaOcupacaoDoRodape>
+        <EmbutidoDaAgencia clienteId={clienteEmbutido} />
+        <div className="min-w-0 bg-transparent">{children}</div>
+      </ProvedorDaOcupacaoDoRodape>
+    ) : (
+      <ProvedorDaOcupacaoDoRodape>
+        <VoiceCallProvider>
+          <AppShell
+            sidebarCollapsed={collapsed}
+            podeAtender={Boolean(activeOrg && roleAtLeast(activeOrg.role, "agent"))}
+          >
+            {children}
+          </AppShell>
+        </VoiceCallProvider>
+      </ProvedorDaOcupacaoDoRodape>
+    );
 
   return (
     // O idioma envolve a árvore inteira e recebe o código PRONTO — ele não

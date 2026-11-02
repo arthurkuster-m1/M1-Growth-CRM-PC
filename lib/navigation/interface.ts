@@ -1,4 +1,5 @@
 /** Apresentação por vínculo. Nunca é autorização de página, API ou ação. */
+import { caminhoDeIaSuspenso, comGrupoDaSuspensao } from "./suspensao";
 import { z } from "zod";
 import { ROLE_RANK, type Role } from "@/lib/auth/types";
 import type { ModuloOpcional } from "@/lib/instalacao/modulos";
@@ -75,12 +76,15 @@ export function permitidos(
   modulos?: readonly ModuloOpcional[],
   capacidades?: readonly CapacidadeDaOrganizacao[],
 ): NavMetadata[] {
-  return (NAV_CATALOG as readonly NavMetadata[]).filter(
-    (d) =>
-      canSee(d, platform, role) &&
-      (!modulos || !d.modulo || modulos.includes(d.modulo)) &&
-      (!capacidades || !d.capacidade || capacidades.includes(d.capacidade)),
-  );
+  return (NAV_CATALOG as readonly NavMetadata[])
+    .filter(
+      (d) =>
+        !caminhoDeIaSuspenso(d.href) &&
+        canSee(d, platform, role) &&
+        (!modulos || !d.modulo || modulos.includes(d.modulo)) &&
+        (!capacidades || !d.capacidade || capacidades.includes(d.capacidade)),
+    )
+    .map((d) => comGrupoDaSuspensao(d));
 }
 /** Leitura tolera versões antigas/removidas sem lançar no layout. */
 export function lerInterface(raw: unknown): {

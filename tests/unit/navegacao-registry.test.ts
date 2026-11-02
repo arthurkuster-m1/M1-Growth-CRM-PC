@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { vi, describe, expect, it } from "vitest";
+
+// Estes testes cobrem o menu COM a área de IA ligada; a suspensão tem teste próprio (lib/navigation/suspensao.test.ts).
+vi.hoisted(() => {
+  process.env.M1_IA_SUSPENSA = "false";
+});
 
 import type { ModuloOpcional } from "@/lib/instalacao/modulos";
 import {
