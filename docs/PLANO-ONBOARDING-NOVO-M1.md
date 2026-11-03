@@ -20,7 +20,8 @@ no app. Quem configura de verdade (funil, WhatsApp, Meta, equipe) é a agência,
 - Reaproveitei as ações de servidor já testadas: aceite (nome, fuso e Termos), convites e conclusão. Só troquei os textos e a ordem.
 - Os passos antigos **continuam no código**, desligados por `lib/onboarding/suspenso.ts` (`ONBOARDING_ANTIGO_SUSPENSO`): WhatsApp, IA, funil e "ver ele atender".
 
-## Para você decidir (o desenho é seu)
+## Para conversar amanhã (04/11) — o desenho é seu
+> Guardadas aqui a pedido do Arthur; nada será alterado até a conversa.
 1. **Mais algum dado** que o dono deveria dar logo no início (telefone, site, instagram, número de funcionários, meta de leads do mês)?
 2. **Um passo de "conectar"** para o cliente (Google Agenda e Meta Ads) ou isso fica sempre com a agência?
 3. **Tour guiado** de 30 segundos no Início (setas apontando as 4 telas) em vez do cartão "Por onde começar"?

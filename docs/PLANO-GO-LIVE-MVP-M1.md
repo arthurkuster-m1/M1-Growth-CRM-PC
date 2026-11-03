@@ -83,6 +83,7 @@ Objetivo: **tirar o peso que veio do DeskcommCRM**, mantendo tudo que está no p
 nova. **Regra de ouro: nada é apagado sem o Arthur aprovar a lista.**
 
 ### 2.1 Inventário do que sai (o Claude propõe, o Arthur aprova item a item)
+> **Inventário pronto:** `docs/INVENTARIO-LIMPEZA-M1.md` (5 lotes, com tamanhos e 7 perguntas). Aguardando a aprovação do Arthur.
 - [ ] **[C]** Gerar a lista de candidatos: telas que não estão na navegação nem no plano (por exemplo, vitrines e telas antigas já
       marcadas para sair, como o painel antigo "Novo agendamento" e o `HistoricoDaAgenda`), módulos que o Arthur disser que não usa
       (1.2), integrações não usadas (Evolution, Nuvemshop se não usar), páginas e rotas órfãs, componentes sem uso.
