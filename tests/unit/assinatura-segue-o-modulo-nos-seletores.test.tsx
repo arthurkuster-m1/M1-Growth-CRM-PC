@@ -53,14 +53,22 @@ async function opcoesDoEditor(provedoresOferecidos?: readonly string[]) {
     .map((o) => o.textContent);
 }
 
-function opcoesDoOnboarding() {
+async function opcoesDoOnboarding() {
   const { container } = render(
     <InteligenciaDele
-      inicial={{ origem: "nenhuma", provedor: "anthropic", rotulo: "Anthropic (Claude)", final: null }}
+      inicial={{
+        origem: "nenhuma",
+        provedor: "anthropic",
+        rotulo: "Anthropic (Claude)",
+        final: null,
+      }}
     />,
   );
-  const select = container.querySelector("#provedor_da_ia") as HTMLSelectElement;
-  return Array.from(select.options).map((o) => o.textContent);
+  await userEvent.click(container.querySelector("#provedor_da_ia") as HTMLElement);
+  const abertos = screen.getAllByRole("dialog");
+  return within(abertos[abertos.length - 1]!)
+    .getAllByRole("button")
+    .map((o) => o.textContent);
 }
 
 describe("editor do agente", () => {
@@ -88,8 +96,8 @@ describe("editor do agente", () => {
 // O passo pede uma chave COLADA, e a assinatura não se cola: ela se conecta pelo
 // login em Credenciais. Por isso ela não é oferecida aqui nem com o módulo ligado.
 describe("onboarding — o cérebro dele", () => {
-  it("a assinatura nunca é oferecida no campo de colar chave; os outros sim", () => {
-    const opcoes = opcoesDoOnboarding();
+  it("a assinatura nunca é oferecida no campo de colar chave; os outros sim", async () => {
+    const opcoes = await opcoesDoOnboarding();
     expect(opcoes).not.toContain(ROTULO);
     expect(opcoes).toContain("Anthropic (Claude)");
   });

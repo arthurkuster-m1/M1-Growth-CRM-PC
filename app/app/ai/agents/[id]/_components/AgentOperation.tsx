@@ -6,6 +6,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import type { AgentRow } from "@/hooks/ai/useAgent";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 export function AgentOperation({ agent, readOnly }: { agent: AgentRow; readOnly?: boolean }) {
   const t = useT(),
     router = useRouter(),
@@ -28,7 +29,7 @@ export function AgentOperation({ agent, readOnly }: { agent: AgentRow; readOnly?
     >
       <label className="text-sm">
         {t("Operação do agente")}{" "}
-        <select
+        <SelectDoApp
           className="ml-2 rounded-xl border bg-background p-2"
           aria-label={t("Modo de operação")}
           value={agent.operation_mode ?? "automatic"}
@@ -37,7 +38,7 @@ export function AgentOperation({ agent, readOnly }: { agent: AgentRow; readOnly?
         >
           <option value="assisted">{t("Assistido: revisar antes de enviar")}</option>
           <option value="automatic">{t("Automático: responder com as regras do agente")}</option>
-        </select>
+        </SelectDoApp>
       </label>
       <Button
         type="button"

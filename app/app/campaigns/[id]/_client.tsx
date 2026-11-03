@@ -42,6 +42,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { ArrowBendUpLeft } from "@/lib/ui/icons";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { TEXTO_DA_EXCLUSAO } from "@/lib/campanhas/tipos";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export function DetalheDaCampanha({ id }: { id: string }) {
   const t = useT();
@@ -248,7 +249,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
       <Card className="space-y-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-medium">{t("Quem está na lista")}</h2>
-          <select
+          <SelectDoApp
             className="h-9 rounded-xl border border-border bg-surface px-2 text-sm"
             value={filtroDeStatus}
             onChange={(e) => setFiltroDeStatus(e.target.value)}
@@ -262,7 +263,7 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             <option value="replied">{t("Responderam")}</option>
             <option value="skipped">{t("Fora da lista")}</option>
             <option value="failed">{t("Falharam")}</option>
-          </select>
+          </SelectDoApp>
         </div>
 
         {c.snapshot_total === 0 ? (

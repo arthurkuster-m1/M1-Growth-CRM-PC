@@ -27,11 +27,16 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AbordagemDoDisparo } from "@/components/marketing/campanhas/AbordagemDoDisparo";
 import { Textarea } from "@/components/ui/textarea";
-import { useCampanha, useEditarCampanha, usePreviaDaAudiencia } from "@/hooks/campanhas/useCampanhas";
+import {
+  useCampanha,
+  useEditarCampanha,
+  usePreviaDaAudiencia,
+} from "@/hooks/campanhas/useCampanhas";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
 import { useT } from "@/hooks/i18n/useT";
 import { useAgentesPublicados, useEtapas, useFunis } from "@/hooks/campanhas/useDestinoDaCampanha";
 import { DESCRICAO_DA_VARIAVEL, VARIAVEIS_DA_CAMPANHA } from "@/lib/campanhas/renderizador";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export function EditarCampanha({ id }: { id: string }) {
   const t = useT();
@@ -162,7 +167,7 @@ export function EditarCampanha({ id }: { id: string }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="e-canal">{t("Enviar pelo número")}</Label>
-          <select
+          <SelectDoApp
             id="e-canal"
             className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={canal}
@@ -173,7 +178,7 @@ export function EditarCampanha({ id }: { id: string }) {
                 {channelLabel(s, t)}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
         </div>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">{t("Base legal do envio")}</legend>
@@ -251,7 +256,9 @@ export function EditarCampanha({ id }: { id: string }) {
             type="button"
             variant="outline"
             disabled={!temCriterio || previa.isPending}
-            onClick={() => previa.mutate({ audience_filter: filtro, message_body: texto, campaign_id: id })}
+            onClick={() =>
+              previa.mutate({ audience_filter: filtro, message_body: texto, campaign_id: id })
+            }
           >
             {previa.isPending ? t("Contando…") : t("Ver quantas pessoas")}
           </Button>
@@ -274,12 +281,14 @@ export function EditarCampanha({ id }: { id: string }) {
       <Card className="space-y-4 p-4">
         <h2 className="font-medium">{t("Quem responder")}</h2>
         <p className="text-sm text-muted-foreground">
-          {t("Em branco, tudo segue como hoje: o card nasce no funil do número e quem atende é o agente publicado nele.")}
+          {t(
+            "Em branco, tudo segue como hoje: o card nasce no funil do número e quem atende é o agente publicado nele.",
+          )}
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="e-funil">{t("Vira card no funil")}</Label>
-            <select
+            <SelectDoApp
               id="e-funil"
               className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={funil}
@@ -294,11 +303,11 @@ export function EditarCampanha({ id }: { id: string }) {
                   {f.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
           <div className="space-y-2">
             <Label htmlFor="e-etapa">{t("Na etapa")}</Label>
-            <select
+            <SelectDoApp
               id="e-etapa"
               className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={etapa}
@@ -313,12 +322,12 @@ export function EditarCampanha({ id }: { id: string }) {
                     {x.name}
                   </option>
                 ))}
-            </select>
+            </SelectDoApp>
           </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="e-agente">{t("Quem atende a resposta")}</Label>
-          <select
+          <SelectDoApp
             id="e-agente"
             className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={agente}
@@ -330,7 +339,7 @@ export function EditarCampanha({ id }: { id: string }) {
                 {a.name}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
         </div>
       </Card>
 

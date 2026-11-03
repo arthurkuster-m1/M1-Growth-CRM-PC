@@ -21,6 +21,7 @@ import { apiClient } from "@/lib/api/client";
 import { formatCents, parseReaisToCents } from "@/lib/money";
 
 import { AtendimentosSemComanda, type Pendente } from "./_pendentes";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Item = {
   id: string;
@@ -73,7 +74,8 @@ export function Comandas({
 
   const lista = useQuery({
     queryKey: ["comandas"],
-    queryFn: async () => (await apiClient.get<{ data: Comanda[] }>("/api/v1/financeiro/comandas")).data,
+    queryFn: async () =>
+      (await apiClient.get<{ data: Comanda[] }>("/api/v1/financeiro/comandas")).data,
   });
 
   const detalhe = useQuery({
@@ -190,7 +192,10 @@ export function Comandas({
           </Button>
         ) : null}
 
-        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" data-testid="lista-de-comandas">
+        <ul
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+          data-testid="lista-de-comandas"
+        >
           {(lista.data ?? []).map((c) => (
             <li key={c.id}>
               <button
@@ -278,7 +283,10 @@ export function Comandas({
               <tfoot>
                 <tr>
                   <td className="pt-2 font-medium">{t("Total")}</td>
-                  <td className="pt-2 text-right font-medium tabular-nums" data-testid="total-da-comanda">
+                  <td
+                    className="pt-2 text-right font-medium tabular-nums"
+                    data-testid="total-da-comanda"
+                  >
                     {formatCents(comanda.total_cents, moeda)}
                   </td>
                   <td />
@@ -305,7 +313,10 @@ export function Comandas({
             ) : null}
 
             {comanda.status === "finalized" && !comanda.reversed_at && podeEstornar ? (
-              <Estorno onEstornar={(reason) => estornar.mutate({ reason })} pendente={estornar.isPending} />
+              <Estorno
+                onEstornar={(reason) => estornar.mutate({ reason })}
+                pendente={estornar.isPending}
+              />
             ) : null}
           </div>
         )}
@@ -353,7 +364,7 @@ function FormularioDeItem({
     >
       <label className="flex flex-col gap-1 text-xs text-text-muted">
         {t("Serviço")}
-        <select
+        <SelectDoApp
           value={tipoId}
           data-testid="item-servico"
           onChange={(e) => {
@@ -378,7 +389,7 @@ function FormularioDeItem({
               {x.name}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </label>
 
       <label className="flex flex-col gap-1 text-xs text-text-muted">
@@ -438,7 +449,7 @@ function Fechamento({
     <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
       <label className="flex flex-col gap-1 text-xs text-text-muted">
         {t("Forma de pagamento")}
-        <select
+        <SelectDoApp
           value={formaId}
           data-testid="forma-de-pagamento"
           onChange={(e) => setFormaId(e.target.value)}
@@ -450,7 +461,7 @@ function Fechamento({
               {f.name}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </label>
 
       {temContato ? (
@@ -490,7 +501,7 @@ function Fechamento({
         frente. Aqui ela vê antes de tentar, e o texto diz onde resolver.
       */}
       {escolhida && !escolhida.account_id ? (
-        <p className="w-full text-xs text-danger" data-testid="aviso-forma-sem-conta">
+        <p className="text-danger w-full text-xs" data-testid="aviso-forma-sem-conta">
           {t(
             "Esta forma de pagamento ainda não tem conta de destino. Defina em Configurações › Financeiro.",
           )}

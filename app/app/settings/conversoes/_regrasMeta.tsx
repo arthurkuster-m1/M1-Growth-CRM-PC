@@ -27,6 +27,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import type { Idioma } from "@/lib/i18n/idiomas";
 
 import type { EtapaAberta } from "./_regrasGoogle";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 interface Rascunho {
   enabled: boolean;
@@ -159,7 +160,7 @@ export function RegrasDeConversaoMeta({
               {r.enabled && (
                 <div className="mt-4 flex flex-col gap-2 md:max-w-sm">
                   <Label htmlFor={`evento-meta-${e.id}`}>{t("Evento enviado à Meta")}</Label>
-                  <select
+                  <SelectDoApp
                     id={`evento-meta-${e.id}`}
                     className="rounded-xl border bg-background p-2 text-sm"
                     value={r.metaEvent}
@@ -170,7 +171,7 @@ export function RegrasDeConversaoMeta({
                         {t(ev.rotulo)} ({ev.valor})
                       </option>
                     ))}
-                  </select>
+                  </SelectDoApp>
                 </div>
               )}
             </li>

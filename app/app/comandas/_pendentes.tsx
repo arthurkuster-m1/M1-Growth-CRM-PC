@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { formatCents, formatSomaPorMoeda, somaPorMoeda } from "@/lib/money";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export type Pendente = {
   appointment_id: string;
@@ -122,7 +123,7 @@ export function AtendimentosSemComanda({
               </span>
               <span className="tabular-nums">
                 {semPreco ? (
-                  <span className="text-xs text-danger">{t("sem preço no serviço")}</span>
+                  <span className="text-danger text-xs">{t("sem preço no serviço")}</span>
                 ) : (
                   formatCents(p.suggested_price_cents ?? 0, p.currency ?? moeda)
                 )}
@@ -134,7 +135,7 @@ export function AtendimentosSemComanda({
 
       {podeLancar && faturaveis.length > 0 ? (
         <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
-          <select
+          <SelectDoApp
             aria-label={t("Forma de pagamento")}
             value={formaId}
             data-testid="forma-do-lote"
@@ -147,7 +148,7 @@ export function AtendimentosSemComanda({
                 {f.name}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
 
           <Button
             disabled={marcados.size === 0 || !formaId || pendenteDeEnvio}
@@ -170,7 +171,7 @@ export function AtendimentosSemComanda({
             ele evita um erro multiplicado por trinta.
           */}
           {escolhida && !escolhida.account_id ? (
-            <p className="w-full text-xs text-danger">
+            <p className="text-danger w-full text-xs">
               {t(
                 "Esta forma de pagamento ainda não tem conta de destino. Defina em Configurações › Financeiro.",
               )}

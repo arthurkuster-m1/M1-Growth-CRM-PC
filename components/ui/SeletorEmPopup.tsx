@@ -14,6 +14,8 @@ export interface OpcaoDoPopup {
   rotulo: string;
   /** Com cor, a opção aparece como etiqueta colorida (a etapa do funil, por exemplo). */
   cor?: CorDaOpcao;
+  /** Aparece, mas não pode ser escolhida (o `disabled` da `<option>`). */
+  desabilitada?: boolean;
 }
 
 interface Props {
@@ -28,6 +30,9 @@ interface Props {
   /** Nome acessível; sem ele, vale o `<label>` que envolve o campo. */
   rotulo?: string;
   className?: string;
+  /** Liga o `<label htmlFor>` ao botão do campo. */
+  id?: string;
+  "data-testid"?: string;
   /** Permite criar uma opção nova ali mesmo (ex.: uma nova origem). */
   criar?: {
     rotulo: string;
@@ -49,6 +54,8 @@ export function SeletorEmPopup({
   desabilitado,
   rotulo,
   className,
+  id,
+  "data-testid": testId,
   criar,
 }: Props) {
   const t = useT();
@@ -63,18 +70,23 @@ export function SeletorEmPopup({
   const visiveis = termo ? opcoes.filter((o) => o.rotulo.toLowerCase().includes(termo)) : opcoes;
 
   const conteudoDe = (o: OpcaoDoPopup) =>
-    o.cor ? <Etiqueta cor={o.cor}>{o.rotulo}</Etiqueta> : <span className="min-w-0">{o.rotulo}</span>;
+    o.cor ? (
+      <Etiqueta cor={o.cor}>{o.rotulo}</Etiqueta>
+    ) : (
+      <span className="min-w-0">{o.rotulo}</span>
+    );
 
   const item = (o: OpcaoDoPopup) => (
     <button
       key={o.id}
       type="button"
+      disabled={o.desabilitada}
       onClick={() => {
         aoEscolher(o.id);
         setAberto(false);
       }}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left text-sm hover:bg-secondary",
+        "flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left text-sm hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50",
         o.id === valor && "bg-secondary",
       )}
     >
@@ -114,6 +126,8 @@ export function SeletorEmPopup({
       <PopoverTrigger asChild>
         <button
           type="button"
+          id={id}
+          data-testid={testId}
           aria-label={rotulo}
           disabled={desabilitado}
           className={cn(
@@ -125,7 +139,9 @@ export function SeletorEmPopup({
             {atual ? (
               conteudoDe(atual)
             ) : (
-              <span className="text-muted-foreground">{placeholder ?? rotuloVazio ?? t("Escolher…")}</span>
+              <span className="text-muted-foreground">
+                {placeholder ?? rotuloVazio ?? t("Escolher…")}
+              </span>
             )}
           </span>
         </button>

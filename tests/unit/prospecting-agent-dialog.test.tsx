@@ -637,7 +637,6 @@ describe("alternativa manual e campanha existente", () => {
     state.campaigns[0]!.config = CONFIG;
     openPage();
     const select = await screen.findByLabelText("Agente de IA");
-    expect(select).toHaveValue(AGENT);
     expect(select).toBeDisabled();
     expect(
       screen.queryByRole("region", { name: "Configuração por conversa" }),

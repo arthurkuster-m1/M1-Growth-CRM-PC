@@ -29,6 +29,7 @@ import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSes
 import { useT } from "@/hooks/i18n/useT";
 import { useAgentesPublicados, useEtapas, useFunis } from "@/hooks/campanhas/useDestinoDaCampanha";
 import { VARIAVEIS_DA_CAMPANHA, DESCRICAO_DA_VARIAVEL } from "@/lib/campanhas/renderizador";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
   const t = useT();
@@ -135,7 +136,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="canal">{t("Enviar pelo número")}</Label>
-          <select
+          <SelectDoApp
             id="canal"
             className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={canal}
@@ -147,7 +148,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
                 {channelLabel(c, t)}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
           {canais.data?.length === 0 && (
             <p className="text-sm text-warning-fg">
               {t("Nenhum número conectado. Conecte um em Conexões antes de criar a campanha.")}
@@ -267,7 +268,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="pub-funil">{t("Com negócio no funil")}</Label>
-            <select
+            <SelectDoApp
               id="pub-funil"
               className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={funilDoPublico}
@@ -282,11 +283,11 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
                   {f.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
           <div className="space-y-2">
             <Label htmlFor="pub-etapa">{t("Na etapa")}</Label>
-            <select
+            <SelectDoApp
               id="pub-etapa"
               className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={etapaDoPublico}
@@ -299,7 +300,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
                   {e.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
           <div className="space-y-2">
             <Label htmlFor="limite">{t("Máximo de contatos nesta campanha")}</Label>
@@ -398,7 +399,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="funil">{t("Vira card no funil")}</Label>
-            <select
+            <SelectDoApp
               id="funil"
               className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={funil}
@@ -413,11 +414,11 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
                   {f.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
           <div className="space-y-2">
             <Label htmlFor="etapa">{t("Na etapa")}</Label>
-            <select
+            <SelectDoApp
               id="etapa"
               className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
               value={etapa}
@@ -432,12 +433,12 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
                     {e.name}
                   </option>
                 ))}
-            </select>
+            </SelectDoApp>
           </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="agente">{t("Quem atende a resposta")}</Label>
-          <select
+          <SelectDoApp
             id="agente"
             className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-sm"
             value={agente}
@@ -449,7 +450,7 @@ export function NovaCampanha({ campanhaId }: { campanhaId?: string } = {}) {
                 {a.name}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
           <p className="text-sm text-muted-foreground">
             {t(
               "Vale só para conversas que nascem desta campanha: quem já falava com você continua com quem o atendia. Quem aborda precisa saber dizer de onde veio o contato — essa resposta tem de estar no material do agente escolhido.",

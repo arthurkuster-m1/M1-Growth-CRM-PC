@@ -29,6 +29,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import type { Idioma } from "@/lib/i18n/idiomas";
 
 import { CriarAcaoNoGoogle } from "./_criarAcaoGoogle";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export interface EtapaAberta {
   id: string;
@@ -259,7 +260,7 @@ export function RegrasDeConversaoGoogle({
                   </div>
                   <div className="flex flex-col gap-2">
                     <Label htmlFor={`categoria-${e.id}`}>{t("Categoria da conversão")}</Label>
-                    <select
+                    <SelectDoApp
                       id={`categoria-${e.id}`}
                       className="rounded-xl border bg-background p-2 text-sm"
                       value={r.category}
@@ -272,14 +273,14 @@ export function RegrasDeConversaoGoogle({
                           {t(c.rotulo)}
                         </option>
                       ))}
-                    </select>
+                    </SelectDoApp>
                     <p className="text-xs text-muted-foreground">
                       {t("É como o Google agrupa a conversão nos relatórios e nos lances.")}
                     </p>
                   </div>
                   <div className="flex flex-col gap-2">
                     <Label htmlFor={`canal-${e.id}`}>{t("Canal de entrada")}</Label>
-                    <select
+                    <SelectDoApp
                       id={`canal-${e.id}`}
                       className="rounded-xl border bg-background p-2 text-sm"
                       value={r.channel}
@@ -290,7 +291,7 @@ export function RegrasDeConversaoGoogle({
                           {t(c.rotulo)}
                         </option>
                       ))}
-                    </select>
+                    </SelectDoApp>
                   </div>
                   <div className="flex items-center gap-3 md:col-span-2">
                     <Switch

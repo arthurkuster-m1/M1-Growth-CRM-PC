@@ -30,6 +30,7 @@ import {
   UserCircle,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 const CAMPO =
   "h-10 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
@@ -266,7 +267,7 @@ export function FluxoDaAbordagem({
           ) : null}
           {passoAberto.kind === "audio" ? (
             <div className="grid gap-2">
-              <select
+              <SelectDoApp
                 className={`${CAMPO} w-full`}
                 disabled={bloqueado}
                 aria-label={t("Áudio gravado")}
@@ -287,7 +288,7 @@ export function FluxoDaAbordagem({
                       : a.name}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
               {passoAberto.audio_id && !audios.some((a) => a.id === passoAberto.audio_id) ? (
                 <p className="text-xs text-warning-fg">
                   {t("O arquivo deste passo saiu da biblioteca. Escolha outro ou envie de novo.")}

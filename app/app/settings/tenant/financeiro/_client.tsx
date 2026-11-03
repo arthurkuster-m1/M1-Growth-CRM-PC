@@ -17,6 +17,7 @@ import { apiClient } from "@/lib/api/client";
 
 import { RegrasDeComissao, type Pessoa, type Regra, type Servico } from "./_comissao";
 import { Recorrencias, type Recorrencia } from "./_recorrencias";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Conta = {
   id: string;
@@ -107,7 +108,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
               value={nomeConta}
               onChange={(e) => setNomeConta(e.target.value)}
             />
-            <select
+            <SelectDoApp
               aria-label={t("Tipo da conta")}
               className="min-h-11 rounded-xl border p-2"
               value={tipoConta}
@@ -118,7 +119,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
                   {t(r)}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
             <Button
               className="min-h-11"
               disabled={nomeConta.trim().length < 2 || criar.isPending}
@@ -162,7 +163,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
               value={nomeForma}
               onChange={(e) => setNomeForma(e.target.value)}
             />
-            <select
+            <SelectDoApp
               aria-label={t("Conta de destino")}
               className="min-h-11 rounded-xl border p-2"
               value={contaDaForma}
@@ -174,7 +175,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
                   {c.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
             <Button
               className="min-h-11"
               disabled={nomeForma.trim().length < 2 || criar.isPending}
@@ -232,7 +233,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
               que existia e não distinguia nada, porque quem cadastra depressa
               aceita o que já vem preenchido.
             */}
-            <select
+            <SelectDoApp
               aria-label={t("Entrada ou saída")}
               className="min-h-11 rounded-xl border p-2"
               value={direcaoPlano}
@@ -241,7 +242,7 @@ export function CatalogoFinanceiro({ podeEditar }: { podeEditar: boolean }) {
               <option value="">{t("Entrada ou saída?")}</option>
               <option value="in">{t("Entrada")}</option>
               <option value="out">{t("Saída")}</option>
-            </select>
+            </SelectDoApp>
             <Button
               className="min-h-11"
               disabled={nomePlano.trim().length < 2 || !direcaoPlano || criar.isPending}

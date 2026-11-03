@@ -12,6 +12,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { CHAVE_DAS_TAXAS, useTaxasDePagamento } from "@/hooks/financeiro/useTaxasDePagamento";
 import { apiClient } from "@/lib/api/client";
 import type { QuemPaga, TaxaDaForma } from "@/lib/financeiro/taxas";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 const PARCELAS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -35,9 +36,7 @@ function Linha({ taxa, podeEditar }: { taxa: TaxaDaForma; podeEditar: boolean })
   const [pct, setPct] = useState(bpsParaTexto(taxa.percent_bps));
   const [fixo, setFixo] = useState(centavosParaTexto(taxa.fixed_cents));
   const [porParcela, setPorParcela] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      Object.entries(taxa.installment_bps).map(([k, v]) => [k, bpsParaTexto(v)]),
-    ),
+    Object.fromEntries(Object.entries(taxa.installment_bps).map(([k, v]) => [k, bpsParaTexto(v)])),
   );
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -102,7 +101,7 @@ function Linha({ taxa, podeEditar }: { taxa: TaxaDaForma; podeEditar: boolean })
       <div className="flex flex-wrap items-end gap-3">
         <label className="grid gap-1 text-xs text-muted-foreground">
           {t("Quem paga a taxa")}
-          <select
+          <SelectDoApp
             value={payer}
             disabled={!podeEditar}
             onChange={(e) => setPayer(e.target.value as QuemPaga)}
@@ -110,7 +109,7 @@ function Linha({ taxa, podeEditar }: { taxa: TaxaDaForma; podeEditar: boolean })
           >
             <option value="company">{t("Nós (a empresa)")}</option>
             <option value="client">{t("O cliente final")}</option>
-          </select>
+          </SelectDoApp>
         </label>
         {!credito ? (
           <label className="grid gap-1 text-xs text-muted-foreground">
@@ -182,7 +181,11 @@ export function TaxasDePagamento({ podeEditar }: { podeEditar: boolean }) {
   async function criar() {
     const limpo = nome.trim();
     if (limpo.length < 2) return;
-    await apiClient.put("/api/v1/financeiro/taxas", { forma: limpo, name: limpo, payer: "company" });
+    await apiClient.put("/api/v1/financeiro/taxas", {
+      forma: limpo,
+      name: limpo,
+      payer: "company",
+    });
     setNome("");
     await qc.invalidateQueries({ queryKey: CHAVE_DAS_TAXAS });
   }
@@ -200,7 +203,11 @@ export function TaxasDePagamento({ podeEditar }: { podeEditar: boolean }) {
       ) : (
         <div className="space-y-3">
           {(taxas.data ?? []).map((x) => (
-            <Linha key={`${x.forma}:${x.payer}:${x.percent_bps}:${x.fixed_cents}`} taxa={x} podeEditar={podeEditar} />
+            <Linha
+              key={`${x.forma}:${x.payer}:${x.percent_bps}:${x.fixed_cents}`}
+              taxa={x}
+              podeEditar={podeEditar}
+            />
           ))}
         </div>
       )}
@@ -215,7 +222,12 @@ export function TaxasDePagamento({ podeEditar }: { podeEditar: boolean }) {
             placeholder={t("Nova forma de pagamento (Outra)")}
             className="h-9 w-64 rounded-xl border bg-card px-2 text-sm"
           />
-          <Button size="sm" variant="outline" onClick={() => void criar()} disabled={nome.trim().length < 2}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void criar()}
+            disabled={nome.trim().length < 2}
+          >
             {t("Adicionar forma")}
           </Button>
         </div>

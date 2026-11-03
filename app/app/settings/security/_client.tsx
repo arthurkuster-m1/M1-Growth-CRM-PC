@@ -18,14 +18,12 @@ import { RecoveryCodesPanel } from "@/components/auth/RecoveryCodesPanel";
 import { MfaEnrollModal } from "@/components/auth/MfaEnrollModal";
 import { regenerateRecoveryCodes } from "@/app/actions/settings/regenerateRecoveryCodes";
 import { signOutEverywhere } from "@/app/actions/settings/signOutEverywhere";
-import {
-  definirExigenciaDeMfa,
-  desativarMfaDaConta,
-} from "@/app/actions/auth/politicaDeMfa";
+import { definirExigenciaDeMfa, desativarMfaDaConta } from "@/app/actions/auth/politicaDeMfa";
 import { ROTULO_DO_PAPEL } from "@/lib/auth/types";
 import type { PapelMinimoDeMfa } from "@/lib/auth/politica-mfa";
 import { PainelDeChamadaDeVoz } from "@/components/voice/PainelDeChamadaDeVoz";
 import { useT } from "@/hooks/i18n/useT";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export function SecurityClient({
   mfaEnrolled,
@@ -158,7 +156,7 @@ export function SecurityClient({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="flex flex-1 flex-col gap-1 text-sm">
               {t("Nível mínimo")}
-              <select
+              <SelectDoApp
                 id="mfa-papel-minimo"
                 className="h-9 rounded-xl border border-input bg-background px-2 text-sm"
                 value={novoPapel}
@@ -171,7 +169,7 @@ export function SecurityClient({
                     {t(ROTULO_DO_PAPEL[p])}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
@@ -241,11 +239,7 @@ export function SecurityClient({
         <p className="text-xs text-muted-foreground">
           {t("Listagem de sessões — em breve. Por enquanto, deslogue todos os dispositivos:")}
         </p>
-        <Button
-          variant="outline"
-          disabled={isSigningOut}
-          onClick={() => setConfirmSignOut(true)}
-        >
+        <Button variant="outline" disabled={isSigningOut} onClick={() => setConfirmSignOut(true)}>
           {isSigningOut ? t("Saindo…") : t("Sair de todos os dispositivos")}
         </Button>
       </Card>
@@ -260,9 +254,7 @@ export function SecurityClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRegenerate}>
-              {t("Confirmar")}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleRegenerate}>{t("Confirmar")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -277,9 +269,7 @@ export function SecurityClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSignOutAll}>
-              {t("Confirmar")}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleSignOutAll}>{t("Confirmar")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

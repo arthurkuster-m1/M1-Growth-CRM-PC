@@ -29,6 +29,7 @@ import {
 } from "@/lib/conversoes/regras-google";
 
 import { CriarAcaoNoGoogle } from "./_criarAcaoGoogle";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 const MODOS_DE_VALOR: Array<{ valor: ModoDeValorDaVenda; rotulo: string }> = [
   { valor: "quando_houver", rotulo: "Enviar a venda; o valor vai quando estiver preenchido" },
@@ -259,7 +260,7 @@ export function FormularioDeConversoesGoogle({
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="google_purchase_category">{t("Categoria da conversão")}</Label>
-            <select
+            <SelectDoApp
               id="google_purchase_category"
               className="rounded-xl border bg-background p-2 text-sm"
               value={categoriaDaVenda}
@@ -270,11 +271,11 @@ export function FormularioDeConversoesGoogle({
                   {t(c.rotulo)}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="google_purchase_value_mode">{t("Valor do negócio")}</Label>
-            <select
+            <SelectDoApp
               id="google_purchase_value_mode"
               className="rounded-xl border bg-background p-2 text-sm"
               value={modoDeValor}
@@ -285,7 +286,7 @@ export function FormularioDeConversoesGoogle({
                   {t(m.rotulo)}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
             <p className="text-xs text-muted-foreground">
               {t(
                 "Com o valor, o Google pode otimizar por receita e não só por volume. Venda sem valor vai sem valor — nunca como zero.",

@@ -14,20 +14,10 @@ import {
   type AttendantAvailability,
 } from "@/hooks/team/useAttendants";
 import { estaDePlantao } from "@/lib/routing/eligibility";
-import {
-  ROUTING_MODES,
-  type RoutingConfig,
-  type ScheduleWindow,
-} from "@/lib/schemas/routing";
+import { ROUTING_MODES, type RoutingConfig, type ScheduleWindow } from "@/lib/schemas/routing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +44,7 @@ import {
   resumoDaJornada,
   ROTULOS_DOS_DIAS,
 } from "@/lib/agenda/editor-de-jornada";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 /**
  * Os rótulos da semana vêm de `lib/agenda/editor-de-jornada` — a MESMA fonte do
@@ -257,7 +248,9 @@ export function ScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("Horário de")} {attendant.name}</DialogTitle>
+          <DialogTitle>
+            {t("Horário de")} {attendant.name}
+          </DialogTitle>
           <DialogDescription>
             {t(
               "Sem janelas, o roteamento aceita conversa a qualquer hora — mas a Agenda não oferece NENHUM horário para marcar. Adicione janelas para publicar seus horários de atendimento.",
@@ -272,7 +265,7 @@ export function ScheduleDialog({
                 este fuso é lido por `localMoment`, que LANÇA num fuso inexistente
                 — e o atendente com agenda quebrada nunca fica elegível, sem que
                 nada na tela diga por quê. */}
-            <select
+            <SelectDoApp
               id="tz"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
@@ -283,7 +276,7 @@ export function ScheduleDialog({
                   {f.rotulo} — {f.codigo}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
 
           <div className="space-y-2">
@@ -293,13 +286,16 @@ export function ScheduleDialog({
               </p>
             ) : null}
             {windows.map((w, i) => (
-              <div key={i} data-testid="janela" data-dow={w.dow} className="flex items-center gap-2">
+              <div
+                key={i}
+                data-testid="janela"
+                data-dow={w.dow}
+                className="flex items-center gap-2"
+              >
                 <Select
                   value={String(w.dow)}
                   onValueChange={(v) =>
-                    setWindows((ws) =>
-                      ws.map((x, j) => (j === i ? { ...x, dow: Number(v) } : x)),
-                    )
+                    setWindows((ws) => ws.map((x, j) => (j === i ? { ...x, dow: Number(v) } : x)))
                   }
                 >
                   <SelectTrigger className="w-[90px]" aria-label="Dia da semana">
@@ -341,9 +337,7 @@ export function ScheduleDialog({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                setWindows((ws) => [...ws, { dow: 1, start: "08:00", end: "18:00" }])
-              }
+              onClick={() => setWindows((ws) => [...ws, { dow: 1, start: "08:00", end: "18:00" }])}
             >
               <Plus size={16} className="mr-1" /> Adicionar janela
             </Button>
@@ -443,7 +437,9 @@ function RoutingCard({ canManage }: { canManage: boolean }) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-sm text-destructive">{t("Erro ao carregar a configuração de roteamento.")}</p>
+          <p className="text-sm text-destructive">
+            {t("Erro ao carregar a configuração de roteamento.")}
+          </p>
         </CardContent>
       </Card>
     );
@@ -585,7 +581,9 @@ export function AttendantsClient({ canManage, organizationTimezone }: Props) {
           <p className="p-4 text-sm text-destructive">Erro ao carregar atendentes.</p>
         ) : attendants.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">
-            {t("Nenhum atendente na organização. Convide membros com papel de atendente ou superior.")}
+            {t(
+              "Nenhum atendente na organização. Convide membros com papel de atendente ou superior.",
+            )}
           </p>
         ) : (
           <ul className="grid min-w-0 gap-3 p-3 lg:grid-cols-2" data-testid="lista-de-atendentes">
@@ -673,7 +671,7 @@ export function AttendantsClient({ canManage, organizationTimezone }: Props) {
                         </Button>
                       ) : null}
                     </div>
-                    <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    <p className="text-sm [overflow-wrap:anywhere] text-muted-foreground">
                       {summarizeSchedule(windows, t)}
                     </p>
                   </div>

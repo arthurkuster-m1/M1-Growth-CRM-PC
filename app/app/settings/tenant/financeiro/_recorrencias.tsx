@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { formatCents, parseReaisToCents } from "@/lib/money";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export type Recorrencia = {
   id: string;
@@ -54,7 +55,8 @@ export function Recorrencias({
   const cents = parseReaisToCents(valor);
   const diaNumero = Number(dia);
   const diaValido = Number.isInteger(diaNumero) && diaNumero >= 1 && diaNumero <= 31;
-  const pode = nome.trim().length >= 2 && cents !== null && cents > 0 && diaValido && contaId !== "";
+  const pode =
+    nome.trim().length >= 2 && cents !== null && cents > 0 && diaValido && contaId !== "";
 
   return (
     <section className="space-y-3 rounded-xl border p-4">
@@ -78,7 +80,7 @@ export function Recorrencias({
             onChange={(e) => setNome(e.target.value)}
           />
 
-          <select
+          <SelectDoApp
             aria-label={t("Entrada ou saída")}
             className="min-h-11 rounded-xl border p-2"
             value={direcao}
@@ -86,9 +88,9 @@ export function Recorrencias({
           >
             <option value="out">{t("Saída")}</option>
             <option value="in">{t("Entrada")}</option>
-          </select>
+          </SelectDoApp>
 
-          <select
+          <SelectDoApp
             aria-label={t("Conta")}
             className="min-h-11 rounded-xl border p-2"
             value={contaId}
@@ -100,7 +102,7 @@ export function Recorrencias({
                 {c.name}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
 
           <input
             aria-label={t("Valor")}

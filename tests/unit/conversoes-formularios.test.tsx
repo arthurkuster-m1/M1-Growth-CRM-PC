@@ -1,3 +1,4 @@
+import { escolherNoSeletor } from "@/tests/helpers/seletor-do-app";
 import { ScriptDoSite } from "@/app/app/settings/conversoes/_scriptDoSite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -76,9 +77,10 @@ describe("formulários de conversão", () => {
         falta={[]}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Valor do negócio"), {
-      target: { value: "quando_houver" },
-    });
+    await escolherNoSeletor(
+      screen.getByLabelText("Valor do negócio"),
+      "Enviar a venda; o valor vai quando estiver preenchido",
+    );
     fireEvent.click(screen.getByLabelText("Enviar o telefone do contato criptografado"));
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() =>

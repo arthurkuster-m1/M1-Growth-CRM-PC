@@ -25,6 +25,7 @@ import { apiClient } from "@/lib/api/client";
 import { Plus, Trash } from "@/lib/ui/icons";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import type { Lead } from "@/lib/types/leads";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export interface DadosDoLead {
   lead_id: string;
@@ -84,8 +85,7 @@ export interface DadosDoLead {
 
 export const chaveDaFicha = (leadId: string) => ["ficha-do-lead", leadId] as const;
 
-const classeDoSelect =
-  "h-9 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60";
+const classeDoSelect = "h-9 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60";
 
 /** Telefone digitado solto vira E.164: 10–11 dígitos são do Brasil. */
 export function telefoneE164(bruto: string): string {
@@ -503,7 +503,7 @@ export function OrigemEditavel({ leadId, dados }: { leadId: string; dados: Dados
     <div className="grid grid-cols-1 gap-2">
       <div className="grid gap-1">
         <Label className="text-xs">{t("Campanha")}</Label>
-        <select
+        <SelectDoApp
           className={classeDoSelect}
           disabled={salvando}
           value={dados.campaign_id ?? ""}
@@ -515,13 +515,13 @@ export function OrigemEditavel({ leadId, dados }: { leadId: string; dados: Dados
               {c.nome}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </div>
       {campanha ? (
         <>
           <div className="grid gap-1">
             <Label className="text-xs">{t("Criativo")}</Label>
-            <select
+            <SelectDoApp
               className={classeDoSelect}
               disabled={salvando}
               value={dados.creative_id ?? ""}
@@ -533,11 +533,11 @@ export function OrigemEditavel({ leadId, dados }: { leadId: string; dados: Dados
                   {c.nome}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
           <div className="grid gap-1">
             <Label className="text-xs">{t("Landing page")}</Label>
-            <select
+            <SelectDoApp
               className={classeDoSelect}
               disabled={salvando}
               value={dados.landing_page_id ?? ""}
@@ -549,7 +549,7 @@ export function OrigemEditavel({ leadId, dados }: { leadId: string; dados: Dados
                   {c.nome}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </div>
         </>
       ) : null}

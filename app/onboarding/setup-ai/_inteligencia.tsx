@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { salvarChaveDaIa } from "@/app/actions/onboarding/chaveDaIa";
 import { PROVEDOR_POR_ASSINATURA, PROVEDORES } from "@/lib/ai/pontos/provedores";
 import { explicacaoParaQuemInstala } from "@/lib/instalacao/explicacao-da-falha";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 /**
  * "O CÉREBRO DELE" — a chave, medida e testada onde ela passa a importar.
@@ -69,8 +70,7 @@ export function InteligenciaDele({ inicial }: { inicial: EstadoDaChave }) {
         const corpo = r.ok ? await r.json() : null;
         if (!vivo) return;
         const p = corpo?.data?.prova as
-          | { feita: boolean; ok?: boolean; codigo?: string; aindaVerificando?: boolean }
-          | undefined;
+          { feita: boolean; ok?: boolean; codigo?: string; aindaVerificando?: boolean } | undefined;
 
         // A chave recém-colada ainda está sendo validada em segundo plano, e
         // `loadCredential` recusa credencial não validada. Medido percorrendo o
@@ -115,19 +115,21 @@ export function InteligenciaDele({ inicial }: { inicial: EstadoDaChave }) {
         <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_1fr]">
           <div className="space-y-1.5">
             <Label htmlFor="provedor_da_ia">{t("Qual você contratou")}</Label>
-            <select
+            <SelectDoApp
               id="provedor_da_ia"
               value={provedor}
               onChange={(e) => setProvedor(e.target.value)}
               className="h-9 w-full rounded-xl border bg-card px-3 text-sm"
             >
               {/* A assinatura do ChatGPT nunca: ela não se cola, conecta-se pelo login em Credenciais. */}
-              {PROVEDORES.filter((p) => p.id !== PROVEDOR_POR_ASSINATURA || p.id === provedor).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.rotulo}
-                </option>
-              ))}
-            </select>
+              {PROVEDORES.filter((p) => p.id !== PROVEDOR_POR_ASSINATURA || p.id === provedor).map(
+                (p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.rotulo}
+                  </option>
+                ),
+              )}
+            </SelectDoApp>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="api_key_da_ia">{t("A chave")}</Label>

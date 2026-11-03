@@ -27,6 +27,7 @@ import { diaDeHojeLocal, valorDeOverride } from "@/lib/ai/pacing-knobs";
 import { ApiError } from "@/lib/api/types";
 import { nomeDoCanal } from "@/lib/channels/estado";
 import { useT } from "@/hooks/i18n/useT";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 interface Props {
   item: PacingKnobsItem | null;
@@ -435,7 +436,7 @@ export function AntiBanSheet({ item, canWrite, onClose }: Props) {
             </div>
             <p className="text-xs text-muted-foreground">
               {t(
-                "Quanto o agente \"pensa\" antes de mandar a primeira resposta (ver a notificação + digitação por caractere, limitado entre o mínimo e o máximo). Campo vazio usa o padrão — rápido demais parece robô; lento demais parece que caiu. Não mexe no intervalo entre mensagens.",
+                'Quanto o agente "pensa" antes de mandar a primeira resposta (ver a notificação + digitação por caractere, limitado entre o mínimo e o máximo). Campo vazio usa o padrão — rápido demais parece robô; lento demais parece que caiu. Não mexe no intervalo entre mensagens.',
               )}
             </p>
           </fieldset>
@@ -467,7 +468,7 @@ export function AntiBanSheet({ item, canWrite, onClose }: Props) {
                 rejeitar é devolver um erro a quem digitou certo na cabeça e
                 errado no teclado (`America/Asunción`, com o acento que um
                 hispanofalante escreve natural). Escolher não erra. */}
-            <select
+            <SelectDoApp
               value={form.timezone}
               onChange={(e) => set({ timezone: e.target.value })}
               disabled={!canWrite}
@@ -482,7 +483,7 @@ export function AntiBanSheet({ item, canWrite, onClose }: Props) {
                   {t(f.rotulo)} — {f.codigo}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
             <p className="text-xs text-muted-foreground">
               {t("A janela de envio é avaliada neste fuso (ex.: America/Sao_Paulo).")}
             </p>

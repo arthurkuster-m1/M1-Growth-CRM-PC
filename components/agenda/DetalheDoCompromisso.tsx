@@ -11,6 +11,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { rotuloDoLocal } from "@/lib/agenda/locais";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Detalhe = {
   meeting?: MeetingDetail | null;
@@ -274,7 +275,7 @@ export function DetalheDoCompromisso({
               <div className="space-y-4">
                 <label className="block">
                   {t("Mensagem do cliente usada como evidência (opcional)")}
-                  <select
+                  <SelectDoApp
                     className="mt-2 w-full rounded-xl border bg-surface p-2"
                     aria-label={t("Mensagem de evidência")}
                     value={evidence}
@@ -289,7 +290,7 @@ export function DetalheDoCompromisso({
                         {m.body?.slice(0, 140) ?? t("Mensagem sem texto")}
                       </option>
                     ))}
-                  </select>
+                  </SelectDoApp>
                 </label>
                 <p className="text-sm text-text-muted">
                   {t("Ao confirmar, você valida o significado da mensagem para este compromisso.")}
