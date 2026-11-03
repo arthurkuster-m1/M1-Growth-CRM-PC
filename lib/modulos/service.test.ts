@@ -32,6 +32,17 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => mocks.admin })
 vi.mock("@/lib/audit", () => ({ audit: mocks.audit }));
 vi.mock("@/lib/logger", () => ({ logger: { warn: mocks.warn, error: vi.fn(), info: vi.fn() } }));
 
+// O catálogo real está vazio (o módulo Honorários saiu); o framework é testado com um módulo de fixture.
+vi.mock("./catalogo", () => {
+  const CATALOGO_DE_MODULOS = [
+    { slug: "modulo-exemplo", nome: "Módulo de exemplo", descricao: "Fixture de teste." },
+  ];
+  return {
+    CATALOGO_DE_MODULOS,
+    moduloDoCatalogo: (slug: string) => CATALOGO_DE_MODULOS.find((m) => m.slug === slug),
+  };
+});
+
 import { instalarModulo, listarModulos } from "./service";
 
 const ACTOR = randomUUID();
@@ -46,7 +57,7 @@ describe("listarModulos", () => {
   it("cruza o catálogo fixo com o que está instalado nesta instância", async () => {
     mocks.admin = fakeAdmin([
       {
-        modulo: "honorarios",
+        modulo: "modulo-exemplo",
         estado: "ativo",
         instalado_em: "2026-01-01T00:00:00Z",
         reaplicado_em: null,
@@ -56,7 +67,7 @@ describe("listarModulos", () => {
 
     const resultado = await listarModulos();
 
-    expect(resultado.disponiveis.map((m) => m.slug)).toContain("honorarios");
+    expect(resultado.disponiveis.map((m) => m.slug)).toContain("modulo-exemplo");
     expect(resultado.instalados).toHaveLength(1);
     expect(resultado.instalados[0]!.estado).toBe("ativo");
   });
@@ -80,8 +91,8 @@ describe("instalarModulo", () => {
           kind: "module_install",
           status: "completed",
           actor_id: ACTOR,
-          name: "honorarios",
-          result: { modulo: "honorarios" },
+          name: "modulo-exemplo",
+          result: { modulo: "modulo-exemplo" },
           created_at: "2026-01-01T00:00:00Z",
           updated_at: "2026-01-01T00:00:00Z",
           applied_now: true,
@@ -90,7 +101,7 @@ describe("instalarModulo", () => {
       }),
     });
 
-    const resultado = await instalarModulo(ACTOR, OPERATION, "honorarios");
+    const resultado = await instalarModulo(ACTOR, OPERATION, "modulo-exemplo");
 
     expect(resultado).toEqual({ operationId: OPERATION, appliedNow: true });
     expect(mocks.audit).toHaveBeenCalledTimes(1);
@@ -99,7 +110,7 @@ describe("instalarModulo", () => {
         action: "modulo.instalado",
         actorUserId: ACTOR,
         actingAsPlatformAdmin: true,
-        metadata: { modulo: "honorarios", operation_id: OPERATION },
+        metadata: { modulo: "modulo-exemplo", operation_id: OPERATION },
       }),
     );
   });
@@ -112,8 +123,8 @@ describe("instalarModulo", () => {
           kind: "module_install",
           status: "completed",
           actor_id: ACTOR,
-          name: "honorarios",
-          result: { modulo: "honorarios" },
+          name: "modulo-exemplo",
+          result: { modulo: "modulo-exemplo" },
           created_at: "2026-01-01T00:00:00Z",
           updated_at: "2026-01-01T00:00:00Z",
           applied_now: false,
@@ -122,7 +133,7 @@ describe("instalarModulo", () => {
       }),
     });
 
-    const resultado = await instalarModulo(ACTOR, OPERATION, "honorarios");
+    const resultado = await instalarModulo(ACTOR, OPERATION, "modulo-exemplo");
 
     expect(resultado.appliedNow).toBe(false);
     expect(mocks.audit).not.toHaveBeenCalled();
@@ -136,7 +147,7 @@ describe("instalarModulo", () => {
       }),
     });
 
-    await expect(instalarModulo(ACTOR, OPERATION, "honorarios")).rejects.toMatchObject({
+    await expect(instalarModulo(ACTOR, OPERATION, "modulo-exemplo")).rejects.toMatchObject({
       code: "extension_core_update_in_progress",
     });
   });
