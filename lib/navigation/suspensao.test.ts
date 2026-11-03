@@ -5,7 +5,6 @@ import { caminhoDeIaSuspenso as s } from "./suspensao";
 describe("suspensão da área de IA", () => {
   it("suspende as telas de agente", () => {
     for (const c of [
-      "/app/ai",
       "/app/ai/agents",
       "/app/ai/agents/123",
       "/app/ai/routers",
@@ -16,6 +15,9 @@ describe("suspensão da área de IA", () => {
       "/app/ai/atendimento/9",
     ])
       expect(s(c, true)).toBe(true);
+  });
+  it("a raiz /app/ai fica aberta: é a página Em breve", () => {
+    expect(s("/app/ai", true)).toBe(false);
   });
   it("mantém a Central de Avisos e os follow-ups", () => {
     expect(s("/app/ai/inbox", true)).toBe(false);

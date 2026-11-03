@@ -1,4 +1,7 @@
 "use client";
+import { EmBreveTag } from "@/components/ui/EmBreveTag";
+import { ehEmBreve } from "@/lib/navigation/em-breve";
+import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
@@ -444,6 +447,9 @@ export function SidebarContent({
                                 aria-hidden
                               />
                               {!collapsed && <span className="truncate">{t(item.label)}</span>}
+                              {!collapsed && ehEmBreve(item.href) ? (
+                                <EmBreveTag texto={t("Em breve")} className="ml-auto" />
+                              ) : null}
                               {item.healthDot && (
                                 <ConnectionHealthDot
                                   className={cn(
@@ -487,7 +493,7 @@ export function SidebarContent({
             {/* Agentes de IA, Conexões e Financeiro: cabeçalho em negrito, no desenho do título de um
             toggle (azulejo + rótulo), mas que leva direto à página — sem seta e sem abrir. */}
             {[
-              temIA
+              temIA || IA_SUSPENSA
                 ? {
                     href: "/app/ai",
                     rotulo: t("Agentes de IA"),
@@ -537,6 +543,7 @@ export function SidebarContent({
                     </span>
                     {!collapsed && <span className="truncate">{rotulo}</span>}
                   </span>
+                  {!collapsed && ehEmBreve(href) ? <EmBreveTag texto={t("Em breve")} /> : null}
                   {extra === "casos" && <ContadorDeCasos compacto={collapsed} />}
                   {extra === "saude" && (
                     <ConnectionHealthDot

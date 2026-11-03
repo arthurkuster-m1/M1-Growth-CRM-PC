@@ -1,3 +1,4 @@
+import { FaixaEmBreve } from "@/components/shell/FaixaEmBreve";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -52,6 +53,10 @@ export default async function Page() {
           {t("Quanto entrou, de que forma, e quanto cada pessoa tem a receber.")}
         </p>
       </div>
+      <FaixaEmBreve
+        selo={t("Em breve")}
+        texto={t("Esta área está em construção: pode mudar nas próximas atualizações.")}
+      />
       <FinancasAbas
         visao={
           <Faturamento
