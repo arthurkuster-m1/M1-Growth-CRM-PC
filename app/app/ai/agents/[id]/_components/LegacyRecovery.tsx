@@ -9,6 +9,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import type { AgentRow } from "@/hooks/ai/useAgent";
 import type { CredentialRow } from "@/hooks/ai/useCredentials";
 import type { ChannelSessionLite } from "./AgentForm";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 export function LegacyRecovery({
   agent,
   channels,
@@ -68,7 +69,7 @@ export function LegacyRecovery({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
               {t("Canal")}
-              <select
+              <SelectDoApp
                 aria-label={t("Canal da recuperação")}
                 className="mt-1 block w-full rounded-xl border bg-background p-2"
                 value={channel}
@@ -80,7 +81,7 @@ export function LegacyRecovery({
                     {c.display_name}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
             </label>
             <label className="text-sm">
               {t("Provedor")}
@@ -96,7 +97,7 @@ export function LegacyRecovery({
             </label>
             <label className="text-sm">
               {t("Credencial")}
-              <select
+              <SelectDoApp
                 aria-label={t("Credencial da recuperação")}
                 className="mt-1 block w-full rounded-xl border bg-background p-2"
                 value={credential}
@@ -110,7 +111,7 @@ export function LegacyRecovery({
                       {c.label}
                     </option>
                   ))}
-              </select>
+              </SelectDoApp>
             </label>
           </div>
           <Button

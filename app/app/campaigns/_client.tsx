@@ -19,6 +19,7 @@ import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { Megaphone, Plus } from "@/lib/ui/icons";
 import { STATUS_DA_CAMPANHA } from "@/lib/campanhas/tipos";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export function ListaDeCampanhas({ campanhaId }: { campanhaId?: string } = {}) {
   const t = useT();
@@ -71,7 +72,7 @@ export function ListaDeCampanhas({ campanhaId }: { campanhaId?: string } = {}) {
         <label className="text-sm text-muted-foreground" htmlFor="filtro-status">
           {t("Situação")}
         </label>
-        <select
+        <SelectDoApp
           id="filtro-status"
           className="h-9 rounded-xl border border-border bg-surface px-2 text-sm"
           value={status}
@@ -83,7 +84,7 @@ export function ListaDeCampanhas({ campanhaId }: { campanhaId?: string } = {}) {
               {t(rotulo(s))}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
       </div>
 
       {q.isLoading ? (

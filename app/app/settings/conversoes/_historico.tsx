@@ -22,6 +22,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import type { Idioma } from "@/lib/i18n/idiomas";
 
 import { ReprocessarConversao } from "./_reprocessar";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 const ROTULO_DO_PERIODO: Record<(typeof PERIODOS)[number], string> = {
   hoje: "Hoje",
@@ -92,7 +93,7 @@ export function HistoricoDeEnvios({
         <input type="hidden" name="aba" value="historico" />
         <label className="flex flex-col gap-1 text-xs">
           {t("Período")}
-          <select
+          <SelectDoApp
             name="periodo"
             defaultValue={filtros.periodo}
             className="rounded-xl border bg-background p-2 text-sm"
@@ -102,11 +103,11 @@ export function HistoricoDeEnvios({
                 {t(ROTULO_DO_PERIODO[p])}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           {t("Status")}
-          <select
+          <SelectDoApp
             name="situacao"
             defaultValue={filtros.situacao}
             className="rounded-xl border bg-background p-2 text-sm"
@@ -116,11 +117,11 @@ export function HistoricoDeEnvios({
                 {t(ROTULO_DA_SITUACAO[s])}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           {t("Evento")}
-          <select
+          <SelectDoApp
             name="evento"
             defaultValue={filtros.evento}
             className="rounded-xl border bg-background p-2 text-sm"
@@ -131,11 +132,11 @@ export function HistoricoDeEnvios({
                 {t(e.rotulo)}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           {t("Plataforma")}
-          <select
+          <SelectDoApp
             name="plataforma"
             defaultValue={filtros.plataforma}
             className="rounded-xl border bg-background p-2 text-sm"
@@ -143,7 +144,7 @@ export function HistoricoDeEnvios({
             <option value="">{t("Todas")}</option>
             <option value="google_ads">Google Ads</option>
             <option value="meta_ads">Meta Ads</option>
-          </select>
+          </SelectDoApp>
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs">
           {t("Buscar por negócio")}

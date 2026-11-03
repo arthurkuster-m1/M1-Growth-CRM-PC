@@ -11,6 +11,7 @@ import {
   permitidos,
   type InterfaceSettings,
 } from "@/lib/navigation/interface";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export function InterfaceEditor({
   value,
@@ -32,9 +33,15 @@ export function InterfaceEditor({
   return (
     <fieldset disabled={disabled} className="space-y-3 rounded-md border p-4">
       <legend className="px-1 text-sm font-medium">{t("Interface")}</legend>
-      <p className="text-xs text-muted-foreground">{t("Define quais áreas aparecem na navegação. As permissões continuam sendo determinadas pelo papel. Links de conversas e avisos podem abrir áreas autorizadas que estejam ocultas.")}</p>
-      <label htmlFor={id} className="block text-sm">{t("Perfil de interface")}</label>
-      <select
+      <p className="text-xs text-muted-foreground">
+        {t(
+          "Define quais áreas aparecem na navegação. As permissões continuam sendo determinadas pelo papel. Links de conversas e avisos podem abrir áreas autorizadas que estejam ocultas.",
+        )}
+      </p>
+      <label htmlFor={id} className="block text-sm">
+        {t("Perfil de interface")}
+      </label>
+      <SelectDoApp
         id={id}
         value={value.preset}
         onChange={(e) => onChange({ preset: e.target.value as InterfaceSettings["preset"] })}
@@ -42,14 +49,21 @@ export function InterfaceEditor({
       >
         <option value="completa">{t("Completa")}</option>
         <option value="simplificada">{t("Simplificada")}</option>
-      </select>
-      <p className="text-xs text-muted-foreground">{t("Trocar o perfil restaura sua seleção padrão. Perfil, segurança e acesso à equipe de quem administra continuam disponíveis.")}</p>
+      </SelectDoApp>
+      <p className="text-xs text-muted-foreground">
+        {t(
+          "Trocar o perfil restaura sua seleção padrão. Perfil, segurança e acesso à equipe de quem administra continuam disponíveis.",
+        )}
+      </p>
       {lerInterface(value).needsAdjustment && (
-        <p role="status" className="text-sm">{t("A seleção contém áreas antigas. Confira e salve novamente.")}</p>
+        <p role="status" className="text-sm">
+          {t("A seleção contém áreas antigas. Confira e salve novamente.")}
+        </p>
       )}
       <details>
         <summary className="cursor-pointer text-sm font-medium">
-          {t("Personalizar áreas visíveis")}{value.destinos ? t(" (personalizada)") : ""}
+          {t("Personalizar áreas visíveis")}
+          {value.destinos ? t(" (personalizada)") : ""}
         </summary>
         <div className="mt-3 max-h-64 space-y-4 overflow-y-auto">
           {NAV_GROUPS.map((group) => {
@@ -89,7 +103,9 @@ export function InterfaceEditor({
         </div>
       </details>
       {!interfaceTemDestino(value, role) || value.destinos?.length === 0 ? (
-        <p role="alert" className="text-sm text-destructive">{t("Selecione ao menos uma área de trabalho permitida ao papel.")}</p>
+        <p role="alert" className="text-sm text-destructive">
+          {t("Selecione ao menos uma área de trabalho permitida ao papel.")}
+        </p>
       ) : null}
     </fieldset>
   );

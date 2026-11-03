@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import type { ResumoDaVerificacao } from "@/lib/prospecting/verificar-whatsapp";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 interface Canal {
   id: string;
@@ -82,7 +83,7 @@ export function VerificarWhatsapp({
     <div className="grid gap-2 border-b px-5 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{t("Verificar WhatsApp")}</span>
-        <select
+        <SelectDoApp
           aria-label={t("Conexão para verificar")}
           value={canal}
           onChange={(e) => setCanal(e.target.value)}
@@ -94,7 +95,7 @@ export function VerificarWhatsapp({
               {session.display_name || session.phone_number || session.id.slice(0, 8)}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
         <Button
           type="button"
           size="sm"

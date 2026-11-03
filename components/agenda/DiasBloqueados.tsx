@@ -33,6 +33,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Excecao = {
   id: string;
@@ -182,7 +183,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
             <span className="block text-sm">{t("O que fazer")}</span>
-            <select
+            <SelectDoApp
               aria-label={t("O que fazer")}
               className="mt-1 rounded-xl border p-2"
               data-testid="modo-do-dia"
@@ -191,7 +192,7 @@ export function DiasBloqueados({ podeEditar }: { podeEditar: boolean }) {
             >
               <option value="fechar">{t("Fechar o dia")}</option>
               <option value="abrir">{t("Abrir para atendimento")}</option>
-            </select>
+            </SelectDoApp>
           </label>
           <label className="block">
             <span className="block text-sm">{t("Dia")}</span>

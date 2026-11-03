@@ -1,6 +1,13 @@
 "use client";
 
-import { Children, Fragment, isValidElement, type ReactElement, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import { SeletorEmPopup, type OpcaoDoPopup } from "@/components/ui/SeletorEmPopup";
 
@@ -30,9 +37,13 @@ function lerOpcoes(filhos: ReactNode, saida: OpcaoDoPopup[] = []): OpcaoDoPopup[
 }
 
 interface Props {
-  value: string | number;
+  /** Controlado (com `onChange`) ou, sem ele, solto com `defaultValue` + `name` (formulário nativo). */
+  value?: string | number;
+  defaultValue?: string | number;
+  name?: string;
+  required?: boolean;
   /** Mesma forma do `<select>`: o handler lê `e.target.value`. */
-  onChange: (e: { target: { value: string } }) => void;
+  onChange?: (e: { target: { value: string } }) => void;
   children: ReactNode;
   className?: string;
   disabled?: boolean;
@@ -48,6 +59,9 @@ interface Props {
  */
 export function SelectDoApp({
   value,
+  defaultValue,
+  name,
+  required,
   onChange,
   children,
   className,
@@ -55,17 +69,39 @@ export function SelectDoApp({
   "aria-label": ariaLabel,
   title,
 }: Props) {
+  const [interno, setInterno] = useState(String(defaultValue ?? ""));
+  const atual = value === undefined ? interno : String(value);
   const todas = lerOpcoes(children);
   const vazia = todas.find((o) => o.id === "");
-  return (
+  const seletor = (
     <SeletorEmPopup
       rotulo={ariaLabel ?? title}
-      valor={String(value)}
+      valor={atual}
       opcoes={todas.filter((o) => o.id !== "")}
       rotuloVazio={vazia?.rotulo}
       desabilitado={disabled}
       className={className}
-      aoEscolher={(id) => onChange({ target: { value: id } })}
+      aoEscolher={(id) => {
+        setInterno(id);
+        onChange?.({ target: { value: id } });
+      }}
     />
+  );
+  if (!name && !required) return seletor;
+  // Dentro de um <form>: leva o valor no envio e mantém o "obrigatório" nativo.
+  return (
+    <div className="relative">
+      {seletor}
+      <input
+        name={name}
+        value={atual}
+        required={required}
+        disabled={disabled}
+        readOnly
+        tabIndex={-1}
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-0 opacity-0"
+      />
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { meetingErrors, meetingDeliveryErrors } from "@/lib/agenda/google/meet";
 import { copyToClipboard } from "@/lib/clipboard";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export interface MeetingDetail {
   state: string;
@@ -82,8 +83,7 @@ export function MeetDoCompromisso({
         waiting_for_link: "Envio autorizado: aguardando o link ficar pronto.",
         queued: "Link aguardando envio nesta conversa.",
         sent: "Link enviado na conversa autorizada.",
-        blocked:
-          "Entrega impedida. Confira o atendimento e o canal antes de autorizar novamente.",
+        blocked: "Entrega impedida. Confira o atendimento e o canal antes de autorizar novamente.",
         stale: "O atendimento mudou. Autorize uma nova entrega na conversa desejada.",
         failed: "O envio falhou. Confira o canal e tente novamente.",
       }
@@ -94,8 +94,7 @@ export function MeetDoCompromisso({
         waiting_for_link: "Envio autorizado: aguardando a vez na fila.",
         queued: "Dados aguardando envio nesta conversa.",
         sent: "Dados enviados na conversa autorizada.",
-        blocked:
-          "Entrega impedida. Confira o atendimento e o canal antes de autorizar novamente.",
+        blocked: "Entrega impedida. Confira o atendimento e o canal antes de autorizar novamente.",
         stale: "O atendimento mudou. Autorize uma nova entrega na conversa desejada.",
         failed: "O envio falhou. Confira o canal e tente novamente.",
       };
@@ -171,7 +170,7 @@ export function MeetDoCompromisso({
           <label htmlFor={`meet-destination-${id}`} className="block text-sm">
             {t(ehMeet ? "Conversa que receberá o link" : "Conversa que receberá os dados")}
           </label>
-          <select
+          <SelectDoApp
             id={`meet-destination-${id}`}
             className="h-9 w-full rounded-xl border bg-card px-2 text-sm"
             value={sendTo}
@@ -186,7 +185,7 @@ export function MeetDoCompromisso({
                 {d.label}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
           <Button
             size="sm"
             // `state === "failed"` é falha de CRIAR LINK: só tranca onde há link.

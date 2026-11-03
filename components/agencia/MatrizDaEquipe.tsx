@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { definirAcessoDoCliente } from "@/app/actions/agencia/delegacao";
 import { useT } from "@/hooks/i18n/useT";
 import { PAPEIS_DELEGAVEIS, ROTULO_DO_PAPEL_DELEGADO, type Acesso } from "@/lib/agencia/delegacao";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export interface PessoaDaEquipe {
   id: string;
@@ -35,7 +36,7 @@ function Celula({
   const [valor, setValor] = useState(inicial);
   const [pendente, iniciar] = useTransition();
   return (
-    <select
+    <SelectDoApp
       value={valor}
       disabled={pendente}
       aria-label={`${pessoa.nome} — ${cliente.name}`}
@@ -66,7 +67,7 @@ function Celula({
           {valor}
         </option>
       ) : null}
-    </select>
+    </SelectDoApp>
   );
 }
 

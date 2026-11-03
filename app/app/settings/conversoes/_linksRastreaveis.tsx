@@ -18,6 +18,7 @@ import {
   type LinkRastreavel,
   type MetricasLink,
 } from "@/lib/plataformas-de-anuncio/rastreio/contrato";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 const subscribe = () => () => {};
 const initial: LinkInput = {
@@ -234,7 +235,7 @@ export function LinksRastreaveis({
         </div>
         <div>
           <Label htmlFor="link-use">{t("Onde será usado")}</Label>
-          <select
+          <SelectDoApp
             id="link-use"
             className="w-full rounded-xl border bg-background p-2"
             value={form.use_case}
@@ -245,7 +246,7 @@ export function LinksRastreaveis({
             <option value="site">{t("Site")}</option>
             <option value="anuncio">{t("Anúncio")}</option>
             <option value="organico">{t("Orgânico")}</option>
-          </select>
+          </SelectDoApp>
         </div>
         {(
           [

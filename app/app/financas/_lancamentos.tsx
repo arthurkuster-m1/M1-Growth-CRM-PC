@@ -17,6 +17,7 @@ import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { formatCents, parseReaisToCents } from "@/lib/money";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export type Lancamento = {
   id: string;
@@ -87,7 +88,7 @@ export function ListaDeLancamentos({
         >
           <label className="flex flex-col gap-1 text-xs text-text-muted">
             {t("Tipo")}
-            <select
+            <SelectDoApp
               value={direcao}
               data-testid="lancamento-direcao"
               onChange={(e) => setDirecao(e.target.value as "in" | "out")}
@@ -95,12 +96,12 @@ export function ListaDeLancamentos({
             >
               <option value="out">{t("Saída")}</option>
               <option value="in">{t("Entrada")}</option>
-            </select>
+            </SelectDoApp>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-muted">
             {t("Conta")}
-            <select
+            <SelectDoApp
               value={contaId}
               data-testid="lancamento-conta"
               onChange={(e) => setContaId(e.target.value)}
@@ -112,7 +113,7 @@ export function ListaDeLancamentos({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-muted">
@@ -139,12 +140,7 @@ export function ListaDeLancamentos({
 
           <label className="flex flex-col gap-1 text-xs text-text-muted">
             {t("Data")}
-            <CampoDeData
-              valor={data}
-              rotulo={t("Data")}
-              limpavel={false}
-              aoMudar={setData}
-            />
+            <CampoDeData valor={data} rotulo={t("Data")} limpavel={false} aoMudar={setData} />
           </label>
 
           <label className="flex items-center gap-2 text-xs text-text-muted">

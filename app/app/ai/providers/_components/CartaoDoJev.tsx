@@ -40,8 +40,15 @@ import { useT } from "@/hooks/i18n/useT";
 import { descreverErroDeValidacao } from "@/lib/ai/credenciais/erro-de-validacao";
 import type { EstadoDaTarefa } from "@/lib/ai/decisao/config";
 import { PROVEDOR_DO_JEV } from "@/lib/ai/decisao/credencial";
-import { ROTEADOR_SOB_DEMANDA, ROTEADOR_SOB_DEMANDA_SEM_IA, TAREFA_DO_CLIMA, TAREFAS_DO_JEV, tarefaPodeDecidir } from "@/lib/ai/decisao/tarefas";
+import {
+  ROTEADOR_SOB_DEMANDA,
+  ROTEADOR_SOB_DEMANDA_SEM_IA,
+  TAREFA_DO_CLIMA,
+  TAREFAS_DO_JEV,
+  tarefaPodeDecidir,
+} from "@/lib/ai/decisao/tarefas";
 import { O_QUE_FAZER_DO_JEV } from "@/lib/ai/decisao/textos";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 /** O corpo de `GET /api/v1/ai/jev` (`app/api/v1/ai/jev/route.ts`). */
 export interface DadosDoJev {
@@ -120,7 +127,11 @@ export interface TarefaNoCartao {
    * conversas das mais recentes (o endereço já vem pronto da rota). Ausente na
    * imagem anterior.
    */
-  percebidos?: { dias: number; mensagens: number; conversas: Array<{ href: string; em: string }> } | null;
+  percebidos?: {
+    dias: number;
+    mensagens: number;
+    conversas: Array<{ href: string; em: string }>;
+  } | null;
   /**
    * A camada de segurança que ela acompanha está desligada para a empresa: o
    * turno não pergunta, e ela não roda em estado nenhum. Ausente na imagem anterior.
@@ -169,7 +180,8 @@ function concordanciaDa(tarefa: TarefaNoCartao, d: DadosDoJev): Concordancia | n
  */
 function estadoAoLigar(tarefa: TarefaNoCartao, d: DadosDoJev): EstadoDaTarefa {
   if (tarefa.ao_ligar) return tarefa.ao_ligar;
-  if (tarefa.id === TAREFA_DO_CLIMA.id) return d.config.modo === "decide" ? "decidindo" : "observando";
+  if (tarefa.id === TAREFA_DO_CLIMA.id)
+    return d.config.modo === "decide" ? "decidindo" : "observando";
   return "observando";
 }
 
@@ -280,7 +292,12 @@ const decide = (t: TarefaNoCartao) => t.estado === "decidindo" && !avisaAEquipe(
  * não reconheceu (e, em "Avisar a equipe", abrem aviso). A frase do cartão não
  * pode falar de comparar nem da "sua IA de sempre" quando só estas rodam.
  */
-function oQueRoda(d: DadosDoJev): { comparam: number; daParaDeixarDecidir: boolean; cascata: number; avisando: boolean } {
+function oQueRoda(d: DadosDoJev): {
+  comparam: number;
+  daParaDeixarDecidir: boolean;
+  cascata: number;
+  avisando: boolean;
+} {
   const rodando = tarefasDoCartao(d).filter(roda);
   const cascata = rodando.filter((t) => avisaAEquipe(t.id));
   const comparam = rodando.filter((t) => !avisaAEquipe(t.id));
@@ -299,26 +316,44 @@ function fraseObservando(d: DadosDoJev, t: (texto: string) => string): string {
   const r = oQueRoda(d);
   if (r.comparam === 0) {
     return r.avisando
-      ? t("Observando — o Jev conta as mensagens em que o cliente faz um pedido que a regra de hoje não reconheceu, e avisa a equipe na Central. Ele não decide nada no atendimento.")
-      : t("Observando — o Jev só conta as mensagens em que o cliente faz um pedido que a regra de hoje não reconheceu. Nada muda no atendimento.");
+      ? t(
+          "Observando — o Jev conta as mensagens em que o cliente faz um pedido que a regra de hoje não reconheceu, e avisa a equipe na Central. Ele não decide nada no atendimento.",
+        )
+      : t(
+          "Observando — o Jev só conta as mensagens em que o cliente faz um pedido que a regra de hoje não reconheceu. Nada muda no atendimento.",
+        );
   }
   if (!r.daParaDeixarDecidir) {
-    if (r.cascata === 0) return t("Observando — a sua IA de sempre decide, e o Jev só é comparado com ela.");
+    if (r.cascata === 0)
+      return t("Observando — a sua IA de sempre decide, e o Jev só é comparado com ela.");
     return r.avisando
-      ? t("Observando — onde o Jev compara, a sua IA de sempre decide, e ele só é comparado com ela. Nos pedidos do cliente, ele conta as mensagens em que a regra de hoje não reconheceu o pedido, e avisa a equipe.")
-      : t("Observando — onde o Jev compara, a sua IA de sempre decide, e ele só é comparado com ela. Nos pedidos do cliente, ele só conta as mensagens em que a regra de hoje não reconheceu o pedido.");
+      ? t(
+          "Observando — onde o Jev compara, a sua IA de sempre decide, e ele só é comparado com ela. Nos pedidos do cliente, ele conta as mensagens em que a regra de hoje não reconheceu o pedido, e avisa a equipe.",
+        )
+      : t(
+          "Observando — onde o Jev compara, a sua IA de sempre decide, e ele só é comparado com ela. Nos pedidos do cliente, ele só conta as mensagens em que a regra de hoje não reconheceu o pedido.",
+        );
   }
-  if (r.cascata === 0) return t("Observando — a sua IA de sempre ainda decide. Compare os dois antes de deixar o Jev decidir.");
+  if (r.cascata === 0)
+    return t(
+      "Observando — a sua IA de sempre ainda decide. Compare os dois antes de deixar o Jev decidir.",
+    );
   return r.avisando
-    ? t("Observando — onde o Jev compara, a sua IA de sempre ainda decide: compare os dois antes de deixar o Jev decidir. Nos pedidos do cliente, ele conta as mensagens em que a regra de hoje não reconheceu o pedido, e avisa a equipe.")
-    : t("Observando — onde o Jev compara, a sua IA de sempre ainda decide: compare os dois antes de deixar o Jev decidir. Nos pedidos do cliente, ele só conta as mensagens em que a regra de hoje não reconheceu o pedido.");
+    ? t(
+        "Observando — onde o Jev compara, a sua IA de sempre ainda decide: compare os dois antes de deixar o Jev decidir. Nos pedidos do cliente, ele conta as mensagens em que a regra de hoje não reconheceu o pedido, e avisa a equipe.",
+      )
+    : t(
+        "Observando — onde o Jev compara, a sua IA de sempre ainda decide: compare os dois antes de deixar o Jev decidir. Nos pedidos do cliente, ele só conta as mensagens em que a regra de hoje não reconheceu o pedido.",
+      );
 }
 
 /** A frase do cartão decidindo: "em parte" nomeia também quem só avisa a equipe. */
 function fraseDecidindo(d: DadosDoJev, t: (texto: string) => string): string {
   if (!decideEmParte(d)) return t("Decidindo — cada tarefa abaixo diz o que o Jev decide nela.");
   return oQueRoda(d).avisando
-    ? t("Decidindo em parte — cada tarefa abaixo diz se o Jev decide, só observa ou avisa a equipe nela.")
+    ? t(
+        "Decidindo em parte — cada tarefa abaixo diz se o Jev decide, só observa ou avisa a equipe nela.",
+      )
     : t("Decidindo em parte — cada tarefa abaixo diz se o Jev decide ou só observa nela.");
 }
 
@@ -345,8 +380,10 @@ export function jevNoPonto(
   // A IA de sempre é a do clima (`tem_ia_de_sempre`), e só o clima decide sem ela (DEC-012 #5).
   if (!d.tem_ia_de_sempre && tarefa.id === TAREFA_DO_CLIMA.id) return "sozinho";
   if (tarefa.estado !== "decidindo") return "observacao";
-  const frase = tarefa.id === "roteador" && roteadorSobDemanda(d)
-    ? ROTEADOR_SOB_DEMANDA : doRegistro(tarefa.id)?.aoDecidirNoPonto;
+  const frase =
+    tarefa.id === "roteador" && roteadorSobDemanda(d)
+      ? ROTEADOR_SOB_DEMANDA
+      : doRegistro(tarefa.id)?.aoDecidirNoPonto;
   return frase === undefined ? null : { decide: frase };
 }
 
@@ -364,7 +401,11 @@ async function buscarDadosDoJev(
     const res = await fetch("/api/v1/ai/jev");
     const json = (await res.json().catch(() => null)) as Resposta | null;
     if (res.ok && json?.data) return { dados: json.data };
-    return { erro: json?.error?.message ? t(json.error.message) : t("Não consegui carregar o cartão agora.") };
+    return {
+      erro: json?.error?.message
+        ? t(json.error.message)
+        : t("Não consegui carregar o cartão agora."),
+    };
   } catch {
     return { erro: t("Não consegui falar com o servidor. Confira a internet e tente de novo.") };
   }
@@ -440,14 +481,19 @@ export function CartaoDoJev({
         <div className="sm:col-start-2 sm:row-start-1">
           <SeloDoEstado estado={estado} emParte={estado === "decidindo" && decideEmParte(dados)} />
         </div>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t(dados.provedor.quandoUsar)}</p>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          {t(dados.provedor.quandoUsar)}
+        </p>
       </div>
 
       {/* DEC-012 #2: quem é da área da saúde manda dado sensível (LGPD), e o
           contrato da TypeSafe precisa cobrir isso. O produto não guarda o nicho
           como categoria, então o aviso aparece para todos em forma condicional.
           A ida para os EUA já está no consentimento, mais abaixo. */}
-      <p className="mt-3 rounded-md bg-warning-bg p-3 text-sm text-warning-fg" data-testid="jev-aviso-area-saude">
+      <p
+        className="mt-3 rounded-md bg-warning-bg p-3 text-sm text-warning-fg"
+        data-testid="jev-aviso-area-saude"
+      >
         {t(
           "Se a sua empresa é da área da saúde: as mensagens que o Jev lê podem conter dado de saúde, que a LGPD trata como sensível. Antes de ligar, confira com quem cuida da LGPD da empresa se o contrato da TypeSafe cobre esse tipo de dado.",
         )}
@@ -456,7 +502,10 @@ export function CartaoDoJev({
       {/* Depois de colar a chave nada confirmava que ela FUNCIONA: esta linha é
           o resultado do teste, dito em palavras (o ✓ é enfeite). */}
       {dados.chave.validada && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-success-fg" data-testid="jev-chave-conferida">
+        <p
+          className="mt-3 flex items-center gap-1.5 text-xs text-success-fg"
+          data-testid="jev-chave-conferida"
+        >
           <span aria-hidden>✓</span>
           {t("Chave conferida com a TypeSafe")}
         </p>
@@ -480,7 +529,9 @@ export function CartaoDoJev({
       {ligado && <Ligado dados={dados} estado={estado} recarregar={recarregar} />}
 
       {!dados.pode_editar && estado !== "sem_chave" && (
-        <p className="mt-3 text-xs text-muted-foreground">{t("Só quem administra a empresa pode mudar o Jev.")}</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          {t("Só quem administra a empresa pode mudar o Jev.")}
+        </p>
       )}
     </Card>
   );
@@ -489,7 +540,8 @@ export function CartaoDoJev({
 function SeloDoEstado({ estado, emParte }: { estado: Estado; emParte: boolean }) {
   const t = useT();
   if (estado === "observando") return <Badge variant="info">{t("Observando")}</Badge>;
-  if (estado === "decidindo") return <Badge variant="success">{emParte ? t("Decide em parte") : t("Decidindo")}</Badge>;
+  if (estado === "decidindo")
+    return <Badge variant="success">{emParte ? t("Decide em parte") : t("Decidindo")}</Badge>;
   if (estado === "sozinho") return <Badge variant="warning">{t("Decidindo sozinho")}</Badge>;
   if (estado === "parado") return <Badge variant="warning">{t("Parado")}</Badge>;
   if (estado === "em_pausa") return <Badge variant="neutral">{t("Em pausa")}</Badge>;
@@ -543,7 +595,13 @@ function SemChave({ dados, recarregar }: { dados: DadosDoJev; recarregar: () => 
   );
 }
 
-function ProblemaDaChave({ dados, recarregar }: { dados: DadosDoJev; recarregar: () => Promise<void> }) {
+function ProblemaDaChave({
+  dados,
+  recarregar,
+}: {
+  dados: DadosDoJev;
+  recarregar: () => Promise<void>;
+}) {
   const t = useT();
   const [testando, setTestando] = useState(false);
   const erro = descreverErroDeValidacao(dados.chave.erro_de_validacao, PROVEDOR_DO_JEV);
@@ -551,8 +609,12 @@ function ProblemaDaChave({ dados, recarregar }: { dados: DadosDoJev; recarregar:
     ? t("O Jev está ligado, mas sem chave ativa: enquanto isso, ele não mede nada.")
     : !dados.chave.erro_de_validacao
       ? dados.pode_editar
-        ? t("A chave está sendo testada. Se esta mensagem não sumir em alguns segundos, clique em “Testar de novo”.")
-        : t("A chave está sendo testada. Se esta mensagem não sumir em alguns segundos, recarregue a página.")
+        ? t(
+            "A chave está sendo testada. Se esta mensagem não sumir em alguns segundos, clique em “Testar de novo”.",
+          )
+        : t(
+            "A chave está sendo testada. Se esta mensagem não sumir em alguns segundos, recarregue a página.",
+          )
       : erro.generico
         ? t("Não consegui testar a chave. Tente de novo em instantes.")
         : t(erro.frase);
@@ -575,8 +637,7 @@ function ProblemaDaChave({ dados, recarregar }: { dados: DadosDoJev; recarregar:
             ? t(json.error.message)
             : t("Não consegui testar a chave agora. Tente de novo em instantes."),
         );
-      }
-      else if (json?.data?.validated_at) toast.success(t("A chave passou no teste."));
+      } else if (json?.data?.validated_at) toast.success(t("A chave passou no teste."));
       else toast.error(t("A chave não passou no teste."));
       await recarregar();
     } catch {
@@ -587,7 +648,10 @@ function ProblemaDaChave({ dados, recarregar }: { dados: DadosDoJev; recarregar:
   }
 
   return (
-    <div className="mt-4 rounded-md bg-warning-bg p-3 text-sm text-warning-fg" data-testid="jev-chave">
+    <div
+      className="mt-4 rounded-md bg-warning-bg p-3 text-sm text-warning-fg"
+      data-testid="jev-chave"
+    >
       {/* O código cru fica no `title`, para quem for investigar — nunca na frase. */}
       <p title={dados.chave.erro_de_validacao ?? undefined}>{motivo}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -646,7 +710,13 @@ function useMudarOJev(recarregar: () => Promise<void>) {
   return { mudar, enviando };
 }
 
-function ProntoParaLigar({ dados, recarregar }: { dados: DadosDoJev; recarregar: () => Promise<void> }) {
+function ProntoParaLigar({
+  dados,
+  recarregar,
+}: {
+  dados: DadosDoJev;
+  recarregar: () => Promise<void>;
+}) {
   const t = useT();
   const tagDoIdioma = useTagDeIdioma();
   const { mudar, enviando } = useMudarOJev(recarregar);
@@ -656,22 +726,29 @@ function ProntoParaLigar({ dados, recarregar }: { dados: DadosDoJev; recarregar:
   const pedeAceite = aceite === null;
   // Cada tarefa diz como volta — a frase única de antes falava do clima como se
   // fosse o Jev inteiro, e errava quando as outras tarefas voltavam diferentes.
-  const tarefas = tarefasDoCartao(dados).map((tarefa) => ({ tarefa, aoLigar: estadoAoLigar(tarefa, dados) }));
+  const tarefas = tarefasDoCartao(dados).map((tarefa) => ({
+    tarefa,
+    aoLigar: estadoAoLigar(tarefa, dados),
+  }));
   const doClima = tarefas.find(({ tarefa }) => tarefa.id === TAREFA_DO_CLIMA.id);
-  const climaSozinho = !dados.tem_ia_de_sempre && doClima !== undefined && doClima.aoLigar !== "desligada";
+  const climaSozinho =
+    !dados.tem_ia_de_sempre && doClima !== undefined && doClima.aoLigar !== "desligada";
   const climaPausadoSemIa = !dados.tem_ia_de_sempre && doClima?.aoLigar === "desligada";
   // O que vai rodar ao ligar, pela família — a frase é verdadeira para isso,
   // como a do cartão ligado (`fraseObservando`): nos pedidos do cliente não há
   // IA de sempre nem o que comparar, e com só eles rodando a frase de comparar
   // era falsa por inteiro.
-  const vaoRodar = tarefas.filter(({ tarefa, aoLigar }) => aoLigar !== "desligada" && !parada(tarefa));
+  const vaoRodar = tarefas.filter(
+    ({ tarefa, aoLigar }) => aoLigar !== "desligada" && !parada(tarefa),
+  );
   const comparam = vaoRodar.filter(({ tarefa }) => !avisaAEquipe(tarefa.id));
   const pedidos = vaoRodar.filter(({ tarefa }) => avisaAEquipe(tarefa.id));
   const algumaDecide = comparam.some(({ aoLigar }) => aoLigar === "decidindo");
   // As que vão só observar são todas das que não decidem nesta versão (a do
   // follow-up): "antes de deixar o Jev decidir" prometeria um botão que não há.
   const observam = comparam.filter(({ aoLigar }) => aoLigar === "observando");
-  const observamSemPoderDecidir = observam.length > 0 && observam.every(({ tarefa }) => !podeDecidir(tarefa.id));
+  const observamSemPoderDecidir =
+    observam.length > 0 && observam.every(({ tarefa }) => !podeDecidir(tarefa.id));
   const algumaPausada = tarefas.some(({ aoLigar }) => aoLigar === "desligada");
 
   return (
@@ -702,21 +779,36 @@ function ProntoParaLigar({ dados, recarregar }: { dados: DadosDoJev; recarregar:
                   sem saber o que fazer — é a primeira impressão de quem ainda
                   não publicou um agente. */}
               {aoLigar !== "desligada" && tarefa.sem_atendente === "ninguem_no_ar" && (
-                <span className="text-muted-foreground" data-testid={`jev-ao-ligar-sem-atendente-${tarefa.id}`}>
+                <span
+                  className="text-muted-foreground"
+                  data-testid={`jev-ao-ligar-sem-atendente-${tarefa.id}`}
+                >
                   {" "}
-                  {t("Não roda agora: nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia. Publique um agente num número, ou tire um agente da pausa, em Agentes.")}
+                  {t(
+                    "Não roda agora: nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia. Publique um agente num número, ou tire um agente da pausa, em Agentes.",
+                  )}
                 </span>
               )}
               {aoLigar !== "desligada" && tarefa.sem_atendente === "externo" && (
-                <span className="text-muted-foreground" data-testid={`jev-ao-ligar-sem-atendente-${tarefa.id}`}>
+                <span
+                  className="text-muted-foreground"
+                  data-testid={`jev-ao-ligar-sem-atendente-${tarefa.id}`}
+                >
                   {" "}
-                  {t("Não roda agora: quem conduz as conversas desta empresa é um sistema de fora. O Jev só é perguntado onde um atendente automático daqui responderia.")}
+                  {t(
+                    "Não roda agora: quem conduz as conversas desta empresa é um sistema de fora. O Jev só é perguntado onde um atendente automático daqui responderia.",
+                  )}
                 </span>
               )}
               {aoLigar !== "desligada" && tarefa.sem_fluxo === true && (
-                <span className="text-muted-foreground" data-testid={`jev-ao-ligar-sem-fluxo-${tarefa.id}`}>
+                <span
+                  className="text-muted-foreground"
+                  data-testid={`jev-ao-ligar-sem-fluxo-${tarefa.id}`}
+                >
                   {" "}
-                  {t("Não roda agora: nenhum follow-up publicado tem o passo “Classificar (IA)” com duas saídas ou mais. O Jev só lê a resposta do cliente onde a sua IA de sempre escolhe entre saídas — publique, em Follow-ups, um fluxo com esse passo.")}{" "}
+                  {t(
+                    "Não roda agora: nenhum follow-up publicado tem o passo “Classificar (IA)” com duas saídas ou mais. O Jev só lê a resposta do cliente onde a sua IA de sempre escolhe entre saídas — publique, em Follow-ups, um fluxo com esse passo.",
+                  )}{" "}
                   <Link className="underline underline-offset-4" href="/app/ai/followups">
                     {t("Abrir os follow-ups")}
                   </Link>
@@ -754,9 +846,13 @@ function ProntoParaLigar({ dados, recarregar }: { dados: DadosDoJev; recarregar:
                   "Nos pedidos do cliente, o Jev só conta as mensagens em que a regra de hoje não reconheceu o pedido — nada muda no atendimento.",
                 ))}{" "}
           {algumaPausada &&
-            t("As tarefas pausadas continuam assim: depois de ligar o Jev, religue-as na lista que aparece aqui.")}{" "}
+            t(
+              "As tarefas pausadas continuam assim: depois de ligar o Jev, religue-as na lista que aparece aqui.",
+            )}{" "}
           {climaPausadoSemIa &&
-            t("Sem uma IA principal, o clima religado volta decidindo sozinho: não há com quem comparar nem quem cubra uma falha do Jev.")}
+            t(
+              "Sem uma IA principal, o clima religado volta decidindo sozinho: não há com quem comparar nem quem cubra uma falha do Jev.",
+            )}
         </p>
       </div>
 
@@ -795,7 +891,10 @@ function ProntoParaLigar({ dados, recarregar }: { dados: DadosDoJev; recarregar:
           size="sm"
           disabled={enviando || (pedeAceite && !concordo)}
           onClick={() =>
-            void mudar(pedeAceite ? { ligado: true, aceite_lgpd: true } : { ligado: true }, t("O Jev foi ligado."))
+            void mudar(
+              pedeAceite ? { ligado: true, aceite_lgpd: true } : { ligado: true },
+              t("O Jev foi ligado."),
+            )
           }
         >
           {enviando ? t("Ligando…") : t("Ligar o Jev")}
@@ -820,7 +919,9 @@ function Ligado({
   // A tarefa cujo "Deixar o Jev decidir" espera confirmação. Só decidir pede:
   // pausar e voltar a observar só tiram o Jev do caminho do cliente. Fechado, o
   // diálogo guarda a tarefa: o texto não some durante a animação de saída.
-  const [aConfirmar, setAConfirmar] = useState<{ tarefa: TarefaNoCartao; aberto: boolean } | null>(null);
+  const [aConfirmar, setAConfirmar] = useState<{ tarefa: TarefaNoCartao; aberto: boolean } | null>(
+    null,
+  );
   const n = dados.numeros;
 
   // `cost_cents` é centavo de DÓLAR, e o Jev custa fração de centavo por
@@ -838,7 +939,11 @@ function Ligado({
   // decidindo sozinho: o clima decide sem reserva, mas as outras tarefas rodam
   // como sempre, e sem a linha delas a única saída de uma tarefa nova era
   // desligar o Jev inteiro.
-  const rodando = estado === "observando" || estado === "decidindo" || estado === "em_pausa" || estado === "sozinho";
+  const rodando =
+    estado === "observando" ||
+    estado === "decidindo" ||
+    estado === "em_pausa" ||
+    estado === "sozinho";
   const todasPausadas = tarefasDoCartao(dados).every((t) => t.estado === "desligada");
   const falha = dados.ultima_falha;
   const frasesDeFalha: Readonly<Record<string, string>> = O_QUE_FAZER_DO_JEV;
@@ -857,7 +962,9 @@ function Ligado({
           t("Ligado, mas parado: o Jev só volta a medir quando a chave passar no teste.")}
         {estado === "em_pausa" &&
           (todasPausadas
-            ? t("Ligado, mas com todas as tarefas pausadas: o Jev não mede nada até você religar uma abaixo.")
+            ? t(
+                "Ligado, mas com todas as tarefas pausadas: o Jev não mede nada até você religar uma abaixo.",
+              )
             : t(
                 "Ligado, mas nenhuma tarefa está rodando agora: o Jev não mede nada. Veja abaixo o que falta nas que dizem “Não roda”, ou religue uma pausada.",
               ))}
@@ -867,251 +974,327 @@ function Ligado({
           Com a chave parada, o selo do cartão já diz o estado de todas, e a
           linha não repete nem oferece o botão. Sem a IA de sempre, o clima
           decide sozinho e só se pausa; as outras seguem como sempre. */}
-      <ul className="divide-y divide-border rounded-md border border-border" data-testid="jev-tarefas">
+      <ul
+        className="divide-y divide-border rounded-md border border-border"
+        data-testid="jev-tarefas"
+      >
         {tarefasDoCartao(dados).map((tarefa) => {
           const registro = doRegistro(tarefa.id);
-          const aoDecidir = tarefa.id === "roteador" && roteadorSobDemanda(dados)
-            ? ROTEADOR_SOB_DEMANDA : registro?.aoDecidir;
+          const aoDecidir =
+            tarefa.id === "roteador" && roteadorSobDemanda(dados)
+              ? ROTEADOR_SOB_DEMANDA
+              : registro?.aoDecidir;
           const avisa = avisaAEquipe(tarefa.id);
           const climaSozinho = estado === "sozinho" && tarefa.id === TAREFA_DO_CLIMA.id;
           const climaSemIa = tarefa.id === TAREFA_DO_CLIMA.id && !dados.tem_ia_de_sempre;
           return (
-          <li
-            key={tarefa.id}
-            className="space-y-2 p-3"
-            data-testid={`jev-tarefa-${tarefa.id}`}
-            data-estado={tarefa.estado}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium">{t(tarefa.rotulo)}</span>
-              {rodando && (
-                <Badge
-                  variant={
-                    climaSozinho ? "warning" : roda(tarefa) && tarefa.estado === "decidindo" ? "success" : "neutral"
-                  }
-                >
-                  {/* "Pausada", o verbo do botão: "Desligada" ao lado de "Pausar
+            <li
+              key={tarefa.id}
+              className="space-y-2 p-3"
+              data-testid={`jev-tarefa-${tarefa.id}`}
+              data-estado={tarefa.estado}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium">{t(tarefa.rotulo)}</span>
+                {rodando && (
+                  <Badge
+                    variant={
+                      climaSozinho
+                        ? "warning"
+                        : roda(tarefa) && tarefa.estado === "decidindo"
+                          ? "success"
+                          : "neutral"
+                    }
+                  >
+                    {/* "Pausada", o verbo do botão: "Desligada" ao lado de "Pausar
                       esta tarefa" e do "Desligar" do Jev inteiro confundia os dois. */}
-                  {tarefa.estado === "desligada"
-                    ? t("Pausada")
-                    : parada(tarefa)
-                      ? t("Não roda")
-                      : climaSozinho
-                        ? t("Decide sozinho")
-                        : tarefa.estado === "observando"
-                          ? t("Só observa")
-                          : avisa
-                            ? t("Avisa a equipe")
-                            : t("Decide")}
-                </Badge>
-              )}
-              {/* "Nova": a tarefa é feminina. A chave "Novo" é a do agente novo. */}
-              {tarefa.novo && <Badge variant="info">{t("Nova")}</Badge>}
-            </div>
+                    {tarefa.estado === "desligada"
+                      ? t("Pausada")
+                      : parada(tarefa)
+                        ? t("Não roda")
+                        : climaSozinho
+                          ? t("Decide sozinho")
+                          : tarefa.estado === "observando"
+                            ? t("Só observa")
+                            : avisa
+                              ? t("Avisa a equipe")
+                              : t("Decide")}
+                  </Badge>
+                )}
+                {/* "Nova": a tarefa é feminina. A chave "Novo" é a do agente novo. */}
+                {tarefa.novo && <Badge variant="info">{t("Nova")}</Badge>}
+              </div>
 
-            {/* O selo sozinho não explicava nada e nunca sumia: diz o que ele
+              {/* O selo sozinho não explicava nada e nunca sumia: diz o que ele
                 quer dizer, e "Manter só observando" (abaixo) o tira. Parada, ela
                 não observa nada — a linha do "Não roda" diz por quê. */}
-            {rodando && tarefa.novo && tarefa.estado === "observando" && !parada(tarefa) && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-nova-${tarefa.id}`}>
-                {avisa
-                  ? t("Começou sozinha, só observando: nada muda até você pedir para o Jev avisar a equipe.")
-                  : podeDecidir(tarefa.id)
-                    ? t("Começou sozinha, só observando: nada muda para o cliente até você deixar o Jev decidir.")
-                    : t("Começou sozinha, só observando: nada muda para o cliente.")}
-              </p>
-            )}
+              {rodando && tarefa.novo && tarefa.estado === "observando" && !parada(tarefa) && (
+                <p className="text-sm text-muted-foreground" data-testid={`jev-nova-${tarefa.id}`}>
+                  {avisa
+                    ? t(
+                        "Começou sozinha, só observando: nada muda até você pedir para o Jev avisar a equipe.",
+                      )
+                    : podeDecidir(tarefa.id)
+                      ? t(
+                          "Começou sozinha, só observando: nada muda para o cliente até você deixar o Jev decidir.",
+                        )
+                      : t("Começou sozinha, só observando: nada muda para o cliente.")}
+                </p>
+              )}
 
-            {/* Sem esta linha, a tarefa ficava "Só observa" esperando uma
+              {/* Sem esta linha, a tarefa ficava "Só observa" esperando uma
                 comparação que nunca vem: o turno só pergunta ao Jev onde a IA
                 de sempre também pergunta. Hoje só a manipulação acompanha camada.
                 O nome é o que a tela do agente mostra — "Segurança" é só o nosso. */}
-            {rodando && tarefa.estado !== "desligada" && tarefa.sem_camada && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-sem-camada-${tarefa.id}`}>
-                {t(
-                  "Não roda agora: a verificação “Detectar tentativa de manipular o assistente” está desligada. Ela vale para a empresa toda: ligue-a abrindo qualquer agente, na aba “Confere antes de enviar”, em “Antes de o assistente ler”. O Jev só pergunta onde a sua IA de sempre também pergunta.",
-                )}{" "}
-                <Link className="underline underline-offset-4" href="/app/ai/agents">
-                  {t("Abrir os agentes")}
-                </Link>
-              </p>
-            )}
-            {rodando && tarefa.estado !== "desligada" && tarefa.sem_roteador && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-sem-roteador-${tarefa.id}`}>
-                {t(
-                  "Não roda agora: nenhum roteador de intenção ativo tem intenções para o Jev escolher. O Jev só escolhe o agente onde um roteador já escolhe — ative um, com as intenções dele, em Roteadores.",
-                )}{" "}
-                <Link className="underline underline-offset-4" href="/app/ai/routers">
-                  {t("Abrir os roteadores")}
-                </Link>
-              </p>
-            )}
-            {rodando && tarefa.estado !== "desligada" && tarefa.sem_fluxo === true && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-sem-fluxo-${tarefa.id}`}>
-                {t(
-                  "Não roda agora: nenhum follow-up publicado tem o passo “Classificar (IA)” com duas saídas ou mais. O Jev só lê a resposta do cliente onde a sua IA de sempre escolhe entre saídas — publique, em Follow-ups, um fluxo com esse passo.",
-                )}{" "}
-                <Link className="underline underline-offset-4" href="/app/ai/followups">
-                  {t("Abrir os follow-ups")}
-                </Link>
-              </p>
-            )}
-            {/* As de pedido só são perguntadas onde o atendimento automático
+              {rodando && tarefa.estado !== "desligada" && tarefa.sem_camada && (
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid={`jev-sem-camada-${tarefa.id}`}
+                >
+                  {t(
+                    "Não roda agora: a verificação “Detectar tentativa de manipular o assistente” está desligada. Ela vale para a empresa toda: ligue-a abrindo qualquer agente, na aba “Confere antes de enviar”, em “Antes de o assistente ler”. O Jev só pergunta onde a sua IA de sempre também pergunta.",
+                  )}{" "}
+                  <Link className="underline underline-offset-4" href="/app/ai/agents">
+                    {t("Abrir os agentes")}
+                  </Link>
+                </p>
+              )}
+              {rodando && tarefa.estado !== "desligada" && tarefa.sem_roteador && (
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid={`jev-sem-roteador-${tarefa.id}`}
+                >
+                  {t(
+                    "Não roda agora: nenhum roteador de intenção ativo tem intenções para o Jev escolher. O Jev só escolhe o agente onde um roteador já escolhe — ative um, com as intenções dele, em Roteadores.",
+                  )}{" "}
+                  <Link className="underline underline-offset-4" href="/app/ai/routers">
+                    {t("Abrir os roteadores")}
+                  </Link>
+                </p>
+              )}
+              {rodando && tarefa.estado !== "desligada" && tarefa.sem_fluxo === true && (
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid={`jev-sem-fluxo-${tarefa.id}`}
+                >
+                  {t(
+                    "Não roda agora: nenhum follow-up publicado tem o passo “Classificar (IA)” com duas saídas ou mais. O Jev só lê a resposta do cliente onde a sua IA de sempre escolhe entre saídas — publique, em Follow-ups, um fluxo com esse passo.",
+                  )}{" "}
+                  <Link className="underline underline-offset-4" href="/app/ai/followups">
+                    {t("Abrir os follow-ups")}
+                  </Link>
+                </p>
+              )}
+              {/* As de pedido só são perguntadas onde o atendimento automático
                 responderia: sem ele em número nenhum, "Só observa" com "nenhuma
                 mensagem" seria para sempre. */}
-            {rodando && tarefa.estado !== "desligada" && tarefa.sem_atendente === "ninguem_no_ar" && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-sem-atendente-${tarefa.id}`}>
-                {t(
-                  "Não roda agora: nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia. Publique um agente num número, ou tire um agente da pausa, em Agentes.",
-                )}{" "}
-                <Link className="underline underline-offset-4" href="/app/ai/agents">
-                  {t("Abrir os agentes")}
-                </Link>
-              </p>
-            )}
-            {rodando && tarefa.estado !== "desligada" && tarefa.sem_atendente === "externo" && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-sem-atendente-${tarefa.id}`}>
-                {t(
-                  "Não roda agora: quem conduz as conversas desta empresa é um sistema de fora. O Jev só é perguntado onde um atendente automático daqui responderia.",
+              {rodando &&
+                tarefa.estado !== "desligada" &&
+                tarefa.sem_atendente === "ninguem_no_ar" && (
+                  <p
+                    className="text-sm text-muted-foreground"
+                    data-testid={`jev-sem-atendente-${tarefa.id}`}
+                  >
+                    {t(
+                      "Não roda agora: nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia. Publique um agente num número, ou tire um agente da pausa, em Agentes.",
+                    )}{" "}
+                    <Link className="underline underline-offset-4" href="/app/ai/agents">
+                      {t("Abrir os agentes")}
+                    </Link>
+                  </p>
                 )}
-              </p>
-            )}
+              {rodando && tarefa.estado !== "desligada" && tarefa.sem_atendente === "externo" && (
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid={`jev-sem-atendente-${tarefa.id}`}
+                >
+                  {t(
+                    "Não roda agora: quem conduz as conversas desta empresa é um sistema de fora. O Jev só é perguntado onde um atendente automático daqui responderia.",
+                  )}
+                </p>
+              )}
 
-            {/* Sem o botão, o porquê: a tarefa que só observa nesta versão. */}
-            {rodando && roda(tarefa) && registro?.soObserva !== undefined && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-so-observa-${tarefa.id}`}>
-                {t(registro.soObserva)}
-              </p>
-            )}
+              {/* Sem o botão, o porquê: a tarefa que só observa nesta versão. */}
+              {rodando && roda(tarefa) && registro?.soObserva !== undefined && (
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid={`jev-so-observa-${tarefa.id}`}
+                >
+                  {t(registro.soObserva)}
+                </p>
+              )}
 
-            {rodando && roda(tarefa) && tarefa.estado === "decidindo" && aoDecidir !== undefined && (
-              <p className="text-sm text-muted-foreground" data-testid={`jev-decide-${tarefa.id}`}>
-                {t(aoDecidir)}
-              </p>
-            )}
+              {rodando &&
+                roda(tarefa) &&
+                tarefa.estado === "decidindo" &&
+                aoDecidir !== undefined && (
+                  <p
+                    className="text-sm text-muted-foreground"
+                    data-testid={`jev-decide-${tarefa.id}`}
+                  >
+                    {t(aoDecidir)}
+                  </p>
+                )}
 
-            {/* A concordância de cada tarefa com a IA de sempre — o que se lê antes
+              {/* A concordância de cada tarefa com a IA de sempre — o que se lê antes
                 de deixar o Jev decidir. O clima conta "chamariam uma pessoa"; as
                 outras, o mesmo rótulo (em `jev_observacoes`). A em cascata não
                 concorda com nada — a regra de hoje sempre disse não onde ele foi
                 perguntado —, e conta as mensagens em que ele percebeu o pedido. */}
-            {rodando && roda(tarefa) && registro?.familia === "cascata" && tarefa.percebidos && (
-              <PercebidosDaTarefa
-                tarefa={tarefa}
-                p={tarefa.percebidos}
-                frase={registro.percebidos}
-                formatar={(n) => inteiro.format(n)}
-              />
-            )}
-            {rodando && roda(tarefa) && tarefa.estado === "observando" && !climaSozinho && registro?.familia !== "cascata" && concordanciaDa(tarefa, dados) !== null && (
-              <ConcordanciaDaTarefa
-                tarefa={tarefa}
-                o={concordanciaDa(tarefa, dados)!}
-                frase={registro?.concordancia ?? TAREFA_DO_CLIMA.concordancia}
-                formatar={(n) => inteiro.format(n)}
-              />
-            )}
+              {rodando && roda(tarefa) && registro?.familia === "cascata" && tarefa.percebidos && (
+                <PercebidosDaTarefa
+                  tarefa={tarefa}
+                  p={tarefa.percebidos}
+                  frase={registro.percebidos}
+                  formatar={(n) => inteiro.format(n)}
+                />
+              )}
+              {rodando &&
+                roda(tarefa) &&
+                tarefa.estado === "observando" &&
+                !climaSozinho &&
+                registro?.familia !== "cascata" &&
+                concordanciaDa(tarefa, dados) !== null && (
+                  <ConcordanciaDaTarefa
+                    tarefa={tarefa}
+                    o={concordanciaDa(tarefa, dados)!}
+                    frase={registro?.concordancia ?? TAREFA_DO_CLIMA.concordancia}
+                    formatar={(n) => inteiro.format(n)}
+                  />
+                )}
 
-            {dados.pode_editar && rodando && (
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Parada pela camada ou sem roteador, não há o que comparar antes
+              {dados.pode_editar && rodando && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Parada pela camada ou sem roteador, não há o que comparar antes
                     de decidir; e o clima sem a IA de sempre já decide sozinho. */}
-                {tarefa.estado === "observando" && !parada(tarefa) && !climaSozinho && podeDecidir(tarefa.id) && (
-                  <Button
-                    size="sm"
-                    disabled={enviando}
-                    onClick={() => setAConfirmar({ tarefa, aberto: true })}
-                  >
-                    {avisa ? t("Avisar a equipe") : t("Deixar o Jev decidir")}
-                  </Button>
-                )}
-                {/* Sem este caminho, quem deixou o Jev decidir só voltaria a
+                  {tarefa.estado === "observando" &&
+                    !parada(tarefa) &&
+                    !climaSozinho &&
+                    podeDecidir(tarefa.id) && (
+                      <Button
+                        size="sm"
+                        disabled={enviando}
+                        onClick={() => setAConfirmar({ tarefa, aberto: true })}
+                      >
+                        {avisa ? t("Avisar a equipe") : t("Deixar o Jev decidir")}
+                      </Button>
+                    )}
+                  {/* Sem este caminho, quem deixou o Jev decidir só voltaria a
                     comparar desligando — e religar mantém o estado gravado. */}
-                {tarefa.estado === "decidindo" && !climaSozinho && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={enviando}
-                    onClick={() =>
-                      void mudar(corpoDaMudanca(tarefa, "observando"), t("O Jev voltou a só observar."))
-                    }
-                  >
-                    {t("Voltar a só observar")}
-                  </Button>
-                )}
-                {/* Grava o estado que já vale: o selo "Nova" sai, e nada muda.
+                  {tarefa.estado === "decidindo" && !climaSozinho && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={enviando}
+                      onClick={() =>
+                        void mudar(
+                          corpoDaMudanca(tarefa, "observando"),
+                          t("O Jev voltou a só observar."),
+                        )
+                      }
+                    >
+                      {t("Voltar a só observar")}
+                    </Button>
+                  )}
+                  {/* Grava o estado que já vale: o selo "Nova" sai, e nada muda.
                     Parada, ela não observa nada — o botão prometeria o contrário. */}
-                {tarefa.novo && tarefa.estado === "observando" && !parada(tarefa) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={enviando}
-                    onClick={() =>
-                      void mudar(
-                        { tarefa: tarefa.id, estado: "observando" },
-                        t("A tarefa segue só observando."),
-                      )
-                    }
-                  >
-                    {t("Manter só observando")}
-                  </Button>
-                )}
-                {/* Uma tarefa só, sem desligar o Jev: a tarefa nova começa
+                  {tarefa.novo && tarefa.estado === "observando" && !parada(tarefa) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={enviando}
+                      onClick={() =>
+                        void mudar(
+                          { tarefa: tarefa.id, estado: "observando" },
+                          t("A tarefa segue só observando."),
+                        )
+                      }
+                    >
+                      {t("Manter só observando")}
+                    </Button>
+                  )}
+                  {/* Uma tarefa só, sem desligar o Jev: a tarefa nova começa
                     observando sozinha (R7), e quem não a quer precisa de uma
                     saída que não leve as outras junto. */}
-                {tarefa.estado !== "desligada" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={enviando}
-                    onClick={() => void mudar(corpoDaMudanca(tarefa, "desligada"), t("A tarefa foi pausada."))}
-                  >
-                    {t("Pausar esta tarefa")}
-                  </Button>
-                )}
-                {/* Pausada, a tarefa volta observando — nunca direto a decidir.
+                  {tarefa.estado !== "desligada" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={enviando}
+                      onClick={() =>
+                        void mudar(corpoDaMudanca(tarefa, "desligada"), t("A tarefa foi pausada."))
+                      }
+                    >
+                      {t("Pausar esta tarefa")}
+                    </Button>
+                  )}
+                  {/* Pausada, a tarefa volta observando — nunca direto a decidir.
                     A exceção é o clima sem a IA de sempre: não há com quem
                     comparar, e o worker o deixa decidir sozinho (DEC-012 #5). O
                     aviso vem ANTES do clique. */}
-                {tarefa.estado === "desligada" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={enviando}
-                    onClick={() => void mudar(corpoDaMudanca(tarefa, "observando"), t("A tarefa foi religada."))}
+                  {tarefa.estado === "desligada" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={enviando}
+                      onClick={() =>
+                        void mudar(
+                          corpoDaMudanca(tarefa, "observando"),
+                          t("A tarefa foi religada."),
+                        )
+                      }
+                    >
+                      {t("Religar")}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {tarefa.id === "roteador" && tarefa.estado === "decidindo" && rodando && (
+                <div className="mt-2 space-y-1 text-xs" data-testid="jev-modo-roteador">
+                  <label htmlFor="jev-router-mode" className="block font-medium">
+                    {t("Como o roteador consulta as IAs")}
+                  </label>
+                  <SelectDoApp
+                    id="jev-router-mode"
+                    className="block rounded-xl border bg-background p-2 text-sm"
+                    value={roteadorSobDemanda(dados) ? "sob_demanda" : "comparacao"}
+                    disabled={!dados.pode_editar || enviando}
+                    onChange={(e) =>
+                      void mudar({ modo_roteador: e.target.value }, t("Modo do roteador salvo."))
+                    }
                   >
-                    {t("Religar")}
-                  </Button>
-                )}
-              </div>
-            )}
-            {tarefa.id === "roteador" && tarefa.estado === "decidindo" && rodando && (
-              <div className="mt-2 space-y-1 text-xs" data-testid="jev-modo-roteador">
-                <label htmlFor="jev-router-mode" className="block font-medium">{t("Como o roteador consulta as IAs")}</label>
-                <select id="jev-router-mode" className="block rounded-xl border bg-background p-2 text-sm"
-                  value={roteadorSobDemanda(dados) ? "sob_demanda" : "comparacao"} disabled={!dados.pode_editar || enviando}
-                  onChange={(e) => void mudar({ modo_roteador: e.target.value }, t("Modo do roteador salvo."))}>
-                  <option value="comparacao">{t("Comparar o Jev e a IA de sempre")}</option>
-                  <option value="sob_demanda" disabled={dados.roteador_tem_ia_de_sempre !== true}>{t("Jev; IA de sempre só como reserva")}</option>
-                </select>
-                {dados.roteador_tem_ia_de_sempre !== true ? (
-                  <p className="text-muted-foreground" data-testid="jev-modo-roteador-sem-ia">{t(ROTEADOR_SOB_DEMANDA_SEM_IA)}</p>
-                ) : (
-                  <p className="text-muted-foreground">{roteadorSobDemanda(dados)
-                    ? t("A IA de sempre só é chamada se o Jev falhar ou estiver inseguro.")
-                    : t("As duas IAs respondem; a escolha do Jev decide.")}</p>
-                )}
-                <Link href="/app/ai/runs?tab=roteamento" className="underline underline-offset-4">{t("Ver resultados do roteamento")}</Link>
-              </div>
-            )}
-            {dados.pode_editar && rodando && tarefa.estado === "desligada" && climaSemIa && (
-              <p className="text-xs text-muted-foreground" data-testid="jev-religar-clima-sozinho">
-                {t(
-                  "Sem uma IA principal, o clima religado volta decidindo sozinho: não há com quem comparar nem quem cubra uma falha do Jev.",
-                )}
-              </p>
-            )}
-          </li>
+                    <option value="comparacao">{t("Comparar o Jev e a IA de sempre")}</option>
+                    <option value="sob_demanda" disabled={dados.roteador_tem_ia_de_sempre !== true}>
+                      {t("Jev; IA de sempre só como reserva")}
+                    </option>
+                  </SelectDoApp>
+                  {dados.roteador_tem_ia_de_sempre !== true ? (
+                    <p className="text-muted-foreground" data-testid="jev-modo-roteador-sem-ia">
+                      {t(ROTEADOR_SOB_DEMANDA_SEM_IA)}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      {roteadorSobDemanda(dados)
+                        ? t("A IA de sempre só é chamada se o Jev falhar ou estiver inseguro.")
+                        : t("As duas IAs respondem; a escolha do Jev decide.")}
+                    </p>
+                  )}
+                  <Link href="/app/ai/runs?tab=roteamento" className="underline underline-offset-4">
+                    {t("Ver resultados do roteamento")}
+                  </Link>
+                </div>
+              )}
+              {dados.pode_editar && rodando && tarefa.estado === "desligada" && climaSemIa && (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="jev-religar-clima-sozinho"
+                >
+                  {t(
+                    "Sem uma IA principal, o clima religado volta decidindo sozinho: não há com quem comparar nem quem cubra uma falha do Jev.",
+                  )}
+                </p>
+              )}
+            </li>
           );
         })}
       </ul>
@@ -1138,13 +1321,20 @@ function Ligado({
           />
           <Numero
             rotulo={t("Tempo médio")}
-            valor={n.latencia_media_ms === null ? "—" : `${segundos.format(n.latencia_media_ms / 1000)} s`}
+            valor={
+              n.latencia_media_ms === null
+                ? "—"
+                : `${segundos.format(n.latencia_media_ms / 1000)} s`
+            }
           />
           {/* Sem IA de sempre para o clima não há quem o cubra: um zero que nunca
               muda só confunde. Mas o roteador tem a IA dele, e a cobertura dele
               conta aqui também. */}
           {(dados.tem_ia_de_sempre || n.reservas > 0) && (
-            <Numero rotulo={t("Vezes que a IA de sempre cobriu o Jev")} valor={inteiro.format(n.reservas)} />
+            <Numero
+              rotulo={t("Vezes que a IA de sempre cobriu o Jev")}
+              valor={inteiro.format(n.reservas)}
+            />
           )}
         </dl>
         {n.custo_incompleto && (
@@ -1157,10 +1347,14 @@ function Ligado({
       </div>
 
       {falha && (
-        <p className="rounded-md bg-warning-bg p-2 text-xs text-warning-fg" data-testid="jev-ultima-falha">
+        <p
+          className="rounded-md bg-warning-bg p-2 text-xs text-warning-fg"
+          data-testid="jev-ultima-falha"
+        >
           <span className="font-medium">
             {t("Última falha")}
-            {falha.tarefa ? <> — {t(falha.tarefa)}</> : null} ({new Date(falha.em).toLocaleString(tagDoIdioma)}):
+            {falha.tarefa ? <> — {t(falha.tarefa)}</> : null} (
+            {new Date(falha.em).toLocaleString(tagDoIdioma)}):
           </span>{" "}
           {oQueFazer ? t(oQueFazer) : t("O Jev não conseguiu medir.")}
         </p>
@@ -1219,14 +1413,20 @@ function ConfirmarDecidir({
 }) {
   const t = useT();
   const tarefa = pedido?.tarefa ?? null;
-  const efeito = tarefa?.id === "roteador" && modoRoteador === "sob_demanda"
-    ? ROTEADOR_SOB_DEMANDA : tarefa ? doRegistro(tarefa.id)?.aoConfirmarDecidir : undefined;
+  const efeito =
+    tarefa?.id === "roteador" && modoRoteador === "sob_demanda"
+      ? ROTEADOR_SOB_DEMANDA
+      : tarefa
+        ? doRegistro(tarefa.id)?.aoConfirmarDecidir
+        : undefined;
   const avisa = tarefa !== null && avisaAEquipe(tarefa.id);
   return (
     <AlertDialog open={pedido?.aberto === true} onOpenChange={(aberto) => !aberto && aoFechar()}>
       <AlertDialogContent data-testid="jev-confirmar-decidir" data-tarefa={tarefa?.id}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{avisa ? t("Avisar a equipe?") : t("Deixar o Jev decidir?")}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {avisa ? t("Avisar a equipe?") : t("Deixar o Jev decidir?")}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2">
               {tarefa && <p className="font-medium text-foreground">{t(tarefa.rotulo)}</p>}
@@ -1262,7 +1462,10 @@ function ConcordanciaDaTarefa({
   const doClima = tarefa.id === TAREFA_DO_CLIMA.id;
   // O testid do clima é o da onda 1: as specs o leem.
   return (
-    <p className="text-sm" data-testid={doClima ? "jev-concordancia" : `jev-concordancia-${tarefa.id}`}>
+    <p
+      className="text-sm"
+      data-testid={doClima ? "jev-concordancia" : `jev-concordancia-${tarefa.id}`}
+    >
       {o.comparadas === 0 ? (
         t("Ainda não há mensagens medidas pelos dois. A comparação aparece aqui assim que houver.")
       ) : (
@@ -1270,14 +1473,18 @@ function ConcordanciaDaTarefa({
           {t("Nos últimos")} {o.dias} {t(frase.antes)}{" "}
           {/* A fonte do texto, com algarismos de largura igual: a mono, no meio
               da frase, abria "5  de  7" com espaços largos. */}
-          <span className="font-medium tabular-nums" data-testid={`jev-concordancia-numeros-${tarefa.id}`}>
+          <span
+            className="font-medium tabular-nums"
+            data-testid={`jev-concordancia-numeros-${tarefa.id}`}
+          >
             {formatar(o.concordaram)} {t("de")} {formatar(o.comparadas)}
           </span>{" "}
           {t(frase.depois)}
           {o.teto_da_amostra !== undefined && (
             <>
               {" "}
-              {t("A conta usa só as")} {formatar(o.teto_da_amostra)} {t("mensagens mais recentes do período.")}
+              {t("A conta usa só as")} {formatar(o.teto_da_amostra)}{" "}
+              {t("mensagens mais recentes do período.")}
             </>
           )}
           {/* O que decidir muda na manipulação: o alerta forte que só ele daria. */}
@@ -1325,7 +1532,8 @@ function PercebidosDaTarefa({
     hour: "2-digit",
     minute: "2-digit",
   });
-  const escolhida = p.mensagens === 0 ? frase.nenhuma : p.mensagens === 1 ? frase.uma : frase.varias;
+  const escolhida =
+    p.mensagens === 0 ? frase.nenhuma : p.mensagens === 1 ? frase.uma : frase.varias;
   const [antes = "", depois] = t(escolhida).replace("{dias}", formatar(p.dias)).split("{n}");
   return (
     <div className="space-y-1 text-sm">
@@ -1339,7 +1547,10 @@ function PercebidosDaTarefa({
         )}
       </p>
       {p.mensagens > 0 && p.conversas.length > 0 && (
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid={`jev-percebidos-conversas-${tarefa.id}`}>
+        <p
+          className="flex flex-wrap items-center gap-x-3 gap-y-1"
+          data-testid={`jev-percebidos-conversas-${tarefa.id}`}
+        >
           <span className="text-muted-foreground">{t("Ver as conversas:")}</span>
           {p.conversas.map((c) => {
             const em = quando.format(new Date(c.em));

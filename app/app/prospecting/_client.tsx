@@ -25,6 +25,7 @@ import { tipoDoTelefone } from "@/lib/prospecting/qualidade";
 import { linhasDoCampo, planoDoLote } from "@/lib/prospecting/lote";
 import { ProspectingAgentBuilder, type CreatedProspectingAgent } from "./_create-agent";
 import type { ProspectingAgentSetupInput } from "@/lib/prospecting/agent-setup-schema";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Campaign = {
   id: string;
@@ -942,7 +943,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                               <div className="grid gap-4 md:grid-cols-2">
                                 <div>
                                   <Label htmlFor="prospecting-agent">{t("Agente de IA")}</Label>
-                                  <select
+                                  <SelectDoApp
                                     id="prospecting-agent"
                                     className={`${selectClass} mt-1`}
                                     value={config.agent_id}
@@ -955,7 +956,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                                         {a.name}
                                       </option>
                                     ))}
-                                  </select>
+                                  </SelectDoApp>
                                   {config.agent_id && (
                                     <Link
                                       className="mt-2 block text-xs underline"
@@ -969,7 +970,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                                   <Label htmlFor="prospecting-channel">
                                     {t("Conexão de saída")}
                                   </Label>
-                                  <select
+                                  <SelectDoApp
                                     id="prospecting-channel"
                                     className={`${selectClass} mt-1`}
                                     value={config.channel_session_id}
@@ -984,7 +985,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                                           {c.display_name ?? c.phone_number ?? c.id}
                                         </option>
                                       ))}
-                                  </select>
+                                  </SelectDoApp>
                                   <Link className="text-xs underline" href="/app/connections">
                                     {t("Ver conexões e proteções de envio")}
                                   </Link>
@@ -992,7 +993,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                               </div>
                               <div>
                                 <Label htmlFor="prospecting-pipeline">{t("Funil")}</Label>
-                                <select
+                                <SelectDoApp
                                   id="prospecting-pipeline"
                                   className={`${selectClass} mt-1`}
                                   value={funil}
@@ -1016,7 +1017,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                                       {name}
                                     </option>
                                   ))}
-                                </select>
+                                </SelectDoApp>
                               </div>
                               <div className="grid gap-4 md:grid-cols-2">
                                 {(
@@ -1027,7 +1028,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                                 ).map(([field, label]) => (
                                   <div key={field}>
                                     <Label htmlFor={`prospecting-${field}`}>{t(label)}</Label>
-                                    <select
+                                    <SelectDoApp
                                       id={`prospecting-${field}`}
                                       className={`${selectClass} mt-1`}
                                       required
@@ -1042,7 +1043,7 @@ export function ProspectingClient({ campanhaId }: { campanhaId?: string } = {}) 
                                             {s.name}
                                           </option>
                                         ))}
-                                    </select>
+                                    </SelectDoApp>
                                   </div>
                                 ))}
                               </div>

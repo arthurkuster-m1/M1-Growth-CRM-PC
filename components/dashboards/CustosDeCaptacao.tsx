@@ -12,6 +12,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { registrarDesfazer } from "@/lib/motor/desfazer";
 import { Trash } from "@/lib/ui/icons";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 interface Custo {
   id: string;
@@ -203,7 +204,7 @@ export function CustosDeCaptacao({
           aria-label={t("Observação")}
           onChange={(e) => setNota(e.target.value)}
         />
-        <select
+        <SelectDoApp
           value={campanha}
           aria-label={t("Campanha")}
           onChange={(e) => setCampanha(e.target.value)}
@@ -215,7 +216,7 @@ export function CustosDeCaptacao({
               {c.nome}
             </option>
           ))}
-        </select>
+        </SelectDoApp>
         <Button type="button" disabled={!pode} onClick={() => void adicionar()}>
           {t("Lançar custo")}
         </Button>

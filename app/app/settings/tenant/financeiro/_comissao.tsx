@@ -15,6 +15,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 export type Regra = {
   id: string;
@@ -91,7 +92,7 @@ export function RegrasDeComissao({
 
       {podeEditar ? (
         <div className="flex flex-wrap items-end gap-2">
-          <select
+          <SelectDoApp
             aria-label={t("Pessoa")}
             className="min-h-11 rounded-xl border p-2"
             value={pessoaId}
@@ -103,9 +104,9 @@ export function RegrasDeComissao({
                 {nomeDe(p) ?? t("Sem nome")}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
 
-          <select
+          <SelectDoApp
             aria-label={t("Serviço")}
             className="min-h-11 rounded-xl border p-2"
             value={servicoId}
@@ -117,7 +118,7 @@ export function RegrasDeComissao({
                 {s.name}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
 
           <input
             aria-label={t("Percentual")}

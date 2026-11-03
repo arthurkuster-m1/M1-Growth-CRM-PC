@@ -23,6 +23,7 @@ import { apiClient } from "@/lib/api/client";
 import { canalDesativado } from "@/lib/channels/desativado";
 import { useT } from "@/hooks/i18n/useT";
 import { ChannelAiAccess } from "./ChannelAiAccess";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Account = {
   id: string;
@@ -233,7 +234,7 @@ export function RedesSociaisClient() {
             <>
               <div className="space-y-2">
                 <Label htmlFor="social-profile">{t("Perfil da empresa")}</Label>
-                <select
+                <SelectDoApp
                   id="social-profile"
                   className="w-full rounded-xl border bg-background p-2"
                   value={profile}
@@ -244,7 +245,7 @@ export function RedesSociaisClient() {
                       {p.name}
                     </option>
                   ))}
-                </select>
+                </SelectDoApp>
               </div>
               <Button
                 disabled={!!busy || !profile}
@@ -267,7 +268,7 @@ export function RedesSociaisClient() {
           <Card className="flex flex-wrap items-end gap-3 p-4">
             <div className="min-w-48 flex-1 space-y-2">
               <Label htmlFor="social-network">{t("Conectar uma rede")}</Label>
-              <select
+              <SelectDoApp
                 id="social-network"
                 className="w-full rounded-xl border bg-background p-2"
                 value={platform}
@@ -278,7 +279,7 @@ export function RedesSociaisClient() {
                     {n.label}
                   </option>
                 ))}
-              </select>
+              </SelectDoApp>
             </div>
             <Button
               disabled={!!busy}
@@ -455,7 +456,10 @@ export function RedesSociaisClient() {
               {t("Desvincular perfil")}
             </Button>
           </div>
-          <AlertDialog open={confirmandoDesvincular} onOpenChange={(open) => !open && setConfirmandoDesvincular(false)}>
+          <AlertDialog
+            open={confirmandoDesvincular}
+            onOpenChange={(open) => !open && setConfirmandoDesvincular(false)}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>{t("Desvincular o perfil?")}</AlertDialogTitle>

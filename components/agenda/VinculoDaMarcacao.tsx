@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import { NewContactDialog } from "@/components/contacts/NewContactDialog";
 import { cn } from "@/lib/utils";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 type Vinculos = {
   contacts: Array<{ id: string; name: string }>;
@@ -61,10 +62,7 @@ export function VinculoDaMarcacao({
   // vira o nome, e o contato volta selecionado.
   const buscou = termo.length > 0 && !contactId;
   const nadaEncontrado = buscou && !lista.isLoading && contatos.length === 0;
-  const opcoes = [
-    { id: "", name: t("Compromisso pessoal, sem cliente") },
-    ...contatos,
-  ];
+  const opcoes = [{ id: "", name: t("Compromisso pessoal, sem cliente") }, ...contatos];
 
   function abrir() {
     setAberto(true);
@@ -111,69 +109,69 @@ export function VinculoDaMarcacao({
         <label className="block">
           {t("Quem será atendido")}
           <div className="relative">
-          <input
-            id="quem-sera-atendido"
-            data-testid="quem-sera-atendido"
-            data-contact-id={contactId}
-            role="combobox"
-            aria-expanded={aberto}
-            aria-controls={listaId}
-            aria-autocomplete="list"
-            aria-activedescendant={aberto ? `${listaId}-${destacado}` : undefined}
-            className="mt-1 w-full rounded-xl border bg-surface p-2 outline-hidden"
-            value={valor}
-            placeholder={t("Compromisso pessoal, sem cliente")}
-            autoComplete="off"
-            onFocus={abrir}
-            onChange={(e) => aoDigitar(e.target.value)}
-            onKeyDown={aoTeclar}
-            onBlur={() => setAberto(false)}
-          />
-          {aberto ? (
-            <ul
-              id={listaId}
-              role="listbox"
-              className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-surface shadow-md"
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              {opcoes.map((opcao, i) => (
-                <li
-                  key={opcao.id || "pessoal"}
-                  id={`${listaId}-${i}`}
-                  role="option"
-                  aria-selected={opcao.id === contactId}
-                  className={cn(
-                    "cursor-pointer px-3 py-2 text-sm",
-                    i === destacado && "bg-accent text-accent-foreground",
-                  )}
-                  onMouseEnter={() => setDestacado(i)}
-                  onClick={() => escolher(opcao.id, opcao.name)}
-                >
-                  {opcao.name}
-                </li>
-              ))}
-              {nadaEncontrado ? (
-                <li>
-                  <button
-                    type="button"
-                    // Alvo de toque generoso: quem marca faz isso no celular, com o
-                    // cliente esperando na frente.
-                    className="min-h-11 w-full px-3 text-left text-sm"
-                    onClick={() => setCriando(true)}
+            <input
+              id="quem-sera-atendido"
+              data-testid="quem-sera-atendido"
+              data-contact-id={contactId}
+              role="combobox"
+              aria-expanded={aberto}
+              aria-controls={listaId}
+              aria-autocomplete="list"
+              aria-activedescendant={aberto ? `${listaId}-${destacado}` : undefined}
+              className="mt-1 w-full rounded-xl border bg-surface p-2 outline-hidden"
+              value={valor}
+              placeholder={t("Compromisso pessoal, sem cliente")}
+              autoComplete="off"
+              onFocus={abrir}
+              onChange={(e) => aoDigitar(e.target.value)}
+              onKeyDown={aoTeclar}
+              onBlur={() => setAberto(false)}
+            />
+            {aberto ? (
+              <ul
+                id={listaId}
+                role="listbox"
+                className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-surface shadow-md"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                {opcoes.map((opcao, i) => (
+                  <li
+                    key={opcao.id || "pessoal"}
+                    id={`${listaId}-${i}`}
+                    role="option"
+                    aria-selected={opcao.id === contactId}
+                    className={cn(
+                      "cursor-pointer px-3 py-2 text-sm",
+                      i === destacado && "bg-accent text-accent-foreground",
+                    )}
+                    onMouseEnter={() => setDestacado(i)}
+                    onClick={() => escolher(opcao.id, opcao.name)}
                   >
-                    {t("Criar")} “{termo}”
-                  </button>
-                </li>
-              ) : null}
-            </ul>
-          ) : null}
+                    {opcao.name}
+                  </li>
+                ))}
+                {nadaEncontrado ? (
+                  <li>
+                    <button
+                      type="button"
+                      // Alvo de toque generoso: quem marca faz isso no celular, com o
+                      // cliente esperando na frente.
+                      className="min-h-11 w-full px-3 text-left text-sm"
+                      onClick={() => setCriando(true)}
+                    >
+                      {t("Criar")} “{termo}”
+                    </button>
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
           </div>
         </label>
       </div>
       {contactId && !semConversa ? (
         <label className="block">
           {t("Conversa vinculada (opcional)")}
-          <select
+          <SelectDoApp
             className="mt-1 w-full rounded-xl border bg-surface p-2"
             value={conversationId}
             onChange={(e) => onChange(contactId, e.target.value)}
@@ -184,7 +182,7 @@ export function VinculoDaMarcacao({
                 {t("Conversa")} {i + 1} · {new Date(c.created_at).toLocaleDateString()}
               </option>
             ))}
-          </select>
+          </SelectDoApp>
         </label>
       ) : null}
       {ficha.isError || lista.isError ? (

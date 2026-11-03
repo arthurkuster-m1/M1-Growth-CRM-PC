@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { traduzir } from "@/lib/i18n/dicionario";
 import type { Idioma } from "@/lib/i18n/idiomas";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 /**
  * Cada recusa vira uma frase que diz O QUE FAZER — mesma regra do formulário de
@@ -120,7 +121,7 @@ export function FormularioDeMetaAds({
         <div className="flex flex-col gap-2">
           <Label htmlFor="default_account_id">{t("Conta padrão (opcional)")}</Label>
           {conectada && contasDoToken.length > 0 ? (
-            <select
+            <SelectDoApp
               id="default_account_id"
               value={conta}
               onChange={(e) => setConta(e.target.value)}
@@ -133,7 +134,7 @@ export function FormularioDeMetaAds({
                   {c.moeda ? ` · ${c.moeda}` : ""}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           ) : (
             <Input
               id="default_account_id"

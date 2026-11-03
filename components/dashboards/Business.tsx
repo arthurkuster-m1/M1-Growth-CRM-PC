@@ -31,6 +31,7 @@ import {
   GradeDeKpis,
 } from "@/components/dashboards/base";
 import { useT } from "@/hooks/i18n/useT";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 /** O que a rota `/api/v1/dashboards/business` devolve. */
 export interface DadosDeBusiness {
@@ -278,7 +279,7 @@ export function Business({
         acao={
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             {t("Cliente ativo = comprou nos últimos")}
-            <select
+            <SelectDoApp
               value={dados.mesesAtivo}
               onChange={(e) => aoMudarMeses(Number(e.target.value))}
               className="h-8 rounded-xl border bg-card px-2 text-xs text-foreground"
@@ -288,7 +289,7 @@ export function Business({
                   {m} {m === 1 ? t("mês") : t("meses")}
                 </option>
               ))}
-            </select>
+            </SelectDoApp>
           </label>
         }
       >

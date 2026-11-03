@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { definirOrigemDosLeads } from "@/app/actions/agencia/modoAgencia";
 import { useT } from "@/hooks/i18n/useT";
 import type { OrigemDosLeads as Origem } from "@/lib/agencia/campanhas";
+import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 /** De onde vêm os leads das campanhas deste cliente: do CRM dele, ou das conversas iniciadas do Meta. */
 export function OrigemDosLeads({
@@ -25,7 +26,7 @@ export function OrigemDosLeads({
   return (
     <label className="flex items-center gap-2 text-xs text-muted-foreground">
       {t("Leads vêm de")}
-      <select
+      <SelectDoApp
         value={valor}
         disabled={pendente}
         aria-label={`${t("Origem dos leads")} — ${nome}`}
@@ -46,7 +47,7 @@ export function OrigemDosLeads({
       >
         <option value="crm">{t("CRM do cliente")}</option>
         <option value="meta">{t("Meta (conversas iniciadas)")}</option>
-      </select>
+      </SelectDoApp>
     </label>
   );
 }
