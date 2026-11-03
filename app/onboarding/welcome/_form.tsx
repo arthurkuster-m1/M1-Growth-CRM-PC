@@ -17,14 +17,7 @@ import {
 } from "@/components/ui/select";
 import { FUSO_PADRAO, FUSOS_DO_ONBOARDING } from "@/lib/tempo/fusos";
 
-
-export function WelcomeForm({
-  defaultOrgName,
-  orgId,
-}: {
-  defaultOrgName: string;
-  orgId: string;
-}) {
+export function WelcomeForm({ defaultOrgName, orgId }: { defaultOrgName: string; orgId: string }) {
   const t = useT();
   const [displayName, setDisplayName] = useState(defaultOrgName);
   const [oQueFaz, setOQueFaz] = useState("");
@@ -60,7 +53,9 @@ export function WelcomeForm({
           required
         />
         <p className="text-xs text-muted-foreground">
-          {t("É o nome que aparece para o seu time e nos relatórios. Pode ser clínica, loja, escritório — o que for seu.")}
+          {t(
+            "É o nome que aparece para o seu time e nos relatórios. Pode ser clínica, loja, escritório — o que for seu.",
+          )}
         </p>
       </div>
 
@@ -72,7 +67,7 @@ export function WelcomeForm({
         uma instalação que nunca pergunta em que ramo entrou.
       */}
       <div className="space-y-2">
-        <Label htmlFor="o_que_faz">{t("O que vocês fazem?")}</Label>
+        <Label htmlFor="o_que_faz">{t("O que vocês fazem? (opcional)")}</Label>
         <Input
           id="o_que_faz"
           name="o_que_faz"
@@ -89,7 +84,7 @@ export function WelcomeForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="timezone">{t("Onde você atende")}</Label>
+        <Label htmlFor="timezone">{t("Fuso horário")}</Label>
         <Select value={timezone} onValueChange={setTimezone}>
           <SelectTrigger id="timezone">
             <SelectValue />
@@ -108,7 +103,7 @@ export function WelcomeForm({
             momento — que outra aba pode ter trocado. */}
         <input type="hidden" name="organization_id" value={orgId} />
         <p className="text-xs text-muted-foreground">
-          {t("Decide o horário em que seu funcionário pode falar com clientes.")}
+          {t("É o fuso usado na agenda, nos lembretes e nos relatórios.")}
         </p>
       </div>
 

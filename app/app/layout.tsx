@@ -1,4 +1,3 @@
-import { ONBOARDING_ANTIGO_SUSPENSO } from "@/lib/onboarding/suspenso";
 import type { Viewport } from "next";
 import { InterfaceRefresh } from "@/hooks/auth/InterfaceRefresh";
 import { redirect } from "next/navigation";
@@ -133,7 +132,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // Suspensão ANTES de onboarding: a org suspensa que nunca terminou o
     // onboarding ia para `/onboarding` e escapava da tela da suspensão.
     if (!ehOperante(orgRow?.status)) redirect("/account-suspended");
-    if (!ONBOARDING_ANTIGO_SUSPENSO && orgRow && !orgRow.onboarded_at && !user.support)
+    // O onboarding novo (nome, fuso e Termos; depois a equipe) é do DONO da empresa: só quem administra é
+    // levado a ele. Funcionário que entra primeiro, e a agência olhando a empresa do cliente, seguem para o
+    // app (o dono completa quando entrar).
+    if (
+      orgRow &&
+      !orgRow.onboarded_at &&
+      !user.support &&
+      !(user.is_platform_admin ?? false) &&
+      activeOrg.role === "admin"
+    )
       redirect("/onboarding");
     // G4-02: expõe visibility_mode ao client (inbox decide visões visíveis).
     // Fonte confiável (admin client, org do cookie validado) — nunca do body.

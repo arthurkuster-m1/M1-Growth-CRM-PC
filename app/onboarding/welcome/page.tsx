@@ -4,7 +4,6 @@ import { WelcomeForm } from "./_form";
 import { marcaDaSaida } from "@/lib/branding/saida";
 import { createClient } from "@/lib/supabase/server";
 import { lerRetratoDaInstalacao } from "@/lib/instalacao/retrato";
-import { JaEstaPronto } from "../_components/JaEstaPronto";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +28,12 @@ export default async function WelcomePage() {
           {traduzir("Boas-vindas ao", idioma)} {marca.nome}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {traduzir("Vamos montar quem vai atender seus clientes — e onde ele vai trabalhar.", idioma)}
+          {traduzir(
+            "Vamos deixar a sua empresa pronta: o nome, o fuso e o aceite dos termos. Leva um minuto.",
+            idioma,
+          )}
         </p>
       </header>
-
-      <JaEstaPronto retrato={retrato} idioma={idioma} />
 
       {/*
         O instalador NUNCA pergunta o nome do negócio: toda organização nasce
@@ -41,7 +41,10 @@ export default async function WelcomePage() {
         pessoa ter de apagá-lo antes de escrever o nome dela — e quem não
         percebia seguia com o placeholder no cabeçalho do sistema para sempre.
       */}
-      <WelcomeForm defaultOrgName={retrato.empresa.aindaSemNomeProprio ? "" : activeOrg.name} orgId={activeOrg.orgId} />
+      <WelcomeForm
+        defaultOrgName={retrato.empresa.aindaSemNomeProprio ? "" : activeOrg.name}
+        orgId={activeOrg.orgId}
+      />
     </div>
   );
 }

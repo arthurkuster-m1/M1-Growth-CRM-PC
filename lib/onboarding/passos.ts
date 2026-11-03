@@ -18,6 +18,8 @@
  */
 import type { OnboardingState } from "@/lib/schemas/onboarding";
 
+import { ONBOARDING_ANTIGO_SUSPENSO } from "./suspenso";
+
 export interface PassoDoOnboarding {
   /** Segmento da rota em `app/onboarding/<segmento>`. */
   segmento: string;
@@ -59,14 +61,14 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
     // O telefone é a primeira peça concreta do funcionário, e é o passo que
     // pede o celular na mão — o instalador já avisa para deixá-lo aberto.
     rotulo: "O telefone dele",
-    existe: () => true,
+    existe: () => !ONBOARDING_ANTIGO_SUSPENSO,
     cumprido: (s) => marcado(s.whatsapp),
     pulado: (s) => foiPulado(s.whatsapp),
   },
   {
     segmento: "setup-ai",
     rotulo: "Treinar",
-    existe: () => true,
+    existe: () => !ONBOARDING_ANTIGO_SUSPENSO,
     cumprido: (s) => marcado(s.ai),
     pulado: (s) => foiPulado(s.ai),
   },
@@ -76,7 +78,7 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
     // pessoa acabou de confirmar funcionando, e é o mesmo cérebro que vai
     // atender. Pedir o quadro antes obrigaria a montá-lo no escuro.
     rotulo: "Onde ele organiza",
-    existe: () => true,
+    existe: () => !ONBOARDING_ANTIGO_SUSPENSO,
     cumprido: (s) => marcado(s.funil),
     pulado: (s) => foiPulado(s.funil),
   },
@@ -87,13 +89,13 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
     // sistema" em "contratei alguém" — e é onde o erro aparece antes do
     // primeiro cliente real, não depois.
     rotulo: "Ver ele atender",
-    existe: () => true,
+    existe: () => !ONBOARDING_ANTIGO_SUSPENSO,
     cumprido: (s) => marcado(s.teste),
     pulado: (s) => foiPulado(s.teste),
   },
   {
     segmento: "invite-team",
-    rotulo: "Quem trabalha com ele",
+    rotulo: "Sua equipe",
     existe: () => true,
     cumprido: (s) => marcado(s.team),
     pulado: (s) => foiPulado(s.team),
@@ -128,10 +130,7 @@ export interface ItemDoResumo {
  * um passo que não existe nesta instalação não vira linha, muito menos linha
  * marcada como pulada.
  */
-export function resumoDoOnboarding(
-  state: OnboardingState,
-  ctx: ContextoDoPasso,
-): ItemDoResumo[] {
+export function resumoDoOnboarding(state: OnboardingState, ctx: ContextoDoPasso): ItemDoResumo[] {
   return passosVisiveis(ctx).map((p) => ({
     segmento: p.segmento,
     rotulo: p.rotulo,

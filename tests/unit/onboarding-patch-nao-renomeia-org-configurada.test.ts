@@ -24,7 +24,7 @@
  * - O mesmo caminho visto pela action `acceptWelcome`: o submit de uma aba
  *   antiga recebe recusa e NÃO escreve. O mapeamento do erro é o da própria
  *   action; o #2146 trocou esse mapeamento por um redirect para
- *   `/app/inbox` (o caso abaixo), medido em
+ *   `/app` (o caso abaixo), medido em
  *   `tests/unit/onboarding-aviso-org-ja-configurada.test.ts`.
  *
  * O dublê do client simula o PostgREST de verdade: filtro `.is` que não bate
@@ -252,7 +252,7 @@ describe("patchOnboardingState: organização já configurada não é regravada"
     expect(linha.onboarding_state).toMatchObject({ teste: { skipped: true } });
   });
 
-  it("aba antiga enviando as boas-vindas depois do fim: sai para /app/inbox e nada é gravado", async () => {
+  it("aba antiga enviando as boas-vindas depois do fim: sai para /app e nada é gravado", async () => {
     montarBanco({ onboardedAt: "2026-01-01T00:00:00.000Z" });
 
     const r = await executar(formulario("Clínica Nova"));
@@ -261,7 +261,7 @@ describe("patchOnboardingState: organização já configurada não é regravada"
     // action resolve (#2146) o submit sai para a caixa de entrada em vez de
     // devolver `db_error` — o código de recusa foi o defeito do #2146.
     expect(r).toBe("REDIRECT");
-    expect(mundo.redirects).toEqual(["/app/inbox"]);
+    expect(mundo.redirects).toEqual(["/app"]);
     expect(linha.display_name).toBe("Nome Antigo");
     expect(escritas).toEqual([]);
   });

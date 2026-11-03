@@ -102,7 +102,11 @@ async function login(page: Page, password = OWNER_PASSWORD): Promise<void> {
 
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
-test.describe("J1 — onboarding do dono numa instalação fresca", () => {
+// SUSPENSA (03/11/2026): este roteiro percorre o onboarding ANTIGO (WhatsApp, IA, funil e "ver ele atender"),
+// que foi trocado por um fluxo curto (Seu negócio e Sua equipe). O roteiro do fluxo novo precisa ser reescrito
+// e rodado na stack completa (docs/testing/user-journey-map.md, jornada J1). Para reativar o antigo, troque
+// `ONBOARDING_ANTIGO_SUSPENSO` (lib/onboarding/suspenso.ts) e tire o `.skip`.
+test.describe.skip("J1 — onboarding do dono numa instalação fresca (fluxo antigo, suspenso)", () => {
   test.beforeAll(async () => {
     // Reset ao estado recém-bootstrapado (re-runs idempotentes): wizard zerado,
     // sem agente, sem canal, sem fatores MFA do dono.

@@ -47,6 +47,7 @@ Percurso a testar, como se fosse o primeiro cliente real, e anotar cada tropeço
   que o convidou; e a tela de convite agora explica por que o e-mail não saiu e permite **copiar o link**.
 - **Ainda a decidir:** o convite vale só **24 horas** (`lib/auth/invite-token.ts`). Para cliente real sugiro **7 dias** (e o botão "Reenviar" já
   existe em Equipe). E o e-mail só sai se o provedor estiver configurado em **Admin › E-mail**; sem isso, o link é copiado e mandado por WhatsApp.
+- **Novo onboarding (03/11, feito):** `docs/PLANO-ONBOARDING-NOVO-M1.md` — três telas (Seu negócio com Termos e fuso, Sua equipe, Tudo pronto), só para o dono.
 - **Suspensos (02/11):** a área de **Agentes de IA** e o **onboarding antigo** (ver `.changes/ia-e-onboarding-antigo-suspensos.md`). O novo
   onboarding precisa cobrir: **aceite dos Termos de uso** e o **nome e fuso da empresa** (hoje feitos no passo "boas-vindas" antigo).
 
