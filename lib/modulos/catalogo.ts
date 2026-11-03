@@ -13,15 +13,11 @@ export interface ModuloCatalogo {
   descricao: string;
 }
 
-export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
-  {
-    slug: "honorarios",
-    nome: "Honorários (advocacia)",
-    descricao:
-      "Contrato de honorários (fixo, êxito ou misto) e o calendário de parcelas, ligado ao caixa " +
-      "do núcleo. Para escritórios de advocacia que cobram por caso.",
-  },
-];
+/**
+ * Vazio de propósito: o único módulo que existia (Honorários, advocacia) saiu do produto em 03/11/2026. Os módulos da M1 entram
+ * aqui, um por um, conforme forem desenhados (frente "módulos por nicho").
+ */
+export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [];
 
 export function moduloDoCatalogo(slug: string): ModuloCatalogo | undefined {
   return CATALOGO_DE_MODULOS.find((m) => m.slug === slug);

@@ -83,8 +83,6 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "redirect para /app/financas: Faturamento virou a página Finanças; mantido por links salvos",
   "/app/analise":
     "redirect para /app/marketing/dashboards: o grupo Análise acabou; mantido por links salvos",
-  "/app/honorarios":
-    "módulo opcional (honorarios): saiu do menu e da busca por decisão do dono do produto; a rota segue de pé para quem a usa por endereço",
   "/app/vendas":
     "redirect para /app/clientes?visao=vendas: Vendas virou uma visão da página CRM",
   "/app/marketing/geracao-de-demanda/resultados":

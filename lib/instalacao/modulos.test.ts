@@ -80,19 +80,18 @@ describe("modulosLigados — banco_externo (flag em platform_config)", () => {
   });
 });
 
-describe("modulosLigados — honorarios (módulo de tabela, ADR-0002)", () => {
-  it("sem linha em modulos_instalados, honorarios está desligado", async () => {
+describe("modulosLigados — módulos de tabela (ADR-0002)", () => {
+  // Nenhum módulo de tabela existe hoje (o Honorários saiu em 03/11/2026): a lista é vazia e a leitura de
+  // `modulos_instalados` não liga nada. Quando o primeiro módulo da M1 entrar, estes casos voltam com ele.
+  it("sem linha em modulos_instalados, nada está ligado", async () => {
     expect(await modulosLigados(banco().db)).toEqual([]);
   });
 
-  it("estado 'ativo' liga; 'suspenso' NÃO liga — D6 (falha alto na reaplicação)", async () => {
-    const ativo = [{ modulo: "honorarios", estado: "ativo" }];
-    expect(await modulosLigados(banco({ modulos_instalados: { data: ativo } }).db)).toEqual([
-      "honorarios",
-    ]);
-    // O `.eq('estado','ativo')' da query real já filtra suspenso no servidor — o fake
-    // simula exatamente o que o Postgrest devolveria: nenhuma linha.
-    expect(await modulosLigados(banco({ modulos_instalados: { data: [] } }).db)).toEqual([]);
+  it("uma linha de módulo que o produto não conhece não liga nada", async () => {
+    const desconhecido = [{ modulo: "qualquer-coisa", estado: "ativo" }];
+    expect(await modulosLigados(banco({ modulos_instalados: { data: desconhecido } }).db)).toEqual(
+      [],
+    );
   });
 
   it("banco que recusa ou lança = desligado, sem lançar (o outro mecanismo segue funcionando)", async () => {
@@ -102,14 +101,13 @@ describe("modulosLigados — honorarios (módulo de tabela, ADR-0002)", () => {
     expect(await modulosLigados(banco({ modulos_instalados: new Error("rede") }).db)).toEqual([]);
   });
 
-  it("os dois mecanismos somam quando ambos estão ligados", async () => {
+  it("o mecanismo por flag segue funcionando", async () => {
     const resultado = await modulosLigados(
       banco({
         platform_config: { data: [{ chave: "MODULO_BANCO_EXTERNO", valor: "ligado" }] },
-        modulos_instalados: { data: [{ modulo: "honorarios", estado: "ativo" }] },
       }).db,
     );
-    expect(resultado.sort()).toEqual(["banco_externo", "honorarios"]);
+    expect(resultado).toEqual(["banco_externo"]);
   });
 });
 

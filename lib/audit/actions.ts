@@ -646,9 +646,6 @@ export const AUDIT_ACTIONS = [
   // como paga. Pagar uma parcela cria um `financial_entries` por baixo (DIRC "integrar"), mas
   // o código aqui é do módulo: quem lê a auditoria do caixo núcleo não precisa saber que a
   // origem foi uma parcela de honorários, e quem lê a do módulo não quer vasculhar o caixa.
-  "honorarios.contrato_criado",
-  "honorarios.parcela_criada",
-  "honorarios.parcela_paga",
   "fidelidade.ponto_dado",
   "fidelidade.ponto_resgatado",
   "financeiro.recorrencia_gerada",

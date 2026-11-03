@@ -40,10 +40,10 @@ describe("POST /api/v1/modulos/instalar", () => {
     vi.mocked(instalarModulo).mockResolvedValue({ operationId: OPERATION, appliedNow: true });
 
     const { POST } = await import("./route");
-    const res = await POST(req({ modulo: "honorarios" }));
+    const res = await POST(req({ modulo: "modulo-exemplo" }));
 
     expect(res.status).toBe(200);
-    expect(instalarModulo).toHaveBeenCalledWith(ACTOR, OPERATION, "honorarios");
+    expect(instalarModulo).toHaveBeenCalledWith(ACTOR, OPERATION, "modulo-exemplo");
   });
 
   it("quem não é administrador da instalação recebe o 403 do gate, sem chamar o serviço", async () => {
@@ -53,7 +53,7 @@ describe("POST /api/v1/modulos/instalar", () => {
     });
 
     const { POST } = await import("./route");
-    const res = await POST(req({ modulo: "honorarios" }));
+    const res = await POST(req({ modulo: "modulo-exemplo" }));
 
     expect(res.status).toBe(403);
     expect(instalarModulo).not.toHaveBeenCalled();
@@ -66,7 +66,7 @@ describe("POST /api/v1/modulos/instalar", () => {
     });
 
     const { POST } = await import("./route");
-    const res = await POST(req({ modulo: "honorarios" }, {}));
+    const res = await POST(req({ modulo: "modulo-exemplo" }, {}));
 
     expect(res.status).toBe(422);
     expect(instalarModulo).not.toHaveBeenCalled();
