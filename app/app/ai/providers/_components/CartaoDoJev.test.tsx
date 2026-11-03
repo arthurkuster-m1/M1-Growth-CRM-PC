@@ -1,3 +1,4 @@
+import { escolherNoSeletor } from "@/tests/helpers/seletor-do-app";
 /**
  * O cartão do Jev tem seis estados, e cada um responde a pergunta que a pessoa
  * tem naquele momento: "o que é isto?", "por que a chave não passou?", "o que
@@ -5,7 +6,15 @@
  * e "por que ele decide sozinho?". Os dados vêm de `GET /api/v1/ai/jev`.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -194,10 +203,9 @@ describe("CartaoDoJev — (2) chave que não passou no teste", () => {
     montar(dados({ chave: { validada: false, erro_de_validacao: "SyntaxError" } }));
     const caixa = screen.getByTestId("jev-chave");
     expect(caixa).not.toHaveTextContent("SyntaxError");
-    expect(screen.getByText("Não consegui testar a chave. Tente de novo em instantes.")).toHaveAttribute(
-      "title",
-      "SyntaxError",
-    );
+    expect(
+      screen.getByText("Não consegui testar a chave. Tente de novo em instantes."),
+    ).toHaveAttribute("title", "SyntaxError");
   });
 });
 
@@ -207,7 +215,9 @@ describe("CartaoDoJev — (3) pronto para ligar", () => {
     expect(cartao()).toHaveAttribute("data-estado", "pronto");
     expect(screen.getByText("Medir o clima da conversa")).toBeInTheDocument();
     expect(
-      screen.getByText(/cada mensagem que o cliente manda .* uma de cada vez e sem o resto da conversa/),
+      screen.getByText(
+        /cada mensagem que o cliente manda .* uma de cada vez e sem o resto da conversa/,
+      ),
     ).toBeInTheDocument();
 
     const ligar = screen.getByRole("button", { name: "Ligar o Jev" });
@@ -270,11 +280,16 @@ describe("CartaoDoJev — (3) pronto para ligar", () => {
     );
     expect(cartao()).toHaveAttribute("data-estado", "pronto");
     expect(screen.getByTestId("jev-ao-ligar-clima")).toHaveTextContent("(Pausada)");
-    expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(/tarefas pausadas continuam assim/);
+    expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(
+      /tarefas pausadas continuam assim/,
+    );
     // Sem a IA de sempre, religar o clima é deixá-lo decidir sozinho: o aviso
     // vem ANTES de ligar, e só nesse caso.
     if (ia) expect(cartao()).not.toHaveTextContent(/decidindo sozinho/);
-    else expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(/clima religado volta decidindo sozinho/);
+    else
+      expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(
+        /clima religado volta decidindo sozinho/,
+      );
   });
 
   /**
@@ -287,14 +302,32 @@ describe("CartaoDoJev — (3) pronto para ligar", () => {
       dados({
         config: { modo: "observacao", aceite: { em: "2026-09-20T12:00:00Z", por: "u1" } },
         por_tarefa: [
-          { id: "clima", ponto: "sentiment_classify", rotulo: "Medir o clima da conversa", oQueFaz: "Mede.", estado: "desligada", ao_ligar: "observando", novo: false },
-          { id: "roteador", ponto: "intent_router", rotulo: "Escolher qual agente atende", oQueFaz: "Escolhe.", estado: "desligada", ao_ligar: "decidindo", novo: false },
+          {
+            id: "clima",
+            ponto: "sentiment_classify",
+            rotulo: "Medir o clima da conversa",
+            oQueFaz: "Mede.",
+            estado: "desligada",
+            ao_ligar: "observando",
+            novo: false,
+          },
+          {
+            id: "roteador",
+            ponto: "intent_router",
+            rotulo: "Escolher qual agente atende",
+            oQueFaz: "Escolhe.",
+            estado: "desligada",
+            ao_ligar: "decidindo",
+            novo: false,
+          },
         ],
       }),
     );
     expect(screen.getByTestId("jev-ao-ligar-clima")).toHaveTextContent("(Só observa)");
     expect(screen.getByTestId("jev-ao-ligar-roteador")).toHaveTextContent("(Decide)");
-    expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(/Onde ele decide, vale a escolha que você fez/);
+    expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(
+      /Onde ele decide, vale a escolha que você fez/,
+    );
     expect(screen.getByTestId("jev-ao-ligar")).not.toHaveTextContent(/^Ele /);
   });
 });
@@ -310,12 +343,18 @@ describe("CartaoDoJev — (4) ligado, observando", () => {
     expect(cartao()).toHaveAttribute("data-estado", "observando");
     expect(screen.getByTestId("jev-concordancia")).toHaveTextContent(/3 de 4/);
 
-    const dialogo = await confirmarDecidir(screen.getByRole("button", { name: "Deixar o Jev decidir" }));
+    const dialogo = await confirmarDecidir(
+      screen.getByRole("button", { name: "Deixar o Jev decidir" }),
+    );
     // O efeito concreto daquela tarefa, e a volta.
     expect(dialogo).toHaveTextContent(TAREFA_DO_CLIMA.aoConfirmarDecidir);
     expect(dialogo).toHaveTextContent("Dá para voltar a só observar quando quiser.");
     await waitFor(() => expect(recarregar).toHaveBeenCalled());
-    expect(chamadas[0]).toEqual({ url: "/api/v1/ai/jev", metodo: "PATCH", corpo: { modo: "decide" } });
+    expect(chamadas[0]).toEqual({
+      url: "/api/v1/ai/jev",
+      metodo: "PATCH",
+      corpo: { modo: "decide" },
+    });
   });
 
   it("cancelar o diálogo não muda nada", async () => {
@@ -359,7 +398,13 @@ describe("CartaoDoJev — (5) ligado, decidindo", () => {
   const decidindo = () =>
     dados({
       config: { ligado: true, modo: "decide" },
-      numeros: { decisoes: 1200, custo_cents: 0.21, latencia_media_ms: 361, reservas: 2, irritados: 7 },
+      numeros: {
+        decisoes: 1200,
+        custo_cents: 0.21,
+        latencia_media_ms: 361,
+        reservas: 2,
+        irritados: 7,
+      },
     });
 
   /** O valor que acompanha o rótulo na grade de números. */
@@ -382,17 +427,24 @@ describe("CartaoDoJev — (5) ligado, decidindo", () => {
 
   it("a chave que passou no teste se diz conferida, em palavras", () => {
     montar(decidindo());
-    expect(screen.getByTestId("jev-chave-conferida")).toHaveTextContent("Chave conferida com a TypeSafe");
+    expect(screen.getByTestId("jev-chave-conferida")).toHaveTextContent(
+      "Chave conferida com a TypeSafe",
+    );
   });
 
   it("controle: chave recusada não se diz conferida", () => {
-    montar({ ...decidindo(), chave: { ...decidindo().chave, validada: false, erro_de_validacao: "auth_failed_401" } });
+    montar({
+      ...decidindo(),
+      chave: { ...decidindo().chave, validada: false, erro_de_validacao: "auth_failed_401" },
+    });
     expect(screen.queryByTestId("jev-chave-conferida")).toBeNull();
   });
 
   it("o link para as decisões tem alvo de toque maior que o texto", () => {
     montar(decidindo());
-    expect(screen.getByRole("link", { name: /Ver as decisões do Jev/ }).className).toMatch(/\binline-block\b.*\bpy-1\b/);
+    expect(screen.getByRole("link", { name: /Ver as decisões do Jev/ }).className).toMatch(
+      /\binline-block\b.*\bpy-1\b/,
+    );
   });
 
   it("a grade de números acompanha a largura do cartão, não a da tela", () => {
@@ -436,9 +488,15 @@ describe("CartaoDoJev — (5) ligado, decidindo", () => {
   it("a última falha diz de qual tarefa: o disjuntor da pergunta recusada é por tarefa", () => {
     montar({
       ...decidindo(),
-      ultima_falha: { motivo: "jev_contrato_invalido", em: "2026-09-22T10:00:00Z", tarefa: "Escolher qual agente atende" },
+      ultima_falha: {
+        motivo: "jev_contrato_invalido",
+        em: "2026-09-22T10:00:00Z",
+        tarefa: "Escolher qual agente atende",
+      },
     });
-    expect(screen.getByTestId("jev-ultima-falha")).toHaveTextContent(/Última falha — Escolher qual agente atende/);
+    expect(screen.getByTestId("jev-ultima-falha")).toHaveTextContent(
+      /Última falha — Escolher qual agente atende/,
+    );
   });
 
   it("chave que deixou de valer com o Jev ligado aparece, com o teste à mão", () => {
@@ -471,7 +529,13 @@ describe("CartaoDoJev — (5) ligado, decidindo", () => {
   it("ligado sem chave ativa (desativada em Credenciais) não finge que mede", () => {
     montar({
       ...decidindo(),
-      chave: { existe: false, validada: false, credencial_id: null, rotulo: null, erro_de_validacao: null },
+      chave: {
+        existe: false,
+        validada: false,
+        credencial_id: null,
+        rotulo: null,
+        erro_de_validacao: null,
+      },
     });
     expect(screen.getByTestId("jev-chave")).toHaveTextContent(/sem chave ativa/);
     expect(screen.queryByRole("button", { name: "Testar de novo" })).toBeNull();
@@ -534,14 +598,24 @@ describe("jevNoPonto — a linha do cartão do ponto", () => {
     const ligado = dados({ config: { ligado: true } });
     expect(jevNoPonto(ligado, "stage_classify")).toBeNull();
     expect(jevNoPonto(ligado, "sentiment_classify")).toBe("observacao");
-    expect(jevNoPonto(dados({ config: { ligado: true, modo: "decide" } }), "sentiment_classify")).toEqual({
+    expect(
+      jevNoPonto(dados({ config: { ligado: true, modo: "decide" } }), "sentiment_classify"),
+    ).toEqual({
       decide: TAREFA_DO_CLIMA.aoDecidirNoPonto,
     });
     expect(
-      jevNoPonto(dados({ config: { ligado: true }, tem_ia_de_sempre: false }), "sentiment_classify"),
+      jevNoPonto(
+        dados({ config: { ligado: true }, tem_ia_de_sempre: false }),
+        "sentiment_classify",
+      ),
     ).toBe("sozinho");
     // Parado (chave sem passar no teste): o ponto não diz que o Jev mede.
-    expect(jevNoPonto(dados({ config: { ligado: true }, chave: { validada: false } }), "sentiment_classify")).toBeNull();
+    expect(
+      jevNoPonto(
+        dados({ config: { ligado: true }, chave: { validada: false } }),
+        "sentiment_classify",
+      ),
+    ).toBeNull();
   });
 });
 
@@ -557,7 +631,9 @@ describe("useDadosDoJev — falha de rede", () => {
       wrapper: ({ children }) => <IdiomaProvider locale="pt-BR">{children}</IdiomaProvider>,
     });
     await waitFor(() => expect(result.current.erro).not.toBeNull());
-    expect(result.current.erro).toBe("Não consegui falar com o servidor. Confira a internet e tente de novo.");
+    expect(result.current.erro).toBe(
+      "Não consegui falar com o servidor. Confira a internet e tente de novo.",
+    );
   });
 });
 
@@ -597,7 +673,9 @@ describe("CartaoDoJev — por tarefa", () => {
     expect(nova).toHaveAttribute("data-estado", "observando");
     expect(nova).toHaveTextContent("Nova");
     // O selo diz o que quer dizer, e não é mais ruído permanente.
-    expect(screen.getByTestId("jev-nova-manipulacao")).toHaveTextContent(/nada muda para o cliente/);
+    expect(screen.getByTestId("jev-nova-manipulacao")).toHaveTextContent(
+      /nada muda para o cliente/,
+    );
     expect(screen.getByTestId("jev-tarefa-clima")).not.toHaveTextContent("Nova");
 
     // Deixar decidir a tarefa nova não é deixar decidir o clima (que já decide).
@@ -623,11 +701,20 @@ describe("CartaoDoJev — por tarefa", () => {
       dados({
         config: { ligado: true, modo: "observacao" },
         por_tarefa: [
-          { id: tarefa.id, ponto: tarefa.ponto, rotulo: tarefa.rotulo, oQueFaz: tarefa.oQueFaz, estado: "observando", novo: false },
+          {
+            id: tarefa.id,
+            ponto: tarefa.ponto,
+            rotulo: tarefa.rotulo,
+            oQueFaz: tarefa.oQueFaz,
+            estado: "observando",
+            novo: false,
+          },
         ],
       }),
     );
-    const dialogo = await confirmarDecidir(screen.getByRole("button", { name: "Deixar o Jev decidir" }));
+    const dialogo = await confirmarDecidir(
+      screen.getByRole("button", { name: "Deixar o Jev decidir" }),
+    );
     expect(dialogo).toHaveAttribute("data-tarefa", tarefa.id);
     expect(dialogo).toHaveTextContent(tarefa.rotulo);
     expect(dialogo).toHaveTextContent(tarefa.aoConfirmarDecidir);
@@ -636,12 +723,25 @@ describe("CartaoDoJev — por tarefa", () => {
   });
 
   it("'Manter só observando' grava o estado que já vale — e o selo 'Nova' sai sem mudar nada", async () => {
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...CLIMA, estado: "observando" }, NOVA] }));
-    fireEvent.click(within(screen.getByTestId("jev-tarefa-manipulacao")).getByRole("button", { name: "Manter só observando" }));
+    montar(
+      dados({
+        config: { ligado: true, modo: "observacao" },
+        por_tarefa: [{ ...CLIMA, estado: "observando" }, NOVA],
+      }),
+    );
+    fireEvent.click(
+      within(screen.getByTestId("jev-tarefa-manipulacao")).getByRole("button", {
+        name: "Manter só observando",
+      }),
+    );
     await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
     expect(chamadas.map((c) => c.corpo)).toEqual([{ tarefa: "manipulacao", estado: "observando" }]);
     // Só a tarefa nova tem o botão.
-    expect(within(screen.getByTestId("jev-tarefa-clima")).queryByRole("button", { name: "Manter só observando" })).toBeNull();
+    expect(
+      within(screen.getByTestId("jev-tarefa-clima")).queryByRole("button", {
+        name: "Manter só observando",
+      }),
+    ).toBeNull();
   });
 
   /**
@@ -652,25 +752,28 @@ describe("CartaoDoJev — por tarefa", () => {
   it.each([
     ["com a IA de sempre", true],
     ["sem a IA de sempre", false],
-  ])("tarefa desligada (%s): o cartão diz em pausa, sem concordância, e oferece religar observando", async (_c, ia) => {
-    montar(
-      dados({
-        config: { ligado: true, modo: "decide" },
-        tem_ia_de_sempre: ia,
-        por_tarefa: [{ ...CLIMA, estado: "desligada" }],
-      }),
-    );
-    expect(cartao()).toHaveAttribute("data-estado", "em_pausa");
-    // "pausadas", o verbo que cada linha já usa ("Pausada").
-    expect(cartao()).toHaveTextContent("Ligado, mas com todas as tarefas pausadas");
-    expect(screen.getByTestId("jev-tarefa-clima")).toHaveAttribute("data-estado", "desligada");
-    expect(screen.queryByRole("button", { name: "Deixar o Jev decidir" })).toBeNull();
-    expect(screen.queryByTestId("jev-concordancia")).toBeNull();
+  ])(
+    "tarefa desligada (%s): o cartão diz em pausa, sem concordância, e oferece religar observando",
+    async (_c, ia) => {
+      montar(
+        dados({
+          config: { ligado: true, modo: "decide" },
+          tem_ia_de_sempre: ia,
+          por_tarefa: [{ ...CLIMA, estado: "desligada" }],
+        }),
+      );
+      expect(cartao()).toHaveAttribute("data-estado", "em_pausa");
+      // "pausadas", o verbo que cada linha já usa ("Pausada").
+      expect(cartao()).toHaveTextContent("Ligado, mas com todas as tarefas pausadas");
+      expect(screen.getByTestId("jev-tarefa-clima")).toHaveAttribute("data-estado", "desligada");
+      expect(screen.queryByRole("button", { name: "Deixar o Jev decidir" })).toBeNull();
+      expect(screen.queryByTestId("jev-concordancia")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Religar" }));
-    await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
-    expect(chamadas.map((c) => c.corpo)).toEqual([{ modo: "observacao" }]);
-  });
+      fireEvent.click(screen.getByRole("button", { name: "Religar" }));
+      await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
+      expect(chamadas.map((c) => c.corpo)).toEqual([{ modo: "observacao" }]);
+    },
+  );
 
   it("uma tarefa desligada não apaga o estado geral das que rodam", () => {
     montar(
@@ -680,7 +783,10 @@ describe("CartaoDoJev — por tarefa", () => {
       }),
     );
     expect(cartao()).toHaveAttribute("data-estado", "observando");
-    expect(screen.getByTestId("jev-tarefa-manipulacao")).toHaveAttribute("data-estado", "observando");
+    expect(screen.getByTestId("jev-tarefa-manipulacao")).toHaveAttribute(
+      "data-estado",
+      "observando",
+    );
   });
 
   it("jevNoPonto segue o estado da tarefa daquele ponto", () => {
@@ -688,7 +794,9 @@ describe("CartaoDoJev — por tarefa", () => {
       dados({ config: { ligado: true, modo: "decide" }, por_tarefa: [{ ...CLIMA, estado }] });
     expect(jevNoPonto(d("desligada"), "sentiment_classify")).toBeNull();
     expect(jevNoPonto(d("observando"), "sentiment_classify")).toBe("observacao");
-    expect(jevNoPonto(d("decidindo"), "sentiment_classify")).toEqual({ decide: TAREFA_DO_CLIMA.aoDecidirNoPonto });
+    expect(jevNoPonto(d("decidindo"), "sentiment_classify")).toEqual({
+      decide: TAREFA_DO_CLIMA.aoDecidirNoPonto,
+    });
     // Só o clima decide sem a IA de sempre (DEC-012 #5); a tarefa nova, não.
     const semIa = dados({ config: { ligado: true }, tem_ia_de_sempre: false, por_tarefa: [NOVA] });
     expect(jevNoPonto(semIa, "jailbreak_detect")).toBe("observacao");
@@ -696,7 +804,9 @@ describe("CartaoDoJev — por tarefa", () => {
 
   it("jevNoPonto: a manipulação decidindo SOMA — o modelo do ponto segue decidindo, não vira reserva", () => {
     const d = dados({ config: { ligado: true }, por_tarefa: [{ ...NOVA, estado: "decidindo" }] });
-    expect(jevNoPonto(d, "jailbreak_detect")).toEqual({ decide: TAREFA_DA_MANIPULACAO.aoDecidirNoPonto });
+    expect(jevNoPonto(d, "jailbreak_detect")).toEqual({
+      decide: TAREFA_DA_MANIPULACAO.aoDecidirNoPonto,
+    });
     expect(TAREFA_DA_MANIPULACAO.aoDecidirNoPonto).not.toMatch(/reserva/);
   });
 
@@ -716,7 +826,10 @@ describe("CartaoDoJev — por tarefa", () => {
       estado: "decidindo",
       novo: false,
     } as const;
-    const d = dados({ config: { ligado: true, modo: "decide" }, por_tarefa: [{ ...CLIMA, estado: "decidindo" }, ROTEADOR] });
+    const d = dados({
+      config: { ligado: true, modo: "decide" },
+      por_tarefa: [{ ...CLIMA, estado: "decidindo" }, ROTEADOR],
+    });
     montar(d);
     const linha = screen.getByTestId("jev-decide-roteador");
     expect(linha).not.toHaveTextContent(/mede primeiro|só entra se ele não responder/);
@@ -732,7 +845,11 @@ describe("CartaoDoJev — por tarefa", () => {
         config: { ligado: true, modo: "observacao" },
         numeros: { observacao: { dias: 30, comparadas: 10, concordaram: 9 } },
         por_tarefa: [
-          { ...CLIMA, estado: "observando", observacao: { dias: 30, comparadas: 10, concordaram: 9 } },
+          {
+            ...CLIMA,
+            estado: "observando",
+            observacao: { dias: 30, comparadas: 10, concordaram: 9 },
+          },
           { ...NOVA, observacao: { dias: 30, comparadas: 4, concordaram: 3 } },
         ],
       }),
@@ -740,7 +857,9 @@ describe("CartaoDoJev — por tarefa", () => {
     expect(screen.getByTestId("jev-concordancia")).toHaveTextContent(/9 de 10/);
     const daNova = screen.getByTestId("jev-concordancia-manipulacao");
     // Diz EM QUE os dois concordaram — o nível do alerta.
-    expect(daNova).toHaveTextContent(/deram o mesmo alerta \(nenhum, leve ou forte\) em 3 de 4 mensagens/);
+    expect(daNova).toHaveTextContent(
+      /deram o mesmo alerta \(nenhum, leve ou forte\) em 3 de 4 mensagens/,
+    );
     // A frase da passagem para humano é do clima, e só dele.
     expect(daNova).not.toHaveTextContent(/chamariam/);
   });
@@ -749,20 +868,32 @@ describe("CartaoDoJev — por tarefa", () => {
     montar(
       dados({
         config: { ligado: true, modo: "observacao" },
-        por_tarefa: [{ ...CLIMA, estado: "observando", observacao: { dias: 30, comparadas: 500, concordaram: 480, teto_da_amostra: 500 } }],
+        por_tarefa: [
+          {
+            ...CLIMA,
+            estado: "observando",
+            observacao: { dias: 30, comparadas: 500, concordaram: 480, teto_da_amostra: 500 },
+          },
+        ],
       }),
     );
-    expect(screen.getByTestId("jev-concordancia")).toHaveTextContent(/480 de 500 .* A conta usa só as 500 mensagens mais recentes do período/);
+    expect(screen.getByTestId("jev-concordancia")).toHaveTextContent(
+      /480 de 500 .* A conta usa só as 500 mensagens mais recentes do período/,
+    );
   });
 
   it("a manipulação mostra quantas vezes só o Jev daria o alerta forte — o que decidir muda nela", () => {
     montar(
       dados({
         config: { ligado: true, modo: "observacao" },
-        por_tarefa: [{ ...NOVA, observacao: { dias: 30, comparadas: 40, concordaram: 39, so_o_jev_alto: 1 } }],
+        por_tarefa: [
+          { ...NOVA, observacao: { dias: 30, comparadas: 40, concordaram: 39, so_o_jev_alto: 1 } },
+        ],
       }),
     );
-    expect(screen.getByTestId("jev-concordancia-manipulacao")).toHaveTextContent(/Só o Jev daria o alerta forte em 1 delas/);
+    expect(screen.getByTestId("jev-concordancia-manipulacao")).toHaveTextContent(
+      /Só o Jev daria o alerta forte em 1 delas/,
+    );
   });
 
   /**
@@ -783,20 +914,27 @@ describe("CartaoDoJev — por tarefa", () => {
       novo: true,
       observacao: null,
     } as const;
-    const conversa = (n: number) => ({ href: `/app/inbox/c-${n}`, em: `2026-09-2${n}T14:3${n}:00.000Z` });
+    const conversa = (n: number) => ({
+      href: `/app/inbox/c-${n}`,
+      em: `2026-09-2${n}T14:3${n}:00.000Z`,
+    });
 
     it("uma mensagem: singular, com o link para a conversa — e nenhuma concordância", () => {
       montar(
         dados({
           config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, percebidos: { dias: 30, mensagens: 1, conversas: [conversa(1)] } }],
+          por_tarefa: [
+            { ...HUMANO, percebidos: { dias: 30, mensagens: 1, conversas: [conversa(1)] } },
+          ],
         }),
       );
       const frase = screen.getByTestId("jev-percebidos-humano");
       expect(frase).toHaveTextContent(
         "Nos últimos 30 dias, o Jev percebeu 1 mensagem pedindo para falar com uma pessoa em que a regra de hoje não reconheceu o pedido.",
       );
-      const links = within(screen.getByTestId("jev-percebidos-conversas-humano")).getAllByRole("link");
+      const links = within(screen.getByTestId("jev-percebidos-conversas-humano")).getAllByRole(
+        "link",
+      );
       expect(links.map((l) => l.getAttribute("href"))).toEqual(["/app/inbox/c-1"]);
       expect(links[0]).toHaveAccessibleName(/^Abrir a conversa do pedido de /);
       expect(screen.queryByTestId("jev-concordancia-humano")).toBeNull();
@@ -807,7 +945,14 @@ describe("CartaoDoJev — por tarefa", () => {
         dados({
           config: { ligado: true, modo: "observacao" },
           por_tarefa: [
-            { ...HUMANO, percebidos: { dias: 30, mensagens: 7, conversas: [conversa(1), conversa(2), conversa(3)] } },
+            {
+              ...HUMANO,
+              percebidos: {
+                dias: 30,
+                mensagens: 7,
+                conversas: [conversa(1), conversa(2), conversa(3)],
+              },
+            },
             {
               ...HUMANO,
               id: "opt_out",
@@ -821,7 +966,9 @@ describe("CartaoDoJev — por tarefa", () => {
       expect(screen.getByTestId("jev-percebidos-humano")).toHaveTextContent(
         "Nos últimos 30 dias, o Jev percebeu 7 mensagens pedindo para falar com uma pessoa em que a regra de hoje não reconheceu o pedido.",
       );
-      expect(within(screen.getByTestId("jev-percebidos-conversas-humano")).getAllByRole("link")).toHaveLength(3);
+      expect(
+        within(screen.getByTestId("jev-percebidos-conversas-humano")).getAllByRole("link"),
+      ).toHaveLength(3);
       // Zero não é "percebeu 0": lia-se como defeito, e a frase é outra.
       const nenhuma = screen.getByTestId("jev-percebidos-opt_out");
       expect(nenhuma).toHaveTextContent(
@@ -853,45 +1000,67 @@ describe("CartaoDoJev — por tarefa", () => {
       );
       // Controle: o clima, na mesma tela, decide.
       expect(
-        within(screen.getByTestId("jev-tarefa-clima")).getByRole("button", { name: "Deixar o Jev decidir" }),
+        within(screen.getByTestId("jev-tarefa-clima")).getByRole("button", {
+          name: "Deixar o Jev decidir",
+        }),
       ).toBeInTheDocument();
     });
 
     it.each([
       ["humano", TAREFA_DO_PEDIDO_DE_HUMANO],
       ["opt_out", TAREFA_DO_PEDIDO_PARA_PARAR],
-    ] as const)("%s: 'Avisar a equipe' pede confirmação com o efeito — e só o diálogo grava", async (id, registro) => {
-      montar(
-        dados({
-          config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, id, rotulo: registro.rotulo, oQueFaz: registro.oQueFaz }],
-        }),
-      );
-      fireEvent.click(within(screen.getByTestId(`jev-tarefa-${id}`)).getByRole("button", { name: "Avisar a equipe" }));
-      const dialogo = await screen.findByRole("alertdialog");
-      expect(dialogo).toHaveAttribute("data-tarefa", id);
-      expect(within(dialogo).getByRole("heading")).toHaveTextContent("Avisar a equipe?");
-      expect(dialogo).toHaveTextContent(registro.aoConfirmarDecidir);
-      expect(dialogo).not.toHaveTextContent("Deixar o Jev decidir");
-      expect(chamadas.filter((c) => c.metodo === "PATCH")).toEqual([]);
-      fireEvent.click(within(dialogo).getByRole("button", { name: "Avisar a equipe" }));
-      await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
-      expect(chamadas.filter((c) => c.metodo === "PATCH").map((c) => c.corpo)).toEqual([{ tarefa: id, estado: "decidindo" }]);
-    });
+    ] as const)(
+      "%s: 'Avisar a equipe' pede confirmação com o efeito — e só o diálogo grava",
+      async (id, registro) => {
+        montar(
+          dados({
+            config: { ligado: true, modo: "observacao" },
+            por_tarefa: [{ ...HUMANO, id, rotulo: registro.rotulo, oQueFaz: registro.oQueFaz }],
+          }),
+        );
+        fireEvent.click(
+          within(screen.getByTestId(`jev-tarefa-${id}`)).getByRole("button", {
+            name: "Avisar a equipe",
+          }),
+        );
+        const dialogo = await screen.findByRole("alertdialog");
+        expect(dialogo).toHaveAttribute("data-tarefa", id);
+        expect(within(dialogo).getByRole("heading")).toHaveTextContent("Avisar a equipe?");
+        expect(dialogo).toHaveTextContent(registro.aoConfirmarDecidir);
+        expect(dialogo).not.toHaveTextContent("Deixar o Jev decidir");
+        expect(chamadas.filter((c) => c.metodo === "PATCH")).toEqual([]);
+        fireEvent.click(within(dialogo).getByRole("button", { name: "Avisar a equipe" }));
+        await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
+        expect(chamadas.filter((c) => c.metodo === "PATCH").map((c) => c.corpo)).toEqual([
+          { tarefa: id, estado: "decidindo" },
+        ]);
+      },
+    );
 
     it("avisando: o selo diz 'Avisa a equipe', a frase diz o que acontece, e dá para voltar a só observar", () => {
       montar(
         dados({
           config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, estado: "decidindo", novo: false, percebidos: { dias: 30, mensagens: 0, conversas: [] } }],
+          por_tarefa: [
+            {
+              ...HUMANO,
+              estado: "decidindo",
+              novo: false,
+              percebidos: { dias: 30, mensagens: 0, conversas: [] },
+            },
+          ],
         }),
       );
       const linha = screen.getByTestId("jev-tarefa-humano");
       expect(linha).toHaveAttribute("data-estado", "decidindo");
       expect(linha).toHaveTextContent("Avisa a equipe");
       expect(linha).not.toHaveTextContent(/\bDecide\b/);
-      expect(screen.getByTestId("jev-decide-humano")).toHaveTextContent(TAREFA_DO_PEDIDO_DE_HUMANO.aoDecidir);
-      expect(within(linha).getByRole("button", { name: "Voltar a só observar" })).toBeInTheDocument();
+      expect(screen.getByTestId("jev-decide-humano")).toHaveTextContent(
+        TAREFA_DO_PEDIDO_DE_HUMANO.aoDecidir,
+      );
+      expect(
+        within(linha).getByRole("button", { name: "Voltar a só observar" }),
+      ).toBeInTheDocument();
     });
 
     /**
@@ -903,18 +1072,31 @@ describe("CartaoDoJev — por tarefa", () => {
     it.each([
       ["com o clima observando", [{ ...CLIMA, estado: "observando" }]],
       ["sozinha", []],
-    ] as const)("avisando a equipe %s, o cartão diz que o Jev observa, e não que decide", (_caso, outras) => {
-      montar(
-        dados({
-          config: { ligado: true, modo: "observacao" },
-          por_tarefa: [...outras, { ...HUMANO, estado: "decidindo", novo: false, percebidos: { dias: 30, mensagens: 0, conversas: [] } }],
-        }),
-      );
-      expect(cartao()).toHaveAttribute("data-estado", "observando");
-      expect(cartao()).not.toHaveTextContent(/Decide em parte|Decidindo|Decide\b/);
-      expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(/^Observando — /);
-      expect(screen.getByTestId("jev-tarefa-humano")).toHaveTextContent("Avisa a equipe");
-    });
+    ] as const)(
+      "avisando a equipe %s, o cartão diz que o Jev observa, e não que decide",
+      (_caso, outras) => {
+        montar(
+          dados({
+            config: { ligado: true, modo: "observacao" },
+            por_tarefa: [
+              ...outras,
+              {
+                ...HUMANO,
+                estado: "decidindo",
+                novo: false,
+                percebidos: { dias: 30, mensagens: 0, conversas: [] },
+              },
+            ],
+          }),
+        );
+        expect(cartao()).toHaveAttribute("data-estado", "observando");
+        expect(cartao()).not.toHaveTextContent(/Decide em parte|Decidindo|Decide\b/);
+        expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(
+          /^Observando — /,
+        );
+        expect(screen.getByTestId("jev-tarefa-humano")).toHaveTextContent("Avisa a equipe");
+      },
+    );
 
     /**
      * A frase de estado do cartão é verdadeira para o que DE FATO roda. Só as
@@ -923,8 +1105,16 @@ describe("CartaoDoJev — por tarefa", () => {
      * que comparam, a frase delas vale, e os pedidos ganham a sua. Decidindo em
      * parte, a frase nomeia também quem só avisa a equipe.
      */
-    const PARAR = { ...HUMANO, id: "opt_out", rotulo: TAREFA_DO_PEDIDO_PARA_PARAR.rotulo, oQueFaz: TAREFA_DO_PEDIDO_PARA_PARAR.oQueFaz };
-    const pedidos = (humano: "observando" | "decidindo", parar: "observando" | "decidindo" = "observando") => [
+    const PARAR = {
+      ...HUMANO,
+      id: "opt_out",
+      rotulo: TAREFA_DO_PEDIDO_PARA_PARAR.rotulo,
+      oQueFaz: TAREFA_DO_PEDIDO_PARA_PARAR.oQueFaz,
+    };
+    const pedidos = (
+      humano: "observando" | "decidindo",
+      parar: "observando" | "decidindo" = "observando",
+    ) => [
       { ...HUMANO, estado: humano, novo: false },
       { ...PARAR, estado: parar, novo: false },
     ];
@@ -944,7 +1134,10 @@ describe("CartaoDoJev — por tarefa", () => {
       ],
       [
         "só os pedidos, e sem a IA de sempre",
-        { ia: false, tarefas: [{ ...CLIMA, estado: "desligada" }, ...pedidos("observando", "decidindo")] },
+        {
+          ia: false,
+          tarefas: [{ ...CLIMA, estado: "desligada" }, ...pedidos("observando", "decidindo")],
+        },
         "observando",
         "Observando — o Jev conta as mensagens em que o cliente faz um pedido que a regra de hoje não reconheceu, e avisa a equipe na Central. Ele não decide nada no atendimento.",
       ],
@@ -978,11 +1171,20 @@ describe("CartaoDoJev — por tarefa", () => {
         "observando",
         "Observando — a sua IA de sempre ainda decide. Compare os dois antes de deixar o Jev decidir.",
       ],
-    ] as const)("a frase do cartão, com %s, diz o que de fato roda", (_caso, c, estado, esperada) => {
-      montar(dados({ config: { ligado: true, modo: "observacao" }, tem_ia_de_sempre: c.ia, por_tarefa: [...c.tarefas] }));
-      expect(cartao()).toHaveAttribute("data-estado", estado);
-      expect(frase()).toBe(esperada);
-    });
+    ] as const)(
+      "a frase do cartão, com %s, diz o que de fato roda",
+      (_caso, c, estado, esperada) => {
+        montar(
+          dados({
+            config: { ligado: true, modo: "observacao" },
+            tem_ia_de_sempre: c.ia,
+            por_tarefa: [...c.tarefas],
+          }),
+        );
+        expect(cartao()).toHaveAttribute("data-estado", estado);
+        expect(frase()).toBe(esperada);
+      },
+    );
 
     it("com o clima decidindo, o pedido avisando conta como a parte que não decide (controle)", () => {
       montar(
@@ -990,7 +1192,12 @@ describe("CartaoDoJev — por tarefa", () => {
           config: { ligado: true, modo: "decide" },
           por_tarefa: [
             { ...CLIMA, estado: "decidindo" },
-            { ...HUMANO, estado: "decidindo", novo: false, percebidos: { dias: 30, mensagens: 0, conversas: [] } },
+            {
+              ...HUMANO,
+              estado: "decidindo",
+              novo: false,
+              percebidos: { dias: 30, mensagens: 0, conversas: [] },
+            },
           ],
         }),
       );
@@ -1019,36 +1226,53 @@ describe("CartaoDoJev — por tarefa", () => {
      * mensagem" seria para sempre: a tarefa diz "Não roda", e por quê.
      */
     it.each([
-      ["ninguem_no_ar", /nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia/, true],
+      [
+        "ninguem_no_ar",
+        /nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia/,
+        true,
+      ],
       ["externo", /quem conduz as conversas desta empresa é um sistema de fora/, false],
-    ] as const)("sem atendimento automático (%s): 'Não roda' com o motivo, sem contar nem avisar", (motivo, frase, comLink) => {
-      montar(
-        dados({
-          config: { ligado: true, modo: "observacao" },
-          por_tarefa: [
-            { ...CLIMA, estado: "observando" },
-            { ...HUMANO, sem_atendente: motivo, percebidos: { dias: 30, mensagens: 0, conversas: [] } },
-          ],
-        }),
-      );
-      const linha = screen.getByTestId("jev-tarefa-humano");
-      expect(linha).toHaveTextContent("Não roda");
-      expect(linha).not.toHaveTextContent("Só observa");
-      const porQue = screen.getByTestId("jev-sem-atendente-humano");
-      expect(porQue).toHaveTextContent(frase);
-      expect(within(porQue).queryAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(comLink ? ["/app/ai/agents"] : []);
-      // Nada do que só vale rodando: nem a contagem, nem "começou observando", nem avisar.
-      expect(screen.queryByTestId("jev-percebidos-humano")).toBeNull();
-      expect(screen.queryByTestId("jev-nova-humano")).toBeNull();
-      expect(within(linha).queryByRole("button", { name: "Avisar a equipe" })).toBeNull();
-      // Parada, ela não observa nada: "Manter só observando" prometeria o contrário.
-      expect(within(linha).queryByRole("button", { name: "Manter só observando" })).toBeNull();
-      expect(within(linha).getByRole("button", { name: "Pausar esta tarefa" })).toBeInTheDocument();
-      // A tarefa parada não entra na frase do cartão: só o clima roda.
-      expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(
-        "Observando — a sua IA de sempre ainda decide. Compare os dois antes de deixar o Jev decidir.",
-      );
-    });
+    ] as const)(
+      "sem atendimento automático (%s): 'Não roda' com o motivo, sem contar nem avisar",
+      (motivo, frase, comLink) => {
+        montar(
+          dados({
+            config: { ligado: true, modo: "observacao" },
+            por_tarefa: [
+              { ...CLIMA, estado: "observando" },
+              {
+                ...HUMANO,
+                sem_atendente: motivo,
+                percebidos: { dias: 30, mensagens: 0, conversas: [] },
+              },
+            ],
+          }),
+        );
+        const linha = screen.getByTestId("jev-tarefa-humano");
+        expect(linha).toHaveTextContent("Não roda");
+        expect(linha).not.toHaveTextContent("Só observa");
+        const porQue = screen.getByTestId("jev-sem-atendente-humano");
+        expect(porQue).toHaveTextContent(frase);
+        expect(
+          within(porQue)
+            .queryAllByRole("link")
+            .map((l) => l.getAttribute("href")),
+        ).toEqual(comLink ? ["/app/ai/agents"] : []);
+        // Nada do que só vale rodando: nem a contagem, nem "começou observando", nem avisar.
+        expect(screen.queryByTestId("jev-percebidos-humano")).toBeNull();
+        expect(screen.queryByTestId("jev-nova-humano")).toBeNull();
+        expect(within(linha).queryByRole("button", { name: "Avisar a equipe" })).toBeNull();
+        // Parada, ela não observa nada: "Manter só observando" prometeria o contrário.
+        expect(within(linha).queryByRole("button", { name: "Manter só observando" })).toBeNull();
+        expect(
+          within(linha).getByRole("button", { name: "Pausar esta tarefa" }),
+        ).toBeInTheDocument();
+        // A tarefa parada não entra na frase do cartão: só o clima roda.
+        expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(
+          "Observando — a sua IA de sempre ainda decide. Compare os dois antes de deixar o Jev decidir.",
+        );
+      },
+    );
 
     it("sem atendimento automático e só os pedidos ligados: o cartão diz que nada está rodando", () => {
       montar(
@@ -1057,7 +1281,12 @@ describe("CartaoDoJev — por tarefa", () => {
           por_tarefa: [
             { ...CLIMA, estado: "desligada" },
             { ...HUMANO, sem_atendente: "ninguem_no_ar" },
-            { ...HUMANO, id: "opt_out", rotulo: TAREFA_DO_PEDIDO_PARA_PARAR.rotulo, sem_atendente: "ninguem_no_ar" },
+            {
+              ...HUMANO,
+              id: "opt_out",
+              rotulo: TAREFA_DO_PEDIDO_PARA_PARAR.rotulo,
+              sem_atendente: "ninguem_no_ar",
+            },
           ],
         }),
       );
@@ -1069,7 +1298,13 @@ describe("CartaoDoJev — por tarefa", () => {
       montar(
         dados({
           config: { ligado: true, modo: "observacao" },
-          por_tarefa: [{ ...HUMANO, sem_atendente: null, percebidos: { dias: 30, mensagens: 0, conversas: [] } }],
+          por_tarefa: [
+            {
+              ...HUMANO,
+              sem_atendente: null,
+              percebidos: { dias: 30, mensagens: 0, conversas: [] },
+            },
+          ],
         }),
       );
       const linha = screen.getByTestId("jev-tarefa-humano");
@@ -1086,35 +1321,96 @@ describe("CartaoDoJev — por tarefa", () => {
      * só eles rodando (o clima pausado) a frase de comparar era falsa por
      * inteiro — sem a IA principal, contradizia a frase seguinte.
      */
-    const ANTES_OBSERVA = "Onde ele só observa, a sua IA de sempre continua decidindo, e você compara os dois antes de deixar o Jev decidir.";
+    const ANTES_OBSERVA =
+      "Onde ele só observa, a sua IA de sempre continua decidindo, e você compara os dois antes de deixar o Jev decidir.";
     const ANTES_DECIDE =
       "Onde ele decide, vale a escolha que você fez antes de desligá-lo; onde só observa, a sua IA de sempre continua decidindo, e você compara os dois antes de deixar o Jev decidir.";
-    const PEDIDOS_OBSERVAM = "Nos pedidos do cliente, o Jev só conta as mensagens em que a regra de hoje não reconheceu o pedido — nada muda no atendimento.";
+    const PEDIDOS_OBSERVAM =
+      "Nos pedidos do cliente, o Jev só conta as mensagens em que a regra de hoje não reconheceu o pedido — nada muda no atendimento.";
     const PEDIDOS_AVISAM =
       "Nos pedidos do cliente, o Jev conta as mensagens em que a regra de hoje não reconheceu o pedido e avisa a equipe na Central — ele não decide nada no atendimento.";
-    const RELIGAR = "As tarefas pausadas continuam assim: depois de ligar o Jev, religue-as na lista que aparece aqui.";
-    const SEM_IA_RELIGADO = "Sem uma IA principal, o clima religado volta decidindo sozinho: não há com quem comparar nem quem cubra uma falha do Jev.";
+    const RELIGAR =
+      "As tarefas pausadas continuam assim: depois de ligar o Jev, religue-as na lista que aparece aqui.";
+    const SEM_IA_RELIGADO =
+      "Sem uma IA principal, o clima religado volta decidindo sozinho: não há com quem comparar nem quem cubra uma falha do Jev.";
     type AoLigar = "observando" | "decidindo" | "desligada";
-    const aoLigar = (clima: AoLigar, humano: AoLigar, parar: AoLigar, extra: { semAtendente?: boolean } = {}) => [
+    const aoLigar = (
+      clima: AoLigar,
+      humano: AoLigar,
+      parar: AoLigar,
+      extra: { semAtendente?: boolean } = {},
+    ) => [
       { ...CLIMA, estado: clima, ao_ligar: clima },
-      { ...HUMANO, estado: humano, ao_ligar: humano, novo: false, ...(extra.semAtendente ? { sem_atendente: "ninguem_no_ar" as const } : {}) },
-      { ...PARAR, estado: parar, ao_ligar: parar, novo: false, ...(extra.semAtendente ? { sem_atendente: "ninguem_no_ar" as const } : {}) },
+      {
+        ...HUMANO,
+        estado: humano,
+        ao_ligar: humano,
+        novo: false,
+        ...(extra.semAtendente ? { sem_atendente: "ninguem_no_ar" as const } : {}),
+      },
+      {
+        ...PARAR,
+        estado: parar,
+        ao_ligar: parar,
+        novo: false,
+        ...(extra.semAtendente ? { sem_atendente: "ninguem_no_ar" as const } : {}),
+      },
     ];
     it.each([
-      ["só os pedidos, observando (o clima pausado)", true, aoLigar("desligada", "observando", "observando"), [PEDIDOS_OBSERVAM, RELIGAR]],
-      ["só os pedidos, um avisando", true, aoLigar("desligada", "decidindo", "observando"), [PEDIDOS_AVISAM, RELIGAR]],
-      ["só os pedidos, sem a IA de sempre", false, aoLigar("desligada", "observando", "observando"), [PEDIDOS_OBSERVAM, RELIGAR, SEM_IA_RELIGADO]],
-      ["o clima observando e os pedidos observando", true, aoLigar("observando", "observando", "observando"), [ANTES_OBSERVA, PEDIDOS_OBSERVAM]],
-      ["o clima decidindo e um pedido avisando", true, aoLigar("decidindo", "observando", "decidindo"), [ANTES_DECIDE, PEDIDOS_AVISAM]],
-      ["o clima observando e os pedidos sem quem atenda", true, aoLigar("observando", "observando", "decidindo", { semAtendente: true }), [ANTES_OBSERVA]],
-    ] as const)("antes de ligar, com %s, a frase diz o que vai rodar", (_caso, ia, tarefas, frases) => {
-      montar(dados({ tem_ia_de_sempre: ia, por_tarefa: [...tarefas] }));
-      const texto = screen.getByTestId("jev-ao-ligar").textContent?.replace(/\s+/g, " ").trim() ?? "";
-      expect(texto).toBe(frases.join(" "));
-    });
+      [
+        "só os pedidos, observando (o clima pausado)",
+        true,
+        aoLigar("desligada", "observando", "observando"),
+        [PEDIDOS_OBSERVAM, RELIGAR],
+      ],
+      [
+        "só os pedidos, um avisando",
+        true,
+        aoLigar("desligada", "decidindo", "observando"),
+        [PEDIDOS_AVISAM, RELIGAR],
+      ],
+      [
+        "só os pedidos, sem a IA de sempre",
+        false,
+        aoLigar("desligada", "observando", "observando"),
+        [PEDIDOS_OBSERVAM, RELIGAR, SEM_IA_RELIGADO],
+      ],
+      [
+        "o clima observando e os pedidos observando",
+        true,
+        aoLigar("observando", "observando", "observando"),
+        [ANTES_OBSERVA, PEDIDOS_OBSERVAM],
+      ],
+      [
+        "o clima decidindo e um pedido avisando",
+        true,
+        aoLigar("decidindo", "observando", "decidindo"),
+        [ANTES_DECIDE, PEDIDOS_AVISAM],
+      ],
+      [
+        "o clima observando e os pedidos sem quem atenda",
+        true,
+        aoLigar("observando", "observando", "decidindo", { semAtendente: true }),
+        [ANTES_OBSERVA],
+      ],
+    ] as const)(
+      "antes de ligar, com %s, a frase diz o que vai rodar",
+      (_caso, ia, tarefas, frases) => {
+        montar(dados({ tem_ia_de_sempre: ia, por_tarefa: [...tarefas] }));
+        const texto =
+          screen.getByTestId("jev-ao-ligar").textContent?.replace(/\s+/g, " ").trim() ?? "";
+        expect(texto).toBe(frases.join(" "));
+      },
+    );
 
     it("antes de ligar, a tarefa de pedido que não vai rodar diz por quê — e a que vai rodar não (controle)", () => {
-      montar(dados({ por_tarefa: [...aoLigar("observando", "observando", "observando", { semAtendente: true })] }));
+      montar(
+        dados({
+          por_tarefa: [
+            ...aoLigar("observando", "observando", "observando", { semAtendente: true }),
+          ],
+        }),
+      );
       expect(screen.getByTestId("jev-ao-ligar-humano")).toHaveTextContent("(Não roda)");
       expect(screen.getByTestId("jev-ao-ligar-sem-atendente-humano")).toHaveTextContent(
         /nenhum atendente automático está no ar — o Jev só é perguntado onde um atendente responderia/,
@@ -1127,14 +1423,30 @@ describe("CartaoDoJev — por tarefa", () => {
 
     it("antes de ligar, só o clima observando: a frase de sempre, sem a dos pedidos (controle)", () => {
       montar(dados({ por_tarefa: [{ ...CLIMA, estado: "observando", ao_ligar: "observando" }] }));
-      expect(screen.getByTestId("jev-ao-ligar").textContent?.replace(/\s+/g, " ").trim()).toBe(ANTES_OBSERVA);
+      expect(screen.getByTestId("jev-ao-ligar").textContent?.replace(/\s+/g, " ").trim()).toBe(
+        ANTES_OBSERVA,
+      );
     });
   });
 
   it("o roteador diz que concordar é levar ao mesmo agente", () => {
-    const ROTEADOR = { id: "roteador", ponto: "intent_router", rotulo: "Escolher qual agente atende", oQueFaz: "Escolhe.", estado: "observando", novo: false } as const;
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...ROTEADOR, observacao: { dias: 30, comparadas: 4, concordaram: 3 } }] }));
-    expect(screen.getByTestId("jev-concordancia-roteador")).toHaveTextContent(/levariam o cliente ao mesmo agente em 3 de 4/);
+    const ROTEADOR = {
+      id: "roteador",
+      ponto: "intent_router",
+      rotulo: "Escolher qual agente atende",
+      oQueFaz: "Escolhe.",
+      estado: "observando",
+      novo: false,
+    } as const;
+    montar(
+      dados({
+        config: { ligado: true, modo: "observacao" },
+        por_tarefa: [{ ...ROTEADOR, observacao: { dias: 30, comparadas: 4, concordaram: 3 } }],
+      }),
+    );
+    expect(screen.getByTestId("jev-concordancia-roteador")).toHaveTextContent(
+      /levariam o cliente ao mesmo agente em 3 de 4/,
+    );
   });
 
   it("pausar uma tarefa só: a nova (que começou sozinha) e o clima, cada um pela tarefa — o Jev segue ligado", async () => {
@@ -1150,7 +1462,9 @@ describe("CartaoDoJev — por tarefa", () => {
     fireEvent.click(pausar);
     await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
     fireEvent.click(
-      within(screen.getByTestId("jev-tarefa-clima")).getByRole("button", { name: "Pausar esta tarefa" }),
+      within(screen.getByTestId("jev-tarefa-clima")).getByRole("button", {
+        name: "Pausar esta tarefa",
+      }),
     );
     await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(2));
     // "Desligada" não tem nome no `modo`: o clima também vai pela tarefa.
@@ -1179,7 +1493,9 @@ describe("CartaoDoJev — por tarefa", () => {
     expect(cartao()).toHaveAttribute("data-estado", "decidindo");
     expect(screen.getByText("Decide em parte")).toBeInTheDocument();
     expect(screen.queryByText("Decidindo")).toBeNull();
-    expect(cartao()).toHaveTextContent("Decidindo em parte — cada tarefa abaixo diz se o Jev decide ou só observa nela.");
+    expect(cartao()).toHaveTextContent(
+      "Decidindo em parte — cada tarefa abaixo diz se o Jev decide ou só observa nela.",
+    );
     expect(screen.queryByText(/o Jev mede primeiro/i)).toBeNull();
     // Sem "a sua IA segue decidindo" ao lado do selo "Decide": o verbo era o mesmo para os dois.
     expect(screen.getByTestId("jev-decide-manipulacao")).toHaveTextContent(
@@ -1224,9 +1540,14 @@ describe("CartaoDoJev — por tarefa", () => {
     expect(nova).not.toHaveTextContent("Só observa");
     // O nome que a tela do agente mostra ("Segurança" é só o nosso), com o caminho.
     const semCamada = screen.getByTestId("jev-sem-camada-manipulacao");
-    expect(semCamada).toHaveTextContent(/Detectar tentativa de manipular o assistente.*empresa toda.*aba “Confere antes de enviar”/);
+    expect(semCamada).toHaveTextContent(
+      /Detectar tentativa de manipular o assistente.*empresa toda.*aba “Confere antes de enviar”/,
+    );
     expect(semCamada).not.toHaveTextContent(/Segurança/);
-    expect(within(semCamada).getByRole("link", { name: "Abrir os agentes" })).toHaveAttribute("href", "/app/ai/agents");
+    expect(within(semCamada).getByRole("link", { name: "Abrir os agentes" })).toHaveAttribute(
+      "href",
+      "/app/ai/agents",
+    );
     expect(screen.queryByTestId("jev-concordancia-manipulacao")).toBeNull();
     expect(within(nova).queryByRole("button", { name: "Deixar o Jev decidir" })).toBeNull();
     // A saída de quem não a quer continua lá.
@@ -1234,11 +1555,21 @@ describe("CartaoDoJev — por tarefa", () => {
     // O clima decide; a tarefa parada não faz o selo virar "Decide em parte".
     expect(screen.getByText("Decidindo")).toBeInTheDocument();
     expect(screen.queryByText("Decide em parte")).toBeNull();
-    expect(jevNoPonto(dados({ config: { ligado: true }, por_tarefa: [{ ...NOVA, sem_camada: true }] }), "jailbreak_detect")).toBeNull();
+    expect(
+      jevNoPonto(
+        dados({ config: { ligado: true }, por_tarefa: [{ ...NOVA, sem_camada: true }] }),
+        "jailbreak_detect",
+      ),
+    ).toBeNull();
   });
 
   it("controle: com a camada ligada, a mesma tarefa só observa e oferece decidir", () => {
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...NOVA, sem_camada: false }] }));
+    montar(
+      dados({
+        config: { ligado: true, modo: "observacao" },
+        por_tarefa: [{ ...NOVA, sem_camada: false }],
+      }),
+    );
     const nova = screen.getByTestId("jev-tarefa-manipulacao");
     expect(nova).toHaveTextContent("Só observa");
     expect(screen.queryByTestId("jev-sem-camada-manipulacao")).toBeNull();
@@ -1263,7 +1594,11 @@ describe("CartaoDoJev — por tarefa", () => {
         config: { ligado: true, modo: "decide" },
         por_tarefa: [
           { ...CLIMA, estado: "decidindo" },
-          { ...ROTEADOR, sem_roteador: true, observacao: { dias: 30, comparadas: 0, concordaram: 0 } },
+          {
+            ...ROTEADOR,
+            sem_roteador: true,
+            observacao: { dias: 30, comparadas: 0, concordaram: 0 },
+          },
         ],
       }),
     );
@@ -1271,15 +1606,28 @@ describe("CartaoDoJev — por tarefa", () => {
     expect(roteador).toHaveTextContent("Não roda");
     const semRoteador = screen.getByTestId("jev-sem-roteador-roteador");
     expect(semRoteador).toHaveTextContent(/nenhum roteador de intenção ativo tem intenções/);
-    expect(within(semRoteador).getByRole("link", { name: "Abrir os roteadores" })).toHaveAttribute("href", "/app/ai/routers");
+    expect(within(semRoteador).getByRole("link", { name: "Abrir os roteadores" })).toHaveAttribute(
+      "href",
+      "/app/ai/routers",
+    );
     expect(screen.queryByTestId("jev-concordancia-roteador")).toBeNull();
     expect(within(roteador).queryByRole("button", { name: "Deixar o Jev decidir" })).toBeNull();
     expect(screen.queryByText("Decide em parte")).toBeNull();
-    expect(jevNoPonto(dados({ config: { ligado: true }, por_tarefa: [{ ...ROTEADOR, sem_roteador: true }] }), "intent_router")).toBeNull();
+    expect(
+      jevNoPonto(
+        dados({ config: { ligado: true }, por_tarefa: [{ ...ROTEADOR, sem_roteador: true }] }),
+        "intent_router",
+      ),
+    ).toBeNull();
 
     // Controle: com roteador ativo, a mesma tarefa observa e oferece decidir.
     cleanup();
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...ROTEADOR, sem_roteador: false }] }));
+    montar(
+      dados({
+        config: { ligado: true, modo: "observacao" },
+        por_tarefa: [{ ...ROTEADOR, sem_roteador: false }],
+      }),
+    );
     const ativa = screen.getByTestId("jev-tarefa-roteador");
     expect(ativa).toHaveTextContent("Só observa");
     expect(screen.queryByTestId("jev-sem-roteador-roteador")).toBeNull();
@@ -1293,15 +1641,34 @@ describe("CartaoDoJev — por tarefa", () => {
 });
 
 describe("CartaoDoJev — sem a IA de sempre, as tarefas seguem com a linha delas", () => {
-  const CLIMA = { id: "clima", ponto: "sentiment_classify", rotulo: "Medir o clima da conversa", oQueFaz: "Mede.", novo: false } as const;
-  const NOVA = { id: "manipulacao", ponto: "jailbreak_detect", rotulo: "Perceber tentativa de manipulação", oQueFaz: "Percebe.", estado: "observando", novo: true } as const;
+  const CLIMA = {
+    id: "clima",
+    ponto: "sentiment_classify",
+    rotulo: "Medir o clima da conversa",
+    oQueFaz: "Mede.",
+    novo: false,
+  } as const;
+  const NOVA = {
+    id: "manipulacao",
+    ponto: "jailbreak_detect",
+    rotulo: "Perceber tentativa de manipulação",
+    oQueFaz: "Percebe.",
+    estado: "observando",
+    novo: true,
+  } as const;
 
   /**
    * Decidindo sozinho, as linhas ficavam sem selo e sem botão: a única saída de
    * uma tarefa nova era "Desligar" o Jev inteiro — e o clima junto.
    */
   it("decidindo sozinho: o clima diz que decide sozinho e só pausa; a tarefa nova observa, com os botões dela", () => {
-    montar(dados({ config: { ligado: true }, tem_ia_de_sempre: false, por_tarefa: [{ ...CLIMA, estado: "observando" }, NOVA] }));
+    montar(
+      dados({
+        config: { ligado: true },
+        tem_ia_de_sempre: false,
+        por_tarefa: [{ ...CLIMA, estado: "observando" }, NOVA],
+      }),
+    );
     expect(cartao()).toHaveAttribute("data-estado", "sozinho");
     expect(cartao()).toHaveTextContent(/Decidindo sozinho no clima/);
     const clima = screen.getByTestId("jev-tarefa-clima");
@@ -1316,13 +1683,23 @@ describe("CartaoDoJev — sem a IA de sempre, as tarefas seguem com a linha dela
   });
 
   it("o clima pausado sem a IA de sempre avisa ANTES de religar que ele volta decidindo sozinho", () => {
-    montar(dados({ config: { ligado: true }, tem_ia_de_sempre: false, por_tarefa: [{ ...CLIMA, estado: "desligada" }, NOVA] }));
-    expect(screen.getByTestId("jev-religar-clima-sozinho")).toHaveTextContent(/volta decidindo sozinho/);
+    montar(
+      dados({
+        config: { ligado: true },
+        tem_ia_de_sempre: false,
+        por_tarefa: [{ ...CLIMA, estado: "desligada" }, NOVA],
+      }),
+    );
+    expect(screen.getByTestId("jev-religar-clima-sozinho")).toHaveTextContent(
+      /volta decidindo sozinho/,
+    );
     expect(screen.getByTestId("jev-tarefa-clima")).toHaveTextContent("Pausada");
   });
 
   it("controle: com a IA de sempre, religar o clima não traz esse aviso", () => {
-    montar(dados({ config: { ligado: true }, por_tarefa: [{ ...CLIMA, estado: "desligada" }, NOVA] }));
+    montar(
+      dados({ config: { ligado: true }, por_tarefa: [{ ...CLIMA, estado: "desligada" }, NOVA] }),
+    );
     expect(screen.queryByTestId("jev-religar-clima-sozinho")).toBeNull();
   });
 
@@ -1332,7 +1709,15 @@ describe("CartaoDoJev — sem a IA de sempre, as tarefas seguem com a linha dela
         config: { ligado: true },
         por_tarefa: [
           { ...CLIMA, estado: "desligada" },
-          { id: "roteador", ponto: "intent_router", rotulo: "Escolher qual agente atende", oQueFaz: "Escolhe.", estado: "observando", novo: false, sem_roteador: true },
+          {
+            id: "roteador",
+            ponto: "intent_router",
+            rotulo: "Escolher qual agente atende",
+            oQueFaz: "Escolhe.",
+            estado: "observando",
+            novo: false,
+            sem_roteador: true,
+          },
         ],
       }),
     );
@@ -1342,46 +1727,75 @@ describe("CartaoDoJev — sem a IA de sempre, as tarefas seguem com a linha dela
   });
 });
 
-
 describe("modo independente do roteador", () => {
-  const comRoteador = (podeEditar = true, temIa = true) => dados({
-    config: { ligado: true, modo_roteador: "comparacao" }, pode_editar: podeEditar, roteador_tem_ia_de_sempre: temIa,
-    por_tarefa: [{ id: "roteador", ponto: "intent_router", rotulo: "Escolher qual agente atende",
-      oQueFaz: "Escolhe.", estado: "decidindo", novo: false }],
-  });
+  const comRoteador = (podeEditar = true, temIa = true) =>
+    dados({
+      config: { ligado: true, modo_roteador: "comparacao" },
+      pode_editar: podeEditar,
+      roteador_tem_ia_de_sempre: temIa,
+      por_tarefa: [
+        {
+          id: "roteador",
+          ponto: "intent_router",
+          rotulo: "Escolher qual agente atende",
+          oQueFaz: "Escolhe.",
+          estado: "decidindo",
+          novo: false,
+        },
+      ],
+    });
 
   it("explica o modo independente no cartão e no seletor do modelo, sem afirmar cobrança paralela", () => {
     const d = comRoteador();
     d.config.modo_roteador = "sob_demanda";
     montar(d);
-    expect(screen.getByTestId("jev-decide-roteador")).toHaveTextContent("A IA de sempre só entra em caso de falha");
+    expect(screen.getByTestId("jev-decide-roteador")).toHaveTextContent(
+      "A IA de sempre só entra em caso de falha",
+    );
     expect(screen.getByTestId("jev-decide-roteador")).not.toHaveTextContent("nunca só o Jev");
-    expect(jevNoPonto(d, "intent_router")).toEqual({ decide: "O Jev escolhe primeiro. A IA de sempre só entra em caso de falha, baixa confiança ou intenção inválida." });
+    expect(jevNoPonto(d, "intent_router")).toEqual({
+      decide:
+        "O Jev escolhe primeiro. A IA de sempre só entra em caso de falha, baixa confiança ou intenção inválida.",
+    });
   });
 
   it("oferece comparar ou chamar a reserva sob demanda, e grava a escolha", async () => {
     montar(comRoteador());
     const modo = screen.getByLabelText("Como o roteador consulta as IAs");
-    expect(modo).toHaveValue("comparacao");
-    fireEvent.change(modo, { target: { value: "sob_demanda" } });
+    expect(modo).toHaveTextContent("Comparar o Jev e a IA de sempre");
+    await escolherNoSeletor(modo, "Jev; IA de sempre só como reserva");
     await waitFor(() => expect(chamadas.some((c) => c.metodo === "PATCH")).toBe(true));
-    expect(chamadas.find((c) => c.metodo === "PATCH")?.corpo).toEqual({ modo_roteador: "sob_demanda" });
-    expect(screen.getByRole("link", { name: "Ver resultados do roteamento" })).toHaveAttribute("href", "/app/ai/runs?tab=roteamento");
+    expect(chamadas.find((c) => c.metodo === "PATCH")?.corpo).toEqual({
+      modo_roteador: "sob_demanda",
+    });
+    expect(screen.getByRole("link", { name: "Ver resultados do roteamento" })).toHaveAttribute(
+      "href",
+      "/app/ai/runs?tab=roteamento",
+    );
   });
 
   it("sem a IA de sempre (decisão B), a opção sob demanda não liga, e o cartão diz por quê", () => {
     montar(comRoteador(true, false));
     const modo = screen.getByLabelText("Como o roteador consulta as IAs");
-    expect(within(modo).getByRole("option", { name: "Jev; IA de sempre só como reserva" })).toBeDisabled();
-    expect(screen.getByTestId("jev-modo-roteador-sem-ia")).toHaveTextContent("Sem a sua IA de sempre, o Jev não escolhe o agente sozinho");
+    fireEvent.click(modo);
+    expect(
+      screen.getByRole("button", { name: "Jev; IA de sempre só como reserva" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("jev-modo-roteador-sem-ia")).toHaveTextContent(
+      "Sem a sua IA de sempre, o Jev não escolhe o agente sozinho",
+    );
   });
 
   it("sem a IA de sempre, um sob demanda gravado antes vale comparação: o seletor e a frase do cartão dizem isso", () => {
     const d = comRoteador(true, false);
     d.config.modo_roteador = "sob_demanda";
     montar(d);
-    expect(screen.getByLabelText("Como o roteador consulta as IAs")).toHaveValue("comparacao");
-    expect(jevNoPonto(d, "intent_router")).not.toEqual({ decide: expect.stringContaining("escolhe primeiro") });
+    expect(screen.getByLabelText("Como o roteador consulta as IAs")).toHaveTextContent(
+      "Comparar o Jev e a IA de sempre",
+    );
+    expect(jevNoPonto(d, "intent_router")).not.toEqual({
+      decide: expect.stringContaining("escolhe primeiro"),
+    });
   });
 
   it("quem só consulta vê o modo, mas não o altera", () => {
@@ -1397,7 +1811,13 @@ describe("modo independente do roteador", () => {
  * roda" onde nenhum follow-up publicado tem o passo "Classificar (IA)".
  */
 describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
-  const CLIMA = { id: "clima", ponto: "sentiment_classify", rotulo: "Medir o clima da conversa", oQueFaz: "Mede.", novo: false } as const;
+  const CLIMA = {
+    id: "clima",
+    ponto: "sentiment_classify",
+    rotulo: "Medir o clima da conversa",
+    oQueFaz: "Mede.",
+    novo: false,
+  } as const;
   const FOLLOWUP = {
     id: "followup",
     ponto: "followup_classify",
@@ -1420,33 +1840,55 @@ describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
   } as const;
 
   it("observando: a concordância é a mesma saída, diz por que não há o botão, e só as saídas de quem não a quer", () => {
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...CLIMA, estado: "observando" }, FOLLOWUP] }));
+    montar(
+      dados({
+        config: { ligado: true, modo: "observacao" },
+        por_tarefa: [{ ...CLIMA, estado: "observando" }, FOLLOWUP],
+      }),
+    );
     const linha = screen.getByTestId("jev-tarefa-followup");
     expect(linha).toHaveTextContent("Só observa");
     expect(screen.getByTestId("jev-concordancia-followup")).toHaveTextContent(
       "Nos últimos 30 dias, o Jev e a sua IA de sempre puseram a resposta do cliente na mesma saída do fluxo em 3 de 4 mensagens.",
     );
     expect(screen.getByTestId("jev-concordancia-numeros-followup")).toHaveTextContent("3 de 4");
-    expect(screen.getByTestId("jev-so-observa-followup")).toHaveTextContent(TAREFA_DO_FOLLOWUP.soObserva);
+    expect(screen.getByTestId("jev-so-observa-followup")).toHaveTextContent(
+      TAREFA_DO_FOLLOWUP.soObserva,
+    );
     // "Nova" sem prometer o botão que ela não tem.
-    expect(screen.getByTestId("jev-nova-followup")).toHaveTextContent("Começou sozinha, só observando: nada muda para o cliente.");
+    expect(screen.getByTestId("jev-nova-followup")).toHaveTextContent(
+      "Começou sozinha, só observando: nada muda para o cliente.",
+    );
     expect(screen.getByTestId("jev-nova-followup")).not.toHaveTextContent(/decidir/);
     expect(within(linha).queryByRole("button", { name: "Deixar o Jev decidir" })).toBeNull();
     expect(within(linha).getByRole("button", { name: "Manter só observando" })).toBeInTheDocument();
     expect(within(linha).getByRole("button", { name: "Pausar esta tarefa" })).toBeInTheDocument();
     // O clima segue oferecendo decidir, e a frase do cartão fala dele (controle).
-    expect(within(screen.getByTestId("jev-tarefa-clima")).getByRole("button", { name: "Deixar o Jev decidir" })).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("jev-tarefa-clima")).getByRole("button", {
+        name: "Deixar o Jev decidir",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(
       "Observando — a sua IA de sempre ainda decide. Compare os dois antes de deixar o Jev decidir.",
     );
     // No cartão do ponto: o Jev observa, o modelo decide.
-    expect(jevNoPonto(dados({ config: { ligado: true }, por_tarefa: [FOLLOWUP] }), "followup_classify")).toBe("observacao");
+    expect(
+      jevNoPonto(dados({ config: { ligado: true }, por_tarefa: [FOLLOWUP] }), "followup_classify"),
+    ).toBe("observacao");
   });
 
   it("só ela compara: a frase do cartão não promete deixar o Jev decidir", () => {
-    montar(dados({ config: { ligado: true, modo: "observacao" }, por_tarefa: [{ ...CLIMA, estado: "desligada" }, FOLLOWUP] }));
+    montar(
+      dados({
+        config: { ligado: true, modo: "observacao" },
+        por_tarefa: [{ ...CLIMA, estado: "desligada" }, FOLLOWUP],
+      }),
+    );
     const frase = screen.getByTestId("jev-tarefas").previousElementSibling;
-    expect(frase).toHaveTextContent("Observando — a sua IA de sempre decide, e o Jev só é comparado com ela.");
+    expect(frase).toHaveTextContent(
+      "Observando — a sua IA de sempre decide, e o Jev só é comparado com ela.",
+    );
     expect(frase).not.toHaveTextContent(/deixar o Jev decidir/);
   });
 
@@ -1459,21 +1901,31 @@ describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
       "decidindo",
       "Observando — onde o Jev compara, a sua IA de sempre decide, e ele só é comparado com ela. Nos pedidos do cliente, ele conta as mensagens em que a regra de hoje não reconheceu o pedido, e avisa a equipe.",
     ],
-  ] as const)("ela e um pedido %s: a frase diz o que cada uma faz, sem o botão que não há", (estadoDoPedido, esperada) => {
-    montar(
-      dados({
-        config: { ligado: true, modo: "observacao" },
-        por_tarefa: [{ ...CLIMA, estado: "desligada" }, FOLLOWUP, { ...HUMANO, estado: estadoDoPedido }],
-      }),
-    );
-    expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(esperada);
-  });
+  ] as const)(
+    "ela e um pedido %s: a frase diz o que cada uma faz, sem o botão que não há",
+    (estadoDoPedido, esperada) => {
+      montar(
+        dados({
+          config: { ligado: true, modo: "observacao" },
+          por_tarefa: [
+            { ...CLIMA, estado: "desligada" },
+            FOLLOWUP,
+            { ...HUMANO, estado: estadoDoPedido },
+          ],
+        }),
+      );
+      expect(screen.getByTestId("jev-tarefas").previousElementSibling).toHaveTextContent(esperada);
+    },
+  );
 
   it("sem follow-up publicado com o passo: diz que não roda e aponta onde publicar, sem comparação nem o porquê de só observar", () => {
     montar(
       dados({
         config: { ligado: true, modo: "observacao" },
-        por_tarefa: [{ ...CLIMA, estado: "observando" }, { ...FOLLOWUP, sem_fluxo: true, observacao: { dias: 30, comparadas: 0, concordaram: 0 } }],
+        por_tarefa: [
+          { ...CLIMA, estado: "observando" },
+          { ...FOLLOWUP, sem_fluxo: true, observacao: { dias: 30, comparadas: 0, concordaram: 0 } },
+        ],
       }),
     );
     const linha = screen.getByTestId("jev-tarefa-followup");
@@ -1481,12 +1933,20 @@ describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
     expect(linha).not.toHaveTextContent("Só observa");
     const semFluxo = screen.getByTestId("jev-sem-fluxo-followup");
     expect(semFluxo).toHaveTextContent("nenhum follow-up publicado tem o passo “Classificar (IA)”");
-    expect(within(semFluxo).getByRole("link", { name: "Abrir os follow-ups" })).toHaveAttribute("href", "/app/ai/followups");
+    expect(within(semFluxo).getByRole("link", { name: "Abrir os follow-ups" })).toHaveAttribute(
+      "href",
+      "/app/ai/followups",
+    );
     expect(screen.queryByTestId("jev-concordancia-followup")).toBeNull();
     expect(screen.queryByTestId("jev-so-observa-followup")).toBeNull();
     expect(screen.queryByTestId("jev-nova-followup")).toBeNull();
     expect(within(linha).getByRole("button", { name: "Pausar esta tarefa" })).toBeInTheDocument();
-    expect(jevNoPonto(dados({ config: { ligado: true }, por_tarefa: [{ ...FOLLOWUP, sem_fluxo: true }] }), "followup_classify")).toBeNull();
+    expect(
+      jevNoPonto(
+        dados({ config: { ligado: true }, por_tarefa: [{ ...FOLLOWUP, sem_fluxo: true }] }),
+        "followup_classify",
+      ),
+    ).toBeNull();
   });
 
   it("antes de ligar: sem follow-up que classifique, diz que não roda e por quê — e a frase não promete decidir", () => {
@@ -1509,18 +1969,25 @@ describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
       dados({
         por_tarefa: [
           { ...CLIMA, estado: "desligada", ao_ligar: "observando" },
-          { ...FOLLOWUP, estado: "desligada", ao_ligar: "observando", novo: false, sem_fluxo: true },
+          {
+            ...FOLLOWUP,
+            estado: "desligada",
+            ao_ligar: "observando",
+            novo: false,
+            sem_fluxo: true,
+          },
         ],
       }),
     );
     expect(screen.getByTestId("jev-ao-ligar-followup")).toHaveTextContent("(Não roda)");
     const semFluxoAoLigar = screen.getByTestId("jev-ao-ligar-sem-fluxo-followup");
-    expect(semFluxoAoLigar).toHaveTextContent(/nenhum follow-up publicado tem o passo “Classificar \(IA\)” com duas saídas ou mais/);
-    // O caminho para resolver, antes de ligar também — é a primeira impressão de quem ainda não publicou.
-    expect(within(semFluxoAoLigar).getByRole("link", { name: "Abrir os follow-ups" })).toHaveAttribute(
-      "href",
-      "/app/ai/followups",
+    expect(semFluxoAoLigar).toHaveTextContent(
+      /nenhum follow-up publicado tem o passo “Classificar \(IA\)” com duas saídas ou mais/,
     );
+    // O caminho para resolver, antes de ligar também — é a primeira impressão de quem ainda não publicou.
+    expect(
+      within(semFluxoAoLigar).getByRole("link", { name: "Abrir os follow-ups" }),
+    ).toHaveAttribute("href", "/app/ai/followups");
     // O clima observa e pode decidir: a frase de sempre (controle).
     expect(screen.getByTestId("jev-ao-ligar")).toHaveTextContent(
       "Onde ele só observa, a sua IA de sempre continua decidindo, e você compara os dois antes de deixar o Jev decidir.",

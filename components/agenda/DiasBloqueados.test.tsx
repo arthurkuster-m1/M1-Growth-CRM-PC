@@ -1,3 +1,4 @@
+import { escolherNoSeletor } from "@/tests/helpers/seletor-do-app";
 /**
  * ABRIR UM DIA PELA TELA — a metade da capacidade que não tinha por onde entrar.
  *
@@ -64,15 +65,15 @@ function corpoEnviado(): Record<string, unknown> {
 
 /** O campo de data virou o calendário do Notion: abre o painel e digita o dia (dd/mm/aaaa). */
 /** O seletor de hora do app: abre o botão, escolhe a hora e o minuto nas colunas e confirma. */
-async function escolherHora(
-  u: ReturnType<typeof userEvent.setup>,
-  rotulo: string,
-  hhmm: string,
-) {
+async function escolherHora(u: ReturnType<typeof userEvent.setup>, rotulo: string, hhmm: string) {
   const [hh, mm] = hhmm.split(":") as [string, string];
   await u.click(screen.getByRole("button", { name: rotulo }));
-  await u.click(within(screen.getByRole("listbox", { name: "Hora" })).getByRole("option", { name: hh }));
-  await u.click(within(screen.getByRole("listbox", { name: "Min" })).getByRole("option", { name: mm }));
+  await u.click(
+    within(screen.getByRole("listbox", { name: "Hora" })).getByRole("option", { name: hh }),
+  );
+  await u.click(
+    within(screen.getByRole("listbox", { name: "Min" })).getByRole("option", { name: mm }),
+  );
   await u.click(screen.getByRole("button", { name: "Pronto" }));
 }
 
@@ -110,7 +111,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     const u = userEvent.setup();
     montar();
 
-    await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
+    await escolherNoSeletor(screen.getByTestId("modo-do-dia"), "Abrir para atendimento");
     await escolherDia(u, "Dia", "01/10/2026");
     await escolherHora(u, "Das", "14:00");
     await escolherHora(u, "Até", "18:00");
@@ -129,7 +130,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     const u = userEvent.setup();
     montar();
 
-    await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
+    await escolherNoSeletor(screen.getByTestId("modo-do-dia"), "Abrir para atendimento");
     await escolherDia(u, "Dia", "01/10/2026");
     await escolherHora(u, "Das", "18:00");
     await escolherHora(u, "Até", "14:00");
@@ -142,7 +143,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     const u = userEvent.setup();
     montar();
 
-    await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
+    await escolherNoSeletor(screen.getByTestId("modo-do-dia"), "Abrir para atendimento");
     await escolherDia(u, "Dia", "01/10/2026");
     await escolherHora(u, "Das", "14:00");
     await escolherHora(u, "Até", "18:00");
@@ -151,12 +152,9 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     await u.click(screen.getByRole("button", { name: "Abrir este dia" }));
 
     await waitFor(() => expect(post).toHaveBeenCalledTimes(4));
-    expect(post.mock.calls.map((c) => (c[1] as { exception_date: string }).exception_date)).toEqual([
-      "2026-10-01",
-      "2026-10-08",
-      "2026-10-15",
-      "2026-10-22",
-    ]);
+    expect(post.mock.calls.map((c) => (c[1] as { exception_date: string }).exception_date)).toEqual(
+      ["2026-10-01", "2026-10-08", "2026-10-15", "2026-10-22"],
+    );
     // Um dia é uma linha: a faixa não pode variar ao longo do lote.
     for (const c of post.mock.calls) {
       expect(c[1]).toMatchObject({ is_unavailable: false, start_minute: 840, end_minute: 1080 });
@@ -168,7 +166,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     const u = userEvent.setup();
     montar();
 
-    await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
+    await escolherNoSeletor(screen.getByTestId("modo-do-dia"), "Abrir para atendimento");
     await escolherDia(u, "Dia", "01/10/2026");
     // Dez anos: é o dedo escorregando na data, e sem teto viraria 520 linhas.
     await escolherDia(u, "Repetir toda semana até (opcional)", "01/10/2036");
@@ -196,7 +194,7 @@ describe("Dias fora da rotina — fechar e abrir", () => {
     montar();
     await screen.findByText(/08\/10\/2026|10\/8\/2026/);
 
-    await u.selectOptions(screen.getByTestId("modo-do-dia"), "abrir");
+    await escolherNoSeletor(screen.getByTestId("modo-do-dia"), "Abrir para atendimento");
     await escolherDia(u, "Dia", "01/10/2026");
     await escolherHora(u, "Das", "14:00");
     await escolherHora(u, "Até", "18:00");
@@ -205,10 +203,9 @@ describe("Dias fora da rotina — fechar e abrir", () => {
 
     // 01, 08 e 15 eram os alvos; o 08 já existia com a MESMA faixa.
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
-    expect(post.mock.calls.map((c) => (c[1] as { exception_date: string }).exception_date)).toEqual([
-      "2026-10-01",
-      "2026-10-15",
-    ]);
+    expect(post.mock.calls.map((c) => (c[1] as { exception_date: string }).exception_date)).toEqual(
+      ["2026-10-01", "2026-10-15"],
+    );
     expect(await screen.findByTestId("resultado-do-lote")).toHaveTextContent("1");
   });
 });

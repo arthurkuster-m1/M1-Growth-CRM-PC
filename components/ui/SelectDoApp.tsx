@@ -24,12 +24,17 @@ function textoDe(no: ReactNode): string {
 function lerOpcoes(filhos: ReactNode, saida: OpcaoDoPopup[] = []): OpcaoDoPopup[] {
   Children.forEach(filhos, (filho) => {
     if (!isValidElement(filho)) return;
-    const el = filho as ReactElement<{ value?: string | number; children?: ReactNode }>;
+    const el = filho as ReactElement<{
+      value?: string | number;
+      children?: ReactNode;
+      disabled?: boolean;
+    }>;
     if (el.type === Fragment) lerOpcoes(el.props.children, saida);
     else if (el.type === "option") {
       saida.push({
         id: String(el.props.value ?? textoDe(el.props.children)),
         rotulo: textoDe(el.props.children),
+        desabilitada: el.props.disabled,
       });
     } else if (el.type === "optgroup") lerOpcoes(el.props.children, saida);
   });
@@ -48,6 +53,7 @@ interface Props {
   className?: string;
   disabled?: boolean;
   id?: string;
+  "data-testid"?: string;
   "aria-label"?: string;
   title?: string;
 }
@@ -68,6 +74,8 @@ export function SelectDoApp({
   disabled,
   "aria-label": ariaLabel,
   title,
+  id,
+  "data-testid": testId,
 }: Props) {
   const [interno, setInterno] = useState(String(defaultValue ?? ""));
   const atual = value === undefined ? interno : String(value);
@@ -81,6 +89,8 @@ export function SelectDoApp({
       rotuloVazio={vazia?.rotulo}
       desabilitado={disabled}
       className={className}
+      id={id}
+      data-testid={testId}
       aoEscolher={(id) => {
         setInterno(id);
         onChange?.({ target: { value: id } });
