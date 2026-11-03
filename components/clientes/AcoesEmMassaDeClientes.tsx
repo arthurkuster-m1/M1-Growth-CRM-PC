@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import { apiClient } from "@/lib/api/client";
 
 type Dialogo = "tag" | "campanha" | "excluir" | "acao" | null;
 
-const classeDoSelect = "h-9 w-full rounded-lg border bg-card px-2 text-sm";
 const NOVA = "__nova";
 
 /**
@@ -167,9 +167,7 @@ export function AcoesEmMassaDeClientes({
       const { excluidos, falhas } = r.data;
       if (excluidos > 0) toast.success(`${excluidos} ${t("leads excluídos")}`);
       if (falhas.length > 0) {
-        toast.error(
-          `${falhas.length} ${t("não puderam ser excluídos")}: ${falhas[0]!.motivo}`,
-        );
+        toast.error(`${falhas.length} ${t("não puderam ser excluídos")}: ${falhas[0]!.motivo}`);
       }
       setDialogo(null);
       aoLimpar();
@@ -240,7 +238,10 @@ export function AcoesEmMassaDeClientes({
                 <Button variant="ghost" onClick={() => setDialogo(null)}>
                   {t("Cancelar")}
                 </Button>
-                <Button disabled={trabalhando || tags.length === 0} onClick={() => void aplicarTags()}>
+                <Button
+                  disabled={trabalhando || tags.length === 0}
+                  onClick={() => void aplicarTags()}
+                >
                   {t("Aplicar")}
                 </Button>
               </DialogFooter>
@@ -291,18 +292,12 @@ export function AcoesEmMassaDeClientes({
                   </div>
                   <div className="grid gap-1">
                     <Label>{t("Modelo de funil")}</Label>
-                    <select
-                      className={classeDoSelect}
-                      value={modelo}
-                      onChange={(e) => setModelo(e.target.value)}
-                    >
-                      <option value="">{t("Etapas iniciais padrão")}</option>
-                      {(modelos.data ?? []).map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SeletorEmPopup
+                      valor={modelo}
+                      aoEscolher={setModelo}
+                      rotuloVazio={t("Etapas iniciais padrão")}
+                      opcoes={(modelos.data ?? []).map((m) => ({ id: m.id, rotulo: m.name }))}
+                    />
                   </div>
                 </div>
               ) : null}
@@ -311,9 +306,7 @@ export function AcoesEmMassaDeClientes({
                   {t("Cancelar")}
                 </Button>
                 <Button
-                  disabled={
-                    trabalhando || !campanhaId || (campanhaId === NOVA && !nome.trim())
-                  }
+                  disabled={trabalhando || !campanhaId || (campanhaId === NOVA && !nome.trim())}
                   onClick={() =>
                     void (campanhaId === NOVA ? criarReativacao() : colocarEmCampanha())
                   }

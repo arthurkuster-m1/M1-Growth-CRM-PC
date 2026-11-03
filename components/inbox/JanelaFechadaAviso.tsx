@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useT } from "@/hooks/i18n/useT";
 
 import { Button } from "@/components/ui/button";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
@@ -229,7 +230,12 @@ export function JanelaFechadaAviso({
     );
   }
 
-  if (!fonte) return <p role="status" className="border-t px-4 py-3 text-sm text-muted-foreground">{motivo}</p>;
+  if (!fonte)
+    return (
+      <p role="status" className="border-t px-4 py-3 text-sm text-muted-foreground">
+        {motivo}
+      </p>
+    );
 
   return (
     <div className="border-t border-amber-300 bg-amber-50/60 px-4 py-3 dark:border-amber-800/60 dark:bg-amber-950/30">
@@ -239,29 +245,25 @@ export function JanelaFechadaAviso({
         // Sem modelo aprovado não há saída por aqui, e dizer isso é melhor que
         // um seletor vazio que se lê como "ainda não carregou".
         <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
-          {t("Nenhum modelo aprovado ainda. Crie um em")} <strong>{t("Conexões → Templates")}</strong>{" "}
-          {t("e envie quando a plataforma aprovar.")}
+          {t("Nenhum modelo aprovado ainda. Crie um em")}{" "}
+          <strong>{t("Conexões → Templates")}</strong> {t("e envie quando a plataforma aprovar.")}
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={escolhido}
-            onChange={(e) => escolher(e.target.value)}
-            disabled={send.isPending}
-            aria-label={t("Modelo aprovado")}
-            className={cn(
-              "h-9 min-w-[16rem] flex-1 rounded-xl border border-input bg-background px-2 text-sm",
-              "focus:outline-hidden focus:ring-1 focus:ring-ring",
-            )}
-          >
-            <option value="">{t("Escolha um modelo aprovado…")}</option>
-            {aprovados.map((tpl) => (
-              <option key={`${tpl.name}|${tpl.language}`} value={`${tpl.name}|${tpl.language}`}>
-                {tpl.name} ({tpl.language})
-                {(tpl.slots?.length ?? 0) > 0 ? ` · ${tpl.slots!.length} ${t("parâmetro(s)")}` : ""}
-              </option>
-            ))}
-          </select>
+          <SeletorEmPopup
+            valor={escolhido}
+            aoEscolher={escolher}
+            desabilitado={send.isPending}
+            rotulo={t("Modelo aprovado")}
+            rotuloVazio={t("Escolha um modelo aprovado…")}
+            className="min-w-[16rem] flex-1"
+            opcoes={aprovados.map((tpl) => ({
+              id: `${tpl.name}|${tpl.language}`,
+              rotulo: `${tpl.name} (${tpl.language})${
+                (tpl.slots?.length ?? 0) > 0 ? ` · ${tpl.slots!.length} ${t("parâmetro(s)")}` : ""
+              }`,
+            }))}
+          />
           {/* Desabilitado enquanto faltar valor: é a mesma conta que o servidor
               refaz em `missingSlots`, adiantada para antes do clique. */}
           <Button
@@ -285,14 +287,12 @@ export function JanelaFechadaAviso({
               <input
                 type={ehMidia(slot) ? "url" : "text"}
                 value={valores[slot.valueKey] ?? ""}
-                onChange={(e) =>
-                  setValores((v) => ({ ...v, [slot.valueKey]: e.target.value }))
-                }
+                onChange={(e) => setValores((v) => ({ ...v, [slot.valueKey]: e.target.value }))}
                 disabled={send.isPending}
                 placeholder={ehMidia(slot) ? "https://…" : ""}
                 className={cn(
                   "h-9 rounded-xl border border-input bg-background px-2 text-sm",
-                  "focus:outline-hidden focus:ring-1 focus:ring-ring",
+                  "focus:ring-1 focus:ring-ring focus:outline-hidden",
                 )}
               />
               {ehMidia(slot) && atual?.savedValues !== undefined && (
@@ -318,7 +318,9 @@ export function JanelaFechadaAviso({
               expected IMAGE, received UNKNOWN`. */}
           {slots.some(ehMidia) && (
             <p className="text-[11px] text-amber-900/70 dark:text-amber-200/70">
-              {t("A mídia do modelo entra por link público — a plataforma baixa o arquivo na hora do envio.")}
+              {t(
+                "A mídia do modelo entra por link público — a plataforma baixa o arquivo na hora do envio.",
+              )}
             </p>
           )}
         </div>

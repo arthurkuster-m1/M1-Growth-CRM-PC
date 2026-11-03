@@ -26,6 +26,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
 import { CampoDeData } from "@/components/motor/CalendarioDePeriodo";
 import { Button } from "@/components/ui/button";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
@@ -444,18 +445,16 @@ export function CadastroDoLead({
                   void adicionarLink();
                 }}
               >
-                <select
-                  aria-label={t("De onde é o link")}
-                  value={novoLink.tipo}
-                  onChange={(e) => setNovoLink({ ...novoLink, tipo: e.target.value as TipoDeLink })}
-                  className="h-9 rounded-xl border bg-card px-2 text-sm"
-                >
-                  {TIPOS_DE_LINK.filter((l) => !links[l.id]?.trim()).map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.rotulo}
-                    </option>
-                  ))}
-                </select>
+                <SeletorEmPopup
+                  rotulo={t("De onde é o link")}
+                  valor={novoLink.tipo}
+                  aoEscolher={(id) => setNovoLink({ ...novoLink, tipo: id as TipoDeLink })}
+                  opcoes={TIPOS_DE_LINK.filter((l) => !links[l.id]?.trim()).map((l) => ({
+                    id: l.id,
+                    rotulo: l.rotulo,
+                  }))}
+                  className="w-48"
+                />
                 <Input
                   autoFocus
                   value={novoLink.url}

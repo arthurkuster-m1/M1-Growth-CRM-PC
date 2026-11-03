@@ -20,6 +20,7 @@ import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoE
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { COR_DO_CICLO, ehCicloDeVida, ROTULO_DO_CICLO } from "@/lib/ciclo-de-vida";
 import { AbrirConversaDoLead } from "@/components/kanban/AbrirConversaDoLead";
@@ -307,19 +308,16 @@ export function TopoDoLead({
           <PopoverContent align="start" className="w-64 p-3">
             <label className="grid gap-1 text-xs text-muted-foreground">
               {t("Gestor de Relacionamento")}
-              <select
-                disabled={!podeEditar}
-                value={ciclo.data.dono_user_id ?? ""}
-                onChange={(e) => void mudarDono(e.target.value)}
-                className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground disabled:opacity-60"
-              >
-                <option value="">{t("Sem dono")}</option>
-                {(membros.data ?? []).map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.full_name?.trim() || t("Sem nome")}
-                  </option>
-                ))}
-              </select>
+              <SeletorEmPopup
+                desabilitado={!podeEditar}
+                valor={ciclo.data.dono_user_id ?? ""}
+                aoEscolher={(id) => void mudarDono(id)}
+                rotuloVazio={t("Sem dono")}
+                opcoes={(membros.data ?? []).map((m) => ({
+                  id: m.user_id,
+                  rotulo: m.full_name?.trim() || t("Sem nome"),
+                }))}
+              />
             </label>
           </PopoverContent>
         </Popover>
