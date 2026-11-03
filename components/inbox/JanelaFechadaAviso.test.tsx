@@ -30,9 +30,7 @@ vi.mock("@tanstack/react-query", () => ({
             name: "aviso_debriefing_adv",
             language: "pt_BR",
             status: "APPROVED",
-            slots: [
-              { key: "1", expects: "image", onde: "cabeçalho", valueKey: "header:1" },
-            ],
+            slots: [{ key: "1", expects: "image", onde: "cabeçalho", valueKey: "header:1" }],
             savedValues: salvos.valores,
             components: [{ type: "BODY", text: "Aviso automático." }],
           },
@@ -79,10 +77,8 @@ describe("JanelaFechadaAviso", () => {
     const user = userEvent.setup();
     montar();
 
-    await user.selectOptions(
-      screen.getByRole("combobox"),
-      "aviso_debriefing_adv|pt_BR",
-    );
+    await user.click(screen.getByRole("button", { name: "Modelo aprovado" }));
+    await user.click(screen.getByRole("button", { name: /^aviso_debriefing_adv/ }));
 
     expect(screen.getByRole("button", { name: /Enviar modelo/ })).toBeDisabled();
     expect(mutate).not.toHaveBeenCalled();
@@ -92,10 +88,8 @@ describe("JanelaFechadaAviso", () => {
     const user = userEvent.setup();
     montar();
 
-    await user.selectOptions(
-      screen.getByRole("combobox"),
-      "aviso_debriefing_adv|pt_BR",
-    );
+    await user.click(screen.getByRole("button", { name: "Modelo aprovado" }));
+    await user.click(screen.getByRole("button", { name: /^aviso_debriefing_adv/ }));
     await user.type(screen.getByRole("textbox"), "https://exemplo.com/capa.jpg");
 
     const botao = screen.getByRole("button", { name: /Enviar modelo/ });
@@ -116,10 +110,8 @@ describe("JanelaFechadaAviso", () => {
     const user = userEvent.setup();
     montar();
 
-    await user.selectOptions(
-      screen.getByRole("combobox"),
-      "aviso_debriefing_adv|pt_BR",
-    );
+    await user.click(screen.getByRole("button", { name: "Modelo aprovado" }));
+    await user.click(screen.getByRole("button", { name: /^aviso_debriefing_adv/ }));
 
     expect(screen.getByRole("textbox")).toHaveValue("https://exemplo.com/salva.jpg");
     expect(screen.getByRole("button", { name: /Enviar modelo/ })).toBeEnabled();

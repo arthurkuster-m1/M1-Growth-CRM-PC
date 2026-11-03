@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlocoDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -74,7 +75,11 @@ export function CicloDeVidaDoLead({
     return valor;
   };
   const rotuloDaEntidade = (e: string) =>
-    e === "pessoa" ? t("Cliente") : e === "oportunidade" ? t("Oportunidade (etapa)") : t("Pagamento");
+    e === "pessoa"
+      ? t("Cliente")
+      : e === "oportunidade"
+        ? t("Oportunidade (etapa)")
+        : t("Pagamento");
 
   async function mudarDono(id: string) {
     try {
@@ -113,27 +118,22 @@ export function CicloDeVidaDoLead({
         <dl className="grid gap-3 sm:grid-cols-2">
           <div>
             <dt className="text-xs text-muted-foreground">{t("Ativo até (próxima recompra)")}</dt>
-            <dd className="text-sm font-medium">
-              {d.ativo_ate ? dia(d.ativo_ate) : "—"}
-            </dd>
+            <dd className="text-sm font-medium">{d.ativo_ate ? dia(d.ativo_ate) : "—"}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">{t("Gestor de Relacionamento")}</dt>
             <dd>
-              <select
-                aria-label={t("Gestor de Relacionamento")}
-                disabled={!podeEditar}
-                value={d.dono_user_id ?? ""}
-                onChange={(e) => void mudarDono(e.target.value)}
-                className="h-9 w-full rounded-xl border bg-card px-2 text-sm disabled:opacity-60"
-              >
-                <option value="">{t("Sem dono")}</option>
-                {(membros.data ?? []).map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.full_name?.trim() || t("Sem nome")}
-                  </option>
-                ))}
-              </select>
+              <SeletorEmPopup
+                rotulo={t("Gestor de Relacionamento")}
+                desabilitado={!podeEditar}
+                valor={d.dono_user_id ?? ""}
+                aoEscolher={(id) => void mudarDono(id)}
+                rotuloVazio={t("Sem dono")}
+                opcoes={(membros.data ?? []).map((m) => ({
+                  id: m.user_id,
+                  rotulo: m.full_name?.trim() || t("Sem nome"),
+                }))}
+              />
               {d.dono_user_id && !nomeDe(d.dono_user_id) ? (
                 <span className="text-xs text-muted-foreground">{t("Fora da equipe")}</span>
               ) : null}
@@ -154,8 +154,9 @@ export function CicloDeVidaDoLead({
                   <span className="min-w-0 truncate font-medium">{p.nome}</span>
                   <span className="text-xs text-muted-foreground">
                     {p.janela_meses} {p.janela_meses === 1 ? t("mês") : t("meses")}
-                    {p.janela_propria ? "" : ` (${t("padrão da empresa")})`} · {t("último pagamento")}{" "}
-                    {dia(p.ultimo_pagamento)} · {t("ativo até")} {dia(p.ativo_ate)}
+                    {p.janela_propria ? "" : ` (${t("padrão da empresa")})`} ·{" "}
+                    {t("último pagamento")} {dia(p.ultimo_pagamento)} · {t("ativo até")}{" "}
+                    {dia(p.ativo_ate)}
                   </span>
                 </li>
               ))}

@@ -13,13 +13,11 @@ import {
   useQualificacaoDoContato,
 } from "@/components/contacts/ficha/dados-da-ficha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
-import {
-  OrigemEmCascata,
-  type ValorDaOrigem,
-} from "@/components/contacts/ficha/OrigemEmCascata";
+import { OrigemEmCascata, type ValorDaOrigem } from "@/components/contacts/ficha/OrigemEmCascata";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { corpoDaOrigem, valorDaOrigemDoCard } from "@/components/contacts/ficha/origem-do-card";
 import { Button } from "@/components/ui/button";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import {
   aplicarConsulta,
   consultaAtiva,
@@ -42,8 +40,13 @@ import { nomeDaVenda, type Venda } from "@/lib/vendas";
 
 const reais = (c: number) => moedaDoNumero(c / 100);
 const corDoStatusDaVenda = (s: string) =>
-  s === "concluida" ? "green" : s === "comprometida" ? "yellow" : s === "cancelada" ? "gray" : "blue";
-const SELECT = "h-9 w-full rounded-lg border bg-card px-2 text-sm disabled:opacity-60";
+  s === "concluida"
+    ? "green"
+    : s === "comprometida"
+      ? "yellow"
+      : s === "cancelada"
+        ? "gray"
+        : "blue";
 
 const ROTULO_VENDA: Record<string, string> = {
   interesse: "Interesse",
@@ -74,8 +77,8 @@ export function FunisDoLead({
     retry: false,
     staleTime: 10_000,
     queryFn: async () =>
-      (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`)).data
-        .vendas,
+      (await apiClient.get<{ data: { vendas: Venda[] } }>(`/api/v1/vendas?contato=${contactId}`))
+        .data.vendas,
   });
   const equipe = useEquipeDaFicha();
   const [busca, setBusca] = useState("");
@@ -109,7 +112,12 @@ export function FunisDoLead({
   const campos: Array<
     CampoConsultavel<LinhaDoFunil> & { titulo: string; opcoes?: { id: string; rotulo: string }[] }
   > = [
-    { id: "funil", titulo: t("Funil"), tipo: "texto", valorDe: (l) => l.n.negocio.funil_nome ?? "" },
+    {
+      id: "funil",
+      titulo: t("Funil"),
+      tipo: "texto",
+      valorDe: (l) => l.n.negocio.funil_nome ?? "",
+    },
     {
       id: "venda",
       titulo: t("Venda"),
@@ -125,7 +133,12 @@ export function FunisDoLead({
       rotuloDoValor: rotuloSituacao,
       ordemDoValor: (v) => SITUACOES.indexOf(v as (typeof SITUACOES)[number]),
     },
-    { id: "etapa", titulo: t("Etapa"), tipo: "texto", valorDe: (l) => l.n.negocio.etapa_nome ?? "" },
+    {
+      id: "etapa",
+      titulo: t("Etapa"),
+      tipo: "texto",
+      valorDe: (l) => l.n.negocio.etapa_nome ?? "",
+    },
     {
       id: "status_venda",
       titulo: t("Status da venda"),
@@ -218,7 +231,12 @@ export function FunisDoLead({
             className="h-9 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
         </label>
-        <BarraDeConsulta compacta campos={camposDaBarra} consulta={consulta} aoMudar={setConsulta} />
+        <BarraDeConsulta
+          compacta
+          campos={camposDaBarra}
+          consulta={consulta}
+          aoMudar={setConsulta}
+        />
       </div>
       {resultado.linhas.length === 0 ? (
         <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
@@ -301,7 +319,10 @@ function CartaoDoFunil({
   const alterar = (patch: Record<string, unknown>, ok?: string) =>
     executar(() => apiClient.patch(`/api/v1/leads/${n.lead_id}`, patch), ok);
   const mudarOrigem = (corpo: Record<string, unknown>) =>
-    executar(() => apiClient.put(`/api/v1/leads/${n.lead_id}/origem`, corpo), t("Origem atualizada"));
+    executar(
+      () => apiClient.put(`/api/v1/leads/${n.lead_id}/origem`, corpo),
+      t("Origem atualizada"),
+    );
 
   const mover = (etapaId: string) =>
     executar(
@@ -386,7 +407,12 @@ function CartaoDoFunil({
         selos: (
           <>
             <SeloDaFicha cor={status === "won" ? "green" : status === "lost" ? "red" : "blue"}>
-              {n.negocio.etapa_nome ?? (status === "won" ? t("Ganho") : status === "lost" ? t("Perdido") : t("Em andamento"))}
+              {n.negocio.etapa_nome ??
+                (status === "won"
+                  ? t("Ganho")
+                  : status === "lost"
+                    ? t("Perdido")
+                    : t("Em andamento"))}
             </SeloDaFicha>
             {vendas[0] ? (
               <SeloDaFicha cor={corDoStatusDaVenda(vendas[0].status)}>
@@ -402,12 +428,19 @@ function CartaoDoFunil({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="grid gap-1">
           <Label className="text-xs">{t("Etapa (diz se a venda deu certo)")}</Label>
-          <select
-            className={SELECT}
-            disabled={!podeEditar}
-            value={n.negocio.etapa_id ?? ""}
-            onChange={(e) => {
-              const id = e.target.value;
+          <SeletorEmPopup
+            desabilitado={!podeEditar}
+            valor={n.negocio.etapa_id ?? ""}
+            opcoes={[
+              ...etapasAbertas.map((e) => ({ id: e.id, rotulo: e.nome })),
+              ...etapas
+                .filter((e) => e.ganho)
+                .map((e) => ({ id: e.id, rotulo: `${t("Deu certo")} · ${e.nome}` })),
+              ...etapas
+                .filter((e) => e.perdido)
+                .map((e) => ({ id: e.id, rotulo: `${t("Não deu certo")} · ${e.nome}` })),
+            ]}
+            aoEscolher={(id) => {
               if (!id || id === n.negocio.etapa_id) return;
               const alvo = etapas.find((x) => x.id === id);
               if (alvo?.perdido) setPerdendo(true);
@@ -426,53 +459,21 @@ function CartaoDoFunil({
                 }, t("Marcado como ganho"));
               else void mover(id);
             }}
-          >
-            <optgroup label={t("Em andamento")}>
-              {etapasAbertas.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome}
-                </option>
-              ))}
-            </optgroup>
-            {etapas.some((e) => e.ganho) ? (
-              <optgroup label={t("Deu certo")}>
-                {etapas
-                  .filter((e) => e.ganho)
-                  .map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.nome}
-                    </option>
-                  ))}
-              </optgroup>
-            ) : null}
-            {etapas.some((e) => e.perdido) ? (
-              <optgroup label={t("Não deu certo")}>
-                {etapas
-                  .filter((e) => e.perdido)
-                  .map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.nome}
-                    </option>
-                  ))}
-              </optgroup>
-            ) : null}
-          </select>
+          />
         </div>
         <div className="grid gap-1">
           <Label className="text-xs">{t("Responsável")}</Label>
-          <select
-            className={SELECT}
-            disabled={!podeEditar}
-            value={n.sistema.dono_id ?? ""}
-            onChange={(e) => void alterar({ owner_user_id: e.target.value || null }, t("Responsável atualizado"))}
-          >
-            <option value="">{n.sistema.responsavel_tipo === "agent" ? t("Agente de IA") : t("Sem responsável")}</option>
-            {equipe.map((p) => (
-              <option key={p.user_id} value={p.user_id}>
-                {p.name ?? p.email ?? p.user_id}
-              </option>
-            ))}
-          </select>
+          <SeletorEmPopup
+            desabilitado={!podeEditar}
+            valor={n.sistema.dono_id ?? ""}
+            aoEscolher={(id) =>
+              void alterar({ owner_user_id: id || null }, t("Responsável atualizado"))
+            }
+            rotuloVazio={
+              n.sistema.responsavel_tipo === "agent" ? t("Agente de IA") : t("Sem responsável")
+            }
+            opcoes={equipe.map((p) => ({ id: p.user_id, rotulo: p.name ?? p.email ?? p.user_id }))}
+          />
         </div>
         <div className="grid gap-1">
           <Label className="text-xs">{t("Previsão de fechamento")}</Label>
@@ -496,7 +497,8 @@ function CartaoDoFunil({
           placeholder={t("Contexto desta negociação…")}
           onChange={(e) => setDescricao(e.target.value)}
           onBlur={() => {
-            if (descricao !== (n.negocio.description ?? "")) void alterar({ description: descricao || null });
+            if (descricao !== (n.negocio.description ?? ""))
+              void alterar({ description: descricao || null });
           }}
         />
       </div>
@@ -529,7 +531,9 @@ function CartaoDoFunil({
             ) : null}
           </div>
           {vendas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("Nenhuma venda atrelada a este funil.")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("Nenhuma venda atrelada a este funil.")}
+            </p>
           ) : (
             <ul className="grid min-w-0 gap-1.5">
               {vendas.map((v) => (

@@ -6,8 +6,12 @@ import { useState } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
-import { invalidarCategoriasDeTags, useCategoriasDeTags } from "@/components/tags/CoresDasEtiquetas";
+import {
+  invalidarCategoriasDeTags,
+  useCategoriasDeTags,
+} from "@/components/tags/CoresDasEtiquetas";
 import { Button } from "@/components/ui/button";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { Input } from "@/components/ui/input";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
@@ -22,7 +26,12 @@ import { cn } from "@/lib/utils";
 const SEM_CATEGORIA = "__sem__";
 const NOVA_CATEGORIA = "__nova__";
 /** As categorias que o sistema preenche sozinho: nenhuma tag digitada à mão entra nelas. */
-const CATEGORIAS_DO_SISTEMA: ReadonlySet<string> = new Set(["acao", "tracking", "funil", "qualificacao"]);
+const CATEGORIAS_DO_SISTEMA: ReadonlySet<string> = new Set([
+  "acao",
+  "tracking",
+  "funil",
+  "qualificacao",
+]);
 
 /**
  * Escolher tags para aplicar em vários leads, no mesmo jeito da ficha do lead: as tags já
@@ -98,7 +107,9 @@ export function SeletorDeTagsEmMassa({
         return;
       }
       const id = criando ? `c_${Date.now().toString(36)}` : categoriaDaNova;
-      const categorias = criando ? [...config.categorias, { id, nome, cor: corDaCategoria }] : config.categorias;
+      const categorias = criando
+        ? [...config.categorias, { id, nome, cor: corDaCategoria }]
+        : config.categorias;
       try {
         await apiClient.put("/api/v1/tags/categorias", {
           categorias: categorias.map((c) => ({ id: c.id, nome: c.nome, cor: c.cor })),
@@ -168,7 +179,12 @@ export function SeletorDeTagsEmMassa({
         {sugestoes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 rounded-xl border bg-muted/30 p-2">
             {sugestoes.map((tag) => (
-              <button key={tag} type="button" onClick={() => alternar(tag)} className="rounded-full">
+              <button
+                key={tag}
+                type="button"
+                onClick={() => alternar(tag)}
+                className="rounded-full"
+              >
                 <ChipDeEtiqueta tag={tag} contorno />
               </button>
             ))}
@@ -179,19 +195,15 @@ export function SeletorDeTagsEmMassa({
           <div className="grid gap-2 rounded-xl border p-2.5">
             <label className="grid gap-1 text-xs font-medium text-muted-foreground">
               {t("Categoria da nova tag")}
-              <select
-                value={categoriaDaNova}
-                onChange={(e) => setCategoriaDaNova(e.target.value)}
-                className="h-9 rounded-xl border bg-card px-2 text-sm text-foreground"
-              >
-                <option value={SEM_CATEGORIA}>{t("Sem categoria")}</option>
-                {categoriasManuais.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-                <option value={NOVA_CATEGORIA}>{t("+ Nova categoria…")}</option>
-              </select>
+              <SeletorEmPopup
+                valor={categoriaDaNova}
+                aoEscolher={setCategoriaDaNova}
+                opcoes={[
+                  { id: SEM_CATEGORIA, rotulo: t("Sem categoria") },
+                  ...categoriasManuais.map((c) => ({ id: c.id, rotulo: c.nome })),
+                  { id: NOVA_CATEGORIA, rotulo: t("+ Nova categoria…") },
+                ]}
+              />
             </label>
             {categoriaDaNova === NOVA_CATEGORIA ? (
               <div className="grid gap-2">

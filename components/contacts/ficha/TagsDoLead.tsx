@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -189,22 +190,19 @@ function ChipArrastavel({
               </Button>
             </div>
             <p className="mt-3 mb-1 text-xs font-medium text-muted-foreground">{t("Categoria")}</p>
-            <select
-              className="h-8 w-full rounded-xl border bg-card px-2 text-sm disabled:opacity-60"
-              disabled={!podeGerir}
-              value={categoria?.id ?? SEM_CATEGORIA}
-              onChange={(e) => {
-                aoMoverDeCategoria(e.target.value);
+            <SeletorEmPopup
+              rotulo={t("Categoria")}
+              desabilitado={!podeGerir}
+              valor={categoria?.id ?? SEM_CATEGORIA}
+              aoEscolher={(id) => {
+                aoMoverDeCategoria(id);
                 setAberto(false);
               }}
-            >
-              <option value={SEM_CATEGORIA}>{t("Sem categoria")}</option>
-              {config.categorias.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
+              opcoes={[
+                { id: SEM_CATEGORIA, rotulo: t("Sem categoria") },
+                ...config.categorias.map((c) => ({ id: c.id, rotulo: c.nome })),
+              ]}
+            />
             {!podeGerir ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {t("Só gerentes mudam a categoria de uma tag.")}
@@ -877,7 +875,7 @@ export function TagsDoLead({
     <BlocoDaFicha titulo={t("Tags")} cor="red">
       {/* As ferramentas ficam no fim da mesma linha das tags, sem uma linha só para elas. */}
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 max-w-full flex-1 basis-64">
+        <div className="max-w-full min-w-0 flex-1 basis-64">
           {filtroPersonalizado ? (
             <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
               {t("Filtro ativo")}:{" "}
@@ -914,7 +912,7 @@ export function TagsDoLead({
             chips(visiveis)
           )}
         </div>
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           <SeletorDeCategorias
             config={config}
             filtro={filtro}
