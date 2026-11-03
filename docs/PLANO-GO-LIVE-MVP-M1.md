@@ -51,6 +51,8 @@ Percurso a testar, como se fosse o primeiro cliente real, e anotar cada tropeço
   onboarding precisa cobrir: **aceite dos Termos de uso** e o **nome e fuso da empresa** (hoje feitos no passo "boas-vindas" antigo).
 
 ### 1.2 Revisão geral da área multi-tenant (`/admin`) — entender o que existe
+> **Guia pronto:** `docs/GUIA-ADMIN-M1.md` (cada tela: para que serve, prioridade no MVP e passo a passo). Em 03/11 o Arthur revisou por cima
+> e decidiu que **não é prioridade editar nada no Admin agora**; o novo onboarding vem depois.
 O Arthur percorre **cada tela** e responde para cada uma: *uso / não uso / não entendo*. O Claude explica o que for "não entendo" e
 registra o que mudar. Telas hoje: Dashboard, **Tenants (empresas)**, Usuários, Platform admins, Marca (white-label), E-mail, Google,
 Meta, Inbox, Uso (IA), Auditoria, Incidentes, LGPD, Módulos, Extensões, Destinos internos, Sistema, Configuração, Cadastro.

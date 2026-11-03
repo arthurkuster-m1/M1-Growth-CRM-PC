@@ -1,3 +1,4 @@
+import { FaixaEmBreve } from "@/components/shell/FaixaEmBreve";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -51,6 +52,10 @@ export default async function AutomacoesPage() {
           )}
         </p>
       </header>
+      <FaixaEmBreve
+        selo={t("Em breve")}
+        texto={t("Esta área está em construção: pode mudar nas próximas atualizações.")}
+      />
       <AutomacoesClient freioDaIa={freioDaIa} idioma={user.idioma} />
     </div>
   );

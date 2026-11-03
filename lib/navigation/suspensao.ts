@@ -22,6 +22,8 @@ export function caminhoDeIaSuspenso(caminho: string, suspensa: boolean = IA_SUSP
   if (!suspensa) return false;
   const puro = caminho.split(/[?#]/)[0] ?? caminho;
   if (!dentroDe(puro, RAIZ_DA_IA)) return false;
+  // A própria `/app/ai` não redireciona: ela mostra o aviso "Em breve" (`app/app/ai/page.tsx`).
+  if (puro === RAIZ_DA_IA) return false;
   return !MANTIDAS.some((m) => dentroDe(puro, m));
 }
 

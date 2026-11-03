@@ -123,7 +123,7 @@ describe("Sidebar agrupado", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
-    expect(screen.getByRole("link", { name: "Agentes de IA" })).toHaveAttribute("href", "/app/ai");
+    expect(screen.getByRole("link", { name: /^Agentes de IA/ })).toHaveAttribute("href", "/app/ai");
     expect(screen.queryByRole("link", { name: /Ver tudo em IA/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Casos" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Agente de IA/ })).toBeNull();
@@ -249,7 +249,7 @@ describe("Sidebar agrupado", () => {
     expect(abertos).toEqual(["Atendimento"]);
     fireEvent.click(screen.getByRole("button", { name: /Marketing/, expanded: false }));
     expect(screen.getByRole("button", { name: /Marketing/, expanded: true })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Automações" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Automações/ })).toHaveAttribute(
       "href",
       "/app/automacoes",
     );

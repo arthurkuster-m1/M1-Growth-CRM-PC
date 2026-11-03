@@ -1,3 +1,5 @@
+import { EmBreveTag } from "@/components/ui/EmBreveTag";
+import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
 import type { Metadata } from "next";
 import { NavHub } from "@/components/shell/NavHub";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -23,6 +25,24 @@ export default async function AiHubPage() {
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
   const idioma = user.idioma;
+
+  // Área suspensa (`lib/navigation/suspensao.ts`): em vez do hub, o aviso "Em breve".
+  if (IA_SUSPENSA) {
+    return (
+      <div className="mx-auto flex max-w-xl flex-col items-center gap-3 p-10 text-center">
+        <EmBreveTag texto={traduzir("Em breve", idioma)} />
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {traduzir("Agente de IA", idioma)}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {traduzir(
+            "Os agentes de IA chegam na próxima atualização do app. Por enquanto, o sistema funciona sem eles.",
+            idioma,
+          )}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <NavHub
