@@ -71,7 +71,7 @@ export function InviteTeamForm() {
   return (
     <div className="space-y-4 rounded-lg border bg-background p-6">
       <div className="space-y-2">
-        <Label htmlFor="emails">{t("E-mail de quem vai trabalhar com ele")}</Label>
+        <Label htmlFor="emails">{t("E-mail de quem vai trabalhar com você")}</Label>
         <Textarea
           id="emails"
           value={emailsRaw}
@@ -123,7 +123,10 @@ export function InviteTeamForm() {
                   onClick={() => {
                     void copyToClipboard(u.accept_url).then((ok) => {
                       if (ok) toast.success(t("Link copiado."));
-                      else toast.error(t("Não consegui copiar — selecione e copie o link manualmente."));
+                      else
+                        toast.error(
+                          t("Não consegui copiar — selecione e copie o link manualmente."),
+                        );
                     });
                   }}
                 >
@@ -133,7 +136,11 @@ export function InviteTeamForm() {
             ))}
           </ul>
           <div className="flex sm:justify-end">
-            <Button type="button" onClick={() => (window.location.href = "/onboarding")} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              onClick={() => (window.location.href = "/onboarding")}
+              className="w-full sm:w-auto"
+            >
               {t("Continuar")}
             </Button>
           </div>

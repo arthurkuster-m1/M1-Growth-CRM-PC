@@ -1,17 +1,11 @@
 /**
- * O FIM DO WIZARD NÃO AFIRMA O QUE NÃO ENTREGOU.
+ * O FIM DO ONBOARDING NÃO AFIRMA O QUE NÃO ENTREGOU.
  *
- * MEDIDO na tela (issue #1694, item 4): a última página dizia "Tudo pronto!
- * Seu funcionário já está de pé" para quem pulou o passo da IA e para quem
- * ficou com o atendente em rascunho — a promessa feita antes da pessoa
- * descobrir, no primeiro cliente, que ninguém estava respondendo.
- *
- * O que decide é `noAr` (a página lê `ai_agents.published_version_id` no
- * banco), não a contagem de pendências: publicar é o que coloca o atendente
- * no ar. Pular telefone/equipe sem pular a IA não tira ninguém do ar, e é
- * justamente o caso em que a frase antiga continuava certa.
+ * A última página antiga dizia "Seu funcionário já está de pé" para quem tinha pulado a IA. O onboarding novo
+ * (Seu negócio e Sua equipe) não fala de funcionário nem de IA: só resume o que foi feito e diz o que ficou
+ * para depois, sem prometer nada que o sistema não entregue.
  */
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DoneClient } from "@/app/onboarding/done/_client";
@@ -22,72 +16,39 @@ vi.mock("@/app/actions/onboarding/finishOnboarding", () => ({
   finishOnboarding: vi.fn(async () => ({ ok: true })),
 }));
 
-function item(segmento: string, campo: { feito?: boolean; pulado?: boolean } = {}): ItemDoResumo {
-  const { feito = true, pulado = false } = campo;
-  return { segmento, rotulo: segmento, feito, pulado };
-}
+const feito = (segmento: string, rotulo: string): ItemDoResumo => ({
+  segmento,
+  rotulo,
+  feito: true,
+  pulado: false,
+});
 
-/** Todos os passos cumpridos — inclusive a IA. */
-function todosCumpridos(): ItemDoResumo[] {
-  return [
-    item("welcome"),
-    item("connect-whatsapp"),
-    item("setup-ai"),
-    item("funil"),
-    item("testar"),
-    item("invite-team"),
-  ];
-}
-
-function tela(itens: ItemDoResumo[], noAr: boolean): string {
-  render(<DoneClient itens={itens} pecas={[]} noAr={noAr} />);
+function tela(itens: ItemDoResumo[]): string {
+  render(<DoneClient itens={itens} />);
   return document.body.textContent ?? "";
 }
 
-describe("a última página do wizard concorda com o banco", () => {
+describe("a última página do onboarding novo", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("pulou a IA e o agente não foi publicado: não diz que está de pé", () => {
-    const itens = todosCumpridos().map((i) =>
-      i.segmento === "setup-ai" ? item("setup-ai", { feito: false, pulado: true }) : i,
-    );
-
-    const texto = tela(itens, false);
-
-    expect(texto, "a tela prometeu o que a pessoa pulou").not.toContain("já está de pé");
-    expect(texto).toContain("Quase lá!");
-    expect(texto).toContain(
-      "O passo da IA ficou para depois: ele ainda não foi treinado nem colocado no ar.",
-    );
+  it("não promete funcionário, IA nem atendimento no ar", () => {
+    const texto = tela([feito("welcome", "Seu negócio"), feito("invite-team", "Sua equipe")]);
+    expect(texto).not.toContain("funcionário");
+    expect(texto).not.toContain("de pé");
+    expect(texto).not.toMatch(/\bIA\b/);
   });
 
-  it("treinado mas em rascunho: diz que o atendimento não foi publicado", () => {
-    const texto = tela(todosCumpridos(), false);
-
-    expect(texto).not.toContain("já está de pé");
-    expect(texto).toContain("Quase lá!");
-    expect(texto).toContain(
-      "Ele já foi treinado, mas o atendimento ainda não foi publicado — ele segue em rascunho.",
-    );
+  it("mostra o que foi feito e o que foi pulado", () => {
+    const texto = tela([
+      feito("welcome", "Seu negócio"),
+      { segmento: "invite-team", rotulo: "Sua equipe", feito: false, pulado: true },
+    ]);
+    expect(texto).toContain("Seu negócio");
+    expect(texto).toContain("Sua equipe (você pulou)");
   });
 
-  it("no ar e sem pendências: é a frase de sempre", () => {
-    const texto = tela(todosCumpridos(), true);
-
-    expect(texto).toContain("Tudo pronto!");
-    expect(texto).toContain("Seu funcionário está montado. Daqui em diante é só acompanhar.");
-  });
-
-  it("no ar com passo pulado que NÃO é a IA: segue de pé, porque está mesmo", () => {
-    const itens = todosCumpridos().map((i) =>
-      i.segmento === "connect-whatsapp" ? item("connect-whatsapp", { feito: false, pulado: true }) : i,
-    );
-
-    const texto = tela(itens, true);
-
-    expect(texto).toContain("Tudo pronto!");
-    expect(texto).toContain(
-      "Seu funcionário já está de pé. O que ficou para depois continua te esperando.",
-    );
+  it("apresenta as quatro telas do dia a dia", () => {
+    const texto = tela([feito("welcome", "Seu negócio")]);
+    for (const t of ["Início", "Clientes (CRM)", "Agenda", "Tarefas"]) expect(texto).toContain(t);
   });
 });

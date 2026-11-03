@@ -6,7 +6,12 @@
  * pessoa estava no passo seguinte, e a tela final listava "Loja Nuvemshop
  * (pulado)". Três listas independentes discordando entre si.
  */
-import { describe, expect, it } from "vitest";
+import { vi, describe, expect, it } from "vitest";
+
+// Este arquivo cobre o wizard COMPLETO (os passos antigos ligados); o fluxo novo e curto tem `passos-novo.test.ts`.
+vi.hoisted(() => {
+  process.env.M1_ONBOARDING_ANTIGO_SUSPENSO = "false";
+});
 
 import {
   passosVisiveis,

@@ -11,12 +11,12 @@
  *
  * ─── O CONSORTE ───────────────────────────────────────────────────────────
  * O `catch` de `patchOnboardingState` reconhece `org_ja_configurada` e
- * redireciona para `/app/inbox` (era para onde o onboarding levaria a pessoa
+ * redireciona para `/app` (era para onde o onboarding levaria a pessoa
  * em seguida). Todos os OUTROS códigos seguem exatamente o de antes:
  * `db_error` com o mesmo `details`.
  *
  * ─── O QUE ESTE ARQUIVO MEDE ──────────────────────────────────────────────
- * - org já configurada → o submit SAI para `/app/inbox` e jamais devolve
+ * - org já configurada → o submit SAI para `/app` e jamais devolve
  *   `db_error` (este é o caso VERMELHO sem a mudança).
  * - controle: erro de banco de verdade continua `db_error` com o mesmo
  *   `details` de hoje, sem redirect.
@@ -190,7 +190,7 @@ beforeEach(() => {
 });
 
 describe("acceptWelcome: organização já configurada não vira db_error na tela (#2146)", () => {
-  it("org já configurada: o submit sai para /app/inbox e nunca devolve db_error", async () => {
+  it("org já configurada: o submit sai para /app e nunca devolve db_error", async () => {
     montarBanco({ onboardedAt: "2026-01-01T00:00:00.000Z" });
 
     const r = await executar(formulario("Clínica Nova"));
@@ -199,7 +199,7 @@ describe("acceptWelcome: organização já configurada não vira db_error na tel
     // details: "Organização já configurada." } e nenhum redirect acontece —
     // é exatamente o VERMELHO deste caso.
     expect(r).toBe("REDIRECT");
-    expect(mundo.redirects).toEqual(["/app/inbox"]);
+    expect(mundo.redirects).toEqual(["/app"]);
     // A recusa continua certa: nada foi gravado.
     expect(escritas).toEqual([]);
     expect(linha.display_name).toBe("Nome Antigo");

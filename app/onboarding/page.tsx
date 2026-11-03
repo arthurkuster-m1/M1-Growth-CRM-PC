@@ -20,7 +20,7 @@ export default async function OnboardingIndex() {
   if (!activeOrg) redirect("/get-started");
 
   const { state, onboardedAt } = await loadOnboardingState(activeOrg.orgId);
-  if (onboardedAt) redirect("/app/inbox");
+  if (onboardedAt) redirect("/app");
 
   const passo = proximoPasso(state, {});
   redirect(passo ? `/onboarding/${passo.segmento}` : "/onboarding/done");

@@ -12,17 +12,19 @@ export default async function InviteTeamPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h2 className="text-2xl font-semibold tracking-tight">{traduzir("Quem trabalha com ele", idioma)}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{traduzir("Sua equipe", idioma)}</h2>
         <p className="text-sm text-muted-foreground">
           {traduzir(
-            "Seu funcionário não trabalha sozinho: quando ele passar uma conversa adiante, é uma dessas pessoas que atende.",
+            "Convide quem trabalha com você. Dá para pular agora e convidar depois, em Equipe.",
             idioma,
           )}
         </p>
       </header>
       {!emailReady ? (
         <div className="rounded-md border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100">
-          <p className="font-medium">{traduzir("Esta instalação ainda não envia e-mail.", idioma)}</p>
+          <p className="font-medium">
+            {traduzir("Esta instalação ainda não envia e-mail.", idioma)}
+          </p>
           {/*
             A frase anterior dizia que os convites ficariam "registrados
             localmente" — e isso é falso: não existe tabela de convites, o

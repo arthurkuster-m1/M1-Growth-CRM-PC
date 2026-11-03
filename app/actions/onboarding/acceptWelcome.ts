@@ -14,7 +14,11 @@ import { requireOnboardingCtx, patchOnboardingState, OnboardingError } from "./_
 
 export type AcceptWelcomeResult =
   | { ok: true }
-  | { ok: false; error: "auth_required" | "no_active_org" | "forbidden" | "invalid_input" | "db_error"; details?: unknown };
+  | {
+      ok: false;
+      error: "auth_required" | "no_active_org" | "forbidden" | "invalid_input" | "db_error";
+      details?: unknown;
+    };
 
 export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeResult> {
   // A aba de boas-vindas foi aberta para UMA organização; é ela que este
@@ -71,7 +75,7 @@ export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeRe
       // falha, segue direto para a caixa de entrada, que era para onde o
       // onboarding o levaria em seguida. Todos os OUTROS códigos seguem com
       // o mapeamento de antes, sem mudança nenhuma.
-      if (err.code === "org_ja_configurada") redirect("/app/inbox");
+      if (err.code === "org_ja_configurada") redirect("/app");
       return { ok: false, error: "db_error", details: err.message };
     }
     throw err;

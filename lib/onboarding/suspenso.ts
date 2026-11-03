@@ -1,11 +1,7 @@
 /**
- * O ONBOARDING ANTIGO (o assistente de boas-vindas, funil, WhatsApp, IA, equipe e teste) está SUSPENSO
- * desde 02/11/2026: o Arthur vai criar um processo novo. Enquanto `true`:
- *  - ninguém é mandado para `/onboarding` depois de entrar (`app/app/layout.tsx`);
- *  - qualquer passo de `/onboarding/*` volta para `/app` (`app/onboarding/layout.tsx`).
- * Nada foi apagado: o código dos passos e as ações continuam, e voltar é trocar para `false`.
- *
- * ⚠️ O passo "welcome" é onde hoje se aceitam os Termos de uso e se define o nome da empresa e o fuso.
- * O processo novo precisa cobrir isso (o nome já vem de quem cria a empresa).
+ * O NOVO ONBOARDING (02-03/11/2026) é curto: **Seu negócio** (nome, fuso e aceite dos Termos) e **Sua equipe**
+ * (convidar, opcional). Os passos ANTIGOS — telefone/WhatsApp, treinar a IA, funil e "ver ele atender" — estão
+ * SUSPENSOS junto com a área de IA e voltam, se for o caso, trocando esta chave para `false`
+ * (`lib/onboarding/passos.ts` lê daqui; nada foi apagado).
  */
-export const ONBOARDING_ANTIGO_SUSPENSO = true;
+export const ONBOARDING_ANTIGO_SUSPENSO = process.env.M1_ONBOARDING_ANTIGO_SUSPENSO !== "false";
