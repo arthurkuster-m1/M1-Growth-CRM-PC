@@ -21,7 +21,7 @@
 - Banco: `baseline.sql` aplicado (install e update, 0 erro), 230+ tabelas, todas com RLS; isolamento entre empresas provado com usuário comum (super-admin enxerga tudo, por desenho). Chave de cifra dos segredos em `private.app_secrets` (nome `nuvemshop_oauth_key`; cópia em `/home/ubuntu/segredos-m1.env`). Dono: arthurkuster2.0@gmail.com, empresa "Assessoria M1".
 - Marca: o banco novo começou sem marca; `APP_NAME`/`APP_ACCENT_HEX` no `.env.local` são só semente. Logo e ajuste fino em `/admin/marca` (o Arthur faz pela tela).
 
-**⏳ PENDENTE (combinado com o Arthur: NÃO cobrar agora; fazer só quando ele disser que a instalação inteira terminou):** backup de boot (Boot volume) na Oracle — a conta Oracle dele precisa ser recuperada antes.
+**✅ Backup de boot da Oracle:** criado pelo Arthur em 04/11/2026 (nome `boot-m1-antes-da-fase4-2026-11-04`, completo, no volume `M1-Growth-N8N (Boot Volume)`, 100 GB). Eu não vi o console: ele confirmou "feito". Repetir antes de mudanças grandes na VPS.
 
 **Pendências técnicas anotadas:**
 - Porta 81 do NPM aberta para a internet: restringir depois do go-live.
