@@ -80,6 +80,8 @@ export async function GET(req: NextRequest) {
       onboarded_at,
       suspended_at,
       created_at,
+      cor_agencia:settings->>agencia_cor,
+      cor_marca:settings->branding->>accent_hex,
       user_count:user_organizations(count),
       conversations_count:conversations(count)
     `,

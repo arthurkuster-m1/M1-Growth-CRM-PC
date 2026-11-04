@@ -77,7 +77,7 @@ export default async function TenantDetailLayout({ children, params }: TenantLay
   return (
     <div className="space-y-6">
       {/* Back nav */}
-      <LinkVoltar href="/admin/tenants">{traduzir("Tenants", idioma)}</LinkVoltar>
+      <LinkVoltar href="/admin/tenants">{traduzir("Empresas", idioma)}</LinkVoltar>
 
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
