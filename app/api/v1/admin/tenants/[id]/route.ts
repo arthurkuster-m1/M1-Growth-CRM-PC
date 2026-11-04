@@ -4,6 +4,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
+import {
+  falhaDaEscritaDePlatformAdmin,
+  requirePlatformAdminEscrita,
+  type PlatformAdminContext,
+} from "@/lib/auth/requirePlatformAdmin";
+import { requireSupportWrite } from "@/lib/impersonate/support";
+import { updateTenantSchema } from "@/lib/schemas/tenant-update";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/admin/tenants/[id]
@@ -157,4 +165,79 @@ export async function GET(
   });
 
   return ok({ organization: org, counts, integrations }, { requestId });
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/v1/admin/tenants/[id]
+//
+// Edita o cadastro da empresa (platform admin com escrita). Fora daqui, de
+// propósito: `slug` (só leitura), `status`/suspensão (rotas `suspend` e
+// `reactivate`, que passam pela função definer — o trigger
+// `trg_organizacao_estado_so_pelo_servidor` protege essas colunas) e a marca.
+// O id vem do caminho; o service role filtra por ele, nunca por algo do body.
+// ---------------------------------------------------------------------------
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const supportDenied = await requireSupportWrite(id);
+  if (supportDenied) return supportDenied;
+
+  const requestId = randomUUID();
+
+  let adminCtx: PlatformAdminContext;
+  try {
+    adminCtx = await requirePlatformAdminEscrita();
+  } catch (err) {
+    return falhaDaEscritaDePlatformAdmin(err, requestId);
+  }
+
+  if (!z.string().uuid().safeParse(id).success) {
+    return fail("not_found", "Tenant not found", 404, { requestId });
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return fail("validation_error", "Invalid JSON body", 400, { requestId });
+  }
+  const parsed = updateTenantSchema.safeParse(body);
+  if (!parsed.success) {
+    return fail("validation_error", "Invalid request body", 400, {
+      requestId,
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const admin = createAdminClient();
+  const { data: updated, error } = await admin
+    .from("organizations")
+    .update(parsed.data)
+    .eq("id", id)
+    .select("id, slug, display_name")
+    .maybeSingle();
+  if (error) {
+    return fail("internal_error", "Não foi possível salvar a empresa", 500, { requestId });
+  }
+  if (!updated) {
+    return fail("not_found", "Tenant not found", 404, { requestId });
+  }
+
+  void audit({
+    action: "tenant.updated_by_platform_admin",
+    actorUserId: adminCtx.user.id,
+    actingAsPlatformAdmin: true,
+    bypassedRls: true,
+    organizationId: id,
+    resourceType: "organization",
+    resourceId: id,
+    requestId,
+    // Só os NOMES dos campos: valores (CNPJ, e-mail do DPO) não entram na trilha.
+    metadata: { tenant_slug: updated.slug, fields_changed: Object.keys(parsed.data) },
+  });
+
+  return ok({ id: updated.id, slug: updated.slug, display_name: updated.display_name }, { requestId });
 }

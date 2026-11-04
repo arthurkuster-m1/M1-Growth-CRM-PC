@@ -210,7 +210,6 @@ export async function POST(req: NextRequest) {
       metadata: {
         slug: org.slug,
         display_name: org.display_name,
-        plan: request.plan,
         creator_role: "admin",
       },
     });
