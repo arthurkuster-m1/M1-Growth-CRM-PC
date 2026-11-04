@@ -48,8 +48,8 @@ self.addEventListener("push", (event) => {
       await self.registration.showNotification(data.title, {
         body: data.body,
         tag: data.tag,
-        icon: data.icon || undefined,
-        badge: self.location.origin + "/icon",
+        icon: data.icon || self.location.origin + "/app-icon/192",
+        badge: self.location.origin + "/notification-badge",
         renotify: true,
         data: { href: data.href || "/app/inbox" },
       });

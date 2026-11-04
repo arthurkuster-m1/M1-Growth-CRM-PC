@@ -175,6 +175,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   /^\/icon$/,
   // PNGs públicos do app instalado, apenas dois tamanhos e somente marca da instalação.
   /^\/app-icon\/(192|512)$/,
+  // A silhueta do ícone para a barra de status das notificações (`app/notification-badge`): o
+  // service worker e a notificação a pedem sem sessão de página, e o caminho não tem extensão.
+  /^\/notification-badge$/,
   /^\/manifest\.webmanifest$/,
   /^\/team\/accept-invite\/.+$/,
   // OS MOLDES DE E-MAIL DO GoTrue. Quem busca é o GoTrue, um processo de
