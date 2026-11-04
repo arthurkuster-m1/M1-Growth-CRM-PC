@@ -2,7 +2,6 @@
 import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import { destinoAoTrocarDeOrganizacao } from "@/lib/navigation/destino-ao-trocar-de-organizacao";
 import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { flushSync } from "react-dom";
@@ -112,9 +111,6 @@ export function TenantSwitcher() {
             {active?.orgId === org.organization_id && !noModoAgencia && <span className="text-xs text-muted-foreground">✓</span>}
           </DropdownMenuItem>
         ))}
-        {user.is_platform_admin && <DropdownMenuItem asChild>
-          <Link href="/admin/tenants">{t("Gerenciar organizações")}</Link>
-        </DropdownMenuItem>}
       </DropdownMenuContent>
     </DropdownMenu>
   );

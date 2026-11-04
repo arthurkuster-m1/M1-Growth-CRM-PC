@@ -1,7 +1,6 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { PlatformModeBanner } from "./PlatformModeBanner";
 import { AdminSidebar } from "./AdminSidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -15,8 +14,8 @@ interface AdminShellProps {
 }
 
 /**
- * Shell for /admin/*. Renders the cross-tenant banner (sticky top), platform
- * sidebar, and main content area. Client component (não mais Server) desde
+ * Shell for /admin/*. Renders the platform sidebar (sem tarja de aviso no topo: a troca de
+ * tema mora no rodapé do menu), and main content area. Client component (não mais Server) desde
  * que ganhou o drawer de navegação mobile — precisa do estado de
  * aberto/fechado, no mesmo padrão de `app/app/_components/AppShell.tsx`;
  * `children` continua chegando como Server Component normalmente (React
@@ -70,7 +69,6 @@ export function AdminShell({ userEmail, children }: AdminShellProps) {
   return (
     <TooltipProvider>
       <div className="flex min-h-screen w-full flex-col bg-background">
-        <PlatformModeBanner />
         <div className="flex flex-1">
           <AdminSidebar userEmail={userEmail} />
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>

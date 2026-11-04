@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { InterfaceEditor } from "@/components/team/InterfaceEditor";
@@ -16,13 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { type CreateTenantResponse, useCreateTenant } from "@/hooks/useCreateTenant";
 import { ApiError } from "@/lib/api/types";
 import { useT } from "@/hooks/i18n/useT";
@@ -85,7 +79,6 @@ export function NewTenantForm() {
       slug: "",
       legal_name: "",
       cnpj: "",
-      plan: "standard",
       owner_email: "",
     },
   });
@@ -122,37 +115,36 @@ export function NewTenantForm() {
         slug: values.slug,
         legal_name: values.legal_name || undefined,
         cnpj: values.cnpj || undefined,
-        plan: values.plan,
         owner_email: values.owner_email,
         owner_interface_settings: ownerInterface,
       });
 
-      toast.success(t("Tenant criado com sucesso!"));
+      toast.success(t("Empresa criada com sucesso!"));
       setCreated(result.data);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "conflict") {
-          form.setError("slug", { message: t("Este slug já está em uso") });
+          form.setError("slug", { message: t("Este identificador já está em uso") });
           return;
         }
-        toast.error(`${t("Erro ao criar tenant:")} ${err.message}`);
+        toast.error(`${t("Erro ao criar a empresa:")} ${err.message}`);
       } else {
-        toast.error(t("Erro inesperado ao criar tenant"));
+        toast.error(t("Erro inesperado ao criar a empresa"));
       }
     }
   });
 
-  const planValue = useWatch({ control: form.control, name: "plan" });
-
   if (created)
     return (
-      <Card className="mx-auto max-w-2xl">
+      <Card className="mx-auto max-w-2xl rounded-2xl">
         <CardHeader>
-          <CardTitle>{t("Organização criada")}</CardTitle>
+          <CardTitle>{t("Empresa criada")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p>
-            {t("Você já é administrador de")} {created.display_name}.
+            {created.owner_invitation
+              ? `${created.display_name}: ${t("falta o responsável aceitar o convite.")}`
+              : `${t("Você é o dono de")} ${created.display_name}.`}
           </p>
           {created.owner_invitation && (
             <div className="space-y-3">
@@ -179,16 +171,18 @@ export function NewTenantForm() {
                 {t("Copiar convite")}
               </Button>
               <p className="text-sm text-muted-foreground">
-                {t("Se o convite vencer, abra Equipe na organização para gerar outro.")}
+                {t("Se o convite vencer, abra a aba Equipe da empresa para gerar outro.")}
               </p>
             </div>
           )}
-          <Button asChild>
-            <a href="/app">{t("Voltar ao aplicativo")}</a>
-          </Button>
-          <Button variant="outline" asChild>
-            <a href={`/admin/tenants/${created.id}`}>{t("Ver organização")}</a>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href={`/admin/tenants/${created.id}`}>{t("Abrir a ficha da empresa")}</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/tenants">{t("Voltar para as empresas")}</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -196,22 +190,24 @@ export function NewTenantForm() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Nova organização")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Nova empresa")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {t("Você terá acesso como administrador e poderá concluir a configuração inicial.")}
+          {t(
+            "Preencha o básico. O resto (fuso, idioma, marca, equipe) você ajusta na ficha da empresa.",
+          )}
         </p>
       </div>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-base">{t("Dados da organização")}</CardTitle>
+          <CardTitle className="text-base">{t("Dados da empresa")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-5" noValidate>
             {/* display_name */}
             <div className="space-y-1.5">
               <Label htmlFor="display_name">
-                {t("Nome de exibição")} <span className="text-error-fg">*</span>
+                {t("Nome da empresa")} <span className="text-error-fg">*</span>
               </Label>
               <Input
                 id="display_name"
@@ -228,18 +224,20 @@ export function NewTenantForm() {
             {/* slug */}
             <div className="space-y-1.5">
               <Label htmlFor="slug">
-                Slug <span className="text-error-fg">*</span>
+                {t("Identificador (slug)")} <span className="text-error-fg">*</span>
               </Label>
               <Input
                 id="slug"
-                placeholder="tienda-de-maria"
+                placeholder="loja-da-maria"
                 {...register("slug")}
                 onChange={(e) => handleSlugChange(e.target.value)}
                 aria-invalid={!!errors.slug}
                 className="font-mono"
               />
               <p className="text-xs text-muted-foreground">
-                {t("Apenas letras minúsculas, números e hífens. Gerado automaticamente.")}
+                {t(
+                  "Letras minúsculas, números e hífens. Gerado do nome e não pode ser trocado depois.",
+                )}
               </p>
               {errors.slug && (
                 <p className="text-xs text-error-fg">{t(errors.slug.message ?? "")}</p>
@@ -278,36 +276,15 @@ export function NewTenantForm() {
               )}
             </div>
 
-            {/* plan */}
-            <div className="space-y-1.5">
-              <Label htmlFor="plan">{t("Plano")}</Label>
-              <Select
-                value={planValue}
-                onValueChange={(v) => setValue("plan", v as "standard" | "pro" | "enterprise")}
-              >
-                <SelectTrigger id="plan" aria-label={t("Plano")}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.plan && (
-                <p className="text-xs text-error-fg">{t(errors.plan.message ?? "")}</p>
-              )}
-            </div>
-
             {/* owner_email */}
             <div className="space-y-1.5">
               <Label htmlFor="owner_email">
-                {t("E-mail do responsável")} <span className="text-error-fg">*</span>
+                {t("E-mail do dono da empresa")} <span className="text-error-fg">*</span>
               </Label>
               <Input
                 id="owner_email"
                 type="email"
-                placeholder="responsable@empresa.com"
+                placeholder="dono@empresa.com"
                 {...register("owner_email")}
                 aria-invalid={!!errors.owner_email}
               />
@@ -332,7 +309,7 @@ export function NewTenantForm() {
                   !interfaceTemDestino(ownerInterface, "admin")
                 }
               >
-                {isSubmitting ? t("Criando...") : t("Criar organização")}
+                {isSubmitting ? t("Criando...") : t("Criar empresa")}
               </Button>
               <Button
                 type="button"

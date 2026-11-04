@@ -1,30 +1,20 @@
 "use client";
 
-import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Buildings } from "@/lib/ui/icons";
-import type { AdminTenantRow } from "@/hooks/useAdminTenants";
 import { useT } from "@/hooks/i18n/useT";
+import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
+import type { AdminTenantRow } from "@/hooks/useAdminTenants";
+import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
+import { Buildings } from "@/lib/ui/icons";
 
-// ---------------------------------------------------------------------------
-// Status badge
-// ---------------------------------------------------------------------------
+// A lista de empresas em cartões (design system do CRM). O nome do arquivo e dos
+// exports foi mantido de propósito: quem os importa não muda.
 
-const STATUS_VARIANTS: Record<
-  string,
-  "success" | "info" | "warning" | "error" | "neutral"
-> = {
+const STATUS_VARIANTS: Record<string, "success" | "info" | "warning" | "error" | "neutral"> = {
   active: "success",
   onboarding: "info",
   suspended: "warning",
@@ -38,88 +28,73 @@ const STATUS_LABELS: Record<string, string> = {
   redacted: "Redigido",
 };
 
-function StatusBadge({
-  status,
-  onboardedAt,
-}: {
-  status: string;
-  onboardedAt: string | null;
-}) {
-  const t = useT();
-  // 'onboarding' não existe no banco — é derivado: ativo sem onboarding concluído.
-  const effective = status === "active" && !onboardedAt ? "onboarding" : status;
-  return (
-    <Badge variant={STATUS_VARIANTS[effective] ?? "neutral"}>
-      {t(STATUS_LABELS[effective] ?? effective)}
-    </Badge>
+function contagem(arr: Array<{ count: number }> | null | undefined): number {
+  return arr?.[0]?.count ?? 0;
+}
+
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  const letras = (partes.length > 1 ? [partes[0], partes[1]] : [partes[0] ?? "?"]).map(
+    (p) => p?.[0] ?? "",
   );
+  return letras.join("").toUpperCase().slice(0, 2);
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatDate(iso: string | null, idioma: string): string {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat(idioma, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-  }).format(new Date(iso));
-}
-
-function extractCount(
-  arr: Array<{ count: number }> | null | undefined,
-): number {
-  if (!arr || arr.length === 0) return 0;
-  return arr[0]?.count ?? 0;
-}
-
-function shortCnpj(cnpj: string | null): string {
-  if (!cnpj) return "—";
-  // Show first 8 digits (company root) + ...
-  const digits = cnpj.replace(/\D/g, "");
-  if (digits.length < 8) return cnpj;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/...`;
-}
-
-// ---------------------------------------------------------------------------
-// Loading skeleton
-// ---------------------------------------------------------------------------
 
 export function TenantsTableSkeleton() {
-  const t = useT();
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {["Slug", t("Nome"), "CNPJ", t("Status"), t("Users"), t("Conversas"), t("Criado em"), ""].map(
-              (h) => (
-                <TableHead key={h}>{h}</TableHead>
-              ),
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <TableRow key={i}>
-              {Array.from({ length: 8 }).map((__, j) => (
-                <TableCell key={j}>
-                  <Skeleton className="h-4 w-full max-w-[120px]" />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-32 rounded-2xl" />
+      ))}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+function CartaoDaEmpresa({ row }: { row: AdminTenantRow }) {
+  const t = useT();
+  const tag = useTagDeIdioma();
+  // 'onboarding' não existe no banco: é derivado (ativo sem onboarding concluído).
+  const status = row.status === "active" && !row.onboarded_at ? "onboarding" : row.status;
+  const cor = corDoCliente(row.cor_marca ?? row.cor_agencia, row.id);
+  const pessoas = contagem(row.user_count);
+  const conversas = contagem(row.conversations_count);
+  return (
+    <Link
+      href={`/admin/tenants/${row.id}`}
+      className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-secondary/40 focus-visible:outline-2"
+    >
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
+          style={{ backgroundColor: cor }}
+        >
+          {iniciais(row.display_name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">{row.display_name}</div>
+          <code className="truncate font-mono text-xs text-text-muted">{row.slug}</code>
+        </div>
+        <Badge variant={STATUS_VARIANTS[status] ?? "neutral"}>
+          {t(STATUS_LABELS[status] ?? status)}
+        </Badge>
+      </div>
+      <div className="flex items-center justify-between text-xs text-text-muted">
+        <span>
+          {pessoas} {pessoas === 1 ? t("pessoa") : t("pessoas")} · {conversas.toLocaleString(tag)}{" "}
+          {conversas === 1 ? t("conversa") : t("conversas")}
+        </span>
+        <span>
+          {new Intl.DateTimeFormat(tag, {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+          }).format(new Date(row.created_at))}
+        </span>
+      </div>
+    </Link>
+  );
+}
 
 interface TenantsTableProps {
   data: AdminTenantRow[];
@@ -134,78 +109,28 @@ export function TenantsTable({
   isFetchingNextPage,
   onLoadMore,
 }: TenantsTableProps) {
-  const tagDoIdioma = useTagDeIdioma();
   const t = useT();
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-md border py-16 text-center text-muted-foreground">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card py-16 text-center text-text-muted">
         <Buildings size={36} weight="duotone" className="opacity-40" aria-hidden />
-        <p className="text-sm font-medium">{t("Nenhum tenant encontrado")}</p>
+        <p className="text-sm font-medium">{t("Nenhuma empresa encontrada")}</p>
         <p className="max-w-xs text-xs opacity-70">
-          {t("Ajuste os filtros ou crie um novo tenant.")}
+          {t("Ajuste os filtros ou crie uma nova empresa.")}
         </p>
       </div>
     );
   }
-
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[140px]">Slug</TableHead>
-              <TableHead>{t("Nome")}</TableHead>
-              <TableHead className="w-[130px]">CNPJ</TableHead>
-              <TableHead className="w-[110px]">{t("Status")}</TableHead>
-              <TableHead className="w-[70px] text-right">{t("Users")}</TableHead>
-              <TableHead className="w-[90px] text-right">{t("Conversas")}</TableHead>
-              <TableHead className="w-[90px]">{t("Criado em")}</TableHead>
-              <TableHead className="w-[60px]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-mono text-xs">{row.slug}</TableCell>
-                <TableCell className="font-medium">{row.display_name}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {shortCnpj(row.cnpj)}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={row.status} onboardedAt={row.onboarded_at} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {extractCount(row.user_count)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {extractCount(row.conversations_count)}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {formatDate(row.created_at, tagDoIdioma)}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/tenants/${row.id}`}
-                    className="text-xs font-medium text-accent hover:underline"
-                  >
-                    {t("Ver")}
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {data.map((row) => (
+          <CartaoDaEmpresa key={row.id} row={row} />
+        ))}
       </div>
-
       {hasNextPage && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onLoadMore}
-            disabled={isFetchingNextPage}
-          >
+          <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isFetchingNextPage}>
             {isFetchingNextPage ? t("Carregando...") : t("Carregar mais")}
           </Button>
         </div>

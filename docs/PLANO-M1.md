@@ -315,6 +315,7 @@ Situação em 13/10/2026: **Feito**, **Em andamento**, **Parcial** (parte pronta
 | 19 | **Automações e Fluxos de Follow Up** (inclui o Método Anti-No-show) | Deixar o painel de Automações com o visual dos fluxos de follow up (canvas) e organizar o Anti-No-show | **Em andamento** (plano em `docs/PLANO-AUTOMACOES-M1.md`; Central por categoria e modelos prontos no ar em 01/11; próximo: follow-ups M1 e editor visual) | Quais automações existem hoje e quais merecem virar fluxo visual? |
 | 20 | **App no celular** | Instalação, atualização ao vivo e notificações no celular | **Parcial** (instala como app; faltam atualização ao vivo em todas as telas e revisão das notificações) | Ver §3-bis, item J |
 | 21 | **Módulos por nicho** | Versões do app para outros modelos de negócio (clínicas veterinárias, agências de modelo) | **A fazer** | Começar por um "preset de nicho" ou por módulos com tela própria? |
+| 22 | **Checkout próprio (link de pagamento)** | Link de pagamento do CRM (Pix primeiro, depois cartão); o pagamento confirmado dá baixa automática na venda | **Só plano (04/11/2026)** — ver `docs/PLANO-CHECKOUT-M1.md` | Qual PSP primeiro? Pix, cartão ou os dois? Quem paga a taxa? |
 
 ### Detalhes das frentes
 

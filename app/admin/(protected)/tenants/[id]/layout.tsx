@@ -43,7 +43,7 @@ const TABS: TabItem[] = [
   { label: "Saúde", href: "/health", disabled: false },
   { label: "Agente", href: "/agent", disabled: false },
   { label: "Meta Ads", href: "/meta-ads", disabled: false },
-  { label: "Equipe", href: "/team", disabled: true },
+  { label: "Equipe", href: "/team", disabled: false },
   { label: "Uso", href: "/usage", disabled: true },
 ];
 
@@ -77,7 +77,7 @@ export default async function TenantDetailLayout({ children, params }: TenantLay
   return (
     <div className="space-y-6">
       {/* Back nav */}
-      <LinkVoltar href="/admin/tenants">{traduzir("Tenants", idioma)}</LinkVoltar>
+      <LinkVoltar href="/admin/tenants">{traduzir("Empresas", idioma)}</LinkVoltar>
 
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
