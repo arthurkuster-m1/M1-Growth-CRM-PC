@@ -21,6 +21,7 @@ const h = vi.hoisted(() => ({
   erro: null as { message: string } | null,
   atualizacoes: [] as Array<{ valores: unknown; filtro: [string, unknown][] }>,
   audit: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: async () => null }));
@@ -39,6 +40,7 @@ vi.mock("@/lib/auth/requirePlatformAdmin", async () => {
 });
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
+    rpc: (...args: unknown[]) => h.rpc(...args),
     from: (tabela: string) => {
       expect(tabela).toBe("organizations");
       const registro: { valores: unknown; filtro: [string, unknown][] } = {
@@ -76,6 +78,7 @@ beforeEach(() => {
   h.erro = null;
   h.atualizacoes = [];
   h.linha = { id: TENANT, slug: "acme", display_name: "Acme" };
+  h.rpc.mockResolvedValue({ data: 1, error: null });
 });
 
 describe("PATCH /admin/tenants/[id]", () => {
@@ -128,6 +131,7 @@ describe("PATCH /admin/tenants/[id]", () => {
     ["moeda fora de ISO", { currency: "real" }],
     ["país fora de ISO", { country: "BRA" }],
     ["idioma desconhecido", { locale: "klingon" }],
+    ["cor da marca inválida", { marca: { app_name: null, accent_hex: "azul" } }],
     ["retenção zero", { media_retention_days: 0 }],
     ["nome curto", { display_name: "A" }],
     ["interface com preset desconhecido", { interface_settings: { preset: "outra" } }],
@@ -148,5 +152,27 @@ describe("PATCH /admin/tenants/[id]", () => {
     h.linha = { id: TENANT, slug: "acme", display_name: "Acme" };
     h.erro = { message: "boom" };
     expect((await PATCH(pedido({ display_name: "Novo nome" }), ctx)).status).toBe(500);
+  });
+
+  it("só a marca → função definer com o ator, sem UPDATE direto, cor normalizada", async () => {
+    const res = await PATCH(pedido({ marca: { app_name: "Acme", accent_hex: "#366D6F" } }), ctx);
+    expect(res.status).toBe(200);
+    expect(h.atualizacoes).toEqual([]);
+    expect(h.rpc).toHaveBeenCalledWith(
+      "fn_definir_marca_da_organizacao",
+      expect.objectContaining({
+        p_org: TENANT,
+        p_actor: h.ator,
+        p_marca: expect.objectContaining({ app_name: "Acme", accent_hex: "#366d6f" }),
+      }),
+    );
+    expect(h.audit.mock.calls[0]?.[0].metadata.fields_changed).toEqual(["marca"]);
+  });
+
+  it("marca null limpa (p_marca null); função que não gravou → 500", async () => {
+    expect((await PATCH(pedido({ marca: null }), ctx)).status).toBe(200);
+    expect(h.rpc.mock.calls[0]?.[1].p_marca).toBeNull();
+    h.rpc.mockResolvedValue({ data: 0, error: null });
+    expect((await PATCH(pedido({ marca: null }), ctx)).status).toBe(500);
   });
 });

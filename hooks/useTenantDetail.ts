@@ -15,8 +15,18 @@ export interface TenantOrganization {
   // 'onboarding' não existe na check constraint do banco — é estado derivado
   // (active + onboarded_at null), nunca vem numa linha real.
   status: "active" | "suspended" | "redacted";
+  timezone: string;
+  locale: string;
+  currency: string;
+  country: string | null;
+  dpo_email: string | null;
+  privacy_policy_url: string | null;
+  ai_budget_cents: number | null;
+  media_retention_days: number;
+  interface_settings: { preset: "completa" | "simplificada"; destinos?: string[] } | null;
   onboarded_at: string | null;
   suspended_at: string | null;
+  suspended_reason: string | null;
   created_at: string;
   settings: Record<string, unknown> | null;
 }
@@ -32,16 +42,10 @@ export interface TenantCounts {
   waha_sessions_count: number;
 }
 
-export interface TenantIntegrations {
-  nuvemshop_status: string | null;
-  nuvemshop_connected_at: string | null;
-}
-
 export interface TenantDetailResponse {
   data: {
     organization: TenantOrganization;
     counts: TenantCounts;
-    integrations: TenantIntegrations;
   };
 }
 
@@ -52,8 +56,7 @@ export interface TenantDetailResponse {
 export function useTenantDetail(id: string) {
   return useQuery({
     queryKey: ["admin", "tenant", id] as const,
-    queryFn: () =>
-      apiClient.get<TenantDetailResponse>(`/api/v1/admin/tenants/${id}`),
+    queryFn: () => apiClient.get<TenantDetailResponse>(`/api/v1/admin/tenants/${id}`),
     staleTime: 60_000,
     enabled: !!id,
   });

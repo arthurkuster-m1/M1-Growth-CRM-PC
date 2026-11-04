@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IDIOMAS } from "@/lib/i18n/idiomas";
+import { ehHexValido } from "@/lib/branding/rampa";
 import { interfaceSettingsSchema, interfaceTemDestino } from "@/lib/navigation/interface";
 
 function fusoValido(valor: string): boolean {
@@ -56,6 +57,14 @@ export const updateTenantSchema = z
     media_retention_days: z.number().int().min(1).max(3650),
     interface_settings: interfaceSettingsSchema,
     onboarded_at: z.string().datetime({ offset: true }).nullable(),
+    /** `null` volta ao que vem da instalação; cada campo `null` idem. */
+    marca: z
+      .object({
+        app_name: textoOuNulo(80),
+        accent_hex: z.string().trim().refine(ehHexValido, "Cor inválida").nullable(),
+      })
+      .strict()
+      .nullable(),
   })
   .partial()
   .strict()

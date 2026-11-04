@@ -1,7 +1,7 @@
 "use client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantDetail } from "@/hooks/useTenantDetail";
-import { TenantOverview } from "@/components/admin/tenants/TenantOverview";
+import { FichaDaEmpresa } from "@/components/admin/tenants/FichaDaEmpresa";
 import { TenantActions } from "@/components/admin/tenants/TenantActions";
 import { SuspendedBanner } from "@/components/admin/tenants/SuspendedBanner";
 import { useT } from "@/hooks/i18n/useT";
@@ -36,7 +36,7 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
     );
   }
 
-  const { organization, counts, integrations } = data.data;
+  const { organization, counts } = data.data;
 
   return (
     <div className="space-y-6">
@@ -45,11 +45,7 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <TenantOverview
-          organization={organization}
-          counts={counts}
-          integrations={integrations}
-        />
+        <FichaDaEmpresa organization={organization} counts={counts} />
         <TenantActions
           organizationId={organization.id}
           status={organization.status}
