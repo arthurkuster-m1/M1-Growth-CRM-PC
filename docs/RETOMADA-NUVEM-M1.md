@@ -49,6 +49,16 @@
 4. Perguntas do onboarding novo ("Para conversar", `docs/PLANO-ONBOARDING-NOVO-M1.md`) e TTL do convite (hoje 24 h; sugerido 7 dias).
 5. Automações (fases), Anti-No-show (rascunho a aprovar), IA, Financeiro: fase 6 do plano, não bloqueiam o MVP.
 
+## Plano do onboarding e do cadastro de novos clientes (o Arthur quer seguir EXATAMENTE este plano)
+
+O desenho está em **`docs/PLANO-ONBOARDING-NOVO-M1.md`** (telas já feitas em 03/11: Seu negócio → Sua equipe → Tudo pronto; o que foi
+reaproveitado e o que ficou de lado; **perguntas de desenho para conversar com ele** e pendências técnicas). Junto com ele valem:
+`docs/PLANO-GO-LIVE-MVP-M1.md` (fase 1.1: criar empresa, convidar dono e funcionário, Modo agência, ver como o cliente) e
+`docs/GUIA-ADMIN-M1.md` (o que cada tela do `/admin` faz). A tela de Gestão de Tenants (seção acima) é a parte de cadastro de empresas
+desse mesmo plano. **Não mudar o desenho sem perguntar:** ao começar, leia as perguntas abertas do plano e leve-as ao Arthur uma por vez.
+Pendências técnicas conhecidas: reescrever o e2e J1 (`tests/e2e/vps-fresh-onboarding.spec.ts`, hoje `describe.skip`) para o fluxo novo;
+decidir o prazo do convite (24 h hoje, 7 dias sugerido).
+
 ## Pedido: refazer a Gestão de Tenants (`/admin/tenants`)
 
 Visual do design system do CRM (`components/ui`, tokens de `app/globals.css`, referência `/app/design-system`) e a lógica de
