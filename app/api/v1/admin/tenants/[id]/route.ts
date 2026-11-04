@@ -18,10 +18,7 @@ import { updateTenantSchema } from "@/lib/schemas/tenant-update";
 // GET /api/v1/admin/tenants/[id]
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const requestId = randomUUID();
   const { id } = await params;
 
@@ -35,10 +32,7 @@ export async function GET(
   const admin = createAdminClient();
 
   // Load the organization (service-role bypasses RLS — intentional cross-tenant)
-  const { data: org, error: orgError } = await admin
-    .from("organizations")
-    .select(
-      `
+  const CAMPOS_DA_EMPRESA = `
       id,
       slug,
       display_name,
@@ -59,76 +53,65 @@ export async function GET(
       suspended_reason,
       created_at,
       settings
-    `,
-    )
-    .eq("id", id)
-    .single();
+    `;
+  const buscarEmpresa = (comLead: boolean) =>
+    admin
+      .from("organizations")
+      .select(comLead ? `${CAMPOS_DA_EMPRESA}, agencia_lead_id` : CAMPOS_DA_EMPRESA)
+      .eq("id", id)
+      .single();
+  // Janela do deploy: a coluna `agencia_lead_id` (migration 0684) pode ainda não existir no banco.
+  type EmpresaLida = { slug: string; agencia_lead_id?: string | null } & Record<string, unknown>;
+  let tentativa = await buscarEmpresa(true);
+  if (tentativa.error?.code === "42703") tentativa = await buscarEmpresa(false);
+  const orgError = tentativa.error;
+  const org = tentativa.data as unknown as EmpresaLida | null;
 
   if (orgError || !org) {
     return fail("not_found", "Tenant not found", 404, { requestId });
   }
 
   // Run counts in parallel — service role, all cross-tenant reads are intentional
-  const [
-    usersRes,
-    conversationsRes,
-    messagesRes,
-    leadsRes,
-    ordersRes,
-    lgpdRes,
-    aiRes,
-    wahaRes,
-  ] = await Promise.all([
-    admin
-      .from("user_organizations")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-    admin
-      .from("conversations")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-    admin
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-    admin
-      .from("crm_leads")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-    admin
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-    admin
-      .from("lgpd_requests")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id)
-      // `pending` não existe em `lgpd_requests_status_check`
-      // (received/processing/completed/failed/expired), então este contador era
-      // sempre 0 e a tela jurava que o tenant não devia nada à LGPD. Aqui
-      // pendente = TUDO que ainda não fechou, sem recorte de prazo. O KPI de
-      // plataforma (`app/api/v1/admin/dashboard/kpis/route.ts`) parte do mesmo
-      // "não fechado" mas soma só o que vence nos próximos 5 dias — os dois
-      // números divergem de propósito: este é o total do tenant, aquele é a
-      // fila de SLA da plataforma.
-      .not("status", "in", "(completed,failed)"),
-    // `llm_calls` e não `ai_invocations`: a migration 0130 deixou a segunda sem
-    // nenhum escritor (`lib/ai/log-invocation.ts` passou a gravar na primeira).
-    // Lendo a tabela morta, este contador viraria ZERO em 30 dias para todo
-    // tenant — com o dinheiro saindo. É o mesmo sintoma que a 0130 veio matar.
-    admin
-      .from("llm_calls")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id)
-      .gte(
-        "created_at",
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      ),
-    admin
-      .from("channel_sessions")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-  ]);
+  const [usersRes, conversationsRes, messagesRes, leadsRes, ordersRes, lgpdRes, aiRes, wahaRes] =
+    await Promise.all([
+      admin
+        .from("user_organizations")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", id),
+      admin
+        .from("conversations")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", id),
+      admin.from("messages").select("*", { count: "exact", head: true }).eq("organization_id", id),
+      admin.from("crm_leads").select("*", { count: "exact", head: true }).eq("organization_id", id),
+      admin.from("orders").select("*", { count: "exact", head: true }).eq("organization_id", id),
+      admin
+        .from("lgpd_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", id)
+        // `pending` não existe em `lgpd_requests_status_check`
+        // (received/processing/completed/failed/expired), então este contador era
+        // sempre 0 e a tela jurava que o tenant não devia nada à LGPD. Aqui
+        // pendente = TUDO que ainda não fechou, sem recorte de prazo. O KPI de
+        // plataforma (`app/api/v1/admin/dashboard/kpis/route.ts`) parte do mesmo
+        // "não fechado" mas soma só o que vence nos próximos 5 dias — os dois
+        // números divergem de propósito: este é o total do tenant, aquele é a
+        // fila de SLA da plataforma.
+        .not("status", "in", "(completed,failed)"),
+      // `llm_calls` e não `ai_invocations`: a migration 0130 deixou a segunda sem
+      // nenhum escritor (`lib/ai/log-invocation.ts` passou a gravar na primeira).
+      // Lendo a tabela morta, este contador viraria ZERO em 30 dias para todo
+      // tenant — com o dinheiro saindo. É o mesmo sintoma que a 0130 veio matar.
+      admin
+        .from("llm_calls")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", id)
+        .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+      admin
+        .from("channel_sessions")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", id),
+    ]);
 
   const counts = {
     user_count: usersRes.count ?? 0,
@@ -154,7 +137,19 @@ export async function GET(
     metadata: { tenant_slug: org.slug },
   });
 
-  return ok({ organization: org, counts }, { requestId });
+  // O lead desta empresa no CRM da agência (se houver), para a ficha mostrar a que cliente está ligada.
+  let agenciaLead: { id: string; title: string } | null = null;
+  const leadId = org.agencia_lead_id;
+  if (leadId) {
+    const { data: lead } = await admin
+      .from("crm_leads")
+      .select("id, title")
+      .eq("id", leadId)
+      .maybeSingle();
+    agenciaLead = lead ? { id: lead.id as string, title: lead.title as string } : null;
+  }
+
+  return ok({ organization: org, counts, agencia_lead: agenciaLead }, { requestId });
 }
 
 // ---------------------------------------------------------------------------
@@ -167,10 +162,7 @@ export async function GET(
 // O id vem do caminho; o service role filtra por ele, nunca por algo do body.
 // ---------------------------------------------------------------------------
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supportDenied = await requireSupportWrite(id);
   if (supportDenied) return supportDenied;
@@ -204,6 +196,16 @@ export async function PATCH(
 
   const admin = createAdminClient();
   const { marca, ...colunas } = parsed.data;
+  if (colunas.agencia_lead_id) {
+    const { data: lead } = await admin
+      .from("crm_leads")
+      .select("id")
+      .eq("id", colunas.agencia_lead_id)
+      .maybeSingle();
+    if (!lead) {
+      return fail("validation_error", "Lead não encontrado", 400, { requestId });
+    }
+  }
 
   // Existência (e slug para a trilha) primeiro: a marca e as colunas são
   // escritas separadas, e nenhuma deve rodar contra uma empresa que não existe.
@@ -265,5 +267,8 @@ export async function PATCH(
     metadata: { tenant_slug: updated.slug, fields_changed: Object.keys(parsed.data) },
   });
 
-  return ok({ id: updated.id, slug: updated.slug, display_name: updated.display_name }, { requestId });
+  return ok(
+    { id: updated.id, slug: updated.slug, display_name: updated.display_name },
+    { requestId },
+  );
 }

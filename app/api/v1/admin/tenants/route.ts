@@ -194,7 +194,9 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const request = { ...parsed.data, owner_email: parsed.data.owner_email.trim().toLowerCase() };
+  // `agencia_lead_id` não é do recibo de criação (a função SQL não o lê): é ligado logo depois.
+  const { agencia_lead_id: agenciaLeadId, ...dados } = parsed.data;
+  const request = { ...dados, owner_email: parsed.data.owner_email.trim().toLowerCase() };
   const { data: org, error } = await admin.rpc("fn_create_tenant_with_owner", {
     p_actor: adminCtx.user.id,
     p_key: key,
@@ -208,6 +210,17 @@ export async function POST(req: NextRequest) {
       });
     }
     return fail("internal_error", "Não foi possível criar a organização", 500, { requestId });
+  }
+  if (org.created && agenciaLeadId) {
+    // O lead tem de existir; o resto (de qual organização ele é) é decisão de quem opera a agência.
+    const { data: lead } = await admin
+      .from("crm_leads")
+      .select("id")
+      .eq("id", agenciaLeadId)
+      .maybeSingle();
+    if (lead) {
+      await admin.from("organizations").update({ agencia_lead_id: lead.id }).eq("id", org.id);
+    }
   }
   if (org.created) {
     await audit({

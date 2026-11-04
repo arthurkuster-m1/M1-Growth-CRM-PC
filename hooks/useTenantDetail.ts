@@ -27,6 +27,7 @@ export interface TenantOrganization {
   onboarded_at: string | null;
   suspended_at: string | null;
   suspended_reason: string | null;
+  agencia_lead_id: string | null;
   created_at: string;
   settings: Record<string, unknown> | null;
 }
@@ -46,6 +47,7 @@ export interface TenantDetailResponse {
   data: {
     organization: TenantOrganization;
     counts: TenantCounts;
+    agencia_lead: { id: string; title: string } | null;
   };
 }
 
