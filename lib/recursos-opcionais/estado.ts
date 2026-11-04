@@ -21,14 +21,16 @@ import { env } from "@/lib/env";
 import { modulosLigados } from "@/lib/instalacao/modulos";
 import { logger } from "@/lib/logger";
 import { vapidPronto } from "@/lib/notifications/vapid";
-import { isConfigured as nuvemshopConfigurada } from "@/lib/nuvemshop/config";
 import { googleAdsEstaConfigurado } from "@/lib/plataformas-de-anuncio/google/config";
 import { getWacallsClient } from "@/lib/wacalls/client";
 import { resolveServidorDeVideo } from "@/lib/video/jitsi";
 
 import type { FontesDeEstado } from "./catalogo";
 
-async function detectar(id: string, ler: () => boolean | Promise<boolean>): Promise<[string, boolean | null]> {
+async function detectar(
+  id: string,
+  ler: () => boolean | Promise<boolean>,
+): Promise<[string, boolean | null]> {
   try {
     return [id, await ler()];
   } catch (erro) {
@@ -57,7 +59,6 @@ export async function detectarServidor(): Promise<Record<string, boolean | null>
     // botão. Reusa `resolveServidorDeVideo` (não `servidorDeVideo()`) para não
     // depender de `window` num arquivo de servidor.
     detectar("videochamada_jitsi", () => resolveServidorDeVideo(env.JITSI_SERVER_URL) !== null),
-    detectar("nuvemshop", nuvemshopConfigurada),
     detectar("google_ads", () => googleAdsEstaConfigurado()),
     detectar("web_push", vapidPronto),
     detectar("transcricao", () => env.TRANSCRIPTION_BASE_URL.trim().length > 0),
@@ -66,7 +67,10 @@ export async function detectarServidor(): Promise<Record<string, boolean | null>
 }
 
 /** Fontes da tela da empresa. `organizationId` vem da SESSÃO, nunca da requisição. */
-export async function fontesDaEmpresa(db: SupabaseClient, organizationId: string): Promise<FontesDeEstado> {
+export async function fontesDaEmpresa(
+  db: SupabaseClient,
+  organizationId: string,
+): Promise<FontesDeEstado> {
   const [modulos, settings] = await Promise.all([
     // ponytail: `modulosLigados` falha fechada (erro de banco = nenhum módulo) e não
     // distingue "desligado" de "não li". Para a tela que só informa, isso vira
@@ -81,7 +85,9 @@ export async function fontesDaEmpresa(db: SupabaseClient, organizationId: string
           .maybeSingle();
         if (error || !data) return null;
         const s = (data as { settings?: unknown }).settings;
-        return s && typeof s === "object" && !Array.isArray(s) ? (s as Record<string, unknown>) : {};
+        return s && typeof s === "object" && !Array.isArray(s)
+          ? (s as Record<string, unknown>)
+          : {};
       } catch {
         return null;
       }
