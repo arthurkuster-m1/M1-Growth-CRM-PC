@@ -43,11 +43,17 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { ThemeProvider } from "@/lib/theme";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Único mock: o `AdminSidebar` é client component e chama `usePathname`. O
-// banner e o sidebar continuam reais — a casca sob teste é a casca de verdade,
-// não uma maquete dela. Mesmo padrão de `tests/unit/sidebar-grupos.test.tsx`.
+// A casca sob teste é a casca de verdade, não uma maquete dela; só o menu e a barra de cima
+// (que dependem do usuário logado) são trocados abaixo. Mesmo padrão de `tests/unit/sidebar-grupos.test.tsx`.
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin/inbox",
+}));
+// Desde 04/11/2026 a casca do admin usa o menu e a barra de cima DO APP, que leem usuário,
+// organização ativa e busca. Eles não são o objeto aqui (o Provider de tooltip é): stubs.
+vi.mock("@/components/shell/Sidebar", () => ({ Sidebar: () => null }));
+vi.mock("@/components/shell/TopBar", () => ({ TopBar: () => null }));
+vi.mock("@/components/shell/BarraDeProgressoNavegacao", () => ({
+  BarraDeProgressoNavegacao: () => null,
 }));
 
 // O `ThemeProvider` lê `matchMedia` para resolver o tema "system", e o jsdom
@@ -93,7 +99,7 @@ describe("AdminShell", () => {
       expect(() =>
         render(
           <ThemeProvider>
-            <AdminShell userEmail={userEmail}>
+            <AdminShell sidebarCollapsed={userEmail === ""}>
               <UsaTooltipSemProviderProprio />
             </AdminShell>
           </ThemeProvider>,

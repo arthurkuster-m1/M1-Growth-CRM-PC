@@ -1,6 +1,7 @@
 "use client";
 import { TagDoCliente } from "@/components/agencia/TagDoCliente";
 import { destinoAoTrocarDeOrganizacao } from "@/lib/navigation/destino-ao-trocar-de-organizacao";
+import { ehModoAgencia, entradaDoModoAgencia } from "@/lib/agencia/menu";
 import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,7 +27,7 @@ export function TenantSwitcher() {
   const transition = useOrganizationTransition();
   const pathname = usePathname();
   const router = useRouter();
-  const noModoAgencia = pathname === "/app/agencia" || pathname.startsWith("/app/agencia/");
+  const noModoAgencia = ehModoAgencia(pathname);
   // O Modo agência é uma "organização" à parte na lista: quem gere clientes (manager/admin em mais de um,
   // ou super-admin) a vê.
   const temModoAgencia =
@@ -93,7 +94,7 @@ export function TenantSwitcher() {
         {temModoAgencia && (
           <DropdownMenuItem
             data-testid="modo-agencia"
-            onClick={() => router.push("/app/agencia/campanhas")}
+            onClick={() => router.push(entradaDoModoAgencia(user.is_platform_admin && !user.support))}
             className="flex items-center justify-between"
           >
             <span className="truncate">{t("Modo agência")}</span>

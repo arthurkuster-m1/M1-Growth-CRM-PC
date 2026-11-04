@@ -59,3 +59,19 @@ export function itemAtivo(item: ItemDoMenuDaAgencia, pathname: string): boolean 
     (h) => pathname === h || pathname.startsWith(h + "/"),
   );
 }
+
+/**
+ * "Estou no Modo agência?": as telas da agência (`/app/agencia/*`) e o painel de plataforma
+ * (`/admin/*`) são UMA visão só, com o mesmo menu e a mesma barra de cima.
+ */
+export function ehModoAgencia(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return ["/app/agencia", "/admin"].some(
+    (raiz) => pathname === raiz || pathname.startsWith(raiz + "/"),
+  );
+}
+
+/** Para onde "Modo agência" leva: o painel de plataforma, para quem o administra; senão, as campanhas. */
+export function entradaDoModoAgencia(ehSuperAdmin: boolean): string {
+  return ehSuperAdmin ? "/admin/dashboard" : "/app/agencia/campanhas";
+}

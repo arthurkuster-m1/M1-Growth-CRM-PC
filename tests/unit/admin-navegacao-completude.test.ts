@@ -2,7 +2,7 @@
  * TODA TELA DO ADMINISTRADOR DA INSTALAÇÃO TEM PORTA NO MENU DELE.
  *
  * `navegacao-completude.test.ts` cobre só `app/app/**` (a navegação do tenant); o
- * menu do administrador é a lista `NAV_ITEMS` de `components/admin/AdminSidebar.tsx`,
+ * menu do administrador era a lista `NAV_ITEMS` do antigo `AdminSidebar` (hoje: `lib/agencia/menu.ts`),
  * e nada o vigiava. Foi assim que `/admin/modulos` nasceu sem porta no PR #1578: as
  * rotas de honorários mandavam o operador instalar o módulo "em Módulos", e só se
  * chegava lá digitando a URL.
