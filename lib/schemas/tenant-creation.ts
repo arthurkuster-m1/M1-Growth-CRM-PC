@@ -13,6 +13,8 @@ export const tenantCreationFields = {
   cnpj: z.string().max(18).optional(),
   owner_interface_settings: interfaceSettingsSchema.optional(),
   owner_email: z.string().trim().email(),
+  /** A oportunidade desta empresa no CRM da agência (de onde saem entrada e mensalidade). */
+  agencia_lead_id: z.string().uuid().optional(),
 };
 export const createTenantSchema = z
   .object(tenantCreationFields)

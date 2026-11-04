@@ -57,6 +57,8 @@ export const updateTenantSchema = z
     media_retention_days: z.number().int().min(1).max(3650),
     interface_settings: interfaceSettingsSchema,
     onboarded_at: z.string().datetime({ offset: true }).nullable(),
+    /** O lead da empresa no CRM da agência; `null` desliga o vínculo. */
+    agencia_lead_id: z.string().uuid().nullable(),
     /** `null` volta ao que vem da instalação; cada campo `null` idem. */
     marca: z
       .object({

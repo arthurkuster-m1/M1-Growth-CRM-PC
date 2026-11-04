@@ -56,7 +56,7 @@ test("org única oferece criação, responsável aceita e A→B→A não mistura
     // "Gerenciar organizações" não existe mais: a gestão das empresas mora no Modo agência.
     await page.getByTestId("modo-agencia").click();
     await page.getByRole("link", { name: "Empresas" }).click();
-    await page.getByRole("link", { name: /Nova empresa/i }).click();
+    await page.getByRole("button", { name: /Nova empresa/i }).click();
     await page.getByLabel("Nome da empresa").fill(`Empresa B ${suffix}`);
     await page.getByLabel("E-mail do dono da empresa").fill(guestEmail);
     // O servidor confirma, mas todas as respostas da primeira tentativa se perdem.

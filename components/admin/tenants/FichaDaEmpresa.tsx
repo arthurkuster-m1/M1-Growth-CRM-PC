@@ -175,9 +175,11 @@ function Numero({ rotulo, valor }: { rotulo: string; valor: number }) {
 export function FichaDaEmpresa({
   organization: org,
   counts,
+  agenciaLead = null,
 }: {
   organization: TenantOrganization;
   counts: TenantCounts;
+  agenciaLead?: { id: string; title: string } | null;
 }) {
   const t = useT();
   const tag = useTagDeIdioma();
@@ -253,6 +255,31 @@ export function FichaDaEmpresa({
           mono
           onSalvar={(novo, ant) => salvar({ cnpj: novo }, { cnpj: ant }, "CNPJ")}
         />
+        <Linha rotulo={t("Lead no CRM da agência")}>
+          {agenciaLead ? (
+            <div className="flex items-center gap-2">
+              <span className="truncate text-sm font-medium">{agenciaLead.title}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  salvar(
+                    { agencia_lead_id: null },
+                    { agencia_lead_id: agenciaLead.id },
+                    t("Lead no CRM da agência"),
+                  )
+                }
+              >
+                {t("Desvincular")}
+              </Button>
+            </div>
+          ) : (
+            <span className="text-xs text-text-muted">
+              {t("Sem lead ligado. A entrada e a mensalidade saem do lead da agência.")}
+            </span>
+          )}
+        </Linha>
         <Linha rotulo={t("Situação")}>
           <Badge variant={org.status === "active" ? "success" : "warning"}>
             {org.status === "active"

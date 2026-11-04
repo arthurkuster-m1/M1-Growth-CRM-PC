@@ -1,7 +1,7 @@
-import { NewTenantForm } from "./_form";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Nova empresa — Modo agência" };
-
-export default function NewTenantPage() {
-  return <NewTenantForm />;
+// A criação de empresa virou um popup na lista (`NovaEmpresaDialog`); este endereço antigo
+// continua funcionando e abre o popup.
+export default function NewTenantPage(): never {
+  redirect("/admin/tenants?nova=1");
 }

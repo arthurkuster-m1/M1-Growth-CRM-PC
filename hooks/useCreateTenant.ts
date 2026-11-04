@@ -16,6 +16,7 @@ export interface CreateTenantPayload {
   legal_name?: string;
   cnpj?: string;
   owner_email: string;
+  agencia_lead_id?: string;
   owner_interface_settings?: InterfaceSettings;
 }
 

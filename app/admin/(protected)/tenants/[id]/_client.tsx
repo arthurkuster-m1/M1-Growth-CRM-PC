@@ -36,7 +36,7 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
     );
   }
 
-  const { organization, counts } = data.data;
+  const { organization, counts, agencia_lead: agenciaLead } = data.data;
 
   return (
     <div className="space-y-6">
@@ -45,7 +45,7 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <FichaDaEmpresa organization={organization} counts={counts} />
+        <FichaDaEmpresa organization={organization} counts={counts} agenciaLead={agenciaLead} />
         <TenantActions
           organizationId={organization.id}
           status={organization.status}

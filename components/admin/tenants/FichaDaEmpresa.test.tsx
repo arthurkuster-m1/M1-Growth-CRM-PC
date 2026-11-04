@@ -31,6 +31,7 @@ const ORG: TenantOrganization = {
   onboarded_at: null,
   suspended_at: null,
   suspended_reason: null,
+  agencia_lead_id: null,
   created_at: "2026-01-01T00:00:00Z",
   settings: {},
 };
