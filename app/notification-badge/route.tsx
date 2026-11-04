@@ -4,6 +4,7 @@ import { ImageResponse } from "next/og";
 import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
 import { fail } from "@/lib/api/wrappers";
 import { letraDoIcone } from "@/lib/branding/icone";
+import { caminhoDoIconeDeNotificacao } from "@/lib/branding/icone-de-notificacao-caminho";
 import { lerArquivoDoIcone } from "@/lib/branding/icone-do-app";
 import {
   bytesDoDataUri,
@@ -23,8 +24,8 @@ const CABECALHOS = {
 };
 
 /**
- * `badge` das notificações do navegador: a silhueta (branco sobre transparente) do ícone da marca
- * da instalação, que é o que o Android desenha na barra de status. Ver
+ * `badge` das notificações do navegador: a silhueta (branco sobre transparente) da imagem da
+ * notificação da instalação (ou do logo de fundo branco), que é o que o Android desenha na barra de status. Ver
  * `lib/branding/icone-de-notificacao.ts`. Sem ícone enviado, cai na inicial da marca em branco
  * sobre transparente — nunca num ladrilho cheio.
  */
@@ -36,7 +37,11 @@ export async function GET(request: Request) {
 
   const marca = await marcaDaSaida(null);
   const linha = await marcaDaInstalacao();
-  const bytes = bytesDoDataUri(await lerArquivoDoIcone(linha?.favicon_path));
+  // Quem manda: a imagem própria da notificação (Marca › Ícone da notificação); sem ela, o logo de
+  // fundo branco. NUNCA o ícone do app (`favicon_path`): é um ladrilho com fundo, e a silhueta
+  // dele seria um quadrado cheio.
+  const caminho = (await caminhoDoIconeDeNotificacao()) ?? linha?.logo_path ?? null;
+  const bytes = bytesDoDataUri(await lerArquivoDoIcone(caminho));
   if (bytes) {
     try {
       return new Response(new Uint8Array(await silhuetaDeNotificacao(bytes)), {
