@@ -1,5 +1,5 @@
 "use client";
-import { ehModoAgencia, itemAtivo, itensDaAgencia, itensDaPlataforma } from "@/lib/agencia/menu";
+import { ehModoAgencia, gruposDoModoAgencia, itemAtivo } from "@/lib/agencia/menu";
 import { EmBreveTag } from "@/components/ui/EmBreveTag";
 import { ehEmBreve } from "@/lib/navigation/em-breve";
 import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
@@ -613,19 +613,14 @@ function ItensDoModoAgencia({
   const t = useT();
   const { user } = useAuth();
   const ehSuperAdmin = user.is_platform_admin && !user.support;
-  const grupos = [
-    { titulo: t("Modo agência"), itens: itensDaAgencia(ehSuperAdmin) },
-    // Só o super-admin: a gestão das empresas e da instalação mora DENTRO do Modo agência
-    // (o antigo "Gerenciar organizações" deixou de existir).
-    ...(ehSuperAdmin ? [{ titulo: t("Plataforma"), itens: itensDaPlataforma() }] : []),
-  ];
+  const grupos = gruposDoModoAgencia(ehSuperAdmin);
   return (
     <div className="space-y-3">
       {grupos.map(({ titulo, itens }) => (
-        <div key={titulo} className="space-y-0.5">
-          {collapsed ? null : (
+        <div key={titulo ?? "topo"} className="space-y-0.5">
+          {collapsed || !titulo ? null : (
             <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-              {titulo}
+              {t(titulo)}
             </p>
           )}
           {itens.map((item) => {
