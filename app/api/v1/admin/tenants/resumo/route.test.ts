@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
   resumo: [] as Array<Record<string, unknown>>,
   rpc: vi.fn(),
   filtroIds: null as string[] | null,
+  rpcErro: null as { code: string } | null,
 }));
 
 vi.mock("@/lib/auth/requirePlatformAdmin", () => ({
