@@ -40,11 +40,11 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { label: "Visão Geral", href: "", disabled: false },
-  { label: "Saúde", href: "/health", disabled: false },
-  { label: "Agente", href: "/agent", disabled: false },
-  { label: "Meta Ads", href: "/meta-ads", disabled: false },
+  { label: "Agentes", href: "/agent", disabled: false },
+  { label: "Conexões", href: "/conexoes", disabled: false },
   { label: "Equipe", href: "/team", disabled: false },
-  { label: "Uso", href: "/usage", disabled: true },
+  { label: "Uso", href: "/uso", disabled: false },
+  { label: "Configurações", href: "/configuracoes", disabled: false },
 ];
 
 // ---------------------------------------------------------------------------

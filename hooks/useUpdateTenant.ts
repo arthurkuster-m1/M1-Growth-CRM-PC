@@ -30,10 +30,19 @@ export function useUpdateTenant(id: string) {
       await qc.cancelQueries({ queryKey: chave });
       const antes = qc.getQueryData<TenantDetailResponse>(chave);
       if (antes) {
-        const { marca: _marca, ...colunas } = patch;
+        const { marca: _marca, onboarding, ...colunas } = patch;
+        const organization = { ...antes.data.organization, ...colunas };
+        if (onboarding !== undefined) {
+          // `o_que_faz` mora em `onboarding_state.welcome` (o servidor mescla do mesmo jeito).
+          const estado = organization.onboarding_state ?? {};
+          organization.onboarding_state = {
+            ...estado,
+            welcome: { ...estado.welcome, o_que_faz: onboarding.o_que_faz ?? undefined },
+          };
+        }
         qc.setQueryData<TenantDetailResponse>(chave, {
           ...antes,
-          data: { ...antes.data, organization: { ...antes.data.organization, ...colunas } },
+          data: { ...antes.data, organization },
         });
       }
       return { antes };

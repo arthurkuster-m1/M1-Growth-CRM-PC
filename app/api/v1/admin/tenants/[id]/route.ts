@@ -51,6 +51,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       onboarded_at,
       suspended_at,
       suspended_reason,
+      onboarding_state,
       created_at,
       settings
     `;
@@ -72,46 +73,63 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Run counts in parallel — service role, all cross-tenant reads are intentional
-  const [usersRes, conversationsRes, messagesRes, leadsRes, ordersRes, lgpdRes, aiRes, wahaRes] =
-    await Promise.all([
-      admin
-        .from("user_organizations")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", id),
-      admin
-        .from("conversations")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", id),
-      admin.from("messages").select("*", { count: "exact", head: true }).eq("organization_id", id),
-      admin.from("crm_leads").select("*", { count: "exact", head: true }).eq("organization_id", id),
-      admin.from("orders").select("*", { count: "exact", head: true }).eq("organization_id", id),
-      admin
-        .from("lgpd_requests")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", id)
-        // `pending` não existe em `lgpd_requests_status_check`
-        // (received/processing/completed/failed/expired), então este contador era
-        // sempre 0 e a tela jurava que o tenant não devia nada à LGPD. Aqui
-        // pendente = TUDO que ainda não fechou, sem recorte de prazo. O KPI de
-        // plataforma (`app/api/v1/admin/dashboard/kpis/route.ts`) parte do mesmo
-        // "não fechado" mas soma só o que vence nos próximos 5 dias — os dois
-        // números divergem de propósito: este é o total do tenant, aquele é a
-        // fila de SLA da plataforma.
-        .not("status", "in", "(completed,failed)"),
-      // `llm_calls` e não `ai_invocations`: a migration 0130 deixou a segunda sem
-      // nenhum escritor (`lib/ai/log-invocation.ts` passou a gravar na primeira).
-      // Lendo a tabela morta, este contador viraria ZERO em 30 dias para todo
-      // tenant — com o dinheiro saindo. É o mesmo sintoma que a 0130 veio matar.
-      admin
-        .from("llm_calls")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", id)
-        .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
-      admin
-        .from("channel_sessions")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", id),
-    ]);
+  const [
+    usersRes,
+    conversationsRes,
+    messagesRes,
+    leadsRes,
+    ordersRes,
+    vendasPagasRes,
+    lgpdRes,
+    aiRes,
+    wahaRes,
+  ] = await Promise.all([
+    // Usuários = quem tem acesso AGORA (vínculo não revogado).
+    admin
+      .from("user_organizations")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", id)
+      .is("revoked_at", null),
+    admin
+      .from("conversations")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", id),
+    admin.from("messages").select("*", { count: "exact", head: true }).eq("organization_id", id),
+    admin.from("crm_leads").select("*", { count: "exact", head: true }).eq("organization_id", id),
+    admin.from("orders").select("*", { count: "exact", head: true }).eq("organization_id", id),
+    // Vendas pagas = oportunidades GANHAS (a oportunidade é a única fonte de venda no CRM).
+    admin
+      .from("crm_leads")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", id)
+      .eq("status", "won"),
+    admin
+      .from("lgpd_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", id)
+      // `pending` não existe em `lgpd_requests_status_check`
+      // (received/processing/completed/failed/expired), então este contador era
+      // sempre 0 e a tela jurava que o tenant não devia nada à LGPD. Aqui
+      // pendente = TUDO que ainda não fechou, sem recorte de prazo. O KPI de
+      // plataforma (`app/api/v1/admin/dashboard/kpis/route.ts`) parte do mesmo
+      // "não fechado" mas soma só o que vence nos próximos 5 dias — os dois
+      // números divergem de propósito: este é o total do tenant, aquele é a
+      // fila de SLA da plataforma.
+      .not("status", "in", "(completed,failed)"),
+    // `llm_calls` e não `ai_invocations`: a migration 0130 deixou a segunda sem
+    // nenhum escritor (`lib/ai/log-invocation.ts` passou a gravar na primeira).
+    // Lendo a tabela morta, este contador viraria ZERO em 30 dias para todo
+    // tenant — com o dinheiro saindo. É o mesmo sintoma que a 0130 veio matar.
+    admin
+      .from("llm_calls")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", id)
+      .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+    admin
+      .from("channel_sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", id),
+  ]);
 
   const counts = {
     user_count: usersRes.count ?? 0,
@@ -119,6 +137,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     messages_count: messagesRes.count ?? 0,
     leads_count: leadsRes.count ?? 0,
     orders_count: ordersRes.count ?? 0,
+    vendas_pagas: vendasPagasRes.count ?? 0,
     lgpd_requests_pending: lgpdRes.count ?? 0,
     ai_invocations_30d: aiRes.count ?? 0,
     waha_sessions_count: wahaRes.count ?? 0,
@@ -149,7 +168,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     agenciaLead = lead ? { id: lead.id as string, title: lead.title as string } : null;
   }
 
-  return ok({ organization: org, counts, agencia_lead: agenciaLead }, { requestId });
+  // A mensalidade (do lead da agência). Tolerante: sem a função (migration 0684 ainda não aplicada) ou
+  // sem lead, é `null` e a tela só não mostra o alerta.
+  let mensalidade: { status: "pago" | "pendente" | null; proximo_pagamento: string | null } | null =
+    null;
+  if (leadId) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const { data: linhas, error: erroDaFuncao } = await admin.rpc("fn_resumo_das_empresas", {
+      p_ids: [id],
+      p_de: hoje,
+      p_ate: hoje,
+    });
+    const linha = (
+      linhas as Array<{
+        mensalidade: "pago" | "pendente" | null;
+        proximo_pagamento: string | null;
+      }> | null
+    )?.[0];
+    if (!erroDaFuncao && linha) {
+      mensalidade = { status: linha.mensalidade, proximo_pagamento: linha.proximo_pagamento };
+    }
+  }
+
+  return ok({ organization: org, counts, agencia_lead: agenciaLead, mensalidade }, { requestId });
 }
 
 // ---------------------------------------------------------------------------
@@ -195,7 +236,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const admin = createAdminClient();
-  const { marca, ...colunas } = parsed.data;
+  const { marca, onboarding, ...colunasDoCorpo } = parsed.data;
+  const colunas: Record<string, unknown> & { agencia_lead_id?: string | null } = {
+    ...colunasDoCorpo,
+  };
   if (colunas.agencia_lead_id) {
     const { data: lead } = await admin
       .from("crm_leads")
@@ -205,6 +249,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!lead) {
       return fail("validation_error", "Lead não encontrado", 400, { requestId });
     }
+  }
+
+  // `o_que_faz` mora em `onboarding_state.welcome`: lê o estado atual e grava o JSON mesclado junto
+  // das demais colunas (o resto do onboarding — aceite dos termos etc. — fica como está).
+  if (onboarding !== undefined) {
+    const { data: atual } = await admin
+      .from("organizations")
+      .select("onboarding_state")
+      .eq("id", id)
+      .maybeSingle();
+    if (!atual) return fail("not_found", "Tenant not found", 404, { requestId });
+    const estado = ((atual.onboarding_state as Record<string, unknown> | null) ?? {}) as {
+      welcome?: Record<string, unknown>;
+    };
+    const { o_que_faz: _antigo, ...restoDoWelcome } = estado.welcome ?? {};
+    colunas.onboarding_state = {
+      ...estado,
+      welcome: {
+        ...restoDoWelcome,
+        ...(onboarding.o_que_faz ? { o_que_faz: onboarding.o_que_faz } : {}),
+      },
+    };
   }
 
   // Existência (e slug para a trilha) primeiro: a marca e as colunas são

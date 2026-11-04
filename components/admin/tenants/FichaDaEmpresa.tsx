@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
-import { useAtalhoDesfazer } from "@/hooks/motor/useAtalhoDesfazer";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import type { TenantCounts, TenantOrganization } from "@/hooks/useTenantDetail";
 import { useUpdateTenant, type EdicaoDaEmpresa } from "@/hooks/useUpdateTenant";
+import { AreasDeTrabalho } from "@/components/admin/tenants/AreasDeTrabalho";
+import { INTERFACE_COMPLETA } from "@/lib/navigation/interface";
 import { IDIOMAS } from "@/lib/i18n/idiomas";
 import { copyToClipboard } from "@/lib/clipboard";
 import { Copy } from "@/lib/ui/icons";
@@ -34,9 +35,21 @@ const FUSOS_BASE = [
   "UTC",
 ];
 
+export type ParteDaFicha =
+  "identificacao" | "volumes" | "regiao" | "lgpd" | "ia" | "marca" | "areas";
+export const PARTES_DA_FICHA: readonly ParteDaFicha[] = [
+  "identificacao",
+  "volumes",
+  "regiao",
+  "lgpd",
+  "ia",
+  "marca",
+  "areas",
+];
+
 type Salvar = (patch: EdicaoDaEmpresa, anterior: EdicaoDaEmpresa, rotulo: string) => void;
 
-function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+export function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-1 items-center gap-1 py-1.5 sm:grid-cols-[180px_1fr] sm:gap-4">
       <span className="text-xs text-text-muted">{rotulo}</span>
@@ -46,7 +59,7 @@ function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 }
 
 /** Texto salvo ao sair do campo (ou Enter), só se mudou. `key` reinicia com o valor do servidor. */
-function CampoDeTexto({
+export function CampoDeTexto({
   rotulo,
   valor,
   obrigatorio,
@@ -176,14 +189,16 @@ export function FichaDaEmpresa({
   organization: org,
   counts,
   agenciaLead = null,
+  partes = PARTES_DA_FICHA,
 }: {
   organization: TenantOrganization;
   counts: TenantCounts;
   agenciaLead?: { id: string; title: string } | null;
+  /** Quais tópicos desenhar: a ficha é repartida entre a Visão Geral e as Configurações. */
+  partes?: readonly ParteDaFicha[];
 }) {
   const t = useT();
   const tag = useTagDeIdioma();
-  useAtalhoDesfazer();
   const { mutate } = useUpdateTenant(org.id);
 
   const salvar: Salvar = (patch, anterior, rotulo) =>
@@ -210,263 +225,260 @@ export function FichaDaEmpresa({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-      <SecaoDaFicha id="empresa-identificacao" titulo={t("Identificação")}>
-        <Linha rotulo={t("Identificador (slug)")}>
-          <div className="flex items-center gap-2">
-            <code className="rounded-md bg-secondary px-2 py-1 font-mono text-xs">{org.slug}</code>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={t("Copiar")}
-              onClick={async () =>
-                (await copyToClipboard(org.slug)) ? toast.success(t("Copiado")) : undefined
-              }
-            >
-              <Copy size={14} aria-hidden />
-            </Button>
-            <span className="text-xs text-text-muted">
-              {t("Não pode ser trocado depois de criado")}
-            </span>
-          </div>
-        </Linha>
-        <CampoDeTexto
-          key={`dn-${org.display_name}`}
-          rotulo={t("Nome")}
-          valor={org.display_name}
-          obrigatorio
-          onSalvar={(novo, ant) =>
-            salvar({ display_name: novo ?? "" }, { display_name: ant ?? "" }, t("Nome"))
-          }
-        />
-        <CampoDeTexto
-          key={`ln-${org.legal_name}`}
-          rotulo={t("Razão social")}
-          valor={org.legal_name}
-          obrigatorio
-          onSalvar={(novo, ant) =>
-            salvar({ legal_name: novo ?? "" }, { legal_name: ant ?? "" }, t("Razão social"))
-          }
-        />
-        <CampoDeTexto
-          key={`cnpj-${org.cnpj}`}
-          rotulo="CNPJ"
-          valor={org.cnpj}
-          mono
-          onSalvar={(novo, ant) => salvar({ cnpj: novo }, { cnpj: ant }, "CNPJ")}
-        />
-        <Linha rotulo={t("Lead no CRM da agência")}>
-          {agenciaLead ? (
+      {partes.includes("identificacao") ? (
+        <SecaoDaFicha id="empresa-identificacao" titulo={t("Identificação")}>
+          <Linha rotulo={t("Identificador (slug)")}>
             <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium">{agenciaLead.title}</span>
+              <code className="rounded-md bg-secondary px-2 py-1 font-mono text-xs">
+                {org.slug}
+              </code>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() =>
-                  salvar(
-                    { agencia_lead_id: null },
-                    { agencia_lead_id: agenciaLead.id },
-                    t("Lead no CRM da agência"),
-                  )
+                aria-label={t("Copiar")}
+                onClick={async () =>
+                  (await copyToClipboard(org.slug)) ? toast.success(t("Copiado")) : undefined
                 }
               >
-                {t("Desvincular")}
+                <Copy size={14} aria-hidden />
               </Button>
+              <span className="text-xs text-text-muted">
+                {t("Não pode ser trocado depois de criado")}
+              </span>
             </div>
-          ) : (
-            <span className="text-xs text-text-muted">
-              {t("Sem lead ligado. A entrada e a mensalidade saem do lead da agência.")}
-            </span>
-          )}
-        </Linha>
-        <Linha rotulo={t("Situação")}>
-          <Badge variant={org.status === "active" ? "success" : "warning"}>
-            {org.status === "active"
-              ? t("Ativo")
-              : org.status === "suspended"
-                ? t("Suspenso")
-                : t("Redigido")}
-          </Badge>
-          {org.suspended_reason ? (
-            <span className="ml-2 text-xs text-text-muted">{org.suspended_reason}</span>
-          ) : null}
-        </Linha>
-      </SecaoDaFicha>
+          </Linha>
+          <CampoDeTexto
+            key={`dn-${org.display_name}`}
+            rotulo={t("Nome")}
+            valor={org.display_name}
+            obrigatorio
+            onSalvar={(novo, ant) =>
+              salvar({ display_name: novo ?? "" }, { display_name: ant ?? "" }, t("Nome"))
+            }
+          />
+          <CampoDeTexto
+            key={`ln-${org.legal_name}`}
+            rotulo={t("Razão social")}
+            valor={org.legal_name}
+            obrigatorio
+            onSalvar={(novo, ant) =>
+              salvar({ legal_name: novo ?? "" }, { legal_name: ant ?? "" }, t("Razão social"))
+            }
+          />
+          <CampoDeTexto
+            key={`cnpj-${org.cnpj}`}
+            rotulo="CNPJ"
+            valor={org.cnpj}
+            mono
+            onSalvar={(novo, ant) => salvar({ cnpj: novo }, { cnpj: ant }, "CNPJ")}
+          />
+          <Linha rotulo={t("Lead no CRM da agência")}>
+            {agenciaLead ? (
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm font-medium">{agenciaLead.title}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    salvar(
+                      { agencia_lead_id: null },
+                      { agencia_lead_id: agenciaLead.id },
+                      t("Lead no CRM da agência"),
+                    )
+                  }
+                >
+                  {t("Desvincular")}
+                </Button>
+              </div>
+            ) : (
+              <span className="text-xs text-text-muted">
+                {t("Sem lead ligado. A entrada e a mensalidade saem do lead da agência.")}
+              </span>
+            )}
+          </Linha>
+          <Linha rotulo={t("Situação")}>
+            <Badge variant={org.status === "active" ? "success" : "warning"}>
+              {org.status === "active"
+                ? t("Ativo")
+                : org.status === "suspended"
+                  ? t("Suspenso")
+                  : t("Redigido")}
+            </Badge>
+            {org.suspended_reason ? (
+              <span className="ml-2 text-xs text-text-muted">{org.suspended_reason}</span>
+            ) : null}
+          </Linha>
+        </SecaoDaFicha>
+      ) : null}
 
-      <SecaoDaFicha id="empresa-regiao" titulo={t("Região e idioma")}>
-        <CampoDeSelecao
-          rotulo={t("Fuso horário")}
-          valor={org.timezone}
-          opcoes={fusos.map((f) => ({ id: f, nome: f }))}
-          onSalvar={(novo, ant) => salvar({ timezone: novo }, { timezone: ant }, t("Fuso horário"))}
-        />
-        <CampoDeSelecao
-          rotulo={t("Idioma")}
-          valor={org.locale}
-          opcoes={IDIOMAS.map((i) => ({ id: i, nome: i }))}
-          onSalvar={(novo, ant) => salvar({ locale: novo }, { locale: ant }, t("Idioma"))}
-        />
-        <CampoDeSelecao
-          rotulo={t("Moeda")}
-          valor={org.currency}
-          opcoes={MOEDAS.map((m) => ({ id: m, nome: m }))}
-          onSalvar={(novo, ant) => salvar({ currency: novo }, { currency: ant }, t("Moeda"))}
-        />
-        <CampoDeSelecao
-          rotulo={t("País")}
-          valor={org.country ?? "BR"}
-          opcoes={PAISES.map((p) => ({ id: p, nome: p }))}
-          onSalvar={(novo, ant) => salvar({ country: novo }, { country: ant }, t("País"))}
-        />
-      </SecaoDaFicha>
+      {partes.includes("regiao") ? (
+        <SecaoDaFicha id="empresa-regiao" titulo={t("Região e idioma")}>
+          <CampoDeSelecao
+            rotulo={t("Fuso horário")}
+            valor={org.timezone}
+            opcoes={fusos.map((f) => ({ id: f, nome: f }))}
+            onSalvar={(novo, ant) =>
+              salvar({ timezone: novo }, { timezone: ant }, t("Fuso horário"))
+            }
+          />
+          <CampoDeSelecao
+            rotulo={t("Idioma")}
+            valor={org.locale}
+            opcoes={IDIOMAS.map((i) => ({ id: i, nome: i }))}
+            onSalvar={(novo, ant) => salvar({ locale: novo }, { locale: ant }, t("Idioma"))}
+          />
+          <CampoDeSelecao
+            rotulo={t("Moeda")}
+            valor={org.currency}
+            opcoes={MOEDAS.map((m) => ({ id: m, nome: m }))}
+            onSalvar={(novo, ant) => salvar({ currency: novo }, { currency: ant }, t("Moeda"))}
+          />
+          <CampoDeSelecao
+            rotulo={t("País")}
+            valor={org.country ?? "BR"}
+            opcoes={PAISES.map((p) => ({ id: p, nome: p }))}
+            onSalvar={(novo, ant) => salvar({ country: novo }, { country: ant }, t("País"))}
+          />
+        </SecaoDaFicha>
+      ) : null}
 
-      <SecaoDaFicha id="empresa-lgpd" titulo={t("Privacidade (LGPD)")} padraoAberta={false}>
-        <CampoDeTexto
-          key={`dpo-${org.dpo_email}`}
-          rotulo={t("E-mail do encarregado (DPO)")}
-          valor={org.dpo_email}
-          onSalvar={(novo, ant) =>
-            salvar({ dpo_email: novo }, { dpo_email: ant }, t("E-mail do encarregado (DPO)"))
-          }
-        />
-        <CampoDeTexto
-          key={`pp-${org.privacy_policy_url}`}
-          rotulo={t("Política de privacidade (link)")}
-          valor={org.privacy_policy_url}
-          placeholder="https://"
-          onSalvar={(novo, ant) =>
-            salvar(
-              { privacy_policy_url: novo },
-              { privacy_policy_url: ant },
-              t("Política de privacidade (link)"),
-            )
-          }
-        />
-        <CampoDeNumero
-          key={`ret-${org.media_retention_days}`}
-          rotulo={t("Guardar mídias por")}
-          valor={org.media_retention_days}
-          sufixo={t("dias")}
-          onSalvar={(novo, ant) =>
-            novo !== null && novo >= 1
-              ? salvar(
-                  { media_retention_days: Math.round(novo) },
-                  { media_retention_days: ant ?? 365 },
-                  t("Guardar mídias por"),
-                )
-              : undefined
-          }
-        />
-      </SecaoDaFicha>
+      {partes.includes("lgpd") ? (
+        <SecaoDaFicha id="empresa-lgpd" titulo={t("Privacidade (LGPD)")}>
+          <CampoDeTexto
+            key={`dpo-${org.dpo_email}`}
+            rotulo={t("E-mail do encarregado (DPO)")}
+            valor={org.dpo_email}
+            onSalvar={(novo, ant) =>
+              salvar({ dpo_email: novo }, { dpo_email: ant }, t("E-mail do encarregado (DPO)"))
+            }
+          />
+          <CampoDeTexto
+            key={`pp-${org.privacy_policy_url}`}
+            rotulo={t("Política de privacidade (link)")}
+            valor={org.privacy_policy_url}
+            placeholder="https://"
+            onSalvar={(novo, ant) =>
+              salvar(
+                { privacy_policy_url: novo },
+                { privacy_policy_url: ant },
+                t("Política de privacidade (link)"),
+              )
+            }
+          />
+          <CampoDeNumero
+            key={`ret-${org.media_retention_days}`}
+            rotulo={t("Guardar mídias por")}
+            valor={org.media_retention_days}
+            sufixo={t("dias")}
+            onSalvar={(novo, ant) =>
+              novo !== null && novo >= 1
+                ? salvar(
+                    { media_retention_days: Math.round(novo) },
+                    { media_retention_days: ant ?? 365 },
+                    t("Guardar mídias por"),
+                  )
+                : undefined
+            }
+          />
+        </SecaoDaFicha>
+      ) : null}
 
-      <SecaoDaFicha id="empresa-ia" titulo={t("Limite de IA")} padraoAberta={false}>
-        <CampoDeNumero
-          key={`ia-${org.ai_budget_cents}`}
-          rotulo={t("Orçamento mensal de IA")}
-          valor={orcamentoReais}
-          sufixo={org.currency}
-          vazioSignifica={t("Sem limite")}
-          onSalvar={(novo, ant) =>
-            salvar(
-              { ai_budget_cents: novo === null ? null : Math.round(novo * 100) },
-              { ai_budget_cents: ant === null ? null : Math.round(ant * 100) },
-              t("Orçamento mensal de IA"),
-            )
-          }
-        />
-      </SecaoDaFicha>
+      {partes.includes("ia") ? (
+        <SecaoDaFicha id="empresa-ia" titulo={t("Limite de IA")}>
+          <CampoDeNumero
+            key={`ia-${org.ai_budget_cents}`}
+            rotulo={t("Orçamento mensal de IA")}
+            valor={orcamentoReais}
+            sufixo={org.currency}
+            vazioSignifica={t("Sem limite")}
+            onSalvar={(novo, ant) =>
+              salvar(
+                { ai_budget_cents: novo === null ? null : Math.round(novo * 100) },
+                { ai_budget_cents: ant === null ? null : Math.round(ant * 100) },
+                t("Orçamento mensal de IA"),
+              )
+            }
+          />
+        </SecaoDaFicha>
+      ) : null}
 
-      <SecaoDaFicha id="empresa-marca" titulo={t("Marca")} padraoAberta={false}>
-        <CampoDeTexto
-          key={`mn-${marca.app_name ?? ""}`}
-          rotulo={t("Nome na marca")}
-          valor={marca.app_name ?? null}
-          placeholder={t("Igual ao da instalação")}
-          onSalvar={(novo, ant) =>
-            salvar(
-              { marca: { app_name: novo, accent_hex: marca.accent_hex ?? null } },
-              { marca: { app_name: ant, accent_hex: marca.accent_hex ?? null } },
-              t("Nome na marca"),
-            )
-          }
-        />
-        <CampoDeTexto
-          key={`mc-${marca.accent_hex ?? ""}`}
-          rotulo={t("Cor principal")}
-          valor={marca.accent_hex ?? null}
-          mono
-          placeholder="#366D6F"
-          onSalvar={(novo, ant) =>
-            salvar(
-              { marca: { app_name: marca.app_name ?? null, accent_hex: novo } },
-              { marca: { app_name: marca.app_name ?? null, accent_hex: ant } },
-              t("Cor principal"),
-            )
-          }
-        />
-      </SecaoDaFicha>
+      {partes.includes("marca") ? (
+        <SecaoDaFicha id="empresa-marca" titulo={t("Marca")}>
+          <CampoDeTexto
+            key={`mn-${marca.app_name ?? ""}`}
+            rotulo={t("Nome na marca")}
+            valor={marca.app_name ?? null}
+            placeholder={t("Igual ao da instalação")}
+            onSalvar={(novo, ant) =>
+              salvar(
+                { marca: { app_name: novo, accent_hex: marca.accent_hex ?? null } },
+                { marca: { app_name: ant, accent_hex: marca.accent_hex ?? null } },
+                t("Nome na marca"),
+              )
+            }
+          />
+          <CampoDeTexto
+            key={`mc-${marca.accent_hex ?? ""}`}
+            rotulo={t("Cor principal")}
+            valor={marca.accent_hex ?? null}
+            mono
+            placeholder="#366D6F"
+            onSalvar={(novo, ant) =>
+              salvar(
+                { marca: { app_name: marca.app_name ?? null, accent_hex: novo } },
+                { marca: { app_name: marca.app_name ?? null, accent_hex: ant } },
+                t("Cor principal"),
+              )
+            }
+          />
+        </SecaoDaFicha>
+      ) : null}
 
-      <SecaoDaFicha id="empresa-interface" titulo={t("Áreas de trabalho")} padraoAberta={false}>
-        <CampoDeSelecao
-          rotulo={t("Interface")}
-          valor={org.interface_settings?.preset ?? "completa"}
-          opcoes={[
-            { id: "completa", nome: t("Completa") },
-            { id: "simplificada", nome: t("Simplificada") },
-          ]}
-          onSalvar={(novo, ant) =>
-            salvar(
-              { interface_settings: { preset: novo as "completa" | "simplificada" } },
-              { interface_settings: { preset: ant as "completa" | "simplificada" } },
-              t("Interface"),
-            )
-          }
-        />
-      </SecaoDaFicha>
+      {partes.includes("areas") ? (
+        <SecaoDaFicha id="empresa-interface" titulo={t("Áreas de trabalho")}>
+          <AreasDeTrabalho
+            key={JSON.stringify(org.interface_settings)}
+            valor={org.interface_settings ?? INTERFACE_COMPLETA}
+            onSalvar={(novo, anterior) =>
+              salvar(
+                { interface_settings: novo },
+                { interface_settings: anterior },
+                t("Áreas de trabalho"),
+              )
+            }
+          />
+        </SecaoDaFicha>
+      ) : null}
 
-      <SecaoDaFicha id="empresa-volumes" titulo={t("Volumes")}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          <Numero rotulo={t("Usuários")} valor={counts.user_count} />
-          <Numero rotulo={t("Conversas")} valor={counts.conversations_count} />
-          <Numero rotulo={t("Mensagens")} valor={counts.messages_count} />
-          <Numero rotulo={t("Leads")} valor={counts.leads_count} />
-          <Numero rotulo={t("Pedidos")} valor={counts.orders_count} />
-        </div>
-        <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
-          <div>
-            <dt className="text-text-muted">{t("Solicitações LGPD pendentes")}</dt>
-            <dd className="font-medium">{counts.lgpd_requests_pending}</dd>
+      {partes.includes("volumes") ? (
+        <SecaoDaFicha id="empresa-volumes" titulo={t("Volumes e datas")}>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <Numero rotulo={t("Usuários")} valor={counts.user_count} />
+            <Numero rotulo={t("Conversas")} valor={counts.conversations_count} />
+            <Numero rotulo={t("Mensagens")} valor={counts.messages_count} />
+            <Numero rotulo={t("Leads")} valor={counts.leads_count} />
+            <Numero rotulo={t("Vendas pagas")} valor={counts.vendas_pagas} />
           </div>
-          <div>
-            <dt className="text-text-muted">{t("Invocações IA (30d)")}</dt>
-            <dd className="font-medium">{counts.ai_invocations_30d.toLocaleString(tag)}</dd>
-          </div>
-          <div>
-            <dt className="text-text-muted">{t("Sessões de WhatsApp")}</dt>
-            <dd className="font-medium">{counts.waha_sessions_count}</dd>
-          </div>
-        </dl>
-      </SecaoDaFicha>
-
-      <SecaoDaFicha id="empresa-datas" titulo={t("Datas")} padraoAberta={false}>
-        <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
-          <div>
-            <dt className="text-text-muted">{t("Criada em")}</dt>
-            <dd className="font-medium">{data(org.created_at)}</dd>
-          </div>
-          <div>
-            <dt className="text-text-muted">{t("Onboarding concluído")}</dt>
-            <dd className="font-medium">{data(org.onboarded_at)}</dd>
-          </div>
-          {org.suspended_at ? (
+          <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 border-t pt-3 text-xs sm:grid-cols-2">
             <div>
-              <dt className="text-text-muted">{t("Suspensa em")}</dt>
-              <dd className="font-medium">{data(org.suspended_at)}</dd>
+              <dt className="text-text-muted">{t("Criada em")}</dt>
+              <dd className="font-medium">{data(org.created_at)}</dd>
             </div>
-          ) : null}
-        </dl>
-      </SecaoDaFicha>
+            <div>
+              <dt className="text-text-muted">{t("Onboarding concluído")}</dt>
+              <dd className="font-medium">{data(org.onboarded_at)}</dd>
+            </div>
+            {org.suspended_at ? (
+              <div>
+                <dt className="text-text-muted">{t("Suspensa em")}</dt>
+                <dd className="font-medium">{data(org.suspended_at)}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </SecaoDaFicha>
+      ) : null}
     </div>
   );
 }

@@ -175,4 +175,45 @@ describe("PATCH /admin/tenants/[id]", () => {
     h.rpc.mockResolvedValue({ data: 0, error: null });
     expect((await PATCH(pedido({ marca: null }), ctx)).status).toBe(500);
   });
+
+  it("onboarding.o_que_faz mescla em onboarding_state.welcome sem perder o aceite dos termos", async () => {
+    h.linha = {
+      id: TENANT,
+      slug: "acme",
+      display_name: "Acme",
+      onboarding_state: {
+        welcome: { accepted_at: "2026-11-01T12:00:00Z", o_que_faz: "velho" },
+        team: { x: 1 },
+      },
+    };
+    const res = await PATCH(pedido({ onboarding: { o_que_faz: "Clínica nova" } }), ctx);
+    expect(res.status).toBe(200);
+    expect(h.atualizacoes[0]?.valores).toEqual({
+      onboarding_state: {
+        welcome: { accepted_at: "2026-11-01T12:00:00Z", o_que_faz: "Clínica nova" },
+        team: { x: 1 },
+      },
+    });
+    expect(h.audit.mock.calls[0]?.[0].metadata.fields_changed).toEqual(["onboarding"]);
+  });
+
+  it("onboarding.o_que_faz vazio limpa só esse campo; campo estranho no onboarding → 400", async () => {
+    h.linha = {
+      id: TENANT,
+      slug: "acme",
+      display_name: "Acme",
+      onboarding_state: { welcome: { accepted_at: "t", o_que_faz: "velho" } },
+    };
+    expect((await PATCH(pedido({ onboarding: { o_que_faz: "" } }), ctx)).status).toBe(200);
+    expect(h.atualizacoes[0]?.valores).toEqual({
+      onboarding_state: { welcome: { accepted_at: "t" } },
+    });
+    expect((await PATCH(pedido({ onboarding: { welcome: {} } }), ctx)).status).toBe(400);
+  });
+
+  it("finalizar o onboarding grava onboarded_at", async () => {
+    const quando = "2026-11-04T18:00:00Z";
+    expect((await PATCH(pedido({ onboarded_at: quando }), ctx)).status).toBe(200);
+    expect(h.atualizacoes[0]?.valores).toEqual({ onboarded_at: quando });
+  });
 });

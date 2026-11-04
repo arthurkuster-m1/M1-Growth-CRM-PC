@@ -32,6 +32,7 @@ const ORG: TenantOrganization = {
   suspended_at: null,
   suspended_reason: null,
   agencia_lead_id: null,
+  onboarding_state: null,
   created_at: "2026-01-01T00:00:00Z",
   settings: {},
 };
@@ -41,6 +42,7 @@ const COUNTS: TenantCounts = {
   messages_count: 3,
   leads_count: 4,
   orders_count: 5,
+  vendas_pagas: 2,
   lgpd_requests_pending: 0,
   ai_invocations_30d: 0,
   waha_sessions_count: 0,
@@ -84,7 +86,6 @@ describe("FichaDaEmpresa", () => {
 
   it("orçamento de IA vai em centavos; vazio vira sem limite (null)", () => {
     render(<FichaDaEmpresa organization={ORG} counts={COUNTS} />);
-    fireEvent.click(screen.getByRole("button", { name: /limite de ia/i }));
     const campo = screen.getByLabelText("Orçamento mensal de IA");
     fireEvent.change(campo, { target: { value: "75,5" } });
     fireEvent.blur(campo);

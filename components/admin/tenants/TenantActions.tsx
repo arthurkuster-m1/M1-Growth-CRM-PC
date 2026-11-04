@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SuspendDialog } from "./SuspendDialog";
 import { ReactivateDialog } from "./ReactivateDialog";
-import { ImpersonateButton } from "@/components/admin/ImpersonateButton";
 import { useT } from "@/hooks/i18n/useT";
 
 // ---------------------------------------------------------------------------
@@ -13,18 +12,13 @@ import { useT } from "@/hooks/i18n/useT";
 interface TenantActionsProps {
   organizationId: string;
   status: "active" | "suspended" | "redacted";
-  displayName: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function TenantActions({
-  organizationId,
-  status,
-  displayName,
-}: TenantActionsProps) {
+export function TenantActions({ organizationId, status }: TenantActionsProps) {
   const t = useT();
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
@@ -35,20 +29,10 @@ export function TenantActions({
 
   return (
     <>
-      <div className="rounded-lg border bg-card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="space-y-4 rounded-lg border bg-card p-5">
+        <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
           {t("Ações")}
         </h2>
-
-        {/* Impersonate (S-11.07) */}
-        <ImpersonateButton
-          organizationId={organizationId}
-          displayName={displayName}
-          disabled={isRedacted}
-          disabledReason={
-            isRedacted ? t("Tenant redigido — ação não disponível") : undefined
-          }
-        />
 
         {/* Suspend */}
         {canSuspend && (
@@ -75,7 +59,7 @@ export function TenantActions({
         )}
 
         {isRedacted && (
-          <p className="text-xs text-muted-foreground text-center py-2">
+          <p className="py-2 text-center text-xs text-muted-foreground">
             {t("Tenant redigido — ações de gestão não disponíveis.")}
           </p>
         )}
