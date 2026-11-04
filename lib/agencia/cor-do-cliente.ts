@@ -1,7 +1,7 @@
 import { BASE_DA_COR } from "@/lib/motor/cores";
 
 /**
- * A COR DE UM CLIENTE NA AGÊNCIA: a que a agência escolheu em Gerenciar organizações
+ * A COR DE UM CLIENTE NA AGÊNCIA: a que a agência escolheu na ficha da empresa
  * (`organizations.settings.agencia_cor`, hex), ou — sem escolha — uma da paleta, estável por cliente.
  * O cliente nunca vê essa cor: só quem opera o Modo agência.
  */

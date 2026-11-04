@@ -25,13 +25,15 @@
  * limite que `admin-shell-tooltip.test.tsx` já declara.
  *
  * Sabotagem que confirma que a guarda vigia: remover `<ThemeToggle />` de
- * `components/admin/PlatformModeBanner.tsx` deixa os dois casos vermelhos.
+ * `components/admin/AdminSidebar.tsx` deixa os dois casos vermelhos.
+ *
+ * ⚠️ Os parágrafos acima falam da TARJA, que saiu: o controle foi para o rodapé do menu lateral.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { PlatformModeBanner } from "@/components/admin/PlatformModeBanner";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ThemeProvider } from "@/lib/theme";
 
 // Mesmo stub local de `lib/theme.test.tsx`: o jsdom não implementa matchMedia,
@@ -52,15 +54,23 @@ afterEach(() => {
   }
 });
 
+// O controle mora no rodapé do menu lateral do admin (a tarja amarela do Modo Plataforma saiu em
+// 04/11/2026). O menu lê pathname e a marca da instalação: stubs mínimos.
+vi.mock("next/navigation", () => ({ usePathname: () => "/admin/dashboard" }));
+vi.mock("@/lib/branding/contexto", () => ({
+  useMarcaDaInstalacao: () => ({ name: "M1 Growth", logo: null }),
+}));
+vi.mock("@/lib/branding", () => ({ marcaEhADoProduto: () => false }));
+
 const tarja = () =>
   render(
     <ThemeProvider>
-      <PlatformModeBanner />
+      <AdminSidebar userEmail="dono@m1.com" />
     </ThemeProvider>,
   );
 
 describe("Admin Plataforma — troca de tema", () => {
-  it("a tarja do Modo Plataforma oferece o controle de tema", () => {
+  it("o menu do admin oferece o controle de tema", () => {
     tarja();
     // O `aria-label` do `ThemeToggle` começa por "Tema: " e traz o estado
     // atual. Casar pelo prefixo em vez do texto inteiro evita que renomear o

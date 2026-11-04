@@ -1,4 +1,5 @@
 "use client";
+import { itemAtivo, itensDaAgencia, itensDaPlataforma } from "@/lib/agencia/menu";
 import { EmBreveTag } from "@/components/ui/EmBreveTag";
 import { ehEmBreve } from "@/lib/navigation/em-breve";
 import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
@@ -9,8 +10,6 @@ import { useEffect, useState, useTransition } from "react";
 import {
   ArrowRight,
   Buildings,
-  CalendarBlank,
-  ChartLineUp,
   CaretDoubleLeft,
   CaretDoubleRight,
   CaretDown,
@@ -19,11 +18,9 @@ import {
   House,
   Inbox,
   Kanban,
-  Megaphone,
   ListChecks,
   PlugsConnected,
   Robot,
-  Users,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -616,49 +613,52 @@ function ItensDoModoAgencia({
   const t = useT();
   const { user } = useAuth();
   const ehSuperAdmin = user.is_platform_admin && !user.support;
-  const itens = [
-    { href: "/app/agencia/campanhas", rotulo: t("Campanhas"), Icone: Megaphone },
-    { href: "/app/agencia/cronograma", rotulo: t("Cronograma e semana"), Icone: CalendarBlank },
-    { href: "/app/agencia/dashboards", rotulo: t("Dashboards"), Icone: ChartLineUp },
-    { href: "/app/agencia/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
-    ...(ehSuperAdmin
-      ? [{ href: "/app/agencia/equipe", rotulo: t("Equipe e clientes"), Icone: Users }]
-      : []),
+  const grupos = [
+    { titulo: t("Modo agência"), itens: itensDaAgencia(ehSuperAdmin) },
+    // Só o super-admin: a gestão das empresas e da instalação mora DENTRO do Modo agência
+    // (o antigo "Gerenciar organizações" deixou de existir).
+    ...(ehSuperAdmin ? [{ titulo: t("Plataforma"), itens: itensDaPlataforma() }] : []),
   ];
   return (
-    <div className="space-y-0.5">
-      {collapsed ? null : (
-        <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-          {t("Modo agência")}
-        </p>
-      )}
-      {itens.map(({ href, rotulo, Icone }) => {
-        const ativo = pathname === href || pathname.startsWith(href + "/");
-        return (
-          <Link
-            key={href}
-            href={href}
-            title={collapsed ? rotulo : undefined}
-            aria-current={ativo ? "page" : undefined}
-            onClick={onNavigate}
-            className={cn(
-              "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-              ativo
-                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-              collapsed && "justify-center px-2",
-            )}
-          >
-            <Icone
-              size={18}
-              weight={ativo ? "fill" : "regular"}
-              className={ativo ? "text-primary" : undefined}
-              aria-hidden
-            />
-            {!collapsed && <span className="truncate">{rotulo}</span>}
-          </Link>
-        );
-      })}
+    <div className="space-y-3">
+      {grupos.map(({ titulo, itens }) => (
+        <div key={titulo} className="space-y-0.5">
+          {collapsed ? null : (
+            <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              {titulo}
+            </p>
+          )}
+          {itens.map((item) => {
+            const { href, Icone } = item;
+            const rotulo = t(item.rotulo);
+            const ativo = itemAtivo(item, pathname);
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? rotulo : undefined}
+                aria-current={ativo ? "page" : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                  ativo
+                    ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                  collapsed && "justify-center px-2",
+                )}
+              >
+                <Icone
+                  size={18}
+                  weight={ativo ? "fill" : "regular"}
+                  className={ativo ? "text-primary" : undefined}
+                  aria-hidden
+                />
+                {!collapsed && <span className="truncate">{rotulo}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
