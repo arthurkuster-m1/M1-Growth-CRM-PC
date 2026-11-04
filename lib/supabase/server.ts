@@ -37,6 +37,15 @@ function opcoesDeCookie(sameSite: "strict" | "lax") {
 }
 
 async function clienteDeServidor(sameSite: "strict" | "lax") {
+  // Painel público (link sem login): o handler liberado lê com o cliente de serviço, filtrando
+  // `organization_id` (ver `lib/dashboards/painel-publico.ts`). Fora desse contexto, nada muda.
+  if (sameSite === "strict" && painelPublicoAtual()) {
+    return createAdminClient() as unknown as Awaited<ReturnType<typeof clienteComCookies>>;
+  }
+  return clienteComCookies(sameSite);
+}
+
+async function clienteComCookies(sameSite: "strict" | "lax") {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -75,10 +84,6 @@ async function clienteDeServidor(sameSite: "strict" | "lax") {
 }
 
 export async function createClient() {
-  // Painel público (link sem login): o handler liberado lê com o cliente de serviço, filtrando
-  // `organization_id` (ver `lib/dashboards/painel-publico.ts`). Fora desse contexto, nada muda.
-  if (painelPublicoAtual())
-    return createAdminClient() as unknown as Awaited<ReturnType<typeof clienteDeServidor>>;
   return clienteDeServidor("strict");
 }
 
