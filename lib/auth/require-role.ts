@@ -33,11 +33,11 @@ import { loadAuthUser, mfaEmDivida, orgAtivaSemPortao } from "@/lib/auth/server"
 import { ROLE_RANK, type ActiveOrg, type AuthUser, type Role } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { STATUS_OPERANTE, ehOperante } from "@/lib/organizacao/operante";
+import { sessaoDoPainelPublico } from "@/lib/dashboards/painel-publico";
 import { createClient } from "@/lib/supabase/server";
 
 export type RoleCheck =
-  | { ok: true; user: AuthUser; org: ActiveOrg }
-  | { ok: false; response: NextResponse<ApiError> };
+  { ok: true; user: AuthUser; org: ActiveOrg } | { ok: false; response: NextResponse<ApiError> };
 
 const MENSAGEM_DE_MFA =
   "Esta sessão precisa da verificação em duas etapas. Entre novamente com o código do aplicativo.";
@@ -75,8 +75,7 @@ function orgSuspensa(user: AuthUser, requestId?: string): NextResponse<ApiError>
 }
 
 export type OrgDaApi =
-  | { ok: true; org: ActiveOrg | null }
-  | { ok: false; response: NextResponse<ApiError> };
+  { ok: true; org: ActiveOrg | null } | { ok: false; response: NextResponse<ApiError> };
 
 /**
  * A org ativa para Route Handler que não passa por `requireRole` (rotas que
@@ -125,6 +124,11 @@ export async function requireRole(min: Role, opts: RequireRoleOpts = {}): Promis
     permiteOrgSuspensa = false,
   } = opts;
 
+  // Painel público (link sem login): só existe dentro de `emPainelPublico`, aberto pela rota
+  // pública depois de resolver o link; a lista de rotas alcançáveis é fechada e só de leitura.
+  const publica = sessaoDoPainelPublico();
+  if (publica) return { ok: true, user: publica.user, org: publica.org };
+
   const user = await loadAuthUser();
   if (!user) {
     return { ok: false, response: fail("unauthenticated", "Auth required.", 401, { requestId }) };
@@ -132,33 +136,39 @@ export async function requireRole(min: Role, opts: RequireRoleOpts = {}): Promis
   const t = (texto: string) => traduzir(texto, user.idioma);
 
   if (user.support && user.support.status !== "active") {
-    return { ok: false, response: fail("forbidden", "O acompanhamento terminou. Saia para continuar.", 403, { requestId }) };
+    return {
+      ok: false,
+      response: fail("forbidden", "O acompanhamento terminou. Saia para continuar.", 403, {
+        requestId,
+      }),
+    };
   }
   let org: ActiveOrg | null;
   if (organizationId) {
     const membership = user.organizations.find((o) => o.organization_id === organizationId);
-    org = user.support?.organization_id === organizationId
-      ? {
-          orgId: organizationId,
-          name: user.support.name,
-          role: user.support.access_mode === "full" ? "admin" : "viewer",
-          // `fn_support_context` só dá 'active' com a org em 'active' (e o
-          // acompanhamento encerrado já saiu acima).
-          org_status: STATUS_OPERANTE,
-        }
-      : membership
-      ? {
-          orgId: membership.organization_id,
-          name: membership.organization_name,
-          role: membership.role,
-          org_status: membership.org_status ?? null,
-          suspended_kind: membership.suspended_kind ?? null,
-        }
-      : allowPlatformAdmin !== false && user.is_platform_admin
-        // Sem membership o status é desconhecido: `null` falha fechado. Hoje o
-        // único chamador (LGPD anonymize) passa `permiteOrgSuspensa`.
-        ? { orgId: organizationId, name: "—", role: "viewer", org_status: null }
-        : null;
+    org =
+      user.support?.organization_id === organizationId
+        ? {
+            orgId: organizationId,
+            name: user.support.name,
+            role: user.support.access_mode === "full" ? "admin" : "viewer",
+            // `fn_support_context` só dá 'active' com a org em 'active' (e o
+            // acompanhamento encerrado já saiu acima).
+            org_status: STATUS_OPERANTE,
+          }
+        : membership
+          ? {
+              orgId: membership.organization_id,
+              name: membership.organization_name,
+              role: membership.role,
+              org_status: membership.org_status ?? null,
+              suspended_kind: membership.suspended_kind ?? null,
+            }
+          : allowPlatformAdmin !== false && user.is_platform_admin
+            ? // Sem membership o status é desconhecido: `null` falha fechado. Hoje o
+              // único chamador (LGPD anonymize) passa `permiteOrgSuspensa`.
+              { orgId: organizationId, name: "—", role: "viewer", org_status: null }
+            : null;
   } else {
     org = await orgAtivaSemPortao(user);
   }
@@ -227,7 +237,10 @@ export async function requireRole(min: Role, opts: RequireRoleOpts = {}): Promis
           requestId,
           metadata: { reason: "mfa_required", via: "platform_admin" },
         });
-        return { ok: false, response: fail("mfa_required", t(MENSAGEM_DE_MFA), 403, { requestId }) };
+        return {
+          ok: false,
+          response: fail("mfa_required", t(MENSAGEM_DE_MFA), 403, { requestId }),
+        };
       }
       return { ok: true, user, org };
     }

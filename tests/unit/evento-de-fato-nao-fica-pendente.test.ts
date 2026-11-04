@@ -65,11 +65,13 @@ const EMISSAO_RPC = /p_event_type:\s*"([a-z0-9_.]+)"/g;
 const EVENT_LOG_FROM = /from\("event_log"\)([\s\S]{0,600})/g;
 const EMISSAO_INSERT = /\.insert\(\s*\{[^}]*?event_type:\s*"([a-z0-9_.]+)"/;
 /** SQL cru dentro de TS (`pool.query(\`insert into event_log …\`)`). */
-const EMISSAO_SQL_CRU = /insert\s+into\s+event_log\b[\s\S]{0,300}?values\s*\(\s*[^,()]+,\s*'([a-z0-9_.]+)'/g;
+const EMISSAO_SQL_CRU =
+  /insert\s+into\s+event_log\b[\s\S]{0,300}?values\s*\(\s*[^,()]+,\s*'([a-z0-9_.]+)'/g;
 /** SQL: `fn_log_event(<org>, 'tipo'` — a forma do baseline e das migrations. */
 const SQL_FN_LOG = /fn_log_event\s*\(\s*[^,()]+,\s*'([a-z0-9_.]+)'/g;
 /** SQL: `insert into event_log(…) values (<org>, 'tipo'` — tipo sempre na 2ª posição. */
-const SQL_INSERT = /insert\s+into\s+(?:public\.)?event_log\b[\s\S]{0,400}?values\s*\(\s*[^,()]+,\s*'([a-z0-9_.]+)'/g;
+const SQL_INSERT =
+  /insert\s+into\s+(?:public\.)?event_log\b[\s\S]{0,400}?values\s*\(\s*[^,()]+,\s*'([a-z0-9_.]+)'/g;
 /**
  * SQL: `emit_event('tipo', …)` e `emit_event(p_event_type := 'tipo', …)` — a forma
  * que as funções `plpgsql` usam, posicional ou nomeada.
@@ -174,10 +176,6 @@ const NASCE_DONE_NA_ORIGEM: Record<string, { onde: string[]; porque: string }> =
  * esquecimento. Fechar isto é decidir o vocabulário, não escrever SQL.
  */
 const NAMESPACE_ABERTO: Record<string, { onde: string; expressao: string }> = {
-  "nuvemshop.<evento>": {
-    onde: "app/api/v1/webhooks/nuvemshop/[event]/route.ts",
-    expressao: "p_event_type: eventLogType",
-  },
   "<target da regra de automacao>": {
     onde: "lib/automation/actions/add-tag.ts",
     expressao: "p_event_type: target.event",
@@ -387,9 +385,14 @@ describe("evento-fato (registro) não fica `pending`", () => {
     // declarasse a lista "para o teste parar de reclamar" passaria.
     const comTrigger = arquivosSql().filter((f) => {
       const texto = readFileSync(f, "utf8");
-      return texto.includes("trg_event_log_marca_registro") && texto.includes("fn_event_log_e_registro");
+      return (
+        texto.includes("trg_event_log_marca_registro") && texto.includes("fn_event_log_e_registro")
+      );
     });
-    expect(comTrigger.length, "nem o baseline nem migration alguma liga o trigger").toBeGreaterThanOrEqual(2);
+    expect(
+      comTrigger.length,
+      "nem o baseline nem migration alguma liga o trigger",
+    ).toBeGreaterThanOrEqual(2);
     for (const f of comTrigger) {
       const texto = semComentarios(readFileSync(f, "utf8"));
       expect(texto, `${f} não tem o trigger BEFORE INSERT`).toMatch(
@@ -465,7 +468,8 @@ describe("evento-fato (registro) não fica `pending`", () => {
       // Sem esta distinção, um regex que parasse de casar devolveria conjunto
       // vazio e a asserção principal passaria com a lista INTEIRA acusada de
       // órfã — ou, pior, ninguém saberia qual dos dois aconteceu.
-      const semDefinicao = "create or replace function public.fn_outra() returns boolean as $$ select true; $$;";
+      const semDefinicao =
+        "create or replace function public.fn_outra() returns boolean as $$ select true; $$;";
       expect(DEF_REGISTRO.exec(semComentarios(semDefinicao))).toBeNull();
       const comDefinicao =
         "create or replace function public.fn_event_log_e_registro(p text) returns boolean " +
