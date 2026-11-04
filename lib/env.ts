@@ -523,17 +523,6 @@ const schema = z.object({
   GOOGLE_ADS_OAUTH_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_ADS_OAUTH_CLIENT_SECRET: z.string().optional().default(""),
 
-  // Nuvemshop — opcional (template genérico open-source). Só exigidas quando
-  // NUVEMSHOP_ENABLED=true; o runtime já degrada via getConfig()==null.
-  NUVEMSHOP_APP_ID: z.string().optional().default(""),
-  NUVEMSHOP_CLIENT_ID: z.string().optional().default(""),
-  NUVEMSHOP_CLIENT_SECRET: z.string().optional().default(""),
-  NUVEMSHOP_ENABLED: z
-    .enum(["true", "false"])
-    .optional()
-    .default("false")
-    .transform((v) => v === "true"),
-
   // App URLs
   NEXT_PUBLIC_APP_URL: z
     .string()

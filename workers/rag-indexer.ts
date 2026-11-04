@@ -46,7 +46,6 @@ import { chunkText, computeContentHash } from "@/lib/ai/rag/chunker";
 import { canonizarTipoDeFonte } from "@/lib/ai/rag/tipos-de-fonte";
 import { extrairTextoDoArquivo, ErroDeExtracao } from "@/lib/ai/rag/ingest/documento";
 import { estimateTokens } from "@/lib/ai/runtime/history";
-import { formatProductForRag, type NuvemshopProduct } from "@/lib/ai/rag/format-product";
 import {
   createKnowledgeVersion,
   markVersionReady,
@@ -55,7 +54,6 @@ import {
 } from "@/lib/ai/rag/version";
 import type { EventRow, HandlerResult } from "@/lib/event-log/dispatcher";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { NuvemshopApiClient } from "@/lib/nuvemshop/api-client";
 
 const DEBOUNCE_TTL_SEC = 30;
 const LAG_WARN_MS = 5 * 60 * 1000;
@@ -101,10 +99,7 @@ type Resultado =
 // Leitura
 // ---------------------------------------------------------------------------
 
-async function carregarFonte(
-  organizationId: string,
-  sourceId: string,
-): Promise<FonteRow | null> {
+async function carregarFonte(organizationId: string, sourceId: string): Promise<FonteRow | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("ai_knowledge_sources")
@@ -237,80 +232,6 @@ async function pedacosDeDocumento(fonte: FonteRow): Promise<Pedaco[]> {
   }));
 }
 
-/** Catálogo: os produtos já sincronizados desta organização. */
-async function pedacosDeCatalogo(fonte: FonteRow, productId?: string): Promise<Pedaco[]> {
-  const produtos = productId
-    ? [await buscarProdutoNaLoja(fonte.organization_id, productId)].filter(
-        (p): p is NuvemshopProduct => p !== null,
-      )
-    : [];
-
-  const pedacos: Pedaco[] = [];
-  for (const p of produtos) {
-    for (const c of chunkText(formatProductForRag(p))) {
-      pedacos.push({
-        content: c,
-        metadata: { source_type: "catalogo", product_id: String((p as { id?: unknown }).id ?? "") },
-      });
-    }
-  }
-  return pedacos;
-}
-
-async function buscarProdutoNaLoja(
-  organizationId: string,
-  productId: string,
-): Promise<NuvemshopProduct | null> {
-  const creds = await credenciaisDaLoja(organizationId);
-  if (!creds) {
-    console.warn("[rag-indexer] loja não conectada para a org", organizationId);
-    return null;
-  }
-  try {
-    const client = new NuvemshopApiClient({
-      storeId: creds.storeId,
-      accessToken: creds.accessToken,
-    });
-    return (await client.get<NuvemshopProduct>(`/products/${productId}`)) ?? null;
-  } catch (err) {
-    console.warn(
-      "[rag-indexer] busca do produto falhou",
-      productId,
-      err instanceof Error ? err.message : String(err),
-    );
-    return null;
-  }
-}
-
-async function credenciaisDaLoja(
-  organizationId: string,
-): Promise<{ accessToken: string; storeId: string } | null> {
-  const admin = createAdminClient();
-
-  const { data, error } = await admin
-    .from("tenant_integrations")
-    .select("id, organization_id, provider, store_metadata")
-    .eq("organization_id", organizationId)
-    .eq("provider", "nuvemshop")
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  const meta = (data as { store_metadata: Record<string, unknown> | null }).store_metadata ?? {};
-  const storeId = String(meta["store_id"] ?? meta["id"] ?? "");
-  if (!storeId) return null;
-
-  const { data: decrypted, error: decErr } = await admin.rpc("fn_decrypt_oauth" as never, {
-    p_organization_id: organizationId,
-    p_integration_id: (data as { id: string }).id,
-  } as never);
-
-  if (decErr || !decrypted) return null;
-  const accessToken = String(decrypted);
-  return accessToken ? { accessToken, storeId } : null;
-}
-
 // ---------------------------------------------------------------------------
 // O ciclo de uma fonte
 // ---------------------------------------------------------------------------
@@ -333,7 +254,7 @@ async function credenciaisDaLoja(
 export async function indexarFonte(
   fonte: FonteRow,
   chave: ChaveDeEmbedding,
-  extra: { productId?: string },
+  _extra: Record<string, never> = {},
 ): Promise<Resultado> {
   const tipo = canonizarTipoDeFonte(fonte.source_type);
   if (tipo === null) {
@@ -350,7 +271,8 @@ export async function indexarFonte(
         pedacos = await pedacosDeDocumento(fonte);
         break;
       case "catalogo":
-        pedacos = await pedacosDeCatalogo(fonte, extra.productId);
+        // O catálogo vinha da loja Nuvemshop, que saiu do produto: sem pedaços novos.
+        pedacos = [];
         break;
       case "conversas":
         // A ingestão anonimizada tem pipeline próprio (cron
@@ -504,7 +426,6 @@ export async function indexarFonte(
  */
 async function fonteDoEvento(row: EventRow): Promise<{
   fonte: FonteRow | null;
-  productId?: string;
   motivo?: string;
 }> {
   if (row.event_type === "knowledge_source.updated") {
@@ -514,72 +435,36 @@ async function fonteDoEvento(row: EventRow): Promise<{
     return { fonte, ...(fonte ? {} : { motivo: "fonte_nao_encontrada" }) };
   }
 
-  // nuvemshop.product_synced
-  const productId = String(row.payload["product_id"] ?? "");
-  if (!productId) return { fonte: null, motivo: "evento_sem_product_id" };
-  const fonte = await garantirFonteDeCatalogo(row.organization_id);
-  return { fonte, productId, ...(fonte ? {} : { motivo: "fonte_de_catalogo_indisponivel" }) };
-}
-
-/**
- * A fonte de catálogo da organização, criada na primeira sincronização.
- *
- * Antes da 0181 o caminho de produto gravava `knowledge_source_id: null` numa
- * coluna NOT NULL — todo trecho de catálogo era recusado pelo banco, e o
- * `console.warn` de cada recusa era a única evidência.
- */
-async function garantirFonteDeCatalogo(organizationId: string): Promise<FonteRow | null> {
-  const admin = createAdminClient();
-
-  const { data: existente } = await admin
-    .from("ai_knowledge_sources")
-    .select(COLUNAS_DA_FONTE)
-    .eq("organization_id", organizationId)
-    .eq("source_type", "catalogo")
-    .eq("is_active", true)
-    .maybeSingle();
-  if (existente) return existente as FonteRow;
-
-  const { data: criada, error } = await admin
-    .from("ai_knowledge_sources")
-    .insert({
-      organization_id: organizationId,
-      agent_id: null,
-      source_type: "catalogo",
-      name: "Catálogo de produtos",
-      status: "ready",
-      is_active: true,
-      ingested_at: new Date().toISOString(),
-      source_metadata: { criada_automaticamente: true, origem: "nuvemshop" },
-    })
-    .select(COLUNAS_DA_FONTE)
-    .single();
-
-  if (error) {
-    console.warn("[rag-indexer] não consegui criar a fonte de catálogo:", error.message);
-    return null;
-  }
-  return criada as FonteRow;
+  return { fonte: null, motivo: "evento_nao_tratado" };
 }
 
 export async function processRagIndexer(row: EventRow): Promise<HandlerResult> {
   const consumerKey = "rag-indexer.v1";
 
-  const lagMs = Date.now() - new Date(String(row.payload["created_at"] ?? row.created_at)).getTime();
+  const lagMs =
+    Date.now() - new Date(String(row.payload["created_at"] ?? row.created_at)).getTime();
   if (Number.isFinite(lagMs) && lagMs > LAG_WARN_MS) {
     console.warn(
       `[rag-indexer] atraso de ${Math.round(lagMs / 1000)}s no evento ${row.id} (${row.event_type})`,
     );
   }
 
-  if (row.event_type !== "knowledge_source.updated" && row.event_type !== "nuvemshop.product_synced") {
-    return { consumer_key: consumerKey, status: "skipped", detail: `evento_nao_tratado:${row.event_type}` };
+  if (row.event_type !== "knowledge_source.updated") {
+    return {
+      consumer_key: consumerKey,
+      status: "skipped",
+      detail: `evento_nao_tratado:${row.event_type}`,
+    };
   }
 
   try {
-    const { fonte, productId, motivo } = await fonteDoEvento(row);
+    const { fonte, motivo } = await fonteDoEvento(row);
     if (!fonte) {
-      return { consumer_key: consumerKey, status: "skipped", detail: motivo ?? "fonte_indisponivel" };
+      return {
+        consumer_key: consumerKey,
+        status: "skipped",
+        detail: motivo ?? "fonte_indisponivel",
+      };
     }
     if (!fonte.is_active || fonte.status === "archived") {
       return { consumer_key: consumerKey, status: "skipped", detail: "fonte_arquivada" };
@@ -621,7 +506,7 @@ export async function processRagIndexer(row: EventRow): Promise<HandlerResult> {
 
     await marcarFonte(row.organization_id, fonte.id, { last_index_status: "indexando" });
 
-    const resultado = await indexarFonte(fonte, chave, productId ? { productId } : {});
+    const resultado = await indexarFonte(fonte, chave);
 
     if (resultado.tipo === "ok") {
       await marcarFonte(row.organization_id, fonte.id, {
