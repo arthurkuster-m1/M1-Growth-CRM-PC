@@ -215,11 +215,7 @@ function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal {
       controller.abort(sig.reason);
       break;
     }
-    sig.addEventListener(
-      "abort",
-      () => controller.abort(sig.reason),
-      { once: true },
-    );
+    sig.addEventListener("abort", () => controller.abort(sig.reason), { once: true });
   }
   return controller.signal;
 }
@@ -244,12 +240,27 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
   );
 }
 
+/**
+ * LINK SEM LOGIN (dashboards): as leituras `/api/v1/<rota>` vão para `/p/<token>/dados/<rota>`, que
+ * resolve o link no servidor. É só leitura: qualquer escrita é recusada aqui, antes de sair do navegador.
+ */
+let prefixoPublico: string | null = null;
+export const definirModoPublico = (token: string | null): void => {
+  prefixoPublico = token ? `/p/${token}/dados` : null;
+};
+
 async function request<T>(
   method: HttpMethod,
   path: string,
   body: unknown,
   opts: RequestOpts = {},
 ): Promise<T> {
+  if (prefixoPublico) {
+    if (method !== "GET" || !path.startsWith("/api/v1/")) {
+      return Promise.reject(new Error("Somente leitura."));
+    }
+    path = `${prefixoPublico}/${path.slice("/api/v1/".length)}`;
+  }
   const requestId = randomId();
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -274,8 +285,7 @@ async function request<T>(
     if (aba?.orgId) headers[HEADER_ORG_DA_ABA] = aba.orgId;
   }
 
-  const serializedBody =
-    body === undefined || body === null ? undefined : JSON.stringify(body);
+  const serializedBody = body === undefined || body === null ? undefined : JSON.stringify(body);
   const timeoutMs =
     opts.timeoutMs ?? (MUTATING_METHODS.has(method) ? MUTATION_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
 
@@ -371,9 +381,7 @@ async function request<T>(
         synthesizeCode(res.status),
         undefined,
         responseRequestId,
-        typeof errBody === "string" && errBody.length > 0
-          ? errBody
-          : `HTTP ${res.status}`,
+        typeof errBody === "string" && errBody.length > 0 ? errBody : `HTTP ${res.status}`,
       );
     } catch (err) {
       // ApiError thrown above for non-retryable: propagate immediately
@@ -414,14 +422,10 @@ async function request<T>(
   }
 
   // Exhausted retries on retryable status: throw a synthetic ApiError
-  throw lastError ??
-    new ApiError(
-      503,
-      "service_unavailable",
-      undefined,
-      requestId,
-      "Max retries exhausted",
-    );
+  throw (
+    lastError ??
+    new ApiError(503, "service_unavailable", undefined, requestId, "Max retries exhausted")
+  );
 }
 
 export const apiClient = {

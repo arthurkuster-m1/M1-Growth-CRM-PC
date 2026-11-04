@@ -14,6 +14,7 @@ import {
   linkVigente,
   type LinkDeMarketing,
 } from "@/lib/marketing/links";
+import { CHAVE_DOS_DASHBOARDS } from "@/lib/dashboards/chave";
 import { lerChaveDePagina } from "@/lib/marketing/modulos";
 import { Copy, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ export function CompartilharPagina({
     const chaveDoLink = link.module_key;
     if (chaveDoLink === null) return t("Painel inteiro");
     if (chaveDoLink === CHAVE_DO_CRONOGRAMA) return t("Cronograma");
+    if (chaveDoLink === CHAVE_DOS_DASHBOARDS) return t("Dashboards");
     const lida = lerChaveDePagina(chaveDoLink);
     const modulo = lida ? textosDoModulo(t, lida.modulo)?.titulo : undefined;
     if (lida?.tipo) {
@@ -95,34 +97,42 @@ export function CompartilharPagina({
         ) : null}
 
         <div className="grid gap-3 rounded-2xl bg-secondary/60 p-3">
-          <div
-            role="radiogroup"
-            aria-label={t("O que o link abre")}
-            className="grid grid-cols-2 gap-1.5"
-          >
-            {(
-              [
-                { id: "pagina", rotulo: t("Só esta página") },
-                { id: "painel", rotulo: t("Painel inteiro") },
-              ] as const
-            ).map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                role="radio"
-                aria-checked={escopo === o.id}
-                onClick={() => setEscopo(o.id)}
-                className={cn(
-                  "h-10 rounded-xl border px-3 text-sm transition-colors",
-                  escopo === o.id
-                    ? "border-primary bg-primary/10 font-medium"
-                    : "bg-background hover:bg-secondary",
-                )}
-              >
-                {o.rotulo}
-              </button>
-            ))}
-          </div>
+          {chave === CHAVE_DOS_DASHBOARDS ? (
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "O link abre os Dashboards com todas as abas e filtros, somente leitura, sempre com os números atuais.",
+              )}
+            </p>
+          ) : (
+            <div
+              role="radiogroup"
+              aria-label={t("O que o link abre")}
+              className="grid grid-cols-2 gap-1.5"
+            >
+              {(
+                [
+                  { id: "pagina", rotulo: t("Só esta página") },
+                  { id: "painel", rotulo: t("Painel inteiro") },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={escopo === o.id}
+                  onClick={() => setEscopo(o.id)}
+                  className={cn(
+                    "h-10 rounded-xl border px-3 text-sm transition-colors",
+                    escopo === o.id
+                      ? "border-primary bg-primary/10 font-medium"
+                      : "bg-background hover:bg-secondary",
+                  )}
+                >
+                  {o.rotulo}
+                </button>
+              ))}
+            </div>
+          )}
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">{t("Validade")}</span>
             <SelectDoApp

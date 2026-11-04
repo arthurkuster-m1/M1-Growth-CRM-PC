@@ -8,7 +8,9 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { cookies } from "next/headers";
+import { painelPublicoAtual } from "@/lib/dashboards/painel-publico";
 import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchDoServidor } from "@/lib/supabase/fetch-do-servidor";
 import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
 
@@ -73,6 +75,10 @@ async function clienteDeServidor(sameSite: "strict" | "lax") {
 }
 
 export async function createClient() {
+  // Painel público (link sem login): o handler liberado lê com o cliente de serviço, filtrando
+  // `organization_id` (ver `lib/dashboards/painel-publico.ts`). Fora desse contexto, nada muda.
+  if (painelPublicoAtual())
+    return createAdminClient() as unknown as Awaited<ReturnType<typeof clienteDeServidor>>;
   return clienteDeServidor("strict");
 }
 

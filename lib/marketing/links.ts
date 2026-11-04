@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 
 import { z } from "zod";
 
+import { CHAVE_DOS_DASHBOARDS } from "@/lib/dashboards/chave";
+
 import { chaveDeModuloSchema } from "./paginas";
 
 /** A "página" do cronograma, que também tem link sem login (não é um módulo da estratégia). */
@@ -26,7 +28,7 @@ export const tokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32,64}$/);
 export const criacaoDeLinkSchema = z.object({
   /** `null`/ausente = o painel inteiro (todas as páginas publicadas). */
   module_key: z
-    .union([chaveDeModuloSchema, z.literal(CHAVE_DO_CRONOGRAMA)])
+    .union([chaveDeModuloSchema, z.literal(CHAVE_DO_CRONOGRAMA), z.literal(CHAVE_DOS_DASHBOARDS)])
     .nullable()
     .optional(),
   /** `null`/ausente = não vence. */

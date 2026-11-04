@@ -63,7 +63,9 @@ export function AuthProvider({
       const result = await response.json();
       if (result.data.signature !== expected) window.location.reload();
     };
-    const timer = setInterval(() => { void check(); }, 30000);
+    const timer = setInterval(() => {
+      void check();
+    }, 30000);
     return () => clearInterval(timer);
   }, [user.support]);
 
@@ -98,9 +100,15 @@ export function AuthProvider({
     [user, activeOrg, refreshing],
   );
 
-  return <Ctx.Provider value={value}>
-    <Providers key={`${user.id}:${activeOrg?.orgId ?? "none"}:${user.support?.id ?? "normal"}:${user.support?.access_mode ?? ""}`}>{children}</Providers>
-  </Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <Providers
+        key={`${user.id}:${activeOrg?.orgId ?? "none"}:${user.support?.id ?? "normal"}:${user.support?.access_mode ?? ""}`}
+      >
+        {children}
+      </Providers>
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth(): AuthCtx {
@@ -111,6 +119,11 @@ export function useAuth(): AuthCtx {
 
 export function useUser(): AuthUser {
   return useAuth().user;
+}
+
+/** A org ativa, ou `null` fora do `AuthProvider` (as páginas públicas por link não têm sessão). */
+export function useActiveOrgSeguro(): ActiveOrg | null {
+  return useContext(Ctx)?.activeOrg ?? null;
 }
 
 export function useActiveOrg(): ActiveOrg | null {

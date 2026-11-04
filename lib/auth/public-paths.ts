@@ -77,6 +77,8 @@ export const PUBLIC_PATHS: RegExp[] = [
   // inexistente, revogado ou vencido. Ancorado: só `/p/<token>`, `/p/<token>/<módulo>` e a imagem
   // `/p/<token>/img/<uuid>.<png|jpg>` (migration 0588), que passa pelo mesmo crivo do token.
   /^\/p\/[A-Za-z0-9_-]{32,64}(\/[a-z0-9-]{1,64}|\/img\/[0-9a-f-]{36}\.(?:png|jpg))?$/,
+  // Os DADOS do dashboard pelo link sem login (somente GET, lista fechada de rotas dentro do handler).
+  /^\/p\/[A-Za-z0-9_-]{32,64}\/dados\/[a-z0-9/-]{1,80}$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   // GET /api/v1/contacts aceita SESSÃO ou Bearer `dsk_...` (api_tokens) — a

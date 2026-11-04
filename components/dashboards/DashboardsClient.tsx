@@ -8,7 +8,10 @@ import { PerdasPanel } from "@/components/dashboards/PerdasPanel";
 import { PrevisaoPanel } from "@/components/dashboards/PrevisaoPanel";
 import { Relatorios } from "@/components/dashboards/atividades/Relatorios";
 import { useClienteDaAgencia } from "@/components/agencia/ClienteDaAgenciaProvider";
-import { useActiveOrg } from "@/hooks/auth/AuthProvider";
+import { useActiveOrgSeguro } from "@/hooks/auth/AuthProvider";
+import { CompartilharPagina } from "@/components/marketing/CompartilharPagina";
+import { CHAVE_DOS_DASHBOARDS } from "@/lib/dashboards/chave";
+import { ShareNetwork } from "@/lib/ui/icons";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { Business, type DadosDeBusiness } from "@/components/dashboards/Business";
 import { AnalisesDaAgenda } from "@/components/agenda/AnalisesDaAgenda";
@@ -43,9 +46,12 @@ type Painel = IdDoPainel;
 export function DashboardsClient({
   empresa,
   painelInicial,
+  publico = false,
 }: {
   empresa: string;
   painelInicial?: string;
+  /** Aberto pelo link sem login: só leitura, sem as opções de quem administra. */
+  publico?: boolean;
 }) {
   const t = useT();
   const [escolhido, setPainel] = useState<Painel>(
@@ -54,7 +60,8 @@ export function DashboardsClient({
       : "trafego",
   );
   const { atalhos, hoje } = useAtalhosDePeriodo();
-  const papel = useActiveOrg()?.role;
+  const papel = useActiveOrgSeguro()?.role;
+  const [compartilhando, setCompartilhando] = useState(false);
   // No modo agência só valem os painéis cujos dados já sabem de qual cliente falar; os demais
   // (Comercial, Atividades, Previsão e Perdas) leem a empresa da sessão e ficam de fora.
   const noModoAgencia = useClienteDaAgencia() !== null;
@@ -117,7 +124,9 @@ export function DashboardsClient({
     },
   ];
   const abas = todasAsAbas.filter(
-    (a) => !ocultos.includes(a.id) && !(noModoAgencia && (a.id === "comercial" || a.id === "atividades")),
+    (a) =>
+      !ocultos.includes(a.id) &&
+      !(noModoAgencia && (a.id === "comercial" || a.id === "atividades")),
   );
   // Se o painel escolhido foi escondido, cai no primeiro que sobrou.
   const painel: Painel = abas.some((a) => a.id === escolhido)
@@ -242,7 +251,7 @@ export function DashboardsClient({
             ) : null}
           </button>
         ))}
-        {visibilidade.data?.podeEditar ? (
+        {visibilidade.data?.podeEditar && !publico ? (
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -282,46 +291,65 @@ export function DashboardsClient({
         ) : null}
       </div>
 
+      {!publico && !noModoAgencia && podeVerPerdas ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setCompartilhando(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ShareNetwork size={16} aria-hidden />
+            {t("Compartilhar com o cliente")}
+          </button>
+          <CompartilharPagina
+            aberto={compartilhando}
+            aoFechar={() => setCompartilhando(false)}
+            chave={CHAVE_DOS_DASHBOARDS}
+            temPublicado
+          />
+        </div>
+      ) : null}
+
       {/* No celular os filtros dividem a largura do bloco por igual (sem sobra à direita).
           Atividades tem o próprio seletor de período dentro da página. */}
       {painel === "atividades" ? null : (
-      <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border bg-card p-3 sm:flex sm:flex-wrap">
-        <div
-          className={cn(
-            "min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto",
-            painel !== "prospeccao" && painel !== "trafego" && "col-span-2",
-          )}
-        >
-          <SeletorDePeriodo
-            de={janela.de}
-            ate={janela.ate}
-            rotulo={t("Período")}
-            atalhos={atalhos}
-            aoMudar={setJanela}
-          />
+        <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border bg-card p-3 sm:flex sm:flex-wrap">
+          <div
+            className={cn(
+              "min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto",
+              painel !== "prospeccao" && painel !== "trafego" && "col-span-2",
+            )}
+          >
+            <SeletorDePeriodo
+              de={janela.de}
+              ate={janela.ate}
+              rotulo={t("Período")}
+              atalhos={atalhos}
+              aoMudar={setJanela}
+            />
+          </div>
+          {painel === "prospeccao" ? (
+            <div className="min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto">
+              <SeletorDeCampanhas
+                catalogo={prospeccao.data?.catalogo ?? []}
+                escolhidas={campanhasDeProspeccao}
+                aoMudar={setCampanhasDeProspeccao}
+              />
+            </div>
+          ) : null}
+          {painel === "trafego" ? (
+            <div className="min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto">
+              <SeletorDeCampanhas
+                catalogo={trafego.data?.catalogo ?? []}
+                escolhidas={campanhas}
+                aoMudar={setCampanhas}
+              />
+            </div>
+          ) : null}
+          <span className="col-span-2 text-center text-xs text-muted-foreground sm:ml-auto sm:text-right">
+            {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
+          </span>
         </div>
-        {painel === "prospeccao" ? (
-          <div className="min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto">
-            <SeletorDeCampanhas
-              catalogo={prospeccao.data?.catalogo ?? []}
-              escolhidas={campanhasDeProspeccao}
-              aoMudar={setCampanhasDeProspeccao}
-            />
-          </div>
-        ) : null}
-        {painel === "trafego" ? (
-          <div className="min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto">
-            <SeletorDeCampanhas
-              catalogo={trafego.data?.catalogo ?? []}
-              escolhidas={campanhas}
-              aoMudar={setCampanhas}
-            />
-          </div>
-        ) : null}
-        <span className="col-span-2 text-center text-xs text-muted-foreground sm:ml-auto sm:text-right">
-          {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
-        </span>
-      </div>
       )}
 
       {painel === "trafego" ? (
@@ -376,8 +404,8 @@ export function DashboardsClient({
             {/* Vindos da página Desempenho: a previsão do que ainda vai ser vendido (funil aberto,
                 ponderado pela chance de fechar) e o porquê de cada perda no período escolhido.
                 Perdas é do gerente para cima (o funil inteiro). */}
-            {noModoAgencia ? null : <PrevisaoPanel />}
-            {podeVerPerdas && !noModoAgencia ? <PerdasPanel periodo={janela} /> : null}
+            {noModoAgencia || publico ? null : <PrevisaoPanel />}
+            {podeVerPerdas && !noModoAgencia && !publico ? <PerdasPanel periodo={janela} /> : null}
           </div>
         )
       ) : null}
