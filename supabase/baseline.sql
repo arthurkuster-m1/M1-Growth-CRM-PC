@@ -58032,6 +58032,19 @@ $$;
 revoke execute on function public.fn_resumo_das_empresas(uuid[], date, date) from public, anon, authenticated;
 grant execute on function public.fn_resumo_das_empresas(uuid[], date, date) to service_role;
 
+-- ---- ícone da notificação (migration 0685) ----
+alter table public.platform_branding add column if not exists notification_icon_path text;
+update public.platform_branding set notification_icon_path = null
+ where notification_icon_path is not null
+   and notification_icon_path !~ '^platform/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg)$';
+alter table public.platform_branding drop constraint if exists platform_branding_notification_icon_path;
+alter table public.platform_branding add constraint platform_branding_notification_icon_path check (
+  notification_icon_path is null or
+  notification_icon_path ~ '^platform/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg)$'
+);
+comment on column public.platform_branding.notification_icon_path is
+  'Imagem de onde sai a silhueta do ícone das notificações (barra de status). Caminho em brand-logos; null usa o logo de fundo branco.';
+
 -- ---- endurecimento do que as migrations 0614-0649 deixaram aberto (migration 0679) ----
 -- 1. `anon` fora das tabelas que as migrations 0614-0649 criaram. O default do Supabase concede tudo
 --    a anon em toda tabela nova; a RLS já barra, mas privilégio que não se usa não se deixa de pé.

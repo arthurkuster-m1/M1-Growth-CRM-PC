@@ -7,6 +7,7 @@ import {
   validarCssPersonalizado,
 } from "@/lib/branding/css-personalizado";
 import { marcaDaInstalacao } from "@/lib/branding/instalacao";
+import { caminhoDoIconeDeNotificacao } from "@/lib/branding/icone-de-notificacao-caminho";
 import { logoDaCamada } from "@/lib/branding/logo";
 import { REGUA_DO_PRODUTO } from "@/lib/branding/regua-do-produto";
 import { camadaDaInstalacao, camadaDoAmbiente, resolverMarca } from "@/lib/branding/resolve";
@@ -112,6 +113,8 @@ export default async function Page() {
         logoEscuroEmVigor={marca.logoDarkUrl}
         // Mesma conversão caminho → URL do logo; `null` sem arquivo subido.
         iconeDaAba={logoDaCamada(linha?.favicon_path, null)}
+        iconeDaNotificacao={logoDaCamada(await caminhoDoIconeDeNotificacao(), null)}
+        logoDeFundoBranco={logoDaCamada(linha?.logo_path, null)}
         logoDoAmbiente={semOArquivo.logoUrl}
         origens={marca.origens}
         // `seeded_from_env` ligado significa que a linha é cópia do arquivo de

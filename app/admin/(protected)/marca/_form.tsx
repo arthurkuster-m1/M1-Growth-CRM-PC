@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { updateBranding } from "@/app/actions/settings/updateBranding";
 import { CampoDeLogo } from "@/components/branding/CampoDeLogo";
+import { CampoDoIconeDaNotificacao } from "@/components/branding/CampoDoIconeDaNotificacao";
 import { CampoDoIconeDaAba } from "@/components/branding/CampoDoIconeDaAba";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -51,6 +52,8 @@ interface Props {
   readonly logoEscuroEmVigor?: string | null;
   /** O ícone da aba subido nesta tela (URL pública), ou `null` para o desenhado. */
   readonly iconeDaAba?: string | null;
+  readonly iconeDaNotificacao?: string | null;
+  readonly logoDeFundoBranco?: string | null;
   /** O que apareceria SEM o arquivo subido — a URL colada no `.env`, se houver. */
   readonly logoDoAmbiente: string | null;
   readonly origens: { readonly nome: string; readonly logoUrl: string; readonly cor: string };
@@ -76,6 +79,8 @@ export function FormularioDaMarca({
   logoEmVigor,
   logoEscuroEmVigor,
   iconeDaAba,
+  iconeDaNotificacao,
+  logoDeFundoBranco,
   logoDoAmbiente,
   origens,
   definidoNestaTela,
@@ -355,6 +360,10 @@ export function FormularioDaMarca({
         {/* Mesmo cartão do logo: também sobe na hora, sem passar pelo Salvar.
             Literal, nunca memoizado — ver o cabeçalho de CampoDoIconeDaAba. */}
         <CampoDoIconeDaAba iconeDaCamada={{ url: iconeDaAba ?? null }} />
+        <CampoDoIconeDaNotificacao
+          iconeDaCamada={{ url: iconeDaNotificacao ?? null }}
+          logoDeFundoBranco={logoDeFundoBranco ?? null}
+        />
       </Card>
 
       <EstadoDaMarca
