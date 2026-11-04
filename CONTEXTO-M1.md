@@ -4,6 +4,34 @@
 > Ele vale MAIS que o `CLAUDE.md` do DeskcommCRM quando os dois divergirem sobre o "como trabalhar com o Arthur".
 > A doutrina técnica (multi-tenancy, RLS, migrations, i18n, auditoria) do `CLAUDE.md` continua valendo.
 
+## ESTADO EM 04/11/2026 — VPS NOVA NO AR (leia primeiro; vale mais que as seções antigas sobre Caddy/porta 3001 da VPS velha)
+
+**Onde roda:** VPS Oracle (São Paulo, IP 163.176.43.6, Ubuntu 22.04 **ARM64**, 4 núcleos, 23 GB, swap 4 GB). O n8n (leads das campanhas → Excel) mora na mesma máquina e é **intocável**: projeto Docker próprio em `/home/ubuntu/automacoes`. Proxy = **Nginx Proxy Manager** (contêiner `npm`, painel na porta 81). Nunca reiniciar `npm`; só `docker exec npm nginx -t && docker exec npm nginx -s reload`.
+
+**Endereços:** CRM `https://app.assessoria-m1.com.br` · API do Supabase `https://supabase.assessoria-m1.com.br` (só `/auth /rest /realtime /storage /functions /graphql` `/v1`; o Studio responde 404 por regra do NPM) · n8n `https://n8n.assessoria-m1.com.br`. O host antigo `crm.` foi removido.
+
+**Peças (tudo volta sozinho após reinício — ensaiado em 04/11):**
+- Supabase self-hosted (ref `self-hosted/v0.8.1`, Postgres 17) em `/opt/m1-supabase`, projeto Docker `m1-supabase`; override nosso `docker-compose.m1.yml` (limites de memória, gateway em 127.0.0.1:8000, banco em 127.0.0.1:54322). O contêiner `supabase-envoy` também está na rede do NPM (é assim que o NPM o alcança).
+- App em `/opt/m1-growth-crm` (Node 22 via nvm, pnpm 9.15.9, `pnpm install` feito na própria VPS): serviço systemd **`m1-app`** (porta 3001, usuário `ubuntu`). O próprio serviço abre a porta 3001 no iptables só para a rede do NPM (`172.18.0.0/16`). `.env.local` aqui (modo 600).
+- Redis + SRH em `/opt/m1-whatsapp` (WAHA ainda **não** subiu: Fase 4). Health do app mostra `waha: down` até lá — por isso o monitor aponta o `/login`.
+- Atualização: `git push origin main` → GitHub `build-m1` → release `m1-build-latest` → timer `m1-puxar-build` (2 em 2 min) troca `.next` e reinicia (volta sozinho se falhar). As 3 variáveis públicas do GitHub (Variables) já apontam para o banco novo. Abas abertas dão "Server Reference ID did not match" até recarregar (Ctrl+Shift+R).
+- Rotinas: **39 linhas no crontab do usuário `ubuntu`** chamando `http://127.0.0.1:3001/api/v1/cron/*` com o `INTERNAL_SECRET` (mesma lista de `docker/scheduler/entrypoint.sh`; o script em si está quebrado por aspas num comentário — não usá-lo; refazer o crontab lendo as linhas `minuto|timeout|rota`). Não instalar os timers `deploy/vps/m1-tarefas-repetidas|vendas-recorrentes|campanhas-meta`: já estão na lista (duplicariam).
+- **Backup diário** 03:15 UTC: `/home/ubuntu/backup-diario.sh` (bancos do CRM e do n8n, storage, chaves; criptografado com `gpg`, senha em `/home/ubuntu/.senha-backup`) → Cloudflare R2, bucket `m1-backups/diario/`, retenção 14 dias; log em `/home/ubuntu/backups/backup.log`. **Restauração testada** em banco limpo (usuário, empresa, chave de cifra, workflows e credenciais do n8n batem). Credencial do R2 só em `~/.config/rclone/rclone.conf`. A senha do backup precisa existir também no gerenciador de senhas do Arthur.
+- Monitor externo: UptimeRobot (3 monitores verdes).
+- Banco: `baseline.sql` aplicado (install e update, 0 erro), 230+ tabelas, todas com RLS; isolamento entre empresas provado com usuário comum (super-admin enxerga tudo, por desenho). Chave de cifra dos segredos em `private.app_secrets` (nome `nuvemshop_oauth_key`; cópia em `/home/ubuntu/segredos-m1.env`). Dono: arthurkuster2.0@gmail.com, empresa "Assessoria M1".
+- Marca: o banco novo começou sem marca; `APP_NAME`/`APP_ACCENT_HEX` no `.env.local` são só semente. Logo e ajuste fino em `/admin/marca` (o Arthur faz pela tela).
+
+**✅ Backup de boot da Oracle:** criado pelo Arthur em 04/11/2026 (nome `boot-m1-antes-da-fase4-2026-11-04`, completo, no volume `M1-Growth-N8N (Boot Volume)`, 100 GB). Eu não vi o console: ele confirmou "feito". Repetir antes de mudanças grandes na VPS.
+
+**Pendências técnicas anotadas:**
+- Porta 81 do NPM aberta para a internet: restringir depois do go-live.
+- `docker/scheduler/entrypoint.sh` quebra no comentário com aspas da tarefa repetida (afeta o agendador em Docker; a VPS não o usa).
+- Advanced do host `app.` no NPM tem `client_max_body_size 100m` + buffers 32k (corrige 502 "upstream sent too big header" nas telas logadas). Se sumir após salvar o host, recolar.
+- `/opt/m1-growth-crm/deploy/vps/m1-puxar-build.sh` ganhou `chown -R ubuntu:ubuntu .next` (o app roda como `ubuntu`, o script como root).
+- `bootstrap-owner.ts` grava o nome "Dono" fixo; o Arthur já trocou no Perfil.
+- Evolution API roda sem uso (o Arthur autorizou desligar; não é prioridade).
+- Fase 4 (com o Arthur): empresas dos clientes, Meta Ads, Google Agenda (URL de retorno OAuth para o domínio novo), WAHA, ramo paralelo no n8n.
+
 ## Quem é o usuário e como trabalhar
 - Arthur NÃO é programador (sabe HTML/landing pages no Cloudflare Pages e n8n). Fale em português simples, **um passo de cada vez**, e teste cada passo antes do próximo.
 - Comandos para ele rodar: **um comando por bloco de código**, sem `$`, explicando o que faz.

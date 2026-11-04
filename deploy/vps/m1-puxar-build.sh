@@ -48,6 +48,8 @@ fi
 rm -rf .next.antigo
 mv .next .next.antigo
 mv "$tmp/x/.next" .next
+# O app roda como `ubuntu` (m1-app.service); o Next escreve cache dentro de .next.
+chown -R ubuntu:ubuntu .next
 systemctl restart m1-app
 
 ok=0

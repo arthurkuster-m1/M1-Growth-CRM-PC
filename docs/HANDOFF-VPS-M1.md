@@ -1,5 +1,7 @@
 # Handoff: subir o M1 Growth CRM na VPS nova (sessão com acesso à VPS)
 
+> **STATUS 04/11/2026: itens A–H CONCLUÍDOS** (CRM no ar em app.assessoria-m1.com.br, backup restaurado, reinício ensaiado). Estado atual e pendências: seção "ESTADO EM 04/11/2026" no topo de `CONTEXTO-M1.md`. Falta só o backup de boot da Oracle (adiado por decisão do Arthur) e a Fase 4.
+
 > Para o Claude que vai trabalhar **dentro da VPS** (Remote Control). Escrito em 04/11/2026 pela sessão da nuvem.
 > Leia, nesta ordem: `CLAUDE.md` → `CONTEXTO-M1.md` → este arquivo → `docs/PLANO-GO-LIVE-M1.md` (roteiro técnico A–I)
 > → `docs/PLANO-GO-LIVE-MVP-M1.md` (fases). Quem manda é o Arthur (não programa, fala português, quer passo a passo
