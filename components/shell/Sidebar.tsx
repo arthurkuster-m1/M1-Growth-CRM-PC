@@ -1,5 +1,5 @@
 "use client";
-import { itemAtivo, itensDaAgencia, itensDaPlataforma } from "@/lib/agencia/menu";
+import { ehModoAgencia, itemAtivo, itensDaAgencia, itensDaPlataforma } from "@/lib/agencia/menu";
 import { EmBreveTag } from "@/components/ui/EmBreveTag";
 import { ehEmBreve } from "@/lib/navigation/em-breve";
 import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
@@ -69,7 +69,7 @@ export function SidebarContent({
   const t = useT();
   const pathname = usePathname();
   // MODO AGÊNCIA: é uma "organização" própria — dentro dela o menu é o da agência, não o de uma empresa.
-  const noModoAgencia = pathname === "/app/agencia" || pathname.startsWith("/app/agencia/");
+  const noModoAgencia = ehModoAgencia(pathname);
   const [isPending, startTransition] = useTransition();
   const { user, activeOrg } = useAuth();
   const todos = sidebarGroups(

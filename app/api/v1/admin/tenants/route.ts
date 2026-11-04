@@ -18,6 +18,12 @@ const querySchema = z.object({
   status: z.enum(["active", "suspended", "onboarding", "redacted"]).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
+  // O seletor de empresas do Modo agência: só estas (uuids separados por vírgula).
+  ids: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.split(",").map((x) => x.trim()).filter(Boolean) : []))
+    .pipe(z.array(z.string().uuid()).max(500)),
 });
 
 // ---------------------------------------------------------------------------
@@ -63,7 +69,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const { q, status, cursor, limit } = parsed.data;
+  const { q, status, cursor, limit, ids } = parsed.data;
   const admin = createAdminClient();
   const cursorPayload = cursor ? decodeCursor(cursor) : null;
 
@@ -95,6 +101,10 @@ export async function GET(req: NextRequest) {
     query = query.eq("status", "active").is("onboarded_at", null);
   } else if (status) {
     query = query.eq("status", status);
+  }
+
+  if (ids.length > 0) {
+    query = query.in("id", ids);
   }
 
   if (q) {

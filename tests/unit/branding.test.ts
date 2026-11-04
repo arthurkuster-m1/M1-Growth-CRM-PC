@@ -64,7 +64,7 @@ describe("guarda de white-label (self-host)", () => {
 
   it("injeta a marca em runtime pelo PublicEnvScript", () => {
     // Sem estas duas chaves no payload, os client components (Sidebar,
-    // AdminSidebar) caem no padrão e só a marca do servidor muda — a instalação
+    // TopBar) caem no padrão e só a marca do servidor muda — a instalação
     // ficaria com o nome do revendedor no título da aba e o nosso na sidebar.
     //
     // As duas liam `env.APP_NAME` / `env.APP_LOGO_URL` — o arquivo de instalação

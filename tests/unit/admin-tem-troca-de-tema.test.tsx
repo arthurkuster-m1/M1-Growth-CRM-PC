@@ -25,15 +25,17 @@
  * limite que `admin-shell-tooltip.test.tsx` já declara.
  *
  * Sabotagem que confirma que a guarda vigia: remover `<ThemeToggle />` de
- * `components/admin/AdminSidebar.tsx` deixa os dois casos vermelhos.
+ * `components/theme/theme-toggle.tsx` deixa os casos vermelhos.
  *
  * ⚠️ Os parágrafos acima falam da TARJA, que saiu: o controle foi para o rodapé do menu lateral.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { ThemeProvider } from "@/lib/theme";
 
 // Mesmo stub local de `lib/theme.test.tsx`: o jsdom não implementa matchMedia,
@@ -54,23 +56,15 @@ afterEach(() => {
   }
 });
 
-// O controle mora no rodapé do menu lateral do admin (a tarja amarela do Modo Plataforma saiu em
-// 04/11/2026). O menu lê pathname e a marca da instalação: stubs mínimos.
-vi.mock("next/navigation", () => ({ usePathname: () => "/admin/dashboard" }));
-vi.mock("@/lib/branding/contexto", () => ({
-  useMarcaDaInstalacao: () => ({ name: "M1 Growth", logo: null }),
-}));
-vi.mock("@/lib/branding", () => ({ marcaEhADoProduto: () => false }));
-
 const tarja = () =>
   render(
     <ThemeProvider>
-      <AdminSidebar userEmail="dono@m1.com" />
+      <ThemeToggle />
     </ThemeProvider>,
   );
 
 describe("Admin Plataforma — troca de tema", () => {
-  it("o menu do admin oferece o controle de tema", () => {
+  it("o controle de tema existe e fica na barra de cima do admin", () => {
     tarja();
     // O `aria-label` do `ThemeToggle` começa por "Tema: " e traz o estado
     // atual. Casar pelo prefixo em vez do texto inteiro evita que renomear o
@@ -93,5 +87,15 @@ describe("Admin Plataforma — troca de tema", () => {
       .getByRole("button", { name: /^Tema: /i })
       .getAttribute("aria-label");
     expect(depois).not.toBe(antes);
+  });
+
+  it("o admin monta a barra de cima do app, e ela traz o controle de tema", () => {
+    // O elo que o render acima não prova: a casca do admin usa a `TopBar`, e o menu da pessoa
+    // (dentro dela) monta o `ThemeToggle`. Mesmo limite declarado de `admin-shell-tooltip`.
+    const raiz = process.cwd();
+    const casca = readFileSync(join(raiz, "components/admin/AdminShell.tsx"), "utf8");
+    const menu = readFileSync(join(raiz, "components/shell/UserMenu.tsx"), "utf8");
+    expect(casca).toContain("<TopBar />");
+    expect(menu).toContain("<ThemeToggle");
   });
 });
