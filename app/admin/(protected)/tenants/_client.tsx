@@ -8,12 +8,14 @@ import { TenantsTable, TenantsTableSkeleton } from "@/components/admin/tenants/T
 import { useAdminTenants, type AdminTenantsFilters } from "@/hooks/useAdminTenants";
 import { useT } from "@/hooks/i18n/useT";
 
-export function TenantsClient() {
+export function TenantsClient({ selecionados = [] }: { selecionados?: string[] }) {
   const t = useT();
   const [filters, setFilters] = useState<AdminTenantsFilters>({});
 
-  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    useAdminTenants(filters);
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useAdminTenants(
+    filters,
+    selecionados,
+  );
 
   const rows = data?.pages.flatMap((p) => p.data ?? []) ?? [];
   const total = rows.length;

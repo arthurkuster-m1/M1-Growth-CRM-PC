@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { clientesDaAgencia, clientesSelecionados } from "@/lib/agencia/acesso";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AuthProvider } from "@/hooks/auth/AuthProvider";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
@@ -25,12 +26,22 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   const user = await loadAuthUser();
   if (!user) redirect("/login");
   const activeOrg = await resolveActiveOrg(user);
+  // O seletor de empresas do Modo agência: a lista e a escolha são as mesmas das telas da agência.
+  const todos = await clientesDaAgencia(user);
+  const escolhidos = await clientesSelecionados(todos);
+  const selecionados = escolhidos.length === todos.length ? [] : escolhidos.map((c) => c.id);
   const collapsed = (await cookies()).get("sidebar_collapsed")?.value === "1";
 
   return (
     <IdiomaProvider locale={locale}>
       <AuthProvider user={user} activeOrg={activeOrg}>
-        <AdminShell sidebarCollapsed={collapsed}>{children}</AdminShell>
+        <AdminShell
+          sidebarCollapsed={collapsed}
+          clientes={todos.map((c) => ({ id: c.id, name: c.name, cor: c.cor }))}
+          selecionados={selecionados}
+        >
+          {children}
+        </AdminShell>
       </AuthProvider>
     </IdiomaProvider>
   );

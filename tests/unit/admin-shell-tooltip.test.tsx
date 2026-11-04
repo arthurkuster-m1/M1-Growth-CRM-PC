@@ -52,6 +52,11 @@ vi.mock("next/navigation", () => ({
 // organização ativa e busca. Eles não são o objeto aqui (o Provider de tooltip é): stubs.
 vi.mock("@/components/shell/Sidebar", () => ({ Sidebar: () => null }));
 vi.mock("@/components/shell/TopBar", () => ({ TopBar: () => null }));
+vi.mock("@/components/agencia/SeletorDeClientes", () => ({
+  SeletorDeClientes: ({ clientes }: { clientes: unknown[] }) => (
+    <div data-testid="seletor-de-clientes">{clientes.length} clientes</div>
+  ),
+}));
 vi.mock("@/components/shell/BarraDeProgressoNavegacao", () => ({
   BarraDeProgressoNavegacao: () => null,
 }));
@@ -117,5 +122,25 @@ describe("AdminShell", () => {
     expect(() => render(<UsaTooltipSemProviderProprio />)).toThrow(
       /must be used within `TooltipProvider`/,
     );
+  });
+
+  it("mostra o seletor de empresas do Modo agência quando há clientes, e some sem eles", () => {
+    const um = [{ id: "a", name: "Acme", cor: "#366d6f" }];
+    const { rerender } = render(
+      <ThemeProvider>
+        <AdminShell sidebarCollapsed={false} clientes={um} selecionados={[]}>
+          <p>conteúdo</p>
+        </AdminShell>
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("seletor-de-clientes")).toHaveTextContent("1 clientes");
+    rerender(
+      <ThemeProvider>
+        <AdminShell sidebarCollapsed={false}>
+          <p>conteúdo</p>
+        </AdminShell>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId("seletor-de-clientes")).toBeNull();
   });
 });
