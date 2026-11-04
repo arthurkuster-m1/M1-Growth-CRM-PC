@@ -5,6 +5,7 @@ import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNa
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAtalhoDesfazer } from "@/hooks/motor/useAtalhoDesfazer";
 
 interface AdminShellProps {
   /** O estado "recolhido" do menu, lido do cookie no servidor (sem piscar). */
@@ -46,6 +47,8 @@ export function AdminShell({
   selecionados = [],
   children,
 }: AdminShellProps) {
+  // Ctrl+Z desfaz a última edição feita em qualquer tela do painel (ficha da empresa etc.), uma vez só.
+  useAtalhoDesfazer();
   return (
     <TooltipProvider>
       <div className="flex min-h-dvh w-full bg-background">

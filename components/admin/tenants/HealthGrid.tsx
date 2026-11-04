@@ -3,12 +3,7 @@
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
 import { HealthCard } from "./HealthCard";
-import {
-  WifiHigh,
-  Storefront,
-  Brain,
-  ClipboardText,
-} from "@/lib/ui/icons";
+import { WifiHigh, Brain, ClipboardText } from "@/lib/ui/icons";
 import type { TenantHealthResponse } from "@/app/api/v1/admin/tenants/[id]/health/route";
 import { useT } from "@/hooks/i18n/useT";
 import { formatCentsUSD } from "@/lib/money";
@@ -57,7 +52,7 @@ interface HealthGridProps {
 export function HealthGrid({ health }: HealthGridProps) {
   const tagDoIdioma = useTagDeIdioma();
   const t = useT();
-  const { waha, nuvemshop, ai, audit } = health;
+  const { waha, ai, audit } = health;
 
   // WAHA card
   // Vocabulário real de channel_sessions.status: STARTING/SCAN_QR_CODE/WORKING/
@@ -74,18 +69,6 @@ export function HealthGrid({ health }: HealthGridProps) {
     label: s.waha_session_name ?? s.id.slice(0, 8),
     value: s.status ?? "—",
   }));
-
-  // Nuvemshop card
-  const nuPrimary = nuvemshop.connected ? t("Conectado") : t("Não conectado");
-  const nuDetails = [
-    { label: t("Última sync"), value: formatDate(nuvemshop.last_synced_at, tagDoIdioma) },
-    ...(nuvemshop.days_until_expiry !== null
-      ? [{ label: t("Expira em"), value: `${nuvemshop.days_until_expiry}d` }]
-      : []),
-    ...(nuvemshop.expires_at
-      ? [{ label: t("Token expira"), value: formatDate(nuvemshop.expires_at, tagDoIdioma) }]
-      : []),
-  ];
 
   // AI budget card
   const aiPrimary =
@@ -110,21 +93,13 @@ export function HealthGrid({ health }: HealthGridProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <HealthCard
         title="WAHA"
         status={waha.overall_status}
         icon={<WifiHigh size={18} aria-hidden />}
         primaryValue={wahaPrimary}
         details={wahaDetails}
-      />
-
-      <HealthCard
-        title="Nuvemshop"
-        status={nuvemshop.status}
-        icon={<Storefront size={18} aria-hidden />}
-        primaryValue={nuPrimary}
-        details={nuDetails}
       />
 
       <HealthCard

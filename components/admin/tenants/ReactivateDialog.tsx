@@ -70,7 +70,12 @@ export function ReactivateDialog({ open, onClose, organizationId }: ReactivateDi
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(open) => { if (!open) handleClose(); }}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t("Reativar tenant")}</AlertDialogTitle>
@@ -84,9 +89,7 @@ export function ReactivateDialog({ open, onClose, organizationId }: ReactivateDi
         <div className="space-y-2 py-2">
           <Label htmlFor="reactivate-reason">
             {t("Motivo da reativação")}{" "}
-            <span className="text-muted-foreground text-xs font-normal">
-              ({reason.length}/500)
-            </span>
+            <span className="text-xs font-normal text-muted-foreground">({reason.length}/500)</span>
           </Label>
           <Textarea
             id="reactivate-reason"

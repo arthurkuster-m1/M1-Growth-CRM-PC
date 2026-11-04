@@ -24,9 +24,10 @@ export function TabNav({ basePath, tabs }: TabNavProps) {
       {tabs.map((tab) => {
         const href = basePath + tab.href;
         // Overview matches exactly; others match as prefix
-        const isActive = tab.href === ""
-          ? pathname === basePath || pathname === basePath + "/"
-          : pathname.startsWith(href);
+        const isActive =
+          tab.href === ""
+            ? pathname === basePath || pathname === basePath + "/"
+            : pathname.startsWith(href);
 
         return (
           <Link
@@ -34,21 +35,19 @@ export function TabNav({ basePath, tabs }: TabNavProps) {
             href={tab.disabled ? "#" : href}
             aria-disabled={tab.disabled}
             className={[
-              "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+              "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
               tab.disabled
-                ? "cursor-not-allowed text-muted-foreground border-transparent"
+                ? "cursor-not-allowed border-transparent text-muted-foreground"
                 : isActive
                   ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/40",
+                  : "border-transparent text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground",
             ]
               .filter(Boolean)
               .join(" ")}
           >
             {t(tab.label)}
             {tab.disabled && (
-              <span className="ml-1.5 text-[10px] font-normal opacity-60">
-                {t("em breve")}
-              </span>
+              <span className="ml-1.5 text-[10px] font-normal opacity-60">{t("em breve")}</span>
             )}
           </Link>
         );
