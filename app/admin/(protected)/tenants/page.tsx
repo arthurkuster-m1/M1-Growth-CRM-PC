@@ -3,7 +3,7 @@ import { loadAuthUser } from "@/lib/auth/server";
 
 import { TenantsClient } from "./_client";
 
-export const metadata = { title: "Empresas — Admin Plataforma" };
+export const metadata = { title: "Empresas — Modo agência" };
 
 export default async function AdminTenantsPage() {
   // A lista respeita o seletor de empresas do Modo agência: sem escolha, mostra todas.

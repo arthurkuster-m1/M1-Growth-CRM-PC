@@ -27,22 +27,25 @@ export interface ItemDoMenuDaAgencia {
   tambemAtivoEm?: string[];
 }
 
+/** O item solto do alto do menu: o painel geral. Só do super-admin. */
+export function itensDoTopo(ehSuperAdmin: boolean): ItemDoMenuDaAgencia[] {
+  return ehSuperAdmin ? [{ href: "/admin/dashboard", rotulo: "Dashboard", Icone: Gauge }] : [];
+}
+
+/** "Operações": o trabalho com os clientes, na ordem do menu. */
 export function itensDaAgencia(ehSuperAdmin: boolean): ItemDoMenuDaAgencia[] {
   return [
-    { href: "/app/agencia/campanhas", rotulo: "Campanhas", Icone: Megaphone },
-    { href: "/app/agencia/cronograma", rotulo: "Cronograma e semana", Icone: CalendarBlank },
-    { href: "/app/agencia/dashboards", rotulo: "Dashboards", Icone: ChartLineUp },
+    { href: "/app/agencia/cronograma", rotulo: "Cronogramas", Icone: CalendarBlank },
     { href: "/app/agencia/tarefas", rotulo: "Tarefas", Icone: ListChecks },
-    ...(ehSuperAdmin
-      ? [{ href: "/app/agencia/equipe", rotulo: "Equipe e clientes", Icone: Users }]
-      : []),
+    { href: "/app/agencia/campanhas", rotulo: "Campanhas", Icone: Megaphone },
+    { href: "/app/agencia/dashboards", rotulo: "Dashboards", Icone: ChartLineUp },
+    ...(ehSuperAdmin ? [{ href: "/app/agencia/equipe", rotulo: "Equipe", Icone: Users }] : []),
   ];
 }
 
-/** Só o super-admin da plataforma: empresas, painel geral, pessoas e configurações. */
+/** "Plataforma": só o super-admin — empresas, pessoas e configurações da instalação. */
 export function itensDaPlataforma(): ItemDoMenuDaAgencia[] {
   return [
-    { href: "/admin/dashboard", rotulo: "Dashboard", Icone: Gauge },
     { href: "/admin/tenants", rotulo: "Empresas", Icone: Buildings },
     { href: "/admin/users", rotulo: "Usuários", Icone: UserCircle },
     {
@@ -52,6 +55,17 @@ export function itensDaPlataforma(): ItemDoMenuDaAgencia[] {
       tambemAtivoEm: ITENS_DE_CONFIGURACAO.map((i) => i.href),
     },
   ];
+}
+
+/** O menu inteiro do Modo agência: [título (ou null), itens], na ordem em que aparece. */
+export function gruposDoModoAgencia(
+  ehSuperAdmin: boolean,
+): Array<{ titulo: string | null; itens: ItemDoMenuDaAgencia[] }> {
+  return [
+    { titulo: null, itens: itensDoTopo(ehSuperAdmin) },
+    { titulo: "Operações", itens: itensDaAgencia(ehSuperAdmin) },
+    ...(ehSuperAdmin ? [{ titulo: "Plataforma", itens: itensDaPlataforma() }] : []),
+  ].filter((g) => g.itens.length > 0);
 }
 
 export function itemAtivo(item: ItemDoMenuDaAgencia, pathname: string): boolean {
