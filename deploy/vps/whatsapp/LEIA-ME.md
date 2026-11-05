@@ -6,6 +6,27 @@ Pasta real na VPS: `/opt/m1-whatsapp` (o `.env` com os segredos mora só lá, fo
 - Ver estado: `docker compose ps` · logs: `docker compose logs -f waha`
 - O app lê `WAHA_API_BASE_URL`, `WAHA_API_KEY`, `WAHA_WEBHOOK_BASE_URL`, `WAHA_HMAC_SECRET`,
   `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` do `.env.local`; trocou algo → `systemctl restart m1-app`.
-- Firewall: o `ufw` libera só `172.30.0.0/24 → 3001` (o WAHA avisar o app de cada mensagem).
+- Firewall: esta VPS não tem `ufw`; é `iptables`. O serviço `m1-app` (`deploy/vps/m1-app.service`) abre a porta 3001 só para
+  o NPM (`172.18.0.0/16`) e para o WAHA (`172.30.0.0/24`, a rede `m1-whatsapp_interna`), e fecha de novo ao parar.
 - **WAHA Core (grátis) = UM número.** Vários números pedem o WAHA Plus (pago) via `WAHA_IMAGE`.
 - Perder o volume `waha-data` = ter de ler o QR de novo.
+
+## Uma instância por cliente (isoladas entre si)
+
+`/opt/m1-whatsapp/novo-cliente.sh <slug> <porta>` (cópia em `deploy/vps/whatsapp/novo-cliente.sh`) cria
+`/opt/m1-whatsapp/clientes/<slug>/` com `docker-compose.yml` próprio (projeto Docker `m1-waha-<slug>`, NOWEB, 1 GB de memória,
+`unless-stopped`, porta só em `127.0.0.1:<porta>`, volumes `waha-<slug>-data` e `waha-<slug>-media`), `.env` (modo 600) com o
+hash SHA512 da chave e o HMAC do cliente, e entra na rede `m1-whatsapp_interna`. É idempotente: rodar de novo não troca chave.
+A chave em texto puro e o HMAC ficam só em `/home/ubuntu/segredos-waha.env` (modo 600, linhas `<slug>=<chave>` e `<slug>.hmac=<hmac>`).
+
+| Cliente | Endereço | Porta |
+|---|---|---|
+| assessoria-m1 (WAHA padrão, stack `m1-whatsapp`) | http://127.0.0.1:3100 | 3100 |
+| rua-model | http://127.0.0.1:3101 | 3101 |
+| one-company | http://127.0.0.1:3102 | 3102 |
+| diore | http://127.0.0.1:3103 | 3103 |
+
+Próximo cliente: porta 3104, 3105… Conferir: `curl -s -o /dev/null -w "%{http_code}\n" -H "X-Api-Key: <chave>" http://127.0.0.1:<porta>/api/sessions`
+(200 com a chave, 401 sem ela). O app só lê um `WAHA_API_BASE_URL` global; o endereço e a chave de cada empresa entram pela aba
+Conexões quando o campo "WAHA desta empresa" existir. O webhook é verificado com o segredo da sessão guardado no banco, e o
+`WAHA_HMAC_SECRET` global só é reserva (`lib/waha/webhook-auth.ts`): conferir isso ao conectar o primeiro número de cada cliente.

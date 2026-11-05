@@ -1,17 +1,21 @@
 [Unit]
 Description=M1 Growth CRM (Next.js, porta 3001)
-After=network-online.target
+After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
 Type=simple
+User=ubuntu
 WorkingDirectory=/opt/m1-growth-crm
 Environment=NODE_ENV=production
-ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3001
+ExecStart=/home/ubuntu/.nvm/versions/node/v22.23.4/bin/node node_modules/next/dist/bin/next start -p 3001
+# deixa o NPM (172.18.0.0/16) e o WAHA (172.30.0.0/24) chegar na porta 3001; a regra sai junto com o servico
+ExecStartPost=+/bin/sh -c 'for r in 172.18.0.0/16 172.30.0.0/24; do iptables -C INPUT -s $r -p tcp --dport 3001 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -s $r -p tcp --dport 3001 -j ACCEPT; done'
+ExecStopPost=+/bin/sh -c 'for r in 172.18.0.0/16 172.30.0.0/24; do iptables -D INPUT -s $r -p tcp --dport 3001 -j ACCEPT 2>/dev/null || true; done'
 Restart=always
 RestartSec=3
-StandardOutput=append:/var/log/m1.log
-StandardError=append:/var/log/m1.log
+MemoryMax=2G
+OOMScoreAdjust=300
 
 [Install]
 WantedBy=multi-user.target
