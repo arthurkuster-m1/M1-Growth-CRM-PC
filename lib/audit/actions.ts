@@ -139,6 +139,8 @@ export const AUDIT_ACTIONS = [
   "message.sent",
   "message.received",
   "message.edited",
+  // Uma pessoa reenviou pela Inbox a mensagem que ficou presa com o número fora do ar.
+  "message.resent",
   "message.revoked",
   "message.hidden_in_crm",
   "message.restored_in_crm",
