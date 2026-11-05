@@ -68,17 +68,17 @@ export function HealthCard({
   return (
     <div
       className={[
-        "rounded-xl border-2 bg-card p-5 flex flex-col gap-4 transition-colors",
+        "flex flex-col gap-4 rounded-xl border-2 bg-card p-5 transition-colors",
         STATUS_BORDER[status],
       ].join(" ")}
     >
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="w-5 h-5 shrink-0" aria-hidden>
+          <span className="h-5 w-5 shrink-0" aria-hidden>
             {icon}
           </span>
-          <span className="text-xs font-semibold uppercase tracking-wider leading-none">
+          <span className="text-xs leading-none font-semibold tracking-wider uppercase">
             {title}
           </span>
         </div>
@@ -89,15 +89,14 @@ export function HealthCard({
             <span className="relative flex h-2 w-2" aria-hidden>
               <span
                 className={[
-                  "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                  "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
                   STATUS_DOT[status],
                 ].join(" ")}
               />
               <span
-                className={[
-                  "relative inline-flex rounded-full h-2 w-2",
-                  STATUS_DOT[status],
-                ].join(" ")}
+                className={["relative inline-flex h-2 w-2 rounded-full", STATUS_DOT[status]].join(
+                  " ",
+                )}
               />
             </span>
           )}
@@ -113,33 +112,22 @@ export function HealthCard({
       </div>
 
       {/* Primary value */}
-      <div className="text-2xl font-bold tracking-tight leading-none">
-        {primaryValue}
-      </div>
+      <div className="text-2xl leading-none font-bold tracking-tight">{primaryValue}</div>
 
       {/* Details */}
       {details && details.length > 0 && (
         <div className="space-y-1.5 border-t pt-3">
           {details.map((d) => (
-            <div
-              key={d.label}
-              className="flex items-baseline justify-between gap-3 text-sm"
-            >
-              <span className="text-muted-foreground text-xs whitespace-nowrap">
-                {d.label}
-              </span>
-              <span className="font-medium text-right text-xs">{d.value}</span>
+            <div key={d.label} className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-xs whitespace-nowrap text-muted-foreground">{d.label}</span>
+              <span className="text-right text-xs font-medium">{d.value}</span>
             </div>
           ))}
         </div>
       )}
 
       {/* Last updated */}
-      {lastUpdated && (
-        <p className="text-[11px] text-muted-foreground mt-auto">
-          {lastUpdated}
-        </p>
-      )}
+      {lastUpdated && <p className="mt-auto text-[11px] text-muted-foreground">{lastUpdated}</p>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { ehModoAgencia, gruposDoModoAgencia, itemAtivo } from "@/lib/agencia/menu";
 import { EmBreveTag } from "@/components/ui/EmBreveTag";
 import { ehEmBreve } from "@/lib/navigation/em-breve";
 import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
@@ -9,8 +10,6 @@ import { useEffect, useState, useTransition } from "react";
 import {
   ArrowRight,
   Buildings,
-  CalendarBlank,
-  ChartLineUp,
   CaretDoubleLeft,
   CaretDoubleRight,
   CaretDown,
@@ -19,11 +18,9 @@ import {
   House,
   Inbox,
   Kanban,
-  Megaphone,
   ListChecks,
   PlugsConnected,
   Robot,
-  Users,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -55,6 +52,78 @@ interface SidebarContentProps {
 }
 
 /**
+ * O logo da marca no alto da barra aberta, com o NOME DO APP ao lado (o definido em Marca).
+ *
+ * O nome só aparece quando a imagem é um SÍMBOLO (quadrada ou quase): um logotipo largo já traz o
+ * nome desenhado, e escrevê-lo de novo ao lado duplicaria. A proporção é medida na imagem real,
+ * quando ela carrega (a URL vem de quem hospeda, então não há como saber antes).
+ */
+function LogoDaMarca({
+  logo,
+  logoEscuro,
+  nome,
+}: {
+  logo: string | null;
+  logoEscuro: string | null;
+  nome: string;
+}) {
+  const [simbolo, setSimbolo] = useState(false);
+  const medir = (img: HTMLImageElement | null) => {
+    if (!img || img.naturalHeight === 0) return;
+    setSimbolo(img.naturalWidth / img.naturalHeight <= 1.4);
+  };
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      {/* Sem arte própria para o escuro, preserva a proteção de contraste. */}
+      <div
+        className={cn(
+          "shrink-0 rounded-md",
+          !logoEscuro && "dark:bg-white dark:px-2 dark:py-1 dark:shadow-sm",
+        )}
+      >
+        {/* <img> em vez de next/image de propósito: a URL vem de quem hospeda
+          (banco ou .env), e next/image exige allowlist de domínios fechada em
+          build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
+          Altura fixa e largura livre porque a arte enviada tem proporção
+          desconhecida; forçar as duas distorceria o logo de quem configurou. */}
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            // A imagem pode já ter carregado antes da hidratação: `onLoad` não dispara de novo.
+            ref={(el) => {
+              if (el?.complete) medir(el);
+            }}
+            src={logo}
+            alt={nome}
+            onLoad={(e) => medir(e.currentTarget)}
+            className={cn("h-8 w-auto max-w-[10rem] object-contain", logoEscuro && "dark:hidden")}
+          />
+        ) : (
+          <span className="dark:hidden">{nome}</span>
+        )}
+        {logoEscuro ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            ref={(el) => {
+              if (!logo && el?.complete) medir(el);
+            }}
+            src={logoEscuro}
+            alt={nome}
+            onLoad={(e) => {
+              if (!logo) medir(e.currentTarget);
+            }}
+            className="hidden h-8 w-auto max-w-[10rem] object-contain dark:block"
+          />
+        ) : null}
+      </div>
+      {logo && simbolo ? (
+        <span className="min-w-0 truncate text-sm font-semibold tracking-tight">{nome}</span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Navegação principal, agrupada por objetivo.
  *
  * Não decide nada: `sidebarGroups()` (lib/navigation/registry.ts) resolve quais
@@ -72,7 +141,7 @@ export function SidebarContent({
   const t = useT();
   const pathname = usePathname();
   // MODO AGÊNCIA: é uma "organização" própria — dentro dela o menu é o da agência, não o de uma empresa.
-  const noModoAgencia = pathname === "/app/agencia" || pathname.startsWith("/app/agencia/");
+  const noModoAgencia = ehModoAgencia(pathname);
   const [isPending, startTransition] = useTransition();
   const { user, activeOrg } = useAuth();
   const todos = sidebarGroups(
@@ -215,40 +284,7 @@ export function SidebarContent({
         )}
       >
         {(logo || logoEscuro) && !collapsed ? (
-          // Sem arte própria para o escuro, preserva a proteção de contraste.
-          <div
-            className={cn(
-              "rounded-md",
-              !logoEscuro && "dark:bg-white dark:px-2 dark:py-1 dark:shadow-sm",
-            )}
-          >
-            {/* <img> em vez de next/image de propósito: a URL vem de quem hospeda
-              (banco ou .env), e next/image exige allowlist de domínios fechada em
-              build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
-              Altura fixa e largura livre porque a arte enviada tem proporção
-              desconhecida; forçar as duas distorceria o logo de quem configurou. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {logo ? (
-              <img
-                src={logo}
-                alt={nome}
-                className={cn(
-                  "h-7 w-auto max-w-[10rem] object-contain",
-                  logoEscuro && "dark:hidden",
-                )}
-              />
-            ) : (
-              <span className="dark:hidden">{nome}</span>
-            )}
-            {logoEscuro ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoEscuro}
-                alt={nome}
-                className="hidden h-7 w-auto max-w-[10rem] object-contain dark:block"
-              />
-            ) : null}
-          </div>
+          <LogoDaMarca logo={logo || null} logoEscuro={logoEscuro ?? null} nome={nome} />
         ) : marcaDoProduto ? (
           // O desenho do produto, inline (ver `components/branding/MarcaDoProduto.tsx`):
           // logotipo com a barra aberta, só o símbolo com ela recolhida.
@@ -616,49 +652,47 @@ function ItensDoModoAgencia({
   const t = useT();
   const { user } = useAuth();
   const ehSuperAdmin = user.is_platform_admin && !user.support;
-  const itens = [
-    { href: "/app/agencia/campanhas", rotulo: t("Campanhas"), Icone: Megaphone },
-    { href: "/app/agencia/cronograma", rotulo: t("Cronograma e semana"), Icone: CalendarBlank },
-    { href: "/app/agencia/dashboards", rotulo: t("Dashboards"), Icone: ChartLineUp },
-    { href: "/app/agencia/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
-    ...(ehSuperAdmin
-      ? [{ href: "/app/agencia/equipe", rotulo: t("Equipe e clientes"), Icone: Users }]
-      : []),
-  ];
+  const grupos = gruposDoModoAgencia(ehSuperAdmin);
   return (
-    <div className="space-y-0.5">
-      {collapsed ? null : (
-        <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-          {t("Modo agência")}
-        </p>
-      )}
-      {itens.map(({ href, rotulo, Icone }) => {
-        const ativo = pathname === href || pathname.startsWith(href + "/");
-        return (
-          <Link
-            key={href}
-            href={href}
-            title={collapsed ? rotulo : undefined}
-            aria-current={ativo ? "page" : undefined}
-            onClick={onNavigate}
-            className={cn(
-              "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-              ativo
-                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-              collapsed && "justify-center px-2",
-            )}
-          >
-            <Icone
-              size={18}
-              weight={ativo ? "fill" : "regular"}
-              className={ativo ? "text-primary" : undefined}
-              aria-hidden
-            />
-            {!collapsed && <span className="truncate">{rotulo}</span>}
-          </Link>
-        );
-      })}
+    <div className="space-y-3">
+      {grupos.map(({ titulo, itens }) => (
+        <div key={titulo ?? "topo"} className="space-y-0.5">
+          {collapsed || !titulo ? null : (
+            <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              {t(titulo)}
+            </p>
+          )}
+          {itens.map((item) => {
+            const { href, Icone } = item;
+            const rotulo = t(item.rotulo);
+            const ativo = itemAtivo(item, pathname);
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? rotulo : undefined}
+                aria-current={ativo ? "page" : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                  ativo
+                    ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                  collapsed && "justify-center px-2",
+                )}
+              >
+                <Icone
+                  size={18}
+                  weight={ativo ? "fill" : "regular"}
+                  className={ativo ? "text-primary" : undefined}
+                  aria-hidden
+                />
+                {!collapsed && <span className="truncate">{rotulo}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

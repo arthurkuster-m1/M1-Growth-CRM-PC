@@ -16,7 +16,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export interface ClienteDaAgencia {
   id: string;
   name: string;
-  /** A cor do cliente na agência (hex): a escolhida em Gerenciar organizações, ou uma da paleta. */
+  /** A cor do cliente na agência (hex): a escolhida na ficha da empresa, ou uma da paleta. */
   cor: string;
   role: Role | "plataforma";
 }

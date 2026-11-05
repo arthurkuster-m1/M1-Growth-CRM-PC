@@ -11,12 +11,13 @@ export const tenantCreationFields = {
     .regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens"),
   legal_name: z.string().max(255).optional(),
   cnpj: z.string().max(18).optional(),
-  plan: z.enum(["standard", "pro", "enterprise"]),
   owner_interface_settings: interfaceSettingsSchema.optional(),
   owner_email: z.string().trim().email(),
+  /** A oportunidade desta empresa no CRM da agência (de onde saem entrada e mensalidade). */
+  agencia_lead_id: z.string().uuid().optional(),
 };
 export const createTenantSchema = z
-  .object({ ...tenantCreationFields, plan: tenantCreationFields.plan.default("standard") })
+  .object(tenantCreationFields)
   .refine(
     (v) => !v.owner_interface_settings || interfaceTemDestino(v.owner_interface_settings, "admin"),
     { message: "Selecione ao menos uma área de trabalho.", path: ["owner_interface_settings"] },

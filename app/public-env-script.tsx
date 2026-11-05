@@ -62,7 +62,7 @@ export async function PublicEnvScript({
     // Exposto pro Sentry do browser respeitar o opt-out (SENTRY_DSN=off) em runtime,
     // sem rebuild. DSN não é segredo. Ver lib/sentry/dsn.ts.
     SENTRY_DSN: env.SENTRY_DSN,
-    // Marca da instalação (white-label): os client components (Sidebar, AdminSidebar)
+    // Marca da instalação (white-label): os client components (Sidebar, TopBar)
     // leem daqui. Não são segredo — já aparecem na tela. Ver lib/branding.ts.
     APP_NAME: marca.name,
     // `?? ""` e não `?? null`: do outro lado da fronteira quem lê é

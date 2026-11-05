@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { Sidebar } from "@/components/shell/Sidebar";
 import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
@@ -184,5 +184,50 @@ describe("o logo na barra lateral", () => {
 
     expect(screen.queryByRole("img")).toBeNull();
     expect(screen.getByText("Sistema do Revendedor")).toBeTruthy();
+  });
+});
+
+/**
+ * O NOME DO APP AO LADO DO LOGO: com um símbolo (imagem quadrada), a barra aberta escreve o nome
+ * definido em Marca ao lado dele; com um logotipo largo — que já traz o nome desenhado —, não
+ * duplica. A proporção é a da imagem real, medida quando ela carrega.
+ */
+describe("o nome do app ao lado do logo", () => {
+  const LOGO = "https://cdn.exemplo.test/simbolo.png";
+  const comLogo = () => {
+    marcaDaInstalacao = { name: "M1 Growth", logoUrl: LOGO, initial: "M" };
+    contexto = { user: usuario, activeOrg: org };
+  };
+  const carregar = (largura: number, altura: number) => {
+    const img = screen.getByRole("img");
+    Object.defineProperty(img, "naturalWidth", { value: largura, configurable: true });
+    Object.defineProperty(img, "naturalHeight", { value: altura, configurable: true });
+    fireEvent.load(img);
+  };
+
+  afterEach(() => {
+    marcaDaInstalacao = { name: "Sistema do Revendedor", logoUrl: null, initial: "S" };
+  });
+
+  it("símbolo quadrado: o nome definido em Marca aparece ao lado da imagem", () => {
+    comLogo();
+    renderSidebar({ collapsed: false });
+    carregar(512, 512);
+    expect(screen.getByText("M1 Growth")).toBeTruthy();
+    expect(screen.getByRole("img").getAttribute("src")).toBe(LOGO);
+  });
+
+  it("logotipo largo (já traz o nome): não escreve o nome de novo", () => {
+    comLogo();
+    renderSidebar({ collapsed: false });
+    carregar(600, 120);
+    expect(screen.queryByText("M1 Growth")).toBeNull();
+  });
+
+  it("com a barra recolhida só o símbolo/inicial, nunca o nome ao lado", () => {
+    comLogo();
+    renderSidebar({ collapsed: true });
+    // O nome fica só para leitor de tela (`sr-only`), nunca visível ao lado do ícone.
+    expect(screen.getByText("M1 Growth").className).toContain("sr-only");
   });
 });

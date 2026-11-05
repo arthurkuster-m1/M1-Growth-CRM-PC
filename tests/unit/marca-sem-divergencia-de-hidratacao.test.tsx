@@ -49,7 +49,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { relativoEmBarraNormal } from "./helpers/caminho";
 
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Sidebar } from "@/components/shell/Sidebar";
 import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
 import { MarcaDaInstalacaoProvider } from "@/lib/branding/contexto";
@@ -136,18 +135,6 @@ describe("a marca não diverge entre o SSR e a hidratação", () => {
         "o componente voltou a ler a marca de uma fonte que só um dos lados enxerga\n" +
         "(`branding()` / `window.__PUBLIC_ENV__`) em vez do contexto alimentado pelo servidor.",
     ).toBe(noNavegador);
-  });
-
-  it("a barra do admin de plataforma também", () => {
-    // A segunda instância, e não só a primeira: as duas liam `branding()` e a do
-    // admin troca TEXTO (não elemento), que é o mesmo #418 com outra assinatura.
-    const noServidor = renderComAmbiente(undefined, <AdminSidebar userEmail="dono@exemplo.test" />);
-    const noNavegador = renderComAmbiente(
-      PUBLIC_ENV_DO_NAVEGADOR,
-      <AdminSidebar userEmail="dono@exemplo.test" />,
-    );
-
-    expect(noServidor).toBe(noNavegador);
   });
 
   it("GUARDA DE VACUIDADE: com logo no contexto, a barra desenha mesmo o `<img>`", () => {

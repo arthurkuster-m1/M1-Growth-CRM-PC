@@ -53,10 +53,12 @@ test("org única oferece criação, responsável aceita e A→B→A não mistura
     await conversation(orgA, `Cliente A ${suffix}`);
     await login(page, ownerEmail);
     await page.getByTestId("tenant-switcher").click();
-    await page.getByRole("menuitem", { name: "Gerenciar organizações" }).click();
-    await page.getByRole("link", { name: /Novo tenant/i }).click();
-    await page.getByLabel("Nome de exibição").fill(`Empresa B ${suffix}`);
-    await page.getByLabel("E-mail do responsável").fill(guestEmail);
+    // "Gerenciar organizações" não existe mais: a gestão das empresas mora no Modo agência.
+    await page.getByTestId("modo-agencia").click();
+    await page.getByRole("link", { name: "Empresas" }).click();
+    await page.getByRole("button", { name: /Nova empresa/i }).click();
+    await page.getByLabel("Nome da empresa").fill(`Empresa B ${suffix}`);
+    await page.getByLabel("E-mail do dono da empresa").fill(guestEmail);
     // O servidor confirma, mas todas as respostas da primeira tentativa se perdem.
     let loseResponse = true;
     const lost: Array<{ id: string; owner_invitation: { accept_url: string } }> = [];
@@ -114,7 +116,7 @@ test("org única oferece criação, responsável aceita e A→B→A não mistura
     const duplicateCheck = await db.from("organizations").select("id").eq("slug", created.slug);
     expect(duplicateCheck.error).toBeNull();
     expect(duplicateCheck.data).toEqual([{ id: orgB }]);
-    await expect(page.getByText("Organização criada", { exact: true })).toBeVisible();
+    await expect(page.getByText("Empresa criada", { exact: true })).toBeVisible();
     const link = await page.getByLabel("Link do convite").inputValue();
     const tokenBody = new URL(link).pathname.split("/").at(-1)!.split(".")[0]!;
     expect(JSON.parse(Buffer.from(tokenBody, "base64url").toString()).organization_id).toBe(orgB);
@@ -132,7 +134,8 @@ test("org única oferece criação, responsável aceita e A→B→A não mistura
     const update = await db.from("organizations").update({ onboarded_at: new Date().toISOString() }).eq("id", orgB);
     if (update.error) throw update.error;
     await conversation(orgB, `Cliente B ${suffix}`);
-    await page.getByRole("link", { name: "Voltar ao aplicativo" }).click();
+    // A tela de sucesso não tem mais "Voltar ao aplicativo": leva à ficha e à lista de empresas.
+    await page.goto("/app");
     await page.waitForURL("**/app/inbox", { waitUntil: "load" });
     await expect(page.locator("[data-conversation-id]").getByText(`Cliente A ${suffix}`, { exact: true })).toBeVisible();
     const cookieBeforeFailure = (await page.context().cookies()).find(cookie => cookie.name === "active_org")?.value;

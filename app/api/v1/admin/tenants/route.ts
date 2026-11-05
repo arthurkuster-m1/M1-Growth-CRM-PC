@@ -18,6 +18,12 @@ const querySchema = z.object({
   status: z.enum(["active", "suspended", "onboarding", "redacted"]).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
+  // O seletor de empresas do Modo agência: só estas (uuids separados por vírgula).
+  ids: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.split(",").map((x) => x.trim()).filter(Boolean) : []))
+    .pipe(z.array(z.string().uuid()).max(500)),
 });
 
 // ---------------------------------------------------------------------------
@@ -63,7 +69,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const { q, status, cursor, limit } = parsed.data;
+  const { q, status, cursor, limit, ids } = parsed.data;
   const admin = createAdminClient();
   const cursorPayload = cursor ? decodeCursor(cursor) : null;
 
@@ -80,6 +86,8 @@ export async function GET(req: NextRequest) {
       onboarded_at,
       suspended_at,
       created_at,
+      cor_agencia:settings->>agencia_cor,
+      cor_marca:settings->branding->>accent_hex,
       user_count:user_organizations(count),
       conversations_count:conversations(count)
     `,
@@ -93,6 +101,10 @@ export async function GET(req: NextRequest) {
     query = query.eq("status", "active").is("onboarded_at", null);
   } else if (status) {
     query = query.eq("status", status);
+  }
+
+  if (ids.length > 0) {
+    query = query.in("id", ids);
   }
 
   if (q) {
@@ -182,7 +194,9 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const request = { ...parsed.data, owner_email: parsed.data.owner_email.trim().toLowerCase() };
+  // `agencia_lead_id` não é do recibo de criação (a função SQL não o lê): é ligado logo depois.
+  const { agencia_lead_id: agenciaLeadId, ...dados } = parsed.data;
+  const request = { ...dados, owner_email: parsed.data.owner_email.trim().toLowerCase() };
   const { data: org, error } = await admin.rpc("fn_create_tenant_with_owner", {
     p_actor: adminCtx.user.id,
     p_key: key,
@@ -197,6 +211,17 @@ export async function POST(req: NextRequest) {
     }
     return fail("internal_error", "Não foi possível criar a organização", 500, { requestId });
   }
+  if (org.created && agenciaLeadId) {
+    // O lead tem de existir; o resto (de qual organização ele é) é decisão de quem opera a agência.
+    const { data: lead } = await admin
+      .from("crm_leads")
+      .select("id")
+      .eq("id", agenciaLeadId)
+      .maybeSingle();
+    if (lead) {
+      await admin.from("organizations").update({ agencia_lead_id: lead.id }).eq("id", org.id);
+    }
+  }
   if (org.created) {
     await audit({
       action: "tenant.created_by_platform_admin",
@@ -210,7 +235,6 @@ export async function POST(req: NextRequest) {
       metadata: {
         slug: org.slug,
         display_name: org.display_name,
-        plan: request.plan,
         creator_role: "admin",
       },
     });

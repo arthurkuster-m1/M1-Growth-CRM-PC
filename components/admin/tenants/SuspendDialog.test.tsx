@@ -7,7 +7,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/hooks/useSuspendTenant", () => ({ useSuspendTenant: () => ({ mutate: vi.fn(), isPending: false }) }));
+vi.mock("@/hooks/useSuspendTenant", () => ({
+  useSuspendTenant: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 
 import { SuspendDialog } from "./SuspendDialog";
 

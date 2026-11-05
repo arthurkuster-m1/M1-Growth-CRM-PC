@@ -1,10 +1,10 @@
-import { TenantHealthClient } from "./_client";
+import { redirect } from "next/navigation";
 
-interface TenantHealthPageProps {
+// A saúde virou o primeiro bloco da Visão Geral da empresa; este endereço antigo leva para lá.
+export default async function TenantHealthRedirect({
+  params,
+}: {
   params: Promise<{ id: string }>;
-}
-
-export default async function TenantHealthPage({ params }: TenantHealthPageProps) {
-  const { id } = await params;
-  return <TenantHealthClient id={id} />;
+}) {
+  redirect(`/admin/tenants/${(await params).id}`);
 }

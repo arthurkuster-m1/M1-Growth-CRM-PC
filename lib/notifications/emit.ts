@@ -47,8 +47,10 @@ export function emitNotification(input: EmitNotificationInput): void {
   const sound = input.sound ?? spec.sound;
   const body = truncateNotifyBody(input.body);
   const tag = input.tag ? `${spec.tagPrefix}:${input.tag}` : `${spec.tagPrefix}:${Date.now()}`;
-  const marca = absUrl("/icon");
-  const icon = absUrl(input.icon || marca);
+  // `icon` = a imagem colorida grande (o ícone do app); `badge` = a SILHUETA para a barra de status
+  // (o Android usa só a transparência: o ícone colorido virava um quadrado branco).
+  const icon = absUrl(input.icon || "/app-icon/192");
+  const badge = absUrl("/notification-badge");
   const href = input.href ? absUrl(input.href) : "";
   const opts: NotificationOptions & { renotify?: boolean } = {
     body,
@@ -56,7 +58,7 @@ export function emitNotification(input: EmitNotificationInput): void {
     silent: false,
     renotify: true,
     icon,
-    badge: marca,
+    badge,
     data: { href },
   };
 

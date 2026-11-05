@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
+import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { clientesDaAgencia, clientesSelecionados } from "@/lib/agencia/acesso";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { AuthProvider } from "@/hooks/auth/AuthProvider";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 
 export default async function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { user } = await requirePlatformAdmin();
+  const { user: authUser } = await requirePlatformAdmin();
   // Mesmo padrão de `app/app/layout.tsx`: o idioma envolve a árvore inteira e
   // recebe o código PRONTO. Sem este Provider, `useT()` nos componentes do
   // admin cai no padrão do Context (pt-BR) e nenhuma tradução aparece, não
@@ -12,10 +17,32 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   // MESMA conta que o dono do tenant (o install.sh promove o dono a platform
   // admin), então o `user_metadata.locale` dele já existe e é o mesmo lido em
   // `lib/auth/server.ts`.
-  const locale = (user.user_metadata?.locale as string | undefined) ?? null;
+  const locale = (authUser.user_metadata?.locale as string | undefined) ?? null;
+
+  // O menu e a barra de cima são os do app (Modo agência) e leem o usuário e a organização
+  // ativa pelo `AuthProvider` — o mesmo snapshot que `app/app/layout.tsx` monta. Sem os portões
+  // de onboarding/suspensão de lá, de propósito: o painel de plataforma precisa abrir justamente
+  // para administrar uma empresa suspensa ou ainda sem onboarding.
+  const user = await loadAuthUser();
+  if (!user) redirect("/login");
+  const activeOrg = await resolveActiveOrg(user);
+  // O seletor de empresas do Modo agência: a lista e a escolha são as mesmas das telas da agência.
+  const todos = await clientesDaAgencia(user);
+  const escolhidos = await clientesSelecionados(todos);
+  const selecionados = escolhidos.length === todos.length ? [] : escolhidos.map((c) => c.id);
+  const collapsed = (await cookies()).get("sidebar_collapsed")?.value === "1";
+
   return (
     <IdiomaProvider locale={locale}>
-      <AdminShell userEmail={user.email ?? ""}>{children}</AdminShell>
+      <AuthProvider user={user} activeOrg={activeOrg}>
+        <AdminShell
+          sidebarCollapsed={collapsed}
+          clientes={todos.map((c) => ({ id: c.id, name: c.name, cor: c.cor }))}
+          selecionados={selecionados}
+        >
+          {children}
+        </AdminShell>
+      </AuthProvider>
     </IdiomaProvider>
   );
 }

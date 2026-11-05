@@ -57,7 +57,10 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
-import { EscritaDePlatformAdminNegada, requirePlatformAdminEscrita } from "@/lib/auth/requirePlatformAdmin";
+import {
+  EscritaDePlatformAdminNegada,
+  requirePlatformAdminEscrita,
+} from "@/lib/auth/requirePlatformAdmin";
 import { loadAuthUser, mfaEmDivida } from "@/lib/auth/server";
 import { orgAtivaDaApi } from "@/lib/auth/require-role";
 import { escreveComoPlatformAdmin, roleAtLeast } from "@/lib/auth/types";
@@ -90,17 +93,24 @@ type Escopo = z.infer<typeof escopoSchema>;
 const temaSchema = z.enum(["claro", "escuro"]).default("claro");
 type TemaDoLogo = z.infer<typeof temaSchema>;
 /**
- * Qual arquivo da marca: o logo (por tema) ou o ícone da aba (migration 0443).
+ * Qual arquivo da marca: o logo (por tema), o ícone da aba (migration 0443) ou o da notificação
+ * (migration 0685, de onde sai a silhueta da barra de status).
  * O ícone reusa esta rota inteira — gate, teto, farejador de bytes e a ordem
  * sobe → grava → apaga — porque a única diferença é a coluna. O ícone só existe
  * na INSTALAÇÃO: a aba é a mesma para todas as organizações.
  */
-const pecaSchema = z.enum(["logo", "icone"]).default("logo");
+const pecaSchema = z.enum(["logo", "icone", "notificacao"]).default("logo");
 type PecaDaMarca = z.infer<typeof pecaSchema>;
 /** O que se está trocando: a peça e, para o logo, o tema. */
 type Alvo = { readonly peca: PecaDaMarca; readonly tema: TemaDoLogo };
 const campoDoLogo = ({ peca, tema }: Alvo) =>
-  peca === "icone" ? "favicon_path" : tema === "escuro" ? "logo_dark_path" : "logo_path";
+  peca === "icone"
+    ? "favicon_path"
+    : peca === "notificacao"
+      ? "notification_icon_path"
+      : tema === "escuro"
+        ? "logo_dark_path"
+        : "logo_path";
 
 /** Lê `peca` e `tema` juntos e recusa o ícone fora da instalação. */
 function lerAlvo(
@@ -112,8 +122,10 @@ function lerAlvo(
   if (!pecaLida.success) return { mensagem: "Campo 'peca' inválido." };
   const temaLido = temaSchema.safeParse(tema ?? undefined);
   if (!temaLido.success) return { mensagem: "Campo 'tema' inválido." };
-  if (pecaLida.data === "icone" && escopo !== "instalacao") {
-    return { mensagem: "O ícone da aba é da instalação, não de uma organização." };
+  if (pecaLida.data !== "logo" && escopo !== "instalacao") {
+    return {
+      mensagem: "O ícone da aba e o da notificação são da instalação, não de uma organização.",
+    };
   }
   return { alvo: { peca: pecaLida.data, tema: temaLido.data } };
 }
@@ -241,7 +253,7 @@ async function caminhoGravado(ctx: Contexto, alvo: Alvo): Promise<string | null>
     .eq("id", ctx.orgId)
     .maybeSingle();
   // `lerAlvo` já recusou o ícone fora da instalação: aqui o campo é de logo.
-  if (campo === "favicon_path") return null;
+  if (campo === "favicon_path" || campo === "notification_icon_path") return null;
   return marcaDaOrganizacaoDeSettings(data?.settings ?? null)?.[campo] ?? null;
 }
 
