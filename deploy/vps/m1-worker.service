@@ -1,0 +1,19 @@
+[Unit]
+Description=M1 Growth CRM - worker (fila de eventos, vigia de sessão do WhatsApp, saúde dos números)
+After=network-online.target docker.service m1-app.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/m1-growth-crm
+Environment=NODE_ENV=production
+# o mesmo que `pnpm worker`, sem passar pelo pnpm
+ExecStart=/home/ubuntu/.nvm/versions/node/v22.23.4/bin/node node_modules/tsx/dist/cli.mjs --env-file-if-exists=.env --env-file-if-exists=.env.local workers/agent-worker/main.ts
+Restart=always
+RestartSec=5
+MemoryMax=1G
+OOMScoreAdjust=300
+
+[Install]
+WantedBy=multi-user.target

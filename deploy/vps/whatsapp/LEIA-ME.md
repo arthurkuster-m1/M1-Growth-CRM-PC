@@ -57,7 +57,7 @@ devolvido a 1280m. Registro bruto (fora do git): `/home/ubuntu/teste-waha.log` n
 | T5a `docker restart` com as 2 WORKING | passou | API em 6,3 s; **as duas WORKING em 9,4 s, sem QR** |
 | T5b WAHA parado 78 s (05:39:09→05:40:28) | **parcial** | volta em 4,6 s (API) / 7,8 s (2 WORKING), sem QR; as 2 mensagens recebidas durante a queda chegaram 7 s depois da volta (nada perdido). **A resposta enviada pela Inbox durante a queda ficou `queued` (`channel_session_not_working`) e NÃO foi reenviada em 3,5 min**, apesar de a tela dizer "sai sozinha quando ele voltar" |
 | T6 memória | ver abaixo | |
-| T7 watchdog/Central | passou com ressalva | nenhuma sessão saudável foi marcada FAILED. Mas cada mudança de estado abre aviso: a reconexão abriu 3 avisos em 11 s e a queda de 78 s abriu 4 para 2 sessões. Todos se resolveram sozinhos (15 no total, 0 abertos no fim) |
+| T7 watchdog/Central | passou com ressalva | **medido SEM o worker rodando (o vigia de sessão mora nele); refeito com o worker ligado: ver "Worker" abaixo.** Nenhuma sessão saudável foi marcada FAILED. Mas cada mudança de estado abre aviso: a reconexão abriu 3 avisos em 11 s e a queda de 78 s abriu 4 para 2 sessões. Todos se resolveram sozinhos (15 no total, 0 abertos no fim) |
 
 **Memória do WAHA padrão (2 sessões, contas novas):** 249 MiB sem sessão; 444 MiB (pico) durante o pareamento; 367 MiB depois, com
 tráfego e uma imagem; 255 MiB (estável) logo após reiniciar o contêiner com as 2 sessões. O custo por sessão **varia** de quase nada
@@ -75,6 +75,28 @@ isolada por cliente usa ~300 MiB só para existir.
   mesmo IP da VPS) e custa ~300 MiB por instância. O que o isolamento compra: uma atualização ou queda de um WAHA afeta só aquele
   cliente, e a chave de um cliente não abre os outros. As instâncias 3101 a 3103 seguem criadas e **vazias**, aguardando decisão.
 
-**Defeitos para a nuvem:** (1) mensagem humana `queued` por canal fora não é reenviada quando o número volta (não achei quem a
-reenvie; **não há `agent-worker` rodando nesta VPS**, que talvez seja a causa e precisa ser confirmado); (2) a Central abre um aviso por
+**Defeitos para a nuvem:** (1) mensagem humana `queued` por canal fora não é reenviada quando o número volta. **Confirmado em
+05/11 que ligar o worker não resolve:** o `redriveQueued` (`lib/agent-engine/edge/crm/session-reconciler.ts`) só reenvia mensagens com
+`sent_via` `ai`, `automation` ou `system`; as da Inbox têm `sent_via='user'`, e a tela diz que "sai sozinha quando ele voltar"; (2) a Central abre um aviso por
 passo da reconexão; (3) `messages.media_url` guarda `http://localhost:3000/api/files/...` (o WAHA não tem `WAHA_BASE_URL` definido).
+
+## Worker (`m1-worker`, ligado em 05/11/2026) com a IA desligada
+
+Serviço `deploy/vps/m1-worker.service` (`systemctl status m1-worker`; log: `journalctl -u m1-worker -f`). Roda o mesmo que `pnpm worker`
+(`workers/agent-worker/main.ts`), com `MemoryMax=1G` (usa ~265 MiB). Liga: consumo da fila de eventos, **vigia de sessão do WhatsApp**
+(reconcilia o status do banco com o do WAHA, **reinicia sozinho sessão `STOPPED`**, reenvia mensagens `queued` de origem ai/automation/system),
+saúde dos números (a cada 5 min) e a ponte de chamadas.
+
+**IA continua desligada, por três razões independentes:** (1) `M1_IA_SUSPENSA` só esconde as telas de IA, **não** para o worker; (2) o
+sistema tem **0 agentes, 0 chaves de IA no banco, 0 roteadores e 0 chaves de IA no ambiente**, e sem isso nenhuma chamada é possível:
+ao ligar, os 12 eventos `ai_agent.dispatch_requested` pendentes foram todos tratados como "nenhum agente publicado para a sessão — turno
+pulado (sem gasto)"; (3) conferir a qualquer momento: `select count(*) from ai_invocations` e `ai_agent_runs` devem ser 0.
+
+Medido com o vigia ativo por 3 min: as 2 sessões seguiram `WORKING`, 0 recusas de assinatura, 0 chamadas de IA. Efeitos novos a saber:
+- **Número novo fica "aguardando liberação (go-live)":** o worker segura os disparos automáticos (follow-up e afins) de um número recém-pareado
+  e abre 1 aviso na Central por número até alguém liberar pela tela. Mensagens humanas da Inbox não são seguradas.
+- **`stop` pela API deixa de valer:** o vigia reinicia sessão `STOPPED` em até 1 min (o T4 do teste foi feito sem ele).
+- **Imagem recebida abre 2 avisos** (`midia_nao_lida` e `event_dead`) enquanto não houver chave de IA, porque ler imagem usa IA (evento
+  `media.derive_requested`). É ruído esperado com a IA pausada; a nuvem pode silenciar isso quando a IA estiver off.
+- Instâncias por cliente 3101 a 3103 **pausadas** (`docker compose stop`, vazias, nada apagado). Religar:
+  `cd /opt/m1-whatsapp/clientes/<slug> && docker compose start`.
