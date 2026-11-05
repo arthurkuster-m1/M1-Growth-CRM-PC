@@ -1,3 +1,4 @@
+import { comMidiaParaOCliente } from "@/lib/messaging/media/url-para-o-cliente";
 import { assertProspectingDelivery } from "@/lib/prospecting/guard";
 import { assertAgentOperationSupabase } from "@/lib/ai/agents/operation";
 import {
@@ -380,7 +381,7 @@ export async function listMessagesHandler(
   // A RESPOSTA continua cronológica (antigo → novo), igual a antes: o consumidor
   // renderiza de cima para baixo sem mudar nada. O que mudou foi QUAIS mensagens
   // entram na página, não a ordem em que saem.
-  return { messages: page.slice().reverse(), cursor, has_more: hasMore };
+  return { messages: page.slice().reverse().map(comMidiaParaOCliente), cursor, has_more: hasMore };
 }
 
 // ---------------------------------------------------------------------------
