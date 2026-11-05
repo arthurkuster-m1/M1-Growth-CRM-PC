@@ -13,9 +13,7 @@ const TERMINAL_STATUSES = new Set(["completed", "failed"]);
 export function LgpdRiskBanner({ requests }: LgpdRiskBannerProps) {
   const t = useT();
   const active = requests.filter((r) => !TERMINAL_STATUSES.has(r.status));
-  const critical = active.filter(
-    (r) => r.risk_level === "expired" || r.risk_level === "at_risk",
-  );
+  const critical = active.filter((r) => r.risk_level === "expired" || r.risk_level === "at_risk");
 
   if (critical.length === 0) return null;
 

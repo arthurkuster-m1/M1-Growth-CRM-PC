@@ -78,9 +78,9 @@ export function UsageTable({ tenants, range }: UsageTableProps) {
   const t = useT();
   if (tenants.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-md border py-16 text-center text-muted-foreground">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card py-16 text-center text-text-muted">
         <ChartBar size={36} weight="duotone" className="opacity-40" aria-hidden />
-        <p className="text-sm font-medium">{t("Nenhum tenant encontrado")}</p>
+        <p className="text-sm font-medium">{t("Nenhuma empresa encontrada")}</p>
         <p className="max-w-xs text-xs opacity-70">
           {t("Não há dados de uso no período selecionado.")}
         </p>
@@ -91,7 +91,9 @@ export function UsageTable({ tenants, range }: UsageTableProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("Uso por tenant")}</h2>
+        <h2 className="text-xs font-medium tracking-wide text-text-muted uppercase">
+          {t("Uso por empresa")}
+        </h2>
         <Button
           variant="outline"
           size="sm"
@@ -102,7 +104,7 @@ export function UsageTable({ tenants, range }: UsageTableProps) {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

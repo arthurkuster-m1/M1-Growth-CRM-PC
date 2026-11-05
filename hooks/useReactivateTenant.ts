@@ -23,7 +23,7 @@ export function useReactivateTenant() {
       if (!avisarSeNadaMudou(resposta, t)) toast.success(t("Tenant reativado com sucesso"));
     },
     onError: (err: Error) => {
-      toast.error(t("Erro ao reativar tenant"), { description: err.message });
+      toast.error(t("Erro ao reativar a empresa"), { description: err.message });
     },
   });
 }

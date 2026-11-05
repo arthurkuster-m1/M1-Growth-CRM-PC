@@ -61,16 +61,14 @@ const STATUS_LABELS: Record<AdminLgpdStatus, string> = {
   pending_review: "Revisão",
 };
 
-const STATUS_VARIANT: Record<
-  AdminLgpdStatus,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  received: "secondary",
-  processing: "default",
-  completed: "outline",
-  failed: "destructive",
-  pending_review: "secondary",
-};
+const STATUS_VARIANT: Record<AdminLgpdStatus, "default" | "secondary" | "destructive" | "outline"> =
+  {
+    received: "secondary",
+    processing: "default",
+    completed: "outline",
+    failed: "destructive",
+    pending_review: "secondary",
+  };
 
 const RISK_VARIANT: Record<
   AdminLgpdRiskLevel,
@@ -100,11 +98,18 @@ export function LgpdRequestsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            {["ID", t("Tipo"), "Tenant", t("Recebido em"), t("Vence em"), t("Risco"), t("Status"), ""].map(
-              (h) => (
-                <TableHead key={h}>{h}</TableHead>
-              ),
-            )}
+            {[
+              "ID",
+              t("Tipo"),
+              "Tenant",
+              t("Recebido em"),
+              t("Vence em"),
+              t("Risco"),
+              t("Status"),
+              "",
+            ].map((h) => (
+              <TableHead key={h}>{h}</TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -134,7 +139,9 @@ function EmptyState() {
       <p className="text-sm font-medium text-muted-foreground">
         {t("Nenhuma solicitação encontrada")}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">{t("Ajuste os filtros para ver solicitações.")}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {t("Ajuste os filtros para ver solicitações.")}
+      </p>
     </div>
   );
 }
@@ -194,7 +201,7 @@ export function LgpdRequestsTable({
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                   {relativeDate(row.received_at, localeDaData)}
                 </TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
@@ -206,10 +213,7 @@ export function LgpdRequestsTable({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant={STATUS_VARIANT[row.status]}
-                    className="text-[10px]"
-                  >
+                  <Badge variant={STATUS_VARIANT[row.status]} className="text-[10px]">
                     {t(STATUS_LABELS[row.status] ?? row.status)}
                   </Badge>
                 </TableCell>
@@ -226,12 +230,7 @@ export function LgpdRequestsTable({
 
       {hasNextPage && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isFetchingNextPage}
-            onClick={onLoadMore}
-          >
+          <Button variant="outline" size="sm" disabled={isFetchingNextPage} onClick={onLoadMore}>
             {isFetchingNextPage ? t("Carregando...") : t("Carregar mais")}
           </Button>
         </div>

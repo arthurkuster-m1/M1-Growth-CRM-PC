@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { Etiqueta } from "@/components/motor/Etiqueta";
 import { loadAuthUser } from "@/lib/auth/server";
 import { lerCredencialDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import { lerEstadoDaConexaoGoogle } from "@/lib/plataformas-de-anuncio/google/estado-da-conexao";
@@ -44,9 +45,9 @@ export default async function TenantConexoesPage({ params }: PageProps) {
   let metaConteudo: React.ReactNode;
   if (!linha) {
     metaConteudo = (
-      <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-        Esta empresa ainda não conectou o Meta Ads. Conecte em Configurações › Meta Ads dela (ou
-        entre como suporte) e volte aqui para liberar as contas.
+      <p className="rounded-2xl border border-dashed border-border bg-card p-6 text-sm text-text-muted">
+        Esta empresa ainda não conectou o Meta Ads. Conecte em Conexões › Meta Ads dela (entre na
+        empresa pelo trocador do alto) e volte aqui para liberar as contas.
       </p>
     );
   } else {
@@ -72,39 +73,48 @@ export default async function TenantConexoesPage({ params }: PageProps) {
   }
 
   const googleAutorizado = google?.temRefreshToken === true;
+  const titulo = "text-xs font-medium tracking-wide text-text-muted uppercase";
   return (
     <div className="space-y-6">
       <section className="space-y-2">
-        <h2 className="text-xs font-medium tracking-wide text-text-muted uppercase">Meta Ads</h2>
+        <h2 className={titulo}>Meta Ads</h2>
         {metaConteudo}
       </section>
       <section className="space-y-2">
-        <h2 className="text-xs font-medium tracking-wide text-text-muted uppercase">Google Ads</h2>
-        <div className="rounded-2xl border border-border bg-card p-4 text-sm">
+        <h2 className={titulo}>Google Ads</h2>
+        <div className="rounded-2xl border border-border bg-card p-4 text-sm sm:p-5">
           {google === null ? (
             <p className="text-text-muted">Não foi possível ler a conexão do Google Ads agora.</p>
           ) : !googleAutorizado ? (
             <p className="text-text-muted">
-              Esta empresa ainda não conectou o Google Ads. A conexão é feita em Configurações ›
-              Google Ads dela (ou entrando como suporte).
+              Esta empresa ainda não conectou o Google Ads. A conexão é feita em Conexões › Google
+              Ads dela (entre na empresa pelo trocador do alto).
             </p>
           ) : (
-            <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+            <dl className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-text-muted">Conexão</dt>
-                <dd className="font-medium">Autorizada</dd>
+                <dd className="mt-1">
+                  <Etiqueta cor="green" ponto>
+                    Autorizada
+                  </Etiqueta>
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-text-muted">Envio de conversões</dt>
-                <dd className="font-medium">{google.habilitada ? "Ligado" : "Desligado"}</dd>
+                <dd className="mt-1">
+                  <Etiqueta cor={google.habilitada ? "green" : "gray"} ponto>
+                    {google.habilitada ? "Ligado" : "Desligado"}
+                  </Etiqueta>
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-text-muted">Conta (customer id)</dt>
-                <dd className="font-mono text-xs">{google.customerId ?? "—"}</dd>
+                <dd className="mt-1 font-mono text-xs">{google.customerId ?? "—"}</dd>
               </div>
               <div>
                 <dt className="text-xs text-text-muted">Conta gerente (login customer id)</dt>
-                <dd className="font-mono text-xs">{google.loginCustomerId ?? "—"}</dd>
+                <dd className="mt-1 font-mono text-xs">{google.loginCustomerId ?? "—"}</dd>
               </div>
             </dl>
           )}

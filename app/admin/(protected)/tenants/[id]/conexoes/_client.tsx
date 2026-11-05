@@ -69,17 +69,17 @@ export function LiberarContas({
   }
 
   return (
-    <section className="grid max-w-3xl gap-4 py-4">
+    <section className="grid gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div>
         <h2 className="text-base font-semibold">Contas de anúncio do Meta</h2>
-        <p className="text-sm text-muted-foreground">
-          O token desta organização pode enxergar contas de outros clientes. Marque só as contas que
-          ESTA organização pode listar, escolher e ler. Com a trava ligada e nenhuma conta marcada,
-          a organização não enxerga conta nenhuma.
+        <p className="text-sm text-text-muted">
+          O token desta empresa pode enxergar contas de outros clientes. Marque só as contas que
+          ESTA empresa pode listar, escolher e ler. Com a trava ligada e nenhuma conta marcada, a
+          empresa não enxerga conta nenhuma.
         </p>
       </div>
 
-      <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
+      <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm">
         <input
           type="checkbox"
           checked={restringir}
@@ -88,7 +88,7 @@ export function LiberarContas({
         />
         <span>
           <strong>Restringir às contas marcadas (recomendado)</strong>
-          <span className="block text-muted-foreground">
+          <span className="block text-text-muted">
             Desligue só se o token for da própria empresa cliente, e portanto só alcança as contas
             dela.
           </span>
@@ -107,9 +107,9 @@ export function LiberarContas({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar conta por nome ou número"
-            className="h-10 rounded-xl border bg-card px-3 text-sm"
+            className="h-10 rounded-xl border border-border bg-background px-3 text-sm outline-hidden focus:border-primary/60"
           />
-          <ul className="grid max-h-96 gap-1 overflow-y-auto rounded-xl border p-2">
+          <ul className="grid max-h-96 gap-1 overflow-y-auto rounded-xl border border-border p-2">
             {visiveis.map((c) => (
               <li key={c.id}>
                 <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-secondary">
@@ -120,14 +120,14 @@ export function LiberarContas({
                     className="h-4 w-4"
                   />
                   <span className="min-w-0 flex-1 truncate font-medium">{c.nome}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
+                  <span className="shrink-0 text-xs text-text-muted">
                     {c.id} · {c.moeda}
                   </span>
                 </label>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-text-muted">
             {liberadas.length} conta(s) liberada(s) de {contas.length} que o token alcança.
           </p>
         </>
@@ -137,7 +137,7 @@ export function LiberarContas({
         <Button onClick={salvar} disabled={pendente}>
           {pendente ? "Salvando…" : "Salvar"}
         </Button>
-        {resultado ? <span className="text-sm text-muted-foreground">{resultado}</span> : null}
+        {resultado ? <span className="text-sm text-text-muted">{resultado}</span> : null}
       </div>
     </section>
   );

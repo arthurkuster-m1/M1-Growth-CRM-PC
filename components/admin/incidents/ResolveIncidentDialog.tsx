@@ -62,7 +62,7 @@ export function ResolveIncidentDialog({ incidentId }: ResolveIncidentDialogProps
         <div className="space-y-2 py-2">
           <Label htmlFor="resolution-note">
             {t("Nota de resolução")}{" "}
-            <span className="text-muted-foreground font-normal">({t("mín. 10 caracteres")})</span>
+            <span className="font-normal text-muted-foreground">({t("mín. 10 caracteres")})</span>
           </Label>
           <Textarea
             id="resolution-note"
@@ -82,10 +82,7 @@ export function ResolveIncidentDialog({ incidentId }: ResolveIncidentDialogProps
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>{t("Cancelar")}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleResolve}
-            disabled={!isValid || isPending}
-          >
+          <AlertDialogAction onClick={handleResolve} disabled={!isValid || isPending}>
             {isPending ? t("Resolvendo...") : t("Confirmar resolução")}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1,10 +1,11 @@
 import { LinkVoltar } from "@/components/ui/LinkVoltar";
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Etiqueta } from "@/components/motor/Etiqueta";
+import { corDoCliente } from "@/lib/agencia/cor-do-cliente";
+import { iniciais } from "@/lib/admin/empresas";
+import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 
 import { TabNav } from "./_tab-nav";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
@@ -14,18 +15,18 @@ import { traduzir } from "@/lib/i18n/dicionario";
 // Status badge helpers (same palette as TenantsTable)
 // ---------------------------------------------------------------------------
 
-const STATUS_VARIANTS: Record<string, "success" | "info" | "warning" | "error" | "neutral"> = {
-  active: "success",
-  onboarding: "info",
-  suspended: "warning",
-  redacted: "error",
+const STATUS_COR: Record<string, CorDaOpcao> = {
+  active: "green",
+  onboarding: "blue",
+  suspended: "orange",
+  redacted: "red",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  active: "Ativo",
+  active: "Ativa",
   onboarding: "Onboarding",
-  suspended: "Suspenso",
-  redacted: "Redigido",
+  suspended: "Suspensa",
+  redacted: "Anonimizada",
 };
 
 // ---------------------------------------------------------------------------
@@ -68,38 +69,57 @@ export default async function TenantDetailLayout({ children, params }: TenantLay
 
   const { data: org } = await admin
     .from("organizations")
-    .select("id, slug, display_name, status")
+    .select(
+      "id, slug, display_name, status, onboarded_at, cor_agencia:settings->>agencia_cor, cor_marca:settings->branding->>accent_hex",
+    )
     .eq("id", id)
     .single();
 
   const basePath = `/admin/tenants/${id}`;
+  const linha = org as unknown as {
+    display_name: string;
+    slug: string;
+    status: string;
+    onboarded_at: string | null;
+    cor_agencia: string | null;
+    cor_marca: string | null;
+  } | null;
+  // 'onboarding' não existe no banco: é derivado (ativa sem onboarding concluído).
+  const situacao =
+    linha?.status === "active" && !linha.onboarded_at ? "onboarding" : (linha?.status ?? "");
+  const nome = linha?.display_name ?? id;
 
   return (
-    <div className="space-y-6">
-      {/* Back nav */}
+    <div className="space-y-5">
       <LinkVoltar href="/admin/tenants">{traduzir("Empresas", idioma)}</LinkVoltar>
 
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{org?.display_name ?? id}</h1>
-          {org?.slug && (
-            <code className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
-              {org.slug}
-            </code>
-          )}
-          {org?.status && (
-            <Badge variant={STATUS_VARIANTS[org.status] ?? "neutral"}>
-              {traduzir(STATUS_LABELS[org.status] ?? org.status, idioma)}
-            </Badge>
-          )}
+      {/* Cabeçalho: a empresa, com a cor dela no Modo agência */}
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-base font-semibold text-white"
+          style={{ backgroundColor: corDoCliente(linha?.cor_marca ?? linha?.cor_agencia, id) }}
+        >
+          {iniciais(nome)}
+        </span>
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold tracking-tight">{nome}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {linha?.slug ? (
+              <code className="rounded-md bg-secondary px-2 py-0.5 font-mono text-xs text-text-muted">
+                {linha.slug}
+              </code>
+            ) : null}
+            {situacao ? (
+              <Etiqueta cor={STATUS_COR[situacao] ?? "gray"} ponto>
+                {traduzir(STATUS_LABELS[situacao] ?? situacao, idioma)}
+              </Etiqueta>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Sub-nav */}
       <TabNav basePath={basePath} tabs={TABS} />
-
-      <Separator className="hidden" />
 
       {children}
     </div>

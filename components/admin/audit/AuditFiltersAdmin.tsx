@@ -4,11 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CaretDown, X } from "@/lib/ui/icons";
 import type { AdminAuditFilters } from "@/hooks/useAdminAuditLog";
 // A lista vem do vocabulário canônico, não de uma cópia local. Havia uma
@@ -56,9 +52,7 @@ function MultiSelectPopover({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const filtered = options.filter((o) =>
-    o.label.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -88,13 +82,16 @@ function MultiSelectPopover({
           />
           {selected.length > 0 && (
             <button
-              onClick={() => { onClear(); setSearch(""); }}
+              onClick={() => {
+                onClear();
+                setSearch("");
+              }}
               className="w-full rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-accent"
             >
               {t("Limpar seleção")} ({selected.length})
             </button>
           )}
-          <div className="max-h-52 overflow-y-auto space-y-0.5">
+          <div className="max-h-52 space-y-0.5 overflow-y-auto">
             {filtered.length === 0 && (
               <p className="px-2 py-4 text-center text-xs text-muted-foreground">
                 {t("Nenhum resultado")}
@@ -105,9 +102,7 @@ function MultiSelectPopover({
                 key={o.value}
                 onClick={() => onToggle(o.value)}
                 className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                  selected.includes(o.value)
-                    ? "bg-accent font-medium"
-                    : "hover:bg-accent/50"
+                  selected.includes(o.value) ? "bg-accent font-medium" : "hover:bg-accent/50"
                 }`}
               >
                 {o.label}
@@ -124,11 +119,7 @@ function MultiSelectPopover({
 // Component
 // ---------------------------------------------------------------------------
 
-export function AuditFiltersAdmin({
-  filters,
-  onChange,
-  tenants,
-}: AuditFiltersAdminProps) {
+export function AuditFiltersAdmin({ filters, onChange, tenants }: AuditFiltersAdminProps) {
   const t = useT();
   const [actorInput, setActorInput] = useState(filters.actor_user_id ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -144,10 +135,7 @@ export function AuditFiltersAdmin({
   // roupa, a segunda lista à mão que este componente acabou de matar.
   // `useMemo` porque a lista é constante e tem 209 itens: sem ele, cada tecla
   // digitada no campo "Actor" remonta o array inteiro.
-  const actionOptions = useMemo(
-    () => AUDIT_ACTIONS.map((a) => ({ value: a, label: a })),
-    [],
-  );
+  const actionOptions = useMemo(() => AUDIT_ACTIONS.map((a) => ({ value: a, label: a })), []);
 
   const selectedTenants = useMemo(() => filters.tenant_ids ?? [], [filters.tenant_ids]);
   const selectedActions = useMemo(() => filters.actions ?? [], [filters.actions]);
@@ -233,7 +221,7 @@ export function AuditFiltersAdmin({
         aria-label={t("Filtrar por actor user ID")}
       />
       <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground sr-only" htmlFor="audit-from">
+        <label className="sr-only text-xs text-muted-foreground" htmlFor="audit-from">
           {t("De")}
         </label>
         <CampoDeDataEHoraLocal
@@ -243,7 +231,7 @@ export function AuditFiltersAdmin({
         />
       </div>
       <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground sr-only" htmlFor="audit-to">
+        <label className="sr-only text-xs text-muted-foreground" htmlFor="audit-to">
           {t("Até")}
         </label>
         <CampoDeDataEHoraLocal

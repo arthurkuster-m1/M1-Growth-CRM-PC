@@ -30,7 +30,7 @@ export function TenantActions({ organizationId, status }: TenantActionsProps) {
   return (
     <>
       <div className="space-y-4 rounded-lg border bg-card p-5">
-        <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+        <h2 className="text-sm font-semibold tracking-wider text-text-muted uppercase">
           {t("Ações")}
         </h2>
 
@@ -40,9 +40,9 @@ export function TenantActions({ organizationId, status }: TenantActionsProps) {
             className="w-full"
             variant="destructive"
             onClick={() => setSuspendOpen(true)}
-            aria-label={t("Suspender tenant")}
+            aria-label={t("Suspender empresa")}
           >
-            {t("Suspender tenant")}
+            {t("Suspender empresa")}
           </Button>
         )}
 
@@ -52,15 +52,15 @@ export function TenantActions({ organizationId, status }: TenantActionsProps) {
             className="w-full"
             variant="outline"
             onClick={() => setReactivateOpen(true)}
-            aria-label={t("Reativar tenant")}
+            aria-label={t("Reativar empresa")}
           >
-            {t("Reativar tenant")}
+            {t("Reativar empresa")}
           </Button>
         )}
 
         {isRedacted && (
-          <p className="py-2 text-center text-xs text-muted-foreground">
-            {t("Tenant redigido — ações de gestão não disponíveis.")}
+          <p className="py-2 text-center text-xs text-text-muted">
+            {t("Empresa anonimizada — ações de gestão não disponíveis.")}
           </p>
         )}
       </div>
