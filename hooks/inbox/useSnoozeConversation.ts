@@ -18,6 +18,7 @@ export function useSnoozeConversation() {
 
   const invalidate = (conversationId: string) => {
     qc.invalidateQueries({ queryKey: ["conversations"] });
+    qc.invalidateQueries({ queryKey: ["conversation-counts"] });
     qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
   };
 

@@ -46,4 +46,7 @@ function descarregar(qc: QueryClient): void {
   agendadas.delete(qc);
   void qc.invalidateQueries({ queryKey: ["conversations"] });
   void qc.invalidateQueries({ queryKey: ["conversation"] });
+  // Os números das abas e o contador da Fila (menu) vêm da contagem, não da lista: sem isto
+  // só mudavam no polling de 60s, mesmo com a lista já atualizada.
+  void qc.invalidateQueries({ queryKey: ["conversation-counts"] });
 }
