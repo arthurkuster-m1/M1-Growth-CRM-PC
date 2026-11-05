@@ -64,17 +64,30 @@ describe("MessageBubble — ações sobre mensagem própria", () => {
     const user = userEvent.setup();
     const onEditar = vi.fn(async () => undefined);
     const onApagar = vi.fn(async () => undefined);
-    render(<MessageBubble message={msg({
-      external_id: "ABC", sent_by_user_id: "usuario-1", sent_at: new Date().toISOString(),
-    })} viewerUserId="usuario-1" onEditar={onEditar} onApagar={onApagar} />);
+    render(
+      <MessageBubble
+        message={msg({
+          external_id: "ABC",
+          sent_by_user_id: "usuario-1",
+          sent_at: new Date().toISOString(),
+        })}
+        viewerUserId="usuario-1"
+        onEditar={onEditar}
+        onApagar={onApagar}
+      />,
+    );
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
     await user.click(await screen.findByRole("menuitem", { name: "Editar mensagem" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Editar mensagem" }), { target: { value: "novo texto" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Editar mensagem" }), {
+      target: { value: "novo texto" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(onEditar).toHaveBeenCalledWith("novo texto"));
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
     await user.click(await screen.findByRole("menuitem", { name: "Apagar para todos" }));
-    expect(screen.getByText("O WhatsApp tentará remover esta mensagem também para o cliente.")).toBeInTheDocument();
+    expect(
+      screen.getByText("O WhatsApp tentará remover esta mensagem também para o cliente."),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Apagar para todos" }).at(-1)!);
     await waitFor(() => expect(onApagar).toHaveBeenCalledOnce());
   });
@@ -85,7 +98,12 @@ describe("MessageBubble — ações sobre mensagem própria", () => {
     // no WhatsApp do cliente" também no direct do Instagram.
     const user = userEvent.setup();
     const onOcultar = vi.fn(async () => undefined);
-    render(<MessageBubble message={msg({ direction: "inbound", sent_via: "external_device" })} onOcultar={onOcultar} />);
+    render(
+      <MessageBubble
+        message={msg({ direction: "inbound", sent_via: "external_device" })}
+        onOcultar={onOcultar}
+      />,
+    );
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
     await user.click(await screen.findByRole("menuitem", { name: "Ocultar no CRM" }));
     const aviso = screen.getByText(/A mensagem continua na conversa do cliente/);
@@ -97,8 +115,12 @@ describe("MessageBubble — ações sobre mensagem própria", () => {
   it("salva com Enter, preserva Shift+Enter e evita envio duplicado", async () => {
     const user = userEvent.setup();
     const onEditar = vi.fn(async () => undefined);
-    render(<MessageBubble message={msg({ external_id: "ABC", sent_at: new Date().toISOString() })}
-      onEditar={onEditar} />);
+    render(
+      <MessageBubble
+        message={msg({ external_id: "ABC", sent_at: new Date().toISOString() })}
+        onEditar={onEditar}
+      />,
+    );
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
     await user.click(await screen.findByRole("menuitem", { name: "Editar mensagem" }));
     const campo = screen.getByRole("textbox", { name: "Editar mensagem" });
@@ -117,13 +139,21 @@ describe("MessageBubble — ações sobre mensagem própria", () => {
     const original = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
     try {
-      render(<MessageBubble message={msg({ external_id: "ABC", sent_at: new Date().toISOString() })}
-        onEditar={vi.fn(async () => undefined)} />);
+      render(
+        <MessageBubble
+          message={msg({ external_id: "ABC", sent_at: new Date().toISOString() })}
+          onEditar={vi.fn(async () => undefined)}
+        />,
+      );
       await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
       await user.click(await screen.findByRole("menuitem", { name: "Editar mensagem" }));
-      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({
-        behavior: "smooth", block: "nearest", inline: "nearest",
-      }));
+      await waitFor(() =>
+        expect(scrollIntoView).toHaveBeenCalledWith({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "nearest",
+        }),
+      );
       expect(screen.getByRole("textbox", { name: "Editar mensagem" })).toHaveFocus();
       expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
     } finally {
@@ -135,28 +165,55 @@ describe("MessageBubble — ações sobre mensagem própria", () => {
     const user = userEvent.setup();
     const onEditar = vi.fn(async () => undefined);
     const onApagar = vi.fn(async () => undefined);
-    const { rerender } = render(<MessageBubble message={msg({ external_id: "ABC" })}
-      onEditar={onEditar} onApagar={onApagar} />);
+    const { rerender } = render(
+      <MessageBubble
+        message={msg({ external_id: "ABC" })}
+        onEditar={onEditar}
+        onApagar={onApagar}
+      />,
+    );
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
     expect(screen.queryByRole("menuitem", { name: "Editar mensagem" })).not.toBeInTheDocument();
-    rerender(<MessageBubble message={msg({ external_id: "ABC", direction: "inbound" })}
-      onEditar={onEditar} onApagar={onApagar} />);
+    rerender(
+      <MessageBubble
+        message={msg({ external_id: "ABC", direction: "inbound" })}
+        onEditar={onEditar}
+        onApagar={onApagar}
+      />,
+    );
     expect(screen.queryByRole("button", { name: "Opções da mensagem" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Apagar para todos" })).not.toBeInTheDocument();
   });
 
   it("mantém o texto apagado dentro da bolha do CRM sem mostrar o texto revogado pelo cliente", () => {
-    const { rerender } = render(<MessageBubble message={msg({ revoked_at: "2026-09-24T11:00:00Z", body: "valor combinado" })} />);
+    const { rerender } = render(
+      <MessageBubble
+        message={msg({ revoked_at: "2026-09-24T11:00:00Z", body: "valor combinado" })}
+      />,
+    );
     expect(screen.getByText("Esta mensagem foi apagada")).toBeInTheDocument();
     expect(screen.getByText("valor combinado")).toBeInTheDocument();
     expect(screen.getByText("Visível só aqui no CRM")).toBeInTheDocument();
     expect(screen.getByTestId("message-bubble").className).toContain("opacity-70");
-    rerender(<MessageBubble message={msg({ direction: "inbound", revoked_at: "2026-09-24T11:00:00Z", body: "texto do cliente" })} />);
+    rerender(
+      <MessageBubble
+        message={msg({
+          direction: "inbound",
+          revoked_at: "2026-09-24T11:00:00Z",
+          body: "texto do cliente",
+        })}
+      />,
+    );
     expect(screen.queryByText("texto do cliente")).not.toBeInTheDocument();
   });
 
   it("põe o menu dentro da bolha sem ocupar uma coluna ao lado", () => {
-    const { container } = render(<MessageBubble message={msg({ external_id: "ABC" })} onApagar={vi.fn(async () => undefined)} />);
+    const { container } = render(
+      <MessageBubble
+        message={msg({ external_id: "ABC" })}
+        onApagar={vi.fn(async () => undefined)}
+      />,
+    );
     const bolha = screen.getByTestId("message-bubble");
     expect(bolha).toContainElement(screen.getByRole("button", { name: "Opções da mensagem" }));
     expect(container.firstElementChild?.children).toHaveLength(1);
@@ -169,14 +226,21 @@ describe("MessageBubble — ocultação local de recebida", () => {
     const onOcultar = vi.fn(async () => undefined);
     const onRestaurar = vi.fn(async () => undefined);
     const recebida = msg({ direction: "inbound", body: "segredo do cliente" });
-    const { rerender } = render(<MessageBubble message={recebida} onOcultar={onOcultar} onRestaurar={onRestaurar} />);
+    const { rerender } = render(
+      <MessageBubble message={recebida} onOcultar={onOcultar} onRestaurar={onRestaurar} />,
+    );
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
     await user.click(await screen.findByRole("menuitem", { name: "Ocultar no CRM" }));
     expect(screen.getByText(/continua na conversa do cliente/)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Ocultar no CRM" }).at(-1)!);
     await waitFor(() => expect(onOcultar).toHaveBeenCalledOnce());
-    rerender(<MessageBubble message={{ ...recebida, metadata: { crm_hidden_at: "2026-09-24T12:00:00Z" } }}
-      onOcultar={onOcultar} onRestaurar={onRestaurar} />);
+    rerender(
+      <MessageBubble
+        message={{ ...recebida, metadata: { crm_hidden_at: "2026-09-24T12:00:00Z" } }}
+        onOcultar={onOcultar}
+        onRestaurar={onRestaurar}
+      />,
+    );
     expect(screen.queryByText("segredo do cliente")).not.toBeInTheDocument();
     expect(screen.getByText("Mensagem ocultada no CRM")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Opções da mensagem" }));
@@ -246,9 +310,7 @@ describe("MessageBubble — rótulo de origem", () => {
   });
 
   it("mensagem recebida (inbound) não leva rótulo de origem", () => {
-    render(
-      <MessageBubble message={msg({ sent_via: "external_device", direction: "inbound" })} />,
-    );
+    render(<MessageBubble message={msg({ sent_via: "external_device", direction: "inbound" })} />);
     expect(screen.queryByText("Celular")).not.toBeInTheDocument();
   });
 
@@ -292,7 +354,9 @@ describe("MessageBubble — rótulo de origem", () => {
         message={msg({
           sent_via: "system",
           sent_on_behalf_of_user_id: "pessoa-1",
-          metadata: { sent_on_behalf: { user_id: "pessoa-1", user_name: "Fulano", token_name: null } },
+          metadata: {
+            sent_on_behalf: { user_id: "pessoa-1", user_name: "Fulano", token_name: null },
+          },
         })}
       />,
     );
@@ -342,7 +406,11 @@ describe("pino compartilhado pelo cliente", () => {
   });
 
   it("sem coordenadas, o corpo aparece como sempre", () => {
-    render(<MessageBubble message={msg({ direction: "inbound", type: "location", body: "📍 Location" })} />);
+    render(
+      <MessageBubble
+        message={msg({ direction: "inbound", type: "location", body: "📍 Location" })}
+      />,
+    );
     expect(screen.getByText("📍 Location")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Abrir no mapa/ })).toBeNull();
   });
@@ -391,5 +459,54 @@ describe("MessageBubble — remetente de grupo", () => {
       />,
     );
     expect(screen.queryByText("Maria · +5521999990000")).toBeNull();
+  });
+});
+
+/**
+ * A mensagem de uma pessoa PRESA porque o número estava fora do ar: a tela diz a verdade (não
+ * enviada) e oferece "Reenviar" — nada sai sozinho (decisão do dono, 05/11/2026). Mensagem da IA ou
+ * de automação, que o reenvio automático já cobre, não ganha o aviso.
+ */
+describe("mensagem presa com o número fora do ar", () => {
+  const presa = (over: Partial<Message> = {}) =>
+    msg({
+      status: "queued",
+      sent_via: "user",
+      metadata: { queued_reason: "channel_session_not_working" },
+      ...over,
+    });
+
+  it("mostra 'Não enviada' e o botão Reenviar, que chama a ação", async () => {
+    const onReenviar = vi.fn().mockResolvedValue(undefined);
+    render(<MessageBubble message={presa()} onReenviar={onReenviar} />);
+    expect(screen.getByTestId("mensagem-presa").textContent).toContain(
+      "Não enviada: o número estava fora do ar.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Reenviar" }));
+    expect(onReenviar).toHaveBeenCalledTimes(1);
+  });
+
+  it("se o reenvio falha, o botão continua para tentar de novo", async () => {
+    const onReenviar = vi.fn().mockRejectedValue(new Error("ainda fora do ar"));
+    render(<MessageBubble message={presa()} onReenviar={onReenviar} />);
+    await userEvent.click(screen.getByRole("button", { name: "Reenviar" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Reenviar" })).toBeEnabled());
+  });
+
+  it("a frase antiga ('sai sozinha') não aparece, e sem a ação não há botão", () => {
+    render(<MessageBubble message={presa()} />);
+    expect(screen.queryByRole("button", { name: "Reenviar" })).toBeNull();
+    expect(screen.queryByText(/sai sozinha/)).toBeNull();
+  });
+
+  it("da IA ou de automação (cobertas pelo reenvio automático) e as já enviadas: nada de aviso", () => {
+    const { rerender } = render(
+      <MessageBubble message={presa({ sent_via: "ai" })} onReenviar={vi.fn()} />,
+    );
+    expect(screen.queryByTestId("mensagem-presa")).toBeNull();
+    rerender(<MessageBubble message={presa({ sent_via: "automation" })} onReenviar={vi.fn()} />);
+    expect(screen.queryByTestId("mensagem-presa")).toBeNull();
+    rerender(<MessageBubble message={msg({ status: "sent" })} onReenviar={vi.fn()} />);
+    expect(screen.queryByTestId("mensagem-presa")).toBeNull();
   });
 });

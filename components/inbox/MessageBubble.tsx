@@ -3,17 +3,38 @@
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { format } from "date-fns";
 import { useT } from "@/hooks/i18n/useT";
-import { ArrowBendUpLeft, CaretDown, Check, Checks, PencilSimple, Robot, Trash, WarningOctagon } from "@/lib/ui/icons";
+import {
+  ArrowBendUpLeft,
+  CaretDown,
+  Check,
+  Checks,
+  PencilSimple,
+  Robot,
+  Trash,
+  WarningOctagon,
+} from "@/lib/ui/icons";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message } from "@/lib/types/messaging";
+import { mensagemEsperaReenvio } from "@/lib/inbox/mensagem-presa";
 import { lerRemetenteDeGrupo, rotuloDoRemetente } from "@/lib/messaging/remetente-de-grupo";
 import { CitationButton } from "@/components/ai/CitationButton";
 import { MediaRenderer } from "@/components/inbox/media/MediaRenderer";
@@ -21,10 +42,7 @@ import { MediaUnavailable } from "@/components/inbox/media/MediaUnavailable";
 import { ContactCard } from "@/components/inbox/media/ContactCard";
 import { LocationCard } from "@/components/inbox/media/LocationCard";
 import { localizacaoDaMensagem } from "@/lib/messaging/localizacao";
-import {
-  extractCitations,
-  isAiGeneratedMessage,
-} from "@/lib/ai/citations/types";
+import { extractCitations, isAiGeneratedMessage } from "@/lib/ai/citations/types";
 
 interface Props {
   message: Message;
@@ -49,6 +67,8 @@ interface Props {
   onApagar?: () => Promise<void>;
   onOcultar?: () => Promise<void>;
   onRestaurar?: () => Promise<void>;
+  /** Reenviar a mensagem presa com o número fora do ar (só existe nelas; nada sai sozinho). */
+  onReenviar?: () => Promise<void>;
 }
 
 function AckIndicator({ status, t }: { status: string; t: (texto: string) => string }) {
@@ -56,7 +76,9 @@ function AckIndicator({ status, t }: { status: string; t: (texto: string) => str
     return <Checks size={12} weight="bold" className="text-blue-400" aria-label={t("Lida")} />;
   }
   if (status === "delivered") {
-    return <Checks size={12} weight="bold" className="text-current/70" aria-label={t("Entregue")} />;
+    return (
+      <Checks size={12} weight="bold" className="text-current/70" aria-label={t("Entregue")} />
+    );
   }
   if (status === "sent") {
     return <Check size={12} weight="bold" className="text-current/70" aria-label={t("Enviada")} />;
@@ -75,6 +97,7 @@ export function MessageBubble({
   onApagar,
   onOcultar,
   onRestaurar,
+  onReenviar,
 }: Props) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(message.body ?? "");
@@ -93,18 +116,26 @@ export function MessageBubble({
     if (!editando) return;
     // O editor aumenta a altura da última bolha; sem rolar o fio, os botões
     // ficam escondidos atrás da área de resposta até a pessoa usar o mouse.
-    editorRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    editorRef.current?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
   }, [editando]);
   const localeDaData = useLocaleDeData();
   const t = useT();
   const isOutbound = message.direction === "outbound";
   const time = format(new Date(message.sent_at), "HH:mm", { locale: localeDaData });
   const isFailed = message.status === "failed";
+  // Escrita por uma pessoa e presa porque o número estava fora do ar: não saiu, e não sai sozinha.
+  const presaSemNumero = mensagemEsperaReenvio(message);
+  const [reenviando, setReenviando] = useState(false);
   const hasMedia = Boolean(message.media_url || message.media_storage_path);
   // A retenção marcou `metadata.media_status = 'expired'` (migration 0557) e a
   // poda anulou os DOIS campos — a partir daí `hasMedia` é false e esta mensagem
   // de mídia perde o render. O aviso é o do issue #1534.
-  const mediaExpirada = (message.metadata as Record<string, unknown> | null)?.media_status === "expired";
+  const mediaExpirada =
+    (message.metadata as Record<string, unknown> | null)?.media_status === "expired";
   // O texto do aviso carrega os DIAS que a organização configurou — a 0557
   // guarda `media_retention_days` (já com o piso de 30) junto do marcador,
   // porque a bolha não tem acesso à configuração da organização e "por política"
@@ -116,7 +147,10 @@ export function MessageBubble({
   })();
   const avisoDeExpiracao =
     diasDaRetencao !== null
-      ? t("Mídia apagada pela política de retenção ({n} dias)").replace("{n}", String(diasDaRetencao))
+      ? t("Mídia apagada pela política de retenção ({n} dias)").replace(
+          "{n}",
+          String(diasDaRetencao),
+        )
       : t("Mídia apagada pela política de retenção.");
   const isContact = message.type === "contact";
   // Pino com coordenadas: o cartão substitui o corpo, que é só o mesmo link em texto.
@@ -130,18 +164,23 @@ export function MessageBubble({
   const apagada = Boolean(message.revoked_at);
   const ocultaNoCrm = Boolean(message.metadata?.crm_hidden_at);
   const editada = Boolean(message.edited_at) && !apagada;
-  const enviadaPeloAtendente = isOutbound && ["user", "crm"].includes(message.sent_via)
-    && Boolean(message.external_id) && !apagada
-    && ["sent", "delivered", "read"].includes(message.status);
-  const podeEditar = enviadaPeloAtendente && message.type === "text" && Boolean(message.body)
-    && agora - new Date(message.sent_at).getTime() <= 15 * 60 * 1000;
+  const enviadaPeloAtendente =
+    isOutbound &&
+    ["user", "crm"].includes(message.sent_via) &&
+    Boolean(message.external_id) &&
+    !apagada &&
+    ["sent", "delivered", "read"].includes(message.status);
+  const podeEditar =
+    enviadaPeloAtendente &&
+    message.type === "text" &&
+    Boolean(message.body) &&
+    agora - new Date(message.sent_at).getTime() <= 15 * 60 * 1000;
   const podeApagar = enviadaPeloAtendente && Boolean(onApagar);
   const podeOcultar = !isOutbound && !apagada && Boolean(ocultaNoCrm ? onRestaurar : onOcultar);
   const temMenu = Boolean(onResponder || (podeEditar && onEditar) || podeApagar || podeOcultar);
   const aiGenerated = isAiGeneratedMessage(message.metadata);
   const citations = extractCitations(message.metadata);
-  const showCitationButton =
-    isOutbound && aiGenerated && (debugCitations ?? false);
+  const showCitationButton = isOutbound && aiGenerated && (debugCitations ?? false);
   // De quem saiu esta linha. `external_device` é a resposta pelo CELULAR — o
   // operador atendeu pelo WhatsApp do telefone, fora do CRM, e o ingest carimba
   // aqui. Antes isto voltava null para tudo que não fosse IA, e a bolha ficava
@@ -163,8 +202,7 @@ export function MessageBubble({
     // não faz join: o que não está na linha não aparece em lugar nenhum.
     const emNomeDe = message.sent_on_behalf_of_user_id
       ? (message.metadata?.sent_on_behalf as
-          | { user_name?: string | null; token_name?: string | null }
-          | undefined)
+          { user_name?: string | null; token_name?: string | null } | undefined)
       : undefined;
     if (emNomeDe) {
       const nome = emNomeDe.user_name?.trim() || t("Atendente");
@@ -208,9 +246,15 @@ export function MessageBubble({
     // impede duas chamadas ao WhatsApp para a mesma edição.
     salvandoEdicao.current = true;
     setOcupado(true);
-    try { await onEditar(novoTexto); setEditando(false); }
-    catch { /* O hook mostra o erro; manter o texto para nova tentativa. */ }
-    finally { salvandoEdicao.current = false; setOcupado(false); }
+    try {
+      await onEditar(novoTexto);
+      setEditando(false);
+    } catch {
+      /* O hook mostra o erro; manter o texto para nova tentativa. */
+    } finally {
+      salvandoEdicao.current = false;
+      setOcupado(false);
+    }
   }
 
   return (
@@ -248,16 +292,24 @@ export function MessageBubble({
         {temMenu && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" aria-label={t("Opções da mensagem")} disabled={ocupado}
+              <button
+                type="button"
+                aria-label={t("Opções da mensagem")}
+                disabled={ocupado}
                 className={cn(
-                  "absolute right-1 top-1 z-10 rounded-md p-0.5 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-1",
-                  "opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100",
-                  isOutbound ? "text-primary-foreground hover:bg-primary-foreground/15" : "text-muted-foreground hover:bg-background/70",
-                )}>
+                  "absolute top-1 right-1 z-10 rounded-md p-0.5 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-1",
+                  "opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100",
+                  isOutbound
+                    ? "text-primary-foreground hover:bg-primary-foreground/15"
+                    : "text-muted-foreground hover:bg-background/70",
+                )}
+              >
                 <CaretDown size={16} weight="bold" aria-hidden />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align={isOutbound ? "end" : "start"} sideOffset={4}
+            <DropdownMenuContent
+              align={isOutbound ? "end" : "start"}
+              sideOffset={4}
               onCloseAutoFocus={(event) => {
                 if (!abrindoEdicao.current) return;
                 // O Radix devolve o foco à setinha ao fechar o menu. Isso rola o
@@ -265,36 +317,55 @@ export function MessageBubble({
                 event.preventDefault();
                 abrindoEdicao.current = false;
                 editorRef.current?.querySelector("textarea")?.focus({ preventScroll: true });
-                editorRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
-              }}>
+                editorRef.current?.scrollIntoView?.({
+                  behavior: "smooth",
+                  block: "nearest",
+                  inline: "nearest",
+                });
+              }}
+            >
               {onResponder && (
                 <DropdownMenuItem onSelect={() => onResponder(message)}>
-                  <ArrowBendUpLeft size={16} aria-hidden />{t("Responder a esta mensagem")}
+                  <ArrowBendUpLeft size={16} aria-hidden />
+                  {t("Responder a esta mensagem")}
                 </DropdownMenuItem>
               )}
               {podeEditar && onEditar && (
-                <DropdownMenuItem onSelect={() => {
-                  abrindoEdicao.current = true;
-                  setTexto(message.body ?? "");
-                  setEditando(true);
-                }}>
-                  <PencilSimple size={16} aria-hidden />{t("Editar mensagem")}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    abrindoEdicao.current = true;
+                    setTexto(message.body ?? "");
+                    setEditando(true);
+                  }}
+                >
+                  <PencilSimple size={16} aria-hidden />
+                  {t("Editar mensagem")}
                 </DropdownMenuItem>
               )}
               {podeApagar && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setApagando(true)} className="text-destructive focus:text-destructive">
-                    <Trash size={16} aria-hidden />{t("Apagar para todos")}
+                  <DropdownMenuItem
+                    onSelect={() => setApagando(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash size={16} aria-hidden />
+                    {t("Apagar para todos")}
                   </DropdownMenuItem>
                 </>
               )}
               {podeOcultar && (ocultaNoCrm ? onRestaurar : onOcultar) && (
-                <DropdownMenuItem onSelect={() => {
-                  if (ocultaNoCrm && onRestaurar) void onRestaurar().catch(() => undefined);
-                  else setOcultando(true);
-                }}>
-                  {ocultaNoCrm ? <PencilSimple size={16} aria-hidden /> : <Trash size={16} aria-hidden />}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (ocultaNoCrm && onRestaurar) void onRestaurar().catch(() => undefined);
+                    else setOcultando(true);
+                  }}
+                >
+                  {ocultaNoCrm ? (
+                    <PencilSimple size={16} aria-hidden />
+                  ) : (
+                    <Trash size={16} aria-hidden />
+                  )}
                   {t(ocultaNoCrm ? "Restaurar no CRM" : "Ocultar no CRM")}
                 </DropdownMenuItem>
               )}
@@ -329,12 +400,17 @@ export function MessageBubble({
               continuava legível dentro de cada resposta que a citou. O fio
               permanece (a citação some, não a resposta); o conteúdo, não.
             */}
-            <div className={cn("line-clamp-2 wrap-anywhere opacity-70", Boolean(citada.revoked_at || citada.metadata?.crm_hidden_at) && "italic")}>
+            <div
+              className={cn(
+                "line-clamp-2 wrap-anywhere opacity-70",
+                Boolean(citada.revoked_at || citada.metadata?.crm_hidden_at) && "italic",
+              )}
+            >
               {citada.revoked_at
                 ? t("Esta mensagem foi apagada")
                 : citada.metadata?.crm_hidden_at
-                ? t("Mensagem ocultada no CRM")
-                : citada.body?.trim() || t("(sem texto)")}
+                  ? t("Mensagem ocultada no CRM")
+                  : citada.body?.trim() || t("(sem texto)")}
             </div>
           </div>
         )}
@@ -345,9 +421,7 @@ export function MessageBubble({
         )}
         {senderLabel && (
           <div className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold opacity-80">
-            {senderLabel === "IA" ? (
-              <Robot size={10} weight="duotone" aria-hidden />
-            ) : null}
+            {senderLabel === "IA" ? <Robot size={10} weight="duotone" aria-hidden /> : null}
             {senderLabel && t(senderLabel)}
           </div>
         )}
@@ -368,24 +442,37 @@ export function MessageBubble({
               className="min-h-20 w-full rounded-xl border border-border bg-background p-2 text-foreground"
             />
             <div className="flex justify-end gap-2">
-              <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => setEditando(false)}>{t("Cancelar")}</Button>
-              <Button size="sm" disabled={ocupado || !texto.trim()} onClick={() => void salvarEdicao()}>{t("Salvar")}</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={ocupado}
+                onClick={() => setEditando(false)}
+              >
+                {t("Cancelar")}
+              </Button>
+              <Button
+                size="sm"
+                disabled={ocupado || !texto.trim()}
+                onClick={() => void salvarEdicao()}
+              >
+                {t("Salvar")}
+              </Button>
             </div>
           </div>
         ) : apagada ? (
           <div className="space-y-1">
-            <p className="italic leading-snug opacity-70">{t("Esta mensagem foi apagada")}</p>
+            <p className="leading-snug italic opacity-70">{t("Esta mensagem foi apagada")}</p>
             {/* O WhatsApp revoga o envio; o CRM conserva o corpo para auditoria
                 interna. Não revelamos texto de uma mensagem apagada pelo cliente. */}
             {isOutbound && message.body && (
               <div className="border-t border-current/20 pt-1">
                 <p className="text-[10px] opacity-70">{t("Visível só aqui no CRM")}</p>
-                <p className="whitespace-pre-wrap wrap-anywhere leading-snug">{message.body}</p>
+                <p className="leading-snug wrap-anywhere whitespace-pre-wrap">{message.body}</p>
               </div>
             )}
           </div>
         ) : ocultaNoCrm ? (
-          <p className="whitespace-pre-wrap wrap-anywhere italic leading-snug opacity-60">
+          <p className="leading-snug wrap-anywhere whitespace-pre-wrap italic opacity-60">
             {t("Mensagem ocultada no CRM")}
           </p>
         ) : (
@@ -411,7 +498,7 @@ export function MessageBubble({
             {localizacao && <LocationCard localizacao={localizacao} />}
 
             {message.body && !isContact && !localizacao && (
-              <p className="whitespace-pre-wrap wrap-anywhere leading-snug">{message.body}</p>
+              <p className="leading-snug wrap-anywhere whitespace-pre-wrap">{message.body}</p>
             )}
           </>
         )}
@@ -430,10 +517,36 @@ export function MessageBubble({
             <span title={t("O autor editou esta mensagem")}>{t("editada")}</span>
           )}
           <span>{time}</span>
-          {showCitationButton && (
-            <CitationButton citations={citations} messageId={message.id} />
-          )}
+          {showCitationButton && <CitationButton citations={citations} messageId={message.id} />}
           {isOutbound && !isFailed && <AckIndicator status={message.status} t={t} />}
+          {presaSemNumero && (
+            <span
+              className="inline-flex items-center gap-1.5 font-semibold"
+              data-testid="mensagem-presa"
+            >
+              <WarningOctagon size={10} weight="fill" aria-hidden />
+              {t("Não enviada: o número estava fora do ar.")}
+              {onReenviar && (
+                <button
+                  type="button"
+                  disabled={reenviando}
+                  onClick={async () => {
+                    setReenviando(true);
+                    try {
+                      await onReenviar();
+                    } catch {
+                      /* O aviso do erro já saiu pelo hook (toast); o botão continua para tentar de novo. */
+                    } finally {
+                      setReenviando(false);
+                    }
+                  }}
+                  className="rounded-md border border-current/40 px-1.5 py-0.5 text-[10px] font-semibold underline-offset-2 hover:bg-white/10 disabled:opacity-50"
+                >
+                  {reenviando ? t("Reenviando…") : t("Reenviar")}
+                </button>
+              )}
+            </span>
+          )}
           {isFailed && (
             // Provider local: o painel do inbox não tem TooltipProvider ancestral e
             // este Tooltip só monta em mensagem failed — sem o provider, abrir uma
@@ -446,7 +559,9 @@ export function MessageBubble({
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {message.error_message ? t(message.error_message) : (message.error_code ?? t("Erro desconhecido"))}
+                  {message.error_message
+                    ? t(message.error_message)
+                    : (message.error_code ?? t("Erro desconhecido"))}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -457,17 +572,30 @@ export function MessageBubble({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("Apagar mensagem para todos?")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("O WhatsApp tentará remover esta mensagem também para o cliente.")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t("O WhatsApp tentará remover esta mensagem também para o cliente.")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={ocupado}>{t("Cancelar")}</AlertDialogCancel>
-            <Button variant="destructive" disabled={ocupado} onClick={async () => {
-              if (!onApagar) return;
-              setOcupado(true);
-              try { await onApagar(); setApagando(false); }
-              catch { /* Mantém a confirmação aberta se o canal recusar. */ }
-              finally { setOcupado(false); }
-            }}>{t("Apagar para todos")}</Button>
+            <Button
+              variant="destructive"
+              disabled={ocupado}
+              onClick={async () => {
+                if (!onApagar) return;
+                setOcupado(true);
+                try {
+                  await onApagar();
+                  setApagando(false);
+                } catch {
+                  /* Mantém a confirmação aberta se o canal recusar. */
+                } finally {
+                  setOcupado(false);
+                }
+              }}
+            >
+              {t("Apagar para todos")}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -475,17 +603,32 @@ export function MessageBubble({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("Ocultar esta mensagem no CRM?")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("A mensagem continua na conversa do cliente e no registro da empresa. Um gestor pode restaurá-la aqui.")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t(
+                "A mensagem continua na conversa do cliente e no registro da empresa. Um gestor pode restaurá-la aqui.",
+              )}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={ocupado}>{t("Cancelar")}</AlertDialogCancel>
-            <Button variant="destructive" disabled={ocupado} onClick={async () => {
-              if (!onOcultar) return;
-              setOcupado(true);
-              try { await onOcultar(); setOcultando(false); }
-              catch { /* O hook já informa a falha; preservar a confirmação. */ }
-              finally { setOcupado(false); }
-            }}>{t("Ocultar no CRM")}</Button>
+            <Button
+              variant="destructive"
+              disabled={ocupado}
+              onClick={async () => {
+                if (!onOcultar) return;
+                setOcupado(true);
+                try {
+                  await onOcultar();
+                  setOcultando(false);
+                } catch {
+                  /* O hook já informa a falha; preservar a confirmação. */
+                } finally {
+                  setOcupado(false);
+                }
+              }}
+            >
+              {t("Ocultar no CRM")}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

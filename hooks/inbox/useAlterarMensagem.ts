@@ -47,5 +47,15 @@ export function useAlterarMensagem(conversationId: string | null) {
     },
     onError: showApiError,
   });
-  return { editar, apagar, ocultar, restaurar };
+  // Reenvia a mensagem que ficou presa com o número fora do ar. Só a PESSOA decide (nada sai sozinho).
+  const reenviar = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/api/v1/messages/${id}/resend`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success(t("Mensagem reenviada."));
+    },
+    onError: showApiError,
+  });
+  return { editar, apagar, ocultar, restaurar, reenviar };
 }
