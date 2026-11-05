@@ -28,7 +28,7 @@ DeskcommCRM é um sistema operacional de vendas open source com agentes de IA na
 - **Auth:** Supabase Auth via `@supabase/ssr`. Cookie SameSite=Strict, HttpOnly, Secure
 - **Realtime:** Supabase Realtime (postgres_changes + broadcast)
 - **Storage:** Supabase Storage (bucket `whatsapp-media` privado, URLs assinadas)
-- **WhatsApp:** WAHA Plus, engine NOWEB
+- **WhatsApp:** WAHA Core (sessões ilimitadas desde a 2026.6.1), engine NOWEB
 - **Filas/eventos:** `event_log` table + workers (não usar Inngest/Trigger no MVP)
 - **Rate limit:** Upstash Redis sliding window
 - **AI:** Vercel AI Gateway (Anthropic primário; embeddings pela OpenAI ou, por escolha da organização, pelo Google — `lib/ai/embeddings/chave.ts`); strings tipo `"anthropic/claude-sonnet-4-6"`

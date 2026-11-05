@@ -123,8 +123,8 @@ services:
     # inteira. Estourá-lo mata só quem estourou, e o `restart: unless-stopped`
     # o traz de volta — falha isolada em vez de queda geral.
     mem_limit: 1280m
-    # Core grátis por padrão; troque para devlikeapro/waha-plus via WAHA_IMAGE se
-    # precisar de multi-número/retry/S3 (licença paga).
+    # WAHA Core, grátis e sem limite de sessões (desde a 2026.6.1 o antigo Plus faz parte do Core;
+    # não existe mais imagem paga). Vários números cabem nesta mesma instância.
     #
     # Tag PINADA: `devlikeapro/waha` sem tag é `:latest`, e o `dc pull` do
     # update.sh entregaria ao cliente qualquer versão que o upstream tivesse
