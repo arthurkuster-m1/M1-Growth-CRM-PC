@@ -3,8 +3,8 @@
 # porta 3001) fala com o WAHA em 127.0.0.1:3100 e com o Redis (via SRH) em 127.0.0.1:8079; o WAHA
 # avisa o app de cada mensagem em http://host.docker.internal:3001/api/v1/webhooks/waha.
 #
-# ⚠️ WAHA Core (grátis) = UM número de WhatsApp. Vários números (um por cliente) pedem o WAHA Plus
-# (pago): troque a imagem em WAHA_IMAGE no .env.
+# WAHA Core não limita sessões desde a 2026.6.1 (o antigo Plus foi incorporado; não há mais imagem paga).
+# Fonte e licença: ver LEIA-ME.md desta pasta. Uma instância por cliente é escolha de isolamento.
 name: m1-whatsapp
 
 services:
