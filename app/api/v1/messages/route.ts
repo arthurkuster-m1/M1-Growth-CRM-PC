@@ -1,3 +1,4 @@
+import { comMidiaParaOCliente } from "@/lib/messaging/media/url-para-o-cliente";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
  * POST /api/v1/messages — envia mensagem outbound (handler em ./_handler.ts).
@@ -350,7 +351,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     // 201, e não `desfecho.status`: o efeito desta rota termina sempre em 201
     // (a mensagem aceita) e é esse número que o recibo guarda — o replay
     // responde 201 também, que é a MESMA resposta da primeira chamada.
-    return ok(desfecho.resposta, { status: 201, requestId });
+    return ok(comMidiaParaOCliente(desfecho.resposta), { status: 201, requestId });
   } catch (err) {
     if (err instanceof ApiError) {
       const retryAfter = (err.details as { retry_after_seconds?: number } | undefined)
