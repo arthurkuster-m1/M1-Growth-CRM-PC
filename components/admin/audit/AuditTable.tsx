@@ -86,9 +86,7 @@ function EmptyState() {
   const t = useT();
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
-      <p className="text-sm font-medium text-muted-foreground">
-        {t("Nenhum evento encontrado")}
-      </p>
+      <p className="text-sm font-medium text-muted-foreground">{t("Nenhum evento encontrado")}</p>
       <p className="mt-1 text-xs text-muted-foreground">
         {t("Ajuste os filtros para ver entradas do audit log.")}
       </p>
@@ -107,12 +105,7 @@ interface AuditTableProps {
   onLoadMore?: () => void;
 }
 
-export function AuditTable({
-  data,
-  hasNextPage,
-  isFetchingNextPage,
-  onLoadMore,
-}: AuditTableProps) {
+export function AuditTable({ data, hasNextPage, isFetchingNextPage, onLoadMore }: AuditTableProps) {
   const localeDaData = useLocaleDeData();
   const t = useT();
   if (data.length === 0) {
@@ -136,7 +129,7 @@ export function AuditTable({
           <TableBody>
             {data.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                   {relativeDate(row.created_at, localeDaData)}
                 </TableCell>
                 <TableCell className="font-mono text-xs">{row.action}</TableCell>
@@ -175,12 +168,7 @@ export function AuditTable({
 
       {hasNextPage && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isFetchingNextPage}
-            onClick={onLoadMore}
-          >
+          <Button variant="outline" size="sm" disabled={isFetchingNextPage} onClick={onLoadMore}>
             {isFetchingNextPage ? t("Carregando...") : t("Carregar mais")}
           </Button>
         </div>

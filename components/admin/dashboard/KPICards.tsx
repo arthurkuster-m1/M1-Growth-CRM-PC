@@ -15,30 +15,22 @@ interface KPICardProps {
 }
 
 function KPICard({ label, value, subtitle, Icon, accent, danger }: KPICardProps) {
-  const iconColor = danger
-    ? "text-red-500"
-    : accent
-      ? "text-amber-500"
-      : "text-muted-foreground";
+  const iconColor = danger ? "text-red-500" : accent ? "text-amber-500" : "text-muted-foreground";
 
-  const valueColor = danger
-    ? "text-red-600"
-    : accent
-      ? "text-amber-600"
-      : "text-foreground";
+  const valueColor = danger ? "text-red-600" : accent ? "text-amber-600" : "text-foreground";
 
   return (
     <Card>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               {label}
             </p>
             <p className={`text-3xl font-bold tabular-nums ${valueColor}`}>{value}</p>
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
-          <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${iconColor}`} />
+          <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${iconColor}`} />
         </div>
       </CardContent>
     </Card>
@@ -52,7 +44,7 @@ interface KPICardsProps {
 export function KPICards({ kpis }: KPICardsProps) {
   const t = useT();
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
       <KPICard
         label={t("Tenants Ativos")}
         value={kpis.tenants_active}

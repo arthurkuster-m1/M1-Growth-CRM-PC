@@ -50,20 +50,12 @@ const STATUS_LABELS: Record<IncidentStatus, string> = {
 
 function SeverityBadge({ severity }: { severity: IncidentSeverity }) {
   const t = useT();
-  return (
-    <Badge variant={SEVERITY_VARIANTS[severity]}>
-      {t(SEVERITY_LABELS[severity])}
-    </Badge>
-  );
+  return <Badge variant={SEVERITY_VARIANTS[severity]}>{t(SEVERITY_LABELS[severity])}</Badge>;
 }
 
 function StatusBadge({ status }: { status: IncidentStatus }) {
   const t = useT();
-  return (
-    <Badge variant={STATUS_VARIANTS[status]}>
-      {t(STATUS_LABELS[status])}
-    </Badge>
-  );
+  return <Badge variant={STATUS_VARIANTS[status]}>{t(STATUS_LABELS[status])}</Badge>;
 }
 
 function relativeDate(iso: string, locale: Locale): string {
@@ -158,7 +150,7 @@ export function IncidentsTable({
           <TableBody>
             {data.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                   {relativeDate(row.created_at, localeDaData)}
                 </TableCell>
                 <TableCell className="font-mono text-xs">{row.type}</TableCell>
@@ -191,12 +183,7 @@ export function IncidentsTable({
 
       {hasNextPage && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onLoadMore}
-            disabled={isFetchingNextPage}
-          >
+          <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isFetchingNextPage}>
             {isFetchingNextPage ? t("Carregando...") : t("Carregar mais")}
           </Button>
         </div>

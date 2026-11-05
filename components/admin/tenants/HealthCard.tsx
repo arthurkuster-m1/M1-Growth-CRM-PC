@@ -27,15 +27,15 @@ export interface HealthCardProps {
 // ---------------------------------------------------------------------------
 
 const STATUS_BORDER: Record<HealthStatus, string> = {
-  ok: "border-emerald-500/60 dark:border-emerald-600/50",
-  warning: "border-amber-400/70 dark:border-amber-500/50",
-  critical: "border-red-500/70 dark:border-red-600/60",
+  ok: "border-border",
+  warning: "border-warning/40",
+  critical: "border-error/50",
 };
 
 const STATUS_BADGE_BG: Record<HealthStatus, string> = {
-  ok: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  warning: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  critical: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  ok: "bg-success-bg text-success-fg",
+  warning: "bg-warning-bg text-warning-fg",
+  critical: "bg-error-bg text-error-fg",
 };
 
 const STATUS_LABEL: Record<HealthStatus, string> = {
@@ -45,9 +45,9 @@ const STATUS_LABEL: Record<HealthStatus, string> = {
 };
 
 const STATUS_DOT: Record<HealthStatus, string> = {
-  ok: "bg-emerald-500",
-  warning: "bg-amber-400",
-  critical: "bg-red-500",
+  ok: "bg-success",
+  warning: "bg-warning",
+  critical: "bg-error",
 };
 
 // ---------------------------------------------------------------------------
@@ -68,19 +68,17 @@ export function HealthCard({
   return (
     <div
       className={[
-        "flex flex-col gap-4 rounded-xl border-2 bg-card p-5 transition-colors",
+        "flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-xs transition-colors",
         STATUS_BORDER[status],
       ].join(" ")}
     >
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 text-text-muted">
           <span className="h-5 w-5 shrink-0" aria-hidden>
             {icon}
           </span>
-          <span className="text-xs leading-none font-semibold tracking-wider uppercase">
-            {title}
-          </span>
+          <span className="text-xs leading-none font-medium tracking-wide uppercase">{title}</span>
         </div>
 
         {/* Status badge + pulse */}
@@ -119,7 +117,7 @@ export function HealthCard({
         <div className="space-y-1.5 border-t pt-3">
           {details.map((d) => (
             <div key={d.label} className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-xs whitespace-nowrap text-muted-foreground">{d.label}</span>
+              <span className="text-xs whitespace-nowrap text-text-muted">{d.label}</span>
               <span className="text-right text-xs font-medium">{d.value}</span>
             </div>
           ))}
@@ -127,7 +125,7 @@ export function HealthCard({
       )}
 
       {/* Last updated */}
-      {lastUpdated && <p className="mt-auto text-[11px] text-muted-foreground">{lastUpdated}</p>}
+      {lastUpdated && <p className="mt-auto text-[11px] text-text-muted">{lastUpdated}</p>}
     </div>
   );
 }

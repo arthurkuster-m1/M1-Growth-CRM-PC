@@ -48,12 +48,16 @@ export function ImpersonateButton({
   const [busy, setBusy] = useState(false);
 
   async function handleConfirm() {
-    flushSync(() => { setBusy(true); transition.begin("Carregando acompanhamento…"); });
+    flushSync(() => {
+      setBusy(true);
+      transition.begin("Carregando acompanhamento…");
+    });
     try {
-      const res = await fetch(
-        `/api/v1/admin/tenants/${organizationId}/impersonate`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ access_mode: readonly ? "support_readonly" : "full" }) },
-      );
+      const res = await fetch(`/api/v1/admin/tenants/${organizationId}/impersonate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_mode: readonly ? "support_readonly" : "full" }),
+      });
       const json: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
         const rawMsg = (json as { error?: { message?: string } })?.error?.message;
@@ -63,15 +67,13 @@ export function ImpersonateButton({
         return;
       }
       const redirectUrl =
-        (json as { data?: { redirect_url?: string } })?.data?.redirect_url ??
-        "/app/inbox";
+        (json as { data?: { redirect_url?: string } })?.data?.redirect_url ?? "/app/inbox";
       setOpen(false);
       // Hard navigation so the new cookie is sent on the next request and the
       // server layout can read it to render the banner.
       notifySupportTransition();
       window.location.assign(redirectUrl);
       // Fallback (in case assign is intercepted in tests).
-
     } catch (err) {
       transition.cancel();
       toast.error(t("Erro de rede ao iniciar impersonate"));
@@ -102,10 +104,20 @@ export function ImpersonateButton({
         <AlertDialogHeader>
           <AlertDialogTitle>{t("Iniciar acompanhamento?")}</AlertDialogTitle>
           <AlertDialogDescription>
-            {t("Acompanhe")} <span className="font-semibold text-foreground">{displayName}</span> {t("com sua identidade de administrador. As ações pelo aplicativo serão registradas em seu nome. O acesso dura até uma hora.")}
+            {t("Acompanhe")} <span className="font-semibold text-foreground">{displayName}</span>{" "}
+            {t(
+              "com sua identidade de administrador. As ações pelo aplicativo serão registradas em seu nome. O acesso dura até uma hora.",
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={readonly} onChange={e => setReadonly(e.target.checked)} />{t("Somente leitura")}</label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={readonly}
+            onChange={(e) => setReadonly(e.target.checked)}
+          />
+          {t("Somente leitura")}
+        </label>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>{t("Cancelar")}</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm} disabled={busy}>

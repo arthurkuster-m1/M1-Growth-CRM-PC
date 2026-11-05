@@ -23,7 +23,7 @@ export function useSuspendTenant() {
       if (!avisarSeNadaMudou(resposta, t)) toast.success(t("Tenant suspenso com sucesso"));
     },
     onError: (err: Error) => {
-      toast.error(t("Erro ao suspender tenant"), { description: err.message });
+      toast.error(t("Erro ao suspender a empresa"), { description: err.message });
     },
   });
 }

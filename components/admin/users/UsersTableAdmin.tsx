@@ -24,10 +24,7 @@ import { useT } from "@/hooks/i18n/useT";
 // Role badge
 // ---------------------------------------------------------------------------
 
-const ROLE_VARIANTS: Record<
-  string,
-  "success" | "info" | "warning" | "error" | "neutral"
-> = {
+const ROLE_VARIANTS: Record<string, "success" | "info" | "warning" | "error" | "neutral"> = {
   admin: "error",
   manager: "warning",
   agent: "info",
@@ -43,11 +40,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 function RoleBadge({ role }: { role: string }) {
   const t = useT();
-  return (
-    <Badge variant={ROLE_VARIANTS[role] ?? "neutral"}>
-      {t(ROLE_LABELS[role] ?? role)}
-    </Badge>
-  );
+  return <Badge variant={ROLE_VARIANTS[role] ?? "neutral"}>{t(ROLE_LABELS[role] ?? role)}</Badge>;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,9 +142,7 @@ export function UsersTableAdmin({
           <TableBody>
             {data.map((row) => (
               <TableRow key={`${row.user_id}:${row.organization_id}`}>
-                <TableCell className="font-mono text-xs">
-                  {row.email ?? "—"}
-                </TableCell>
+                <TableCell className="font-mono text-xs">{row.email ?? "—"}</TableCell>
                 <TableCell className="font-medium">
                   {row.full_name ?? <span className="text-muted-foreground">—</span>}
                 </TableCell>
@@ -192,12 +183,7 @@ export function UsersTableAdmin({
 
       {hasNextPage && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onLoadMore}
-            disabled={isFetchingNextPage}
-          >
+          <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isFetchingNextPage}>
             {isFetchingNextPage ? t("Carregando...") : t("Carregar mais")}
           </Button>
         </div>

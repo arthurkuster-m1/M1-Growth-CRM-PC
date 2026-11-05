@@ -39,12 +39,14 @@ export function CorDaOrganizacao({
     });
   }
   return (
-    <section className="grid gap-3 rounded-2xl border bg-card p-4">
+    <section className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">Cor no Modo agência</h2>
+          <h2 className="text-xs font-medium tracking-wide text-text-muted uppercase">
+            Cor no Modo agência
+          </h2>
           <p className="text-xs text-muted-foreground">
-            A tag desta organização no Modo agência. Só a agência vê.
+            A tag desta empresa no Modo agência. Só a agência vê.
           </p>
         </div>
         <TagDoCliente nome={nome} cor={atual} grande />

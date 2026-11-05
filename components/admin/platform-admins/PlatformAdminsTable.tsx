@@ -14,12 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { PlatformAdminEntry } from "@/hooks/useAdminPlatformAdmins";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -54,11 +49,17 @@ export function PlatformAdminsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            {[t("Usuário"), t("Concedido em"), t("Concedido por"), "Scope", "MFA", t("Status"), t("Motivo")].map(
-              (h) => (
-                <TableHead key={h}>{h}</TableHead>
-              ),
-            )}
+            {[
+              t("Usuário"),
+              t("Concedido em"),
+              t("Concedido por"),
+              "Scope",
+              "MFA",
+              t("Status"),
+              t("Motivo"),
+            ].map((h) => (
+              <TableHead key={h}>{h}</TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -168,7 +169,7 @@ export function PlatformAdminsTable({ data }: PlatformAdminsTableProps) {
                 </TableCell>
 
                 {/* Granted At */}
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                   {relativeDate(row.granted_at, localeDaData)}
                 </TableCell>
 
@@ -179,7 +180,7 @@ export function PlatformAdminsTable({ data }: PlatformAdminsTableProps) {
 
                 {/* Scope */}
                 <TableCell>
-                  <Badge variant="outline" className="text-[10px] font-mono">
+                  <Badge variant="outline" className="font-mono text-[10px]">
                     {row.scope ?? "platform"}
                   </Badge>
                 </TableCell>

@@ -46,8 +46,8 @@ interface ChartCardProps {
 
 function ChartCard({ title, children }: ChartCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <h3 className="mb-4 text-sm font-medium text-muted-foreground">{title}</h3>
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <h3 className="mb-4 text-xs font-medium tracking-wide text-text-muted uppercase">{title}</h3>
       {children}
     </div>
   );
@@ -68,10 +68,7 @@ export function UsageCharts({ series }: UsageChartsProps) {
           <EmptyChart />
         ) : (
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart
-              data={series.messages}
-              margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
-            >
+            <AreaChart data={series.messages} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="colorMsg" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.25} />
@@ -121,13 +118,14 @@ export function UsageCharts({ series }: UsageChartsProps) {
           <EmptyChart />
         ) : (
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart
-              data={series.ai_cost}
-              margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
-            >
+            <AreaChart data={series.ai_cost} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-2,142 76% 36%))" stopOpacity={0.25} />
+                  <stop
+                    offset="5%"
+                    stopColor="hsl(var(--chart-2,142 76% 36%))"
+                    stopOpacity={0.25}
+                  />
                   <stop offset="95%" stopColor="hsl(var(--chart-2,142 76% 36%))" stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -144,9 +142,7 @@ export function UsageCharts({ series }: UsageChartsProps) {
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) =>
-                  formatCurrency(v)
-                }
+                tickFormatter={(v: number) => formatCurrency(v)}
                 width={70}
               />
               <Tooltip
@@ -177,14 +173,19 @@ export function UsageCharts({ series }: UsageChartsProps) {
             <EmptyChart />
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart
-                data={series.ai_tokens}
-                margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
-              >
+              <AreaChart data={series.ai_tokens} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-3,262 83% 58%))" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-3,262 83% 58%))" stopOpacity={0} />
+                    <stop
+                      offset="5%"
+                      stopColor="hsl(var(--chart-3,262 83% 58%))"
+                      stopOpacity={0.25}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="hsl(var(--chart-3,262 83% 58%))"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
