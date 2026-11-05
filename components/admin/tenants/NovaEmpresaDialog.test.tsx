@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const h = vi.hoisted(() => ({ mutate: vi.fn(), get: vi.fn() }));
+const h = vi.hoisted(() => ({ mutate: vi.fn(), get: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: h.refresh }) }));
 
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (s: string) => s }));
 vi.mock("@/lib/i18n/IdiomaProvider", () => ({ useIdioma: () => "pt-BR" }));
@@ -85,5 +86,22 @@ describe("NovaEmpresaDialog", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Clínica Aurora/ }));
     expect((screen.getByLabelText(/Nome da empresa/) as HTMLInputElement).value).toBe("Meu Nome");
     expect((screen.getByLabelText(/E-mail do dono/) as HTMLInputElement).value).toBe("eu@x.com");
+  });
+
+  it("criada a empresa, atualiza o que veio do servidor (seletor e trocador de empresas)", async () => {
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: /Clínica Aurora/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar empresa" }));
+    await waitFor(() => expect(h.mutate).toHaveBeenCalledTimes(1));
+    expect(h.refresh).not.toHaveBeenCalled();
+    h.mutate.mock.calls[0]?.[1].onSuccess({
+      data: {
+        id: "x",
+        slug: "clinica-aurora",
+        display_name: "Clínica Aurora",
+        owner_invitation: null,
+      },
+    });
+    expect(h.refresh).toHaveBeenCalledTimes(1);
   });
 });

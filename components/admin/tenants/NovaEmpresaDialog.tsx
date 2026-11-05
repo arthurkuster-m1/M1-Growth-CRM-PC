@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ export function NovaEmpresaDialog({ aberto, aoFechar }: { aberto: boolean; aoFec
   const t = useT();
   const idioma = useIdioma();
   const criar = useCreateTenant();
+  const router = useRouter();
   const [nome, setNome] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTravado, setSlugTravado] = useState(false);
@@ -125,6 +127,9 @@ export function NovaEmpresaDialog({ aberto, aoFechar }: { aberto: boolean; aoFec
         onSuccess: (r) => {
           toast.success(t("Empresa criada com sucesso!"));
           setCriada(r.data);
+          // A empresa nova entra na hora em tudo que veio do servidor: o seletor de empresas, o
+          // trocador de organização e a lista (esta também é invalidada pelo hook).
+          router.refresh();
         },
         onError: (err) => {
           if (err instanceof ApiError && err.code === "conflict") {
