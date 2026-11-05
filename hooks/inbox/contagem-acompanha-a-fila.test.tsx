@@ -31,8 +31,10 @@ function montar<T>(hook: () => T) {
   const r = renderHook(hook, { wrapper });
   return { qc, spy, r };
 }
-const contou = (spy: ReturnType<typeof vi.spyOn>) =>
-  spy.mock.calls.some(([f]) => JSON.stringify((f as { queryKey: unknown }).queryKey) === '["conversation-counts"]');
+const contou = (spy: { mock: { calls: unknown[][] } }) =>
+  spy.mock.calls.some(
+    ([f]) => JSON.stringify((f as { queryKey: unknown }).queryKey) === '["conversation-counts"]',
+  );
 
 describe("a contagem acompanha a ação", () => {
   const casos: Array<[string, () => { mutate: (a: never) => void }, unknown]> = [
