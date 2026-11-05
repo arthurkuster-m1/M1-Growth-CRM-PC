@@ -19,11 +19,13 @@ export function useReleaseConversation() {
       ),
     onError: (err, args) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation-counts"] });
       qc.invalidateQueries({ queryKey: ["conversation", args.conversation_id] });
       showApiError(err);
     },
     onSuccess: (_data, args) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation-counts"] });
       qc.invalidateQueries({ queryKey: ["conversation", args.conversation_id] });
     },
   });
