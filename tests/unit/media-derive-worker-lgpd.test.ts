@@ -127,7 +127,10 @@ vi.mock("@/lib/messaging/media/derive", () => ({
   deriveMediaText: vi.fn(),
 }));
 
+vi.mock("@/lib/navigation/suspensao", () => ({ IA_SUSPENSA: false }));
+
 vi.mock("@/lib/agent-engine/edge/llm/credentials", () => ({
+  LlmNotConfiguredError: class LlmNotConfiguredError extends Error {},
   resolveOrgLlmConfig: vi.fn(async () => ({
     provider: "openai",
     apiKey: "sk-test",

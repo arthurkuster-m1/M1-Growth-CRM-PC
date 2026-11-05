@@ -95,7 +95,10 @@ vi.mock("@/lib/messaging/media/derive", () => ({
 
 // resolveOrgLlmConfig e generateText mockados: o worker precisa de credencial p/
 // montar as deps, mas o teste não exercita rede.
+vi.mock("@/lib/navigation/suspensao", () => ({ IA_SUSPENSA: false }));
+
 vi.mock("@/lib/agent-engine/edge/llm/credentials", () => ({
+  LlmNotConfiguredError: class LlmNotConfiguredError extends Error {},
   resolveOrgLlmConfig: vi.fn(async () => ({
     provider: "openai",
     apiKey: "sk-test",
