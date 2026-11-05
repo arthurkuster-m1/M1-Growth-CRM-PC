@@ -52,6 +52,78 @@ interface SidebarContentProps {
 }
 
 /**
+ * O logo da marca no alto da barra aberta, com o NOME DO APP ao lado (o definido em Marca).
+ *
+ * O nome só aparece quando a imagem é um SÍMBOLO (quadrada ou quase): um logotipo largo já traz o
+ * nome desenhado, e escrevê-lo de novo ao lado duplicaria. A proporção é medida na imagem real,
+ * quando ela carrega (a URL vem de quem hospeda, então não há como saber antes).
+ */
+function LogoDaMarca({
+  logo,
+  logoEscuro,
+  nome,
+}: {
+  logo: string | null;
+  logoEscuro: string | null;
+  nome: string;
+}) {
+  const [simbolo, setSimbolo] = useState(false);
+  const medir = (img: HTMLImageElement | null) => {
+    if (!img || img.naturalHeight === 0) return;
+    setSimbolo(img.naturalWidth / img.naturalHeight <= 1.4);
+  };
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      {/* Sem arte própria para o escuro, preserva a proteção de contraste. */}
+      <div
+        className={cn(
+          "shrink-0 rounded-md",
+          !logoEscuro && "dark:bg-white dark:px-2 dark:py-1 dark:shadow-sm",
+        )}
+      >
+        {/* <img> em vez de next/image de propósito: a URL vem de quem hospeda
+          (banco ou .env), e next/image exige allowlist de domínios fechada em
+          build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
+          Altura fixa e largura livre porque a arte enviada tem proporção
+          desconhecida; forçar as duas distorceria o logo de quem configurou. */}
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            // A imagem pode já ter carregado antes da hidratação: `onLoad` não dispara de novo.
+            ref={(el) => {
+              if (el?.complete) medir(el);
+            }}
+            src={logo}
+            alt={nome}
+            onLoad={(e) => medir(e.currentTarget)}
+            className={cn("h-8 w-auto max-w-[10rem] object-contain", logoEscuro && "dark:hidden")}
+          />
+        ) : (
+          <span className="dark:hidden">{nome}</span>
+        )}
+        {logoEscuro ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            ref={(el) => {
+              if (!logo && el?.complete) medir(el);
+            }}
+            src={logoEscuro}
+            alt={nome}
+            onLoad={(e) => {
+              if (!logo) medir(e.currentTarget);
+            }}
+            className="hidden h-8 w-auto max-w-[10rem] object-contain dark:block"
+          />
+        ) : null}
+      </div>
+      {logo && simbolo ? (
+        <span className="min-w-0 truncate text-sm font-semibold tracking-tight">{nome}</span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Navegação principal, agrupada por objetivo.
  *
  * Não decide nada: `sidebarGroups()` (lib/navigation/registry.ts) resolve quais
@@ -212,40 +284,7 @@ export function SidebarContent({
         )}
       >
         {(logo || logoEscuro) && !collapsed ? (
-          // Sem arte própria para o escuro, preserva a proteção de contraste.
-          <div
-            className={cn(
-              "rounded-md",
-              !logoEscuro && "dark:bg-white dark:px-2 dark:py-1 dark:shadow-sm",
-            )}
-          >
-            {/* <img> em vez de next/image de propósito: a URL vem de quem hospeda
-              (banco ou .env), e next/image exige allowlist de domínios fechada em
-              build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
-              Altura fixa e largura livre porque a arte enviada tem proporção
-              desconhecida; forçar as duas distorceria o logo de quem configurou. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {logo ? (
-              <img
-                src={logo}
-                alt={nome}
-                className={cn(
-                  "h-7 w-auto max-w-[10rem] object-contain",
-                  logoEscuro && "dark:hidden",
-                )}
-              />
-            ) : (
-              <span className="dark:hidden">{nome}</span>
-            )}
-            {logoEscuro ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoEscuro}
-                alt={nome}
-                className="hidden h-7 w-auto max-w-[10rem] object-contain dark:block"
-              />
-            ) : null}
-          </div>
+          <LogoDaMarca logo={logo || null} logoEscuro={logoEscuro ?? null} nome={nome} />
         ) : marcaDoProduto ? (
           // O desenho do produto, inline (ver `components/branding/MarcaDoProduto.tsx`):
           // logotipo com a barra aberta, só o símbolo com ela recolhida.
