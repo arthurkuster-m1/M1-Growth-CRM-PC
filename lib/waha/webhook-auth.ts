@@ -21,7 +21,7 @@
  *     doc dele; o certo é `WHATSAPP_HOOK_HMAC_KEY`. Ligue quando o WAHA estiver
  *     assinando ou houver um proxy que assine. Ligar isso por default
  *     derrubaria a ingestão de mensagens de todo mundo — remédio pior que a
- *     doença. Quem roda WAHA Plus (ou um proxy que assina) liga e ganha a
+ *     doença. Quem roda um WAHA que assina (ou um proxy que assina) liga e ganha a
  *     verificação forte.
  *     Para saber se já está assinando, `/admin/sistema` mostra ao lado do
  *     interruptor se as últimas entregas chegaram assinadas e sugere ligar

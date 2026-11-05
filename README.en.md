@@ -284,7 +284,7 @@ Every screen has a door in the navigation — CI fails a screen that exists but 
 | **Auth** | Supabase Auth via `@supabase/ssr` | SameSite=Strict, HttpOnly cookies |
 | **Realtime** | Supabase Realtime | postgres_changes + broadcast |
 | **Storage** | Supabase Storage (signed URLs) | Private `whatsapp-media` bucket |
-| **WhatsApp** | WAHA Plus (NOWEB engine) + Meta Cloud API | QR to start fast; official channel to scale |
+| **WhatsApp** | WAHA Core (NOWEB engine, multiple numbers) + Meta Cloud API | QR to start fast; official channel to scale |
 | **Queues** | `event_log` table + workers (cron) | A database trigger never makes HTTP calls |
 | **Rate limit** | Upstash Redis (sliding window) | Serverless, free tier is enough |
 | **AI** | Vercel AI SDK v7 — OpenRouter, Requesty, Anthropic, OpenAI and Google | The installer asks which; switch later from the screen |
