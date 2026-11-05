@@ -20,7 +20,7 @@ Regra: não abrir para cliente antes das fases 1 a 3 estarem marcadas. A fase 4 
   + chaves, enviados para fora (Cloudflare R2 ou Backblaze B2) e com teste de restauração. Perda máxima: 24 h.
 - **Evolution API:** ninguém usa (só testes pessoais do Arthur). Pode sair sem plano de migração. Antes de remover,
   conferir só se algum fluxo do n8n pessoal a chama.
-- **WhatsApp:** 1 número por cliente no plano gratuito = **um contêiner WAHA Core por cliente** (a verificar se o
+- **WhatsApp:** ~~1 número por cliente no plano gratuito~~ (superado em 05/11/2026: o Core não limita sessões desde a 2026.6.1; ver `deploy/vps/whatsapp/LEIA-ME.md`). Um contêiner WAHA Core por cliente é escolha de isolamento (a verificar se o
   app aceita um endereço de WAHA por canal; se não, é uma mudança pequena) ou WAHA Plus. API oficial da Meta como
   opção para quem quiser disparar. "Só leitura" não poupa servidor (o custo é a conexão do número, não a tela);
   se quiser, vira uma **permissão** (cliente vê as conversas, sem enviar).
@@ -94,7 +94,7 @@ Realtime exige), `client_max_body_size` para envio de mídia e HTTPS pelo Let's 
 auditar uma a uma; backup diário (`pg_dump` + mídia + chaves) para fora da VPS, com teste de restauração num banco
 descartável; monitor externo no `/api/v1/health` do CRM e no webhook do n8n; Sentry.
 
-**G. WhatsApp** — um contêiner WAHA Core por cliente (ou WAHA Plus), cada um com limite de memória; parear por QR;
+**G. WhatsApp** — um contêiner WAHA Core por cliente (isolamento; não há mais WAHA Plus, ver LEIA-ME do WhatsApp), cada um com limite de memória; parear por QR;
 conferir que as mensagens entram. Anti-banimento ligado.
 
 **H. Só então, os leads** — o ramo paralelo no n8n (HTTP Request com "On Error: Continue") apontando primeiro para uma

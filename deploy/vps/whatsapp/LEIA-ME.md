@@ -8,7 +8,18 @@ Pasta real na VPS: `/opt/m1-whatsapp` (o `.env` com os segredos mora só lá, fo
   `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` do `.env.local`; trocou algo → `systemctl restart m1-app`.
 - Firewall: esta VPS não tem `ufw`; é `iptables`. O serviço `m1-app` (`deploy/vps/m1-app.service`) abre a porta 3001 só para
   o NPM (`172.18.0.0/16`) e para o WAHA (`172.30.0.0/24`, a rede `m1-whatsapp_interna`), e fecha de novo ao parar.
-- **WAHA Core (grátis) = UM número.** Vários números pedem o WAHA Plus (pago) via `WAHA_IMAGE`.
+- **Quantos números cabem (uma resposta só, com a fonte):** o WAHA Core **não limita o número de sessões**. Desde a versão
+  2026.6.1 o que era o "Plus" (sessões ilimitadas, mídia, storages, segurança) faz parte do Core, grátis e de código aberto; não
+  existe mais imagem Plus, use `devlikeapro/waha`. A instância em uso se identifica como `{"version":"2026.7.2","engine":"NOWEB","tier":"CORE"}`
+  (`GET /api/server/version`). Fontes (lidas em 05/11/2026):
+  - https://waha.devlike.pro/docs/how-to/waha-plus/ ("WAHA Plus is now part of WAHA Core… unlimited sessions… 100% free and open source")
+  - https://waha.devlike.pro/docs/overview/faq/ ("Unlimited Sessions - automate as many WhatsApp Accounts as you need")
+  - https://waha.devlike.pro/docs/how-to/sessions/ ("WAHA supports multiple sessions in one container")
+  - https://waha.devlike.pro/docs/overview/changelog/ (2026.6.1: "WAHA Plus features are now part of the WAHA Core image")
+  - Licença do código: Apache-2.0 (https://github.com/devlikeapro/waha), também no rótulo da imagem `org.opencontainers.image.licenses`.
+  Apache-2.0 permite uso comercial, inclusive atender números de clientes diferentes. Limite **prático** não é de licença, é de
+  memória e de risco (ver "Teste de carga" abaixo quando houver). Não li o termo do Docker Hub da imagem.
+- Imagem em ARM64 (esta VPS): `devlikeapro/waha:noweb-arm-2026.7.2` (`WAHA_IMAGE` no `.env`). A tag `latest-2026.7.2` é x86.
 - Perder o volume `waha-data` = ter de ler o QR de novo.
 
 ## Uma instância por cliente (isoladas entre si)
