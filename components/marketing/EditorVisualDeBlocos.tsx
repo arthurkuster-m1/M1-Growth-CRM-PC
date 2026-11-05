@@ -35,6 +35,7 @@ import {
   resumoDoBloco,
   useNomesDosTipos,
 } from "@/components/marketing/EditorDeBlocos";
+import { ImportarDeTexto } from "@/components/marketing/ImportarDeTexto";
 import { useHistoricoDeEdicao } from "@/hooks/editor/useHistoricoDeEdicao";
 import { toast } from "sonner";
 
@@ -891,6 +892,8 @@ export function EditorVisualDeBlocos({
         <Plus size={16} weight="bold" aria-hidden />
         {t("Adicionar bloco")}
       </button>
+
+      <ImportarDeTexto blocos={blocos} aoMudar={aoMudar} novoId={novoId} />
 
       {menu ? (
         <MenuFlutuante x={menu.x} y={menu.y} aoFechar={fecharMenu}>
