@@ -9,7 +9,11 @@ import type pg from "pg";
 
 import { extractPdfText } from "@/lib/ai/rag/extractors/pdf";
 import { visaoEmVigor } from "@/lib/ai/pontos/capacidade-em-vigor";
-import { resolveOrgLlmConfig, type LlmEdgeConfig } from "@/lib/agent-engine/edge/llm/credentials";
+import {
+  LlmNotConfiguredError,
+  resolveOrgLlmConfig,
+  type LlmEdgeConfig,
+} from "@/lib/agent-engine/edge/llm/credentials";
 import { createDefaultRegistry } from "@/lib/agent-engine/edge/llm/providers";
 import { createPool } from "@/lib/agent-engine/db/pool";
 import { env } from "@/lib/env";
@@ -22,6 +26,7 @@ import {
   type DecisaoDeTranscricao,
 } from "@/lib/messaging/media/escada-de-transcricao";
 import { logger } from "@/lib/logger";
+import { IA_SUSPENSA } from "@/lib/navigation/suspensao";
 import { validarParProvedorModelo } from "@/lib/ai/par-provedor-modelo";
 import { reagirAConclusaoDeDerivacao } from "@/lib/escalacao/handoff-tecnico";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -127,6 +132,18 @@ export async function deriveMessageMedia(row: EventRow): Promise<HandlerResult> 
       .limit(1)
       .maybeSingle();
     if (!flag) return markSkipped("video_frames_disabled");
+  }
+
+  // IA PAUSADA (decisão do dono): ninguém vai ler esta mídia, então não há o que
+  // falhar nem avisar. Pula em silêncio — sem `midia_nao_lida`, sem `event_dead` —
+  // mas o log diz por quê.
+  if (IA_SUSPENSA) {
+    logger.info("[media-derive] pulada: a IA está pausada (M1_IA_SUSPENSA)", {
+      message_id: msg.id,
+      organization_id: msg.organization_id,
+      type: msg.type,
+    });
+    return markSkipped("ia_pausada");
   }
 
   /** O que o operador chama de "isto" — o aviso não pode falar em `msg.type`. */
@@ -447,6 +464,16 @@ export async function deriveMessageMedia(row: EventRow): Promise<HandlerResult> 
     }
     return { consumer_key, status: "ok" };
   } catch (err) {
+    // Sem chave de IA configurada não é falha a repetir nem a avisar: é o estado
+    // de uma instalação que ainda não ligou a IA. Pula em silêncio, com o motivo no log.
+    if (err instanceof LlmNotConfiguredError) {
+      logger.info("[media-derive] pulada: nenhuma chave de IA configurada para a organização", {
+        message_id: msg.id,
+        organization_id: msg.organization_id,
+        type: msg.type,
+      });
+      return markSkipped("ia_sem_chave");
+    }
     const detail = err instanceof Error ? err.message : String(err);
     if (row.attempts >= DRAIN_MAX_ATTEMPTS - 1) {
       logger.error("[media-derive] failed permanently", { message_id: msg.id, detail });

@@ -266,6 +266,12 @@ export async function sincronizarSaudeDaConexao(
 
   if (!aviso) {
     if (!jaEscalado) return "sem_mudanca";
+    // SÓ `WORKING` fecha o incidente. `STARTING` (e qualquer estado de passagem) não é "voltou":
+    // numa reconexão o número faz STOPPED → STARTING → SCAN_QR_CODE → … em poucos segundos, e
+    // fechar a cada `STARTING` reabria um aviso novo a cada volta do ciclo (medido na VPS: 3
+    // avisos em 11 s numa só reconexão). O incidente é UM, do primeiro sintoma até o `WORKING`.
+    const voltou = saude.reachable && (saude.status ?? "").toUpperCase() === STATUS_SAUDAVEL;
+    if (!voltou) return "sem_mudanca";
     // O episódio veio do provedor e quem está observando é a varredura: ela não
     // tem como saber se o número deixou de estar suspenso. Não fecha.
     if (origem === "varredura" && jaEscalado.startsWith(PREFIXO_EMPURRAO)) {
@@ -291,15 +297,52 @@ export async function sincronizarSaudeDaConexao(
   // (caiu por QR, agora está FAILED) avisa de novo — mudou o que fazer.
   if (jaEscalado === episodio) return "ja_avisado";
 
-  await admin.from("agent_inbox_items").insert({
-    organization_id: sessao.organization_id,
-    kind: aviso.kind,
-    severity: aviso.severity,
-    title: aviso.title,
-    body: aviso.body,
-    ref_kind: REF_KIND_SESSAO,
-    ref_id: sessao.id,
-  });
+  // UM aviso aberto por conexão (um incidente = um aviso). Se já há um — o incidente mudou de
+  // natureza: caiu por QR e agora está FAILED —, ele é ATUALIZADO para dizer o que vale agora, em
+  // vez de abrir outro ao lado (medido: uma queda de 78 s abriu 4 avisos para 2 conexões). Os
+  // abertos a mais (corrida entre o empurrão do provedor e a varredura) são fechados aqui.
+  const { data: abertos } = await admin
+    .from("agent_inbox_items")
+    .select("id")
+    .eq("organization_id", sessao.organization_id)
+    .eq("ref_kind", REF_KIND_SESSAO)
+    .eq("ref_id", sessao.id)
+    .eq("status", "open")
+    .order("created_at", { ascending: true });
+  const ids = ((abertos ?? []) as Array<{ id: string }>).map((a) => a.id);
+
+  if (ids.length > 0) {
+    const [mantido, ...excedentes] = ids;
+    await admin
+      .from("agent_inbox_items")
+      .update({
+        kind: aviso.kind,
+        severity: aviso.severity,
+        title: aviso.title,
+        body: aviso.body,
+      })
+      .eq("organization_id", sessao.organization_id)
+      .eq("id", mantido);
+    if (excedentes.length > 0) {
+      await admin
+        .from("agent_inbox_items")
+        .update({ status: "resolved" })
+        .eq("organization_id", sessao.organization_id)
+        .eq("ref_kind", REF_KIND_SESSAO)
+        .eq("ref_id", sessao.id)
+        .in("id", excedentes);
+    }
+  } else {
+    await admin.from("agent_inbox_items").insert({
+      organization_id: sessao.organization_id,
+      kind: aviso.kind,
+      severity: aviso.severity,
+      title: aviso.title,
+      body: aviso.body,
+      ref_kind: REF_KIND_SESSAO,
+      ref_id: sessao.id,
+    });
+  }
   await gravarEpisodio(admin, sessao, episodio);
   return "avisado";
 }

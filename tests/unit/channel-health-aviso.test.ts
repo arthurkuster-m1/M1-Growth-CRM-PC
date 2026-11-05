@@ -188,6 +188,41 @@ describe("avisar uma vez, e fechar quando volta", () => {
     expect(await sincronizarSaudeDaConexao(admin, sessao, caiu, "Vendas")).toBe("avisado");
   });
 
+  it("episódio muda com aviso ABERTO: atualiza o mesmo aviso, não abre um segundo", async () => {
+    escalado = "SCAN_QR_CODE";
+    abertos = ["item-1"];
+    expect(await sincronizarSaudeDaConexao(admin, sessao, caiu, "Vendas")).toBe("avisado");
+    expect(ops.some((o) => o.tabela === "agent_inbox_items" && o.op === "insert")).toBe(false);
+    const up = ops.find((o) => o.tabela === "agent_inbox_items" && o.op === "update");
+    expect(up?.payload).toMatchObject({ kind: "channel_number_alert", severity: "critical" });
+  });
+
+  it("havendo avisos abertos em duplicidade, mantém um e resolve os demais", async () => {
+    escalado = "SCAN_QR_CODE";
+    abertos = ["item-1", "item-2", "item-3"];
+    await sincronizarSaudeDaConexao(admin, sessao, caiu, "Vendas");
+    const resolvidos = ops.filter(
+      (o) =>
+        o.tabela === "agent_inbox_items" &&
+        o.op === "update" &&
+        (o.payload as { status?: string })?.status === "resolved",
+    );
+    expect(resolvidos).toHaveLength(1);
+  });
+
+  it("STARTING no meio do incidente NÃO fecha o aviso (só WORKING fecha)", async () => {
+    escalado = "FAILED";
+    abertos = ["item-1"];
+    const r = await sincronizarSaudeDaConexao(
+      admin,
+      sessao,
+      { reachable: true, status: "STARTING", detail: null },
+      "Vendas",
+    );
+    expect(r).toBe("sem_mudanca");
+    expect(ops.some((o) => o.op === "update" || o.op === "insert")).toBe(false);
+  });
+
   it("fecha o aviso quando a conexão volta", async () => {
     escalado = "FAILED";
     expect(await sincronizarSaudeDaConexao(admin, sessao, viva, "Vendas")).toBe("resolvido");
