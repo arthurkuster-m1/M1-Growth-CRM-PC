@@ -201,13 +201,9 @@ export function BlocosRender({
             );
 
           case "texto": {
-            const classe = cn(
-              corpo,
-              "max-w-3xl",
-              ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"],
-              b.alinhamento === "centro" && "mx-auto",
-              b.alinhamento === "direita" && "ml-auto",
-            );
+            // Largura inteira do conteúdo, alinhada aos cartões e títulos. O alinhamento
+            // (esquerda/centro/direita) mexe só no alinhamento do TEXTO dentro dela.
+            const classe = cn(corpo, ALINHAMENTO_DO_TEXTO[b.alinhamento ?? "esquerda"]);
             return (
               campo(["texto"], classe, "Escreva o texto", { multilinha: true }) ?? (
                 <Paragrafos key={b.id} texto={b.texto} className={classe} />
