@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = process.cwd();
 const TRIAGEM = fs.readFileSync(path.join(RAIZ, "triagem/TRIAGEM.md"), "utf8");
-const COMANDO = fs.readFileSync(path.join(RAIZ, ".claude/commands/triagem-de-pr.md"), "utf8");
+const COMANDO = fs.readFileSync(path.join(RAIZ, "docs/upstream/claude-arquivado/commands/triagem-de-pr.md"), "utf8");
 
 describe("a triagem de PR carrega a disciplina de release", () => {
   it("o procedimento tem um passe sobre a versão, e ele aponta para a lei", () => {
