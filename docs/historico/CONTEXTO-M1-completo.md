@@ -1,0 +1,175 @@
+# CONTEXTO DO M1 GROWTH CRM — leia antes de qualquer coisa
+
+> Este arquivo existe para uma sessão nova do Claude Code saber onde o projeto está.
+> Ele vale MAIS que o `CLAUDE.md` do DeskcommCRM quando os dois divergirem sobre o "como trabalhar com o Arthur".
+> A doutrina técnica (multi-tenancy, RLS, migrations, i18n, auditoria) do `CLAUDE.md` continua valendo.
+
+## ESTADO EM 04/11/2026 — VPS NOVA NO AR (leia primeiro; vale mais que as seções antigas sobre Caddy/porta 3001 da VPS velha)
+
+**Onde roda:** VPS Oracle (São Paulo, IP 163.176.43.6, Ubuntu 22.04 **ARM64**, 4 núcleos, 23 GB, swap 4 GB). O n8n (leads das campanhas → Excel) mora na mesma máquina e é **intocável**: projeto Docker próprio em `/home/ubuntu/automacoes`. Proxy = **Nginx Proxy Manager** (contêiner `npm`, painel na porta 81). Nunca reiniciar `npm`; só `docker exec npm nginx -t && docker exec npm nginx -s reload`.
+
+**Endereços:** CRM `https://app.assessoria-m1.com.br` · API do Supabase `https://supabase.assessoria-m1.com.br` (só `/auth /rest /realtime /storage /functions /graphql` `/v1`; o Studio responde 404 por regra do NPM) · n8n `https://n8n.assessoria-m1.com.br`. O host antigo `crm.` foi removido.
+
+**Peças (tudo volta sozinho após reinício — ensaiado em 04/11):**
+- Supabase self-hosted (ref `self-hosted/v0.8.1`, Postgres 17) em `/opt/m1-supabase`, projeto Docker `m1-supabase`; override nosso `docker-compose.m1.yml` (limites de memória, gateway em 127.0.0.1:8000, banco em 127.0.0.1:54322). O contêiner `supabase-envoy` também está na rede do NPM (é assim que o NPM o alcança).
+- App em `/opt/m1-growth-crm` (Node 22 via nvm, pnpm 9.15.9, `pnpm install` feito na própria VPS): serviço systemd **`m1-app`** (porta 3001, usuário `ubuntu`). O próprio serviço abre a porta 3001 no iptables só para a rede do NPM (`172.18.0.0/16`). `.env.local` aqui (modo 600).
+- Redis + SRH em `/opt/m1-whatsapp` (WAHA ainda **não** subiu: Fase 4). Health do app mostra `waha: down` até lá — por isso o monitor aponta o `/login`.
+- Atualização: `git push origin main` → GitHub `build-m1` → release `m1-build-latest` → timer `m1-puxar-build` (2 em 2 min) troca `.next` e reinicia (volta sozinho se falhar). As 3 variáveis públicas do GitHub (Variables) já apontam para o banco novo. Abas abertas dão "Server Reference ID did not match" até recarregar (Ctrl+Shift+R).
+- Rotinas: **39 linhas no crontab do usuário `ubuntu`** chamando `http://127.0.0.1:3001/api/v1/cron/*` com o `INTERNAL_SECRET` (mesma lista de `docker/scheduler/entrypoint.sh`; o script em si está quebrado por aspas num comentário — não usá-lo; refazer o crontab lendo as linhas `minuto|timeout|rota`). Não instalar os timers `deploy/vps/m1-tarefas-repetidas|vendas-recorrentes|campanhas-meta`: já estão na lista (duplicariam).
+- **Backup diário** 03:15 UTC: `/home/ubuntu/backup-diario.sh` (bancos do CRM e do n8n, storage, chaves e as sessões do WhatsApp `waha.tgz`; criptografado com `gpg`, senha em `/home/ubuntu/.senha-backup`) → Cloudflare R2, bucket `m1-backups/diario/`, retenção 14 dias; log em `/home/ubuntu/backups/backup.log`. **Restauração testada** em banco limpo (usuário, empresa, chave de cifra, workflows e credenciais do n8n batem). Credencial do R2 só em `~/.config/rclone/rclone.conf`. A senha do backup precisa existir também no gerenciador de senhas do Arthur.
+- WhatsApp (05/11/2026): WAHA padrão da agência em `127.0.0.1:3100` + uma instância isolada por cliente (`/opt/m1-whatsapp/clientes/<slug>/`, portas 3101 rua-model, 3102 one-company, 3103 diore; criar outra com `/opt/m1-whatsapp/novo-cliente.sh <slug> <porta>`). Chaves só em `/home/ubuntu/segredos-waha.env` e `.env.local` (modo 600). Duas sessões de TESTE conectadas no WAHA padrão (assessoria-m1 e 05-rua-model); instâncias 3101-3103 pausadas e vazias. Serviço `m1-worker` ligado (vigia de sessão, fila de eventos), com a IA DESLIGADA (0 agentes, 0 chaves de IA); decisão do Arthur: IA segue pausada. Detalhes e licença em `deploy/vps/whatsapp/LEIA-ME.md`.
+- Monitor externo: UptimeRobot (3 monitores verdes).
+- Banco: `baseline.sql` aplicado (install e update, 0 erro), 230+ tabelas, todas com RLS; isolamento entre empresas provado com usuário comum (super-admin enxerga tudo, por desenho). Chave de cifra dos segredos em `private.app_secrets` (nome `nuvemshop_oauth_key`; cópia em `/home/ubuntu/segredos-m1.env`). Dono: arthurkuster2.0@gmail.com, empresa "Assessoria M1".
+- Marca: o banco novo começou sem marca; `APP_NAME`/`APP_ACCENT_HEX` no `.env.local` são só semente. Logo e ajuste fino em `/admin/marca` (o Arthur faz pela tela).
+
+**✅ Backup de boot da Oracle:** criado pelo Arthur em 04/11/2026 (nome `boot-m1-antes-da-fase4-2026-11-04`, completo, no volume `M1-Growth-N8N (Boot Volume)`, 100 GB). Eu não vi o console: ele confirmou "feito". Repetir antes de mudanças grandes na VPS.
+
+**Pendências técnicas anotadas:**
+- Porta 81 do NPM aberta para a internet: restringir depois do go-live.
+- `docker/scheduler/entrypoint.sh` quebra no comentário com aspas da tarefa repetida (afeta o agendador em Docker; a VPS não o usa).
+- Advanced do host `app.` no NPM tem `client_max_body_size 100m` + buffers 32k (corrige 502 "upstream sent too big header" nas telas logadas). Se sumir após salvar o host, recolar.
+- `/opt/m1-growth-crm/deploy/vps/m1-puxar-build.sh` ganhou `chown -R ubuntu:ubuntu .next` (o app roda como `ubuntu`, o script como root).
+- `bootstrap-owner.ts` grava o nome "Dono" fixo; o Arthur já trocou no Perfil.
+- Evolution API roda sem uso (o Arthur autorizou desligar; não é prioridade).
+- Fase 4 (com o Arthur): empresas dos clientes, Meta Ads, Google Agenda (URL de retorno OAuth para o domínio novo), WAHA, ramo paralelo no n8n.
+
+## Quem é o usuário e como trabalhar
+- Arthur NÃO é programador (sabe HTML/landing pages no Cloudflare Pages e n8n). Fale em português simples, **um passo de cada vez**, e teste cada passo antes do próximo.
+- Comandos para ele rodar: **um comando por bloco de código**, sem `$`, explicando o que faz.
+- Ordem combinada: do mais fácil (frontend) ao mais difícil. **Telas existentes ficam intactas**; só se cria "em cima".
+- Commits terminam com `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- Nunca executar ação destrutiva em nuvem/banco sem pedir permissão. Não contornar bloqueios de segurança.
+
+## O que é
+**M1 Growth CRM**: fork independente (MIT) do DeskcommCRM. Não recebe atualizações do original.
+Visual: clean, arredondado, pouco texto (referência: Chronos Dock e assessoria-m1.com.br/cronograma). Cor primária **#366D6F**. Mantém white-label (cor/nome/logo em /admin/marca) e tema claro/escuro.
+
+Escopo desejado (longo): login e-mail/Google, super admin multi-tenant, Estratégico (onboarding, planejamento estilo Notion, ZMOT, cronograma, dashboard), Produtos/Ofertas, equipe, Tarefas estilo Notion (Kanban/Lista/Timeline/Calendário), leads+inbox+CRM (rastreio de origem, Meta CAPI via n8n), funis, compras/LTV, agenda Google, respostas rápidas, prospecção, automações, agente de IA, conexões, webhooks de LP, dashboards (tráfego, LPs/criativos, financeiro), audit log traduzido, central de avisos. Ele quer o "jeito Notion" (editar status/propriedades no lugar, arrastar ordem/largura, edição em massa) em Tarefas e depois no CRM (leads).
+
+## Ambiente (VPS — é onde se trabalha agora)
+- Pasta: `/opt/m1-growth-crm`. Repositório: https://github.com/arthurkuster-m1/M1-Growth-CRM-PC (público; tudo é teste).
+- No ar em **https://www.infra-assessoria-m1.cloud** (Caddy na porta 443 → app na porta 3001). Caddy é um serviço do sistema (`/etc/caddy/Caddyfile`).
+- A VPS (7,8 GB RAM, 2 núcleos) tem **swap de 6 GB** criado só para o build. Sem swap o build é morto (exit 137).
+- O app roda em modo PRODUÇÃO, fora do Docker, com `nohup` (ainda NÃO é serviço fixo — se a VPS reiniciar, ele não volta. Pendência: criar serviço systemd).
+- Atualizar o que está no ar depois de mudar o código:
+  1. `cd /opt/m1-growth-crm && git pull`
+  2. `pnpm install` (se mudou dependência)
+  3. `NODE_OPTIONS=--max-old-space-size=3072 pnpm build` (5–15 min)
+  4. `pkill -f "next start"; nohup pnpm exec next start -p 3001 > /var/log/m1.log 2>&1 &`
+  5. conferir: `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3001/login` (200 ou 307) e `tail -40 /var/log/m1.log`
+- `NEXT_PUBLIC_*` entram no BUILD; mudar uma exige build de novo. Variáveis normais são lidas ao ligar.
+- `.env.local` mora só na VPS (ignorado pelo git). Contém chaves de TESTE do Supabase. Valores provisórios (sem WhatsApp/Redis ainda): `WAHA_*` e `UPSTASH_*` são placeholders só para passar a validação de produção — rate limit/IA/WhatsApp NÃO funcionam de verdade.
+- Aviso do Next: "next start does not work with output: standalone". Funciona; se algum arquivo estático falhar, a alternativa é `node .next/standalone/server.js` (copiando `.next/static` e `public` para dentro de `.next/standalone`).
+- `vitest`: use `--maxWorkers=1` se faltar memória. `tsc`: `NODE_OPTIONS=--max-old-space-size=8192` (na VPS, 3072–4096 e swap). O teste `catalogo-de-ensaio-espelha-o-vocabulario` falha sem Python (já era assim).
+- O desenvolvimento no PC do Arthur ficou lento demais (Windows). Por isso o trabalho passou para a VPS. Para testar a tela, ele abre o domínio acima; **faça build + restart** para ele ver a mudança (não há servidor de desenvolvimento rodando).
+
+## Banco (Supabase de TESTE)
+- Projeto novo `fpxgtidrkcypzbsmchev` (sa-east-1), só do M1. Credenciais só no `.env.local`.
+- **NUNCA tocar, apagar ou apontar para o Supabase `gyskfoxsltgjhagxkbhg`** (é do DeskcommCRM antigo do Arthur).
+- Troque todas as senhas/chaves antes de qualquer uso com dado real (já foram coladas em chat).
+- Migrations próprias: 0582 (status por organização + posição), 0583 (`user_view_preferences`), 0584 (propriedades personalizadas + `custom_fields`). Cada uma existe como arquivo em `supabase/migrations/` E como bloco no fim do `supabase/baseline.sql`. Já aplicadas no banco novo.
+- Para aplicar migration nova: script Node com `pg` lendo a connection string do `.env.local` (não há `psql`), aplicando 2× (idempotência), testando RLS em transação com ROLLBACK. Senha com `#` precisa ser codificada (`%23`) na URL.
+- Acesso ao app: Arthur entra sozinho (login Supabase). **Nunca digite a senha dele em tela de login.**
+- Site URL / Redirect URLs do Supabase já apontam para o domínio.
+
+## O que já foi feito (commits)
+1. Visual base teal #366D6F + neutros slate (`app/globals.css`, `lib/branding/*`).
+2. Menu lateral novo (`components/shell/Sidebar.tsx`): itens soltos Início/Tarefas, grupos fechados exceto o ativo.
+3. `/app/inicio` (home pós-login).
+4. `/app/tarefas` — motor de tabela estilo Notion (`components/motor/*`, `hooks/tarefas/*`, `lib/motor/*`, `lib/tarefas/*`).
+5. 5a colunas arrastáveis/redimensionáveis/ocultáveis (layout por pessoa em `user_view_preferences`); 5b propriedades personalizadas (texto, número, seleção, múltipla, data, caixa, link); 5c seleção + ações em massa (`/api/v1/tasks/bulk`).
+6. **6a (último commit `7ae8cd8`)**: filtros, ordenação e agrupamento — regras puras em `lib/motor/consulta.ts` (22 testes em `tests/unit/motor-consulta.test.ts`), barra `components/motor/BarraDeConsulta.tsx`, grupos recolhíveis em `TabelaDoMotor`. Guardados no mesmo `config` do layout (`preferenciasDaTabelaSchema`). **Validado pelo Arthur na tela (08/10/2026): funciona.**
+7. **6b (commit `bd9139b`)**: alternador de visualização Tabela | Quadro (Kanban) | Calendário | Linha do tempo em `/app/tarefas` (`QuadroKanban.tsx`, `CalendarioDeTarefas.tsx`, `LinhaDoTempo.tsx`; escolha guardada em `config.visualizacao`: tabela/kanban/calendario/timeline; contas de calendário em `lib/motor/calendario.ts`). No celular (<768px, hook `useCelular`) a tabela vira lista de cartões. Tarefa nova herda os filtros ativos (`valoresDeNascimento` em `lib/motor/consulta.ts`). **Aguardando o Arthur testar na tela** (build feito, ver abaixo).
+
+## Aprendizados desta rodada (08/10/2026)
+- Modo dev (`next dev`) foi testado na VPS e DESCARTADO: lento demais (compila cada tela na 1ª visita). Mantemos produção + build. Ideia aprovada em princípio: build automático no GitHub Actions (máquina maior, 3–5 min) enviando o pronto para a VPS; ainda não feito. Enquanto isso: juntar várias mudanças em UM build.
+- NUNCA use `pkill -f "next ..."` num comando que contém esse texto: o pkill mata o próprio shell (exit 144). Use PIDs (`pgrep`/`ps`) ou um script em arquivo (`/tmp/m1-deploy.sh`: build → mata next-server → `setsid nohup pnpm exec next start -p 3001`).
+- Caddyfile de produção aponta para a porta 3001 (backup em `/etc/caddy/Caddyfile.prod.bak`).
+- Remote Control foi ligado nesta sessão a pedido do Arthur (ele trabalha também pelo celular).
+
+## Build automático no GitHub (montado em 09/10/2026; falta o Arthur ligar 2 coisas no GitHub)
+- Fluxo: commit na VPS → `git push` → workflow `.github/workflows/build-m1.yml` constrói o app (em `/opt/m1-growth-crm` no runner, mesmo caminho da VPS) e publica `m1-build.tgz` no release público `m1-build-latest` (corpo do release = sha do commit) → timer `m1-puxar-build.timer` na VPS (a cada 2 min) roda `/usr/local/bin/m1-puxar-build.sh`: baixa, troca `.next`, reinicia `m1-app`, confere /login e volta ao build anterior se falhar. Arquivos em `deploy/vps/`.
+- O app agora é um serviço systemd: `systemctl status|restart m1-app` (log em /var/log/m1.log). Resolve a pendência "app não volta após reiniciar a VPS". NÃO use mais `nohup`.
+- A VPS não tem credencial para dar push no GitHub. Foi criada a chave `~/.ssh/m1_github_deploy` (alias `github-m1` em `~/.ssh/config`); o Arthur precisa cadastrar a parte pública em Settings → Deploy keys (com escrita). Depois: `git remote set-url origin git@github-m1:arthurkuster-m1/M1-Growth-CRM-PC.git`.
+- O workflow precisa de 3 Variables do repositório (Settings → Secrets and variables → Actions → Variables): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_APP_URL (valores no `.env.local`).
+- Enquanto isso não estiver ligado, o jeito antigo continua valendo (build na VPS: `/tmp/m1-deploy.sh` ou os passos acima, mas reinicie com `systemctl restart m1-app`).
+- Push na main também dispara os workflows herdados do DeskcommCRM (ci, e2e, perf, publish-image, release…). `tests/unit/executor-proprio-so-roda-o-que-e-nosso.test.ts` já falhava antes (depende do nome do repo do fork).
+
+## Integrações montadas em 09/10/2026
+- **Google Agenda**: credenciais OAuth (cliente "Aplicativo da Web") cadastradas em /admin/google; escopos `calendar.events` + `calendar.readonly`; app do Google Cloud em modo TESTE (só e-mails cadastrados como "usuários de teste"; produção exige verificação do Google). Cada pessoa conecta em /app/agenda › Conectar Google.
+- **Chave de cifra dos segredos** (`private.app_secrets.nuvemshop_oauth_key`, cópia em `NUVEMSHOP_OAUTH_ENCRYPTION_KEY` no `.env.local`): semeada no banco de teste. NÃO trocar sem migrar o que já foi guardado cifrado. O Supabase cloud não aceita `ALTER DATABASE SET` de GUC; por isso a chave mora na tabela.
+- **WhatsApp**: WAHA + Redis(SRH) em Docker, pasta `/opt/m1-whatsapp` (ver `deploy/vps/whatsapp/LEIA-ME.md`). WAHA Core agora também tem sessões ilimitadas (ver `deploy/vps/whatsapp/LEIA-ME.md`); uma instância por cliente é isolamento, não licença.
+- ⚠️ **Crons**: `docker/scheduler/entrypoint.sh` lista dezenas de rotinas (sincronia do Google Agenda, lembretes, follow-up, retenção…) que num self-host rodam por um container `scheduler`. Na VPS do M1 só a de tarefas repetidas está agendada (systemd). As demais NÃO rodam ainda — a sincronia contínua do Google Agenda e os lembretes dependem disso.
+
+## Próximo grande passo (definido em 09/10/2026): aba MARKETING
+Plano completo em `docs/PLANO-MARKETING-M1.md` (menu toggle Marketing + painelzão + páginas de estratégia em blocos, Página/Apresentar, IA ajudante, dashboards, cronograma). **Fase 0 FEITA (commit c395a88)**: grupo Marketing no menu, painelzão `/app/marketing`, `/app/marketing/estrategia` (+ `[modulo]`), produtos-e-ofertas, cronograma, geracao-de-demanda, dashboards (todas "Em breve"); estrutura dos 16 módulos em `lib/marketing/modulos.ts`, textos em `components/marketing/textos.ts`. Decisão: o cliente recebe LINK PÚBLICO sem login (`/p/<token>`, só leitura, só publicado). **Fase 1 FEITA (commits 4aeef55 e cb5c9f2)**: migration 0587 (`marketing_pages` = publicado, `marketing_page_drafts` = rascunho só manager+, `marketing_share_links`); blocos tipados (`lib/marketing/blocos.ts`: título, texto, destaque, lista, cartões, números, antes×depois, paleta, links, citação, quebra), slides derivados dos blocos (`slides.ts`); editor + página + apresentação em tela cheia + publicar/tirar do ar em `/app/marketing/estrategia/<módulo>` (componentes em `components/marketing/`); rotas `/api/v1/marketing/pages/<chave>[/draft|/publish|/unpublish]` e `/api/v1/marketing/share-links`; link SEM LOGIN `/p/<token>` e `/p/<token>/<módulo>` (público no proxy, resolvido no servidor por `lib/marketing/publico.ts`, só publicado, 404 se revogado/vencido, noindex, limite de acessos por IP, marca/cor/logo da empresa). Quem edita = manager+ (ou platform admin); cliente = viewer só lê o publicado. Imagens/upload de capa NÃO feitos (Fase 1c). Próximo: Fase 2 (modelos de página por módulo do Diagnóstico) e IA ajudante (Fase 4). Continuam no plano, DEPOIS: Inbox, CRM (leads), configuração de Conexões e de Agenda.
+
+### Marketing — estado em 10/10/2026
+- Feito e no ar: Fase 0 (casca), 1a/1b (motor de páginas + link sem login), imagens (migration 0588, bucket privado `marketing-images`, rota `/api/v1/marketing/imagens` e `/p/<token>/img/<arquivo>`), Fase 2 (Diagnóstico = 3 páginas: Mapeamento do Funil, Posicionamento, Branding; modelos em `lib/marketing/modelos.ts`; Onboarding e Análise oculta saíram do sistema por decisão do Arthur), histórico (migration 0589, `marketing_page_snapshots`: retrato MANUAL do publicado, o cliente também lê; botão Histórico na página e no link público; comparar com hoje).
+- **Fluxo "Arthur manda os dados, Claude monta"**: ler o material (export do Notion .zip → extrair com python zipfile), montar o JSON de blocos (formato em `lib/marketing/blocos.ts`) e rodar `npx tsx scripts/marketing-preencher.ts <id-da-empresa> <módulo> <blocos.json>` — grava só o RASCUNHO; o Arthur revisa e publica na tela. Imagens: subir para o bucket `marketing-images` em `<empresa>/<uuid>.<png|jpg>` (service role) e usar `<uuid>.<ext>` no campo `arquivo`.
+- Próximo: Fase 3 (Estudo de Persona, Análise de Concorrência, Planejamento Empresarial, Produtos e Ofertas, Lead Magnets), um módulo por vez com o export do Notion do Arthur; depois Fase 4 (IA ajudante — precisa de chave de IA e dos prompts do Arthur), 5 (Dashboards), 6 (Cronograma + Geração de demanda). Ideia futura: tema escuro/"futurista" opcional.
+
+**PLANO ATUAL (fonte da verdade): `docs/PLANO-M1.md` — histórico, pequenos ajustes e as 15 frentes.**
+
+### Estado em 10/10/2026 (fim do dia) — leia antes de continuar
+- **Deploy novo:** `git push origin main` → o GitHub (`build-m1`) constrói em ~2 min e publica o release `m1-build-latest` → a VPS (`m1-puxar-build.timer`, a cada 2 min) baixa, troca `.next` e reinicia, com volta automática se não subir. Remote do git é `git@github-m1:arthurkuster-m1/M1-Growth-CRM-PC.git` (chave de deploy cadastrada, variáveis públicas cadastradas). Os workflows herdados (ci, e2e, perf, publish-image, release, relogio, acolhida) foram REMOVIDOS junto com 34 testes que só vigiavam eles. Build local (`/tmp/m1-deploy.sh`) continua existindo como plano B.
+- ⚠️ Nunca rode `prettier --write` em pasta inteira (reformata centenas de arquivos) e nunca `git add -A` sem checar: `.next.antigo` (rollback do puxar-build) está no .gitignore agora.
+- **Marketing pronto e no ar:** casca + painel, motor de páginas (blocos + Página/Apresentar), link sem login com navegação (voltar/trilha), histórico manual, publicação em massa, imagens, subpáginas (persona, concorrência, ofertas) com ordenação, blocos visuais (pirâmide/funil, fluxo, matriz SWOT, tabela, calculadora da meta, ficha com links, oferta), "ver como cliente", "Ver página" como abertura de páginas publicadas.
+- **Produtos e ofertas = única fonte de produto e preço:** a oferta (bloco `oferta`, subpágina do módulo `produtos-e-ofertas`) publicada vira linha em `catalog_products` (origem `oferta`, via `lib/marketing/sincronizar-ofertas.ts`), que é o que a IA consulta (`crm_search_products`). A tela antiga de catálogo (/app/products) foi removida. Imagens da oferta (até 4) e cartão-resumo gerado (next/og) são copiados para `catalog-photos` e a IA os envia junto; sem imagem vai só texto e preço. Escada de valor: manual (fluxo) + automática (por etapa da oferta).
+- **Conteúdo real da M1 Growth (org f0ad493f…) carregado como rascunho/publicado pelo script `scripts/marketing-preencher.ts`**; as ofertas da Assessoria M1 ainda estão como RASCUNHO (publicar para a IA passar a usar).
+- **Decisão do Arthur:** terminar TODOS os planos de edição do software primeiro; depois (1) limpeza total do que veio do projeto original e (2) instalador + roteiro de migração para uma VPS nova (`instalar-vps.sh`, testar em VPS limpa, migrar com o atual no ar). Antes da migração: backup seguro do `.env.local` (chaves que cifram dados do banco). Sobras conhecidas para a limpeza: 3 linhas de cron apontando para /root/Deskcomm/DeskcommCRM (não existe mais), volumes docker `deskcommcrm_*`, docs/AGENTS/CONTRIBUTING do projeto original, pastas de testes e2e, instalador e Dockerfile do cliente.
+- **Próximos passos do plano de produto:** dashboard meta × realizado (Fase 5), IA ajudante (Fase 4: prompts salvos em `docs/metodo-m1-referencia/`), Cronograma e Geração de demanda (Fase 6), depois Inbox, CRM (leads) no motor, Conexões e Agenda. Fotos/IA: ofertas enviam imagem se existir.
+
+## Padrões do motor (siga-os)
+- Edição otimista (`setQueryData` + rollback) nos hooks; posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guardando só os desvios (`lib/motor/layout.ts`); status = opção (nome/cor por organização) ligada a um grupo fixo (pending/in_progress/done/cancelled) via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas sempre no fuso da organização (`lib/inicio/datas.ts`, `lib/motor/datas-do-campo.ts`).
+- Ctrl+Z é padrão: toda tabela (`lib/motor/desfazer.ts`) e o Editor de Blocos (histórico próprio, `components/editor/EditorDeBlocos.tsx`) desfazem edição, criação e exclusão; Ctrl+Shift+Z refaz no editor. Recurso novo que edita ou apaga dado nasce com Ctrl+Z.
+- i18n: texto da tela = `t("português literal")` + espanhol obrigatório em `lib/i18n/dicionario.ts` (teste `i18n-espanhol-cobre-a-tela`; sem `t(variável)`, sem prosa fora de `t()`; cuidado com chave duplicada no objeto).
+- Rota mutante: `requireRole`/`requireSupportWrite`, `ok()/fail()`, `audit()` com ação enumerada em `lib/audit/actions.ts`. Tela nova precisa de porta em `lib/navigation/catalogo.ts`.
+- Verificação antes de commitar: `tsc` zerado, `eslint` sem erros (warnings aceitos), `prettier`, testes unitários dos arquivos tocados + os guardas de i18n/navegação/sidebar.
+
+## Próximos passos (plano aprovado)
+- **6c (próximo)**: criar tarefa dentro de um grupo/coluna do Quadro herdando o valor do grupo; **visualizações salvas e compartilháveis** (filtro+ordem+grupo+layout com nome), que passam a viver no banco (`user_view_preferences` hoje guarda só a preferência da própria pessoa).
+- Depois: adotar o motor no **CRM (leads)** POR CIMA da estrutura existente, com muito cuidado (leads alimentam inbox, automações, follow-up, IA, webhooks).
+- Depois: módulos da lista (Estratégico/Planejamento/Onboarding, Produtos, dashboards, etc.).
+- Pendências menores: trocar redirecionamento pós-onboarding de /app/inbox para /app; nome do usuário "Dono" → nome real; seletor de empresa no menu; instalar Redis/WAHA de verdade quando formos usar WhatsApp e IA.
+
+---
+
+## ESTADO EM 11/10/2026 (fim do dia) — leia isto primeiro depois de um compact
+
+**Regra de trabalho do Arthur:** um único chat, uma coisa por vez (para não gerar conflito de código).
+O fork do CRM foi MESCLADO a este chat: tudo que ele fez está na `main` (commit mais recente
+`69d8cf1d`, no ar) e registrado em `docs/PLANO-CRM-M1.md`.
+
+**Mapa dos documentos (fonte da verdade):**
+- `docs/PLANO-M1.md` — plano-mãe: histórico, pequenos ajustes, as 15 frentes e como se ligam.
+- `docs/PLANO-CRM-M1.md` — CRM (frente 8): regras, modelo, 9 sessões, registro das sessões feitas.
+- `docs/PLANO-CAMPANHAS-M1.md` — campanhas de demanda (frente 4): fórmulas da planilha do Arthur,
+  modelo, sessões C1–C7, decisões, métricas por canal.
+- `docs/PLANO-MARKETING-M1.md` — histórico da aba Marketing.
+- `docs/PLANO-REDES-SOCIAIS-M1.md` — redes sociais direto pelas APIs da Meta e do YouTube (sem parceiro): análise, DMs, comentários, publicação. Só plano, nada construído.
+
+**Feito e no ar hoje:** Cronograma completo; produtos em escala (busca, tabela, importação CSV,
+edição em massa/na linha); páginas legais + página inicial pública (Google verificado); redução do
+Log Ingestion do Supabase; coluna "Cronograma" nas Tarefas; **CRM sessões 1 e 2** (lead único,
+MQL, 1ª abordagem, tag automática do funil, funis criados em Geração de demanda, "ao ganhar entra no
+funil", página Clientes com Tabela/Kanban e aba "Todos", funil por linha, Primeira compra);
+**Campanhas C1** (migration 0595: `demand_campaigns`, `demand_campaign_notes`; Tabela/Cards/Linha do
+tempo em Geração de demanda; página de cada campanha com investimento líquido, metas, campanhas da
+plataforma atreladas e diário de bordo).
+
+**Migrations de hoje:** 0592 (cronograma), 0593 (lead único), 0594 (ao ganhar), 0595 (campanhas).
+
+**Próximos passos possíveis (o Arthur escolhe UM):**
+1. Otimizar a tela inicial das Campanhas (ele disse que há "vários pontos para otimizar").
+2. Campanhas C2 — a planilha dentro do app (dia a dia, pace de gastos e de leads, funil completo,
+   alertas); depois C3 (Meta Ads automático), C4, C5 (depende de CRM sessões 6 e 7).
+3. CRM sessão 3 (abas salvas, calendário, ficha) ou 4 (campos dinâmicos), 5 (entrada das LPs),
+   6 (origem e rastreio), 7 (vendas), 8 (importar/exportar/massa), 9 (dashboards).
+4. Perguntas em aberto ao Arthur no fim do `PLANO-CRM-M1.md` (funil "Pedidos", etc.).
+5. Metas do cronograma com prazo e atualização automática (depende de CRM/Vendas).
+
+**Regras técnicas que continuam valendo:** deploy por `git push` (build no GitHub ~2 min, a VPS
+ativa em ~20 s); testes com o `.env.local` fora do lugar (`mv .env.local /tmp/...`) porque ele
+altera o limitador de taxa; `tsc` com `NODE_OPTIONS=--max-old-space-size=6144`; nunca reexportar
+`dynamic`/`metadata` entre páginas (quebra o build); commits só dos arquivos tocados.

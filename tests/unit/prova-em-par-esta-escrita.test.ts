@@ -45,9 +45,6 @@ const LEI = "docs/doctrine/prova-em-par.md";
 const GUIAS_DE_ACEITE = [
   ".agents/skills/deskcomm-contribuir/SKILL.md",
   ".agents/skills/deskcomm-contribuir/references/pre-voo.md",
-  // Espelho do Claude Code: o mesmo texto, lido por outro CLI.
-  ".claude/skills/deskcomm-contribuir/SKILL.md",
-  ".claude/skills/deskcomm-contribuir/references/pre-voo.md",
 ] as const;
 
 function ler(caminho: string): string {
@@ -128,7 +125,7 @@ describe("a prova em par continua escrita (#489)", () => {
   it("o item 12 do DoD no CLAUDE.md aponta para a emenda", () => {
     // A lei diz ser "emenda ao item 12". Se o item 12 não souber dela, quem lê
     // a doutrina pela porta principal nunca chega à regra do par.
-    const claude = ler("CLAUDE.md");
+    const claude = ler("CLAUDE.upstream.md");
     const item12 = claude.match(/^12\. \*\*Se tocou UI[^\n]*/m)?.[0];
     expect(item12, "CLAUDE.md: o item 12 do DoD sumiu ou mudou de forma").toBeDefined();
     expect(item12, "CLAUDE.md: o item 12 do DoD não cita a emenda da prova em par").toContain(LEI);

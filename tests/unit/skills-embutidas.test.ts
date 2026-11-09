@@ -45,6 +45,9 @@ import {
 
 const RAIZ = process.cwd();
 const SKILLS = listarSkills(RAIZ);
+// M1: skills de contribuidor saíram do espelho do Claude (docs/upstream/claude-arquivado) para não pesar no contexto.
+const ARQUIVADAS_NO_ESPELHO = ["deskcomm-contribuir", "deskcomm-extensao"];
+const NO_ESPELHO = SKILLS.filter((n) => !ARQUIVADAS_NO_ESPELHO.includes(n));
 
 /** Regras do padrão aberto Agent Skills (agentskills.io/specification). */
 const NOME_VALIDO = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -170,7 +173,7 @@ describe("skills embutidas — cabeçalho no padrão que os cinco CLIs aceitam",
 });
 
 describe("skills embutidas — o espelho de Claude é fiel à fonte", () => {
-  it.each(SKILLS)("%s: .claude/skills é byte a byte igual a .agents/skills", (nome) => {
+  it.each(NO_ESPELHO)("%s: .claude/skills é byte a byte igual a .agents/skills", (nome) => {
     expect(
       divergencias(RAIZ, nome),
       `espelho desatualizado — rode: pnpm skills:sync`,
@@ -181,7 +184,7 @@ describe("skills embutidas — o espelho de Claude é fiel à fonte", () => {
     expect(orfasNoEspelho(RAIZ), "a fonte é .agents/skills; apague ou crie a fonte").toEqual([]);
   });
 
-  it.each(SKILLS)("%s: as duas cópias estão rastreadas pelo git (o .gitignore não escondeu nenhuma)", (nome) => {
+  it.each(NO_ESPELHO)("%s: as duas cópias estão rastreadas pelo git (o .gitignore não escondeu nenhuma)", (nome) => {
     expect(rastreado(`${FONTE}/${nome}/SKILL.md`), `${FONTE}/${nome} fora do git`).toBe(true);
     expect(
       rastreado(`${ESPELHO}/${nome}/SKILL.md`),
@@ -196,7 +199,7 @@ describe("skills embutidas — as portas de acionamento conhecem todas as skills
   // AGENTS.md (Codex, OpenCode, Cursor), CLAUDE.md (Claude Code), a rule
   // sempre-ativa do Cursor e a do Antigravity. Uma skill nova que entre só na
   // pasta fica invisível para quem não sabe que ela existe — que é o leigo.
-  const PORTAS = ["AGENTS.md", "CLAUDE.md", ".cursor/rules/deskcomm-guias.mdc", ".agents/rules/deskcomm-guias.md"];
+  const PORTAS = ["AGENTS.md", "CLAUDE.upstream.md", ".cursor/rules/deskcomm-guias.mdc", ".agents/rules/deskcomm-guias.md"];
   const guias = SKILLS.filter((n) => n.startsWith("deskcomm-"));
 
   it.each(PORTAS)("%s cita cada guia deskcomm-*", (porta) => {
@@ -210,7 +213,7 @@ describe("skills embutidas — as portas de acionamento conhecem todas as skills
     expect(corpo(".cursor/rules/deskcomm-guias.mdc")).toBe(corpo(".agents/rules/deskcomm-guias.md"));
   });
 
-  it.each([".claude/settings.json", ".codex/hooks.json"])("%s é JSON válido e aponta para o hook de sessão", (arquivo) => {
+  it.each([".codex/hooks.json"])("%s é JSON válido e aponta para o hook de sessão", (arquivo) => {
     const json = JSON.parse(readFileSync(join(RAIZ, arquivo), "utf8")) as { hooks?: { SessionStart?: unknown[] } };
     expect(json.hooks?.SessionStart?.length ?? 0).toBeGreaterThan(0);
     expect(JSON.stringify(json)).toContain("deskcomm-contribuir/scripts/hooks/sessao.sh");
