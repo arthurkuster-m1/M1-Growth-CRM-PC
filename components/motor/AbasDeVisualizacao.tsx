@@ -49,6 +49,11 @@ interface Props {
    * Ausente = as abas não se arrastam.
    */
   aoReordenar?: (id: string, antesDeId: string | null) => void;
+  /**
+   * O que fica no FIM da fila, à direita, como no Notion: busca, filtrar, ordenar, agrupar e o
+   * botão de criar. Não rola junto com as abas.
+   */
+  direita?: ReactNode;
 }
 
 /** O ícone de cada tipo de visualização. */
@@ -134,6 +139,7 @@ export function AbasDeVisualizacao({
   modelos = [],
   aoCriarModelo,
   aoReordenar,
+  direita,
 }: Props) {
   const t = useT();
   const rotuloDoTipo = useRotuloDoTipo();
@@ -165,165 +171,170 @@ export function AbasDeVisualizacao({
   }
 
   return (
-    <div
-      role="tablist"
-      aria-label={t("Visualizações")}
-      className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-1 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden"
-    >
-      <DndContext
-        id="abas-de-visualizacao"
-        sensors={sensores}
-        collisionDetection={closestCenter}
-        modifiers={[({ transform }) => ({ ...transform, y: 0 })]}
-        onDragEnd={aoSoltar}
+    <div className="flex min-w-0 items-center gap-2">
+      <div
+        role="tablist"
+        aria-label={t("Visualizações")}
+        className="-mx-1 flex min-w-10 flex-1 [scrollbar-width:none] items-center gap-1 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden"
       >
-        <SortableContext items={idsMoveis} strategy={horizontalListSortingStrategy}>
-          {abas.map((aba) => {
-            const ativa = aba.id === ativaId;
-            return (
-              <AbaSortavel
-                key={aba.id}
-                id={aba.id}
-                movel={podeArrastar && !aba.fixa}
-                className={cn(
-                  "flex h-8 shrink-0 items-center rounded-lg text-sm transition-colors",
-                  ativa
-                    ? "bg-secondary font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-                )}
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={ativa}
-                  onClick={() => {
-                    if (abriuSegurando.current) {
-                      abriuSegurando.current = false;
-                      return;
-                    }
-                    if (!ativa) aoEscolher(aba.id);
-                    else aoConfigurar();
-                  }}
-                  onDoubleClick={() => {
-                    if (ativa) aoConfigurar();
-                  }}
-                  onPointerDown={(e) => {
-                    if (!ativa || e.pointerType !== "touch") return;
-                    // Segurar o dedo na aba ativa também abre a configuração.
-                    segurando.current = setTimeout(() => {
-                      abriuSegurando.current = true;
-                      aoConfigurar();
-                    }, 500);
-                  }}
-                  onPointerUp={() => clearTimeout(segurando.current)}
-                  onPointerLeave={() => clearTimeout(segurando.current)}
-                  onPointerCancel={() => clearTimeout(segurando.current)}
-                  onContextMenu={(e) => {
-                    if (ativa) e.preventDefault();
-                  }}
+        <DndContext
+          id="abas-de-visualizacao"
+          sensors={sensores}
+          collisionDetection={closestCenter}
+          modifiers={[({ transform }) => ({ ...transform, y: 0 })]}
+          onDragEnd={aoSoltar}
+        >
+          <SortableContext items={idsMoveis} strategy={horizontalListSortingStrategy}>
+            {abas.map((aba) => {
+              const ativa = aba.id === ativaId;
+              return (
+                <AbaSortavel
+                  key={aba.id}
+                  id={aba.id}
+                  movel={podeArrastar && !aba.fixa}
                   className={cn(
-                    "flex h-8 max-w-48 items-center gap-1.5 rounded-lg pl-2.5 select-none",
-                    ativa ? "pr-1" : "pr-2.5",
+                    "flex h-8 shrink-0 items-center rounded-lg text-sm transition-colors",
+                    ativa
+                      ? "bg-secondary font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                   )}
                 >
-                  {iconeDoTipo(aba.tipo)}
-                  <span className="truncate">{aba.nome}</span>
-                </button>
-                {ativa ? (
                   <button
                     type="button"
-                    aria-label={t("Configurar visualização")}
-                    title={t("Configurar visualização")}
-                    onClick={aoConfigurar}
-                    className="grid h-8 w-7 place-items-center rounded-lg text-muted-foreground hover:text-foreground"
-                  >
-                    <CaretDown size={12} weight="bold" aria-hidden />
-                  </button>
-                ) : null}
-              </AbaSortavel>
-            );
-          })}
-        </SortableContext>
-      </DndContext>
-
-      {podeEditar ? (
-        <Popover open={novaAberta} onOpenChange={setNovaAberta}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label={t("Nova visualização")}
-              title={t("Nova visualização")}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <Plus size={16} weight="bold" aria-hidden />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-[min(92vw,320px)] p-3">
-            {modelos.length > 0 && aoCriarModelo ? (
-              <div className="mb-3 border-b pb-3">
-                <p className="mb-1.5 text-xs font-semibold tracking-wider text-text-subtle uppercase">
-                  {t("Prontas")}
-                </p>
-                {modelos.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
+                    role="tab"
+                    aria-selected={ativa}
                     onClick={() => {
-                      aoCriarModelo(m.id);
-                      setNovaAberta(false);
+                      if (abriuSegurando.current) {
+                        abriuSegurando.current = false;
+                        return;
+                      }
+                      if (!ativa) aoEscolher(aba.id);
+                      else aoConfigurar();
                     }}
-                    className="block w-full rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-secondary"
+                    onDoubleClick={() => {
+                      if (ativa) aoConfigurar();
+                    }}
+                    onPointerDown={(e) => {
+                      if (!ativa || e.pointerType !== "touch") return;
+                      // Segurar o dedo na aba ativa também abre a configuração.
+                      segurando.current = setTimeout(() => {
+                        abriuSegurando.current = true;
+                        aoConfigurar();
+                      }, 500);
+                    }}
+                    onPointerUp={() => clearTimeout(segurando.current)}
+                    onPointerLeave={() => clearTimeout(segurando.current)}
+                    onPointerCancel={() => clearTimeout(segurando.current)}
+                    onContextMenu={(e) => {
+                      if (ativa) e.preventDefault();
+                    }}
+                    className={cn(
+                      "flex h-8 max-w-48 items-center gap-1.5 rounded-lg pl-2.5 select-none",
+                      ativa ? "pr-1" : "pr-2.5",
+                    )}
                   >
-                    <span className="block text-sm font-medium">{t(m.nome)}</span>
-                    <span className="block text-xs text-muted-foreground">{t(m.descricao)}</span>
+                    {iconeDoTipo(aba.tipo)}
+                    <span className="truncate">{aba.nome}</span>
+                  </button>
+                  {ativa ? (
+                    <button
+                      type="button"
+                      aria-label={t("Configurar visualização")}
+                      title={t("Configurar visualização")}
+                      onClick={aoConfigurar}
+                      className="grid h-8 w-7 place-items-center rounded-lg text-muted-foreground hover:text-foreground"
+                    >
+                      <CaretDown size={12} weight="bold" aria-hidden />
+                    </button>
+                  ) : null}
+                </AbaSortavel>
+              );
+            })}
+          </SortableContext>
+        </DndContext>
+
+        {podeEditar ? (
+          <Popover open={novaAberta} onOpenChange={setNovaAberta}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("Nova visualização")}
+                title={t("Nova visualização")}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <Plus size={16} weight="bold" aria-hidden />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[min(92vw,320px)] p-3">
+              {modelos.length > 0 && aoCriarModelo ? (
+                <div className="mb-3 border-b pb-3">
+                  <p className="mb-1.5 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+                    {t("Prontas")}
+                  </p>
+                  {modelos.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        aoCriarModelo(m.id);
+                        setNovaAberta(false);
+                      }}
+                      className="block w-full rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-secondary"
+                    >
+                      <span className="block text-sm font-medium">{t(m.nome)}</span>
+                      <span className="block text-xs text-muted-foreground">{t(m.descricao)}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <p className="mb-2 text-sm font-semibold">{t("Nova visualização")}</p>
+              <input
+                value={nome}
+                maxLength={60}
+                placeholder={rotuloDoTipo(tipo)}
+                aria-label={t("Nome da visualização")}
+                onChange={(e) => setNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") criar();
+                }}
+                className="h-9 w-full rounded-xl border bg-card px-2.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              />
+              <div
+                className="mt-2 grid grid-cols-2 gap-1.5"
+                role="radiogroup"
+                aria-label={t("Tipo de visualização")}
+              >
+                {tipos.map((x) => (
+                  <button
+                    key={x}
+                    type="button"
+                    role="radio"
+                    aria-checked={tipo === x}
+                    onClick={() => setTipo(x)}
+                    className={cn(
+                      "flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition-colors",
+                      tipo === x
+                        ? "border-primary bg-primary/10 font-medium"
+                        : "hover:bg-secondary",
+                    )}
+                  >
+                    {iconeDoTipo(x)}
+                    {rotuloDoTipo(x)}
                   </button>
                 ))}
               </div>
-            ) : null}
-            <p className="mb-2 text-sm font-semibold">{t("Nova visualização")}</p>
-            <input
-              value={nome}
-              maxLength={60}
-              placeholder={rotuloDoTipo(tipo)}
-              aria-label={t("Nome da visualização")}
-              onChange={(e) => setNome(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") criar();
-              }}
-              className="h-9 w-full rounded-xl border bg-card px-2.5 text-sm outline-hidden focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-            />
-            <div
-              className="mt-2 grid grid-cols-2 gap-1.5"
-              role="radiogroup"
-              aria-label={t("Tipo de visualização")}
-            >
-              {tipos.map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  role="radio"
-                  aria-checked={tipo === x}
-                  onClick={() => setTipo(x)}
-                  className={cn(
-                    "flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition-colors",
-                    tipo === x ? "border-primary bg-primary/10 font-medium" : "hover:bg-secondary",
-                  )}
-                >
-                  {iconeDoTipo(x)}
-                  {rotuloDoTipo(x)}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={criar}
-              className="mt-3 h-9 w-full rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-[var(--color-accent-hover)]"
-            >
-              {t("Criar visualização")}
-            </button>
-          </PopoverContent>
-        </Popover>
-      ) : null}
+              <button
+                type="button"
+                onClick={criar}
+                className="mt-3 h-9 w-full rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-[var(--color-accent-hover)]"
+              >
+                {t("Criar visualização")}
+              </button>
+            </PopoverContent>
+          </Popover>
+        ) : null}
+      </div>
+      {direita ? <div className="flex shrink-0 items-center gap-0.5 pb-1">{direita}</div> : null}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
@@ -92,8 +93,6 @@ import {
   CalendarBlank,
   CaretDown,
   DotsThree,
-  MagnifyingGlass,
-  X,
   Flag,
   Plus,
   Tag,
@@ -257,7 +256,6 @@ export function TarefasMotorClient({
     ids: new Set(),
   });
   const [busca, setBusca] = useState("");
-  const [buscaAberta, setBuscaAberta] = useState(false);
   const [apagarVisaoId, setApagarVisaoId] = useState<string | null>(null);
   const [apagarId, setApagarId] = useState<string | null>(null);
   const [apagarPropriedadeId, setApagarPropriedadeId] = useState<string | null>(null);
@@ -1137,7 +1135,6 @@ export function TarefasMotorClient({
               </p>
             </div>
           )}
-          {semTitulo ? null : botaoNova}
         </div>
         <AbasDeVisualizacao
           abas={abas}
@@ -1160,6 +1157,18 @@ export function TarefasMotorClient({
             );
           }}
           aoConfigurar={() => setConfigurando(true)}
+          direita={
+            <>
+              <BuscaEmLupa valor={busca} aoMudar={setBusca} placeholder={t("Buscar tarefas")} />
+              <BarraDeConsulta
+                campos={camposDaBarra}
+                consulta={preferencias}
+                aoMudar={mudarConsulta}
+                salvamento={salvamento}
+              />
+              {botaoNova ? <div className="ml-1">{botaoNova}</div> : null}
+            </>
+          }
         />
       </header>
 
@@ -1168,58 +1177,6 @@ export function TarefasMotorClient({
           {t("Não foi possível carregar as tarefas.")}
         </p>
       ) : null}
-
-      {/* Uma fila só, que rola para o lado dentro dela mesma (como as abas): filtro novo não
-          derruba o último botão para a linha de baixo. */}
-      <div className="-mx-1 flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden">
-        {buscaAberta ? (
-          <div className="flex h-9 w-56 shrink-0 items-center gap-2 rounded-xl border bg-card px-3">
-            <MagnifyingGlass size={16} className="shrink-0 text-muted-foreground" aria-hidden />
-            <input
-              autoFocus
-              value={busca}
-              aria-label={t("Buscar tarefas")}
-              placeholder={t("Buscar tarefas")}
-              onChange={(e) => setBusca(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setBusca("");
-                  setBuscaAberta(false);
-                }
-              }}
-              className="min-w-0 flex-1 bg-transparent text-sm outline-hidden"
-            />
-            <button
-              type="button"
-              aria-label={t("Fechar busca")}
-              onClick={() => {
-                setBusca("");
-                setBuscaAberta(false);
-              }}
-              className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary"
-            >
-              <X size={14} aria-hidden />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            aria-label={t("Buscar tarefas")}
-            title={t("Buscar tarefas")}
-            onClick={() => setBuscaAberta(true)}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <MagnifyingGlass size={16} aria-hidden />
-          </button>
-        )}
-        <BarraDeConsulta
-          campos={camposDaBarra}
-          consulta={preferencias}
-          aoMudar={mudarConsulta}
-          salvamento={salvamento}
-        />
-        {semTitulo ? <div className="ml-auto shrink-0 pl-2">{botaoNova}</div> : null}
-      </div>
 
       {visualizacao === "calendario" ? (
         <CalendarioDeTarefas

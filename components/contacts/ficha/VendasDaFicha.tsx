@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 
 import { BlocoDaFicha, SeloDaFicha } from "@/components/contacts/ficha/BlocoDaFicha";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import {
   aplicarConsulta,
@@ -238,18 +239,9 @@ export function VendasDaFicha({ contactId, nome }: { contactId: string; nome: st
       </div>
 
       <BlocoDaFicha titulo={t("Vendas e interesses")} cor="green">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <label className="relative min-w-0 flex-1 basis-56">
-            <span className="sr-only">{t("Buscar")}</span>
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder={t("Buscar venda")}
-              className="h-9 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            />
-          </label>
+        <div className="mb-3 flex items-center justify-end gap-0.5">
+          <BuscaEmLupa valor={busca} aoMudar={setBusca} placeholder={t("Buscar venda")} />
           <BarraDeConsulta
-            compacta
             campos={camposDaBarra}
             consulta={consultaDaTabela}
             aoMudar={setConsultaDaTabela}

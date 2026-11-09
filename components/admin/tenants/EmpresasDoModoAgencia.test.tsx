@@ -110,12 +110,13 @@ describe("EmpresasDoModoAgencia", () => {
 
   it("alterna para Cartões, e as propriedades de uma visão não mexem na outra", () => {
     render(<EmpresasDoModoAgencia />);
-    fireEvent.click(screen.getByRole("button", { name: "Cartões" }));
+    // O tipo (tabela/cartões) é configurado dentro da visualização, no painel da pílula.
+    fireEvent.click(screen.getByRole("button", { name: "Configurar visualização" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Cartões" }));
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getAllByRole("link", { name: "Abrir" })).toHaveLength(2);
 
     // Nos cartões o padrão não mostra "Slug"; ligo e confiro que a tabela não ganhou/perdeu nada.
-    fireEvent.click(screen.getByRole("button", { name: "Propriedades" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Slug" }));
     expect(memoria.get("admin-empresas-cards")).toMatchObject({ visiveis: { slug: true } });
     expect(memoria.get("admin-empresas-tabela")).toBeUndefined();

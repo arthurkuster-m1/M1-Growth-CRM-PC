@@ -14,6 +14,7 @@ import {
 } from "@/components/contacts/ficha/dados-da-ficha";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { OrigemEmCascata, type ValorDaOrigem } from "@/components/contacts/ficha/OrigemEmCascata";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { corpoDaOrigem, valorDaOrigemDoCard } from "@/components/contacts/ficha/origem-do-card";
 import { Button } from "@/components/ui/button";
@@ -221,22 +222,9 @@ export function FunisDoLead({
 
   return (
     <div className="grid min-w-0 gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="relative min-w-0 flex-1 basis-56">
-          <span className="sr-only">{t("Buscar")}</span>
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={t("Buscar funil ou venda")}
-            className="h-9 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-          />
-        </label>
-        <BarraDeConsulta
-          compacta
-          campos={camposDaBarra}
-          consulta={consulta}
-          aoMudar={setConsulta}
-        />
+      <div className="flex items-center justify-end gap-0.5">
+        <BuscaEmLupa valor={busca} aoMudar={setBusca} placeholder={t("Buscar funil ou venda")} />
+        <BarraDeConsulta campos={camposDaBarra} consulta={consulta} aoMudar={setConsulta} />
       </div>
       {resultado.linhas.length === 0 ? (
         <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">

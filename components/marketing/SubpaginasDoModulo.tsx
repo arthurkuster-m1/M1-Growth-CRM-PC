@@ -38,7 +38,6 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
   const [menu, setMenu] = useState(false);
   const [criando, setCriando] = useState(false);
   const [busca, setBusca] = useState("");
-  const [vistaEscolhida, setVistaEscolhida] = useState<"cartoes" | "tabela" | null>(null);
   const [importando, setImportando] = useState(false);
   const tipos = tiposDeSubpagina(modulo);
   if (tipos.length === 0) return null;
@@ -82,7 +81,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
 
   // Muitos itens (uma empresa com vários produtos e serviços): a tabela é a vista que escala.
   const ehProdutos = modulo === "produtos-e-ofertas";
-  const vista = vistaEscolhida ?? (ehProdutos && visiveis.length > 6 ? "tabela" : "cartoes");
+  const vistaPadrao = ehProdutos && visiveis.length > 6 ? "tabela" : "cartoes";
   const termo = semAcento(busca);
   const filtradas = termo
     ? visiveis.filter((s) =>
@@ -211,7 +210,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
 
       {ehProdutos ? <EscadaDeValor ofertas={escada} /> : null}
 
-      {comBusca || ehProdutos ? (
+      {comBusca && !ehProdutos ? (
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative min-w-0 flex-1 basis-60">
             <span className="sr-only">{t("Buscar")}</span>
@@ -227,35 +226,6 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
               className="h-10 w-full rounded-xl border bg-background pr-3 pl-9 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
             />
           </label>
-          {ehProdutos ? (
-            <div
-              role="group"
-              aria-label={t("Como ver os produtos")}
-              className="inline-flex rounded-xl bg-secondary p-0.5"
-            >
-              {(
-                [
-                  ["cartoes", t("Cartões")],
-                  ["tabela", t("Tabela")],
-                ] as const
-              ).map(([valor, rotulo]) => (
-                <button
-                  key={valor}
-                  type="button"
-                  aria-pressed={vista === valor}
-                  onClick={() => setVistaEscolhida(valor)}
-                  className={cn(
-                    "h-9 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors",
-                    vista === valor
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {rotulo}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -272,7 +242,9 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
           produtos={filtradas}
           base={base}
           podeEditar={podeEditar}
-          vista={vista}
+          vistaPadrao={vistaPadrao}
+          busca={busca}
+          aoMudarBusca={setBusca}
           renderizarCartoes={cartoes}
         />
       ) : filtradas.length === 0 ? (

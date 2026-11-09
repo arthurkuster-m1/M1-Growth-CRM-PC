@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -13,7 +14,12 @@ import { useConsultaEmRascunho } from "@/hooks/motor/useConsultaEmRascunho";
 import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { useVisualizacao } from "@/hooks/motor/useVisualizacao";
 import { aplicarConsulta, type CampoConsultavel } from "@/lib/motor/consulta";
-import { moverColuna, resolverColunas, type PreferenciasDaTabela, alternarVisibilidade } from "@/lib/motor/layout";
+import {
+  moverColuna,
+  resolverColunas,
+  type PreferenciasDaTabela,
+  alternarVisibilidade,
+} from "@/lib/motor/layout";
 import { proximaOrdenacao } from "@/lib/motor/ordenar-por-coluna";
 import { Check, TextAa } from "@/lib/ui/icons";
 import { rotuloDoIndicador } from "@/lib/plataformas-de-anuncio/meta/tabela-de-campanhas";
@@ -147,7 +153,10 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
   const [configurando, setConfigurando] = useState(false);
 
   const padrao = useVisualizacao(TELA);
-  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(TELA, true);
+  const { visoes, salvarConfig, criarVisao, editarVisao, apagarVisao } = useVisoesSalvas(
+    TELA,
+    true,
+  );
   const ordemDasAbas = [
     { id: ID_DA_PADRAO, posicao: padrao.preferencias.posicao ?? -1_000_000 },
     ...visoes.map((v) => ({ id: v.id, posicao: v.position })),
@@ -302,9 +311,15 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     ),
     numerica("frequencia", t("Frequência"), 120, (l) => <Numero valor={l.frequencia} casas={2} />),
     numerica("cpc", t("CPC"), 110, (l) => dinheiro(l.cpc)),
-    numerica("hook-rate", `${t("Hook Rate")} ${t("(reproduções)")}`, 170, (l) => <Percentual valor={l.hookRate} />, {
-      dica: t("Reproduções de vídeo ÷ impressões"),
-    }),
+    numerica(
+      "hook-rate",
+      `${t("Hook Rate")} ${t("(reproduções)")}`,
+      170,
+      (l) => <Percentual valor={l.hookRate} />,
+      {
+        dica: t("Reproduções de vídeo ÷ impressões"),
+      },
+    ),
     numerica("thruplays", t("ThruPlays"), 120, (l) => <Numero valor={l.thruPlays} />),
   ];
 
@@ -312,7 +327,12 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     id,
     rotulo: t(rotulo),
   }));
-  const campos: Array<CampoConsultavel<LinhaDeCampanha> & { titulo: string; opcoes?: { id: string; rotulo: string }[] }> = [
+  const campos: Array<
+    CampoConsultavel<LinhaDeCampanha> & {
+      titulo: string;
+      opcoes?: { id: string; rotulo: string }[];
+    }
+  > = [
     { id: "nome", titulo: t("Campanha"), tipo: "texto", valorDe: (l) => l.nome },
     {
       id: "status",
@@ -332,13 +352,23 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     },
     { id: "objetivo", titulo: t("Objetivo"), tipo: "texto", valorDe: (l) => l.objetivo },
     { id: "resultado", titulo: t("Resultado"), tipo: "numero", valorDe: (l) => l.resultado.valor },
-    { id: "custo-resultado", titulo: t("Custo por Resultado"), tipo: "numero", valorDe: (l) => l.resultado.custoPorResultado },
+    {
+      id: "custo-resultado",
+      titulo: t("Custo por Resultado"),
+      tipo: "numero",
+      valorDe: (l) => l.resultado.custoPorResultado,
+    },
     { id: "gasto", titulo: t("Valor Gasto"), tipo: "numero", valorDe: (l) => l.gasto },
     { id: "impressoes", titulo: t("Impressões"), tipo: "numero", valorDe: (l) => l.impressoes },
     { id: "alcance", titulo: t("Alcance"), tipo: "numero", valorDe: (l) => l.alcance },
     { id: "cpm", titulo: t("CPM"), tipo: "numero", valorDe: (l) => l.cpm },
     { id: "ctr", titulo: t("CTR"), tipo: "numero", valorDe: (l) => l.ctr },
-    { id: "connect-rate", titulo: t("Connect rate"), tipo: "numero", valorDe: (l) => l.connectRate },
+    {
+      id: "connect-rate",
+      titulo: t("Connect rate"),
+      tipo: "numero",
+      valorDe: (l) => l.connectRate,
+    },
     { id: "frequencia", titulo: t("Frequência"), tipo: "numero", valorDe: (l) => l.frequencia },
     { id: "cpc", titulo: t("CPC"), tipo: "numero", valorDe: (l) => l.cpc },
     { id: "hook-rate", titulo: t("Hook Rate"), tipo: "numero", valorDe: (l) => l.hookRate },
@@ -365,7 +395,10 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     [linhas, termo],
   );
   const resultado = useMemo(
-    () => aplicarConsulta(buscadas, campos, preferencias, { hoje: new Date().toISOString().slice(0, 10) }),
+    () =>
+      aplicarConsulta(buscadas, campos, preferencias, {
+        hoje: new Date().toISOString().slice(0, 10),
+      }),
     // `campos` é recriado a cada render; as entradas reais são estas.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [buscadas, preferencias, moeda],
@@ -379,9 +412,11 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
 
-
   const abasPorId = new Map([
-    [ID_DA_PADRAO, { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Todas"), tipo: "tabela" as const }],
+    [
+      ID_DA_PADRAO,
+      { id: ID_DA_PADRAO, nome: padrao.preferencias.nome ?? t("Todas"), tipo: "tabela" as const },
+    ],
     ...visoes.map((v) => [v.id, { id: v.id, nome: v.name, tipo: v.type }] as const),
   ]);
   const abas = ordemDasAbas.flatMap((a) => {
@@ -399,35 +434,29 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
         tipos={TIPOS}
         aoEscolher={escolherAba}
         aoCriar={(nome, tipo) =>
-          void criarVisao({ name: nome, type: tipo, config: preferencias }).then((v) => v && escolherAba(v.id))
+          void criarVisao({ name: nome, type: tipo, config: preferencias }).then(
+            (v) => v && escolherAba(v.id),
+          )
         }
         aoConfigurar={() => setConfigurando(true)}
+        direita={
+          <>
+            <BuscaEmLupa valor={busca} aoMudar={setBusca} placeholder={t("Buscar campanha")} />
+            <BarraDeConsulta
+              salvamento={salvamento}
+              campos={camposDaBarra}
+              consulta={{
+                filtros: preferencias.filtros,
+                ordenacao: preferencias.ordenacao,
+                agrupar: preferencias.agrupar,
+                agruparPor: preferencias.agruparPor,
+                ordemDosGrupos: preferencias.ordemDosGrupos,
+              }}
+              aoMudar={mudarConsulta}
+            />
+          </>
+        }
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="relative min-w-0 flex-1 basis-60">
-          <span className="sr-only">{t("Buscar")}</span>
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={t("Buscar campanha")}
-            className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-          />
-        </label>
-        <BarraDeConsulta
-          salvamento={salvamento}
-          compacta
-          campos={camposDaBarra}
-          consulta={{
-            filtros: preferencias.filtros,
-            ordenacao: preferencias.ordenacao,
-            agrupar: preferencias.agrupar,
-            agruparPor: preferencias.agruparPor,
-            ordemDosGrupos: preferencias.ordemDosGrupos,
-          }}
-          aoMudar={mudarConsulta}
-        />
-      </div>
-
       <TabelaDoMotor
         linhas={resultado.linhas}
         idDe={(l) => l.campanhaId}
@@ -436,7 +465,11 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
         aoMoverColuna={(movido, alvo) =>
           atualizar((p) => ({
             ...p,
-            ordem: moverColuna(resolvidas.filter((c) => !c.fixa).map((c) => c.id), movido, alvo),
+            ordem: moverColuna(
+              resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+              movido,
+              alvo,
+            ),
           }))
         }
         aoRedimensionarColuna={(id, largura) =>
@@ -476,7 +509,9 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
         podeEditar
         ehPadrao={!visaoAtiva}
         aoRenomear={(nome) =>
-          visaoAtiva ? void editarVisao(visaoAtiva.id, { name: nome }) : padrao.atualizar((p) => ({ ...p, nome }))
+          visaoAtiva
+            ? void editarVisao(visaoAtiva.id, { name: nome })
+            : padrao.atualizar((p) => ({ ...p, nome }))
         }
         aoTrocarTipo={() => undefined}
         aoMoverAba={moverAba}
@@ -494,7 +529,11 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
         aoMover={(movido, alvo) =>
           atualizar((p) => ({
             ...p,
-            ordem: moverColuna(resolvidas.filter((c) => !c.fixa).map((c) => c.id), movido, alvo),
+            ordem: moverColuna(
+              resolvidas.filter((c) => !c.fixa).map((c) => c.id),
+              movido,
+              alvo,
+            ),
           }))
         }
         aoAlternar={(id) => {

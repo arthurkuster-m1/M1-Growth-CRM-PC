@@ -34,7 +34,7 @@ import {
   resolverColunas,
   type PreferenciasDaTabela,
 } from "@/lib/motor/layout";
-import { Buildings, Check, Plus, Rows, SlidersHorizontal, SquaresFour } from "@/lib/ui/icons";
+import { Buildings, CaretDown, Check, Plus, Rows, SquaresFour } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 type Visao = "tabela" | "cartoes";
@@ -231,50 +231,23 @@ export function EmpresasDoModoAgencia({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label={t("Visualização")}
-          className="inline-flex rounded-lg border bg-card p-0.5"
-        >
-          {(
-            [
-              ["cartoes", t("Cartões"), SquaresFour],
-              ["tabela", t("Tabela"), Rows],
-            ] as const
-          ).map(([id, rotulo, Icone]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={visao === id}
-              onClick={() =>
-                visaoSalva.atualizar((p) => ({
-                  ...p,
-                  visualizacao: id === "cartoes" ? "galeria" : "tabela",
-                }))
-              }
-              className={cn(
-                "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium",
-                visao === id
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icone size={14} aria-hidden />
-              {rotulo}
-            </button>
-          ))}
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <ConfiguracaoDaVisualizacao
+            visao={visao}
+            aoTrocarVisao={(id) =>
+              visaoSalva.atualizar((p) => ({
+                ...p,
+                visualizacao: id === "cartoes" ? "galeria" : "tabela",
+              }))
+            }
+            resolvidas={resolvidas}
+            aoAlternar={(id) => prefs.atualizar((p) => alternarVisibilidade(p, resolvidas, id))}
+          />
         </div>
-        <BarraDeConsulta
-          compacta
-          campos={camposDaBarra}
-          consulta={consulta}
-          aoMudar={mudarConsulta}
-        />
-        <SeletorDePropriedades
-          resolvidas={resolvidas}
-          aoAlternar={(id) => prefs.atualizar((p) => alternarVisibilidade(p, resolvidas, id))}
-        />
+        <div className="flex shrink-0 items-center gap-0.5">
+          <BarraDeConsulta campos={camposDaBarra} consulta={consulta} aoMudar={mudarConsulta} />
+        </div>
       </div>
 
       {isLoading ? (
@@ -367,25 +340,68 @@ function CartaoDaEmpresa({
   );
 }
 
-/** "Propriedades": escolhe o que aparece. Vale só para a visão aberta (tabela OU cartões). */
-function SeletorDePropriedades({
+/**
+ * A visualização desta tela, no jeito das demais: uma pílula que abre o painel com o TIPO
+ * (tabela ou cartões) e as PROPRIEDADES que aparecem. Vale só para a visão aberta.
+ */
+function ConfiguracaoDaVisualizacao({
+  visao,
+  aoTrocarVisao,
   resolvidas,
   aoAlternar,
 }: {
+  visao: "cartoes" | "tabela";
+  aoTrocarVisao: (id: "cartoes" | "tabela") => void;
   resolvidas: ReadonlyArray<PropriedadeDaEmpresa & { visivel: boolean }>;
   aoAlternar: (id: IdDaPropriedade) => void;
 }) {
   const t = useT();
+  const tipos = [
+    ["tabela", t("Tabela"), Rows],
+    ["cartoes", t("Cartões"), SquaresFour],
+  ] as const;
+  const Atual = visao === "tabela" ? Rows : SquaresFour;
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5">
-          <SlidersHorizontal size={14} aria-hidden />
-          {t("Propriedades")}
-        </Button>
+        <button
+          type="button"
+          aria-label={t("Configurar visualização")}
+          title={t("Configurar visualização")}
+          className="inline-flex h-8 max-w-48 items-center gap-1.5 rounded-lg bg-secondary pr-1.5 pl-2.5 text-sm font-medium"
+        >
+          <Atual size={14} aria-hidden />
+          <span className="truncate">{t("Empresas")}</span>
+          <CaretDown size={12} weight="bold" aria-hidden className="text-muted-foreground" />
+        </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-2">
-        <p className="px-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+      <PopoverContent align="start" className="w-72 p-3">
+        <p className="mb-1.5 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+          {t("Tipo de visualização")}
+        </p>
+        <div
+          className="grid grid-cols-2 gap-1.5"
+          role="radiogroup"
+          aria-label={t("Tipo de visualização")}
+        >
+          {tipos.map(([id, rotulo, Icone]) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={visao === id}
+              onClick={() => visao !== id && aoTrocarVisao(id)}
+              className={cn(
+                "flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition-colors",
+                visao === id ? "border-primary bg-primary/10 font-medium" : "hover:bg-secondary",
+              )}
+            >
+              <Icone size={14} aria-hidden />
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 mb-1 text-xs font-semibold tracking-wider text-text-subtle uppercase">
           {t("Mostrar nesta visualização")}
         </p>
         <ul>

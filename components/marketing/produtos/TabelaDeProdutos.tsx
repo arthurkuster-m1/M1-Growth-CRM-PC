@@ -14,10 +14,12 @@ import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { SeletorDeOpcao } from "@/components/motor/SeletorDeOpcao";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { Etiqueta } from "@/components/motor/Etiqueta";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
+import type { TipoDeVisualizacao } from "@/lib/motor/visualizacoes";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
@@ -55,7 +57,7 @@ interface DadosDoCache {
   subpaginas: Produto[];
   pode_editar: boolean;
 }
-const SO_TABELA = ["tabela"] as const;
+const TIPOS_DOS_PRODUTOS = ["tabela", "galeria"] as const;
 const ETAPAS = ["isca", "entrada", "principal", "expansao", "recorrencia"] as const;
 const COR_DA_ETAPA: Record<(typeof ETAPAS)[number], CorDaOpcao> = {
   isca: "gray",
@@ -76,13 +78,19 @@ export function TabelaDeProdutos({
   produtos,
   base,
   podeEditar,
-  vista,
+  vistaPadrao,
+  busca,
+  aoMudarBusca,
   renderizarCartoes,
 }: {
   produtos: readonly Produto[];
   base: string;
   podeEditar: boolean;
-  vista: "cartoes" | "tabela";
+  /** O tipo da visualização padrão enquanto ninguém escolheu outro (muitos itens → tabela). */
+  vistaPadrao: "cartoes" | "tabela";
+  /** A busca mora na fila das visualizações (lupa); o texto continua sendo da página. */
+  busca: string;
+  aoMudarBusca: (busca: string) => void;
   /** Desenha a vitrine de cartões com as linhas já filtradas e ordenadas (e os grupos, se houver). */
   renderizarCartoes: (
     linhas: Produto[],
@@ -547,11 +555,23 @@ export function TabelaDeProdutos({
     return { chave: g.chave || "__vazio", titulo: <strong>{rotulo}</strong>, linhas: g.linhas };
   });
 
+  const tipoDaPadrao: TipoDeVisualizacao =
+    padrao.preferencias.visualizacao === "galeria"
+      ? "galeria"
+      : padrao.preferencias.visualizacao === "tabela"
+        ? "tabela"
+        : vistaPadrao === "tabela"
+          ? "tabela"
+          : "galeria";
+  const tipoDaAba: TipoDeVisualizacao = visaoAtiva?.type ?? tipoDaPadrao;
+  // Cartões ou tabela é o TIPO da visualização aberta (configurado nela), não um botão solto.
+  const vista = tipoDaAba === "galeria" ? "cartoes" : "tabela";
+
   const abas = [
     {
       id: ID_DA_PADRAO,
-      nome: padrao.preferencias.nome ?? t("Tabela"),
-      tipo: "tabela" as const,
+      nome: padrao.preferencias.nome ?? (tipoDaPadrao === "galeria" ? t("Cartões") : t("Tabela")),
+      tipo: tipoDaPadrao,
     },
     ...visoes.map((v) => ({ id: v.id, nome: v.name, tipo: v.type })),
   ];
@@ -562,26 +582,35 @@ export function TabelaDeProdutos({
         abas={abas}
         ativaId={ativaId}
         podeEditar={podeEditar}
-        tipos={SO_TABELA}
+        tipos={TIPOS_DOS_PRODUTOS}
         aoEscolher={escolherAba}
-        aoCriar={(nome) =>
-          void criarVisao({ name: nome, type: "tabela", config: preferencias }).then(
+        aoCriar={(nome, tipo) =>
+          void criarVisao({ name: nome, type: tipo, config: preferencias }).then(
             (v) => v && escolherAba(v.id),
           )
         }
         aoConfigurar={() => setConfigurando(true)}
-      />
-      <BarraDeConsulta
-        salvamento={salvamento}
-        campos={camposDaBarra}
-        consulta={{
-          filtros: preferencias.filtros,
-          ordenacao: preferencias.ordenacao,
-          agrupar: preferencias.agrupar,
-          agruparPor: preferencias.agruparPor,
-          ordemDosGrupos: preferencias.ordemDosGrupos,
-        }}
-        aoMudar={mudarConsulta}
+        direita={
+          <>
+            <BuscaEmLupa
+              valor={busca}
+              aoMudar={aoMudarBusca}
+              placeholder={t("Buscar produto ou serviço")}
+            />
+            <BarraDeConsulta
+              salvamento={salvamento}
+              campos={camposDaBarra}
+              consulta={{
+                filtros: preferencias.filtros,
+                ordenacao: preferencias.ordenacao,
+                agrupar: preferencias.agrupar,
+                agruparPor: preferencias.agruparPor,
+                ordemDosGrupos: preferencias.ordemDosGrupos,
+              }}
+              aoMudar={mudarConsulta}
+            />
+          </>
+        }
       />
       {vista === "tabela" ? (
         <TabelaDoMotor
@@ -744,9 +773,13 @@ export function TabelaDeProdutos({
       <ConfigurarVisualizacao
         aberto={configurando}
         aoFechar={() => setConfigurando(false)}
-        nome={visaoAtiva?.name ?? padrao.preferencias.nome ?? t("Tabela")}
-        tipo="tabela"
-        tipos={SO_TABELA}
+        nome={
+          visaoAtiva?.name ??
+          padrao.preferencias.nome ??
+          (tipoDaPadrao === "galeria" ? t("Cartões") : t("Tabela"))
+        }
+        tipo={tipoDaAba}
+        tipos={TIPOS_DOS_PRODUTOS}
         podeEditar={podeEditar && (visaoAtiva?.editavel ?? true)}
         ehPadrao={!visaoAtiva}
         aoArquivar={
@@ -759,7 +792,11 @@ export function TabelaDeProdutos({
             ? void editarVisao(visaoAtiva.id, { name: nome })
             : padrao.atualizar((p) => ({ ...p, nome }))
         }
-        aoTrocarTipo={() => undefined}
+        aoTrocarTipo={(tipo) =>
+          visaoAtiva
+            ? void editarVisao(visaoAtiva.id, { type: tipo })
+            : padrao.atualizar((p) => ({ ...p, visualizacao: tipo }))
+        }
         propriedades={resolvidas.map((c) => ({
           id: c.id,
           titulo: c.titulo,
