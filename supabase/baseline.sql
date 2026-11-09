@@ -58045,6 +58045,10 @@ alter table public.platform_branding add constraint platform_branding_notificati
 comment on column public.platform_branding.notification_icon_path is
   'Imagem de onde sai a silhueta do ícone das notificações (barra de status). Caminho em brand-logos; null usa o logo de fundo branco.';
 
+-- ---- platform_branding.task_plans (migration 0686) ----
+alter table public.platform_branding
+  add column if not exists task_plans jsonb;
+
 -- ---- endurecimento do que as migrations 0614-0649 deixaram aberto (migration 0679) ----
 -- 1. `anon` fora das tabelas que as migrations 0614-0649 criaram. O default do Supabase concede tudo
 --    a anon em toda tabela nova; a RLS já barra, mas privilégio que não se usa não se deixa de pé.

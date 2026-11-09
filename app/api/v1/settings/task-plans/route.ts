@@ -37,15 +37,23 @@ export async function GET(): Promise<Response> {
   if (!authz.ok) return authz.response;
 
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("organizations")
-    .select("settings")
-    .eq("id", authz.org.orgId)
-    .maybeSingle();
-  if (error) return fail("internal_error", error.message, 500, { requestId });
+
+  const [orgResult, platformResult] = await Promise.all([
+    admin.from("organizations").select("settings").eq("id", authz.org.orgId).maybeSingle(),
+    admin.from("platform_branding").select("task_plans").eq("id", 1).maybeSingle(),
+  ]);
+
+  if (orgResult.error) return fail("internal_error", orgResult.error.message, 500, { requestId });
+
+  type LinhaDePlataforma = { task_plans?: unknown } | null;
 
   return ok(
-    { planos: lePlanosDoSettings((data as LinhaDeOrganizacao)?.settings) },
+    {
+      planos: lePlanosDoSettings((orgResult.data as LinhaDeOrganizacao)?.settings),
+      planos_da_plataforma: lePlanosDoSettings({
+        task_plans: (platformResult.data as LinhaDePlataforma)?.task_plans,
+      }),
+    },
     { requestId },
   );
 }

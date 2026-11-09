@@ -1121,6 +1121,8 @@ export const AUDIT_ACTIONS = [
   // Planos de tarefa (#1752): a lista `settings.task_plans` mudou pela rota
   // `settings/task-plans` — mesma família de `campaign.settings_updated`.
   "task_plans.settings_updated",
+  // Planos da plataforma (migration 0686): platform admin editou os planos da instalação.
+  "platform_task_plans.updated",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */
