@@ -50,6 +50,7 @@ import { CelulaDeEtiquetas } from "@/components/clientes/CelulaDeEtiquetas";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
 import { telefoneE164 } from "@/components/leads/FichaDoLead";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
@@ -95,7 +96,6 @@ import {
   CalendarBlank,
   ChatCircle,
   InstagramLogo,
-  MagnifyingGlass,
   Gear,
   Phone,
   Rows,
@@ -583,8 +583,7 @@ export function ClientesCRM({
     return [...escolhida.values()].sort((x, y) => x.criado_em.localeCompare(y.criado_em));
   };
 
-  const corDaEtapa = (e: Etapa | undefined): CorDaOpcao =>
-    !e ? "gray" : corDaEtapaDoFunil(e);
+  const corDaEtapa = (e: Etapa | undefined): CorDaOpcao => (!e ? "gray" : corDaEtapaDoFunil(e));
   const dia = (iso: string | null) =>
     iso
       ? new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -3614,6 +3613,29 @@ export function ClientesCRM({
                 }).then((v) => v && ir({ aba: v.id }));
               }}
               aoConfigurar={() => setConfigurando(true)}
+              direita={
+                vista === "quadro" && !ehOportunidades ? undefined : (
+                  <>
+                    <BuscaEmLupa
+                      valor={busca}
+                      aoMudar={setBusca}
+                      placeholder={t("Buscar por nome, telefone, e-mail ou tag")}
+                    />
+                    <BarraDeConsulta
+                      salvamento={salvamento}
+                      campos={camposDaBarra}
+                      consulta={{
+                        filtros: preferencias.filtros,
+                        ordenacao: preferencias.ordenacao,
+                        agrupar: preferencias.agrupar,
+                        agruparPor: preferencias.agruparPor,
+                        ordemDosGrupos: preferencias.ordemDosGrupos,
+                      }}
+                      aoMudar={mudarConsulta}
+                    />
+                  </>
+                )
+              }
             />
             {ehOportunidades ? null : <JanelaDoAtivo podeEditar={dados?.pode_gerir === true} />}
           </div>
@@ -3622,35 +3644,6 @@ export function ClientesCRM({
             <QuadroDoCiclo clientes={resultado.linhas} />
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="relative min-w-0 flex-1 basis-56">
-                  <span className="sr-only">{t("Buscar")}</span>
-                  <MagnifyingGlass
-                    size={16}
-                    aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                    placeholder={t("Buscar por nome, telefone, e-mail ou tag")}
-                    className="h-9 w-full rounded-xl border bg-background pr-3 pl-9 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-                  />
-                </label>
-                <BarraDeConsulta
-                  salvamento={salvamento}
-                  compacta
-                  campos={camposDaBarra}
-                  consulta={{
-                    filtros: preferencias.filtros,
-                    ordenacao: preferencias.ordenacao,
-                    agrupar: preferencias.agrupar,
-                    agruparPor: preferencias.agruparPor,
-                    ordemDosGrupos: preferencias.ordemDosGrupos,
-                  }}
-                  aoMudar={mudarConsulta}
-                />
-              </div>
               {!consulta.isLoading && resultado.linhas.length === 0 ? (
                 <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed px-6 py-14 text-center">
                   <p className="text-sm font-medium">

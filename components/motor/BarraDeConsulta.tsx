@@ -19,7 +19,7 @@ import {
   type TipoDeCampo,
 } from "@/lib/motor/consulta";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { ArrowsDownUp, Funnel, Plus, Rows, Trash } from "@/lib/ui/icons";
+import { ArrowsDownUp, Funnel, Plus, Rows, Trash, X } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
@@ -36,7 +36,7 @@ interface Props {
   campos: readonly CampoDaBarra[];
   consulta: ConsultaDaTabela;
   aoMudar: (consulta: ConsultaDaTabela) => void;
-  /** Botões menores, para caber os três numa linha só (ex.: Campanhas). */
+  /** Sem efeito: os botões são sempre só o ícone. Mantida para não quebrar quem ainda a passa. */
   compacta?: boolean;
   /**
    * Filtro SALVO vira o padrão da visualização (como no Notion): quando passado, não há "Limpar
@@ -82,34 +82,33 @@ function Escolha({
   );
 }
 
+/**
+ * O botão da barra: só o ÍCONE, pequeno, como no Notion. Cinza sem nada aplicado; AZUL quando há
+ * filtro, ordem ou grupo valendo (a quantidade vai no texto de ajuda e no leitor de tela).
+ */
 function Gatilho({
   icone,
   rotulo,
   quantidade,
-  compacta,
 }: {
   icone: ReactNode;
   rotulo: string;
   quantidade: number;
-  compacta?: boolean;
 }) {
+  const ajuda = quantidade > 0 ? `${rotulo} (${quantidade})` : rotulo;
   return (
     <PopoverTrigger asChild>
       <button
         type="button"
+        aria-label={ajuda}
+        title={ajuda}
+        data-ativo={quantidade > 0 ? "true" : undefined}
         className={cn(
-          "inline-flex shrink-0 items-center rounded-xl border bg-card whitespace-nowrap transition-colors hover:text-foreground",
-          compacta ? "h-8 gap-1.5 px-2.5 text-xs" : "h-9 gap-2 px-3 text-sm",
-          quantidade > 0 ? "border-primary/40 text-primary" : "text-muted-foreground",
+          "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-secondary",
+          quantidade > 0 ? "text-primary" : "text-muted-foreground hover:text-foreground",
         )}
       >
         {icone}
-        {rotulo}
-        {quantidade > 0 ? (
-          <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-            {quantidade}
-          </span>
-        ) : null}
       </button>
     </PopoverTrigger>
   );
@@ -156,7 +155,7 @@ function BotaoAdicionar({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => 
 }
 
 /** "Filtrar", "Ordenar" e "Agrupar": os três painéis que decidem o que a tabela mostra e em que ordem. */
-export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvamento }: Props) {
+export function BarraDeConsulta({ campos, consulta, aoMudar, salvamento }: Props) {
   const t = useT();
   const [abertoFiltro, setAbertoFiltro] = useState(false);
   const [abertoOrdem, setAbertoOrdem] = useState(false);
@@ -307,12 +306,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
     <div className="contents">
       <Popover open={abertoFiltro} onOpenChange={setAbertoFiltro}>
         <Gatilho
-          compacta={compacta}
           icone={<Funnel size={16} aria-hidden />}
           rotulo={t("Filtrar")}
           quantidade={filtros.length}
         />
-        <PopoverContent align="start" className="w-auto max-w-[min(92vw,640px)] p-3">
+        <PopoverContent align="end" className="w-auto max-w-[min(92vw,640px)] p-3">
           {filtros.length === 0 ? (
             <p className="px-2 pb-2 text-sm text-muted-foreground">
               {t("Nenhum filtro. Mostrando tudo.")}
@@ -390,12 +388,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
 
       <Popover open={abertoOrdem} onOpenChange={setAbertoOrdem}>
         <Gatilho
-          compacta={compacta}
           icone={<ArrowsDownUp size={16} aria-hidden />}
           rotulo={t("Ordenar")}
           quantidade={ordenacao.length}
         />
-        <PopoverContent align="start" className="w-auto max-w-[min(92vw,480px)] p-3">
+        <PopoverContent align="end" className="w-auto max-w-[min(92vw,480px)] p-3">
           {ordenacao.length === 0 ? (
             <p className="px-2 pb-2 text-sm text-muted-foreground">
               {t("Na ordem que você arrastou.")}
@@ -461,12 +458,11 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
 
       <Popover open={abertoGrupo} onOpenChange={setAbertoGrupo}>
         <Gatilho
-          compacta={compacta}
           icone={<Rows size={16} aria-hidden />}
           rotulo={t("Agrupar")}
           quantidade={consulta.agrupar ? 1 : 0}
         />
-        <PopoverContent align="start" className="w-64 p-3">
+        <PopoverContent align="end" className="w-64 p-3">
           <p className="mb-2 text-xs font-semibold tracking-wider text-text-subtle uppercase">
             {t("Agrupar por")}
           </p>
@@ -533,7 +529,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
               title={t("Volta ao filtro salvo desta visualização")}
               className={cn(
                 "shrink-0 rounded-xl border px-3 whitespace-nowrap text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
-                compacta ? "h-8 text-xs" : "h-9 text-sm",
+                "h-8 text-xs",
               )}
             >
               {t("Reset")}
@@ -545,7 +541,7 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
                 title={t("O que está na tela vira o padrão desta visualização")}
                 className={cn(
                   "shrink-0 rounded-xl bg-primary px-3 font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-[var(--color-accent-hover)]",
-                  compacta ? "h-8 text-xs" : "h-9 text-sm",
+                  "h-8 text-xs",
                 )}
               >
                 {t("Salvar")}
@@ -556,13 +552,12 @@ export function BarraDeConsulta({ campos, consulta, aoMudar, compacta, salvament
       ) : filtros.length + ordenacao.length > 0 || consulta.agrupar ? (
         <button
           type="button"
+          aria-label={t("Limpar tudo")}
+          title={t("Limpar tudo")}
           onClick={() => aoMudar({})}
-          className={cn(
-            "shrink-0 rounded-xl px-2 whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
-            compacta ? "h-8 text-xs" : "h-9 text-sm",
-          )}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
-          {t("Limpar tudo")}
+          <X size={14} aria-hidden />
         </button>
       ) : null}
     </div>

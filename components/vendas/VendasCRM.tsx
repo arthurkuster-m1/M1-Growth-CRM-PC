@@ -11,6 +11,7 @@ import { SeletorDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDe
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
@@ -991,16 +992,30 @@ export function VendasCRM() {
           )
         }
         aoConfigurar={() => setConfigurando(true)}
+        direita={
+          <>
+            <BuscaEmLupa
+              valor={busca}
+              aoMudar={setBusca}
+              placeholder={t("Buscar por cliente, produto ou campanha")}
+            />
+            <BarraDeConsulta
+              salvamento={salvamento}
+              campos={camposDaBarra}
+              consulta={{
+                filtros: preferencias.filtros,
+                ordenacao: preferencias.ordenacao,
+                agrupar: preferencias.agrupar,
+                agruparPor: preferencias.agruparPor,
+                ordemDosGrupos: preferencias.ordemDosGrupos,
+              }}
+              aoMudar={mudarConsulta}
+            />
+          </>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={t("Buscar por cliente, produto ou campanha")}
-          aria-label={t("Buscar venda")}
-          className="h-10 min-w-0 flex-1 basis-60 rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-        />
         {/* Os chips de situação: no celular, uma fila que rola de lado (sem quebrar em várias linhas). */}
         <div className="flex flex-wrap gap-1.5 max-sm:order-last max-sm:w-full max-sm:[scrollbar-width:none] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 max-sm:[&::-webkit-scrollbar]:hidden">
           <button
@@ -1043,19 +1058,6 @@ export function VendasCRM() {
             </button>
           ))}
         </div>
-        <BarraDeConsulta
-          salvamento={salvamento}
-          compacta
-          campos={camposDaBarra}
-          consulta={{
-            filtros: preferencias.filtros,
-            ordenacao: preferencias.ordenacao,
-            agrupar: preferencias.agrupar,
-            agruparPor: preferencias.agruparPor,
-            ordemDosGrupos: preferencias.ordemDosGrupos,
-          }}
-          aoMudar={mudarConsulta}
-        />
       </div>
 
       {consulta.isLoading ? (

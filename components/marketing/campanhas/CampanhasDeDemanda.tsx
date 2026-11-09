@@ -18,6 +18,7 @@ import {
 } from "@/components/marketing/campanhas/rotulos";
 import { ApagarCampanhasDialog } from "@/components/marketing/campanhas/ApagarCampanhasDialog";
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { AcaoEmMassa, BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
 import { CelulaDeCaixa } from "@/components/motor/CelulaDeCaixa";
@@ -820,32 +821,24 @@ export function CampanhasDeDemanda() {
               )
             }
             aoConfigurar={() => setConfigurando(true)}
+            direita={
+              <>
+                <BuscaEmLupa valor={busca} aoMudar={setBusca} placeholder={t("Buscar campanha")} />
+                <BarraDeConsulta
+                  salvamento={salvamento}
+                  campos={camposDaBarra}
+                  consulta={{
+                    filtros: preferencias.filtros,
+                    ordenacao: preferencias.ordenacao,
+                    agrupar: preferencias.agrupar,
+                    agruparPor: preferencias.agruparPor,
+                    ordemDosGrupos: preferencias.ordemDosGrupos,
+                  }}
+                  aoMudar={mudarConsulta}
+                />
+              </>
+            }
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-60">
-              <span className="sr-only">{t("Buscar")}</span>
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder={t("Buscar campanha")}
-                className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <BarraDeConsulta
-              salvamento={salvamento}
-              compacta
-              campos={camposDaBarra}
-              consulta={{
-                filtros: preferencias.filtros,
-                ordenacao: preferencias.ordenacao,
-                agrupar: preferencias.agrupar,
-                agruparPor: preferencias.agruparPor,
-                ordemDosGrupos: preferencias.ordemDosGrupos,
-              }}
-              aoMudar={mudarConsulta}
-            />
-          </div>
-
           {vista === "tabela" ? (
             <TabelaDoMotor
               linhas={resultado.linhas}

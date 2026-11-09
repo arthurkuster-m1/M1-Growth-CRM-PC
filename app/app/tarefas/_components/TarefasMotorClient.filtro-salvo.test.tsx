@@ -88,7 +88,7 @@ function montar() {
 
 async function removerOFiltro() {
   await waitFor(() =>
-    expect(within(screen.getByRole("button", { name: /Filtrar/ })).getByText("1")).toBeTruthy(),
+    expect(screen.getByRole("button", { name: "Filtrar (1)" })).toBeTruthy(),
   );
   await userEvent.click(screen.getByRole("button", { name: /Filtrar/ }));
   await userEvent.click(await screen.findByRole("button", { name: "Remover filtro" }));
@@ -104,7 +104,7 @@ describe("filtro salvo da visualização", () => {
   it("a visualização abre com o filtro salvo e sem Reset, Salvar ou Limpar tudo", async () => {
     montar();
     await waitFor(() =>
-      expect(within(screen.getByRole("button", { name: /Filtrar/ })).getByText("1")).toBeTruthy(),
+      expect(screen.getByRole("button", { name: "Filtrar (1)" })).toBeTruthy(),
     );
     expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
@@ -117,13 +117,13 @@ describe("filtro salvo da visualização", () => {
     expect(await screen.findByRole("button", { name: "Reset" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Salvar" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Limpar tudo" })).toBeNull();
-    expect(within(screen.getByRole("button", { name: /Filtrar/ })).queryByText("1")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Filtrar (1)" })).toBeNull();
     await new Promise((r) => setTimeout(r, 900));
     expect(apiClient.patch).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: "Reset" }));
     await waitFor(() =>
-      expect(within(screen.getByRole("button", { name: /Filtrar/ })).getByText("1")).toBeTruthy(),
+      expect(screen.getByRole("button", { name: "Filtrar (1)" })).toBeTruthy(),
     );
     expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
   });

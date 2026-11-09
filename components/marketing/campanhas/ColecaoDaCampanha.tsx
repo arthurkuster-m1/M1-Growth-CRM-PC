@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AbasDeVisualizacao } from "@/components/motor/AbasDeVisualizacao";
 import { BarraDeSelecao } from "@/components/motor/BarraDeSelecao";
+import { BuscaEmLupa } from "@/components/motor/BuscaEmLupa";
 import { BarraDeConsulta, type CampoDaBarra } from "@/components/motor/BarraDeConsulta";
 import { ConfigurarVisualizacao } from "@/components/motor/ConfigurarVisualizacao";
 import { TabelaDoMotor, type ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
@@ -375,6 +376,24 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
     return x ? [x] : [];
   });
 
+  // A busca em lupa e filtrar/ordenar/agrupar em ícone: a mesma fila de qualquer tabela do app.
+  const acoesDaFila = (
+    <>
+      <BuscaEmLupa valor={busca} aoMudar={setBusca} placeholder={t("Buscar")} />
+      <BarraDeConsulta
+        campos={camposDaBarra}
+        consulta={{
+          filtros: preferencias.filtros,
+          ordenacao: preferencias.ordenacao,
+          agrupar: preferencias.agrupar,
+          agruparPor: preferencias.agruparPor,
+          ordemDosGrupos: preferencias.ordemDosGrupos,
+        }}
+        aoMudar={mudarConsulta}
+      />
+    </>
+  );
+
   return (
     <div className="grid grid-cols-1 gap-3">
       {itens.length > 0 ? (
@@ -398,41 +417,26 @@ export function ColecaoDaCampanha<T extends { id: string; position: number }>({
                 })
               }
               aoConfigurar={() => setConfigurando(true)}
+              direita={acoesDaFila}
             />
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            {barraExtra}
-            <label className="relative min-w-0 flex-1 basis-56">
-              <span className="sr-only">{t("Buscar")}</span>
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder={t("Buscar")}
-                className="h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <BarraDeConsulta
-              compacta
-              campos={camposDaBarra}
-              consulta={{
-                filtros: preferencias.filtros,
-                ordenacao: preferencias.ordenacao,
-                agrupar: preferencias.agrupar,
-                agruparPor: preferencias.agruparPor,
-                ordemDosGrupos: preferencias.ordemDosGrupos,
-              }}
-              aoMudar={mudarConsulta}
-            />
-            {visaoFixa ? (
-              <button
-                type="button"
-                onClick={() => setConfigurando(true)}
-                className="inline-flex h-10 items-center rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
-              >
-                {t("Propriedades")}
-              </button>
-            ) : null}
-          </div>
+          {visaoFixa ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {barraExtra}
+              <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                {acoesDaFila}
+                <button
+                  type="button"
+                  onClick={() => setConfigurando(true)}
+                  className="ml-1 inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium whitespace-nowrap hover:bg-secondary"
+                >
+                  {t("Propriedades")}
+                </button>
+              </div>
+            </div>
+          ) : barraExtra ? (
+            <div className="flex flex-wrap items-center gap-2">{barraExtra}</div>
+          ) : null}
         </>
       ) : null}
 
