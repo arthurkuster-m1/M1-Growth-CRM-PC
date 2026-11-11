@@ -21,6 +21,7 @@
  *   ::: toggle                título | texto (o texto aparece ao abrir)
  *   ::: links                 rótulo | https://endereço
  *   ::: imagem                legenda (o arquivo se envia depois, na própria página)
+ *   ::: oferta                campo | valor, uma linha por campo (o produto; veja texto-da-oferta.ts)
  *   :::                       (fecha o bloco)
  *
  * `|` separa as colunas; para um `|` dentro do texto, escreva `\|`. Uma linha que deve começar com
@@ -30,6 +31,7 @@
  * número da linha — truncar em silêncio perderia texto do cliente sem ninguém ver.
  */
 import { blocoSchema, MAXIMO_DE_BLOCOS, type Bloco } from "@/lib/marketing/blocos";
+import { linhasDaOferta, ofertaDeLinhas } from "@/lib/marketing/texto-da-oferta";
 
 export interface ProblemaDoTexto {
   linha: number;
@@ -209,10 +211,16 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
             numero,
           );
           break;
+        case "oferta": {
+          const { candidato, erros } = ofertaDeLinhas(cols, id);
+          if (erros.length > 0) for (const erro of erros) problemas.push({ linha: numero, erro });
+          else aceitar(candidato, numero);
+          break;
+        }
         default:
           problemas.push({
             linha: numero,
-            erro: `tipo de bloco desconhecido: "${tipoBruto}" (use metricas, fluxo, cards, matriz, piramide, funil, tabela, citacao, toggle, links ou imagem)`,
+            erro: `tipo de bloco desconhecido: "${tipoBruto}" (use metricas, fluxo, cards, matriz, piramide, funil, tabela, citacao, toggle, links, imagem ou oferta)`,
           });
       }
       continue;
@@ -350,6 +358,11 @@ export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: numb
         // O arquivo enviado não cabe em texto: sai só a legenda, e o arquivo se reenvia na página.
         if (b.arquivo) ignorados++;
         else bloco("imagem", [escapar(b.legenda)]);
+        break;
+      case "oferta":
+        // As imagens do produto não cabem em texto: o resto sai, e as imagens são contadas.
+        bloco("oferta", linhasDaOferta(b));
+        if (b.imagens?.length) ignorados++;
         break;
       default:
         ignorados++;

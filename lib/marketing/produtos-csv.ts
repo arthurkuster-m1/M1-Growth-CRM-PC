@@ -37,7 +37,7 @@ export const COLUNAS_DO_MODELO = [
 export type ColunaDoModelo = (typeof COLUNAS_DO_MODELO)[number];
 
 /** Como a planilha chama cada coluna (além do nome do modelo), já normalizado. */
-const APELIDOS: Record<string, ColunaDoModelo> = {
+export const APELIDOS: Record<string, ColunaDoModelo> = {
   nome: "nome",
   produto: "nome",
   servico: "nome",
@@ -72,18 +72,19 @@ const APELIDOS: Record<string, ColunaDoModelo> = {
 export const semAcento = (texto: string) =>
   texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
-const chaveDeColuna = (cabecalho: string) =>
+export const chaveDeColuna = (cabecalho: string) =>
   semAcento(cabecalho)
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
 /** O texto do CSV em linhas de campos; aceita `;` `,` ou tabulação, aspas e BOM. */
-export function campos(texto: string): string[][] {
+export function campos(texto: string, forcado?: string): string[][] {
   const limpo = texto.replace(/^﻿/, "");
   const primeira = limpo.split(/\r?\n/, 1)[0] ?? "";
-  const delimitador = [";", "\t", ","]
-    .map((d) => ({ d, n: primeira.split(d).length }))
-    .sort((a, b) => b.n - a.n)[0]!.d;
+  const delimitador =
+    forcado ??
+    [";", "\t", ","].map((d) => ({ d, n: primeira.split(d).length })).sort((a, b) => b.n - a.n)[0]!
+      .d;
   const linhas: string[][] = [];
   let campo = "";
   let linha: string[] = [];

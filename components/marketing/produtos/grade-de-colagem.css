@@ -1,0 +1,82 @@
+/* ── Colar produtos na tabela (a mesma grade do app Finanças) ───────────────────────────── */
+.massa {
+  --dsg-border-color: var(--color-border);
+  --dsg-cell-background-color: var(--color-surface);
+  --dsg-cell-disabled-background-color: var(--color-surface-elevated);
+  --dsg-header-text-color: var(--color-text-muted);
+  --dsg-selection-border-color: var(--color-accent);
+  --dsg-selection-border-width: 2px;
+  --dsg-selection-background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.massa .dsg-container {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 0;
+}
+.massa .dsg-input {
+  font-size: 13px;
+  color: var(--color-text);
+}
+.massa .dsg-cell-header {
+  font-weight: 700;
+  font-size: 12px;
+  background: var(--color-surface-elevated);
+}
+.massa .dsg-cell-gutter {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+.massa .dsg-context-menu {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.massa .dsg-context-menu-item:hover {
+  background: var(--color-surface-elevated);
+}
+.massa-linha.is-erro .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-error-bg);
+}
+.massa-linha.is-aviso .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-warning-bg);
+}
+.massa-linha.is-ok .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-success-bg);
+}
+.massa-linha.is-dup .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-subtle);
+}
+.massa-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: 16px;
+  min-width: 0;
+  font-weight: 700;
+}
+.massa-status > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.massa-status.is-erro {
+  color: var(--color-error-fg);
+}
+.massa-status.is-aviso {
+  color: var(--color-warning-fg);
+}
+.massa-status.is-ok {
+  color: var(--color-success-fg);
+}
+.massa-status.is-dup {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+}
