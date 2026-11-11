@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { lerBlocos } from "@/lib/marketing/blocos";
+import { blocoEmBranco, lerBlocos } from "@/lib/marketing/blocos";
 import { modeloDaPagina } from "@/lib/marketing/modelos";
-import { lerTextoDaPagina, TEXTO_DE_EXEMPLO, textoDaPagina } from "@/lib/marketing/texto-estruturado";
+import {
+  lerTextoDaPagina,
+  TEXTO_DE_EXEMPLO,
+  textoDaPagina,
+} from "@/lib/marketing/texto-estruturado";
 
 let k = 0;
 const id = () => `b${++k}`;
@@ -12,11 +16,21 @@ describe("texto estruturado da página", () => {
     const r = lerTextoDaPagina(TEXTO_DE_EXEMPLO, id);
     expect(r.problemas).toEqual([]);
     expect(r.blocos.map((b) => b.tipo)).toEqual([
-      "titulo", "texto", "metricas", "titulo", "fluxo", "titulo", "matriz", "destaque", "lista",
+      "titulo",
+      "texto",
+      "metricas",
+      "titulo",
+      "fluxo",
+      "titulo",
+      "matriz",
+      "destaque",
+      "lista",
     ]);
     const m = r.blocos[2]!;
     expect(m.tipo === "metricas" && m.itens[0]).toEqual({
-      rotulo: "Faturamento dos últimos 12 meses", valor: "R$ 480 mil", detalhe: "estável",
+      rotulo: "Faturamento dos últimos 12 meses",
+      valor: "R$ 480 mil",
+      detalhe: "estável",
     });
     const d = r.blocos[7]!;
     expect(d.tipo === "destaque" && d.tom).toBe("atencao");
@@ -24,7 +38,11 @@ describe("texto estruturado da página", () => {
 
   it("lista numerada, checklist e separador", () => {
     const r = lerTextoDaPagina("1. um\n2. dois\n\n[ ] a\n[x] b\n\n---", id);
-    expect(r.blocos.map((b) => b.tipo === "lista" ? b.estilo : b.tipo)).toEqual(["numerada", "check", "separador"]);
+    expect(r.blocos.map((b) => (b.tipo === "lista" ? b.estilo : b.tipo))).toEqual([
+      "numerada",
+      "check",
+      "separador",
+    ]);
   });
 
   it("barra vertical escapada fica no texto", () => {
@@ -34,7 +52,10 @@ describe("texto estruturado da página", () => {
   });
 
   it("tudo ou nada: um erro impede importar e traz o número da linha", () => {
-    const r = lerTextoDaPagina("# Ok\n\n::: matriz swot\nA | b\n:::\n\n::: coisa\nx\n:::\n\n::: fluxo\na | b", id);
+    const r = lerTextoDaPagina(
+      "# Ok\n\n::: matriz swot\nA | b\n:::\n\n::: coisa\nx\n:::\n\n::: fluxo\na | b",
+      id,
+    );
     expect(r.blocos).toEqual([]);
     expect(r.problemas.map((p) => p.linha)).toEqual(expect.arrayContaining([3, 7]));
     expect(r.problemas.some((p) => /não foi fechado/.test(p.erro))).toBe(true);
@@ -61,5 +82,98 @@ describe("texto estruturado da página", () => {
       expect(volta.problemas).toEqual([]);
       expect(semId(volta.blocos)).toEqual(semId(original));
     }
+  });
+});
+
+describe("todos os blocos saem e voltam em texto", () => {
+  const semId = (bs: unknown[]) => bs.map((b) => ({ ...(b as object), id: "x", linha: undefined }));
+  const arquivo = "11111111-2222-3333-4444-555555555555.png";
+
+  it("imagem (com arquivo), imagem+texto, antes/depois, paleta, ficha, calculadora e oferta", () => {
+    const original = lerBlocos([
+      {
+        id: "1",
+        tipo: "imagem",
+        arquivo,
+        legenda: "Logo",
+        largura: "media",
+        alinhamento: "esquerda",
+      },
+      {
+        id: "2",
+        tipo: "imagem-texto",
+        arquivo,
+        titulo: "T",
+        texto: "Corpo **forte**",
+        lado: "direita",
+      },
+      {
+        id: "3",
+        tipo: "antes-depois",
+        antes: { titulo: "A", texto: "x" },
+        depois: { titulo: "D", texto: "y", imagem: arquivo },
+      },
+      { id: "4", tipo: "paleta", cores: [{ nome: "Verde", hex: "#366D6F" }] },
+      {
+        id: "5",
+        tipo: "ficha",
+        intro: "Quem somos",
+        links: [{ rotulo: "Site", url: "https://a.com", destaque: true }],
+      },
+      {
+        id: "6",
+        tipo: "calculadora",
+        meta: "R$ 8.000",
+        ticket: "1.200",
+        conversao: "8%",
+        cpl: "22",
+        margem: "30%",
+        retencao: "",
+      },
+      {
+        id: "7",
+        tipo: "oferta",
+        ...(blocoEmBranco("oferta", "7") as object),
+        resumo: "Pacote | completo",
+      },
+      { id: "8", tipo: "fluxo", itens: [{ titulo: "Passo", texto: "um" }] },
+    ]);
+    expect(original).toHaveLength(8);
+    const { texto, ignorados } = textoDaPagina(original);
+    expect(ignorados).toBe(0);
+    const volta = lerTextoDaPagina(texto, id);
+    expect(volta.problemas).toEqual([]);
+    expect(semId(volta.blocos)).toEqual(semId(original));
+  });
+
+  it("blocos lado a lado voltam lado a lado (`|||`)", () => {
+    const original = lerBlocos([
+      {
+        id: "1",
+        tipo: "imagem",
+        arquivo,
+        legenda: "",
+        largura: "grande",
+        alinhamento: "centro",
+        linha: "L",
+      },
+      {
+        id: "2",
+        tipo: "imagem",
+        arquivo,
+        legenda: "",
+        largura: "grande",
+        alinhamento: "centro",
+        linha: "L",
+      },
+      { id: "3", tipo: "separador" },
+    ]);
+    const { texto } = textoDaPagina(original);
+    expect(texto).toContain("|||");
+    const volta = lerTextoDaPagina(texto, id).blocos;
+    expect(volta).toHaveLength(3);
+    expect(volta[0]!.linha).toBeTruthy();
+    expect(volta[0]!.linha).toBe(volta[1]!.linha);
+    expect(volta[2]!.linha).toBeUndefined();
   });
 });

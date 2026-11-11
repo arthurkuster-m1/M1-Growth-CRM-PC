@@ -20,8 +20,17 @@
  *   ::: citacao               texto | autor
  *   ::: toggle                título | texto (o texto aparece ao abrir)
  *   ::: links                 rótulo | https://endereço
- *   ::: imagem                legenda (o arquivo se envia depois, na própria página)
+ *   ::: imagem                legenda | tamanho | alinhamento | arquivo (só a legenda é obrigatória)
+ *   ::: imagem-texto esquerda título | texto | arquivo   (ou `direita`: de que lado fica a imagem)
+ *   ::: antes-depois          2 linhas (antes, depois): título | texto | arquivo
+ *   ::: paleta                nome | #cor
+ *   ::: ficha                 a linha sem `|` é a introdução; as demais: rótulo | https://endereço | destaque
+ *   ::: calculadora           meta, ticket, conversao, cpl, margem, retencao — uma por linha: chave | valor
+ *   ::: oferta                uma linha com os dados da oferta (JSON), como a cópia da página escreve
+ *   |||                       (sozinha, entre dois blocos: o bloco seguinte fica AO LADO do anterior)
  *   :::                       (fecha o bloco)
+ *
+ * Dentro do texto, `**negrito**` e `*itálico*` valem em qualquer bloco.
  *
  * `|` separa as colunas; para um `|` dentro do texto, escreva `\|`. Uma linha que deve começar com
  * `#`, `-`, `>` ou `:::` mas ser texto comum leva uma `\` na frente.
@@ -29,7 +38,14 @@
  * Tudo ou nada: se QUALQUER linha tiver problema, nada é importado e cada problema vem com o
  * número da linha — truncar em silêncio perderia texto do cliente sem ninguém ver.
  */
-import { blocoSchema, MAXIMO_DE_BLOCOS, type Bloco } from "@/lib/marketing/blocos";
+import {
+  ALINHAMENTOS,
+  blocoSchema,
+  LARGURAS_DA_IMAGEM,
+  MAXIMO_DE_BLOCOS,
+  MAXIMO_DE_COLUNAS,
+  type Bloco,
+} from "@/lib/marketing/blocos";
 
 export interface ProblemaDoTexto {
   linha: number;
@@ -61,7 +77,11 @@ function colunas(linha: string): string[] {
   return saida;
 }
 
-const escapar = (s: string) => s.replace(/\r?\n+/g, " ").replace(/\|/g, "\\|").trim();
+const escapar = (s: string) =>
+  s
+    .replace(/\r?\n+/g, " ")
+    .replace(/\|/g, "\\|")
+    .trim();
 
 function mensagemDoErro(erro: { issues: Array<{ path: PropertyKey[]; message: string }> }): string {
   const i = erro.issues[0];
@@ -77,16 +97,23 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
   const blocos: Bloco[] = [];
   const problemas: ProblemaDoTexto[] = [];
 
+  // Blocos que vieram depois de uma linha `|||`: ficam ao lado do anterior.
+  const aoLado = new Set<number>();
+  let juntarOProximo = false;
   const aceitar = (candidato: unknown, linha: number) => {
     const r = blocoSchema.safeParse(candidato);
-    if (r.success) blocos.push(r.data);
-    else problemas.push({ linha, erro: mensagemDoErro(r.error) });
+    if (r.success) {
+      if (juntarOProximo && blocos.length > 0) aoLado.add(blocos.length);
+      juntarOProximo = false;
+      blocos.push(r.data);
+    } else problemas.push({ linha, erro: mensagemDoErro(r.error) });
   };
 
   let paragrafo: string[] = [];
   let inicioParagrafo = 0;
   const fecharParagrafo = () => {
-    if (paragrafo.length) aceitar({ id: novoId(), tipo: "texto", texto: paragrafo.join("\n") }, inicioParagrafo);
+    if (paragrafo.length)
+      aceitar({ id: novoId(), tipo: "texto", texto: paragrafo.join("\n") }, inicioParagrafo);
     paragrafo = [];
   };
 
@@ -97,6 +124,15 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
 
     if (linha === "") {
       fecharParagrafo();
+      continue;
+    }
+
+    if (linha === "|||") {
+      fecharParagrafo();
+      if (blocos.length === 0 && !problemas.length) {
+        problemas.push({ linha: numero, erro: "`|||` precisa de um bloco antes dele" });
+      }
+      juntarOProximo = true;
       continue;
     }
 
@@ -127,7 +163,10 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
         if (l !== "") corpo.push({ n: n + 1, t: l });
       }
       if (!fechou) {
-        problemas.push({ linha: numero, erro: `o bloco "${tipoBruto}" não foi fechado com \`:::\`` });
+        problemas.push({
+          linha: numero,
+          erro: `o bloco "${tipoBruto}" não foi fechado com \`:::\``,
+        });
         break;
       }
       const cols = corpo.map((c) => colunas(c.t));
@@ -138,20 +177,41 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
             {
               id,
               tipo: "metricas",
-              itens: cols.map((c) => ({ rotulo: c[0] ?? "", valor: c[1] ?? "", detalhe: c[2] ?? "" })),
+              itens: cols.map((c) => ({
+                rotulo: c[0] ?? "",
+                valor: c[1] ?? "",
+                detalhe: c[2] ?? "",
+              })),
             },
             numero,
           );
           break;
         case "fluxo":
-          aceitar({ id, tipo: "fluxo", itens: cols.map((c) => ({ titulo: c[0] ?? "", texto: c[1] ?? "" })) }, numero);
+          aceitar(
+            {
+              id,
+              tipo: "fluxo",
+              itens: cols.map((c) => ({ titulo: c[0] ?? "", texto: c[1] ?? "" })),
+            },
+            numero,
+          );
           break;
         case "cards":
-          aceitar({ id, tipo: "cards", itens: cols.map((c) => ({ titulo: c[0] ?? "", texto: c[1] ?? "" })) }, numero);
+          aceitar(
+            {
+              id,
+              tipo: "cards",
+              itens: cols.map((c) => ({ titulo: c[0] ?? "", texto: c[1] ?? "" })),
+            },
+            numero,
+          );
           break;
         case "matriz": {
           if (cols.length !== 4) {
-            problemas.push({ linha: numero, erro: `a matriz precisa de 4 linhas (tem ${cols.length})` });
+            problemas.push({
+              linha: numero,
+              erro: `a matriz precisa de 4 linhas (tem ${cols.length})`,
+            });
             break;
           }
           aceitar(
@@ -179,7 +239,10 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
           break;
         case "tabela": {
           if (!cols.length) {
-            problemas.push({ linha: numero, erro: "a tabela precisa ao menos da linha das colunas" });
+            problemas.push({
+              linha: numero,
+              erro: "a tabela precisa ao menos da linha das colunas",
+            });
             break;
           }
           const [cabeca = [], ...linhasDaTabela] = cols;
@@ -195,24 +258,141 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
           break;
         }
         case "citacao":
-          aceitar({ id, tipo: "citacao", texto: cols[0]?.[0] ?? "", autor: cols[0]?.[1] ?? "" }, numero);
-          break;
-        case "toggle":
-          aceitar({ id, tipo: "toggle", titulo: cols[0]?.[0] ?? "", texto: cols[0]?.[1] ?? "" }, numero);
-          break;
-        case "links":
-          aceitar({ id, tipo: "links", itens: cols.map((c) => ({ rotulo: c[0] ?? "", url: c[1] ?? "" })) }, numero);
-          break;
-        case "imagem":
           aceitar(
-            { id, tipo: "imagem", arquivo: "", legenda: cols[0]?.[0] ?? "", largura: "grande", alinhamento: "centro" },
+            { id, tipo: "citacao", texto: cols[0]?.[0] ?? "", autor: cols[0]?.[1] ?? "" },
             numero,
           );
           break;
+        case "toggle":
+          aceitar(
+            { id, tipo: "toggle", titulo: cols[0]?.[0] ?? "", texto: cols[0]?.[1] ?? "" },
+            numero,
+          );
+          break;
+        case "links":
+          aceitar(
+            {
+              id,
+              tipo: "links",
+              itens: cols.map((c) => ({ rotulo: c[0] ?? "", url: c[1] ?? "" })),
+            },
+            numero,
+          );
+          break;
+        case "imagem": {
+          const [legenda = "", largura = "", alinhamento = "", arquivo = ""] = cols[0] ?? [];
+          aceitar(
+            {
+              id,
+              tipo: "imagem",
+              arquivo,
+              legenda,
+              largura: (LARGURAS_DA_IMAGEM as readonly string[]).includes(largura)
+                ? largura
+                : "grande",
+              alinhamento: (ALINHAMENTOS as readonly string[]).includes(alinhamento)
+                ? alinhamento
+                : "centro",
+            },
+            numero,
+          );
+          break;
+        }
+        case "imagem-texto":
+          aceitar(
+            {
+              id,
+              tipo: "imagem-texto",
+              lado: resto[0] === "direita" ? "direita" : "esquerda",
+              titulo: cols[0]?.[0] ?? "",
+              texto: cols[0]?.[1] ?? "",
+              arquivo: cols[0]?.[2] ?? "",
+            },
+            numero,
+          );
+          break;
+        case "antes-depois": {
+          if (cols.length !== 2) {
+            problemas.push({
+              linha: numero,
+              erro: `o antes e depois precisa de 2 linhas (tem ${cols.length})`,
+            });
+            break;
+          }
+          const lado = (c: string[] = []) => ({
+            titulo: c[0] ?? "",
+            texto: c[1] ?? "",
+            ...(c[2] ? { imagem: c[2] } : {}),
+          });
+          aceitar(
+            { id, tipo: "antes-depois", antes: lado(cols[0]), depois: lado(cols[1]) },
+            numero,
+          );
+          break;
+        }
+        case "paleta":
+          aceitar(
+            { id, tipo: "paleta", cores: cols.map((c) => ({ nome: c[0] ?? "", hex: c[1] ?? "" })) },
+            numero,
+          );
+          break;
+        case "ficha": {
+          const links = cols.filter((c) => c.length > 1);
+          const intro = cols
+            .filter((c) => c.length === 1)
+            .map((c) => c[0])
+            .join("\n");
+          aceitar(
+            {
+              id,
+              tipo: "ficha",
+              intro,
+              links: links.map((c) => ({
+                rotulo: c[0] ?? "",
+                url: c[1] ?? "",
+                destaque: c[2] === "destaque",
+              })),
+            },
+            numero,
+          );
+          break;
+        }
+        case "calculadora": {
+          const valores: Record<string, string> = {};
+          for (const c of cols) if (c[0]) valores[c[0].toLowerCase()] = c[1] ?? "";
+          aceitar(
+            {
+              id,
+              tipo: "calculadora",
+              meta: valores.meta ?? "",
+              ticket: valores.ticket ?? "",
+              conversao: valores.conversao ?? "",
+              cpl: valores.cpl ?? "",
+              margem: valores.margem ?? "",
+              retencao: valores.retencao ?? "",
+            },
+            numero,
+          );
+          break;
+        }
+        case "oferta": {
+          let dados: unknown;
+          try {
+            dados = JSON.parse(corpo.map((c) => c.t).join(""));
+          } catch {
+            problemas.push({
+              linha: numero,
+              erro: "os dados da oferta não estão em um formato válido",
+            });
+            break;
+          }
+          aceitar({ ...(dados as object), id, tipo: "oferta" }, numero);
+          break;
+        }
         default:
           problemas.push({
             linha: numero,
-            erro: `tipo de bloco desconhecido: "${tipoBruto}" (use metricas, fluxo, cards, matriz, piramide, funil, tabela, citacao, toggle, links ou imagem)`,
+            erro: `tipo de bloco desconhecido: "${tipoBruto}" (use metricas, fluxo, cards, matriz, piramide, funil, tabela, citacao, toggle, links, imagem, imagem-texto, antes-depois, paleta, ficha, calculadora ou oferta)`,
           });
       }
       continue;
@@ -222,7 +402,10 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
     const titulo = /^(#{1,3})\s+(.*)$/.exec(linha);
     if (titulo) {
       fecharParagrafo();
-      aceitar({ id: novoId(), tipo: "titulo", nivel: titulo[1]!.length, texto: titulo[2]!.trim() }, numero);
+      aceitar(
+        { id: novoId(), tipo: "titulo", nivel: titulo[1]!.length, texto: titulo[2]!.trim() },
+        numero,
+      );
       continue;
     }
 
@@ -267,7 +450,8 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
       for (;;) {
         const prox = linhas[n + 1]?.trim() ?? "";
         const m2 = /^(?:(-|\*)\s+|(\d+)[.)]\s+|\[( |x|X)\]\s+)(.*)$/.exec(prox);
-        const mesmo = m2 && (m2[2] ? "numerada" : m2[3] !== undefined ? "check" : "marcadores") === estilo;
+        const mesmo =
+          m2 && (m2[2] ? "numerada" : m2[3] !== undefined ? "check" : "marcadores") === estilo;
         if (!m2 || !mesmo) break;
         itens.push(m2[4]!.trim());
         n++;
@@ -282,8 +466,32 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
   }
   fecharParagrafo();
 
+  // `|||` coloca o bloco ao lado do anterior (até MAXIMO_DE_COLUNAS por linha).
+  let linhaAtual: string | undefined;
+  let naLinha = 0;
+  blocos.forEach((b, i) => {
+    if (!aoLado.has(i)) {
+      linhaAtual = undefined;
+      naLinha = 1;
+      return;
+    }
+    if (naLinha >= MAXIMO_DE_COLUNAS) {
+      linhaAtual = undefined;
+      naLinha = 1;
+      return;
+    }
+    const anterior = blocos[i - 1]!;
+    linhaAtual ??= anterior.linha ?? novoId();
+    anterior.linha = linhaAtual;
+    b.linha = linhaAtual;
+    naLinha++;
+  });
+
   if (blocos.length > MAXIMO_DE_BLOCOS) {
-    problemas.push({ linha: 1, erro: `a página passaria do limite de ${MAXIMO_DE_BLOCOS} blocos (tem ${blocos.length})` });
+    problemas.push({
+      linha: 1,
+      erro: `a página passaria do limite de ${MAXIMO_DE_BLOCOS} blocos (tem ${blocos.length})`,
+    });
   }
   return { blocos: problemas.length ? [] : blocos, problemas };
 }
@@ -292,10 +500,15 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
 export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: number } {
   const saida: string[] = [];
   let ignorados = 0;
-  const bloco = (tipo: string, linhas: string[]) => saida.push([`::: ${tipo}`, ...linhas, ":::"].join("\n"));
+  const bloco = (tipo: string, linhas: string[]) =>
+    saida.push([`::: ${tipo}`, ...linhas, ":::"].join("\n"));
   const protege = (s: string) => (/^(#|-|\*|>|:::|\[|\d+[.)]\s|\\)/.test(s.trim()) ? `\\${s}` : s);
 
+  let anterior: Bloco | undefined;
   for (const b of blocos) {
+    // Bloco que divide a linha com o anterior: uma linha `|||` antes dele.
+    if (anterior && b.linha && anterior.linha === b.linha) saida.push("|||");
+    anterior = b;
     switch (b.tipo) {
       case "titulo":
         saida.push(`${"#".repeat(b.nivel)} ${b.texto}`);
@@ -309,12 +522,23 @@ export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: numb
         );
         break;
       case "destaque":
-        saida.push(b.texto.split("\n").map((l, i) => `> ${i === 0 ? `${b.tom}: ` : ""}${l}`).join("\n"));
+        saida.push(
+          b.texto
+            .split("\n")
+            .map((l, i) => `> ${i === 0 ? `${b.tom}: ` : ""}${l}`)
+            .join("\n"),
+        );
         break;
       case "lista":
         saida.push(
           b.itens
-            .map((i, k) => (b.estilo === "numerada" ? `${k + 1}. ${i}` : b.estilo === "check" ? `[ ] ${i}` : `- ${i}`))
+            .map((i, k) =>
+              b.estilo === "numerada"
+                ? `${k + 1}. ${i}`
+                : b.estilo === "check"
+                  ? `[ ] ${i}`
+                  : `- ${i}`,
+            )
             .join("\n"),
         );
         break;
@@ -322,20 +546,37 @@ export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: numb
         saida.push("---");
         break;
       case "metricas":
-        bloco("metricas", b.itens.map((i) => [i.rotulo, i.valor, i.detalhe].map(escapar).join(" | ").replace(/ \| $/, "")));
+        bloco(
+          "metricas",
+          b.itens.map((i) =>
+            [i.rotulo, i.valor, i.detalhe].map(escapar).join(" | ").replace(/ \| $/, ""),
+          ),
+        );
         break;
       case "fluxo":
       case "cards":
-        bloco(b.tipo, b.itens.map((i) => [i.titulo, i.texto].map(escapar).join(" | ")));
+        bloco(
+          b.tipo,
+          b.itens.map((i) => [i.titulo, i.texto].map(escapar).join(" | ")),
+        );
         break;
       case "piramide":
-        bloco(b.forma, b.itens.map((i) => [i.titulo, i.texto].map(escapar).join(" | ")));
+        bloco(
+          b.forma,
+          b.itens.map((i) => [i.titulo, i.texto].map(escapar).join(" | ")),
+        );
         break;
       case "matriz":
-        bloco(b.estilo === "swot" ? "matriz swot" : "matriz", b.celulas.map((i) => [i.titulo, i.texto].map(escapar).join(" | ")));
+        bloco(
+          b.estilo === "swot" ? "matriz swot" : "matriz",
+          b.celulas.map((i) => [i.titulo, i.texto].map(escapar).join(" | ")),
+        );
         break;
       case "tabela":
-        bloco("tabela", [b.colunas, ...b.linhas].map((l) => l.map(escapar).join(" | ")));
+        bloco(
+          "tabela",
+          [b.colunas, ...b.linhas].map((l) => l.map(escapar).join(" | ")),
+        );
         break;
       case "citacao":
         bloco("citacao", [[b.texto, b.autor].map(escapar).join(" | ")]);
@@ -344,13 +585,56 @@ export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: numb
         bloco("toggle", [[b.titulo, b.texto].map(escapar).join(" | ")]);
         break;
       case "links":
-        bloco("links", b.itens.map((i) => [i.rotulo, i.url].map(escapar).join(" | ")));
+        bloco(
+          "links",
+          b.itens.map((i) => [i.rotulo, i.url].map(escapar).join(" | ")),
+        );
         break;
       case "imagem":
-        // O arquivo enviado não cabe em texto: sai só a legenda, e o arquivo se reenvia na página.
-        if (b.arquivo) ignorados++;
-        else bloco("imagem", [escapar(b.legenda)]);
+        // O arquivo vai pelo nome (a imagem fica guardada na empresa): colar na mesma empresa
+        // traz a imagem de volta; vazio = ainda sem imagem.
+        bloco("imagem", [
+          [b.legenda, b.largura, b.alinhamento, b.arquivo].map(escapar).join(" | "),
+        ]);
         break;
+      case "imagem-texto":
+        bloco(`imagem-texto ${b.lado}`, [[b.titulo, b.texto, b.arquivo].map(escapar).join(" | ")]);
+        break;
+      case "antes-depois":
+        bloco(
+          "antes-depois",
+          [b.antes, b.depois].map((l) =>
+            [l.titulo, l.texto, l.imagem ?? ""].map(escapar).join(" | ").replace(/ \| $/, ""),
+          ),
+        );
+        break;
+      case "paleta":
+        bloco(
+          "paleta",
+          b.cores.map((c) => [c.nome, c.hex].map(escapar).join(" | ")),
+        );
+        break;
+      case "ficha":
+        bloco("ficha", [
+          ...(b.intro.trim() ? b.intro.split(/\n+/).map(escapar) : []),
+          ...b.links.map((l) =>
+            [l.rotulo, l.url, ...(l.destaque ? ["destaque"] : [])].map(escapar).join(" | "),
+          ),
+        ]);
+        break;
+      case "calculadora":
+        bloco(
+          "calculadora",
+          (["meta", "ticket", "conversao", "cpl", "margem", "retencao"] as const).map(
+            (k) => `${k} | ${escapar(b[k])}`,
+          ),
+        );
+        break;
+      case "oferta": {
+        const { id: _id, tipo: _tipo, linha: _linha, ...dados } = b;
+        bloco("oferta", [JSON.stringify(dados)]);
+        break;
+      }
       default:
         ignorados++;
     }

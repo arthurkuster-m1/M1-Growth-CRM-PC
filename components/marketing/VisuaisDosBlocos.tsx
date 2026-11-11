@@ -1,3 +1,4 @@
+import { TextoRico } from "@/components/marketing/TextoRico";
 import { CampoNoLugar, emEdicao, type EdicaoNoLugar } from "@/components/marketing/CampoNoLugar";
 import type { Bloco } from "@/lib/marketing/blocos";
 import { calcular, moeda } from "@/lib/marketing/calculadora";
@@ -119,7 +120,7 @@ export function Niveis({
                       slide ? "text-lg sm:text-2xl" : "text-sm sm:text-base",
                     )}
                   >
-                    {item.titulo}
+                    <TextoRico texto={item.titulo} />
                   </h4>
                   {item.texto ? (
                     <p
@@ -128,7 +129,7 @@ export function Niveis({
                         slide ? "text-base sm:text-lg" : "text-xs sm:text-sm",
                       )}
                     >
-                      {item.texto}
+                      <TextoRico texto={item.texto} />
                     </p>
                   ) : null}
                 </>
@@ -191,11 +192,11 @@ export function FluxoDeEtapas({
           ) : (
             <>
               <span className={cn("leading-snug font-medium", slide ? "text-lg" : "text-sm")}>
-                {item.titulo}
+                <TextoRico texto={item.titulo} />
               </span>
               {item.texto ? (
                 <span className={cn("text-muted-foreground", slide ? "text-base" : "text-xs")}>
-                  {item.texto}
+                  <TextoRico texto={item.texto} />
                 </span>
               ) : null}
             </>
@@ -254,7 +255,7 @@ export function MatrizDois({
               />
             ) : (
               <h4 className={cn("font-semibold", slide ? "text-xl sm:text-2xl" : "text-base")}>
-                {c.titulo}
+                <TextoRico texto={c.titulo} />
               </h4>
             )}
           </header>
@@ -274,7 +275,7 @@ export function MatrizDois({
                 slide ? "text-base sm:text-lg" : "text-sm",
               )}
             >
-              {c.texto}
+              <TextoRico texto={c.texto} />
             </p>
           ) : null}
         </section>
@@ -321,7 +322,7 @@ export function FichaDaPagina({
             slide ? "text-lg leading-relaxed sm:text-2xl" : "text-base leading-relaxed",
           )}
         >
-          {bloco.intro}
+          <TextoRico texto={bloco.intro} />
         </p>
       ) : null}
       {destaques.length > 0 ? (

@@ -22,6 +22,7 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -40,21 +41,33 @@ import { useHistoricoDeEdicao } from "@/hooks/editor/useHistoricoDeEdicao";
 import { toast } from "sonner";
 
 import { useT } from "@/hooks/i18n/useT";
-import { blocoEmBranco, lerBlocos, MAXIMO_DE_BLOCOS, type Bloco } from "@/lib/marketing/blocos";
+import {
+  blocoEmBranco,
+  lerBlocos,
+  MAXIMO_DE_BLOCOS,
+  MAXIMO_DE_COLUNAS,
+  type Bloco,
+} from "@/lib/marketing/blocos";
 import {
   alvoDoAtalho,
   ALVOS_BASICOS,
   ALVOS_VISUAIS,
   aplicarPropriedade,
   converterBloco,
+  agruparPorLinha,
   duplicarBlocos,
   ehOAlvo,
+  juntarComOAnterior,
+  juntarEmLinha,
   moverBlocos,
+  normalizarLinhas,
   propriedadesDoBloco,
   removerBlocos,
-  textoDoBloco,
+  separarDaLinha,
   type AlvoDeConversao,
 } from "@/lib/marketing/edicao-de-blocos";
+import { aplicarMarcaNoCampo, type MarcaDeEstilo } from "@/lib/marketing/texto-rico";
+import { lerTextoDaPagina, textoDaPagina } from "@/lib/marketing/texto-estruturado";
 import { modeloDaPagina } from "@/lib/marketing/modelos";
 import { Copy, DotsSixVertical, PencilSimple, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -299,8 +312,11 @@ function LinhaVisual({
   aoInserir,
   painel,
   rotuloDoTipo,
+  emColuna,
 }: {
   bloco: Bloco;
+  /** O bloco divide a linha com outros: faixa da alça mais estreita. */
+  emColuna?: boolean;
   posicao: number;
   selecionado: boolean;
   editando: boolean;
@@ -342,7 +358,8 @@ function LinhaVisual({
         <div
           className={cn(
             // No celular a faixa da alça é estreita (o texto aproveita a largura); no computador, larga.
-            "flex w-5 shrink-0 items-center justify-end gap-0.5 pt-3 transition-opacity sm:w-12",
+            "flex w-5 shrink-0 items-center justify-end gap-0.5 pt-3 transition-opacity",
+            emColuna ? "sm:w-5" : "sm:w-12",
             selecionado
               ? "opacity-100"
               : "opacity-0 group-hover/linha:opacity-100 focus-within:opacity-100",
@@ -356,7 +373,10 @@ function LinhaVisual({
               const r = e.currentTarget.getBoundingClientRect();
               aoInserir(r.left, r.bottom + 4, bloco.id);
             }}
-            className="hidden h-6 w-6 place-items-center rounded-md text-text-subtle hover:bg-secondary sm:grid"
+            className={cn(
+              "hidden h-6 w-6 place-items-center rounded-md text-text-subtle hover:bg-secondary",
+              !emColuna && "sm:grid",
+            )}
           >
             <Plus size={14} weight="bold" aria-hidden />
           </button>
@@ -477,7 +497,8 @@ export function EditorVisualDeBlocos({
   const [menu, setMenu] = useState<Menu | null>(null);
   const [arrastandoMouse, setArrastandoMouse] = useState(false);
   const historico = useHistoricoDeEdicao(blocos, aoMudarDeFora);
-  const aoMudar = (novos: Bloco[], chave?: string) => historico.mudar(novos, chave);
+  const aoMudar = (novos: Bloco[], chave?: string) =>
+    historico.mudar(normalizarLinhas(novos), chave);
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const ids = blocos.map((b) => b.id);
@@ -588,9 +609,41 @@ export function EditorVisualDeBlocos({
     if (temCamposNoLugar(novo)) digitarNoBloco(novo.id);
     else if (novo.tipo !== "separador") abrirCaixa(novo.id);
   };
+  const juntarLado = () => {
+    if (selecionados.size > 1) {
+      if (selecionados.size > MAXIMO_DE_COLUNAS) {
+        toast.error(`${t("No máximo")} ${MAXIMO_DE_COLUNAS} ${t("blocos lado a lado.")}`);
+        return;
+      }
+      aoMudar(juntarEmLinha(blocos, selecionados, novoId()));
+    } else if (selecionados.size === 1) {
+      const id = [...selecionados][0]!;
+      const novos = juntarComOAnterior(blocos, id, novoId());
+      if (novos === blocos) {
+        toast.error(
+          ids.indexOf(id) < 1
+            ? t("Não há bloco acima para ficar ao lado.")
+            : `${t("No máximo")} ${MAXIMO_DE_COLUNAS} ${t("blocos lado a lado.")}`,
+        );
+        return;
+      }
+      aoMudar(novos);
+    }
+  };
+  const separarLado = () => aoMudar(separarDaLinha(blocos, selecionados));
+
   const colar = (novos: Bloco[]) => {
     if (!novos.length || blocos.length + novos.length > MAXIMO_DE_BLOCOS) return;
-    const copias = novos.map((b) => ({ ...structuredClone(b), id: novoId() }));
+    // As linhas (colunas) copiadas continuam juntas, mas numa linha nova.
+    const novaLinha = new Map<string, string>();
+    const copias = novos.map((b) => {
+      const c = { ...structuredClone(b), id: novoId() } as Bloco;
+      if (b.linha) {
+        if (!novaLinha.has(b.linha)) novaLinha.set(b.linha, novoId());
+        c.linha = novaLinha.get(b.linha);
+      }
+      return c;
+    });
     const ultimo = [...ids].reverse().find((i) => selecionados.has(i));
     const i = ultimo ? ids.indexOf(ultimo) : ids.length - 1;
     const resultado = [...blocos];
@@ -722,7 +775,9 @@ export function EditorVisualDeBlocos({
   const aoCopiar = (e: ClipboardEvent<HTMLDivElement>, cortar: boolean) => {
     if (ehCampoDeTexto(e.target) || !selecionados.size) return;
     const escolhidos = blocos.filter((b) => selecionados.has(b.id));
-    const texto = escolhidos.map((b) => textoDoBloco(b) || nomeDoTipo(b.tipo)).join("\n\n");
+    // Texto estruturado (o mesmo de "Copiar a página como texto"): todos os tipos de bloco saem
+    // nele, e colar em outra página (ou no "Importar de texto") traz os blocos de volta.
+    const texto = textoDaPagina(escolhidos).texto.trimEnd();
     copia.guardar({ texto, blocos: escolhidos });
     e.clipboardData.setData("text/plain", texto);
     e.preventDefault();
@@ -736,6 +791,15 @@ export function EditorVisualDeBlocos({
       e.preventDefault();
       // O que vem da sessão passa pela mesma validação de qualquer bloco lido.
       colar(lerBlocos(guardada.blocos));
+      return;
+    }
+    // Texto estruturado copiado de fora (ou de outra aba): vira blocos, se for válido.
+    if (/^\s*(:::|\|\|\|)/m.test(texto)) {
+      const leitura = lerTextoDaPagina(texto, novoId);
+      if (!leitura.problemas.length && leitura.blocos.length) {
+        e.preventDefault();
+        colar(leitura.blocos);
+      }
     }
   };
 
@@ -779,18 +843,51 @@ export function EditorVisualDeBlocos({
             "Clique para selecionar · dois cliques para digitar no bloco · botão direito para tipo e ajustes · Ctrl+Z desfaz",
           )}
         </p>
-        <button
-          type="button"
-          aria-haspopup="menu"
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            setConfirmarModelo(null);
-            setMenu({ tipo: "modelos", x: r.right - 288, y: r.bottom + 4 });
-          }}
-          className="inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium hover:bg-secondary"
-        >
-          {t("Modelos")}
-        </button>
+        <div className="flex items-center gap-2">
+          {digitando ? (
+            <div role="toolbar" aria-label={t("Estilo do texto")} className="flex gap-1">
+              {(
+                [
+                  ["**", "B", t("Negrito (Ctrl+B)"), "font-bold"],
+                  ["*", "I", t("Itálico (Ctrl+I)"), "italic"],
+                ] as [MarcaDeEstilo, string, string, string][]
+              ).map(([marca, letra, rotulo, classe]) => (
+                <button
+                  key={marca}
+                  type="button"
+                  aria-label={rotulo}
+                  title={rotulo}
+                  // Não tira o foco do texto: a marca vai na seleção que já está lá.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const campo = document.activeElement;
+                    if (campo instanceof HTMLTextAreaElement && campo.dataset.campoNoLugar) {
+                      aplicarMarcaNoCampo(campo, marca);
+                    }
+                  }}
+                  className={cn(
+                    "grid h-8 w-8 place-items-center rounded-lg border text-sm hover:bg-secondary",
+                    classe,
+                  )}
+                >
+                  {letra}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            aria-haspopup="menu"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setConfirmarModelo(null);
+              setMenu({ tipo: "modelos", x: r.right - 288, y: r.bottom + 4 });
+            }}
+            className="inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium hover:bg-secondary"
+          >
+            {t("Modelos")}
+          </button>
+        </div>
       </div>
 
       <div
@@ -815,67 +912,85 @@ export function EditorVisualDeBlocos({
           onDragEnd={aoSoltar}
         >
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            {blocos.map((b, i) => (
-              <LinhaVisual
-                key={b.id}
-                bloco={b}
-                posicao={i + 1}
-                selecionado={selecionados.has(b.id)}
-                editando={editando === b.id}
-                rotulos={rotulos}
-                rotuloDoTipo={nomeDoTipo(b.tipo)}
-                aoPressionar={aoPressionar}
-                aoEditar={(id, x, y) => {
-                  selecionarUnico(id);
-                  const bloco = blocos.find((x2) => x2.id === id);
-                  if (bloco && temCamposNoLugar(bloco)) digitarNoBloco(id, x, y);
-                  else abrirCaixa(id);
-                }}
-                aoEditarTudo={abrirCaixa}
-                aoSairDoTexto={() => setDigitandoId(null)}
-                edicao={edicao}
-                digitando={digitando === b.id}
-                aoAbrirMenu={abrirMenu}
-                aoInserir={(x, y, id) => setMenu({ tipo: "inserir", x, y, depoisDe: id })}
-                painel={
-                  editando === b.id ? (
-                    <div className="mt-2 rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
-                      <div className="mb-3 flex items-center justify-between gap-2">
-                        <span
-                          className={cn(
-                            "rounded-md px-2.5 py-0.5 text-xs font-semibold",
-                            (COR_DO_TIPO[b.tipo] ?? COR_DO_TIPO.texto!).etiqueta,
-                          )}
-                        >
-                          {nomeDoTipo(b.tipo)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditandoId(null);
-                            focarRaiz();
-                          }}
-                          className="h-8 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-[var(--color-accent-hover)]"
-                        >
-                          {t("Concluir")}
-                        </button>
-                      </div>
-                      <FormularioDoBloco
-                        bloco={b}
-                        aoMudar={(novo) =>
-                          aoMudar(
-                            blocos.map((x) => (x.id === b.id ? novo : x)),
-                            b.id,
-                          )
-                        }
-                        tituloDaPagina={tituloDaPagina}
-                        chaveDaPagina={chaveDaPagina}
-                      />
-                    </div>
-                  ) : null
-                }
-              />
-            ))}
+            {agruparPorLinha(blocos).map((grupo) => {
+              const linhaDeBlocos = grupo.length > 1;
+              const itens = grupo.map((b) => {
+                const i = ids.indexOf(b.id);
+                return (
+                  <LinhaVisual
+                    key={b.id}
+                    emColuna={linhaDeBlocos}
+                    bloco={b}
+                    posicao={i + 1}
+                    selecionado={selecionados.has(b.id)}
+                    editando={editando === b.id}
+                    rotulos={rotulos}
+                    rotuloDoTipo={nomeDoTipo(b.tipo)}
+                    aoPressionar={aoPressionar}
+                    aoEditar={(id, x, y) => {
+                      selecionarUnico(id);
+                      const bloco = blocos.find((x2) => x2.id === id);
+                      if (bloco && temCamposNoLugar(bloco)) digitarNoBloco(id, x, y);
+                      else abrirCaixa(id);
+                    }}
+                    aoEditarTudo={abrirCaixa}
+                    aoSairDoTexto={() => setDigitandoId(null)}
+                    edicao={edicao}
+                    digitando={digitando === b.id}
+                    aoAbrirMenu={abrirMenu}
+                    aoInserir={(x, y, id) => setMenu({ tipo: "inserir", x, y, depoisDe: id })}
+                    painel={
+                      editando === b.id ? (
+                        <div className="mt-2 rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
+                          <div className="mb-3 flex items-center justify-between gap-2">
+                            <span
+                              className={cn(
+                                "rounded-md px-2.5 py-0.5 text-xs font-semibold",
+                                (COR_DO_TIPO[b.tipo] ?? COR_DO_TIPO.texto!).etiqueta,
+                              )}
+                            >
+                              {nomeDoTipo(b.tipo)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditandoId(null);
+                                focarRaiz();
+                              }}
+                              className="h-8 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-[var(--color-accent-hover)]"
+                            >
+                              {t("Concluir")}
+                            </button>
+                          </div>
+                          <FormularioDoBloco
+                            bloco={b}
+                            aoMudar={(novo) =>
+                              aoMudar(
+                                blocos.map((x) => (x.id === b.id ? novo : x)),
+                                b.id,
+                              )
+                            }
+                            tituloDaPagina={tituloDaPagina}
+                            chaveDaPagina={chaveDaPagina}
+                          />
+                        </div>
+                      ) : null
+                    }
+                  />
+                );
+              });
+              return linhaDeBlocos ? (
+                <div
+                  key={grupo[0]!.id}
+                  style={{ "--colunas": grupo.length } as CSSProperties}
+                  className="grid items-start gap-2 sm:[grid-template-columns:repeat(var(--colunas),minmax(0,1fr))]"
+                >
+                  {itens}
+                </div>
+              ) : (
+                itens
+              );
+            })}
           </SortableContext>
         </DndContext>
       </div>
@@ -1006,6 +1121,31 @@ export function EditorVisualDeBlocos({
                   }}
                 >
                   {t("Editar todos os campos")}
+                </ItemDoMenu>
+              ) : null}
+              {selecionados.size > 1 ||
+              (selecionados.size === 1 && ids.indexOf([...selecionados][0]!) > 0) ? (
+                <ItemDoMenu
+                  glifo="▥"
+                  onClick={() => {
+                    setMenu(null);
+                    juntarLado();
+                  }}
+                >
+                  {selecionados.size > 1
+                    ? t("Colocar lado a lado")
+                    : t("Colocar ao lado do bloco de cima")}
+                </ItemDoMenu>
+              ) : null}
+              {blocos.some((b) => selecionados.has(b.id) && b.linha) ? (
+                <ItemDoMenu
+                  glifo="▭"
+                  onClick={() => {
+                    setMenu(null);
+                    separarLado();
+                  }}
+                >
+                  {t("Separar (largura toda)")}
                 </ItemDoMenu>
               ) : null}
               <ItemDoMenu

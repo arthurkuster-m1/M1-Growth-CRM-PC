@@ -5,6 +5,7 @@ import {
   FORMAS_DOS_NIVEIS,
   LADOS_DA_IMAGEM,
   LARGURAS_DA_IMAGEM,
+  MAXIMO_DE_COLUNAS,
   NIVEIS_DA_OFERTA,
   type Bloco,
   type TipoDeBloco,
@@ -125,6 +126,10 @@ const linhas = (texto: string) =>
  * devolve.
  */
 export function converterBloco(b: Bloco, alvo: AlvoDeConversao): Bloco {
+  return { ...converterSemLinha(b, alvo), ...(b.linha ? { linha: b.linha } : {}) } as Bloco;
+}
+
+function converterSemLinha(b: Bloco, alvo: AlvoDeConversao): Bloco {
   const texto = textoDoBloco(b);
   const alinhamento = "alinhamento" in b ? b.alinhamento : undefined;
   const novo = blocoEmBranco(alvo.tipo, b.id);
@@ -317,7 +322,7 @@ export function aplicarPropriedade(b: Bloco, campo: string, valor: string | numb
 // ── vários blocos de uma vez ─────────────────────────────────────────────────────
 
 export function removerBlocos(blocos: Bloco[], ids: ReadonlySet<string>): Bloco[] {
-  return blocos.filter((b) => !ids.has(b.id));
+  return normalizarLinhas(blocos.filter((b) => !ids.has(b.id)));
 }
 
 export function duplicarBlocos(
@@ -325,9 +330,12 @@ export function duplicarBlocos(
   ids: ReadonlySet<string>,
   novoId: () => string,
 ): Bloco[] {
-  return blocos.flatMap((b) =>
-    ids.has(b.id) ? [b, { ...structuredClone(b), id: novoId() }] : [b],
-  );
+  return blocos.flatMap((b) => {
+    if (!ids.has(b.id)) return [b];
+    // A cópia vai para a linha de baixo (não vira mais uma coluna).
+    const { linha: _linha, ...copia } = structuredClone(b);
+    return [b, { ...copia, id: novoId() } as Bloco];
+  });
 }
 
 /** Leva os blocos escolhidos (na ordem em que estão) para antes/depois de `alvo`. */
@@ -344,4 +352,70 @@ export function moverBlocos(
   if (i < 0 || !levados.length) return blocos;
   resto.splice(depois ? i + 1 : i, 0, ...levados);
   return resto;
+}
+
+// ── colunas: blocos lado a lado ──────────────────────────────────────────────────
+
+/** Separa a lista em "linhas": blocos seguidos com a mesma `linha` formam uma só (as colunas). */
+export function agruparPorLinha<T extends Bloco>(blocos: readonly T[]): T[][] {
+  const grupos: T[][] = [];
+  for (const b of blocos) {
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && b.linha && ultimo[0]!.linha === b.linha) ultimo.push(b);
+    else grupos.push([b]);
+  }
+  return grupos;
+}
+
+/** Tira a marca de coluna de quem ficou sozinho na linha (e de quem passa do máximo de colunas). */
+export function normalizarLinhas(blocos: Bloco[]): Bloco[] {
+  const solta = new Set<string>();
+  for (const g of agruparPorLinha(blocos)) {
+    g.forEach((b, i) => {
+      if (b.linha && (g.length === 1 || i >= MAXIMO_DE_COLUNAS)) solta.add(b.id);
+    });
+  }
+  if (!solta.size) return blocos;
+  return blocos.map((b) => {
+    if (!solta.has(b.id)) return b;
+    const { linha: _linha, ...resto } = b;
+    return resto as Bloco;
+  });
+}
+
+/** Põe os blocos escolhidos lado a lado, juntos onde está o primeiro deles. */
+export function juntarEmLinha(
+  blocos: Bloco[],
+  ids: ReadonlySet<string>,
+  novaLinha: string,
+): Bloco[] {
+  const levados = blocos.filter((b) => ids.has(b.id));
+  if (levados.length < 2 || levados.length > MAXIMO_DE_COLUNAS) return blocos;
+  const primeiro = blocos.findIndex((b) => ids.has(b.id));
+  const antes = blocos.slice(0, primeiro).filter((b) => !ids.has(b.id)).length;
+  const resto = blocos.filter((b) => !ids.has(b.id));
+  resto.splice(antes, 0, ...levados.map((b) => ({ ...b, linha: novaLinha }) as Bloco));
+  return normalizarLinhas(resto);
+}
+
+/** Põe o bloco como mais uma coluna ao lado do bloco de cima (ou o junta à linha dele). */
+export function juntarComOAnterior(blocos: Bloco[], id: string, novaLinha: string): Bloco[] {
+  const i = blocos.findIndex((b) => b.id === id);
+  const anterior = blocos[i - 1];
+  if (i < 1 || !anterior) return blocos;
+  const linha = anterior.linha ?? novaLinha;
+  const colunas = blocos.filter((b) => b.linha === linha).length;
+  if (anterior.linha && colunas >= MAXIMO_DE_COLUNAS) return blocos;
+  return blocos.map((b) => (b.id === id || b.id === anterior.id ? ({ ...b, linha } as Bloco) : b));
+}
+
+/** Tira os blocos escolhidos da linha em que estão (voltam a ocupar a largura toda). */
+export function separarDaLinha(blocos: Bloco[], ids: ReadonlySet<string>): Bloco[] {
+  return normalizarLinhas(
+    blocos.map((b) => {
+      if (!ids.has(b.id) || !b.linha) return b;
+      const { linha: _linha, ...resto } = b;
+      return resto as Bloco;
+    }),
+  );
 }

@@ -90,6 +90,9 @@ const arquivoDeImagem = z.string().refine((a) => a === "" || NOME_DE_IMAGEM.test
 const alinhamento = z.enum(ALINHAMENTOS).optional();
 
 const id = z.string().min(1).max(40);
+/** Blocos seguidos com a mesma `linha` ficam lado a lado (colunas); sem `linha`, ocupam a largura toda. */
+const linha = id.optional();
+export const MAXIMO_DE_COLUNAS = 4;
 const curto = z.string().trim().max(200);
 const longo = z.string().max(5000);
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -103,31 +106,36 @@ const enderecoWeb = z
 export const blocoSchema = z.discriminatedUnion("tipo", [
   z.object({
     id,
+    linha,
     tipo: z.literal("titulo"),
     nivel: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     texto: curto,
     alinhamento,
   }),
-  z.object({ id, tipo: z.literal("texto"), texto: longo, alinhamento }),
+  z.object({ id, linha, tipo: z.literal("texto"), texto: longo, alinhamento }),
   z.object({
     id,
+    linha,
     tipo: z.literal("destaque"),
     tom: z.enum(["info", "sucesso", "atencao"]),
     texto: longo,
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("lista"),
     estilo: z.enum(["marcadores", "numerada", "check"]),
     itens: z.array(curto).max(40),
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("cards"),
     itens: z.array(z.object({ titulo: curto, texto: longo.max(1200) })).max(12),
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("metricas"),
     itens: z
       .array(z.object({ rotulo: curto, valor: z.string().trim().max(40), detalhe: curto }))
@@ -135,30 +143,42 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("antes-depois"),
     antes: z.object({ titulo: curto, texto: longo.max(1500), imagem: arquivoDeImagem.optional() }),
     depois: z.object({ titulo: curto, texto: longo.max(1500), imagem: arquivoDeImagem.optional() }),
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("paleta"),
     cores: z.array(z.object({ nome: curto.max(40), hex })).max(16),
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("links"),
     itens: z.array(z.object({ rotulo: curto, url: enderecoWeb })).max(30),
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("toggle"),
     /** A linha que fica sempre à vista; o texto aparece ao abrir. */
     titulo: curto,
     texto: longo,
   }),
-  z.object({ id, tipo: z.literal("citacao"), texto: longo.max(1000), autor: curto, alinhamento }),
   z.object({
     id,
+    linha,
+    tipo: z.literal("citacao"),
+    texto: longo.max(1000),
+    autor: curto,
+    alinhamento,
+  }),
+  z.object({
+    id,
+    linha,
     tipo: z.literal("imagem"),
     arquivo: arquivoDeImagem,
     legenda: curto,
@@ -167,6 +187,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("imagem-texto"),
     arquivo: arquivoDeImagem,
     titulo: curto,
@@ -175,6 +196,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("piramide"),
     forma: z.enum(FORMAS_DOS_NIVEIS),
     /** Do TOPO para a base (pirâmide) ou do topo largo para a ponta (funil). */
@@ -182,11 +204,13 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("fluxo"),
     itens: z.array(z.object({ titulo: curto, texto: curto })).max(24),
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("matriz"),
     estilo: z.enum(ESTILOS_DA_MATRIZ),
     /** Na ordem: alto-esquerda, alto-direita, baixo-esquerda, baixo-direita. */
@@ -194,6 +218,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("ficha"),
     /** Uma pequena introdução (quem é, o que faz). */
     intro: longo.max(1500),
@@ -204,6 +229,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("tabela"),
     colunas: z.array(curto.max(60)).min(1).max(8),
     /** Cada linha tem uma célula por coluna (a tela completa o que faltar). */
@@ -211,6 +237,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("calculadora"),
     /** Números digitados como a pessoa escreve ("R$ 8.000", "12%"); vazio = ainda não definido. */
     meta: z.string().max(24),
@@ -222,6 +249,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({
     id,
+    linha,
     tipo: z.literal("oferta"),
     nivel: z.enum(NIVEIS_DA_OFERTA),
     etapa: z.enum(ETAPAS_DA_OFERTA),
@@ -262,7 +290,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     escassez: longo.max(600),
     objecoes: z.array(z.object({ objecao: curto, resposta: longo.max(600) })).max(10),
   }),
-  z.object({ id, tipo: z.literal("separador") }),
+  z.object({ id, linha, tipo: z.literal("separador") }),
 ]);
 
 export type Bloco = z.infer<typeof blocoSchema>;

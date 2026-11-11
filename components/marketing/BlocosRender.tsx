@@ -3,6 +3,8 @@ import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { CampoNoLugar, emEdicao, type EdicaoNoLugar } from "@/components/marketing/CampoNoLugar";
 
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
+import { agruparPorLinha } from "@/lib/marketing/edicao-de-blocos";
+import { TextoRico } from "@/components/marketing/TextoRico";
 import { OfertaDaPagina } from "@/components/marketing/OfertaDaPagina";
 import {
   BORDA_DA_MARCA,
@@ -87,25 +89,58 @@ function Paragrafos({ texto, className }: { texto: string; className?: string })
     <div className={cn("space-y-3", className)}>
       {partes.map((p, i) => (
         <p key={i} className="whitespace-pre-line">
-          {p}
+          <TextoRico texto={p} />
         </p>
       ))}
     </div>
   );
 }
 
-export function BlocosRender({
-  blocos,
-  rotulos,
-  escala = "pagina",
-  edicao,
-}: {
+/** Quanto vale a fonte do número: cabe na largura do cartão, do tamanho de cada texto. */
+function tamanhoDoNumero(valor: string, slide: boolean): string {
+  const caracteres = Math.max(valor.trim().length, 4);
+  const maximo = slide ? "3.75rem" : "1.875rem";
+  return `clamp(${slide ? "1.5rem" : "1.25rem"}, calc(100cqw * 1.5 / ${caracteres}), ${maximo})`;
+}
+
+type PropsDosBlocos = {
   blocos: readonly Bloco[];
   rotulos: RotulosDosBlocos;
   escala?: "pagina" | "slide";
   /** Só o editor visual passa isto: o bloco em edição troca os textos por campos no lugar. */
   edicao?: EdicaoNoLugar;
-}) {
+};
+
+/**
+ * Blocos seguidos com a mesma `linha` dividem a linha em colunas (no celular empilham).
+ * Sem nenhum, a saída é exatamente a de sempre.
+ */
+export function BlocosRender(props: PropsDosBlocos) {
+  const grupos = agruparPorLinha(props.blocos);
+  if (grupos.every((g) => g.length === 1)) return <BlocosEmSequencia {...props} />;
+  const slide = props.escala === "slide";
+  return (
+    <div className={cn("flex flex-col", slide ? "gap-6 sm:gap-8" : "gap-6")}>
+      {grupos.map((g) =>
+        g.length === 1 ? (
+          <BlocosEmSequencia key={g[0]!.id} {...props} blocos={g} />
+        ) : (
+          <div
+            key={g[0]!.id}
+            style={{ "--colunas": g.length } as CSSProperties}
+            className="grid items-start gap-6 sm:[grid-template-columns:repeat(var(--colunas),minmax(0,1fr))]"
+          >
+            {g.map((b) => (
+              <BlocosEmSequencia key={b.id} {...props} blocos={[b]} />
+            ))}
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function BlocosEmSequencia({ blocos, rotulos, escala = "pagina", edicao }: PropsDosBlocos) {
   const slide = escala === "slide";
   const base = rotulos.baseDasImagens ?? BASE_DAS_IMAGENS_DO_PAINEL;
   const corpo = slide ? "text-lg leading-relaxed sm:text-2xl" : "text-base leading-relaxed";
@@ -149,7 +184,7 @@ export function BlocosRender({
               return (
                 campo(["texto"], classe, "Título") ?? (
                   <h2 key={b.id} className={classe}>
-                    {b.texto}
+                    <TextoRico texto={b.texto} />
                   </h2>
                 )
               );
@@ -163,7 +198,7 @@ export function BlocosRender({
               return (
                 campo(["texto"], classe, "Subtítulo") ?? (
                   <h3 key={b.id} className={classe}>
-                    {b.texto}
+                    <TextoRico texto={b.texto} />
                   </h3>
                 )
               );
@@ -172,7 +207,7 @@ export function BlocosRender({
             return (
               campo(["texto"], classe, "Título pequeno") ?? (
                 <h4 key={b.id} className={classe}>
-                  {b.texto}
+                  <TextoRico texto={b.texto} />
                 </h4>
               )
             );
@@ -192,7 +227,9 @@ export function BlocosRender({
                   >
                     ▶
                   </span>
-                  {campo(["titulo"], "font-medium", "Linha sempre visível") ?? b.titulo}
+                  {campo(["titulo"], "font-medium", "Linha sempre visível") ?? (
+                    <TextoRico texto={b.titulo} />
+                  )}
                 </summary>
                 {campo(["texto"], "mt-2 pl-5 text-muted-foreground", "Texto que aparece ao abrir", {
                   multilinha: true,
@@ -248,7 +285,11 @@ export function BlocosRender({
             const conteudo = (i: { texto: string; idx: number }) =>
               campo(["itens", i.idx], "min-w-0 flex-1", "Item da lista", {
                 aoTeclar: teclasDoItem(i.idx),
-              }) ?? <span>{i.texto}</span>;
+              }) ?? (
+                <span>
+                  <TextoRico texto={i.texto} />
+                </span>
+              );
             if (b.estilo === "numerada") {
               return (
                 <ol key={b.id} className={cn("ml-5 list-decimal space-y-2", corpo)}>
@@ -262,16 +303,17 @@ export function BlocosRender({
               <ul key={b.id} className={cn("space-y-2", corpo)}>
                 {itens.map((i) => (
                   <li key={i.idx} className="flex gap-3">
-                    {b.estilo === "check" ? (
-                      <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground sm:mt-2">
-                        <Check size={12} weight="bold" aria-hidden />
-                      </span>
-                    ) : (
-                      <span
-                        aria-hidden
-                        className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-primary sm:mt-3.5"
-                      />
-                    )}
+                    {/* `1lh` = a altura de UMA linha do texto: o marcador fica centrado na primeira
+                        linha em qualquer tamanho de letra (página, slide, celular). */}
+                    <span aria-hidden className="flex h-[1lh] shrink-0 items-center">
+                      {b.estilo === "check" ? (
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground">
+                          <Check size={12} weight="bold" aria-hidden />
+                        </span>
+                      ) : (
+                        <span className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </span>
                     {conteudo(i)}
                   </li>
                 ))}
@@ -313,7 +355,7 @@ export function BlocosRender({
                               slide ? "text-xl sm:text-2xl" : "text-base",
                             )}
                           >
-                            {i.titulo}
+                            <TextoRico texto={i.titulo} />
                           </h4>
                         ))
                       : null}
@@ -353,24 +395,20 @@ export function BlocosRender({
                 {itens.map(({ item: i, idx }) => (
                   <div
                     key={idx}
-                    className={cn("min-w-0 rounded-2xl bg-card p-4 sm:p-5", BORDA_DA_MARCA)}
+                    style={{ "--tv": tamanhoDoNumero(i.valor, slide) } as CSSProperties}
+                    // `@container`: o número se ajusta à largura do PRÓPRIO cartão (4 por linha
+                    // num slide estreito não pode quebrar "35.000 a 40.000" letra por letra).
+                    className={cn(
+                      "@container min-w-0 rounded-2xl bg-card p-4 sm:p-5",
+                      BORDA_DA_MARCA,
+                    )}
                   >
                     {campo(
                       ["itens", idx, "valor"],
-                      cn(
-                        // `min-w-0` + quebra em qualquer ponto + corpo menor no celular: valor
-                        // comprido ("R$ 7.000.000", "Sob consulta") não pode sair do cartão.
-                        "font-bold tracking-tight text-primary [overflow-wrap:anywhere]",
-                        slide ? "text-3xl sm:text-6xl" : "text-2xl sm:text-3xl",
-                      ),
+                      "font-bold tracking-tight text-primary [overflow-wrap:anywhere] [font-size:var(--tv)] leading-tight",
                       "Número",
                     ) ?? (
-                      <p
-                        className={cn(
-                          "font-bold tracking-tight [overflow-wrap:anywhere] text-primary",
-                          slide ? "text-3xl sm:text-6xl" : "text-2xl sm:text-3xl",
-                        )}
-                      >
+                      <p className="[font-size:var(--tv)] leading-tight font-bold tracking-tight [overflow-wrap:anywhere] text-primary">
                         {i.valor}
                       </p>
                     )}
@@ -385,7 +423,7 @@ export function BlocosRender({
                           slide ? "text-lg" : "text-sm",
                         )}
                       >
-                        {i.rotulo}
+                        <TextoRico texto={i.rotulo} />
                       </p>
                     )}
                     {digitando || i.detalhe
@@ -400,7 +438,7 @@ export function BlocosRender({
                               slide ? "text-base" : "text-xs",
                             )}
                           >
-                            {i.detalhe}
+                            <TextoRico texto={i.detalhe} />
                           </p>
                         ))
                       : null}
@@ -424,7 +462,7 @@ export function BlocosRender({
                         "Título",
                       ) ?? (
                         <h4 className={cn("mt-1 font-semibold", slide ? "text-2xl" : "text-lg")}>
-                          {b.antes.titulo}
+                          <TextoRico texto={b.antes.titulo} />
                         </h4>
                       ))
                     : null}
@@ -457,7 +495,7 @@ export function BlocosRender({
                         "Título",
                       ) ?? (
                         <h4 className={cn("mt-1 font-semibold", slide ? "text-2xl" : "text-lg")}>
-                          {b.depois.titulo}
+                          <TextoRico texto={b.depois.titulo} />
                         </h4>
                       ))
                     : null}
@@ -554,7 +592,7 @@ export function BlocosRender({
                   campo(["autor"], "mt-2 text-sm text-muted-foreground not-italic", "Quem disse")
                 ) : b.autor ? (
                   <footer className="mt-2 text-sm text-muted-foreground not-italic">
-                    — {b.autor}
+                    — <TextoRico texto={b.autor} />
                   </footer>
                 ) : null}
               </blockquote>
@@ -583,7 +621,7 @@ export function BlocosRender({
                       ["legenda"],
                       cn(ALINHAMENTO_DO_TEXTO[b.alinhamento]),
                       "Legenda da imagem",
-                    ) ?? b.legenda}
+                    ) ?? <TextoRico texto={b.legenda} />}
                   </figcaption>
                 ) : null}
               </figure>
@@ -608,7 +646,7 @@ export function BlocosRender({
                             slide ? "text-2xl sm:text-3xl" : "text-xl",
                           )}
                         >
-                          {b.titulo}
+                          <TextoRico texto={b.titulo} />
                         </h3>
                       ))
                     : null}

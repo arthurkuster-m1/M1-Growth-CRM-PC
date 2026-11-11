@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 
 import type { Bloco } from "@/lib/marketing/blocos";
 import { gravarNoCaminho, lerNoCaminho, type Caminho } from "@/lib/marketing/caminho";
+import { aplicarMarcaNoCampo } from "@/lib/marketing/texto-rico";
 import { cn } from "@/lib/utils";
 
 /**
@@ -45,7 +46,7 @@ export function CampoNoLugar({
   bloco: Bloco;
   caminho: Caminho;
   className?: string;
-  /** Várias linhas (Enter quebra a linha); senão Enter encerra a digitação. */
+  /** Aceita várias linhas (Shift+Enter quebra a linha); o Enter sozinho SEMPRE encerra a digitação. */
   multilinha?: boolean;
   placeholder?: string;
   /** Teclas próprias do campo (listas: Enter cria outro item). Devolver `true` = tratou. */
@@ -89,10 +90,31 @@ export function CampoNoLugar({
         )
       }
       onKeyDown={(e) => {
+        // Ctrl+B / Ctrl+I: negrito e itálico no trecho selecionado.
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+          const k = e.key.toLowerCase();
+          if (k === "b" || k === "i") {
+            e.preventDefault();
+            aplicarMarcaNoCampo(e.currentTarget, k === "b" ? "**" : "*");
+            return;
+          }
+        }
         if (aoTeclar?.(e)) return;
-        if (e.key === "Enter" && !e.shiftKey && !multilinha && !e.nativeEvent.isComposing) {
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
           e.preventDefault();
-          edicao.sair();
+          // Enter sai do bloco; Shift+Enter quebra a linha (só onde o texto tem várias linhas).
+          if (!e.shiftKey) edicao.sair();
+          else if (multilinha) {
+            const el = e.currentTarget;
+            const { selectionStart: a, selectionEnd: b, value } = el;
+            const escrever = Object.getOwnPropertyDescriptor(
+              HTMLTextAreaElement.prototype,
+              "value",
+            )?.set;
+            escrever?.call(el, `${value.slice(0, a)}\n${value.slice(b)}`);
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.setSelectionRange(a + 1, a + 1);
+          }
         }
       }}
       className={cn(
