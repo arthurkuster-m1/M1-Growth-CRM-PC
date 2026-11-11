@@ -164,7 +164,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
               onClick={() => setImportando(true)}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap hover:bg-secondary"
             >
-              {t("Importar planilha")}
+              {t("Importar produtos")}
             </button>
           ) : null}
           {podeEditar && opcoes.length > 0 ? (
@@ -259,6 +259,7 @@ export function SubpaginasDoModulo({ modulo, base }: { modulo: string; base: str
           aberto={importando}
           aoFechar={() => setImportando(false)}
           modulo={modulo}
+          existentes={subpaginas.map((s) => s.title)}
         />
       ) : null}
     </section>

@@ -38,7 +38,9 @@ import {
 } from "@/lib/motor/layout";
 import type { ResumoDeSubpagina } from "@/lib/marketing/paginas";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
-import { Check, Package, TextAa, Trash } from "@/lib/ui/icons";
+import { Check, Copy, Package, TextAa, Trash } from "@/lib/ui/icons";
+import { CopiarProdutos } from "@/components/marketing/produtos/CopiarProdutos";
+import { toast } from "sonner";
 
 const ID_DA_PADRAO = "padrao";
 const MODULO = "produtos-e-ofertas";
@@ -103,6 +105,7 @@ export function TabelaDeProdutos({
   const caminho = usePathname();
   const parametros = useSearchParams();
   const [configurando, setConfigurando] = useState(false);
+  const [copiandoPara, setCopiandoPara] = useState<string[] | null>(null);
   const queryClient = useQueryClient();
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
   const ultimoMarcado = useRef<string | null>(null);
@@ -216,6 +219,50 @@ export function TabelaDeProdutos({
     );
     setSelecionadas(new Set());
     void queryClient.invalidateQueries({ queryKey: chaveDoCache });
+  };
+
+  /** DUPLICA neste cliente: cada produto ganha “Nome (cópia)”. Ctrl+Z apaga as cópias. */
+  const duplicar = async (keys: string[]) => {
+    try {
+      const r = await apiClient.post<{
+        data: { resultados: Array<{ criados: number; chaves: string[]; erro: string | null }> };
+      }>("/api/v1/marketing/ofertas/copiar", { keys, destinos: [] });
+      const criadas = r.data.resultados.flatMap((x) => x.chaves);
+      const erro = r.data.resultados.find((x) => x.erro)?.erro;
+      if (erro) toast.error(erro);
+      if (criadas.length === 0) return;
+      toast.success(
+        criadas.length === 1
+          ? t("Produto duplicado.")
+          : `${criadas.length} ${t("produtos duplicados.")}`,
+      );
+      registrarDesfazer({
+        rotulo: `${criadas.length} ${t("cópias")}`,
+        desfazer: async () => {
+          await apiClient.delete(BASE_DA_API, { keys: criadas });
+          await queryClient.invalidateQueries({ queryKey: chaveDoCache });
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: chaveDoCache });
+    } catch (e) {
+      showApiError(e);
+    }
+  };
+  /** COPIA como texto de planilha (cola em outra planilha ou na tabela de importar de outro cliente). */
+  const copiarComoTexto = async (keys: string[]) => {
+    try {
+      const r = await apiClient.post<{ data: { texto: string; total: number } }>(
+        "/api/v1/marketing/ofertas/texto",
+        { keys },
+      );
+      await navigator.clipboard.writeText(r.data.texto);
+      toast.success(
+        `${r.data.total} ${r.data.total === 1 ? t("produto copiado como texto.") : t("produtos copiados como texto.")} ${t("Cole na tabela de importar ou numa planilha.")}`,
+      );
+    } catch (e) {
+      if (e instanceof DOMException) toast.error(t("Não foi possível copiar."));
+      else showApiError(e);
+    }
   };
 
   const padrao = useVisualizacao("produtos");
@@ -755,6 +802,21 @@ export function TabelaDeProdutos({
             )}
           </AcaoEmMassa>
           <AcaoEmMassa
+            rotulo={t("Duplicar")}
+            icone={<Copy size={14} aria-hidden />}
+            aoClicar={() => void duplicar(idsSelecionados)}
+          />
+          <AcaoEmMassa
+            rotulo={t("Copiar para cliente")}
+            icone={<Copy size={14} aria-hidden />}
+            aoClicar={() => setCopiandoPara(idsSelecionados)}
+          />
+          <AcaoEmMassa
+            rotulo={t("Copiar como texto")}
+            icone={<TextAa size={14} aria-hidden />}
+            aoClicar={() => void copiarComoTexto(idsSelecionados)}
+          />
+          <AcaoEmMassa
             rotulo={t("Publicar")}
             aoClicar={() => void publicar(idsSelecionados, true)}
           />
@@ -770,6 +832,12 @@ export function TabelaDeProdutos({
           />
         </BarraDeSelecao>
       ) : null}
+      <CopiarProdutos
+        aberto={copiandoPara !== null}
+        aoFechar={() => setCopiandoPara(null)}
+        keys={copiandoPara ?? []}
+        modulo={MODULO}
+      />
       <ConfigurarVisualizacao
         aberto={configurando}
         aoFechar={() => setConfigurando(false)}
