@@ -177,3 +177,76 @@ describe("todos os blocos saem e voltam em texto", () => {
     expect(volta[2]!.linha).toBeUndefined();
   });
 });
+
+describe("oferta (o produto) em texto", () => {
+  const texto = `::: oferta
+nivel | completa
+etapa | principal
+carro-chefe | sim
+resumo | Anúncios no Meta e no Google
+para quem | Clínicas
+inclui | Criativos | Relatório mensal
+prazo | 3 meses
+tipo de preco | setup + mensal
+preco | R$ 1.500,00
+setup | R$ 500,00
+condicoes | Pix \\| cartão
+promessa | Mais pacientes
+garantia | 30 dias
+nunca prometer | Resultado garantido
+entregavel | Criativos | 8 por mês | R$ 800,00
+objecao | Está caro | Compare com o custo de não vender
+faq | Tem fidelidade? | 3 meses
+:::
+`;
+  const ids = () => {
+    let n = 0;
+    return () => `o${++n}`;
+  };
+
+  it("lê a oferta do texto", () => {
+    const r = lerTextoDaPagina(texto, ids());
+    expect(r.problemas).toEqual([]);
+    expect(r.blocos).toHaveLength(1);
+    expect(r.blocos[0]).toMatchObject({
+      tipo: "oferta",
+      nivel: "completa",
+      etapa: "principal",
+      carroChefe: true,
+      inclui: ["Criativos", "Relatório mensal"],
+      preco: {
+        tipo: "setup-mensal",
+        valor: "R$ 1.500,00",
+        setup: "R$ 500,00",
+        condicoes: "Pix | cartão",
+      },
+      entregaveis: [{ nome: "Criativos", descricao: "8 por mês", valor: "R$ 800,00" }],
+      objecoes: [{ objecao: "Está caro", resposta: "Compare com o custo de não vender" }],
+      faq: [{ pergunta: "Tem fidelidade?", resposta: "3 meses" }],
+    });
+  });
+
+  it("copiar como texto e colar de novo devolve a mesma oferta (o copiar não sai mais vazio)", () => {
+    const lida = lerTextoDaPagina(texto, ids());
+    const { texto: copiado, ignorados } = textoDaPagina(lida.blocos);
+    expect(copiado.trim()).not.toBe("");
+    expect(ignorados).toBe(0);
+    const volta = lerTextoDaPagina(copiado, ids());
+    expect(volta.problemas).toEqual([]);
+    expect(volta.blocos).toEqual(lida.blocos);
+  });
+
+  it("campo desconhecido ou valor inválido é erro com a mensagem, e nada é importado", () => {
+    const r = lerTextoDaPagina("::: oferta\netapa | vip\npreço2 | 10\n:::\n", ids());
+    expect(r.blocos).toEqual([]);
+    expect(r.problemas.map((p) => p.erro).join(" ")).toMatch(/etapa.*vip/);
+    expect(r.problemas.map((p) => p.erro).join(" ")).toMatch(/campo desconhecido/);
+  });
+
+  it("sem tipo de preço: com valor é pagamento único, sem valor é sob consulta", () => {
+    const a = lerTextoDaPagina("::: oferta\npreco | 100\n:::\n", ids());
+    const b = lerTextoDaPagina("::: oferta\nresumo | x\n:::\n", ids());
+    expect(a.blocos[0]).toMatchObject({ preco: { tipo: "unico" } });
+    expect(b.blocos[0]).toMatchObject({ preco: { tipo: "sob-consulta" } });
+  });
+});

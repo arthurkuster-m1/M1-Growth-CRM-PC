@@ -26,8 +26,8 @@
  *   ::: paleta                nome | #cor
  *   ::: ficha                 a linha sem `|` é a introdução; as demais: rótulo | https://endereço | destaque
  *   ::: calculadora           meta, ticket, conversao, cpl, margem, retencao — uma por linha: chave | valor
- *   ::: oferta                uma linha com os dados da oferta (JSON), como a cópia da página escreve
  *   |||                       (sozinha, entre dois blocos: o bloco seguinte fica AO LADO do anterior)
+ *   ::: oferta                campo | valor, uma linha por campo (o produto; veja texto-da-oferta.ts)
  *   :::                       (fecha o bloco)
  *
  * Dentro do texto, `**negrito**` e `*itálico*` valem em qualquer bloco.
@@ -46,6 +46,7 @@ import {
   MAXIMO_DE_COLUNAS,
   type Bloco,
 } from "@/lib/marketing/blocos";
+import { linhasDaOferta, ofertaDeLinhas } from "@/lib/marketing/texto-da-oferta";
 
 export interface ProblemaDoTexto {
   linha: number;
@@ -376,17 +377,9 @@ export function lerTextoDaPagina(texto: string, novoId: () => string): LeituraDo
           break;
         }
         case "oferta": {
-          let dados: unknown;
-          try {
-            dados = JSON.parse(corpo.map((c) => c.t).join(""));
-          } catch {
-            problemas.push({
-              linha: numero,
-              erro: "os dados da oferta não estão em um formato válido",
-            });
-            break;
-          }
-          aceitar({ ...(dados as object), id, tipo: "oferta" }, numero);
+          const { candidato, erros } = ofertaDeLinhas(cols, id);
+          if (erros.length > 0) for (const erro of erros) problemas.push({ linha: numero, erro });
+          else aceitar(candidato, numero);
           break;
         }
         default:
@@ -630,11 +623,11 @@ export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: numb
           ),
         );
         break;
-      case "oferta": {
-        const { id: _id, tipo: _tipo, linha: _linha, ...dados } = b;
-        bloco("oferta", [JSON.stringify(dados)]);
+      case "oferta":
+        // As imagens do produto não cabem em texto: o resto sai, e as imagens são contadas.
+        bloco("oferta", linhasDaOferta(b));
+        if (b.imagens?.length) ignorados++;
         break;
-      }
       default:
         ignorados++;
     }
