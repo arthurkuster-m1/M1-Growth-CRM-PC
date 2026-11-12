@@ -14,6 +14,7 @@ import {
   CaretDoubleRight,
   CaretDown,
   CurrencyDollar,
+  Note,
   Gear,
   House,
   Inbox,
@@ -549,6 +550,12 @@ export function SidebarContent({
                 href: "/app/financas",
                 rotulo: t("Financeiro"),
                 Icone: CurrencyDollar,
+                extra: null,
+              },
+              {
+                href: "/app/anotacoes",
+                rotulo: t("Anotações"),
+                Icone: Note,
                 extra: null,
               },
             ].map((d) => {

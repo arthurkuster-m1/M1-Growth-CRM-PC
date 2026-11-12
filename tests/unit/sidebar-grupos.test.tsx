@@ -92,7 +92,7 @@ describe("Sidebar agrupado", () => {
     expect(titulos).toEqual(["Marketing", "Atendimento"]);
   });
 
-  it("a ordem do menu: Início, Tarefas, Marketing, Atendimento, Agentes de IA, Conexões, Financeiro", () => {
+  it("a ordem do menu: Início, Tarefas, Marketing, Atendimento, Agentes de IA, Conexões, Financeiro, Anotações", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsGrupos();
@@ -111,12 +111,14 @@ describe("Sidebar agrupado", () => {
       "/app/ai",
       "/app/connections",
       "/app/financas",
+      // Anotações vem logo abaixo de Financeiro, a última da lista.
+      "/app/anotacoes",
     ].map(posicao);
     expect(ordem.every((i) => i >= 0)).toBe(true);
     expect([...ordem].sort((a, b) => a - b)).toEqual(ordem);
     // Automações saiu do Marketing e mora em Atendimento.
     expect(posicao("/app/automacoes")).toBeGreaterThan(posicao("/app/marketing/dashboards"));
-    expect(hrefs[hrefs.length - 1]).toBe("/app/financas");
+    expect(hrefs[hrefs.length - 1]).toBe("/app/anotacoes");
   });
 
   it("Agentes de IA é um link só, e as telas de IA não aparecem soltas no menu", () => {

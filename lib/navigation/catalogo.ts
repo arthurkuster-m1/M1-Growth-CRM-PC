@@ -173,6 +173,16 @@ export const NAV_CATALOG = [
     minRole: "viewer",
   },
   {
+    // ANOTAÇÕES: página solta no menu lateral, logo abaixo de Finanças (o Sidebar desenha o link, e
+    // por isso não leva `sidebar: true`). O bloco de notas da agência sobre a empresa, em páginas.
+    href: "/app/anotacoes",
+    label: "Anotações",
+    description: "Informações importantes e ideias, organizadas em páginas e subpáginas.",
+    icon: "Note",
+    group: "atendimento",
+    minRole: "viewer",
+  },
+  {
     // MARKETING — a vitrine do trabalho da agência. Quatro de cinco telas sobem para o menu
     // porque o Arthur quer entrar direto em cada uma; a visão geral é o hub do grupo.
     href: "/app/marketing/estrategia",

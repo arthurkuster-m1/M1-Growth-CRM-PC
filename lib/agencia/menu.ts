@@ -7,6 +7,7 @@ import {
   Gear,
   ListChecks,
   Megaphone,
+  Note,
   UserCircle,
   Users,
 } from "@/lib/ui/icons";
@@ -57,6 +58,11 @@ export function itensDaPlataforma(): ItemDoMenuDaAgencia[] {
   ];
 }
 
+/** "Anotações": o bloco de notas da agência, no fim do menu (abaixo de Configurações). */
+export function itensDeAnotacoes(): ItemDoMenuDaAgencia[] {
+  return [{ href: "/app/agencia/anotacoes", rotulo: "Anotações", Icone: Note }];
+}
+
 /** O menu inteiro do Modo agência: [título (ou null), itens], na ordem em que aparece. */
 export function gruposDoModoAgencia(
   ehSuperAdmin: boolean,
@@ -65,6 +71,7 @@ export function gruposDoModoAgencia(
     { titulo: null, itens: itensDoTopo(ehSuperAdmin) },
     { titulo: "Operações", itens: itensDaAgencia(ehSuperAdmin) },
     ...(ehSuperAdmin ? [{ titulo: "Plataforma", itens: itensDaPlataforma() }] : []),
+    { titulo: null, itens: itensDeAnotacoes() },
   ].filter((g) => g.itens.length > 0);
 }
 
