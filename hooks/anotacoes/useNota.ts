@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { apiClient } from "@/lib/api/client";
 import type { NotaAberta } from "@/lib/anotacoes/paginas";
-import type { Bloco } from "@/lib/marketing/blocos";
+import type { Documento } from "@/lib/anotacoes/documento";
 
 const ESPERA_PARA_SALVAR_MS = 900;
 
@@ -31,9 +31,9 @@ export function useNota(id: string) {
     staleTime: 15_000,
   });
 
-  const [edicao, setEdicao] = useState<Bloco[] | null>(null);
+  const [edicao, setEdicao] = useState<Documento | null>(null);
   const [estado, setEstado] = useState<EstadoDoSalvamento>("salvo");
-  const pendente = useRef<Bloco[] | null>(null);
+  const pendente = useRef<Documento | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const gravar = useCallback(async (): Promise<boolean> => {
@@ -57,7 +57,7 @@ export function useNota(id: string) {
   }, [rota, queryClient]);
 
   const editar = useCallback(
-    (blocos: Bloco[]) => {
+    (blocos: Documento) => {
       setEdicao(blocos);
       pendente.current = blocos;
       setEstado("pendente");
@@ -82,7 +82,7 @@ export function useNota(id: string) {
   );
 
   const pagina = consulta.data;
-  const blocos: Bloco[] = edicao ?? pagina?.blocks ?? [];
+  const blocos: Documento = edicao ?? pagina?.blocks ?? [];
 
   return {
     pagina,

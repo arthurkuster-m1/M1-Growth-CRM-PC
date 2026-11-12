@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { blocosSchema, type Bloco } from "@/lib/marketing/blocos";
+import { documentoSchema, type Documento } from "@/lib/anotacoes/documento";
 
 /** O teto de subpáginas, uma dentro da outra (o banco também recusa). */
 export const PROFUNDIDADE_MAXIMA = 12;
@@ -20,7 +20,7 @@ export interface ResumoDaNota {
 
 /** Uma página aberta, com o conteúdo. */
 export interface NotaAberta extends ResumoDaNota {
-  blocks: Bloco[];
+  blocks: Documento;
 }
 
 export const COLUNAS_DO_RESUMO =
@@ -43,7 +43,7 @@ export const edicaoDeNotaSchema = z
   .object({
     title: tituloSchema,
     icon: iconeSchema,
-    blocks: blocosSchema,
+    blocks: documentoSchema,
     parent_id: idSchema.nullable(),
     position: z.number().finite(),
     visible_to_client: z.boolean(),

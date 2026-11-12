@@ -149,6 +149,19 @@ export function Anotacoes() {
             aoMudar={arvore.mudar}
             aoApagar={(id) => void apagar(id)}
             aoAbrir={abrir}
+            aoCriarSubpagina={async (paiId) => {
+              const nova = await arvore.criar(paiId);
+              return nova?.id ?? null;
+            }}
+            aoReordenarSubpaginas={(ids) =>
+              reordenar(
+                ids
+                  .map((id, i) => ({ id, position: i + 1 }))
+                  .filter(
+                    ({ id, position }) => notas.find((n) => n.id === id)?.position !== position,
+                  ),
+              )
+            }
           />
         ) : (
           <div className="grid place-items-center gap-3 rounded-3xl border border-dashed p-12 text-center">

@@ -2,14 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { BlocosRender } from "@/components/marketing/BlocosRender";
-import { EditorVisualDeBlocos } from "@/components/marketing/EditorVisualDeBlocos";
+import { EditorDeNotasCarregavel } from "@/components/anotacoes/EditorDeNotasCarregavel";
 import { SeletorDeIcone } from "@/components/anotacoes/SeletorDeIcone";
 import { Switch } from "@/components/ui/switch";
 import { useNota } from "@/hooks/anotacoes/useNota";
 import { useT } from "@/hooks/i18n/useT";
 import { caminhoDaNota, type ResumoDaNota } from "@/lib/anotacoes/paginas";
-import { randomId } from "@/lib/random-id";
 import { CaretRight, Eye, Trash } from "@/lib/ui/icons";
 
 const ESPERA_DO_TITULO_MS = 600;
@@ -26,6 +24,8 @@ export function PaginaDeNota({
   aoMudar,
   aoApagar,
   aoAbrir,
+  aoCriarSubpagina,
+  aoReordenarSubpaginas,
 }: {
   id: string;
   notas: ResumoDaNota[];
@@ -37,9 +37,11 @@ export function PaginaDeNota({
   ) => Promise<boolean>;
   aoApagar: (id: string) => void;
   aoAbrir: (id: string) => void;
+  aoCriarSubpagina: (paiId: string) => Promise<string | null>;
+  aoReordenarSubpaginas: (ids: string[]) => void;
 }) {
   const t = useT();
-  const { pagina, blocos, estado, editar, carregando, falhou } = useNota(id);
+  const { pagina, estado, editar, carregando, falhou } = useNota(id);
   const resumo = notas.find((n) => n.id === id);
   const caminho = caminhoDaNota(notas, id);
   const temFilhas = notas.some((n) => n.parent_id === id && !n.deleted_at);
@@ -181,26 +183,17 @@ export function PaginaDeNota({
         ) : null}
       </header>
 
-      {podeEditar ? (
-        <EditorVisualDeBlocos
-          blocos={blocos}
-          aoMudar={editar}
-          novoId={randomId}
-          tituloDaPagina={resumo.title}
-          rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
-        />
-      ) : blocos.length === 0 ? (
-        <p className="rounded-3xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          {t("Esta página ainda está em branco.")}
-        </p>
-      ) : (
-        <article className="rounded-3xl border bg-card p-4 shadow-sm sm:p-10">
-          <BlocosRender
-            blocos={blocos}
-            rotulos={{ antes: t("Antes"), depois: t("Depois"), abrirLink: t("Abrir link") }}
-          />
-        </article>
-      )}
+      <EditorDeNotasCarregavel
+        inicial={pagina.blocks}
+        editavel={podeEditar}
+        paginas={notas}
+        paginaId={id}
+        aoMudar={editar}
+        aoAbrir={aoAbrir}
+        aoCriarSubpagina={() => aoCriarSubpagina(id)}
+        aoRemoverSubpagina={aoApagar}
+        aoReordenarSubpaginas={aoReordenarSubpaginas}
+      />
     </div>
   );
 }

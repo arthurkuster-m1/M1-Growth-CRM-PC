@@ -87,8 +87,13 @@ describe("anotações — validação de entrada", () => {
     expect(edicaoDeNotaSchema.safeParse({ icon: null }).success).toBe(true);
   });
 
-  it("editar: o conteúdo passa pelo mesmo validador de blocos da Estratégia", () => {
-    expect(edicaoDeNotaSchema.safeParse({ blocks: [{ tipo: "inexistente" }] }).success).toBe(false);
+  it("editar: o conteúdo é a lista de blocos do editor, cada um com id e type", () => {
+    const ok = [{ id: "1", type: "paragraph", props: {}, content: [], children: [] }];
+    expect(edicaoDeNotaSchema.safeParse({ blocks: ok }).success).toBe(true);
     expect(edicaoDeNotaSchema.safeParse({ blocks: [] }).success).toBe(true);
+    expect(edicaoDeNotaSchema.safeParse({ blocks: [{ tipo: "texto", id: "1" }] }).success).toBe(
+      false,
+    );
+    expect(edicaoDeNotaSchema.safeParse({ blocks: "texto" }).success).toBe(false);
   });
 });

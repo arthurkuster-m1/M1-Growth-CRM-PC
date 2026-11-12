@@ -28,7 +28,7 @@ import {
   type NotaAberta,
   type ResumoDaNota,
 } from "@/lib/anotacoes/paginas";
-import { lerBlocos } from "@/lib/marketing/blocos";
+import { lerDocumento } from "@/lib/anotacoes/documento";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +49,6 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
 
   const id = idDeNotaSchema.safeParse((await ctx.params).id);
   if (!id.success) return fail("not_found", t("Página não encontrada."), 404, { requestId });
-  const notaId = id.data;
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -65,7 +64,7 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   const page: NotaAberta = {
     ...linha,
     position: Number(linha.position),
-    blocks: lerBlocos(linha.blocks),
+    blocks: lerDocumento(linha.blocks),
   };
   return ok({ page }, { requestId });
 }
