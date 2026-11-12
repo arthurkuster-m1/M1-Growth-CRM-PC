@@ -1,0 +1,20 @@
+/* Tabela: a primeira linha (cabeçalho) destacada, como título das colunas. */
+.bn-editor [data-content-type="table"] th {
+  background-color: rgb(100 160 255 / 0.14);
+  font-weight: 600;
+}
+
+/* Linhas selecionadas (arrastando o mouse por cima de vários blocos): o bloco inteiro pinta. */
+.notas-varios-selecionados .bn-editor ::selection {
+  background: transparent;
+}
+
+/* O retângulo de seleção que acompanha o mouse. */
+.notas-retangulo {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  border: 1px solid rgb(100 160 255 / 0.8);
+  background: rgb(100 160 255 / 0.12);
+  border-radius: 2px;
+}

@@ -1,12 +1,14 @@
 "use client";
 
 import "@blocknote/mantine/style.css";
+import "@/components/anotacoes/editor-de-notas.css";
 
 import {
   BlockNoteSchema,
   defaultBlockSpecs,
   filterSuggestionItems,
   getDefaultSlashMenuItems,
+  insertOrUpdateBlockForSlashMenu,
 } from "@blocknote/core";
 import * as locales from "@blocknote/core/locales";
 import {
@@ -15,7 +17,15 @@ import {
   useCreateBlockNote,
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
-import { createContext, useContext, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { toast } from "sonner";
 
 import { useT } from "@/hooks/i18n/useT";
@@ -166,9 +176,27 @@ export default function EditorDeNotas({
 
   function itensDoMenu(consulta: string) {
     const itens = [
-      ...getDefaultSlashMenuItems(editor).filter(
-        (i) => !["video", "audio", "file"].includes(i.key),
-      ),
+      ...getDefaultSlashMenuItems(editor)
+        .filter((i) => !["video", "audio", "file"].includes(i.key))
+        // A tabela já nasce com a primeira linha como cabeçalho destacado.
+        .map((i) =>
+          i.key === "table"
+            ? {
+                ...i,
+                onItemClick: () => {
+                  const linha = () => ({ cells: ["", "", ""] });
+                  insertOrUpdateBlockForSlashMenu(editor, {
+                    type: "table",
+                    content: {
+                      type: "tableContent",
+                      headerRows: 1,
+                      rows: [linha(), linha(), linha()],
+                    },
+                  } as never);
+                },
+              }
+            : i,
+        ),
       {
         key: "subpagina",
         title: t("Subpágina"),
@@ -193,9 +221,90 @@ export default function EditorDeNotas({
     return filterSuggestionItems(itens, consulta);
   }
 
+  // ── Seleção de várias linhas ──────────────────────────────────────────────────────────────────
+  // Vale de dois jeitos: arrastar o mouse no espaço em branco (retângulo) e arrastar por cima de
+  // vários blocos escrevendo. Nos dois, os blocos inteiros ficam pintados e Delete/Ctrl+C/arrastar
+  // valem para todos (a seleção é a do próprio editor).
+  const papel = useRef<HTMLDivElement | null>(null);
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [retangulo, setRetangulo] = useState<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
+  const arrastou = useRef(false);
+
+  useEffect(
+    () =>
+      editor.onSelectionChange(() => {
+        const ids = editor.getSelection()?.blocks.map((b) => b.id) ?? [];
+        setSelecionados((atual) =>
+          ids.length > 1
+            ? JSON.stringify(atual) === JSON.stringify(ids)
+              ? atual
+              : ids
+            : atual.length
+              ? []
+              : atual,
+        );
+      }),
+    [editor],
+  );
+
+  function comecouArrasto(e: MouseEvent<HTMLDivElement>) {
+    const caixa = papel.current;
+    if (!editavel || !caixa || e.button !== 0) return;
+    // Dentro do texto (ou de um botão/menu) o mouse segue escolhendo o texto, como sempre.
+    if ((e.target as HTMLElement).closest(".bn-inline-content, button, a, input, [role='menu']"))
+      return;
+    e.preventDefault();
+    const base = caixa.getBoundingClientRect();
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    arrastou.current = false;
+
+    const mover = (ev: globalThis.MouseEvent) => {
+      if (!arrastou.current && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+      arrastou.current = true;
+      const esquerda = Math.min(x0, ev.clientX);
+      const topo = Math.min(y0, ev.clientY);
+      const largura = Math.abs(ev.clientX - x0);
+      const altura = Math.abs(ev.clientY - y0);
+      setRetangulo({ x: esquerda - base.left, y: topo - base.top, w: largura, h: altura });
+      const dentro = [...caixa.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]")].filter(
+        (el) => {
+          const r = el.getBoundingClientRect();
+          return (
+            r.right > esquerda &&
+            r.left < esquerda + largura &&
+            r.bottom > topo &&
+            r.top < topo + altura
+          );
+        },
+      );
+      // Só os blocos mais externos tocados: o filho vai junto com o pai.
+      const raizes = dentro.filter((el) => !dentro.some((o) => o !== el && o.contains(el)));
+      const ids = raizes.map((el) => el.dataset.id!).filter(Boolean);
+      setSelecionados(ids.length > 1 ? ids : []);
+      if (ids.length > 1) editor.setSelection(ids[0]!, ids[ids.length - 1]!);
+    };
+    const soltar = () => {
+      window.removeEventListener("mousemove", mover);
+      window.removeEventListener("mouseup", soltar);
+      setRetangulo(null);
+    };
+    window.addEventListener("mousemove", mover);
+    window.addEventListener("mouseup", soltar);
+  }
+
   // Clicar no "papel" abaixo do último bloco coloca o cursor no fim, num parágrafo vazio.
   function clicouNoPapel(e: MouseEvent<HTMLDivElement>) {
     if (!editavel || e.target !== e.currentTarget) return;
+    if (arrastou.current) {
+      arrastou.current = false;
+      return;
+    }
     const blocos = editor.document;
     const ultimo = blocos[blocos.length - 1];
     if (!ultimo) return;
@@ -212,7 +321,29 @@ export default function EditorDeNotas({
 
   return (
     <Contexto.Provider value={{ paginas, abrir: aoAbrir }}>
-      <div className="min-h-[60vh] cursor-text pb-32" onClick={clicouNoPapel}>
+      <div
+        ref={papel}
+        className={`relative min-h-[60vh] cursor-text pb-32 ${selecionados.length > 1 ? "notas-varios-selecionados" : ""}`}
+        onClick={clicouNoPapel}
+        onMouseDown={comecouArrasto}
+      >
+        {selecionados.length > 1 ? (
+          <style>
+            {selecionados
+              .filter((id) => /^[\w-]+$/.test(id))
+              .map(
+                (id) =>
+                  `.bn-block-outer[data-id="${id}"]>.bn-block{background:rgb(100 160 255 / .18);border-radius:4px}`,
+              )
+              .join("")}
+          </style>
+        ) : null}
+        {retangulo ? (
+          <div
+            className="notas-retangulo"
+            style={{ left: retangulo.x, top: retangulo.y, width: retangulo.w, height: retangulo.h }}
+          />
+        ) : null}
         <BlockNoteView
           editor={editor}
           editable={editavel}
