@@ -28,6 +28,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { ITENS_DOS_BLOCOS_VISUAIS, blocosVisuais } from "@/components/anotacoes/blocos-visuais";
 import { useT } from "@/hooks/i18n/useT";
 import { ajustarCartoes, cartoesDoDocumento, type Documento } from "@/lib/anotacoes/documento";
 import type { ResumoDaNota } from "@/lib/anotacoes/paginas";
@@ -72,7 +73,7 @@ const criarSubpagina = createReactBlockSpec(
 // O envio de arquivo da agência só guarda imagem: vídeo, áudio e arquivo ficam fora do menu.
 const { video: _video, audio: _audio, file: _file, ...blocosPermitidos } = defaultBlockSpecs;
 const esquema = BlockNoteSchema.create({
-  blockSpecs: { ...blocosPermitidos, subpagina: criarSubpagina() },
+  blockSpecs: { ...blocosPermitidos, subpagina: criarSubpagina(), ...blocosVisuais },
 });
 
 async function enviarImagem(file: File): Promise<string> {
@@ -197,6 +198,17 @@ export default function EditorDeNotas({
               }
             : i,
         ),
+      ...ITENS_DOS_BLOCOS_VISUAIS.map((b) => ({
+        key: b.tipo,
+        title: t(b.titulo),
+        subtext: t(b.descricao),
+        aliases: b.aliases,
+        group: t("Blocos visuais"),
+        icon: <FileText size={18} aria-hidden />,
+        onItemClick: () => {
+          insertOrUpdateBlockForSlashMenu(editor, { type: b.tipo } as never);
+        },
+      })),
       {
         key: "subpagina",
         title: t("Subpágina"),

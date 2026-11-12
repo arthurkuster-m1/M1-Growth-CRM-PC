@@ -98,4 +98,77 @@ describe("EditorDeNotas", () => {
     await waitFor(() => expect(document.querySelector(".bn-editor")).toBeTruthy());
     expect(screen.queryByText("Solta")).toBeNull();
   });
+
+  it("desenha os blocos visuais com os dados salvos, e dado ruim vira o padrão sem quebrar", async () => {
+    const props = (dados: string, extra: Record<string, string> = {}) => ({ dados, ...extra });
+    render(
+      <EditorDeNotas
+        inicial={[
+          {
+            id: "f",
+            type: "fluxo",
+            props: props(
+              JSON.stringify([
+                { titulo: "Captar", texto: "" },
+                { titulo: "Fechar", texto: "" },
+              ]),
+            ),
+            children: [],
+          },
+          {
+            id: "m",
+            type: "matriz",
+            props: props(JSON.stringify([{ titulo: "Forças", texto: "Equipe" }]), {
+              estilo: "swot",
+            }),
+            children: [],
+          },
+          {
+            id: "c",
+            type: "cartoes",
+            props: props(JSON.stringify([{ titulo: "Plano A", texto: "" }])),
+            children: [],
+          },
+          {
+            id: "k",
+            type: "metricas",
+            props: props(JSON.stringify([{ titulo: "128", texto: "Leads" }])),
+            children: [],
+          },
+          {
+            id: "p",
+            type: "piramide",
+            props: props(JSON.stringify(["Topo", "Base"]), { forma: "funil" }),
+            children: [],
+          },
+          { id: "r", type: "fluxo", props: props("{isso não é json"), children: [] },
+          {
+            id: "d",
+            type: "destaque",
+            props: { tom: "atencao" },
+            content: [{ type: "text", text: "Cuidado com o prazo", styles: {} }],
+            children: [],
+          },
+        ]}
+        editavel
+        paginas={[nota("mae", null, "Mãe")]}
+        paginaId="mae"
+        aoMudar={() => undefined}
+        aoAbrir={() => undefined}
+        aoCriarSubpagina={async () => null}
+        aoRemoverSubpagina={() => undefined}
+        aoReordenarSubpaginas={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("Cuidado com o prazo")).toBeTruthy());
+    expect(screen.getByDisplayValue("Captar")).toBeTruthy();
+    expect(screen.getByDisplayValue("Fechar")).toBeTruthy();
+    expect(screen.getByDisplayValue("Equipe")).toBeTruthy();
+    expect(screen.getByDisplayValue("Plano A")).toBeTruthy();
+    expect(screen.getByDisplayValue("128")).toBeTruthy();
+    expect(screen.getByDisplayValue("Leads")).toBeTruthy();
+    expect(screen.getByDisplayValue("Topo")).toBeTruthy();
+    // O fluxo com JSON quebrado caiu no padrão (três etapas), e o editor segue de pé.
+    expect(screen.getAllByDisplayValue("Etapa 1").length).toBe(1);
+  });
 });
