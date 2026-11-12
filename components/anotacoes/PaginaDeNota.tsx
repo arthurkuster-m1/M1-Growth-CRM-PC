@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useNota } from "@/hooks/anotacoes/useNota";
 import { useT } from "@/hooks/i18n/useT";
 import { caminhoDaNota, type ResumoDaNota } from "@/lib/anotacoes/paginas";
-import { CaretRight, Eye, Trash } from "@/lib/ui/icons";
+import { CaretRight, Eye, Star, Trash } from "@/lib/ui/icons";
 
 const ESPERA_DO_TITULO_MS = 600;
 
@@ -26,8 +26,12 @@ export function PaginaDeNota({
   aoAbrir,
   aoCriarSubpagina,
   aoReordenarSubpaginas,
+  favorita,
+  aoFavoritar,
 }: {
   id: string;
+  favorita: boolean;
+  aoFavoritar: (favorita: boolean) => void;
   notas: ResumoDaNota[];
   podeEditar: boolean;
   aoMudar: (
@@ -136,6 +140,21 @@ export function PaginaDeNota({
               {resumo.title || t("Sem título")}
             </h1>
           )}
+          <button
+            type="button"
+            onClick={() => aoFavoritar(!favorita)}
+            aria-pressed={favorita}
+            aria-label={favorita ? t("Tirar dos favoritos") : t("Favoritar")}
+            title={favorita ? t("Tirar dos favoritos") : t("Favoritar")}
+            className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <Star
+              size={20}
+              weight={favorita ? "fill" : "regular"}
+              className={favorita ? "text-warning" : undefined}
+              aria-hidden
+            />
+          </button>
         </div>
 
         {podeEditar ? (

@@ -14,6 +14,8 @@ export interface ResumoDaNota {
   icon: string | null;
   position: number;
   visible_to_client: boolean;
+  /** `inbox` = a Caixa de entrada da organização (a captura rápida cai nela). */
+  kind: "inbox" | null;
   deleted_at: string | null;
   updated_at: string;
 }
@@ -24,7 +26,7 @@ export interface NotaAberta extends ResumoDaNota {
 }
 
 export const COLUNAS_DO_RESUMO =
-  "id, parent_id, title, icon, position, visible_to_client, deleted_at, updated_at";
+  "id, parent_id, title, icon, position, visible_to_client, kind, deleted_at, updated_at";
 export const COLUNAS_DA_NOTA = `${COLUNAS_DO_RESUMO}, blocks`;
 
 const tituloSchema = z.string().trim().max(200);

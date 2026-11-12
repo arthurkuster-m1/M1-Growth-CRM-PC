@@ -28,6 +28,7 @@ import {
   type NotaAberta,
   type ResumoDaNota,
 } from "@/lib/anotacoes/paginas";
+import { camposDeBusca, dobrar } from "@/lib/anotacoes/busca";
 import { lerDocumento } from "@/lib/anotacoes/documento";
 import { createClient } from "@/lib/supabase/server";
 
@@ -145,6 +146,22 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
 
   const { visible_to_client: visibilidade, ...resto } = campos;
   const atualizacao: Record<string, unknown> = { ...resto, updated_by: authz.user.id };
+  // A busca acompanha o conteúdo: o texto do documento e o título, sem acento.
+  if (resto.blocks !== undefined) {
+    let titulo = resto.title;
+    if (titulo === undefined) {
+      const { data: atualTitulo } = await supabase
+        .from("notes_pages")
+        .select("title")
+        .eq("organization_id", orgId)
+        .eq("id", id.data)
+        .maybeSingle();
+      titulo = (atualTitulo as { title: string } | null)?.title ?? "";
+    }
+    Object.assign(atualizacao, camposDeBusca(titulo, resto.blocks));
+  } else if (resto.title !== undefined) {
+    atualizacao.title_fold = dobrar(resto.title).slice(0, 400);
+  }
   const alcance =
     visibilidade !== undefined && cascade ? idsDaSubarvore(arvore, id.data) : [id.data];
   if (visibilidade !== undefined && alcance.length === 1)

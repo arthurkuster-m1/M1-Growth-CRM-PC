@@ -18,6 +18,7 @@ function nota(id: string, parent: string | null, title: string, position = 1): R
     icon: null,
     position,
     visible_to_client: false,
+    kind: null,
     deleted_at: null,
     updated_at: "2026-11-12T00:00:00Z",
   };

@@ -754,6 +754,7 @@ export const AUDIT_ACTIONS = [
   "notes_page.trashed",
   "notes_page.restored",
   "notes_page.deleted",
+  "notes_page.captured",
   "marketing_cronograma.task_added",
   "marketing_cronograma.week_closed",
   "marketing_cronograma.self_review_saved",
