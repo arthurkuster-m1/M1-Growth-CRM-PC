@@ -32,7 +32,7 @@
 
 :root {
   /* Surfaces (light) */
-  --color-bg: #f4f6f9;
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
   --color-surface-elevated: #eef1f5;
   --color-overlay: rgba(20, 27, 36, 0.42);
@@ -263,7 +263,7 @@
    (lib/branding/css.ts), que só ganha consumidor com a tela de marca.
    ───────────────────────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-bg: #f4f6f9;
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
   --color-surface-elevated: #eef1f5;
   --color-overlay: rgba(20, 27, 36, 0.42);
