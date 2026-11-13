@@ -64,6 +64,7 @@ export {
   X,
   Plus,
   Star,
+  PushPin,
   Trash,
   PencilSimple,
   MagnifyingGlass,

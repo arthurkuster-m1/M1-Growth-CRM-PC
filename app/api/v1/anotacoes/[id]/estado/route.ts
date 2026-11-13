@@ -1,6 +1,6 @@
 /**
- * PUT /api/v1/anotacoes/[id]/estado — marca/desmarca a página como favorita e/ou registra que a
- * pessoa a abriu agora. Preferência pessoal: não audita. Qualquer membro que LÊ a página pode
+ * PUT /api/v1/anotacoes/[id]/estado — marca/desmarca a página como favorita, registra que a
+ * pessoa a abriu agora e/ou a fixa no cartão "Notas" do Início. Preferência pessoal: não audita. Qualquer membro que LÊ a página pode
  * favoritá-la (a RLS de `notes_pages` já esconde o que ele não vê).
  */
 import { randomUUID } from "node:crypto";
@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const corpoSchema = z
-  .object({ favorite: z.boolean(), opened: z.literal(true) })
+  .object({ favorite: z.boolean(), opened: z.literal(true), home: z.literal(true) })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "Nada para alterar." });
 
@@ -62,6 +62,7 @@ export async function PUT(req: NextRequest, ctx: Contexto): Promise<Response> {
       organization_id: authz.org.orgId,
       ...(parsed.data.favorite !== undefined ? { favorite: parsed.data.favorite } : {}),
       ...(parsed.data.opened ? { last_opened_at: new Date().toISOString() } : {}),
+      ...(parsed.data.home ? { home_selected_at: new Date().toISOString() } : {}),
     },
     { onConflict: "user_id,page_id" },
   );

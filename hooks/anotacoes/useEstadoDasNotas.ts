@@ -9,6 +9,8 @@ import { apiClient } from "@/lib/api/client";
 const CHAVE = ["anotacoes", "estado"] as const;
 
 interface Estado {
+  /** A página fixada no cartão "Notas" do Início (a escolhida por último). */
+  inicio: string | null;
   favoritas: string[];
   recentes: string[];
 }
@@ -59,7 +61,25 @@ export function useEstadoDasNotas() {
     [queryClient],
   );
 
+  /** Fixa a página no Início: a escolhida por último é a que fica. */
+  const fixarNoInicio = useCallback(
+    async (id: string) => {
+      const antes = queryClient.getQueryData<Estado>(CHAVE);
+      queryClient.setQueryData<Estado>(CHAVE, (e) => (e ? { ...e, inicio: id } : e));
+      try {
+        await apiClient.put(`/api/v1/anotacoes/${id}/estado`, { home: true });
+      } catch (erro) {
+        queryClient.setQueryData(CHAVE, antes);
+        showApiError(erro);
+      }
+    },
+    [queryClient],
+  );
+
   return {
+    carregado: consulta.data !== undefined,
+    inicio: consulta.data?.inicio ?? null,
+    fixarNoInicio,
     favoritas: consulta.data?.favoritas ?? [],
     recentes: consulta.data?.recentes ?? [],
     favoritar,

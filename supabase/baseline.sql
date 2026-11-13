@@ -58511,3 +58511,14 @@ create policy notes_user_state_own on public.notes_user_state
 
 comment on table public.notes_user_state is
   'Anotações: favorita e último acesso de cada pessoa a cada página.';
+
+-- ── 0688 — Anotações: página do Início (apêndice idempotente)
+-- ============================================================================
+-- 0688 — ANOTAÇÕES: a página fixada no Início
+--
+-- O cartão "Notas" do Início mostra uma página de anotações. A escolhida por último é a que fica
+-- lá: `home_selected_at` marca o instante da escolha, e a página fixada de cada pessoa é a de
+-- maior `home_selected_at` (sem índice único: escolher outra não precisa desmarcar a anterior).
+-- ============================================================================
+
+alter table public.notes_user_state add column if not exists home_selected_at timestamptz;

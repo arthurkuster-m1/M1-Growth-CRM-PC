@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -12,10 +11,9 @@ import { LixeiraDeNotas } from "@/components/anotacoes/LixeiraDeNotas";
 import { MoverNota } from "@/components/anotacoes/MoverNota";
 import { PaginaDeNota } from "@/components/anotacoes/PaginaDeNota";
 import { useArvoreDeNotas } from "@/hooks/anotacoes/useArvoreDeNotas";
+import { useCapturaDeNotas } from "@/hooks/anotacoes/useCapturaDeNotas";
 import { useBuscaDeNotas } from "@/hooks/anotacoes/useBuscaDeNotas";
 import { useEstadoDasNotas } from "@/hooks/anotacoes/useEstadoDasNotas";
-import { apiClient } from "@/lib/api/client";
-import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useT } from "@/hooks/i18n/useT";
 import { caminhoDaNota, idsDaSubarvore } from "@/lib/anotacoes/paginas";
 import { MagnifyingGlass, Note, Plus, Tray, X } from "@/lib/ui/icons";
@@ -40,13 +38,11 @@ export function Anotacoes() {
     return viva(pedida)?.id ?? null;
   }, [notas, pedida]);
 
-  const queryClient = useQueryClient();
   const estado = useEstadoDasNotas();
   const [busca, setBusca] = useState("");
   const resultados = useBuscaDeNotas(busca);
   const [capturando, setCapturando] = useState(false);
-  // Sobe a cada captura: a página aberta (se for a Caixa de entrada) é relida em vez de sobrescrita.
-  const [versao, setVersao] = useState(0);
+  const { capturar, versao } = useCapturaDeNotas(abrir);
   const caixa = notas.find((n) => n.kind === "inbox" && !n.deleted_at);
 
   // Abrir uma página a coloca em "Recentes" (preferência pessoal, gravada em silêncio).
@@ -54,24 +50,6 @@ export function Anotacoes() {
   useEffect(() => {
     if (selecionada) registrarAbertura(selecionada);
   }, [selecionada, registrarAbertura]);
-
-  async function capturar(texto: string): Promise<boolean> {
-    try {
-      const r = await apiClient.post<{ data: { page_id: string } }>("/api/v1/anotacoes/captura", {
-        texto,
-      });
-      queryClient.removeQueries({ queryKey: ["anotacoes", "pagina", r.data.page_id] });
-      await queryClient.invalidateQueries({ queryKey: ["anotacoes", "arvore"] });
-      setVersao((v) => v + 1);
-      toast.success(t("Guardado na Caixa de entrada."), {
-        action: { label: t("Abrir"), onClick: () => abrir(r.data.page_id) },
-      });
-      return true;
-    } catch (erro) {
-      showApiError(erro);
-      return false;
-    }
-  }
 
   const [abertas, setAbertas] = useState<Set<string>>(new Set());
   const [movendo, setMovendo] = useState<string | null>(null);

@@ -106,6 +106,8 @@ export interface PropsDoEditorDeNotas {
   aoRemoverSubpagina: (id: string) => void;
   /** A ordem dos cartões mudou: a barra lateral segue a mesma ordem. */
   aoReordenarSubpaginas: (ids: string[]) => void;
+  /** Dentro de um cartão (Início): sem a folga de tela cheia embaixo. */
+  compacto?: boolean;
 }
 
 /**
@@ -125,6 +127,7 @@ export default function EditorDeNotas({
   aoCriarSubpagina,
   aoRemoverSubpagina,
   aoReordenarSubpaginas,
+  compacto = false,
 }: PropsDoEditorDeNotas) {
   const t = useT();
   const { resolvedTheme } = useTheme();
@@ -335,7 +338,7 @@ export default function EditorDeNotas({
     <Contexto.Provider value={{ paginas, abrir: aoAbrir }}>
       <div
         ref={papel}
-        className={`relative min-h-[60vh] cursor-text pb-32 ${selecionados.length > 1 ? "notas-varios-selecionados" : ""}`}
+        className={`relative cursor-text ${compacto ? "min-h-40 pb-8" : "min-h-[60vh] pb-32"} ${selecionados.length > 1 ? "notas-varios-selecionados" : ""}`}
         onClick={clicouNoPapel}
         onMouseDown={comecouArrasto}
       >

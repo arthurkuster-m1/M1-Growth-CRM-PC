@@ -13,6 +13,7 @@ import {
   statusDoCompromisso,
   VENDIDAS,
 } from "@/components/agenda/PaginaDoCompromisso";
+import { NotasDoInicio } from "@/components/anotacoes/NotasDoInicio";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { resumoDoAlerta } from "@/lib/ai/alerta-resumo";
 import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorClient";
@@ -218,7 +219,7 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
     t("Quanto maior o problema que você resolve, mais valioso você é."),
     t("Muitas vendas acontecem no follow-up: quem insiste com educação, vende."),
     t("A resposta rápida é a vantagem mais barata que existe."),
-    t("Um \"não\" hoje é só um \"ainda não\" com informação nova."),
+    t('Um "não" hoje é só um "ainda não" com informação nova.'),
     t("Entregue valor primeiro; a confiança paga a conta depois."),
     t("Reduza o risco do cliente e a decisão fica fácil."),
     t("Quem escuta mais, vende melhor."),
@@ -597,7 +598,10 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
                                     {e.titulo}
                                   </p>
                                   {e.status ? (
-                                    <Tag cor={e.status.cor} className="shrink-0 px-2 py-0.5 text-[11px]">
+                                    <Tag
+                                      cor={e.status.cor}
+                                      className="shrink-0 px-2 py-0.5 text-[11px]"
+                                    >
                                       {t(e.status.rotulo)}
                                     </Tag>
                                   ) : null}
@@ -662,6 +666,9 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
           )}
         </section>
       </div>
+
+      {/* ── notas: a página de Anotações fixada, para despejar ideias sem sair do Início ── */}
+      <NotasDoInicio />
 
       {tarefaAbertaId ? (
         <TarefasMotorClient

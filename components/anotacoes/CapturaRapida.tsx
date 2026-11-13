@@ -13,17 +13,20 @@ import { useT } from "@/hooks/i18n/useT";
 
 /**
  * CAPTURA RÁPIDA: joga um texto ou link na Caixa de entrada para analisar depois, sem escolher
- * onde guardar. Ctrl+Enter salva.
+ * onde guardar. Ctrl+Enter salva (ou Enter, com `enterSalva`).
  */
 export function CapturaRapida({
   aberto,
   aoFechar,
   aoCapturar,
+  enterSalva = false,
 }: {
   aberto: boolean;
   aoFechar: () => void;
   /** Devolve verdadeiro se guardou. */
   aoCapturar: (texto: string) => Promise<boolean>;
+  /** Enter guarda (Shift+Enter quebra a linha); sem isto, é Ctrl+Enter. */
+  enterSalva?: boolean;
 }) {
   const t = useT();
   const [texto, setTexto] = useState("");
@@ -57,7 +60,11 @@ export function CapturaRapida({
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            if (
+              e.key === "Enter" &&
+              !e.nativeEvent.isComposing &&
+              (enterSalva ? !e.shiftKey : e.ctrlKey || e.metaKey)
+            ) {
               e.preventDefault();
               void salvar();
             }
@@ -68,7 +75,11 @@ export function CapturaRapida({
           className="w-full resize-y rounded-xl border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
         />
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-muted-foreground">{t("Ctrl+Enter para guardar")}</span>
+          <span className="text-xs text-muted-foreground">
+            {enterSalva
+              ? t("Enter para guardar, Shift+Enter para nova linha")
+              : t("Ctrl+Enter para guardar")}
+          </span>
           <button
             type="button"
             onClick={() => void salvar()}
