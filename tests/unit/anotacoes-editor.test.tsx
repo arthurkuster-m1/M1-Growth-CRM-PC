@@ -2,7 +2,7 @@
  * O editor de Anotações abre com o conteúdo salvo, mostra a subpágina como cartão (com o título
  * vivo da árvore) e acrescenta o cartão da filha que ainda não tinha.
  */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import EditorDeNotas from "@/components/anotacoes/EditorDeNotas";
@@ -171,5 +171,61 @@ describe("EditorDeNotas", () => {
     expect(screen.getByDisplayValue("Topo")).toBeTruthy();
     // O fluxo com JSON quebrado caiu no padrão (três etapas), e o editor segue de pé.
     expect(screen.getAllByDisplayValue("Etapa 1").length).toBe(1);
+  });
+
+  it("clicar no meio de uma linha, fora do texto, já coloca o cursor nela (sem precisar clicar de novo)", async () => {
+    const { container } = render(
+      <EditorDeNotas
+        inicial={[
+          {
+            id: "l1",
+            type: "paragraph",
+            props: {},
+            content: [{ type: "text", text: "Primeira linha", styles: {} }],
+            children: [],
+          },
+          {
+            id: "l2",
+            type: "paragraph",
+            props: {},
+            content: [{ type: "text", text: "Segunda linha", styles: {} }],
+            children: [],
+          },
+        ]}
+        editavel
+        paginas={[nota("mae", null, "Mãe")]}
+        paginaId="mae"
+        aoMudar={() => undefined}
+        aoAbrir={() => undefined}
+        aoCriarSubpagina={async () => null}
+        aoRemoverSubpagina={() => undefined}
+        aoReordenarSubpaginas={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("Segunda linha")).toBeTruthy());
+    // No jsdom nada tem tamanho: dou a cada linha a sua faixa de altura.
+    const faixas: Record<string, [number, number]> = { l1: [0, 30], l2: [30, 60] };
+    for (const el of container.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]")) {
+      const [topo, base] = faixas[el.dataset.id!] ?? [0, 0];
+      el.getBoundingClientRect = () =>
+        ({
+          top: topo,
+          bottom: base,
+          left: 0,
+          right: 500,
+          width: 500,
+          height: base - topo,
+          x: 0,
+          y: topo,
+        }) as DOMRect;
+    }
+    // O alvo é a "caixa" da linha, não o texto: é onde o clique caía no meio/ao lado da frase.
+    const caixaDaLinha = container.querySelector<HTMLElement>('[data-id="l2"] .bn-block-content')!;
+    fireEvent.mouseDown(caixaDaLinha, { button: 0, clientX: 400, clientY: 45 });
+    fireEvent.mouseUp(window, { clientX: 400, clientY: 45 });
+    await waitFor(() => {
+      const no = window.getSelection()?.anchorNode ?? null;
+      expect(no && container.querySelector('[data-id="l2"]')?.contains(no)).toBeTruthy();
+    });
   });
 });

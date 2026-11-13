@@ -267,21 +267,60 @@ export default function EditorDeNotas({
     [editor],
   );
 
+  /** O bloco (o mais "de dentro") que está na altura `y`, ou o mais perto dela. */
+  function linhaNaAltura(y: number): string | null {
+    const caixa = papel.current;
+    if (!caixa) return null;
+    let melhor: string | null = null;
+    let menor = Infinity;
+    for (const el of caixa.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]")) {
+      const r = el.getBoundingClientRect();
+      const dentro = y >= r.top && y <= r.bottom;
+      // Entre os que contêm a altura, o mais baixo (o filho, não a mãe); senão, o mais perto.
+      const pontos = dentro
+        ? r.height
+        : 1e6 + Math.min(Math.abs(y - r.top), Math.abs(y - r.bottom));
+      if (pontos < menor) {
+        menor = pontos;
+        melhor = el.dataset.id ?? null;
+      }
+    }
+    return melhor;
+  }
+
+  /** Clicou na linha (mesmo fora do texto, no meio ou ao lado): o cursor entra nela, no fim. */
+  function entrarNaLinha(y: number) {
+    const id = linhaNaAltura(y);
+    if (!id) return;
+    try {
+      editor.setTextCursorPosition(id, "end");
+      editor.focus();
+    } catch {
+      // bloco sem texto (um fluxo, por exemplo): não há onde pôr o cursor, e tudo bem
+    }
+  }
+
   function comecouArrasto(e: MouseEvent<HTMLDivElement>) {
     const caixa = papel.current;
     if (!editavel || !caixa || e.button !== 0) return;
     // Dentro do texto (ou de um botão/menu) o mouse segue escolhendo o texto, como sempre.
     if ((e.target as HTMLElement).closest(".bn-inline-content, button, a, input, [role='menu']"))
       return;
-    e.preventDefault();
+    // O clique NÃO é impedido: sem arrastar, ele vira "entrar na linha" (ver `soltar`). Só quando o
+    // mouse anda é que isto vira o retângulo de seleção.
     const base = caixa.getBoundingClientRect();
     const x0 = e.clientX;
     const y0 = e.clientY;
+    const alvoDoClique = e.target;
     arrastou.current = false;
 
     const mover = (ev: globalThis.MouseEvent) => {
       if (!arrastou.current && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
-      arrastou.current = true;
+      if (!arrastou.current) {
+        arrastou.current = true;
+        caixa.classList.add("select-none");
+      }
+      window.getSelection()?.removeAllRanges();
       const esquerda = Math.min(x0, ev.clientX);
       const topo = Math.min(y0, ev.clientY);
       const largura = Math.abs(ev.clientX - x0);
@@ -304,16 +343,20 @@ export default function EditorDeNotas({
       setSelecionados(ids.length > 1 ? ids : []);
       if (ids.length > 1) editor.setSelection(ids[0]!, ids[ids.length - 1]!);
     };
-    const soltar = () => {
+    const soltar = (ev: globalThis.MouseEvent) => {
       window.removeEventListener("mousemove", mover);
       window.removeEventListener("mouseup", soltar);
+      caixa.classList.remove("select-none");
       setRetangulo(null);
+      // Um clique simples numa linha (fora do texto) entra nela. O espaço vazio do papel tem o
+      // próprio tratamento (`clicouNoPapel`), que também sabe quando é a linha de baixo.
+      if (!arrastou.current && alvoDoClique !== caixa) entrarNaLinha(ev.clientY);
     };
     window.addEventListener("mousemove", mover);
     window.addEventListener("mouseup", soltar);
   }
 
-  // Clicar no "papel" abaixo do último bloco coloca o cursor no fim, num parágrafo vazio.
+  // Clicar no "papel": abaixo do último bloco abre um parágrafo novo; ao lado de uma linha, entra nela.
   function clicouNoPapel(e: MouseEvent<HTMLDivElement>) {
     if (!editavel || e.target !== e.currentTarget) return;
     if (arrastou.current) {
@@ -323,6 +366,15 @@ export default function EditorDeNotas({
     const blocos = editor.document;
     const ultimo = blocos[blocos.length - 1];
     if (!ultimo) return;
+    const elementos = e.currentTarget.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]");
+    const fimDoTexto = Math.max(
+      0,
+      ...[...elementos].map((el) => el.getBoundingClientRect().bottom),
+    );
+    if (e.clientY <= fimDoTexto) {
+      entrarNaLinha(e.clientY);
+      return;
+    }
     const vazio =
       ultimo.type === "paragraph" && Array.isArray(ultimo.content) && ultimo.content.length === 0;
     if (vazio) {
