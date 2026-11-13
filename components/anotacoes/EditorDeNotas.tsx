@@ -249,11 +249,15 @@ export default function EditorDeNotas({
     h: number;
   } | null>(null);
   const arrastou = useRef(false);
+  // A escolha feita com o retângulo não é desfeita quando o editor recebe o foco: só um clique, Esc ou
+  // outra tecla a desfaz.
+  const escolhaDoRetangulo = useRef(false);
 
   useEffect(
     () =>
       editor.onSelectionChange(() => {
         const ids = editor.getSelection()?.blocks.map((b) => b.id) ?? [];
+        if (escolhaDoRetangulo.current && ids.length <= 1) return;
         setSelecionados((atual) =>
           ids.length > 1
             ? JSON.stringify(atual) === JSON.stringify(ids)
@@ -300,9 +304,45 @@ export default function EditorDeNotas({
     }
   }
 
+  // Com vários blocos selecionados, Delete/Backspace apaga os BLOCOS inteiros — inclusive os
+  // especiais (fluxo, matriz, cartões…), que o editor sozinho não apaga por uma seleção feita com o
+  // retângulo. O teclado é ouvido na página toda porque, depois de arrastar, o foco nem sempre está
+  // no editor; campos de texto (de dentro dos blocos ou de fora) ficam em paz. Ctrl+Z desfaz.
+  useEffect(() => {
+    if (!editavel || selecionados.length < 2) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        escolhaDoRetangulo.current = false;
+        setSelecionados([]);
+        return;
+      }
+      if (e.key !== "Delete" && e.key !== "Backspace") {
+        // Qualquer outra tecla de escrever segue o caminho normal e solta a escolha.
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+          escolhaDoRetangulo.current = false;
+          setSelecionados([]);
+        }
+        return;
+      }
+      const alvo = e.target as HTMLElement | null;
+      if (alvo?.closest("input, textarea, select")) return;
+      const existentes = selecionados.filter((id) => editor.getBlock(id));
+      e.preventDefault();
+      e.stopPropagation();
+      escolhaDoRetangulo.current = false;
+      setSelecionados([]);
+      if (existentes.length === 0) return;
+      editor.removeBlocks(existentes);
+      editor.focus();
+    };
+    document.addEventListener("keydown", aoTeclar, true);
+    return () => document.removeEventListener("keydown", aoTeclar, true);
+  }, [editavel, editor, selecionados]);
+
   function comecouArrasto(e: MouseEvent<HTMLDivElement>) {
     const caixa = papel.current;
     if (!editavel || !caixa || e.button !== 0) return;
+    escolhaDoRetangulo.current = false;
     // Dentro do texto (ou de um botão/menu) o mouse segue escolhendo o texto, como sempre.
     if ((e.target as HTMLElement).closest(".bn-inline-content, button, a, input, [role='menu']"))
       return;
@@ -312,6 +352,7 @@ export default function EditorDeNotas({
     const x0 = e.clientX;
     const y0 = e.clientY;
     const alvoDoClique = e.target;
+    let escolhidosNoArrasto = 0;
     arrastou.current = false;
 
     const mover = (ev: globalThis.MouseEvent) => {
@@ -341,13 +382,25 @@ export default function EditorDeNotas({
       const raizes = dentro.filter((el) => !dentro.some((o) => o !== el && o.contains(el)));
       const ids = raizes.map((el) => el.dataset.id!).filter(Boolean);
       setSelecionados(ids.length > 1 ? ids : []);
-      if (ids.length > 1) editor.setSelection(ids[0]!, ids[ids.length - 1]!);
+      // O editor só aceita escolher "até" um bloco que tenha texto; nos especiais (fluxo, matriz…)
+      // ele recusa. Sem problema: os blocos marcados já ficam pintados e valem para o Delete.
+      if (ids.length > 1) {
+        try {
+          editor.setSelection(ids[0]!, ids[ids.length - 1]!);
+        } catch {
+          // sem texto no começo ou no fim da escolha
+        }
+      }
+      escolhidosNoArrasto = ids.length;
+      escolhaDoRetangulo.current = ids.length > 1;
     };
     const soltar = (ev: globalThis.MouseEvent) => {
       window.removeEventListener("mousemove", mover);
       window.removeEventListener("mouseup", soltar);
       caixa.classList.remove("select-none");
       setRetangulo(null);
+      // O foco volta ao editor: Ctrl+Z, Ctrl+C e as setas passam a valer para os blocos escolhidos.
+      if (escolhidosNoArrasto > 1) editor.focus();
       // Um clique simples numa linha (fora do texto) entra nela. O espaço vazio do papel tem o
       // próprio tratamento (`clicouNoPapel`), que também sabe quando é a linha de baixo.
       if (!arrastou.current && alvoDoClique !== caixa) entrarNaLinha(ev.clientY);

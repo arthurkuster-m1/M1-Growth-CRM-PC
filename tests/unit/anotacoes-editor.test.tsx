@@ -228,4 +228,80 @@ describe("EditorDeNotas", () => {
       expect(no && container.querySelector('[data-id="l2"]')?.contains(no)).toBeTruthy();
     });
   });
+
+  it("Delete apaga todos os blocos escolhidos com o retângulo, inclusive os especiais", async () => {
+    const mudou = vi.fn();
+    const { container } = render(
+      <EditorDeNotas
+        inicial={[
+          {
+            id: "l1",
+            type: "paragraph",
+            props: {},
+            content: [{ type: "text", text: "Primeira", styles: {} }],
+            children: [],
+          },
+          {
+            id: "fx",
+            type: "fluxo",
+            props: { dados: JSON.stringify([{ titulo: "Captar", texto: "" }]) },
+            children: [],
+          },
+          { id: "mt", type: "matriz", props: {}, children: [] },
+          {
+            id: "l4",
+            type: "paragraph",
+            props: {},
+            content: [{ type: "text", text: "Quarta", styles: {} }],
+            children: [],
+          },
+        ]}
+        editavel
+        paginas={[nota("mae", null, "Mãe")]}
+        paginaId="mae"
+        aoMudar={mudou}
+        aoAbrir={() => undefined}
+        aoCriarSubpagina={async () => null}
+        aoRemoverSubpagina={() => undefined}
+        aoReordenarSubpaginas={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("Quarta")).toBeTruthy());
+    const faixas: Record<string, [number, number]> = {
+      l1: [0, 30],
+      fx: [30, 90],
+      mt: [90, 150],
+      l4: [150, 180],
+    };
+    for (const el of container.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]")) {
+      const [topo, base] = faixas[el.dataset.id!] ?? [0, 0];
+      el.getBoundingClientRect = () =>
+        ({
+          top: topo,
+          bottom: base,
+          left: 0,
+          right: 500,
+          width: 500,
+          height: base - topo,
+          x: 0,
+          y: topo,
+        }) as DOMRect;
+    }
+    // Arrasta no espaço em branco, do alto da primeira linha até o meio do último bloco especial.
+    const papel = container.firstElementChild as HTMLElement;
+    fireEvent.mouseDown(papel, { button: 0, clientX: 520, clientY: 5 });
+    fireEvent.mouseMove(window, { clientX: 300, clientY: 120 });
+    fireEvent.mouseUp(window, { clientX: 300, clientY: 120 });
+    fireEvent.keyDown(document.body, { key: "Delete" });
+
+    await waitFor(() => {
+      const ultimo = mudou.mock.calls.at(-1)?.[0] as Array<{ id: string }> | undefined;
+      expect(ultimo).toBeTruthy();
+      const ids = ultimo!.map((b) => b.id);
+      expect(ids).not.toContain("l1");
+      expect(ids).not.toContain("fx");
+      expect(ids).not.toContain("mt");
+      expect(ids).toContain("l4");
+    });
+  });
 });
