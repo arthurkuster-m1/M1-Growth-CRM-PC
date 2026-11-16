@@ -2,6 +2,8 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
  * GET   /api/v1/conversations/[id] — single conversation (handler em ../_handler.ts)
  * PATCH /api/v1/conversations/[id] — update status e/ou tags (handler em ../_handler.ts)
+ * DELETE /api/v1/conversations/[id] — exclui a conversa e as mensagens dela. Com `apagar_lead`,
+ *   exclui o LEAD inteiro (a conversa vai junto, e o resto vai para a Lixeira do CRM por 7 dias).
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -15,6 +17,9 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { patchConversationSchema, validateRequest } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { comNomeDoAtendente } from "@/lib/users/com-nome-do-atendente";
+
+import { deleteContactHandler } from "@/app/api/v1/contacts/_handler";
+import { audit } from "@/lib/audit";
 
 import { getConversationHandler, patchConversationHandler } from "../_handler";
 
@@ -150,4 +155,90 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
     }
     throw err;
   }
+}
+
+const excluirSchema = z.object({
+  /** Verdadeiro: apaga também o lead (contato, oportunidades, vendas…). Falso: só a conversa. */
+  apagar_lead: z.boolean().default(false),
+});
+
+export async function DELETE(req: NextRequest, ctx: RouteCtx): Promise<Response> {
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
+  const requestId = randomUUID();
+  const authz = await requireRole("agent", { requestId, resource: "conversations" });
+  if (!authz.ok) return authz.response;
+  const t = (texto: string) => traduzir(texto, authz.user.idioma);
+  const { id } = await ctx.params;
+  if (idInvalido(id)) return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
+
+  const corpo = excluirSchema.safeParse(await req.json().catch(() => ({})));
+  if (!corpo.success) return fail("validation_failed", t("Dados inválidos."), 422, { requestId });
+
+  const orgId = authz.org.orgId;
+  const supabase = await createClient();
+  const { data: conversa, error: leitura } = await supabase
+    .from("conversations")
+    .select("id, contact_id")
+    .eq("id", id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (leitura) return fail("internal_error", t("Erro ao excluir."), 500, { requestId });
+  if (!conversa) return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
+  const contactId = (conversa as { contact_id: string | null }).contact_id;
+
+  // O LEAD INTEIRO: o mesmo caminho da exclusão de leads do CRM (a conversa e o histórico saem
+  // junto, e uma cópia fica na Lixeira por 7 dias).
+  if (corpo.data.apagar_lead) {
+    if (!contactId) {
+      return fail("validation_failed", t("Esta conversa não tem lead para excluir."), 422, {
+        requestId,
+      });
+    }
+    try {
+      await deleteContactHandler(
+        supabase,
+        {
+          organization_id: orgId,
+          actor: { type: "user", id: authz.user.id },
+          requestId,
+          idioma: authz.user.idioma,
+        },
+        contactId,
+      );
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return fail("conflict", err.message, err.status, { requestId });
+      }
+      return fail("internal_error", t("Erro ao excluir."), 500, { requestId });
+    }
+    return ok({ conversa_apagada: true, lead_apagado: true }, { requestId });
+  }
+
+  // SÓ A CONVERSA: as mensagens saem junto (cascata do banco) e o lead continua cadastrado.
+  const { count } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", id)
+    .eq("organization_id", orgId);
+  const { data: apagada, error } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", orgId)
+    .select("id")
+    .maybeSingle();
+  if (error) return fail("internal_error", t("Erro ao excluir."), 500, { requestId });
+  if (!apagada) return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
+
+  await audit({
+    action: "conversation.deleted",
+    actorUserId: authz.user.id,
+    organizationId: orgId,
+    resourceType: "conversation",
+    resourceId: id,
+    requestId,
+    metadata: { contact_id: contactId, mensagens: count ?? 0, lead_mantido: true },
+  });
+  return ok({ conversa_apagada: true, lead_apagado: false }, { requestId });
 }

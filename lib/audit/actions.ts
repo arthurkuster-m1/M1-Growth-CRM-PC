@@ -123,6 +123,9 @@ export const AUDIT_ACTIONS = [
   // propósito: quem audita precisa distinguir "encerrou o atendimento" de
   // "mandou para o arquivo". Ver o corpo da issue #923.
   "conversation.archived",
+  // Excluir a conversa (e o histórico dela) sem apagar o lead: irreversível, por isso tem evento
+  // próprio. Excluir o lead inteiro continua sendo `contact.deleted` (e vai para a Lixeira).
+  "conversation.deleted",
   // O par que faltava do `ai.reactivated_by_agent`: pausar o atendimento
   // automático numa conversa não tinha rota e, portanto, não tinha ação de
   // auditoria. Desligar uma automação é decisão auditável tanto quanto religá-la.

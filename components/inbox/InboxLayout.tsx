@@ -558,6 +558,7 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
               key={selectedConversation.id}
               conversation={selectedConversation}
               onAbrirConversa={handleSelect}
+              aoExcluida={() => handleSelect(null)}
               onBuscar={() =>
                 buscaAberta
                   ? fecharBusca()

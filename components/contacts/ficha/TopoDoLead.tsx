@@ -16,6 +16,7 @@ import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { CardDaOportunidade } from "@/components/contacts/ficha/OportunidadesDoLead";
 import { OportunidadeNaFicha } from "@/components/contacts/ficha/OportunidadeNaFicha";
 import { AnotacoesDoLead } from "@/components/contacts/ficha/AnotacoesDoLead";
+import { ExcluirLeadDialog } from "@/components/contacts/ficha/ExcluirLeadDialog";
 import { RegistrarAcaoEmMassaDialog } from "@/components/clientes/RegistrarAcaoEmMassaDialog";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +40,7 @@ import {
   PencilSimple,
   Phone,
   Plus,
+  Trash,
 } from "@/lib/ui/icons";
 import { toast } from "sonner";
 import { nomeDaVenda, type Venda } from "@/lib/vendas";
@@ -79,6 +81,7 @@ export function TopoDoLead({
   const [novoCampo, setNovoCampo] = useState<{ nome: string; valor: string } | null>(null);
   const [abertaId, setAbertaId] = useState<string | null>(null);
   const [acaoAberta, setAcaoAberta] = useState(false);
+  const [excluirAberto, setExcluirAberto] = useState(false);
   const [anotacaoAberta, setAnotacaoAberta] = useState(false);
 
   // O ciclo de vida é calculado no banco (das oportunidades e dos pagamentos): aqui ele aparece
@@ -500,6 +503,15 @@ export function TopoDoLead({
                 <NotePencil size={15} aria-hidden />
                 {t("Registrar anotação")}
               </button>
+              <button
+                type="button"
+                className={`${botao} text-error-fg`}
+                data-testid="excluir-lead"
+                onClick={() => setExcluirAberto(true)}
+              >
+                <Trash size={15} aria-hidden />
+                {t("Excluir lead")}
+              </button>
             </>
           ) : null}
         </div>
@@ -520,6 +532,12 @@ export function TopoDoLead({
         </ul>
       ) : null}
 
+      <ExcluirLeadDialog
+        contactId={contact.id}
+        nome={contact.name ?? ""}
+        aberto={excluirAberto}
+        aoFechar={() => setExcluirAberto(false)}
+      />
       <RegistrarAcaoEmMassaDialog
         contatoIds={[contact.id]}
         aberto={acaoAberta}

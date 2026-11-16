@@ -35,6 +35,7 @@ import { usePauseAiAttendance } from "@/hooks/inbox/usePauseAiAttendance";
 import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conversa";
+import { ExcluirConversaDialog } from "@/components/inbox/ExcluirConversaDialog";
 import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import { LembreteOutroDialog, SnoozeButton } from "@/components/inbox/SnoozeButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -57,6 +58,8 @@ interface Props {
   botaoBuscaRef?: RefObject<HTMLButtonElement | null>;
   /** Seleciona outra conversa no Inbox — a aba Número do Transferir abre a do outro número. */
   onAbrirConversa?: (id: string) => void;
+  /** A conversa foi excluída: o Inbox sai dela (e passa para a lista). */
+  aoExcluida?: () => void;
 }
 
 /**
@@ -95,6 +98,7 @@ export function ConversationHeader({
   onBuscar,
   buscaAberta,
   botaoBuscaRef,
+  aoExcluida,
 }: Props) {
   const t = useT();
   const { user, activeOrg } = useAuth();
@@ -113,6 +117,7 @@ export function ConversationHeader({
   const [confirmArquivarOpen, setConfirmArquivarOpen] = useState(false);
   const [confirmPessoalOpen, setConfirmPessoalOpen] = useState(false);
   const [opcoesAberto, setOpcoesAberto] = useState(false);
+  const [excluirAberto, setExcluirAberto] = useState(false);
   const [lembreteOutroAberto, setLembreteOutroAberto] = useState(false);
   const fecharOpcoes = () => setOpcoesAberto(false);
 
@@ -134,6 +139,10 @@ export function ConversationHeader({
   // pode mudar entre renderizações); com contato ausente o id vazio nunca
   // dispara porque o botão nem é desenhado.
   const ehPessoal = c?.is_personal === true;
+  // Excluir conversa (e, se quiser, o lead): atendente em diante, como a exclusão de leads do CRM.
+  const podeExcluir =
+    !user.support &&
+    (user.is_platform_admin || (activeOrg != null && ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent));
   const podeMarcarPessoal =
     (user.is_platform_admin && !user.support) ||
     (activeOrg != null && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager);
@@ -484,6 +493,19 @@ export function ConversationHeader({
                     {desmarcarPessoal.isPending ? t("Desmarcando...") : t("Desmarcar pessoal")}
                   </button>
                 )}
+                {podeExcluir && (
+                  <button
+                    type="button"
+                    className={`${ITEM} text-error-fg`}
+                    data-testid="excluir-conversa"
+                    onClick={() => {
+                      fecharOpcoes();
+                      setExcluirAberto(true);
+                    }}
+                  >
+                    {t("Excluir conversa…")}
+                  </button>
+                )}
               </div>
               {/* Abaixo de 1280px o painel lateral de CRM não existe, e esta é a única porta para o
                   contato; acima, ele já tem o seu "Ver contato". */}
@@ -501,6 +523,16 @@ export function ConversationHeader({
           </PopoverContent>
         </Popover>
       </div>
+      {excluirAberto ? (
+        <ExcluirConversaDialog
+          conversationId={conversation.id}
+          nomeDoContato={displayName}
+          temLead={!!c?.id}
+          aberto
+          aoFechar={() => setExcluirAberto(false)}
+          aoExcluida={() => aoExcluida?.()}
+        />
+      ) : null}
       <LembreteOutroDialog
         conversationId={conversation.id}
         aberto={lembreteOutroAberto}

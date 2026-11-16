@@ -329,7 +329,7 @@ export function AcoesEmMassaDeClientes({
                 </DialogTitle>
                 <DialogDescription>
                   {t(
-                    "Isso não pode ser desfeito. Leads com registros vinculados que impedem a exclusão ficam na lista e são avisados.",
+                    "Os leads são excluídos por inteiro: conversas e mensagens do Inbox, oportunidades, vendas, tarefas e anotações. Uma cópia fica 7 dias na Lixeira do CRM, de onde dá para restaurar.",
                   )}
                 </DialogDescription>
               </DialogHeader>
