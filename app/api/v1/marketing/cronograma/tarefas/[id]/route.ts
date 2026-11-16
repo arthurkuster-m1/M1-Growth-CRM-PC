@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import {
-  COLUNAS_DA_TAREFA_NO_CRONOGRAMA,
+  COLUNAS_DA_TAREFA_COM_ACAO,
   edicaoDeTarefaSchema,
   tarefaDoCronograma,
 } from "@/lib/marketing/cronograma";
@@ -29,7 +29,20 @@ export async function PATCH(
   const corpo = edicaoDeTarefaSchema.safeParse(await req.json().catch(() => null));
   if (!corpo.success)
     return fail("validation_failed", a.t("Dados inválidos."), 422, { requestId: a.requestId });
-  const { lado, due_date, status, motivo } = corpo.data;
+  const { lado, due_date, status, motivo, title, item_id } = corpo.data;
+
+  if (item_id) {
+    const { data: acao } = await a.supabase
+      .from("marketing_cronograma_itens")
+      .select("id")
+      .eq("id", item_id)
+      .eq("organization_id", a.orgId)
+      .maybeSingle();
+    if (!acao)
+      return fail("validation_failed", a.t("Ação não encontrada."), 422, {
+        requestId: a.requestId,
+      });
+  }
 
   // O prazo passa pela função que anota o motivo no histórico (a RLS de quem chama vale).
   if (due_date !== undefined) {
@@ -64,6 +77,8 @@ export async function PATCH(
   const mudancas: Record<string, unknown> = {};
   if (lado !== undefined) mudancas.cronograma_lado = lado;
   if (status !== undefined) mudancas.status = status;
+  if (title !== undefined) mudancas.title = title;
+  if (item_id !== undefined) mudancas.cronograma_item_id = item_id;
   if (Object.keys(mudancas).length > 0) {
     const { error } = await a.supabase
       .from("crm_tasks")
@@ -78,7 +93,7 @@ export async function PATCH(
 
   const { data } = await a.supabase
     .from("crm_tasks")
-    .select(COLUNAS_DA_TAREFA_NO_CRONOGRAMA)
+    .select(COLUNAS_DA_TAREFA_COM_ACAO)
     .eq("id", id)
     .eq("organization_id", a.orgId)
     .maybeSingle();

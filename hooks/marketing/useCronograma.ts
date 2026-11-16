@@ -19,7 +19,13 @@ export interface DadosDoCronograma {
   itens: ItemDoCronograma[];
   metas: MetaDoCronograma[];
   pode_editar: boolean;
+  /** As tarefas ligadas a alguma ação (de qualquer semana), para o andamento de cada ação. */
+  ligadas?: TarefaLigada[];
 }
+
+export type TarefaLigada = Pick<TarefaDoCronograma, "id" | "title" | "status" | "due_date"> & {
+  item_id: string;
+};
 
 export interface EventoDoHistorico {
   id: string;
@@ -118,7 +124,15 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
       due_date?: string | null;
       start_date?: string | null;
       lado: "agencia" | "cliente";
-    }) => executar(() => apiClient.post(`${BASE}/tarefas`, t), recarregarSemana),
+      item_id?: string | null;
+    }) =>
+      executar(
+        () => apiClient.post(`${BASE}/tarefas`, t),
+        async () => {
+          await recarregarSemana();
+          await recarregarGeral();
+        },
+      ),
     editarTarefa: (
       id: string,
       t: {
@@ -126,8 +140,17 @@ export function useCronograma(inicioDaSemana: string, ativarHistorico: boolean) 
         due_date?: string | null;
         status?: string;
         motivo?: string;
+        title?: string;
+        item_id?: string | null;
       },
-    ) => executar(() => apiClient.patch(`${BASE}/tarefas/${id}`, t), recarregarSemana),
+    ) =>
+      executar(
+        async () => apiClient.patch(`${BASE}/tarefas/${id}`, t),
+        async () => {
+          await recarregarSemana();
+          await recarregarGeral();
+        },
+      ),
     fecharSemana: (
       decisoes: Array<{
         task_id: string;

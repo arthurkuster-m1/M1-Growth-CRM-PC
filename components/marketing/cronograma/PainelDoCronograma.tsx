@@ -477,6 +477,11 @@ export function PainelDoCronograma({
               <div key={t.id} className={`${css.tarefa} ${s === "feita" ? css.tarefaFeita : ""}`}>
                 <span className={`${css.ponto} ${PONTO_DA_SITUACAO[s]}`} />
                 <span className={css.tarefaTexto}>{t.title}</span>
+                {t.item_id && visiveis.find((i) => i.id === t.item_id) ? (
+                  <span className={css.etiqueta}>
+                    {visiveis.find((i) => i.id === t.item_id)!.acao}
+                  </span>
+                ) : null}
                 {mostrarAdiamentos && t.adiamentos > 0 ? (
                   <span className={`${css.etiqueta} ${css.etiquetaAtencao}`}>
                     {rotulos.adiada} {t.adiamentos}x

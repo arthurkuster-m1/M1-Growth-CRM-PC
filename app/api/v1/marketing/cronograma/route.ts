@@ -16,6 +16,7 @@ import {
   type ConfigDoCronograma,
   itemDaLinha,
   metaDaLinha,
+  type TarefaDoCronograma,
 } from "@/lib/marketing/cronograma";
 import { autorizarCronograma } from "@/lib/marketing/cronograma-servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -44,6 +45,15 @@ export async function GET(): Promise<Response> {
       .order("ordem", { ascending: true })
       .limit(12),
   ]);
+  // As tarefas ligadas às ações (migration 0693). Sem ela, a coluna não existe: segue sem vínculos.
+  const { data: ligadas } = await a.supabase
+    .from("crm_tasks")
+    .select("id, title, status, due_date, cronograma_item_id")
+    .eq("organization_id", a.orgId)
+    .not("cronograma_item_id", "is", null)
+    .neq("status", "cancelled")
+    .order("due_date", { ascending: true })
+    .limit(1000);
   if (error)
     return fail("internal_error", a.t("Erro ao carregar o cronograma."), 500, {
       requestId: a.requestId,
@@ -59,6 +69,13 @@ export async function GET(): Promise<Response> {
         ((metas ?? []) as Array<Record<string, unknown>>).map(metaDaLinha),
       ),
       pode_editar: a.podeEditar,
+      ligadas: ((ligadas ?? []) as unknown as Array<Record<string, unknown>>).map((l) => ({
+        id: String(l.id),
+        title: String(l.title),
+        status: l.status as TarefaDoCronograma["status"],
+        due_date: (l.due_date as string | null) ?? null,
+        item_id: String(l.cronograma_item_id),
+      })),
     },
     { requestId: a.requestId },
   );

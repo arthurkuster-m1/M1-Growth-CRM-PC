@@ -15,6 +15,7 @@ import { SeletorDePeriodo } from "@/components/motor/CalendarioDePeriodo";
 import { CaixaRedonda } from "@/components/ui/CaixaRedonda";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useT } from "@/hooks/i18n/useT";
+import type { TarefaLigada } from "@/hooks/marketing/useCronograma";
 import type { useEdicaoDoCronograma } from "@/hooks/marketing/useEdicaoDoCronograma";
 import { chaveDoDia } from "@/lib/inicio/datas";
 import {
@@ -331,9 +332,49 @@ function FormularioDaMeta({
 }
 
 // ── Ação ─────────────────────────────────────────────────────────────────────────
+/** As tarefas da semana ligadas a esta ação: o andamento dela vem delas. */
+function TarefasDaAcao({ tarefas }: { tarefas: readonly TarefaLigada[] }) {
+  const t = useT();
+  const feitas = tarefas.filter((x) => x.status === "done").length;
+  return (
+    <div className="grid gap-1.5 rounded-xl border bg-secondary/30 p-3">
+      <p className="text-xs font-semibold">
+        {t("Tarefas da semana ligadas a esta ação")}
+        {tarefas.length > 0 ? ` · ${feitas}/${tarefas.length} ${t("concluídas")}` : ""}
+      </p>
+      {tarefas.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {t("Nenhuma ainda. Na aba Tarefas da semana, escolha esta ação em cada tarefa.")}
+        </p>
+      ) : (
+        <ul className="grid gap-1">
+          {tarefas.map((x) => (
+            <li key={x.id} className="flex items-center gap-2 text-xs">
+              <span
+                aria-hidden
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  x.status === "done"
+                    ? "bg-green-500"
+                    : x.status === "in_progress"
+                      ? "bg-primary"
+                      : "bg-muted-foreground/40"
+                }`}
+              />
+              <span className={x.status === "done" ? "text-muted-foreground line-through" : ""}>
+                {x.title}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function FormularioDaAcao({
   item,
   itens,
+  ligadas,
   config,
   aoSalvarConfig,
   acoes,
@@ -341,6 +382,7 @@ function FormularioDaAcao({
 }: {
   item: ItemDoCronograma;
   itens: readonly ItemDoCronograma[];
+  ligadas: readonly TarefaLigada[];
   config: ConfigDoCronograma;
   aoSalvarConfig: (c: ConfigDoCronograma) => Promise<unknown>;
   acoes: Acoes;
@@ -405,6 +447,7 @@ function FormularioDaAcao({
           </SelectDoApp>
         </Rotulo>
       </div>
+      <TarefasDaAcao tarefas={ligadas.filter((l) => l.item_id === item.id)} />
       <label className="flex items-center gap-2 text-sm">
         <CaixaRedonda
           checked={item.destaque}
@@ -708,6 +751,7 @@ export function GavetaDoCronograma({
   vista,
   itens,
   metas,
+  ligadas = [],
   config,
   aoSalvarConfig,
   acoes,
@@ -718,6 +762,8 @@ export function GavetaDoCronograma({
   vista: VistaDaGaveta;
   itens: readonly ItemDoCronograma[];
   metas: readonly MetaDoCronograma[];
+  /** As tarefas da semana ligadas às ações. */
+  ligadas?: readonly TarefaLigada[];
   config: ConfigDoCronograma;
   aoSalvarConfig: (c: ConfigDoCronograma) => Promise<unknown>;
   acoes: Acoes;
@@ -768,6 +814,7 @@ export function GavetaDoCronograma({
         key={item.id}
         item={item}
         itens={itens}
+        ligadas={ligadas}
         config={config}
         aoSalvarConfig={aoSalvarConfig}
         acoes={acoes}

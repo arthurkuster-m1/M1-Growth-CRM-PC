@@ -337,6 +337,19 @@ export function CronogramaDoCliente() {
         <HistoricoPorSemana />
       ) : aba === "adiadas" ? (
         <TarefasAdiadas empresa={empresa} />
+      ) : podeEditar && editando && aba === "semana" ? (
+        <EdicaoDaSemana
+          empresa={empresa}
+          tarefas={c.tarefas}
+          itens={itens}
+          inicioDaSemana={inicio}
+          acoes={{
+            adicionar: c.adicionarTarefa,
+            editar: c.editarTarefa,
+            fechar: c.fecharSemana,
+            disponiveis: c.disponiveis,
+          }}
+        />
       ) : (
         <div ref={captura}>
           <PainelDoCronograma
@@ -415,26 +428,13 @@ export function CronogramaDoCliente() {
           vista={gaveta}
           itens={itens}
           metas={metas}
+          ligadas={c.dados.ligadas ?? []}
           config={cfg}
           aoSalvarConfig={c.salvarConfig}
           acoes={acoes}
           aoMudarVista={setGaveta}
           aoNovaAcao={(fase) => void novaAcao(fase)}
           aoFechar={() => setGaveta(null)}
-        />
-      ) : null}
-
-      {podeEditar && editando && aba === "semana" ? (
-        <EdicaoDaSemana
-          empresa={empresa}
-          tarefas={c.tarefas}
-          inicioDaSemana={inicio}
-          acoes={{
-            adicionar: c.adicionarTarefa,
-            editar: c.editarTarefa,
-            fechar: c.fecharSemana,
-            disponiveis: c.disponiveis,
-          }}
         />
       ) : null}
 

@@ -7,7 +7,7 @@ import { type NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import {
-  COLUNAS_DA_TAREFA_NO_CRONOGRAMA,
+  COLUNAS_DA_TAREFA_COM_ACAO,
   novaTarefaSchema,
   tarefaDoCronograma,
 } from "@/lib/marketing/cronograma";
@@ -26,11 +26,26 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("validation_failed", a.t("Dados inválidos."), 422, { requestId: a.requestId });
   }
 
+  // A ação tem de ser desta empresa (a FK sozinha deixaria apontar para a de outra).
+  if (corpo.data.item_id) {
+    const { data: acao } = await a.supabase
+      .from("marketing_cronograma_itens")
+      .select("id")
+      .eq("id", corpo.data.item_id)
+      .eq("organization_id", a.orgId)
+      .maybeSingle();
+    if (!acao)
+      return fail("validation_failed", a.t("Ação não encontrada."), 422, {
+        requestId: a.requestId,
+      });
+  }
+
   const consulta = corpo.data.id
     ? a.supabase
         .from("crm_tasks")
         .update({
           cronograma_lado: corpo.data.lado,
+          ...(corpo.data.item_id !== undefined ? { cronograma_item_id: corpo.data.item_id } : {}),
           ...(corpo.data.due_date !== undefined ? { due_date: corpo.data.due_date } : {}),
           ...(corpo.data.start_date !== undefined ? { start_date: corpo.data.start_date } : {}),
         })
@@ -41,9 +56,10 @@ export async function POST(req: NextRequest): Promise<Response> {
         title: corpo.data.title!,
         due_date: corpo.data.due_date ?? null,
         cronograma_lado: corpo.data.lado,
+        cronograma_item_id: corpo.data.item_id ?? null,
         created_by: a.userId,
       });
-  const { data, error } = await consulta.select(COLUNAS_DA_TAREFA_NO_CRONOGRAMA).maybeSingle();
+  const { data, error } = await consulta.select(COLUNAS_DA_TAREFA_COM_ACAO).maybeSingle();
   if (error)
     return fail("internal_error", a.t("Erro ao salvar a tarefa."), 500, { requestId: a.requestId });
   if (!data)

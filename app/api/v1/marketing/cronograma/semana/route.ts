@@ -7,6 +7,7 @@ import { type NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api/wrappers";
 import { somarDias } from "@/lib/inicio/datas";
 import {
+  COLUNAS_DA_TAREFA_COM_ACAO,
   COLUNAS_DA_TAREFA_NO_CRONOGRAMA,
   domingoDe,
   domingoDeHoje,
@@ -26,21 +27,25 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Janela larga (as atrasadas vêm de antes); o recorte fino é feito em `tarefasDaSemana`.
   const de = new Date(`${somarDias(domingo, -1)}T00:00:00Z`).toISOString();
   const ate = new Date(`${somarDias(domingo, 8)}T00:00:00Z`).toISOString();
-  const { data, error } = await a.supabase
-    .from("crm_tasks")
-    .select(COLUNAS_DA_TAREFA_NO_CRONOGRAMA)
-    .eq("organization_id", a.orgId)
-    .not("cronograma_lado", "is", null)
-    .gte("due_date", de)
-    .lte("due_date", ate)
-    .order("due_date", { ascending: true })
-    .limit(500);
+  const ler = (colunas: string) =>
+    a.supabase
+      .from("crm_tasks")
+      .select(colunas)
+      .eq("organization_id", a.orgId)
+      .not("cronograma_lado", "is", null)
+      .gte("due_date", de)
+      .lte("due_date", ate)
+      .order("due_date", { ascending: true })
+      .limit(500);
+  // Sem a migration 0693 a coluna da ação não existe: a semana abre igual, só sem o vínculo.
+  let { data, error } = await ler(COLUNAS_DA_TAREFA_COM_ACAO);
+  if (error) ({ data, error } = await ler(COLUNAS_DA_TAREFA_NO_CRONOGRAMA));
   if (error)
     return fail("internal_error", a.t("Erro ao carregar as tarefas."), 500, {
       requestId: a.requestId,
     });
 
-  const todas = ((data ?? []) as Array<Parameters<typeof tarefaDoCronograma>[0]>).map(
+  const todas = ((data ?? []) as unknown as Array<Parameters<typeof tarefaDoCronograma>[0]>).map(
     tarefaDoCronograma,
   );
   return ok(

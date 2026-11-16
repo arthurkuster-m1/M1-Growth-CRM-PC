@@ -309,10 +309,14 @@ export interface TarefaDoCronograma {
   prazo_original: string | null;
   adiamentos: number;
   lado: LadoDaTarefa;
+  /** A ação do cronograma geral a que a tarefa pertence (migration 0693); `null` = solta. */
+  item_id?: string | null;
 }
 
 export const COLUNAS_DA_TAREFA_NO_CRONOGRAMA =
   "id, title, status, due_date, prazo_original, adiamentos, cronograma_lado";
+/** As mesmas, mais a ligação com a ação (precisa da migration 0693). */
+export const COLUNAS_DA_TAREFA_COM_ACAO = `${COLUNAS_DA_TAREFA_NO_CRONOGRAMA}, cronograma_item_id`;
 
 export function tarefaDoCronograma(linha: {
   id: string;
@@ -322,6 +326,7 @@ export function tarefaDoCronograma(linha: {
   prazo_original: string | null;
   adiamentos: number | null;
   cronograma_lado: string | null;
+  cronograma_item_id?: string | null;
 }): TarefaDoCronograma {
   return {
     id: linha.id,
@@ -331,6 +336,7 @@ export function tarefaDoCronograma(linha: {
     prazo_original: linha.prazo_original,
     adiamentos: linha.adiamentos ?? 0,
     lado: linha.cronograma_lado === "cliente" ? "cliente" : "agencia",
+    item_id: linha.cronograma_item_id ?? null,
   };
 }
 
@@ -378,9 +384,14 @@ export const novaTarefaSchema = z.object({
   /** Início da tarefa (barra da linha do tempo); só vale ao incluir uma tarefa existente. */
   start_date: z.string().datetime({ offset: true }).nullable().optional(),
   lado: z.enum(LADOS_DA_TAREFA).default("agencia"),
+  /** A ação do cronograma a que a tarefa pertence. */
+  item_id: z.string().uuid().nullable().optional(),
 });
 
 export const edicaoDeTarefaSchema = z.object({
+  title: z.string().trim().min(1).max(255).optional(),
+  /** Liga a tarefa a uma ação do cronograma (`null` solta). */
+  item_id: z.string().uuid().nullable().optional(),
   lado: z.enum(LADOS_DA_TAREFA).nullable().optional(),
   due_date: z.string().datetime({ offset: true }).nullable().optional(),
   status: z.enum(["pending", "in_progress", "done", "cancelled"]).optional(),
@@ -451,7 +462,13 @@ export function leituraDaMeta(
   if (m.valor_alvo === null || m.valor_alvo <= 0) return null;
   if (!menorEhMelhor(m)) {
     const p = progressoDaMeta(m) ?? 0;
-    return { barra: p, variacao: null, bom: m.valor_atual === null ? null : p >= 100, reduzir: null, menorEMelhor: false };
+    return {
+      barra: p,
+      variacao: null,
+      bom: m.valor_atual === null ? null : p >= 100,
+      reduzir: null,
+      menorEMelhor: false,
+    };
   }
   const atual = m.valor_atual;
   if (atual === null || atual <= 0) {

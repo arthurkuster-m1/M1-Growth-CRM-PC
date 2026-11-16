@@ -1,7 +1,7 @@
 "use client";
 
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { SeletorDeData } from "@/components/marketing/cronograma/SeletorDeData";
@@ -9,11 +9,12 @@ import { useT } from "@/hooks/i18n/useT";
 import {
   FUSO_DO_CRONOGRAMA,
   situacaoDaTarefa,
+  type ItemDoCronograma,
   type LadoDaTarefa,
   type TarefaDoCronograma,
 } from "@/lib/marketing/cronograma";
 import { chaveDoDia, somarDias } from "@/lib/inicio/datas";
-import { Plus, X } from "@/lib/ui/icons";
+import { CalendarBlank, Plus, X } from "@/lib/ui/icons";
 
 const CAMPO =
   "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20";
@@ -37,10 +38,18 @@ interface Acoes {
     due_date?: string | null;
     start_date?: string | null;
     lado: LadoDaTarefa;
+    item_id?: string | null;
   }) => Promise<unknown>;
   editar: (
     id: string,
-    t: { lado?: LadoDaTarefa | null; due_date?: string | null; status?: string; motivo?: string },
+    t: {
+      lado?: LadoDaTarefa | null;
+      due_date?: string | null;
+      status?: string;
+      motivo?: string;
+      title?: string;
+      item_id?: string | null;
+    },
   ) => Promise<unknown>;
   fechar: (d: Decisao[]) => Promise<unknown>;
   disponiveis: (
@@ -50,23 +59,28 @@ interface Acoes {
   >;
 }
 
-/** Edição da semana: incluir/criar tarefas, mudar lado, concluir, adiar com motivo e fechar a semana. */
+/**
+ * Edição da semana NA PRÓPRIA VISÃO: a lista das tarefas é a que se vê (agência e cliente), e cada
+ * linha se edita ali mesmo — título, ação do cronograma a que pertence, prazo, situação e quem faz —
+ * como na página de Tarefas. Adiar pede o motivo; "Tirar da semana" só solta, não apaga.
+ */
 export function EdicaoDaSemana({
   tarefas,
+  itens = [],
   inicioDaSemana,
   acoes,
   empresa = "",
 }: {
   tarefas: TarefaDoCronograma[];
+  /** As ações do cronograma geral: a tarefa pode ser ligada a uma delas. */
+  itens?: readonly ItemDoCronograma[];
   inicioDaSemana: string;
   acoes: Acoes;
   /** O nome da empresa do cliente: é o rótulo do "lado do cliente". */
   empresa?: string;
 }) {
   const t = useT();
-  const [titulo, setTitulo] = useState("");
-  const [dia, setDia] = useState(inicioDaSemana);
-  const [lado, setLado] = useState<LadoDaTarefa>("agencia");
+  const [lado] = useState<LadoDaTarefa>("agencia");
   const [busca, setBusca] = useState("");
   const [achadas, setAchadas] = useState<
     Array<{ id: string; title: string; due_date: string | null; start_date?: string | null }>
@@ -77,12 +91,8 @@ export function EdicaoDaSemana({
     due_date: string | null;
     start_date?: string | null;
   } | null>(null);
-  const [adiando, setAdiando] = useState<TarefaDoCronograma | null>(null);
+  const [adiando, setAdiando] = useState<{ tarefa: TarefaDoCronograma; dia: string } | null>(null);
   const [fechando, setFechando] = useState(false);
-
-  useEffect(() => {
-    setDia(inicioDaSemana);
-  }, [inicioDaSemana]);
 
   useEffect(() => {
     let vivo = true;
@@ -103,152 +113,81 @@ export function EdicaoDaSemana({
 
   return (
     <div className="grid gap-4">
-      <fieldset className="grid gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4">
-        <legend className="px-2 text-sm font-semibold">{t("Tarefas desta semana")}</legend>
-        {tarefas.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("Nenhuma tarefa nesta semana ainda.")}</p>
-        ) : null}
-        {tarefas.map((x) => {
-          const situacao = situacaoDaTarefa(x);
-          return (
-            <div
-              key={x.id}
-              className={`grid gap-2 rounded-xl border border-l-4 p-3 sm:grid-cols-[1fr_auto] ${
-                x.status === "done"
-                  ? "border-l-green-500 bg-green-500/5"
-                  : situacao === "atrasada"
-                    ? "border-l-red-500 bg-red-500/5"
-                    : x.lado === "cliente"
-                      ? "border-l-orange-500 bg-orange-500/5"
-                      : "border-l-blue-500 bg-blue-500/5"
-              }`}
+      <section
+        aria-label={t("Tarefas desta semana")}
+        className="grid gap-4 rounded-3xl border bg-card p-4 sm:p-5"
+      >
+        <header className="flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold">{t("Tarefas desta semana")}</h2>
+          <span className="text-xs text-muted-foreground">
+            {t("Clique em qualquer campo para editar · muda na hora")}
+          </span>
+          {abertas.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setFechando(true)}
+              className="ml-auto h-9 rounded-xl border-[1.5px] border-primary px-4 text-sm font-semibold text-primary hover:bg-primary/10"
             >
-              <div>
-                <p className="text-sm font-medium">{x.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t("Prazo")}: {diaDoIso(x.due_date).split("-").reverse().join("/") || "—"}
-                  {x.adiamentos > 0 ? ` · ${t("adiada")} ${x.adiamentos}x` : ""}
-                  {situacao === "atrasada" ? ` · ${t("atrasada")}` : ""}
-                </p>
+              {t("Fechar a semana")}
+            </button>
+          ) : null}
+        </header>
+
+        {(["agencia", "cliente"] as const).map((ladoDoGrupo) => {
+          const doGrupo = tarefas.filter((x) => x.lado === ladoDoGrupo);
+          return (
+            <div key={ladoDoGrupo} className="grid gap-1">
+              <div className="flex items-center gap-2 px-1 pb-1 text-sm font-semibold">
+                {ladoDoGrupo === "agencia" ? t("Agência") : empresa || t("Cliente")}
+                <span className="rounded-full bg-secondary px-2 text-xs font-medium text-muted-foreground">
+                  {doGrupo.length}
+                </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <SelectDoApp
-                  value={x.lado}
-                  aria-label={t("Quem faz")}
-                  onChange={(e) =>
-                    void acoes.editar(x.id, { lado: e.target.value as LadoDaTarefa })
-                  }
-                  className="h-9 rounded-lg border bg-card px-2 text-sm"
-                >
-                  <option value="agencia">{t("Agência")}</option>
-                  <option value="cliente">{empresa || t("Cliente")}</option>
-                </SelectDoApp>
-                <SelectDoApp
-                  value={x.status === "cancelled" ? "pending" : x.status}
-                  aria-label={t("Situação")}
-                  onChange={(e) => void acoes.editar(x.id, { status: e.target.value })}
-                  className="h-9 rounded-lg border bg-card px-2 text-sm"
-                >
-                  <option value="pending">{t("A fazer")}</option>
-                  <option value="in_progress">{t("Em andamento")}</option>
-                  <option value="done">{t("Concluída")}</option>
-                </SelectDoApp>
-                {x.status !== "done" ? (
-                  <button
-                    type="button"
-                    onClick={() => setAdiando(x)}
-                    className="h-9 rounded-lg border px-3 text-sm hover:bg-secondary"
-                  >
-                    {t("Adiar")}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  aria-label={t("Tirar da semana")}
-                  title={t("Tirar da semana")}
-                  onClick={() => void acoes.editar(x.id, { lado: null })}
-                  className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
-                >
-                  <X size={14} aria-hidden />
-                </button>
-              </div>
+              {doGrupo.map((x) => (
+                <LinhaDaTarefa
+                  key={x.id}
+                  tarefa={x}
+                  itens={itens}
+                  empresa={empresa}
+                  acoes={acoes}
+                  aoAdiar={(dia) => setAdiando({ tarefa: x, dia })}
+                />
+              ))}
+              <LinhaDeNovaTarefa
+                inicioDaSemana={inicioDaSemana}
+                aoCriar={(titulo, dia) =>
+                  acoes.adicionar({ title: titulo, due_date: isoDoDia(dia), lado: ladoDoGrupo })
+                }
+              />
             </div>
           );
         })}
-        {abertas.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setFechando(true)}
-            className="h-10 w-fit rounded-xl border-[1.5px] border-primary px-4 text-sm font-semibold text-primary hover:bg-primary/10"
-          >
-            {t("Fechar a semana")}
-          </button>
-        ) : null}
-      </fieldset>
+      </section>
 
-      <fieldset className="grid gap-3 rounded-2xl border bg-card p-4">
-        <legend className="px-2 text-sm font-semibold">{t("Nova tarefa")}</legend>
-        <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_auto]">
-          <input
-            value={titulo}
-            maxLength={255}
-            placeholder={t("O que precisa ser feito")}
-            aria-label={t("O que precisa ser feito")}
-            onChange={(e) => setTitulo(e.target.value)}
-            className={CAMPO}
-          />
-          <SeletorDeData
-            valor={dia}
-            rotulo={t("Prazo")}
-            placeholder={t("Prazo")}
-            aoMudar={setDia}
-          />
-          <SelectDoApp
-            value={lado}
-            onChange={(e) => setLado(e.target.value as LadoDaTarefa)}
-            className={CAMPO}
+      <fieldset className="grid gap-2 rounded-2xl border bg-card p-4">
+        <legend className="px-2 text-sm font-semibold">{t("Tarefa que já existe na base")}</legend>
+        <input
+          value={busca}
+          placeholder={t("Ou busque uma tarefa que já existe na base")}
+          aria-label={t("Ou busque uma tarefa que já existe na base")}
+          onChange={(e) => setBusca(e.target.value)}
+          className={CAMPO}
+        />
+        {achadas.slice(0, 6).map((a) => (
+          <div
+            key={a.id}
+            className="flex items-center justify-between gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-sm"
           >
-            <option value="agencia">{t("Agência")}</option>
-            <option value="cliente">{empresa || t("Cliente")}</option>
-          </SelectDoApp>
-          <button
-            type="button"
-            disabled={titulo.trim() === "" || dia === ""}
-            onClick={async () => {
-              await acoes.adicionar({ title: titulo.trim(), due_date: isoDoDia(dia), lado });
-              setTitulo("");
-            }}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            <Plus size={14} weight="bold" aria-hidden />
-            {t("Criar")}
-          </button>
-        </div>
-
-        <div className="mt-2 grid gap-2">
-          <input
-            value={busca}
-            placeholder={t("Ou busque uma tarefa que já existe na base")}
-            aria-label={t("Ou busque uma tarefa que já existe na base")}
-            onChange={(e) => setBusca(e.target.value)}
-            className={CAMPO}
-          />
-          {achadas.slice(0, 6).map((a) => (
-            <div
-              key={a.id}
-              className="flex items-center justify-between gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-sm"
+            <span className="min-w-0 truncate">{a.title}</span>
+            <button
+              type="button"
+              onClick={() => setIncluindo(a)}
+              className="h-8 shrink-0 rounded-lg border px-3 text-xs hover:bg-secondary"
             >
-              <span className="min-w-0 truncate">{a.title}</span>
-              <button
-                type="button"
-                onClick={() => setIncluindo(a)}
-                className="h-8 shrink-0 rounded-lg border px-3 text-xs hover:bg-secondary"
-              >
-                {t("Incluir na semana")}
-              </button>
-            </div>
-          ))}
-        </div>
+              {t("Incluir na semana")}
+            </button>
+          </div>
+        ))}
       </fieldset>
 
       <DialogoDeIncluir
@@ -270,10 +209,11 @@ export function EdicaoDaSemana({
         }}
       />
       <DialogoDeAdiar
-        tarefa={adiando}
+        tarefa={adiando?.tarefa ?? null}
+        diaInicial={adiando?.dia}
         aoFechar={() => setAdiando(null)}
         aoConfirmar={async (novo, motivo) => {
-          if (adiando) await acoes.editar(adiando.id, { due_date: isoDoDia(novo), motivo });
+          if (adiando) await acoes.editar(adiando.tarefa.id, { due_date: isoDoDia(novo), motivo });
           setAdiando(null);
         }}
       />
@@ -285,6 +225,195 @@ export function EdicaoDaSemana({
           await acoes.fechar(d);
           setFechando(false);
         }}
+      />
+    </div>
+  );
+}
+
+const ACOES_SEM = "";
+
+/** Uma tarefa da semana, editável na própria linha. */
+function LinhaDaTarefa({
+  tarefa: x,
+  itens,
+  empresa,
+  acoes,
+  aoAdiar,
+}: {
+  tarefa: TarefaDoCronograma;
+  itens: readonly ItemDoCronograma[];
+  empresa: string;
+  acoes: Acoes;
+  aoAdiar: (dia: string) => void;
+}) {
+  const t = useT();
+  const [titulo, setTitulo] = useState(x.title);
+  const descartando = useRef(false);
+  useEffect(() => setTitulo(x.title), [x.title]);
+  const situacao = situacaoDaTarefa(x);
+  const feita = x.status === "done";
+  const disponiveis = itens.filter((i) => !i.arquivado || i.id === x.item_id);
+
+  function salvarTitulo() {
+    if (descartando.current) {
+      descartando.current = false;
+      return;
+    }
+    const limpo = titulo.trim();
+    if (limpo === "") return setTitulo(x.title);
+    if (limpo !== x.title) void acoes.editar(x.id, { title: limpo });
+  }
+
+  return (
+    <div
+      className={`grid items-center gap-2 rounded-xl border-b border-transparent px-1 py-1.5 hover:bg-secondary/40 md:grid-cols-[2rem_minmax(0,2fr)_minmax(0,1.3fr)_9rem_8rem_8rem_auto] ${
+        situacao === "atrasada" && !feita ? "bg-red-500/5" : ""
+      }`}
+    >
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={feita}
+        aria-label={feita ? t("Reabrir") : t("Concluir")}
+        onClick={() => void acoes.editar(x.id, { status: feita ? "pending" : "done" })}
+        className={`grid h-6 w-6 place-items-center rounded-full border-2 ${
+          feita ? "border-green-500 bg-green-500 text-white" : "border-muted-foreground/50"
+        }`}
+      >
+        {feita ? <span aria-hidden>✓</span> : null}
+      </button>
+      <input
+        value={titulo}
+        maxLength={255}
+        aria-label={t("Título da tarefa")}
+        onChange={(e) => setTitulo(e.target.value)}
+        onBlur={salvarTitulo}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            descartando.current = true;
+            setTitulo(x.title);
+            e.currentTarget.blur();
+          }
+        }}
+        className={`h-9 min-w-0 rounded-lg border border-transparent bg-transparent px-2 text-sm font-medium outline-hidden hover:border-border focus:border-primary/60 focus:bg-card focus:ring-2 focus:ring-primary/20 ${
+          feita ? "text-muted-foreground line-through" : ""
+        }`}
+      />
+      <SelectDoApp
+        value={x.item_id ?? ACOES_SEM}
+        aria-label={t("Ação do cronograma")}
+        onChange={(e) => void acoes.editar(x.id, { item_id: e.target.value || null })}
+        className="h-9 min-w-0 rounded-lg border border-transparent bg-transparent px-2 text-sm hover:border-border"
+      >
+        <option value={ACOES_SEM}>{t("Sem ação ligada")}</option>
+        {disponiveis.map((i) => (
+          <option key={i.id} value={i.id}>
+            {i.fase.trim() ? `${i.fase.trim()} · ${i.acao}` : i.acao}
+          </option>
+        ))}
+      </SelectDoApp>
+      <div className="min-w-0">
+        <SeletorDeData
+          valor={diaDoIso(x.due_date)}
+          rotulo={t("Prazo")}
+          placeholder={t("Prazo")}
+          limpavel={false}
+          aoMudar={(dia) => {
+            if (dia && dia !== diaDoIso(x.due_date)) aoAdiar(dia);
+          }}
+        />
+        {x.adiamentos > 0 ? (
+          <span className="block px-1 text-[11px] text-muted-foreground">
+            {t("adiada")} {x.adiamentos}x{situacao === "atrasada" ? ` · ${t("atrasada")}` : ""}
+          </span>
+        ) : situacao === "atrasada" && !feita ? (
+          <span className="block px-1 text-[11px] text-red-600">{t("atrasada")}</span>
+        ) : null}
+      </div>
+      <SelectDoApp
+        value={x.status === "cancelled" ? "pending" : x.status}
+        aria-label={t("Situação")}
+        onChange={(e) => void acoes.editar(x.id, { status: e.target.value })}
+        className="h-9 rounded-lg border border-transparent bg-transparent px-2 text-sm hover:border-border"
+      >
+        <option value="pending">{t("A fazer")}</option>
+        <option value="in_progress">{t("Em andamento")}</option>
+        <option value="done">{t("Concluída")}</option>
+      </SelectDoApp>
+      <SelectDoApp
+        value={x.lado}
+        aria-label={t("Quem faz")}
+        onChange={(e) => void acoes.editar(x.id, { lado: e.target.value as LadoDaTarefa })}
+        className="h-9 rounded-lg border border-transparent bg-transparent px-2 text-sm hover:border-border"
+      >
+        <option value="agencia">{t("Agência")}</option>
+        <option value="cliente">{empresa || t("Cliente")}</option>
+      </SelectDoApp>
+      <div className="flex items-center justify-end gap-1">
+        {!feita ? (
+          <button
+            type="button"
+            aria-label={t("Adiar")}
+            title={t("Adiar")}
+            onClick={() => aoAdiar(diaDoIso(x.due_date))}
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+          >
+            <CalendarBlank size={15} aria-hidden />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          aria-label={t("Tirar da semana")}
+          title={t("Tirar da semana")}
+          onClick={() => void acoes.editar(x.id, { lado: null })}
+          className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-error-fg"
+        >
+          <X size={14} aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** A linha em branco no fim de cada grupo: digitar e Enter cria a tarefa (prazo: hoje, ou o início da semana). */
+function LinhaDeNovaTarefa({
+  inicioDaSemana,
+  aoCriar,
+}: {
+  inicioDaSemana: string;
+  aoCriar: (titulo: string, dia: string) => Promise<unknown>;
+}) {
+  const t = useT();
+  const [titulo, setTitulo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const hoje = chaveDoDia(new Date(), FUSO_DO_CRONOGRAMA);
+  const dia =
+    hoje >= inicioDaSemana && hoje <= somarDias(inicioDaSemana, 6) ? hoje : inicioDaSemana;
+
+  async function criar() {
+    const limpo = titulo.trim();
+    if (!limpo || ocupado) return;
+    setOcupado(true);
+    await aoCriar(limpo, dia);
+    setTitulo("");
+    setOcupado(false);
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-1 py-1">
+      <Plus size={16} weight="bold" aria-hidden className="mx-2 shrink-0 text-muted-foreground" />
+      <input
+        value={titulo}
+        maxLength={255}
+        disabled={ocupado}
+        placeholder={t("Nova tarefa… (Enter para criar)")}
+        aria-label={t("Nova tarefa")}
+        onChange={(e) => setTitulo(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void criar();
+        }}
+        className="h-9 min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 text-sm outline-hidden placeholder:text-muted-foreground hover:border-border focus:border-primary/60 focus:bg-card focus:ring-2 focus:ring-primary/20"
       />
     </div>
   );
@@ -376,10 +505,13 @@ function DialogoDeIncluir({
 
 function DialogoDeAdiar({
   tarefa,
+  diaInicial,
   aoFechar,
   aoConfirmar,
 }: {
   tarefa: TarefaDoCronograma | null;
+  /** O prazo já escolhido na linha (quando o clique veio do campo de prazo). */
+  diaInicial?: string;
   aoFechar: () => void;
   aoConfirmar: (novoDia: string, motivo: string) => Promise<void>;
 }) {
@@ -387,9 +519,9 @@ function DialogoDeAdiar({
   const [dia, setDia] = useState("");
   const [motivo, setMotivo] = useState("");
   useEffect(() => {
-    setDia(diaDoIso(tarefa?.due_date ?? null));
+    setDia(diaInicial || diaDoIso(tarefa?.due_date ?? null));
     setMotivo("");
-  }, [tarefa]);
+  }, [tarefa, diaInicial]);
   return (
     <Dialog open={tarefa !== null} onOpenChange={(o) => (o ? null : aoFechar())}>
       <DialogContent className="max-w-md">
