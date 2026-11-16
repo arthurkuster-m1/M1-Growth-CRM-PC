@@ -178,6 +178,11 @@ function TituloDaColuna({
   );
 }
 
+const ALTURA_DA_LINHA = 38;
+const ALTURA_DO_CABECALHO = 40;
+/** Espaço da barra de rolagem horizontal (dentro da tabela) e um respiro. */
+const FOLGA_DA_BARRA = 28;
+
 export default function GradeDeLeads({
   colunas,
   linhas,
@@ -285,12 +290,15 @@ export default function GradeDeLeads({
         duplicateRow={({ rowData }) => semSituacao(rowData)}
         rowClassName={classeDaLinha}
         rowKey={undefined}
-        rowHeight={38}
+        rowHeight={ALTURA_DA_LINHA}
+        headerRowHeight={ALTURA_DO_CABECALHO}
         gutterColumn={{ minWidth: 44 }}
         addRowsComponent={false}
         autoAddRow
         lockRows={false}
-        height={Math.min(560, 48 + 38 * (linhas.length + 1))}
+        // Sem teto: a tabela cresce com as linhas e quem rola é a PÁGINA (uma barra só, sem barra
+        // vertical dentro da tabela). Cabeçalho + uma folga para a barra horizontal + as linhas.
+        height={ALTURA_DO_CABECALHO + ALTURA_DA_LINHA * linhas.length + FOLGA_DA_BARRA}
       />
     </div>
   );
