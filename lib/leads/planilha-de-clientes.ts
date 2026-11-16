@@ -14,6 +14,7 @@
 import { normalizaData, normalizaTelefone } from "@/lib/contacts/csv";
 import { chaveDoLink, normalizarLink, TIPOS_DE_LINK } from "@/lib/leads/links-de-contato";
 import { campoDaColuna } from "@/lib/leads/colunas-da-planilha";
+import { lerEntradaDoLead } from "@/lib/leads/data-do-lead";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 
 export const STATUS_DE_VENDA_ACEITOS = ["interesse", "comprometida", "concluida", "cancelada"] as const;
@@ -40,6 +41,10 @@ export interface LinhaDeCliente {
   descricao: string | null;
   etiquetas: string[];
   nascimento: string | null;
+  /** Quando o lead chegou (data e horário de Brasília); null = não informado (vale agora). */
+  entrada_iso: string | null;
+  entrada_data: string | null;
+  entrada_hora: string | null;
   /** Links (Instagram, site…) já normalizados, por chave `link_<tipo>` do contato. */
   links: Record<string, string>;
   /** Colunas a mais: nome da coluna → valor (viram campos personalizados). */
@@ -158,6 +163,17 @@ export function lerLinhasDeClientes(
       erros.push({ linha: numero, motivo: `${t("nascimento não reconhecido")} ("${nascTexto}") — DD/MM/AAAA` });
       continue;
     }
+    const entrada = lerEntradaDoLead(valor("data_entrada"), valor("hora_entrada"));
+    if (!entrada.ok) {
+      erros.push({
+        linha: numero,
+        motivo:
+          t(entrada.motivo) +
+          (entrada.valor ? ` ("${entrada.valor}")` : "") +
+          (entrada.dica ? ` — ${entrada.dica}` : ""),
+      });
+      continue;
+    }
     const statusTexto = valor("status_da_venda");
     const status = statusTexto === "" ? null : statusDaVenda(statusTexto);
     if (statusTexto !== "" && status === null) {
@@ -213,6 +229,9 @@ export function lerLinhasDeClientes(
         .filter(Boolean)
         .slice(0, 20),
       nascimento,
+      entrada_iso: entrada.iso,
+      entrada_data: entrada.data,
+      entrada_hora: entrada.hora,
       links,
       campos: extras,
     });

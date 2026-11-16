@@ -134,6 +134,7 @@ describe("hubSections", () => {
       "/app/companies",
       "/app/people",
       "/app/tasks/planos",
+      "/app/clientes/importar",
       "/app/imports",
     ]);
   });

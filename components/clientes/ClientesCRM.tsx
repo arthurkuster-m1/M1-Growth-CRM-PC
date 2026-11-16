@@ -11,7 +11,6 @@ import { useEffect, useMemo, useState } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { DialogoDaVenda, type DadosDaVenda } from "@/components/vendas/DialogoDaVenda";
 import { SeletorDeFunis, type FunilDaBarra } from "@/components/clientes/BarraDeFunis";
-import { ImportarLeadsDoCRM } from "@/components/clientes/ImportarLeadsDoCRM";
 import { NovoLeadDoCRM } from "@/components/clientes/NovoLeadDoCRM";
 import { JanelaDoAtivo } from "@/components/clientes/JanelaDoAtivo";
 import {
@@ -378,7 +377,6 @@ export function ClientesCRM({
     | "semcontato"
     | "sempasso"
   >(null);
-  const [importarAberto, setImportarAberto] = useState(false);
   /** O status do ciclo de vida que filtra a lista (clique de novo para soltar). */
   const [cicloFiltro, setCicloFiltro] = useState<(typeof CICLOS_DE_VIDA)[number] | null>(null);
 
@@ -3113,7 +3111,7 @@ export function ClientesCRM({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setImportarAberto(true)}
+                  onClick={() => router.push("/app/clientes/importar")}
                   className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
                 >
                   <UploadSimple size={14} weight="bold" aria-hidden />
@@ -3129,15 +3127,6 @@ export function ClientesCRM({
         <NovoLeadDoCRM
           aberto
           aoFechar={() => setNovoLeadAberto(false)}
-          funis={dados?.funis ?? []}
-          etapas={dados?.etapas ?? []}
-          funilInicial={funilValido && funilEscolhido !== TODOS ? funilEscolhido : null}
-        />
-      ) : null}
-      {importarAberto ? (
-        <ImportarLeadsDoCRM
-          aberto
-          aoFechar={() => setImportarAberto(false)}
           funis={dados?.funis ?? []}
           etapas={dados?.etapas ?? []}
           funilInicial={funilValido && funilEscolhido !== TODOS ? funilEscolhido : null}
@@ -3281,7 +3270,7 @@ export function ClientesCRM({
           </button>
           <button
             type="button"
-            onClick={() => setImportarAberto(true)}
+            onClick={() => router.push("/app/clientes/importar")}
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
           >
             <UploadSimple size={14} weight="bold" aria-hidden />

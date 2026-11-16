@@ -32,12 +32,23 @@ import {
   type ErroDaLinha,
   type LinhaDeCliente,
 } from "@/lib/leads/planilha-de-clientes";
+import {
+  CAMPANHA_PADRAO_DAS_LPS,
+  planejarOrigem,
+  semAcento,
+  type CatalogoDeOrigem,
+  type PlanoDeOrigem,
+} from "@/lib/leads/origem-da-importacao";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const corpoSchema = z.object({
-  celulas: z.array(z.array(z.string().max(4000)).max(80)).min(2).max(CSV_MAX_DATA_ROWS + 1),
+  celulas: z
+    .array(z.array(z.string().max(4000)).max(80))
+    .min(2)
+    .max(CSV_MAX_DATA_ROWS + 1),
   /** Funil para quem não trouxe o próprio; vazio = só guardar os contatos. */
   pipeline_id: z.string().uuid().nullable().optional(),
   stage_id: z.string().uuid().nullable().optional(),
@@ -51,6 +62,9 @@ interface Resumo {
   sem_funil: number;
   erros: ErroDaLinha[];
   colunas_personalizadas: string[];
+  /** Landing pages (e campanhas para abrigá-las) que não existiam e foram cadastradas. */
+  lps_criadas: number;
+  campanhas_criadas: number;
 }
 
 const chaveDoCampo = (rotulo: string) => {
@@ -64,17 +78,11 @@ const chaveDoCampo = (rotulo: string) => {
   return /^[a-z]/.test(base) ? base : `campo_${base}`;
 };
 
-const semAcento = (x: string) =>
-  x
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim()
-    .toLowerCase();
-
 export async function POST(req: NextRequest): Promise<Response> {
   const negado = await requireSupportWrite();
   if (negado) return negado;
   const requestId = randomUUID();
+  const inicioDaImportacao = Date.now() - 10_000;
   const authz = await requireRole("agent", { requestId, resource: "contacts" });
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
@@ -129,15 +137,18 @@ export async function POST(req: NextRequest): Promise<Response> {
         .limit(3000),
       supabase
         .from("demand_campaign_landing_pages")
-        .select("id, name, campaign_id")
+        .select("id, name, url, campaign_id")
         .eq("organization_id", orgId)
         .limit(2000),
     ]);
-  const campanhaPorNome = new Map(
-    ((campanhasRows ?? []) as Array<{ id: string; name: string }>).map((c) => [semAcento(c.name), c.id]),
-  );
-  const criativos = (criativosRows ?? []) as Array<{ id: string; name: string; campaign_id: string }>;
-  const paginas = (paginasRows ?? []) as Array<{ id: string; name: string; campaign_id: string }>;
+  const criativos = (criativosRows ?? []) as Array<{
+    id: string;
+    name: string;
+    campaign_id: string;
+  }>;
+  const paginas = (paginasRows ?? []) as CatalogoDeOrigem["paginas"];
+  const campanhas = (campanhasRows ?? []) as CatalogoDeOrigem["campanhas"];
+  const catalogoDeOrigem: CatalogoDeOrigem = { campanhas, criativos, paginas };
 
   // O catálogo de produtos (para casar o nome do produto com o cadastro).
   const { data: catalogo } = await supabase
@@ -158,7 +169,76 @@ export async function POST(req: NextRequest): Promise<Response> {
     sem_funil: 0,
     erros: [...lido.erros],
     colunas_personalizadas: lido.colunasPersonalizadas,
+    lps_criadas: 0,
+    campanhas_criadas: 0,
   };
+
+  // A ORIGEM de cada linha. A landing page que não está cadastrada é cadastrada agora (dentro da
+  // campanha da linha, criada se preciso): sem isso o lead guardava só o texto, sem vínculo.
+  const planos = new Map<number, PlanoDeOrigem>();
+  for (const l of lido.linhas) planos.set(l.linha, planejarOrigem(l, catalogoDeOrigem));
+  {
+    const admin = createAdminClient();
+    const campanhaCriada = new Map<string, string>();
+    const lpCriada = new Map<string, string>();
+    for (const [linha, plano] of planos) {
+      if (!plano.paginaNova) continue;
+      try {
+        let campanhaId = plano.campanhaId;
+        if (!campanhaId && plano.campanhaNova) {
+          const chave = semAcento(plano.campanhaNova);
+          campanhaId = campanhaCriada.get(chave) ?? null;
+          if (!campanhaId) {
+            const { data, error } = await admin
+              .from("demand_campaigns")
+              .insert({
+                organization_id: orgId,
+                created_by: authz.user.id,
+                name: plano.campanhaNova,
+                channel: "trafego_pago",
+                description:
+                  plano.campanhaNova === CAMPANHA_PADRAO_DAS_LPS
+                    ? "Criada pela importação de leads para abrigar landing pages sem campanha."
+                    : "",
+              })
+              .select("id")
+              .single();
+            if (error || !data) throw new Error("campanha");
+            campanhaId = (data as { id: string }).id;
+            campanhaCriada.set(chave, campanhaId);
+            resumo.campanhas_criadas += 1;
+          }
+        }
+        if (!campanhaId) throw new Error("campanha");
+        const chaveLp = `${campanhaId}|${semAcento(plano.paginaNova.nome)}`;
+        let paginaId = lpCriada.get(chaveLp) ?? null;
+        if (!paginaId) {
+          const { data, error } = await admin
+            .from("demand_campaign_landing_pages")
+            .insert({
+              organization_id: orgId,
+              campaign_id: campanhaId,
+              created_by: authz.user.id,
+              name: plano.paginaNova.nome,
+              url: plano.paginaNova.url.slice(0, 1000),
+            })
+            .select("id")
+            .single();
+          if (error || !data) throw new Error("lp");
+          paginaId = (data as { id: string }).id;
+          lpCriada.set(chaveLp, paginaId);
+          resumo.lps_criadas += 1;
+        }
+        plano.campanhaId = campanhaId;
+        plano.paginaId = paginaId;
+      } catch {
+        resumo.erros.push({
+          linha,
+          motivo: t("a landing page não pôde ser cadastrada — o lead entrou só com o texto dela"),
+        });
+      }
+    }
+  }
 
   // A mesma pessoa repetida na planilha vira UMA.
   const jaVistos = new Map<string, string>();
@@ -173,7 +253,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     phone_number: string | null;
     source_metadata: Record<string, unknown>;
   } | null> {
-    const colunas = "id, name, email, phone_number, tags, custom_fields, birthdate, source_metadata";
+    const colunas =
+      "id, name, email, phone_number, tags, custom_fields, birthdate, source_metadata";
     if (l.telefone) {
       const { data } = await supabase
         .from("contacts")
@@ -201,21 +282,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   /** A origem digitada na linha, no modelo do cadastro do lead (nomes + ids por trás). */
   function origemDaLinha(l: LinhaDeCliente) {
-    const campanhaId = l.campanha ? (campanhaPorNome.get(semAcento(l.campanha)) ?? null) : null;
-    const criativo = l.anuncio
-      ? criativos.find(
-          (c) =>
-            semAcento(c.name) === semAcento(l.anuncio!) &&
-            (!campanhaId || c.campaign_id === campanhaId),
-        )
-      : undefined;
-    const pagina = l.landing_page
-      ? paginas.find(
-          (p) =>
-            semAcento(p.name) === semAcento(l.landing_page!) &&
-            (!campanhaId || p.campaign_id === campanhaId),
-        )
-      : undefined;
+    const plano = planos.get(l.linha)!;
     const manual: Record<string, string> = {};
     if (l.origem) manual.origem = l.origem;
     if (l.campanha) manual.campanha = l.campanha;
@@ -223,9 +290,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     if (l.anuncio) manual.anuncio = l.anuncio;
     if (l.landing_page) manual.lp = l.landing_page;
     if (l.posicionamento) manual.posicionamento = l.posicionamento;
-    if (campanhaId) manual.campanha_id = campanhaId;
-    if (criativo) manual.anuncio_id = criativo.id;
-    if (pagina) manual.lp_id = pagina.id;
+    if (plano.campanhaId) manual.campanha_id = plano.campanhaId;
+    if (plano.criativoId) manual.anuncio_id = plano.criativoId;
+    if (plano.paginaId) manual.lp_id = plano.paginaId;
     const tagsDeOrigem = [
       l.campanha ? `Campanha: ${l.campanha}` : "",
       l.conjunto ? `Conjunto: ${l.conjunto}` : "",
@@ -234,9 +301,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     ].filter(Boolean);
     return {
       manual,
-      campanhaId: campanhaId ?? criativo?.campaign_id ?? pagina?.campaign_id ?? null,
-      criativoId: criativo?.id ?? null,
-      paginaId: pagina?.id ?? null,
+      campanhaId: plano.campanhaId,
+      criativoId: plano.criativoId,
+      paginaId: plano.paginaId,
       tagsDeOrigem,
       temOrigem: Object.keys(manual).length > 0,
     };
@@ -295,7 +362,11 @@ export async function POST(req: NextRequest): Promise<Response> {
             patch.source_metadata = { ...meta, origem_manual: { ...atual, ...orig.manual } };
           }
           if (Object.keys(patch).length > 0) {
-            await supabase.from("contacts").update(patch).eq("id", contactId).eq("organization_id", orgId);
+            await supabase
+              .from("contacts")
+              .update(patch)
+              .eq("id", contactId)
+              .eq("organization_id", orgId);
           }
           resumo.contatos_atualizados += 1;
         } else {
@@ -309,8 +380,11 @@ export async function POST(req: NextRequest): Promise<Response> {
               source: l.origem ?? "importacao_planilha",
               tags,
               birthdate: l.nascimento,
+              ...(l.entrada_iso ? { created_at: l.entrada_iso } : {}),
               custom_fields: {
-                ...(Object.keys(camposDaLinha).length > 0 ? { ...camposDaLinha, _rotulos: rotulos } : {}),
+                ...(Object.keys(camposDaLinha).length > 0
+                  ? { ...camposDaLinha, _rotulos: rotulos }
+                  : {}),
                 ...(l.links ?? {}),
               },
               ...(orig.temOrigem ? { source_metadata: { origem_manual: orig.manual } } : {}),
@@ -360,7 +434,11 @@ export async function POST(req: NextRequest): Promise<Response> {
           });
         }
       }
-      if (!etapaId && corpo.data.stage_id && etapas.some((e) => e.id === corpo.data.stage_id && e.pipeline_id === funilId)) {
+      if (
+        !etapaId &&
+        corpo.data.stage_id &&
+        etapas.some((e) => e.id === corpo.data.stage_id && e.pipeline_id === funilId)
+      ) {
         etapaId = corpo.data.stage_id;
       }
       etapaId = etapaId ?? abertas[0]?.id ?? null;
@@ -389,6 +467,25 @@ export async function POST(req: NextRequest): Promise<Response> {
       const leadId = lead?.id ?? lead?.lead?.id ?? lead?.data?.id ?? null;
       resumo.cards_criados += 1;
 
+      // A data e o horário em que o lead CHEGOU valem para o card novo (um negócio que já existia
+      // mantém a data dele).
+      if (leadId && l.entrada_iso) {
+        const { data: card } = await supabase
+          .from("crm_leads")
+          .select("created_at")
+          .eq("id", leadId)
+          .eq("organization_id", orgId)
+          .maybeSingle();
+        const criadoEm = (card as { created_at: string } | null)?.created_at;
+        if (criadoEm && new Date(criadoEm).getTime() >= inicioDaImportacao) {
+          await supabase
+            .from("crm_leads")
+            .update({ created_at: l.entrada_iso })
+            .eq("id", leadId)
+            .eq("organization_id", orgId);
+        }
+      }
+
       // A origem do card: campanha, anúncio e página pelos ids (o banco cria as tags de origem) e
       // conjunto e posicionamento no próprio card.
       if (leadId && orig.temOrigem) {
@@ -403,8 +500,9 @@ export async function POST(req: NextRequest): Promise<Response> {
           .eq("id", leadId)
           .eq("organization_id", orgId)
           .maybeSingle();
-        const metaDoCard = ((cardAtual as { source_metadata: Record<string, unknown> | null } | null)
-          ?.source_metadata ?? {}) as Record<string, unknown>;
+        const metaDoCard = ((
+          cardAtual as { source_metadata: Record<string, unknown> | null } | null
+        )?.source_metadata ?? {}) as Record<string, unknown>;
         patchDoCard.source_metadata = {
           ...metaDoCard,
           origem_manual: {
@@ -412,7 +510,11 @@ export async function POST(req: NextRequest): Promise<Response> {
             ...orig.manual,
           },
         };
-        await supabase.from("crm_leads").update(patchDoCard).eq("id", leadId).eq("organization_id", orgId);
+        await supabase
+          .from("crm_leads")
+          .update(patchDoCard)
+          .eq("id", leadId)
+          .eq("organization_id", orgId);
         const partes = [
           orig.manual.campanha && `campanha ${orig.manual.campanha}`,
           orig.manual.conjunto && `conjunto ${orig.manual.conjunto}`,
@@ -495,6 +597,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       contatos_atualizados: resumo.contatos_atualizados,
       cards_criados: resumo.cards_criados,
       sem_funil: resumo.sem_funil,
+      lps_criadas: resumo.lps_criadas,
+      campanhas_criadas: resumo.campanhas_criadas,
       recusadas: resumo.erros.length,
     },
   });

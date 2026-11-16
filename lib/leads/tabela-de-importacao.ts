@@ -13,6 +13,8 @@ export const COLUNAS_DO_LEAD = [
   { id: "titulo", rotulo: "Nome", obrigatoria: true },
   { id: "telefone", rotulo: "Telefone" },
   { id: "email", rotulo: "E-mail" },
+  { id: "data_entrada", rotulo: "Data de entrada" },
+  { id: "hora_entrada", rotulo: "Horário de entrada" },
   { id: "origem", rotulo: "Origem" },
   { id: "campanha", rotulo: "Campanha" },
   { id: "conjunto", rotulo: "Conjunto" },

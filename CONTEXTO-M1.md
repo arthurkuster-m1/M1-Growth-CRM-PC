@@ -31,6 +31,7 @@
 ## Padrões do motor (siga-os)
 - Edição otimista (`setQueryData` + rollback); posição `numeric` por ponto médio (`lib/motor/ordem.ts`); layout por pessoa guarda só desvios (`lib/motor/layout.ts`); status = opção por organização ligada a grupo fixo via trigger; valores personalizados em `crm_tasks.custom_fields` validados por tipo (`lib/tarefas/propriedades.ts`); datas no fuso da organização (`lib/inicio/datas.ts`).
 - **Ctrl+Z é padrão** em toda tabela (`lib/motor/desfazer.ts`) e no Editor de Blocos; recurso novo que edita/apaga nasce com Ctrl+Z.
+- **Importar leads em massa** = página `/app/clientes/importar` (`components/clientes/importar/`): grade estilo Excel (react-datasheet-grid, a mesma da importação de veículos da Gestão de Frota), colunas mostrar/ocultar/reordenar, coluna "Data/Horário de entrada" (grava `created_at` do contato e do card), linha de Situação por linha vinda de `POST /api/v1/clientes/importar/conferir` (simulação, não grava) e revisão final. A lib da grade NÃO tem Ctrl+Z: o histórico é de `usar-historico.ts` (Ctrl+Z/Ctrl+Y). LP/campanha que não existem são cadastradas na importação (`lib/leads/origem-da-importacao.ts`; sem campanha na linha, vai para a campanha "Importação de leads").
 - i18n: `t("português")` + espanhol em `lib/i18n/dicionario.ts` (sem `t(variável)`, sem prosa fora de `t()`, cuidado com chave duplicada).
 - Rota mutante: `requireRole`/`requireSupportWrite`, `ok()/fail()`, `audit()`. Tela nova: porta em `lib/navigation/catalogo.ts`.
 

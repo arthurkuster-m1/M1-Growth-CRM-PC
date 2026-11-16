@@ -62,6 +62,15 @@ export const COLUNAS: Record<string, readonly string[]> = {
     "status de venda",
     "estado de la venta",
   ],
+  data_entrada: [
+    "data de entrada", "data do lead", "data de cadastro", "data de captacao", "data de captação",
+    "data", "fecha de entrada", "fecha",
+  ],
+  hora_entrada: [
+    "horario de entrada", "horário de entrada", "horario do lead", "horário do lead", "hora de entrada",
+    "hora do lead", "hora de cadastro", "horario", "horário", "hora", "hora de captacao", "hora de captação",
+    "hora de entrada del lead",
+  ],
   nascimento: [
     "nascimento",
     "data de nascimento",

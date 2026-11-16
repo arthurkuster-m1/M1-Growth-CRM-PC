@@ -45,6 +45,8 @@ export interface ResumoDaImportacaoDoCRM {
   sem_funil: number;
   erros: { linha: number; motivo: string }[];
   colunas_personalizadas: string[];
+  lps_criadas: number;
+  campanhas_criadas: number;
 }
 
 /**

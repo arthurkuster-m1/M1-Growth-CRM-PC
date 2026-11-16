@@ -1,0 +1,91 @@
+/* ── Importar leads: grade estilo planilha (a mesma da importação de veículos da Gestão de Frota) ── */
+.leads-grade {
+  --dsg-border-color: var(--color-border);
+  --dsg-cell-background-color: var(--color-surface);
+  --dsg-cell-disabled-background-color: var(--color-surface-elevated);
+  --dsg-header-text-color: var(--color-text-muted);
+  --dsg-header-active-text-color: var(--color-text);
+  --dsg-selection-border-color: var(--color-accent);
+  --dsg-selection-border-width: 2px;
+  --dsg-selection-border-radius: 4px;
+  --dsg-selection-background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.leads-grade .dsg-container {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 0;
+}
+.leads-grade .dsg-input {
+  font-size: 13px;
+  color: var(--color-text);
+}
+.leads-grade .dsg-cell-header {
+  font-weight: 700;
+  font-size: 12px;
+  background: var(--color-surface-elevated);
+}
+.leads-grade .dsg-cell-gutter {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+.leads-grade .dsg-context-menu {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.leads-grade .dsg-context-menu-item:hover {
+  background: var(--color-surface-elevated);
+}
+.leads-linha.is-erro .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-error-bg);
+}
+.leads-linha.is-aviso .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-warning-bg);
+}
+.leads-linha.is-ok .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-success-bg);
+}
+.leads-linha.is-info .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-info-bg);
+}
+.leads-linha.is-ign .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter),
+.leads-linha.is-esperando .dsg-cell:not(.dsg-cell-header):not(.dsg-cell-gutter) {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-subtle);
+}
+.leads-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: 16px;
+  min-width: 0;
+  font-weight: 600;
+}
+.leads-status > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leads-status.is-erro {
+  color: var(--color-error-fg);
+}
+.leads-status.is-aviso {
+  color: var(--color-warning-fg);
+}
+.leads-status.is-ok {
+  color: var(--color-success-fg);
+}
+.leads-status.is-info {
+  color: var(--color-info-fg);
+}
+.leads-status.is-esperando {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+}

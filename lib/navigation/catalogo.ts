@@ -280,6 +280,15 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
+    // Importar leads em massa: a grade estilo Excel. É uma subtela do CRM (o botão "Importar leads"
+    // do CRM leva para cá), por isso não tem item no menu lateral.
+    href: "/app/clientes/importar",
+    label: "Importar leads",
+    description: "Cole a planilha numa grade estilo Excel, revise cada linha e importe os leads.",
+    icon: "ClipboardText",
+    group: "crm",
+  },
+  {
     // A central de automações: regras de lead, tags, tarefas, mensagens e webhooks num só lugar,
     // com a porta para os follow-ups da IA. O editor e o histórico de execuções saíram de
     // Conexões › Webhooks (a rota antiga continua levando para a aba de receber dados).
