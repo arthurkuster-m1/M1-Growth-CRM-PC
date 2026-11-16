@@ -2,13 +2,15 @@
 
 import {
   ArrowsClockwise,
+  DotsSixVertical,
+  X,
   CheckCircle,
   Minus,
   SpinnerGap,
   Warning,
   XCircle,
 } from "@phosphor-icons/react";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DataSheetGrid, keyColumn, textColumn } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import "./grade-de-leads.css";
@@ -83,22 +85,129 @@ function largura(id: string): number {
   return 160;
 }
 
+/**
+ * O título de uma coluna: dá para PEGAR e arrastar para outro lugar (reordena), e o × esconde a
+ * coluna. Qualquer coluna, inclusive Nome, E-mail e Data. O arrastar é por ponteiro (e não o
+ * arrastar nativo do navegador): a grade da biblioteca captura o clique no cabeçalho e cancelava
+ * o nativo.
+ */
+function TituloDaColuna({
+  id,
+  texto,
+  aoMover,
+  aoOcultar,
+}: {
+  id: string;
+  texto: string;
+  aoMover: (idMovido: string, idAlvo: string) => void;
+  aoOcultar: (id: string) => void;
+}) {
+  const [arrastando, setArrastando] = useState(false);
+
+  function apertar(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    const alvo = e.target as HTMLElement;
+    if (alvo.closest(".leads-titulo__x")) return;
+    // No toque, só a alça arrasta (o resto rola a tabela).
+    if (e.pointerType === "touch" && !alvo.closest(".leads-titulo__alca")) return;
+    const x0 = e.clientX;
+    let moveu = false;
+    let sobre: HTMLElement | null = null;
+    const marcar = (el: HTMLElement | null) => {
+      if (sobre === el) return;
+      sobre?.classList.remove("is-sobre");
+      sobre = el;
+      sobre?.classList.add("is-sobre");
+    };
+    const mover = (ev: PointerEvent) => {
+      if (!moveu && Math.abs(ev.clientX - x0) < 6) return;
+      if (!moveu) {
+        moveu = true;
+        setArrastando(true);
+        document.body.classList.add("leads-arrastando-coluna");
+      }
+      const el = document
+        .elementFromPoint(ev.clientX, ev.clientY)
+        ?.closest<HTMLElement>(".leads-titulo[data-coluna]");
+      marcar(el && el.dataset.coluna !== id ? el : null);
+    };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      window.removeEventListener("pointercancel", soltar);
+      document.body.classList.remove("leads-arrastando-coluna");
+      const destino = sobre?.dataset.coluna;
+      marcar(null);
+      setArrastando(false);
+      if (moveu && destino) aoMover(id, destino);
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    window.addEventListener("pointercancel", soltar);
+  }
+
+  return (
+    <div
+      className={`leads-titulo${arrastando ? "is-arrastando" : ""}`}
+      data-coluna={id}
+      title="Arraste para mudar de lugar"
+      onPointerDown={apertar}
+    >
+      <DotsSixVertical size={13} className="leads-titulo__alca" aria-hidden />
+      <span className="leads-titulo__texto">{texto}</span>
+      <button
+        type="button"
+        className="leads-titulo__x"
+        aria-label={`Ocultar ${texto}`}
+        title="Ocultar esta coluna"
+        onClick={(e) => {
+          e.stopPropagation();
+          aoOcultar(id);
+        }}
+      >
+        <X size={12} weight="bold" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 export default function GradeDeLeads({
   colunas,
   linhas,
   aoMudar,
+  aoMoverColuna,
+  aoOcultarColuna,
 }: {
   colunas: ColunaDaGrade[];
   linhas: LinhaGrade[];
   aoMudar: (linhas: LinhaDeLead[]) => void;
+  /** Arrastou o título de `idMovido` para o lugar de `idAlvo`. */
+  aoMoverColuna: (idMovido: string, idAlvo: string) => void;
+  /** Clicou no × do título. */
+  aoOcultarColuna: (id: string) => void;
 }) {
+  // As funções vão por ref: a lista de colunas não é refeita (e o cabeçalho não pisca) a cada render.
+  const mover = useRef(aoMoverColuna);
+  const ocultar = useRef(aoOcultarColuna);
+  useEffect(() => {
+    mover.current = aoMoverColuna;
+    ocultar.current = aoOcultarColuna;
+  });
+
   /* A biblioteca usa null para célula vazia; nossas linhas usam undefined: o cast só concilia os dois. */
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const colunasDaGrade: any[] = useMemo(
     () => [
       ...colunas.map((c) => ({
         ...keyColumn<LinhaGrade, any>(c.id, textColumn as any),
-        title: c.obrigatoria ? `${c.rotulo} *` : c.rotulo,
+        title: (
+          <TituloDaColuna
+            id={c.id}
+            texto={c.obrigatoria ? `${c.rotulo} *` : c.rotulo}
+            aoMover={(a, b) => mover.current(a, b)}
+            aoOcultar={(id) => ocultar.current(id)}
+          />
+        ),
         minWidth: largura(c.id),
         basis: largura(c.id),
         grow: 0,

@@ -45,6 +45,7 @@ import { ClipboardText, UploadSimple } from "@/lib/ui/icons";
 import { enviarLeadsParaOCRM, type ResumoDaImportacaoDoCRM } from "../usarFunisComCampos";
 import type { LinhaDeLead, LinhaGrade } from "./GradeDeLeads";
 import { SeletorDeColunas } from "./SeletorDeColunas";
+import { colunasQueFaltam, moverColuna, ocultarColuna } from "@/lib/leads/ordem-das-colunas";
 import { celulaUnicaAlterada, useHistorico } from "./usar-historico";
 
 // A grade usa `window`: carrega só no navegador.
@@ -160,6 +161,15 @@ export function ImportarLeadsPagina() {
   );
 
   const ids = colunas.map((c) => c.id);
+  // Qualquer coluna pode ser ocultada; mas sem o Nome e sem Telefone ou E-mail não há o que importar.
+  const faltam = colunasQueFaltam(ids);
+  const semColunasObrigatorias = faltam.nome || faltam.contato;
+  const textoDoQueFalta = [
+    faltam.nome ? t("Nome") : null,
+    faltam.contato ? t("Telefone ou E-mail") : null,
+  ]
+    .filter(Boolean)
+    .join(` ${t("e")} `);
   const celulaDe = (l: LinhaDeLead, id: string) => (l[id] ?? "").trim();
   const preenchida = (l: LinhaDeLead) => ids.some((id) => celulaDe(l, id) !== "");
 
@@ -196,7 +206,7 @@ export function ImportarLeadsPagina() {
   useEffect(() => {
     const { cabecalho, idx, cels } = conteudoParaConferir;
     // Sem linhas preenchidas não há o que conferir (a revisão nem mostra o erro antigo).
-    if (idx.length === 0) return;
+    if (idx.length === 0 || semColunasObrigatorias) return;
     const minha = ++senha.current;
     const espera = setTimeout(() => {
       void apiClient
@@ -223,27 +233,35 @@ export function ImportarLeadsPagina() {
     }, ATRASO_DA_CONFERENCIA_MS);
     return () => clearTimeout(espera);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conteudoParaConferir, funilId, etapaId]);
+  }, [conteudoParaConferir, funilId, etapaId, semColunasObrigatorias]);
 
   const dados: LinhaGrade[] = useMemo(
     () =>
       linhas.map((l, i) => {
         if (!preenchida(l)) return { ...l, __tom: "ign" as const };
+        if (semColunasObrigatorias) {
+          return {
+            ...l,
+            __tom: "aviso" as const,
+            __texto: `${t("Mostre na tabela a coluna")} ${textoDoQueFalta} ${t("para importar")}`,
+          };
+        }
         const s = situacoes.get(chavesDasLinhas[i]!);
         return s
           ? { ...l, __tom: s.tom, __texto: s.texto }
           : { ...l, __tom: "esperando" as const, __texto: t("Conferindo…") };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [linhas, situacoes, chavesDasLinhas, visiveis],
+    [linhas, situacoes, chavesDasLinhas, visiveis, semColunasObrigatorias],
   );
-  const linhasConferidas = dados.flatMap((d, i) =>
-    d.__tom && d.__tom !== "ign" && d.__tom !== "esperando"
-      ? [situacoes.get(chavesDasLinhas[i]!)!]
-      : [],
-  );
+  const linhasConferidas = semColunasObrigatorias
+    ? []
+    : dados.flatMap((d, i) => {
+        const s = situacoes.get(chavesDasLinhas[i]!);
+        return s && d.__tom !== "ign" && d.__tom !== "esperando" ? [s] : [];
+      });
   const esperando = dados.some((d) => d.__tom === "esperando");
-  const resumo = useMemo(() => resumirConferencia(linhasConferidas), [linhasConferidas]);
+  const resumo = resumirConferencia(linhasConferidas);
   const totalPreenchidas = linhas.filter(preenchida).length;
   const nomeDoDestino = (d: string | null) => d ?? t("Só guardados nos contatos (sem funil)");
 
@@ -432,7 +450,12 @@ export function ImportarLeadsPagina() {
     }
   }
 
-  const podeImportar = !enviando && !esperando && resumo.prontas > 0 && resumo.comErro === 0;
+  const podeImportar =
+    !enviando &&
+    !esperando &&
+    !semColunasObrigatorias &&
+    resumo.prontas > 0 &&
+    resumo.comErro === 0;
 
   return (
     <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-4 p-4 sm:px-8 sm:py-6 2xl:px-12">
@@ -589,6 +612,8 @@ export function ImportarLeadsPagina() {
       {aviso ? <p className="text-xs text-muted-foreground">{aviso}</p> : null}
 
       <GradeDeLeads
+        aoMoverColuna={(movido, alvo) => mudar({ visiveis: moverColuna(visiveis, movido, alvo) })}
+        aoOcultarColuna={(id) => mudar({ visiveis: ocultarColuna(visiveis, id) })}
         colunas={colunas.map((c) => ({
           id: c.id,
           rotulo: c.rotulo,
@@ -616,6 +641,12 @@ export function ImportarLeadsPagina() {
         {totalPreenchidas === 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">
             {t("Cole ou digite os leads na tabela: aqui aparece, em resumo, o que vai acontecer.")}
+          </p>
+        ) : semColunasObrigatorias ? (
+          <p className="mt-1 text-sm text-warning-fg" data-testid="faltam-colunas">
+            {t("Para importar, deixe na tabela a coluna")} <b>{textoDoQueFalta}</b>
+            {". "}
+            {t("Abra o botão Colunas e ligue-a.")}
           </p>
         ) : esperando ? (
           <p className="mt-1 text-sm text-muted-foreground">{t("Conferindo as linhas…")}</p>
@@ -679,7 +710,7 @@ export function ImportarLeadsPagina() {
             ) : null}
           </div>
         )}
-        {erroDaTabela && totalPreenchidas > 0 ? (
+        {erroDaTabela && totalPreenchidas > 0 && !semColunasObrigatorias ? (
           <p role="alert" className="mt-2 text-sm text-error-fg">
             {erroDaTabela}
           </p>

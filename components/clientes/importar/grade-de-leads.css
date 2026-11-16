@@ -89,3 +89,82 @@
   color: var(--color-text-subtle);
   font-weight: 400;
 }
+
+/* Título da coluna: pegar para arrastar, × para ocultar */
+.leads-titulo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  cursor: grab;
+  user-select: none;
+}
+.leads-titulo:active {
+  cursor: grabbing;
+}
+.leads-titulo.is-sobre {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+.leads-titulo__alca {
+  flex: none;
+  color: var(--color-text-subtle);
+}
+.leads-titulo__texto {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leads-titulo__x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-subtle);
+  opacity: 0;
+  cursor: pointer;
+}
+.leads-titulo:hover .leads-titulo__x,
+.leads-titulo__x:focus-visible {
+  opacity: 1;
+}
+.leads-titulo__x:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error-fg);
+}
+@media (hover: none) {
+  .leads-titulo__x {
+    opacity: 1;
+  }
+}
+
+/* O contêiner do título da biblioteca soma o padding por fora e estourava a célula (o × ficava sob a coluna vizinha). */
+.leads-grade .dsg-cell-header-container {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.leads-titulo.is-arrastando {
+  opacity: 0.6;
+}
+.leads-titulo__alca {
+  touch-action: none;
+}
+body.leads-arrastando-coluna,
+body.leads-arrastando-coluna * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
