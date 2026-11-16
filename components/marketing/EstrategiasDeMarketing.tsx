@@ -19,7 +19,16 @@ const MODULO = "estrategia-de-marketing";
  * criada aqui, no botão "Nova estratégia", já com o modelo de estratégia para preencher.
  * O cliente vê só as publicadas.
  */
-export function EstrategiasDeMarketing({ titulo, fase }: { titulo: string; fase: string }) {
+export function EstrategiasDeMarketing({
+  titulo,
+  fase,
+  extra,
+}: {
+  titulo: string;
+  fase: string;
+  /** Algo a mais ao lado do título (o menu de ocultar da fase). */
+  extra?: React.ReactNode;
+}) {
   const t = useT();
   const router = useRouter();
   const {
@@ -54,7 +63,10 @@ export function EstrategiasDeMarketing({ titulo, fase }: { titulo: string; fase:
   return (
     <section aria-label={titulo} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="min-w-0 text-sm font-semibold text-muted-foreground">{titulo}</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="min-w-0 text-sm font-semibold text-muted-foreground">{titulo}</h2>
+          {extra}
+        </div>
         {podeEditar ? (
           <Popover open={aberto} onOpenChange={setAberto}>
             <PopoverTrigger asChild>

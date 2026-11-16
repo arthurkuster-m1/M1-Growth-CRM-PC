@@ -752,6 +752,10 @@ export const AUDIT_ACTIONS = [
   "marketing_page.offers_bulk_edited",
   "marketing_page.offers_bulk_deleted",
   "marketing_page.subpage_deleted",
+  // A aba Estratégia por cliente: ocultar, mostrar e apagar o conteúdo de páginas e fases.
+  "marketing_estrategia.hidden",
+  "marketing_estrategia.shown",
+  "marketing_estrategia.deleted",
   "marketing_page.bulk_published",
   // Anotações (migration 0686): gravar conteúdo/título não audita (salva sozinho, a cada pausa).
   "notes_page.created",
