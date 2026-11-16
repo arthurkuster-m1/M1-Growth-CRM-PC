@@ -673,6 +673,17 @@ export function StagesSection({
                 />
               </div>
 
+              {/* Próxima ação padrão: o passo que o lead recebe sozinho ao entrar nesta etapa. */}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                <span className="font-medium">{t("Próximo passo padrão")}</span>
+                <PassoPadraoDaEtapa
+                  key={`passo-${etapa.id}-${etapa.proxima_acao_padrao ?? ""}`}
+                  etapa={etapa}
+                  desabilitado={ocupado}
+                  aoConfirmar={(texto) => aplicar(etapa.id, { proxima_acao_padrao: texto })}
+                />
+              </div>
+
               {/* Uma coluna que apareceu no quadro sem o dono ter criado precisa
                   dizer de onde veio — senão o assistente muda o funil e a única
                   pista fica no log que nenhuma tela lê. */}
@@ -1181,6 +1192,57 @@ function NomeDaEtapa({
         }
       }}
       className="min-w-0 flex-1"
+    />
+  );
+}
+
+/**
+ * O próximo passo que o lead recebe ao entrar na etapa (migration 0692). Confirma ao sair do campo
+ * ou no Enter; Escape descarta. Vazio = a etapa não mexe no próximo passo do lead.
+ */
+export function PassoPadraoDaEtapa({
+  etapa,
+  desabilitado,
+  aoConfirmar,
+}: {
+  etapa: Pick<EtapaDoFunil, "proxima_acao_padrao" | "name" | "id">;
+  desabilitado: boolean;
+  aoConfirmar: (texto: string) => void;
+}) {
+  const t = useT();
+  const gravado = etapa.proxima_acao_padrao ?? "";
+  const [texto, setTexto] = useState(gravado);
+  const descartando = useRef(false);
+
+  function confirmar() {
+    if (descartando.current) {
+      descartando.current = false;
+      return;
+    }
+    const limpo = texto.trim();
+    if (limpo === gravado.trim()) return;
+    aoConfirmar(limpo);
+  }
+
+  return (
+    <Input
+      value={texto}
+      maxLength={300}
+      disabled={desabilitado}
+      placeholder={t("Ex.: Iniciar abordagem")}
+      aria-label={`${t("Próximo passo padrão")} — «${etapa.name}»`}
+      data-testid={`passo-padrao-${etapa.id}`}
+      className="h-8 min-w-60 flex-1 text-sm"
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={confirmar}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          descartando.current = true;
+          setTexto(gravado);
+          e.currentTarget.blur();
+        }
+      }}
     />
   );
 }

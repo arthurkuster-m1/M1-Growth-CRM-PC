@@ -52,7 +52,7 @@ export interface DepsDeEtapa {
 
 /** As colunas que a tela e as regras usam. `position` entra: a reordenação calcula em cima dela. */
 const COLUNAS =
-  "id, name, slug, color, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, qualification, last_change_actor_kind, last_change_at";
+  "id, name, slug, color, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, proxima_acao_padrao, expected_duration_hours, qualification, last_change_actor_kind, last_change_at";
 
 /** A etapa como sai para quem lê — inclui a autoria da última mudança de configuração. */
 export interface EtapaVisivel {
@@ -74,6 +74,8 @@ export interface EtapaVisivel {
   win_probability: number | null;
   /** Negócio que entra nesta etapa abre um aviso na Central (migration 0440). */
   avisar_na_central: boolean;
+  /** Próximo passo que o lead recebe ao entrar nesta etapa (migration 0692); vazio = nenhum. */
+  proxima_acao_padrao: string;
   /**
    * Janela de "esfriando" DESTA etapa, em horas (`crm_stages.expected_duration_hours`).
    * `null` = a etapa nunca configurou, e o radar cai no padrão de 24 h/72 h
@@ -95,6 +97,7 @@ export interface EtapaVisivel {
 type EtapaLida = EtapaEditavel & {
   color?: string | null;
   avisar_na_central?: boolean | null;
+  proxima_acao_padrao?: string | null;
   qualification?: "mql" | "disqualified" | null;
   last_change_actor_kind: string | null;
   last_change_at: string | null;
@@ -151,6 +154,7 @@ export function corpo(etapas: EtapaLida[]): { etapas: EtapaVisivel[] } {
         is_lost: e.is_lost,
         win_probability: e.win_probability ?? null,
         avisar_na_central: e.avisar_na_central === true,
+        proxima_acao_padrao: e.proxima_acao_padrao ?? "",
         expected_duration_hours: e.expected_duration_hours ?? null,
         qualification: e.qualification ?? null,
         last_change_actor_kind: e.last_change_actor_kind ?? null,
@@ -348,6 +352,8 @@ export interface PedidoDeEdicao {
   depois_de?: string | null;
   /** Liga ou desliga o aviso na Central para quem entra nesta etapa (0440). */
   avisar_na_central?: boolean;
+  /** Próximo passo padrão da etapa (0692); string vazia limpa. */
+  proxima_acao_padrao?: string;
   /**
    * Janela de "esfriando" da etapa, em HORAS (`crm_stages.expected_duration_hours`).
    * `null` limpa a configuração de propósito — a etapa volta ao padrão de
@@ -437,6 +443,7 @@ export async function atualizarEtapa(
     position?: number;
     win_probability?: number | null;
     avisar_na_central?: boolean;
+    proxima_acao_padrao?: string;
     expected_duration_hours?: number | null;
     qualification?: "mql" | "disqualified" | null;
     color?: string | null;
@@ -448,6 +455,8 @@ export async function atualizarEtapa(
   if (pedido.win_probability !== undefined) patchDoAlvo.win_probability = pedido.win_probability;
   if (pedido.avisar_na_central !== undefined)
     patchDoAlvo.avisar_na_central = pedido.avisar_na_central;
+  if (pedido.proxima_acao_padrao !== undefined)
+    patchDoAlvo.proxima_acao_padrao = pedido.proxima_acao_padrao.trim();
   // Mesmo contrato: `undefined` = "não mexe", `null` = "volta ao padrão de 24 h".
   if (pedido.expected_duration_hours !== undefined) {
     patchDoAlvo.expected_duration_hours = pedido.expected_duration_hours;

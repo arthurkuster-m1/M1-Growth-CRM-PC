@@ -59,6 +59,8 @@ const bodySchema = z
     win_probability: z.number().int().min(0).max(100).nullable().optional(),
     /** Negócio que entra nesta etapa abre um aviso na Central (migration 0440). */
     avisar_na_central: z.boolean().optional(),
+    /** Próximo passo que o lead recebe ao entrar na etapa (migration 0692); vazio limpa. */
+    proxima_acao_padrao: z.string().max(300).optional(),
     /**
      * Janela de "esfriando" da etapa, em HORAS — a coluna
      * `crm_stages.expected_duration_hours`, que o radar já lê

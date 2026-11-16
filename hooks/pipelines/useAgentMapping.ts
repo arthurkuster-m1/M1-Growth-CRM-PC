@@ -31,6 +31,8 @@ export interface EtapaDoFunil {
   win_probability?: number | null;
   /** Negócio que entra aqui abre um aviso na Central (migration 0440). */
   avisar_na_central?: boolean;
+  /** Próximo passo que o lead recebe ao entrar na etapa (migration 0692). */
+  proxima_acao_padrao?: string;
   /**
    * Janela de "esfriando" da etapa, em HORAS (issue #1532). `null` = sem
    * janela configurada e o radar cai no padrão de 24 h/72 h. `undefined` em
