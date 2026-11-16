@@ -1,21 +1,13 @@
 "use client";
 
-import {
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type PointerEvent,
-} from "react";
+import { useMemo, useRef, type KeyboardEvent } from "react";
 
 import css from "@/components/marketing/cronograma/Cronograma.module.css";
+import { LinhaDoTempoDoCronograma } from "@/components/marketing/cronograma/LinhaDoTempoDoCronograma";
 import { chaveDoDia } from "@/lib/inicio/datas";
 import {
   FUSO_DO_CRONOGRAMA,
-  MAXIMO_DE_SEMANAS,
   diaMes,
-  domingoDaSemana,
   formatarValorDaMeta,
   periodoDaSemana,
   corDaBarraDaMeta,
@@ -66,6 +58,9 @@ export interface RotulosDoCronograma {
   proxima: string;
   semanas: string;
   arraste: string;
+  /** Título da 1ª coluna da linha do tempo ("Ação") e botão de escala em dias. */
+  acao: string;
+  dia: string;
   /** "concluídas", "em andamento", "a fazer" — o painel monta a frase com os números. */
   resumo: readonly [string, string, string];
 }
@@ -87,6 +82,11 @@ export interface EdicaoDoPainel {
   aoNovaFase: () => void;
   aoNovaAcao: (fase: string) => void;
   rotulos: { novaMeta: string; novaFase: string; novaAcao: string; editar: string };
+  /** Arrastou a barra de uma ação na linha do tempo: grava as novas semanas (com Ctrl+Z). */
+  aoAlterarSemanas?: (
+    item: ItemDoCronograma,
+    semanas: { semana_inicio: number; semana_fim: number },
+  ) => Promise<unknown> | unknown;
 }
 
 const PONTO_DA_SITUACAO: Record<SituacaoDaTarefa, string> = {
@@ -135,8 +135,6 @@ export function PainelDoCronograma({
   agora,
   tema,
   tag,
-  janelaInicio = 1,
-  aoMudarJanela,
   edicao,
 }: {
   vista: "geral" | "semana";
@@ -156,52 +154,15 @@ export function PainelDoCronograma({
   tema?: TemaDoCronograma;
   /** Etiqueta do idioma (para formatar R$ e números). */
   tag: string;
-  /** A primeira semana visível no cronograma geral (a janela anda para os dois lados). */
-  janelaInicio?: number;
-  aoMudarJanela?: (inicio: number) => void;
   edicao?: EdicaoDoPainel;
 }) {
-  const semanas = config.total_semanas;
   const visiveis = itens.filter((i) => !i.arquivado);
   const feitas = visiveis.filter((i) => i.status === "concluido").length;
   const andando = visiveis.filter((i) => i.status === "andamento").length;
   const aFazer = visiveis.length - feitas - andando;
 
-  const maximoDaJanela = Math.max(1, MAXIMO_DE_SEMANAS - semanas + 1);
-  const primeira = Math.min(maximoDaJanela, Math.max(1, janelaInicio));
-  const ultima = primeira + semanas - 1;
-  const estiloDaGrade = { "--semanas": semanas } as CSSProperties;
-
-  const [arrastando, setArrastando] = useState(false);
-  // Depois de arrastar a janela de semanas, o clique que o navegador solta não é seleção.
+  // Depois de arrastar a linha do tempo, o clique que o navegador solta não é seleção.
   const houveArraste = useMarcaDeArraste();
-  const arraste = useRef<{ x: number; inicio: number; largura: number } | null>(null);
-  const clamp = (n: number) => Math.min(maximoDaJanela, Math.max(1, n));
-  const aoApertar = (e: PointerEvent<HTMLDivElement>) => {
-    // No toque o dedo rola a página; as setas mudam a janela.
-    if (!aoMudarJanela || e.button !== 0 || e.pointerType === "touch") return;
-    const trilho = e.currentTarget.querySelector<HTMLElement>("[data-trilho]");
-    const largura = (trilho?.getBoundingClientRect().width ?? 600) / semanas;
-    houveArraste.marcar(false);
-    arraste.current = { x: e.clientX, inicio: primeira, largura: Math.max(20, largura) };
-  };
-  const aoMover = (e: PointerEvent<HTMLDivElement>) => {
-    const a = arraste.current;
-    if (!a || !aoMudarJanela) return;
-    const dx = e.clientX - a.x;
-    if (!arrastando && Math.abs(dx) < 6) return;
-    if (!arrastando) {
-      houveArraste.marcar(true);
-      setArrastando(true);
-      e.currentTarget.setPointerCapture(e.pointerId);
-    }
-    const alvo = clamp(a.inicio - Math.round(dx / a.largura));
-    if (alvo !== primeira) aoMudarJanela(alvo);
-  };
-  const aoSoltar = () => {
-    arraste.current = null;
-    setArrastando(false);
-  };
 
   // Ações agrupadas por fase, na ordem em que a primeira aparece; sem fase vão ao fim.
   const grupos: Array<{ nome: string; itens: ItemDoCronograma[] }> = [];
@@ -231,46 +192,6 @@ export function PainelDoCronograma({
         total: g.itens.length,
       };
     });
-
-  const classeDaBarra = (status: ItemDoCronograma["status"], destaque = false) =>
-    status === "concluido"
-      ? css.barraFeita
-      : status === "andamento" || destaque
-        ? css.barraAndamento
-        : "";
-
-  /** Uma barra dentro da janela; fora dela vira uma indicação de para onde olhar. */
-  const barra = (ini: number, fim: number, classe: string, fina = false) => {
-    if (fim < primeira) {
-      return (
-        <span className={css.foraDaJanela} style={{ gridColumn: "1 / span 3" }}>
-          ‹ {rotulos.semanaCurta}
-          {ini}
-          {fim !== ini ? `–${fim}` : ""}
-        </span>
-      );
-    }
-    if (ini > ultima) {
-      return (
-        <span
-          className={css.foraDaJanela}
-          style={{ gridColumn: `${Math.max(1, semanas - 2)} / span 3`, textAlign: "right" }}
-        >
-          {rotulos.semanaCurta}
-          {ini}
-          {fim !== ini ? `–${fim}` : ""} ›
-        </span>
-      );
-    }
-    const de = Math.max(ini, primeira) - primeira + 1;
-    const ate = Math.min(fim, ultima) - primeira + 1;
-    return (
-      <div
-        className={`${css.barra} ${fina ? css.barraFase : ""} ${classe}`}
-        style={{ gridColumn: `${de} / span ${ate - de + 1}` }}
-      />
-    );
-  };
 
   /** As propriedades de um item clicável no modo de edição (vazio fora dele). */
   const editavel = (selecao: Exclude<SelecaoDoCronograma, null>) => {
@@ -459,139 +380,52 @@ export function PainelDoCronograma({
             </>
           ) : (
             <>
-              <div className={css.janela} data-sem-imagem="">
-                <button
-                  type="button"
-                  className={css.janelaBotao}
-                  disabled={!aoMudarJanela || primeira <= 1}
-                  aria-label={rotulos.anterior}
-                  onClick={() => aoMudarJanela?.(clamp(primeira - Math.max(1, semanas - 1)))}
-                >
-                  ‹
-                </button>
-                <span className={css.janelaFaixa}>
-                  {rotulos.semanas} {primeira}–{ultima}
-                </span>
-                <button
-                  type="button"
-                  className={css.janelaBotao}
-                  disabled={!aoMudarJanela || primeira >= maximoDaJanela}
-                  aria-label={rotulos.proxima}
-                  onClick={() => aoMudarJanela?.(clamp(primeira + Math.max(1, semanas - 1)))}
-                >
-                  ›
-                </button>
-                {semanaAtual !== null && (semanaAtual < primeira || semanaAtual > ultima) ? (
-                  <button
-                    type="button"
-                    className={css.janelaBotao}
-                    disabled={!aoMudarJanela}
-                    onClick={() => aoMudarJanela?.(clamp(semanaAtual - 1))}
-                  >
-                    {rotulos.hoje}
-                  </button>
-                ) : null}
-                {aoMudarJanela ? <span className={css.janelaDica}>{rotulos.arraste}</span> : null}
-              </div>
-              <div
-                className={`${css.grade} ${arrastando ? css.arrastando : ""}`}
-                style={estiloDaGrade}
-                onPointerDown={aoApertar}
-                onPointerMove={aoMover}
-                onPointerUp={aoSoltar}
-                onPointerCancel={aoSoltar}
-              >
-                <div className={css.cabeca}>
-                  <div />
-                  {Array.from({ length: semanas }, (_, k) => {
-                    const n = primeira + k;
-                    return (
-                      <div
-                        key={n}
-                        className={`${css.semana} ${semanaAtual === n ? css.semanaHoje : ""}`}
-                      >
-                        {rotulos.semanaCurta}
-                        {n}
-                        {config.data_inicio ? (
-                          <span className={css.semanaData}>
-                            {diaMes(domingoDaSemana(config.data_inicio, n))}
-                          </span>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-                {grupos.map((g) => {
-                  const feitasDaFase = g.itens.filter((i) => i.status === "concluido").length;
-                  return (
-                    <div key={g.nome || "sem-fase"} style={{ display: "contents" }}>
-                      {g.nome ? (
-                        <div className={css.linhaFase}>
-                          <div className={css.faseTitulo}>
-                            {edicao ? (
-                              <span
-                                {...(editavel({ tipo: "fase", nome: g.nome }) as Record<
-                                  string,
-                                  never
-                                >)}
-                                style={{ borderRadius: 8, padding: "2px 6px" }}
-                              >
-                                {g.nome}
-                              </span>
-                            ) : (
-                              g.nome
-                            )}
-                            <span className={css.faseContagem}>
-                              {feitasDaFase}/{g.itens.length}
-                            </span>
-                            {edicao ? (
-                              <button
-                                type="button"
-                                data-sem-imagem=""
-                                className={`${css.novo} ${css.novoPequeno}`}
-                                onClick={() => edicao.aoNovaAcao(g.nome)}
-                              >
-                                + {edicao.rotulos.novaAcao}
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      ) : null}
-                      {g.itens.map((i) => {
-                        const ed = editavel({ tipo: "acao", id: i.id }) as { className?: string };
-                        const { className: classeEd, ...restoEd } = ed;
-                        return (
-                          <div key={i.id} {...restoEd} className={`${css.linha} ${classeEd ?? ""}`}>
-                            <div className={css.acao}>
-                              {i.acao}
-                              {i.notas ? <div className={css.acaoNotas}>{i.notas}</div> : null}
-                            </div>
-                            <div className={css.trilho} data-trilho="">
-                              {barra(
-                                i.semana_inicio,
-                                i.semana_fim,
-                                classeDaBarra(i.status, i.destaque) ?? "",
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-                {edicao ? (
-                  <div style={{ padding: "14px 0 4px" }}>
+              <LinhaDoTempoDoCronograma
+                grupos={grupos}
+                dataInicio={config.data_inicio}
+                hoje={chaveDoDia(agora ?? new Date(), FUSO_DO_CRONOGRAMA)}
+                semanaAtual={semanaAtual}
+                rotulos={{
+                  acao: rotulos.acao,
+                  hoje: rotulos.hoje,
+                  dia: rotulos.dia,
+                  semana: rotulos.semanas,
+                  semanaCurta: rotulos.semanaCurta,
+                  arraste: rotulos.arraste,
+                }}
+                linhaProps={(alvo) =>
+                  editavel(alvo.tipo === "acao" ? alvo : { tipo: "fase", nome: alvo.nome })
+                }
+                aoAlterarSemanas={edicao?.aoAlterarSemanas}
+                marcarArraste={houveArraste.marcar}
+                rodape={(fase) =>
+                  edicao ? (
                     <button
                       type="button"
                       data-sem-imagem=""
-                      className={css.novo}
-                      onClick={() => edicao.aoNovaAcao("")}
+                      className={`${css.novo} ${css.novoPequeno}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        edicao.aoNovaAcao(fase);
+                      }}
                     >
                       + {edicao.rotulos.novaAcao}
                     </button>
-                  </div>
-                ) : null}
-              </div>
+                  ) : null
+                }
+              />
+              {edicao ? (
+                <div style={{ padding: "14px 0 4px" }}>
+                  <button
+                    type="button"
+                    data-sem-imagem=""
+                    className={css.novo}
+                    onClick={() => edicao.aoNovaAcao("")}
+                  >
+                    + {edicao.rotulos.novaAcao}
+                  </button>
+                </div>
+              ) : null}
               <div className={css.legenda}>
                 <span className={css.legendaItem}>
                   <span className={`${css.amostra} ${css.barra} ${css.barraFeita}`} />{" "}

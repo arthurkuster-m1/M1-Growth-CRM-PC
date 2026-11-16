@@ -30,7 +30,9 @@ export function rotulosDoCronograma(t: Traduz, empresa?: string): RotulosDoCrono
     anterior: t("Semanas anteriores"),
     proxima: t("Próximas semanas"),
     semanas: t("Semanas"),
-    arraste: t("Arraste para o lado para ver outras semanas"),
+    arraste: t("Clique e arraste para andar pelos dias · a linha do tempo não tem fim"),
+    acao: t("Ação"),
+    dia: t("Dia"),
     resumo: [t("concluídas"), t("em andamento"), t("a fazer")],
   };
 }

@@ -1,0 +1,295 @@
+/* A linha do tempo do cronograma: ações na 1ª coluna (fixa) e os dias correndo ao lado, sem fim. */
+.rolagem {
+  position: relative;
+  overflow: auto;
+  max-height: min(70dvh, 640px);
+  min-height: 200px;
+  border: 1px solid var(--c-linha);
+  border-radius: 14px;
+  background: var(--c-panel);
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+.rolagem.arrastando {
+  cursor: grabbing;
+  user-select: none;
+}
+.grade {
+  position: relative;
+}
+.cabecalho {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  background: var(--c-superficie);
+  border-bottom: 1px solid var(--c-linha);
+}
+.esq {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  flex: none;
+  display: flex;
+  align-items: center;
+  background: var(--c-panel);
+  border-right: 1px solid var(--c-linha);
+  box-shadow: 6px 0 8px -6px rgba(16, 30, 60, 0.18);
+  padding: 0 12px;
+  min-width: 0;
+}
+.cabEsq {
+  z-index: 7;
+  background: var(--c-superficie);
+  align-items: flex-end;
+  padding-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-medio);
+}
+.eixo {
+  flex: none;
+}
+.meses {
+  display: flex;
+  height: 24px;
+  border-bottom: 1px solid var(--c-linha);
+}
+.mes {
+  flex: none;
+  overflow: clip;
+  border-left: 1px solid var(--c-linha);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-medio);
+  text-transform: capitalize;
+}
+.mes span {
+  position: sticky;
+  left: var(--esq, 260px);
+  padding: 0 8px;
+  line-height: 24px;
+}
+.semanasLinha {
+  position: relative;
+  height: 22px;
+  border-bottom: 1px solid var(--c-linha);
+}
+.semanaRotulo {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-medio);
+  border-left: 1px solid var(--c-linha);
+  white-space: nowrap;
+}
+.semanaRotulo.semanaHoje {
+  color: var(--c-marca);
+  background: var(--c-marca-suave);
+}
+.semanaData {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--c-baixo);
+}
+.dias {
+  display: flex;
+  height: 30px;
+}
+.dia {
+  flex: none;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  font-size: 11px;
+  line-height: 12px;
+  color: var(--c-medio);
+  border-left: 1px solid var(--c-linha);
+}
+.dia b {
+  font-size: 12px;
+  color: var(--c-texto);
+}
+.dia span {
+  font-size: 9px;
+}
+.fds {
+  background: var(--c-bg);
+}
+.hojeDia {
+  background: var(--c-marca-suave);
+}
+.hojeDia b {
+  color: var(--c-marca);
+}
+.linha {
+  display: flex;
+  height: 46px;
+  border-bottom: 1px solid var(--c-linha);
+}
+.linha:hover .esq {
+  background: var(--c-superficie);
+}
+.linhaSelecionada .esq {
+  background: var(--c-marca-suave);
+  box-shadow:
+    inset 3px 0 0 var(--c-marca),
+    6px 0 8px -6px rgba(16, 30, 60, 0.18);
+}
+.acao {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acaoNotas {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--c-medio);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acaoTexto {
+  display: grid;
+  min-width: 0;
+}
+.linhaFase {
+  display: flex;
+  height: 38px;
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-linha);
+}
+.linhaFase .esq {
+  background: var(--c-bg);
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-medio);
+}
+.faseContagem {
+  font-weight: 500;
+  color: var(--c-baixo);
+}
+.corpo {
+  position: relative;
+  flex: none;
+  background-image: linear-gradient(to right, var(--c-linha) 1px, transparent 1px);
+}
+.hojeLinha {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--c-marca);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.barra {
+  position: absolute;
+  top: 9px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  overflow: clip;
+  border-radius: 8px;
+  background: var(--c-superficie);
+  border: 1px solid var(--c-linha);
+  color: var(--c-texto);
+  user-select: none;
+  touch-action: pan-x;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.barraAndamento {
+  background: var(--c-marca-suave);
+  border-color: var(--c-marca);
+  color: var(--c-marca);
+}
+.barraFeita {
+  background: var(--c-feito-bg);
+  border-color: var(--c-feito);
+  color: var(--c-feito-fg);
+}
+.barraMovel {
+  cursor: grab;
+}
+.barraArrastando {
+  cursor: grabbing;
+  opacity: 0.85;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.barraRotulo {
+  position: sticky;
+  left: calc(var(--esq, 0px) + 6px);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.barraRotulo::after {
+  content: attr(data-rotulo);
+}
+.alca {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 2;
+  cursor: ew-resize;
+}
+.alcaIni {
+  left: 0;
+}
+.alcaFim {
+  right: 0;
+}
+.alca:hover {
+  background: rgba(54, 109, 111, 0.25);
+}
+.controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.botao {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--c-linha);
+  background: var(--c-panel);
+  color: var(--c-texto);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.botao:hover {
+  background: var(--c-superficie);
+}
+.botaoAtivo {
+  background: var(--c-marca);
+  border-color: var(--c-marca);
+  color: var(--c-marca-texto);
+}
+.dica {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--c-baixo);
+}
+.erro {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--c-atraso);
+}

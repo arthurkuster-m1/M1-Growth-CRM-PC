@@ -8,7 +8,6 @@ import {
   type RotulosDoCronograma,
 } from "@/components/marketing/cronograma/PainelDoCronograma";
 import { useBaixarImagem } from "@/hooks/marketing/useCronograma";
-import { inicioDaJanela } from "@/lib/marketing/cronograma";
 import type {
   ConfigDoCronograma,
   ItemDoCronograma,
@@ -57,9 +56,6 @@ export function CronogramaPublico({
   const [aba, setAba] = useState<"geral" | "semana">("geral");
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
-  const [janela, setJanela] = useState<number | null>(null);
-  // `semanaAtual` aqui é a semana MOSTRADA; a de hoje é a do início da janela padrão.
-  const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, config.total_semanas);
 
   return (
     <div className="flex flex-col gap-4">
@@ -138,8 +134,6 @@ export function CronogramaPublico({
           rotulos={rotulos}
           mostrarAdiamentos={false}
           tag={tag}
-          janelaInicio={janelaInicio}
-          aoMudarJanela={setJanela}
         />
       </div>
     </div>

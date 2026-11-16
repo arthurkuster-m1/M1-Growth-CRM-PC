@@ -29,7 +29,6 @@ import {
   CONFIG_PADRAO,
   type DadosDaMeta,
   domingoDeHoje,
-  inicioDaJanela,
   numeroDaSemana,
   periodoDaSemana,
 } from "@/lib/marketing/cronograma";
@@ -59,7 +58,6 @@ export function CronogramaDoCliente() {
   const [editando, setEditando] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
   const [inicio, setInicio] = useState(domingoDeHoje());
-  const [janela, setJanela] = useState<number | null>(null);
   const tag = useTagDeIdioma();
   const captura = useRef<HTMLDivElement>(null);
   const baixar = useBaixarImagem();
@@ -91,7 +89,6 @@ export function CronogramaDoCliente() {
   const cfg = config ?? CONFIG_PADRAO;
   // "Hoje" no cronograma geral; a semana escolhida só conta na vista das tarefas.
   const semanaDeHoje = numeroDaSemana(cfg, domingoDeHoje());
-  const janelaInicio = janela ?? inicioDaJanela(semanaDeHoje, cfg.total_semanas);
   const vista: "geral" | "semana" = aba === "semana" ? "semana" : "geral";
 
   const concluidasAbertas = itens.filter((i) => i.status === "concluido" && !i.arquivado);
@@ -353,8 +350,6 @@ export function CronogramaDoCliente() {
             rotulos={rotulos}
             mostrarAdiamentos={podeEditar}
             tag={tag}
-            janelaInicio={janelaInicio}
-            aoMudarJanela={setJanela}
             edicao={
               editandoGeral
                 ? {
@@ -370,6 +365,7 @@ export function CronogramaDoCliente() {
                     aoNovaMeta: () => void novaMeta(),
                     aoNovaFase: () => void novaFase(),
                     aoNovaAcao: (fase) => void novaAcao(fase),
+                    aoAlterarSemanas: (item, semanas) => acoes.editarItem(item.id, semanas),
                     rotulos: {
                       novaMeta: t("Nova meta"),
                       novaFase: t("Nova fase"),
