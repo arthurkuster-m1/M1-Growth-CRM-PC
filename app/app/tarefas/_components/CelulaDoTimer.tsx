@@ -44,13 +44,16 @@ export function CelulaDoTimer({
 
   // Só tem relógio andando quando há cronômetro rodando.
   useEffect(() => {
-    if (!rodando) return;
+    if (!rodando) {
+      setAgora(Date.now());
+      return;
+    }
     setAgora(Date.now());
     const id = setInterval(() => setAgora(Date.now()), 1000);
     return () => clearInterval(id);
   }, [rodando]);
 
-  const total = segundosDaTarefa(tarefa, rodando ? agora : Date.now());
+  const total = segundosDaTarefa(tarefa, agora);
   const podeMexer = podeEditar && (meu !== undefined || !encerrada);
 
   return (

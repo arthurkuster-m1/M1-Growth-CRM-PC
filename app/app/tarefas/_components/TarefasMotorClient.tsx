@@ -11,6 +11,7 @@ import { CelulaDeData } from "@/components/motor/CelulaDeData";
 import { CelulaDePessoa } from "@/components/motor/CelulaDePessoa";
 import { CelulaDeTexto } from "@/components/motor/CelulaDeTexto";
 import { Etiqueta } from "@/components/motor/Etiqueta";
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { EditorDeOpcoesDePropriedade } from "@/components/motor/EditorDeOpcoesDePropriedade";
 import { MenuDaColuna } from "@/components/motor/MenuDaColuna";
 import { NovaPropriedade } from "@/components/motor/NovaPropriedade";
@@ -44,7 +45,7 @@ import { useVisoesSalvas } from "@/hooks/motor/useVisoesSalvas";
 import { abasNaOrdem, baseDaTabelaOculta, reordenarAbas } from "@/lib/motor/ordem-das-abas";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
 
@@ -256,6 +257,36 @@ export function TarefasMotorClient({
         .data.planos,
   });
   const planos = planosQ.data ?? [];
+
+  // A ação do cronograma de cada tarefa (migration 0693). Lê do mesmo cache do Cronograma e grava
+  // pela rota dele — a lista de tarefas em si não depende da coluna nova.
+  const queryClient = useQueryClient();
+  const cronogramaQ = useQuery({
+    queryKey: ["cronograma"],
+    enabled: podeConfigurar,
+    staleTime: 15_000,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: {
+            itens: Array<{ id: string; acao: string; fase: string; arquivado: boolean }>;
+            ligadas?: Array<{ id: string; item_id: string }>;
+          };
+        }>("/api/v1/marketing/cronograma")
+      ).data,
+  });
+  const acaoDaTarefa = new Map((cronogramaQ.data?.ligadas ?? []).map((l) => [l.id, l.item_id]));
+  const ligarAcao = async (tarefaId: string, itemId: string | null) => {
+    try {
+      await apiClient.patch(`/api/v1/marketing/cronograma/tarefas/${tarefaId}`, {
+        item_id: itemId,
+      });
+    } catch (e) {
+      showApiError(e);
+    }
+    await queryClient.invalidateQueries({ queryKey: ["cronograma"] });
+    await queryClient.invalidateQueries({ queryKey: ["cronograma-semana"] });
+  };
   const [modeloNovo, setModeloNovo] = useState(false);
   const [fixadas, setFixadas] = useState<{ chave: string; ids: ReadonlySet<string> }>({
     chave: "",
@@ -506,6 +537,44 @@ export function TarefasMotorClient({
                 >
                   {atual ? (
                     <Etiqueta cor={atual.cor}>{atual.rotulo}</Etiqueta>
+                  ) : (
+                    <span className="px-2 text-sm text-muted-foreground">{t("Vazio")}</span>
+                  )}
+                </SeletorDeOpcao>
+              );
+            },
+          } satisfies ColunaDoMotor<Tarefa>,
+        ]
+      : []),
+    // A ação do cronograma geral a que a tarefa pertence (liga a tarefa ao cronograma).
+    ...(podeConfigurar
+      ? [
+          {
+            id: "acao-do-cronograma",
+            titulo: t("Ação do cronograma"),
+            icone: <CalendarBlank size={14} aria-hidden />,
+            largura: 230,
+            celula: (tarefa: Tarefa) => {
+              const acoes = (cronogramaQ.data?.itens ?? []).filter(
+                (i) => !i.arquivado || i.id === acaoDaTarefa.get(tarefa.id),
+              );
+              const opcoes = acoes.map((i) => ({
+                id: i.id,
+                rotulo: i.fase.trim() ? `${i.fase.trim()} · ${i.acao}` : i.acao,
+                cor: "purple" as CorDaOpcao,
+              }));
+              const atual = opcoes.find((o) => o.id === acaoDaTarefa.get(tarefa.id));
+              return (
+                <SeletorDeOpcao
+                  opcoes={opcoes}
+                  valorId={atual?.id}
+                  podeEditar={podeEditar}
+                  rotulo={t("Ação do cronograma")}
+                  aoEscolher={(id) => void ligarAcao(tarefa.id, id)}
+                  aoLimpar={() => void ligarAcao(tarefa.id, null)}
+                >
+                  {atual ? (
+                    <Etiqueta cor="purple">{atual.rotulo}</Etiqueta>
                   ) : (
                     <span className="px-2 text-sm text-muted-foreground">{t("Vazio")}</span>
                   )}
