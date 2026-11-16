@@ -5,6 +5,7 @@ import type { TipoDeCampo, ValorDoCampo } from "@/lib/motor/consulta";
 import type { CorDaOpcao, OpcaoDeStatus } from "./opcoes-de-status";
 import { opcaoDaTarefa } from "./opcoes-de-status";
 import { TIPOS_COM_OPCOES, type PropriedadeDaTarefa } from "./propriedades";
+import { segundosDaTarefa } from "./tempo";
 import type { Tarefa } from "./tipos";
 
 /**
@@ -115,6 +116,13 @@ export function metasDaTarefa({
       titulo: t("Descrição"),
       tipo: "texto",
       valorDe: (x) => textoDaDescricao(x.description),
+    },
+    {
+      // O tempo cronometrado, em minutos (para filtrar e ordenar: "mais de 60 min").
+      id: "tempo",
+      titulo: t("Tempo (min)"),
+      tipo: "numero",
+      valorDe: (x) => Math.floor(segundosDaTarefa(x, Date.now()) / 60),
     },
     {
       id: "criada",

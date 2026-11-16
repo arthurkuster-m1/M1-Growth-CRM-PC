@@ -50,7 +50,7 @@ export function PainelDaTarefa({
   const t = useT();
   const titulo = colunas.find((c) => c.id === "titulo");
   const propriedades = colunas.filter(
-    (c) => c.id !== "titulo" && c.id !== "descricao" && !(nova && c.id === "criada"),
+    (c) => c.id !== "titulo" && c.id !== "descricao" && !(nova && (c.id === "criada" || c.id === "tempo")),
   );
 
   return (

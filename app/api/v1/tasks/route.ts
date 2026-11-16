@@ -33,6 +33,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
+import { SEM_TEMPO, temposDasTarefas } from "@/lib/tarefas/tempo";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
 
@@ -41,8 +42,7 @@ import { COLUNAS_COM_CLIENTE, comNomeDoCliente } from "@/lib/tarefas/cliente-da-
 export const dynamic = "force-dynamic";
 
 /** As colunas que a tela lê. Explícitas para o `select *` não vazar coluna nova. */
-const COLUNAS =
-  `id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado, ${COLUNAS_COM_CLIENTE}`;
+const COLUNAS = `id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado, ${COLUNAS_COM_CLIENTE}`;
 
 const criacaoSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -117,11 +117,14 @@ export async function GET(req: NextRequest): Promise<Response> {
     return fail("internal_error", t("Erro ao listar as tarefas."), 500, { requestId });
   }
 
+  // O tempo cronometrado de cada tarefa (timer, migration 0689): uma consulta só para a lista.
+  const tempos = await temposDasTarefas(supabase, authz.org.orgId);
+
   return ok(
     {
-      tasks: ((data ?? []) as unknown as Array<Record<string, unknown>>).map(
-        comNomeDoCliente,
-      ) as unknown as Tarefa[],
+      tasks: ((data ?? []) as unknown as Array<Record<string, unknown>>)
+        .map(comNomeDoCliente)
+        .map((x) => ({ ...x, ...(tempos.get(String(x.id)) ?? SEM_TEMPO) })) as unknown as Tarefa[],
     },
     { requestId },
   );
@@ -168,9 +171,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("internal_error", t("Erro ao salvar a tarefa."), 500, { requestId });
   }
 
-  const tarefa = comNomeDoCliente(
-    data as unknown as Record<string, unknown>,
-  ) as unknown as Tarefa;
+  const tarefa = comNomeDoCliente(data as unknown as Record<string, unknown>) as unknown as Tarefa;
 
   await audit({
     organizationId: authz.org.orgId,

@@ -102,8 +102,8 @@ const campos: CampoConsultavel<Tarefa>[] = metas.map((m) => ({
 }));
 const contexto = { hoje: HOJE };
 
-/** Os campos que NÃO se podem preencher na criação. */
-const NAO_NASCEM = new Set(["criada"]);
+/** Os campos que NÃO se podem preencher na criação (derivados: a data de criação e o tempo cronometrado, que começa em zero). */
+const NAO_NASCEM = new Set(["criada", "tempo"]);
 
 /** Valores de verdade para cada tipo (o que a pessoa escolheria na barra de filtros). */
 function valoresDe(meta: (typeof metas)[number]): Filtro["valor"][] {

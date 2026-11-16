@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api/client";
 import { registrarDesfazer, valoresAntes } from "@/lib/motor/desfazer";
 import { lacunaAcabou, posicaoEntre, renumerar } from "@/lib/motor/ordem";
 import type { MudancasEmMassa } from "@/lib/tarefas/edicao-em-massa";
+import type { TempoDaTarefa } from "@/lib/tarefas/tempo";
 import type { EdicaoDaTarefa, NovaTarefa, Tarefa } from "@/lib/tarefas/tipos";
 
 const BASE = "/api/v1/tasks";
@@ -97,6 +98,23 @@ export function useTarefasDoMotor() {
     onSettled: invalidar,
   });
 
+  /** O cronômetro da tarefa (timer): iniciar ou parar. O servidor devolve o tempo já contado. */
+  const timer = useMutation({
+    mutationFn: ({ id, acao }: { id: string; acao: "iniciar" | "parar" }) =>
+      apiClient.post<{ data: { task_id: string } & TempoDaTarefa }>(`${BASE}/${id}/timer`, {
+        acao,
+      }),
+    onSuccess: (r) => {
+      const { task_id, tempo_gasto_seg, cronometros } = r.data;
+      queryClient.setQueryData<Tarefa[]>(CHAVE, (lista) =>
+        (lista ?? []).map((x) => (x.id === task_id ? { ...x, tempo_gasto_seg, cronometros } : x)),
+      );
+    },
+    onError: showApiError,
+    // Iniciar numa tarefa fecha o cronômetro de outra: a lista inteira se atualiza.
+    onSettled: invalidar,
+  });
+
   const criar = useMutation({
     mutationFn: (entrada: NovaTarefa) =>
       apiClient.post<{ data: { task: Tarefa } }>(BASE, entrada).then((r) => r.data.task),
@@ -127,7 +145,10 @@ export function useTarefasDoMotor() {
     onSuccess: (_r, _id, contexto) => {
       const apagada = contexto?.apagada;
       if (!apagada) return;
-      registrarDesfazer({ rotulo: apagada.title, desfazer: () => criar.mutateAsync(comoNovaTarefa(apagada)) });
+      registrarDesfazer({
+        rotulo: apagada.title,
+        desfazer: () => criar.mutateAsync(comoNovaTarefa(apagada)),
+      });
     },
     onSettled: invalidar,
   });
@@ -251,6 +272,8 @@ export function useTarefasDoMotor() {
     carregando: query.isLoading,
     falhou: query.isError,
     editarTarefa,
+    iniciarTimer: (id: string) => timer.mutateAsync({ id, acao: "iniciar" }).catch(() => undefined),
+    pararTimer: (id: string) => timer.mutateAsync({ id, acao: "parar" }).catch(() => undefined),
     reordenar,
     criarTarefa: (entrada: NovaTarefa) => criar.mutateAsync(entrada),
     editarVarias: (ids: string[], mudancas: MudancasEmMassa, local?: Partial<Tarefa>) =>

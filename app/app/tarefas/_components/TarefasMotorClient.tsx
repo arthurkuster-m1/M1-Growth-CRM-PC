@@ -49,6 +49,8 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
 
 import { CelulaDeCliente } from "./CelulaDeCliente";
+import { CelulaDoTimer } from "./CelulaDoTimer";
+import { useUsuarioSeguro } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useModelosDeTarefa } from "@/hooks/tarefas/useModelosDeTarefa";
 import { useOpcoesDeStatus } from "@/hooks/tarefas/useOpcoesDeStatus";
@@ -92,6 +94,7 @@ import {
   TreeStructure,
   CalendarBlank,
   CaretDown,
+  Clock,
   DotsThree,
   Flag,
   Plus,
@@ -204,7 +207,10 @@ export function TarefasMotorClient({
     apagarTarefa,
     editarVarias,
     apagarVarias,
+    iniciarTimer,
+    pararTimer,
   } = useTarefasDoMotor();
+  const usuarioDaSessao = useUsuarioSeguro();
   // Na ficha do lead: só as tarefas dele; as novas já nascem com ele como cliente.
   const tarefas = useMemo(
     () =>
@@ -524,6 +530,21 @@ export function TarefasMotorClient({
         >
           {textoDaDescricao(tarefa.description) || t("Vazio")}
         </span>
+      ),
+    },
+    {
+      id: "tempo",
+      titulo: t("Tempo"),
+      icone: <Clock size={14} aria-hidden />,
+      largura: 170,
+      celula: (tarefa) => (
+        <CelulaDoTimer
+          tarefa={tarefa}
+          userId={usuarioDaSessao?.id ?? ""}
+          podeEditar={podeEditar}
+          aoIniciar={() => void iniciarTimer(tarefa.id)}
+          aoParar={() => void pararTimer(tarefa.id)}
+        />
       ),
     },
     {

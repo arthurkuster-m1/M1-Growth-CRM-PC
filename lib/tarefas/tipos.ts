@@ -60,6 +60,9 @@ export interface Tarefa {
   cliente_nome?: string | null;
   /** Quem faz a tarefa no cronograma do cliente; nulo/ausente = fora do cronograma (migration 0591). */
   cronograma_lado?: "agencia" | "cliente" | null;
+  /** Timer (migration 0689): segundos já fechados e quem está cronometrando agora. Só a lista traz. */
+  tempo_gasto_seg?: number;
+  cronometros?: Array<{ user_id: string; started_at: string }>;
 }
 
 export interface NovaTarefa {

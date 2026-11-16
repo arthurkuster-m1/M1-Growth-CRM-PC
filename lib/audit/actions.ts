@@ -711,6 +711,9 @@ export const AUDIT_ACTIONS = [
   "crm_task.created",
   "crm_task.updated",
   "crm_task.deleted",
+  // O cronômetro da tarefa (timer estilo ClickUp): iniciar e parar ficam registrados.
+  "crm_task.timer_started",
+  "crm_task.timer_stopped",
   // As opções de status das tarefas (migration 0582): mudar o vocabulário de status
   // de uma organização muda o que cada tarefa "está", e quem mexeu importa.
   "crm_task_status_option.created",

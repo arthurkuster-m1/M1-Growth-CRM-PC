@@ -126,6 +126,11 @@ export function useActiveOrgSeguro(): ActiveOrg | null {
   return useContext(Ctx)?.activeOrg ?? null;
 }
 
+/** Quem está logado, ou `null` fora do `AuthProvider` (telas que também rodam sem sessão). */
+export function useUsuarioSeguro(): AuthUser | null {
+  return useContext(Ctx)?.user ?? null;
+}
+
 export function useActiveOrg(): ActiveOrg | null {
   return useAuth().activeOrg;
 }
