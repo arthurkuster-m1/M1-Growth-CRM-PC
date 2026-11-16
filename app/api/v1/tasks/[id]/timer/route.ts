@@ -2,9 +2,12 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
  * POST /api/v1/tasks/[id]/timer — o cronômetro da tarefa (como no ClickUp).
  *
- *   { acao: "iniciar" } começa a contar o tempo da pessoa nesta tarefa (e fecha o cronômetro
- *                       que ela tinha rodando em outra: um por pessoa);
- *   { acao: "parar" }   fecha o lançamento em andamento.
+ *   { acao: "iniciar" } começa a contar o tempo da pessoa nesta tarefa, passa a tarefa para
+ *                       "Em andamento" (e fecha o cronômetro que ela tinha rodando em outra:
+ *                       um por pessoa);
+ *   { acao: "parar" }   fecha o lançamento em andamento. Menos de 5 segundos é engano: o
+ *                       lançamento é cancelado (e o status volta ao de antes); de 5 s para cima
+ *                       o tempo conta.
  *
  * Devolve o tempo da tarefa: o total já fechado e quem está cronometrando agora. A regra mora no
  * banco (migration 0689): `fn_tarefa_timer_iniciar/parar`, `security invoker` — a RLS de quem
@@ -50,6 +53,11 @@ export async function POST(req: NextRequest, ctx: Contexto): Promise<Response> {
     { p_task: id, p_organization_id: orgId },
   );
   if (error) {
+    if (error.code === "42501") {
+      return fail("forbidden", t("Você não tem permissão para cronometrar tarefas."), 403, {
+        requestId,
+      });
+    }
     if (error.code === "P0002")
       return fail("not_found", t("Tarefa não encontrada."), 404, { requestId });
     if (error.code === "P0001") {

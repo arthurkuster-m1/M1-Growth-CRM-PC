@@ -78,6 +78,8 @@ describe("timer da tarefa", () => {
     expect((await pedir({ acao: "iniciar" })).status).toBe(404);
     erroDaRpc = { code: "23505" };
     expect((await pedir({ acao: "iniciar" })).status).toBe(409);
+    erroDaRpc = { code: "42501" };
+    expect((await pedir({ acao: "iniciar" })).status).toBe(403);
     expect(audit).not.toHaveBeenCalled();
   });
 
