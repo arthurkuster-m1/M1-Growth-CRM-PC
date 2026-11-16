@@ -10,7 +10,8 @@
   --dsg-selection-border-radius: 4px;
   --dsg-selection-background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
   overflow: hidden;
 }
 .leads-grade .dsg-container {
@@ -167,4 +168,70 @@ body.leads-arrastando-coluna,
 body.leads-arrastando-coluna * {
   cursor: grabbing !important;
   user-select: none !important;
+}
+
+/* ── Cabeçalho FIXO no topo ao rolar a página ──
+   Fica fora da grade (que rola na horizontal): o `sticky` prende ao <main> do app, só com CSS. */
+.leads-wrap {
+  position: relative;
+}
+.leads-cabecalho-fixo {
+  position: sticky;
+  /* O <main> do app tem padding (p-4 sm:p-6) e o sticky conta a partir de dentro dele: o valor
+     negativo cancela o padding e prende o cabeçalho rente ao topo da área de rolagem. */
+  top: -1rem;
+  z-index: 10;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 12px 12px 0 0;
+  background: var(--color-surface-elevated);
+}
+@media (min-width: 640px) {
+  .leads-cabecalho-fixo {
+    top: -1.5rem;
+  }
+}
+.leads-cabecalho-trilho {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+.leads-cab-celula {
+  flex: none;
+  box-sizing: border-box;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--color-border);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-elevated);
+}
+.leads-cab-celula:last-child {
+  border-right: 0;
+}
+.leads-cab-gutter {
+  padding: 0;
+  justify-content: center;
+}
+.leads-cab-canto {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-bottom: 10px solid var(--color-text-subtle);
+}
+.leads-cab-situacao {
+  padding-left: 4px;
+}
+/* A linha de título da biblioteca existe só para medir as colunas: sem altura e invisível. */
+.leads-grade .dsg-row-header {
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+  border: 0 !important;
 }

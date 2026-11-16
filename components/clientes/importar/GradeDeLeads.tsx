@@ -57,12 +57,14 @@ const ICONE: Record<TomDaLinha | "esperando", ReactNode> = {
 const classeDaLinha = ({ rowData }: { rowData: LinhaGrade; rowIndex: number }) =>
   rowData.__tom ? `leads-linha is-${rowData.__tom}` : undefined;
 
+const LARGURA_DA_SITUACAO = 760;
+
 /** A coluna comum no FIM da tabela: o que vai acontecer com o lead desta linha. */
 const COLUNA_DE_SITUACAO = {
   id: "situacao",
   title: "Situação da linha",
-  minWidth: 760,
-  basis: 760,
+  minWidth: LARGURA_DA_SITUACAO,
+  basis: LARGURA_DA_SITUACAO,
   grow: 1,
   disabled: true,
   component: ({ rowData }: { rowData: LinhaGrade }) =>
@@ -179,7 +181,6 @@ function TituloDaColuna({
 }
 
 const ALTURA_DA_LINHA = 38;
-const ALTURA_DO_CABECALHO = 40;
 /** Espaço da barra de rolagem horizontal (dentro da tabela) e um respiro. */
 const FOLGA_DA_BARRA = 28;
 
@@ -245,20 +246,55 @@ export default function GradeDeLeads({
     return () => document.removeEventListener("paste", aoColar, true);
   }, []);
 
+  // O CABEÇALHO FIXO: fica FORA da grade (que rola na horizontal), então o `position: sticky` do CSS o
+  // prende no topo ao rolar a página, sem JavaScript. Só o deslocamento horizontal é acompanhado
+  // (um transform quando a grade rola de lado) e as larguras, medidas das colunas da grade.
+  const trilho = useRef<HTMLDivElement>(null);
+  const [medidas, setMedidas] = useState<{
+    gutter: number;
+    colunas: number[];
+    situacao: number;
+  } | null>(null);
+  useEffect(() => {
+    const raiz = document.querySelector<HTMLElement>(".leads-grade");
+    if (!raiz) return;
+    const medir = () => {
+      // A grade só desenha as colunas que cabem na tela: as larguras das colunas são as que nós
+      // mesmos definimos; só a calha (números das linhas) e a largura útil se medem.
+      const calha = raiz.querySelector<HTMLElement>(
+        ".dsg-row:not(.dsg-row-header) .dsg-cell-gutter",
+      );
+      const cont = raiz.querySelector<HTMLElement>(".dsg-container");
+      if (!calha || !cont) return;
+      const gutter = Math.round(calha.getBoundingClientRect().width * 10) / 10;
+      const cols = ultimas.current.colunas.map((c) => largura(c.id));
+      const fixo = gutter + cols.reduce((a, b) => a + b, 0);
+      // A coluna de situação cresce para ocupar o que sobra (mínimo 760).
+      const situacao = Math.max(LARGURA_DA_SITUACAO, Math.floor(cont.clientWidth - fixo));
+      setMedidas((atual) =>
+        atual &&
+        atual.gutter === gutter &&
+        atual.situacao === situacao &&
+        atual.colunas.join() === cols.join()
+          ? atual
+          : { gutter, colunas: cols, situacao },
+      );
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    const cont = raiz.querySelector(".dsg-container");
+    if (cont) ro.observe(cont);
+    ro.observe(raiz);
+    return () => ro.disconnect();
+  }, [chaveDasColunas, linhas.length]);
+
   /* A biblioteca usa null para célula vazia; nossas linhas usam undefined: o cast só concilia os dois. */
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const colunasDaGrade: any[] = useMemo(
     () => [
       ...colunas.map((c) => ({
         ...keyColumn<LinhaGrade, any>(c.id, textColumn as any),
-        title: (
-          <TituloDaColuna
-            id={c.id}
-            texto={c.obrigatoria ? `${c.rotulo} *` : c.rotulo}
-            aoMover={(a, b) => mover.current(a, b)}
-            aoOcultar={(id) => ocultar.current(id)}
-          />
-        ),
+        title: c.rotulo,
         minWidth: largura(c.id),
         basis: largura(c.id),
         grow: 0,
@@ -270,36 +306,75 @@ export default function GradeDeLeads({
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
-    <div className="leads-grade" data-testid="grade-de-leads">
-      {/* `key`: a biblioteca não redesenha o cabeçalho nem as células quando a lista de colunas muda
-          (ocultar, mostrar, reordenar). Trocar o conjunto/ordem das colunas remonta a grade. */}
-      <DataSheetGrid<LinhaGrade>
-        key={chaveDasColunas}
-        value={linhas}
-        onChange={(v) => aoMudar(v.map(semSituacao))}
-        onSelectionChange={({ selection }) => {
-          selecao.current = selection
-            ? {
-                min: { col: selection.min.col as number, row: selection.min.row },
-                max: { col: selection.max.col as number, row: selection.max.row },
-              }
-            : null;
-        }}
-        columns={colunasDaGrade}
-        createRow={() => ({})}
-        duplicateRow={({ rowData }) => semSituacao(rowData)}
-        rowClassName={classeDaLinha}
-        rowKey={undefined}
-        rowHeight={ALTURA_DA_LINHA}
-        headerRowHeight={ALTURA_DO_CABECALHO}
-        gutterColumn={{ minWidth: 44 }}
-        addRowsComponent={false}
-        autoAddRow
-        lockRows={false}
-        // Sem teto: a tabela cresce com as linhas e quem rola é a PÁGINA (uma barra só, sem barra
-        // vertical dentro da tabela). Cabeçalho + uma folga para a barra horizontal + as linhas.
-        height={ALTURA_DO_CABECALHO + ALTURA_DA_LINHA * linhas.length + FOLGA_DA_BARRA}
-      />
+    <div className="leads-wrap" data-testid="grade-de-leads">
+      <div className="leads-cabecalho-fixo">
+        <div className="leads-cabecalho-trilho" ref={trilho}>
+          <div
+            className="leads-cab-celula leads-cab-gutter"
+            style={{ width: medidas?.gutter ?? 44 }}
+          >
+            <span className="leads-cab-canto" aria-hidden />
+          </div>
+          {colunas.map((c, i) => (
+            <div
+              key={c.id}
+              className="leads-cab-celula"
+              style={{ width: medidas?.colunas[i] ?? largura(c.id) }}
+            >
+              <TituloDaColuna
+                id={c.id}
+                texto={c.obrigatoria ? `${c.rotulo} *` : c.rotulo}
+                aoMover={(a, b) => mover.current(a, b)}
+                aoOcultar={(id) => ocultar.current(id)}
+              />
+            </div>
+          ))}
+          <div
+            className="leads-cab-celula"
+            style={{ width: medidas?.situacao ?? LARGURA_DA_SITUACAO }}
+          >
+            <span className="leads-cab-situacao">{COLUNA_DE_SITUACAO.title}</span>
+          </div>
+        </div>
+      </div>
+      <div className="leads-grade">
+        {/* `key`: a biblioteca não redesenha o cabeçalho nem as células quando a lista de colunas muda
+            (ocultar, mostrar, reordenar). Trocar o conjunto/ordem das colunas remonta a grade. */}
+        <DataSheetGrid<LinhaGrade>
+          key={chaveDasColunas}
+          value={linhas}
+          onChange={(v) => aoMudar(v.map(semSituacao))}
+          onSelectionChange={({ selection }) => {
+            selecao.current = selection
+              ? {
+                  min: { col: selection.min.col as number, row: selection.min.row },
+                  max: { col: selection.max.col as number, row: selection.max.row },
+                }
+              : null;
+          }}
+          onScroll={(e) => {
+            // O cabeçalho fixo acompanha a rolagem lateral da grade (sem re-renderizar nada).
+            if (trilho.current) {
+              trilho.current.style.transform = `translateX(${-e.currentTarget.scrollLeft}px)`;
+            }
+          }}
+          columns={colunasDaGrade}
+          createRow={() => ({})}
+          duplicateRow={({ rowData }) => semSituacao(rowData)}
+          rowClassName={classeDaLinha}
+          rowKey={undefined}
+          rowHeight={ALTURA_DA_LINHA}
+          // O cabeçalho da biblioteca fica sem altura: o de verdade é o fixo, acima.
+          headerRowHeight={0}
+          gutterColumn={{ minWidth: 44 }}
+          addRowsComponent={false}
+          autoAddRow
+          lockRows={false}
+          // Sem teto: a tabela cresce com as linhas e quem rola é a PÁGINA (uma barra só, sem barra
+          // vertical dentro da tabela). As linhas + uma folga para a barra horizontal.
+          height={ALTURA_DA_LINHA * linhas.length + FOLGA_DA_BARRA}
+        />
+      </div>
     </div>
   );
 }
