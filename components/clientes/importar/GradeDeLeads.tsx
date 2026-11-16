@@ -157,6 +157,8 @@ function TituloDaColuna({
       data-coluna={id}
       title="Arraste para mudar de lugar"
       onPointerDown={apertar}
+      // Pegar o título é arrastar a coluna: a grade não pode começar a selecionar células por baixo.
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <DotsSixVertical size={13} className="leads-titulo__alca" aria-hidden />
       <span className="leads-titulo__texto">{texto}</span>
@@ -202,6 +204,12 @@ export default function GradeDeLeads({
     ocultar.current = aoOcultarColuna;
     ultimas.current = { colunas, linhas, aoMudar };
   });
+
+  // A grade remonta quando as colunas mudam: a seleção de antes não existe mais.
+  const chaveDasColunas = colunas.map((c) => c.id).join("|");
+  useEffect(() => {
+    selecao.current = null;
+  }, [chaveDasColunas]);
 
   // COLAR NA SELEÇÃO: copiou uma célula e selecionou várias → vale para todas (como o Excel). A
   // biblioteca só cola a partir da célula ativa; aqui, no caso em que a seleção é maior que o
@@ -258,7 +266,10 @@ export default function GradeDeLeads({
 
   return (
     <div className="leads-grade" data-testid="grade-de-leads">
+      {/* `key`: a biblioteca não redesenha o cabeçalho nem as células quando a lista de colunas muda
+          (ocultar, mostrar, reordenar). Trocar o conjunto/ordem das colunas remonta a grade. */}
       <DataSheetGrid<LinhaGrade>
+        key={chaveDasColunas}
         value={linhas}
         onChange={(v) => aoMudar(v.map(semSituacao))}
         onSelectionChange={({ selection }) => {
