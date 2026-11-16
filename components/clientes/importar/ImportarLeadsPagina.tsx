@@ -40,7 +40,7 @@ import {
   lerTextoDeTabela,
   textoDoArquivo,
 } from "@/lib/leads/tabela-de-importacao";
-import { ClipboardText, UploadSimple } from "@/lib/ui/icons";
+import { ClipboardText, Plus, UploadSimple } from "@/lib/ui/icons";
 
 import { enviarLeadsParaOCRM, type ResumoDaImportacaoDoCRM } from "../usarFunisComCampos";
 import type { LinhaDeLead, LinhaGrade } from "./GradeDeLeads";
@@ -113,6 +113,7 @@ export function ImportarLeadsPagina() {
   }));
   const { linhas, visiveis, extras } = estado;
   const [colando, setColando] = useState(false);
+  const [quantasLinhas, setQuantasLinhas] = useState("5");
   const [texto, setTexto] = useState("");
   const [custo, setCusto] = useState("");
   const [fonteDoCusto, setFonteDoCusto] = useState("");
@@ -352,6 +353,29 @@ export function ImportarLeadsPagina() {
       extras: novosExtras,
       visiveis: novosVisiveis,
       linhas: [...base, ...novas, ...vazias(3)].slice(0, MAX_LINHAS + 3),
+    });
+  }
+
+  /** Põe linhas em branco no fim da tabela, para preencher à mão (até o limite de uma importação). */
+  function adicionarLinhas() {
+    const n = Math.min(100, Math.max(1, Math.floor(Number(quantasLinhas)) || 1));
+    const espaco = MAX_LINHAS + 3 - linhas.length;
+    if (espaco <= 0) {
+      toast.error(
+        `${t("A tabela já está no limite de")} ${MAX_LINHAS} ${t("linhas por importação.")}`,
+      );
+      return;
+    }
+    mudar({ linhas: [...linhas, ...vazias(Math.min(n, espaco))] });
+    if (n > espaco) {
+      toast.info(
+        `${t("Só couberam")} ${espaco} ${t("linhas: o limite é de")} ${MAX_LINHAS} ${t("por importação.")}`,
+      );
+    }
+    // Leva a vista para as linhas novas.
+    requestAnimationFrame(() => {
+      const rolagem = document.querySelector<HTMLElement>(".leads-grade .dsg-container");
+      if (rolagem) rolagem.scrollTop = rolagem.scrollHeight;
     });
   }
 
@@ -624,9 +648,32 @@ export function ImportarLeadsPagina() {
           mudar({ linhas: v.slice(0, MAX_LINHAS + 3) }, celulaUnicaAlterada(linhas, v))
         }
       />
+      <div className="flex flex-wrap items-center gap-2" data-testid="adicionar-linhas">
+        <Button type="button" variant="outline" size="sm" onClick={adicionarLinhas}>
+          <Plus size={14} weight="bold" aria-hidden className="mr-1" />
+          {t("Adicionar linhas")}
+        </Button>
+        <Input
+          type="number"
+          min={1}
+          max={100}
+          inputMode="numeric"
+          value={quantasLinhas}
+          aria-label={t("Quantas linhas adicionar")}
+          className="h-9 w-20"
+          onChange={(e) => setQuantasLinhas(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") adicionarLinhas();
+          }}
+        />
+        <span className="text-xs text-muted-foreground">
+          {linhas.length} {t("linhas na tabela")} · {t("limite de")} {MAX_LINHAS}{" "}
+          {t("por importação")}
+        </span>
+      </div>
       <p className="text-xs text-muted-foreground">
         {t(
-          "Dicas: clique e arraste para selecionar várias células · Ctrl+C / Ctrl+X / Ctrl+V copiam, recortam e colam · Delete limpa · Ctrl+Z desfaz e Ctrl+Y refaz · arraste o quadradinho do canto da seleção para preencher · botão direito: inserir, duplicar ou excluir linhas.",
+          "Dicas: clique e arraste para selecionar várias células · Ctrl+C / Ctrl+X / Ctrl+V copiam, recortam e colam (um valor copiado preenche todas as células selecionadas) · Delete limpa · Ctrl+Z desfaz e Ctrl+Y refaz · arraste o quadradinho do canto da seleção para preencher · botão direito: inserir, duplicar ou excluir linhas.",
         )}
       </p>
 

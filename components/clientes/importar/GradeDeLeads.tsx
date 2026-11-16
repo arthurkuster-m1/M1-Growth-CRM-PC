@@ -15,6 +15,11 @@ import { DataSheetGrid, keyColumn, textColumn } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import "./grade-de-leads.css";
 
+import {
+  colarNaSelecao,
+  matrizDoTextoColado,
+  type SelecaoDaGrade,
+} from "@/lib/leads/colar-na-selecao";
 import type { TomDaLinha } from "@/lib/leads/conferencia-da-importacao";
 
 /**
@@ -189,10 +194,43 @@ export default function GradeDeLeads({
   // As funções vão por ref: a lista de colunas não é refeita (e o cabeçalho não pisca) a cada render.
   const mover = useRef(aoMoverColuna);
   const ocultar = useRef(aoOcultarColuna);
+  // A seleção atual (várias células) e o que a tela tem agora, para o colar como o do Excel.
+  const selecao = useRef<SelecaoDaGrade | null>(null);
+  const ultimas = useRef({ colunas, linhas, aoMudar });
   useEffect(() => {
     mover.current = aoMoverColuna;
     ocultar.current = aoOcultarColuna;
+    ultimas.current = { colunas, linhas, aoMudar };
   });
+
+  // COLAR NA SELEÇÃO: copiou uma célula e selecionou várias → vale para todas (como o Excel). A
+  // biblioteca só cola a partir da célula ativa; aqui, no caso em que a seleção é maior que o
+  // copiado, o valor vai para a seleção inteira. Nos outros casos a grade cola do jeito normal.
+  useEffect(() => {
+    function aoColar(e: ClipboardEvent) {
+      const sel = selecao.current;
+      if (!sel) return;
+      const foco = document.activeElement;
+      // Escrevendo num campo (a célula em edição, o custo, a caixa de colar): o colar é dele.
+      if (foco instanceof HTMLElement && foco.closest("input, textarea, select")) return;
+      const texto = e.clipboardData?.getData("text/plain");
+      if (!texto) return;
+      const { colunas: cols, linhas: ls, aoMudar: mudar } = ultimas.current;
+      const novas = colarNaSelecao(
+        ls.map(semSituacao),
+        cols.map((c) => c.id),
+        sel,
+        matrizDoTextoColado(texto),
+      );
+      if (!novas) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      mudar(novas);
+    }
+    // Na captura: roda antes do colar da biblioteca (que escuta o documento).
+    document.addEventListener("paste", aoColar, true);
+    return () => document.removeEventListener("paste", aoColar, true);
+  }, []);
 
   /* A biblioteca usa null para célula vazia; nossas linhas usam undefined: o cast só concilia os dois. */
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -223,6 +261,14 @@ export default function GradeDeLeads({
       <DataSheetGrid<LinhaGrade>
         value={linhas}
         onChange={(v) => aoMudar(v.map(semSituacao))}
+        onSelectionChange={({ selection }) => {
+          selecao.current = selection
+            ? {
+                min: { col: selection.min.col as number, row: selection.min.row },
+                max: { col: selection.max.col as number, row: selection.max.row },
+              }
+            : null;
+        }}
         columns={colunasDaGrade}
         createRow={() => ({})}
         duplicateRow={({ rowData }) => semSituacao(rowData)}
