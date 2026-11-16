@@ -189,4 +189,8 @@ export {
   Crosshair,
   MapTrifold,
   Presentation,
+  Circle,
+  TrendUp,
+  Wallet,
+  Hourglass,
 } from "@phosphor-icons/react/dist/ssr";

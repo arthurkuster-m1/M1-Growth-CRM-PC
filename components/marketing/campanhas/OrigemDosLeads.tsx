@@ -131,10 +131,10 @@ export function OrigemDosLeads({
   const semOrigem = origem.semCriativo;
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="text-sm font-semibold">{t("De onde vieram os leads")}</h3>
+          <h2 className="text-base font-semibold">{t("De onde vieram os leads")}</h2>
           <FiltroDePeriodoDaCampanha periodo={periodo} />
         </div>
         <p className="text-xs text-muted-foreground">

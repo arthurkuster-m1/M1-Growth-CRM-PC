@@ -1,7 +1,7 @@
 "use client";
 
 import { GrupoDeNumeros, NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
-import { useEffect, useState, type ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { FunilEmColunas } from "@/components/dashboards/funil";
 import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
@@ -16,7 +16,23 @@ import {
 } from "@/lib/marketing/campanhas-resumo";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
 import { agregadoDoDia, somarAgregados } from "@/lib/marketing/colunas-de-resultado";
-import { CaretDown } from "@/lib/ui/icons";
+import {
+  Funnel,
+  Hourglass,
+  Info,
+  CheckCircle,
+  CurrencyDollar,
+  Target,
+  TrendUp,
+  Users,
+  Wallet,
+  Warning,
+} from "@/lib/ui/icons";
+import {
+  Indicador,
+  SecaoDeDetalhe,
+  type TomVisual,
+} from "@/components/marketing/campanhas/visual/Pecas";
 import { cn } from "@/lib/utils";
 
 const inteiro = (n: number) => Math.round(n).toLocaleString("pt-BR");
@@ -25,13 +41,13 @@ const pct = (n: number) => `${n.toLocaleString("pt-BR", { maximumFractionDigits:
 
 type Tom = "blue" | "violet" | "green" | "amber" | "rose" | "slate";
 
-const FAIXA: Record<Tom, string> = {
-  blue: "border-l-blue-500",
-  violet: "border-l-violet-500",
-  green: "border-l-emerald-500",
-  amber: "border-l-amber-500",
-  rose: "border-l-rose-500",
-  slate: "border-l-slate-400",
+const TOM_VISUAL: Record<Tom, TomVisual> = {
+  blue: "blue",
+  violet: "violet",
+  green: "emerald",
+  amber: "amber",
+  rose: "rose",
+  slate: "slate",
 };
 const FUNDO: Record<Tom, string> = {
   blue: "bg-blue-500/8",
@@ -122,95 +138,51 @@ function Barra({
   );
 }
 
-const CHAVE_DAS_SECOES = "m1:campanha:secoes-abertas";
-
-function lerAbertas(): Record<string, boolean> {
-  try {
-    return JSON.parse(window.localStorage.getItem(CHAVE_DAS_SECOES) ?? "{}") as Record<
-      string,
-      boolean
-    >;
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Uma seção da Visão geral que ABRE E FECHA: fechada mostra só o título (e o `resumo`, como a barra
- * de progresso); aberta mostra o resto. Começa fechada e lembra, neste navegador, o que a pessoa abriu.
- */
+/** Uma seção da Visão geral que ABRE E FECHA (lembra o que a pessoa abriu neste navegador). */
 function SecaoRecolhivel({
   titulo,
   nota,
   resumo,
-  faixa,
+  icone,
+  tom = "slate",
+  abertaPorPadrao,
   children,
 }: {
   titulo: string;
   nota?: string;
   resumo?: ReactNode;
-  faixa?: string;
+  icone: ComponentProps<typeof SecaoDeDetalhe>["icone"];
+  tom?: TomVisual;
+  abertaPorPadrao?: boolean;
   children: ReactNode;
 }) {
-  const [aberta, setAberta] = useState(false);
-  useEffect(() => {
-    setAberta(lerAbertas()[titulo] === true);
-  }, [titulo]);
-  function alternar() {
-    const nova = !aberta;
-    setAberta(nova);
-    try {
-      window.localStorage.setItem(
-        CHAVE_DAS_SECOES,
-        JSON.stringify({ ...lerAbertas(), [titulo]: nova }),
-      );
-    } catch {
-      /* sem armazenamento: só não lembra */
-    }
-  }
   return (
-    <section
-      className={cn(
-        "grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 shadow-sm",
-        faixa ? `border-l-4 ${faixa}` : "",
-      )}
+    <SecaoDeDetalhe
+      titulo={titulo}
+      nota={nota}
+      resumo={resumo}
+      icone={icone}
+      tom={tom}
+      abertaPorPadrao={abertaPorPadrao}
     >
-      <button
-        type="button"
-        aria-expanded={aberta}
-        onClick={alternar}
-        className="flex w-full items-center justify-between gap-2 text-left"
-      >
-        <span className="flex min-w-0 items-baseline gap-2">
-          <h3 className="text-sm font-semibold">{titulo}</h3>
-          {nota ? <span className="truncate text-xs text-muted-foreground">{nota}</span> : null}
-        </span>
-        <CaretDown
-          size={16}
-          aria-hidden
-          className={cn(
-            "shrink-0 text-muted-foreground transition-transform",
-            !aberta && "-rotate-90",
-          )}
-        />
-      </button>
-      {resumo}
-      {aberta ? children : null}
-    </section>
+      {children}
+    </SecaoDeDetalhe>
   );
 }
 
 function Cartao({
   titulo,
   children,
+  icone,
   tom = "slate",
 }: {
   titulo: string;
   children: ReactNode;
+  icone: ComponentProps<typeof SecaoDeDetalhe>["icone"];
   tom?: Tom;
 }) {
   return (
-    <SecaoRecolhivel titulo={titulo} faixa={FAIXA[tom]}>
+    <SecaoRecolhivel titulo={titulo} icone={icone} tom={TOM_VISUAL[tom]}>
       <GrupoDeNumeros>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{children}</div>
       </GrupoDeNumeros>
@@ -298,33 +270,116 @@ export function ResumoDaCampanha({
 
   return (
     <div className="grid grid-cols-1 gap-3">
+      <section
+        aria-label={t("Resumo da campanha")}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5"
+      >
+        <Indicador
+          icone={Users}
+          tom="blue"
+          rotulo={t("Leads")}
+          valor={inteiro(r.funil.leads)}
+          progresso={progressoLeads}
+          detalhe={
+            r.metas.metaDeLeads === null
+              ? t("Sem meta de leads")
+              : `${t("Meta")}: ${inteiro(r.metas.metaDeLeads)}`
+          }
+        />
+        <Indicador
+          icone={CurrencyDollar}
+          tom="emerald"
+          rotulo={t("Investido")}
+          valor={moedaDoNumero(r.funil.investido)}
+          progresso={orcamentoGasto}
+          situacao={orcamentoGasto !== null && orcamentoGasto > 100 ? "ruim" : null}
+          detalhe={
+            r.investimentoLiquido === null
+              ? t("Sem orçamento definido")
+              : `${t("Orçamento líquido")}: ${moedaDoNumero(r.investimentoLiquido)}`
+          }
+        />
+        <Indicador
+          icone={Target}
+          tom="amber"
+          rotulo={t("CPL")}
+          valor={dinheiro(r.funil.cpl) ?? "—"}
+          situacao={
+            r.funil.cpl !== null && r.metas.metaDeCpl !== null
+              ? r.funil.cpl <= r.metas.metaDeCpl
+                ? "bom"
+                : "ruim"
+              : null
+          }
+          detalhe={
+            r.metas.metaDeCpl === null
+              ? t("Sem meta de CPL")
+              : `${t("Meta")}: ${moedaDoNumero(r.metas.metaDeCpl)}`
+          }
+        />
+        <Indicador
+          icone={TrendUp}
+          tom="violet"
+          rotulo={t("Vendas")}
+          valor={inteiro(funilCrm.vendas)}
+          detalhe={`${t("Faturamento")}: ${moedaDoNumero(funilCrm.faturamento)}`}
+        />
+        <Indicador
+          icone={Hourglass}
+          tom="rose"
+          rotulo={r.periodo?.mensal ? t("Dias do mês") : t("Dias restantes")}
+          valor={r.periodo ? inteiro(r.periodo.restantes) : "—"}
+          progresso={progresso}
+          detalhe={
+            r.periodo
+              ? `${inteiro(r.periodo.passados)} ${t("de")} ${inteiro(r.periodo.totais)} ${t("dias")}`
+              : t("Defina o período no Cadastro")
+          }
+        />
+      </section>
+
       {r.alertas.length > 0 ? (
-        <SecaoRecolhivel
-          titulo={t("O que fazer agora")}
-          nota={`${r.alertas.length} ${r.alertas.length === 1 ? t("ponto") : t("pontos")}`}
-          faixa="border-l-amber-500"
+        <section
+          aria-label={t("O que fazer agora")}
+          className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:p-5"
         >
-          <ul className="grid grid-cols-1 gap-1.5">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            {t("O que fazer agora")}
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {r.alertas.length} {r.alertas.length === 1 ? t("ponto") : t("pontos")}
+            </span>
+          </h2>
+          <ul className="grid grid-cols-1 gap-2">
             {r.alertas.map((a) => (
               <li
                 key={a.codigo}
                 className={cn(
-                  "rounded-xl px-3 py-2 text-sm",
+                  "flex items-start gap-2.5 rounded-xl px-3.5 py-2.5 text-sm",
                   a.nivel === "atencao" && "bg-warning-bg text-warning-fg",
                   a.nivel === "ok" && "bg-success-bg text-success-fg",
                   a.nivel === "info" && "bg-secondary text-foreground",
                 )}
               >
-                {textoDoAlerta(t, a)}
+                {a.nivel === "atencao" ? (
+                  <Warning size={18} weight="duotone" aria-hidden className="mt-0.5 shrink-0" />
+                ) : a.nivel === "ok" ? (
+                  <CheckCircle size={18} weight="duotone" aria-hidden className="mt-0.5 shrink-0" />
+                ) : (
+                  <Info size={18} weight="duotone" aria-hidden className="mt-0.5 shrink-0" />
+                )}
+                <span>{textoDoAlerta(t, a)}</span>
               </li>
             ))}
           </ul>
-        </SecaoRecolhivel>
+        </section>
       ) : null}
 
       {trafego ? (
         <SecaoRecolhivel
           titulo={t("Metas de leads")}
+          icone={Target}
+          tom="blue"
+          abertaPorPadrao
           resumo={
             <Barra
               rotulo={t("Leads captados da meta")}
@@ -447,7 +502,7 @@ export function ResumoDaCampanha({
         </SecaoRecolhivel>
       ) : null}
 
-      <Cartao titulo={t("Dias")} tom="violet">
+      <Cartao titulo={t("Dias")} icone={Hourglass} tom="violet">
         <Barra
           rotulo={
             r.periodo?.mensal
@@ -479,6 +534,8 @@ export function ResumoDaCampanha({
 
       <SecaoRecolhivel
         titulo={t("Pace de gastos")}
+        icone={Wallet}
+        tom="emerald"
         resumo={
           <Barra
             rotulo={t("Orçamento já gasto")}
@@ -541,7 +598,13 @@ export function ResumoDaCampanha({
       </SecaoRecolhivel>
 
       {trafego ? (
-        <SecaoRecolhivel titulo={t("Funil completo")} nota={t("Na ordem em que acontece")}>
+        <SecaoRecolhivel
+          titulo={t("Funil completo")}
+          nota={t("Na ordem em que acontece")}
+          icone={Funnel}
+          tom="violet"
+          abertaPorPadrao
+        >
           <FunilEmColunas
             colunas={[
               {
@@ -693,7 +756,7 @@ function FunilDoCanal({
   const valor = somaDoExtra(dias, "valor_total");
   return (
     <>
-      <Cartao titulo={t("Resultado do canal")}>
+      <Cartao titulo={t("Resultado do canal")} icone={TrendUp} tom="green">
         <Numero rotulo={t("Valor investido")} valor={moedaDoNumero(investido)} />
         <Numero rotulo={t("Leads")} valor={inteiro(leads)} />
         <Numero
@@ -707,7 +770,7 @@ function FunilDoCanal({
           valor={vendas > 0 ? moedaDoNumero(valor / vendas) : null}
         />
       </Cartao>
-      <Cartao titulo={t("Funil do canal")}>
+      <Cartao titulo={t("Funil do canal")} icone={Funnel} tom="violet">
         {etapas.map(({ m, total, taxa }) => {
           return (
             <Numero
