@@ -255,4 +255,14 @@ describe("EditorVisualDeBlocos", () => {
     expect(menu.getByText("Canvas (desenho e fluxograma)")).toBeTruthy();
     expect(menu.getByText("Ctrl+Alt+1")).toBeTruthy();
   });
+
+  it("texto vazio é só uma linha em branco (sem aviso) e um clique já põe o cursor nela", () => {
+    render(<Casca inicial={[{ id: "t", tipo: "texto", texto: "" }]} />);
+    expect(screen.queryByText(/dê dois cliques/)).toBeNull();
+    fireEvent.click(alvo("t"));
+    const campo = document.querySelector("textarea")!;
+    expect(campo).toBeTruthy();
+    // escrevendo, o campo não tem moldura (parece o texto final)
+    expect(campo.className).not.toMatch(/ring-/);
+  });
 });

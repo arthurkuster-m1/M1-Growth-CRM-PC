@@ -146,6 +146,9 @@ const MOSTRA_CONVITE_SE_VAZIO: ReadonlySet<Bloco["tipo"]> = new Set([
   "canvas",
 ]);
 
+/** Blocos de texto corrido: vazios, viram só uma linha em branco (como num bloco de notas). */
+const TEXTO_CORRIDO: ReadonlySet<Bloco["tipo"]> = new Set(["texto", "titulo"]);
+
 /** O campo principal de cada bloco de texto: é nele que Enter continua a escrita no bloco de baixo. */
 const CAMPO_DE_FLUXO: Partial<Record<Bloco["tipo"], string>> = {
   texto: "texto",
@@ -515,6 +518,18 @@ function LinhaVisual({
             aria-selected={selecionado}
             onMouseDown={(e) => aoPressionar(e, bloco.id)}
             onDoubleClick={(e) => aoEditar(bloco.id, e.clientX, e.clientY)}
+            onClick={(e) => {
+              // Linha vazia de texto: um clique já põe o cursor nela (como num bloco de notas).
+              if (
+                vazio &&
+                !digitando &&
+                TEXTO_CORRIDO.has(bloco.tipo) &&
+                !e.shiftKey &&
+                !e.ctrlKey
+              ) {
+                aoEditar(bloco.id, e.clientX, e.clientY);
+              }
+            }}
             onBlur={(e) => {
               if (digitando && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
                 aoSairDoTexto();
@@ -527,7 +542,10 @@ function LinhaVisual({
             className={cn(
               "relative rounded-2xl border-2 border-transparent p-2 transition-colors sm:p-3",
               digitando ? "cursor-text" : "cursor-pointer select-none",
-              selecionado ? "border-primary/50 bg-primary/10" : "hover:bg-secondary/40",
+              // Escrevendo, o bloco não tem caixa nem fundo: o que se vê é o texto como vai ficar.
+              selecionado && !digitando
+                ? "border-primary/50 bg-primary/10"
+                : !digitando && "hover:bg-secondary/40",
               editando && "border-primary/50",
             )}
           >
@@ -545,7 +563,10 @@ function LinhaVisual({
               </button>
             ) : null}
             <div className={cn(!digitando && "pointer-events-none")}>
-              {vazio && !digitando ? (
+              {vazio && !digitando && TEXTO_CORRIDO.has(bloco.tipo) ? (
+                // Texto vazio: só a linha em branco (clicar nela já escreve), sem aviso nem caixa.
+                <div aria-label={rotuloDoTipo} className="min-h-7" />
+              ) : vazio && !digitando ? (
                 <p
                   className={cn(
                     "rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground",
