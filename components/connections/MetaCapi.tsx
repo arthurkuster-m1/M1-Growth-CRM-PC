@@ -3,7 +3,9 @@
 import { FormularioDeConversoes } from "@/app/app/settings/conversoes/_form";
 import { IdentidadeDaConversao } from "@/app/app/settings/conversoes/_identidadeDaMeta";
 import { RegrasDeConversaoMeta } from "@/app/app/settings/conversoes/_regrasMeta";
+import { CartaoDePasso } from "@/components/marketing/campanhas/visual/Pecas";
 import { Card } from "@/components/ui/card";
+import { Lightning } from "@/lib/ui/icons";
 import { useT } from "@/hooks/i18n/useT";
 import type { EstadoDaConexao } from "@/lib/conversoes/estado-da-conexao";
 import type { RegraDeConversaoMeta } from "@/lib/conversoes/regras-meta";
@@ -28,18 +30,16 @@ export function MetaCapi({ dados, idioma }: { dados: DadosDaMetaCapi; idioma: Id
   const t = useT();
   const { estado } = dados;
   return (
-    <section aria-label={t("Meta CAPI")} className="flex flex-col gap-4 border-t pt-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">
-          {t("Meta CAPI (API de Conversões)")}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t(
-            "Devolve à Meta o que aconteceu com os leads que vieram dos seus anúncios: a venda (compra, com valor), o lead qualificado e os eventos de cada etapa do funil. É isso que ensina o anúncio a achar mais gente parecida com quem compra.",
-          )}
-        </p>
-      </div>
-
+    <CartaoDePasso
+      numero={2}
+      icone={Lightning}
+      tom="violet"
+      titulo={t("Meta CAPI (API de Conversões)")}
+      descricao={t(
+        "Devolve à Meta o que aconteceu com os leads dos seus anúncios: a venda (compra, com valor), o lead qualificado e os eventos de cada etapa do funil. É isso que ensina o anúncio a achar mais gente parecida com quem compra.",
+      )}
+      estado={estado.conectada && estado.habilitada ? "completo" : "pendente"}
+    >
       <div
         className={
           estado.conectada && estado.habilitada
@@ -83,6 +83,6 @@ export function MetaCapi({ dados, idioma }: { dados: DadosDaMetaCapi; idioma: Id
         </a>
         .
       </p>
-    </section>
+    </CartaoDePasso>
   );
 }

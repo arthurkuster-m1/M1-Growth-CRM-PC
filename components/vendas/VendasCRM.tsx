@@ -1064,6 +1064,7 @@ export function VendasCRM() {
         <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
       ) : (
         <TabelaDoMotor
+          planilha
           aoOrdenarPor={(coluna) =>
             mudarConsulta({
               filtros: preferencias.filtros,

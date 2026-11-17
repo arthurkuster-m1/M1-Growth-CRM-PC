@@ -22,6 +22,29 @@ export function registrarDesfazer(entrada: EntradaDeDesfazer): void {
   if (pilha.length > LIMITE) pilha.shift();
 }
 
+/**
+ * Roda `acao` e junta tudo o que ela registrou numa ÚNICA entrada de desfazer: colar uma faixa de
+ * células (ou apagar várias) se desfaz com UM Ctrl+Z, não um por célula. As edições precisam ter
+ * terminado de registrar quando `acao` resolve (devolva a promessa delas).
+ */
+export async function agruparDesfazer(rotulo: string, acao: () => Promise<unknown>): Promise<void> {
+  const antes = pilha.length;
+  try {
+    await acao();
+  } finally {
+    const novas = pilha.splice(antes);
+    if (novas.length === 1) pilha.push(novas[0]!);
+    else if (novas.length > 1) {
+      pilha.push({
+        rotulo,
+        desfazer: async () => {
+          for (const e of [...novas].reverse()) await e.desfazer();
+        },
+      });
+    }
+  }
+}
+
 export function podeDesfazer(): boolean {
   return pilha.length > 0;
 }

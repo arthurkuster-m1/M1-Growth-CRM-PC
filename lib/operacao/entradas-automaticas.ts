@@ -24,6 +24,11 @@ import { ApiError } from "@/lib/api/types";
 import type { Actor } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
 import { autoriaDaMudanca } from "@/lib/operacao/autoria";
+import {
+  ehFunilAntigo,
+  funilDeClientesComEtapa,
+  lerFunilParaDestino,
+} from "@/lib/webhooks/destino-do-lead";
 
 type SB = SupabaseClient;
 
@@ -70,7 +75,10 @@ const COLUNAS =
 
 function semSegredo(linha: Record<string, unknown>): FonteVisivel {
   const { secret_encrypted, ...resto } = linha;
-  return { ...(resto as unknown as Omit<FonteVisivel, "has_secret">), has_secret: secret_encrypted !== null };
+  return {
+    ...(resto as unknown as Omit<FonteVisivel, "has_secret">),
+    has_secret: secret_encrypted !== null,
+  };
 }
 
 export async function listarEntradasAutomaticas(
@@ -174,6 +182,24 @@ async function destinoValido(
   }
 }
 
+/**
+ * O CRM novo é o único destino: uma entrada NOVA não pode apontar para o funil antigo (o "Pedidos"
+ * padrão do sistema ou um funil arquivado) quando a empresa já tem funil de clientes — as que já
+ * existem seguem sendo redirecionadas na hora de receber (`lib/webhooks/destino-do-lead.ts`).
+ */
+async function recusaFunilAntigo(deps: DepsDaOperacao, pipelineId: string): Promise<void> {
+  const funil = await lerFunilParaDestino(deps.supabase, deps.organizationId, pipelineId);
+  if (!funil || !ehFunilAntigo(funil)) return;
+  if (!(await funilDeClientesComEtapa(deps.supabase, deps.organizationId))) return;
+  throw new ApiError(
+    422,
+    "unprocessable_entity",
+    undefined,
+    deps.requestId,
+    "Esse é o funil antigo, que não recebe mais contatos. Escolha o Funil de clientes ou o funil de uma campanha.",
+  );
+}
+
 export interface NovaEntradaAutomatica {
   name: string;
   default_pipeline_id: string;
@@ -189,6 +215,7 @@ export async function criarEntradaAutomatica(
   input: NovaEntradaAutomatica,
 ): Promise<FonteVisivel> {
   await destinoValido(deps, input.default_pipeline_id, input.default_stage_id);
+  await recusaFunilAntigo(deps, input.default_pipeline_id);
 
   // `path_token` é a identidade PÚBLICA da URL de captação — mesmo papel que o
   // token de caminho que os adapters de canal já usam —, não um segredo forte.

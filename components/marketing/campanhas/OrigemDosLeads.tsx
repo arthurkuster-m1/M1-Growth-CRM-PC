@@ -286,7 +286,7 @@ function MetasDoPeriodo({
       ? `${origem.de.split("-").reverse().join("/")} → ${origem.ate.split("-").reverse().join("/")}`
       : "";
   return (
-    <div className="grid grid-cols-1 gap-2 rounded-xl border border-l-4 border-l-violet-500 p-3">
+    <div className="grid grid-cols-1 gap-2 rounded-xl border bg-secondary/30 p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-xs font-semibold tracking-wider text-text-subtle uppercase">
           {origem.mensal ? t("Metas deste mês") : t("Metas da campanha")}

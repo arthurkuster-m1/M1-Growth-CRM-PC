@@ -747,6 +747,7 @@ export const AUDIT_ACTIONS = [
   "demand_campaign.created",
   "demand_campaign.updated",
   "demand_campaign.deleted",
+  "demand_campaign.status_automatic",
   // Uma rodada do cron `cadence-sweep` que encerrou cadência esgotada (rodada vazia não audita).
   "cadence.sweep_run",
   "marketing_page.offers_bulk_edited",

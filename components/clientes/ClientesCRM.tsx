@@ -1,6 +1,7 @@
 "use client";
 
 import { registrarDesfazer, valoresAntes } from "@/lib/motor/desfazer";
+import { lerDiaDaColagem } from "@/lib/motor/planilha";
 import { NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -891,6 +892,21 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 300,
       semOcultar: true,
+      // Modo planilha: colar um nome muda o nome do lead (ou o título da oportunidade).
+      colar: podeEditar
+        ? (l, texto) => {
+            const novo = texto.trim();
+            if (!novo) return;
+            if (ehOportunidades && l.participacao) {
+              const p = l.participacao;
+              if (novo === p.titulo) return;
+              otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, titulo: novo }));
+              return executar(() => apiClient.patch(`/api/v1/vendas/${p.lead_id}`, { name: novo }));
+            }
+            if (novo === l.nome) return;
+            return salvarContato(l, { name: novo }, { nome: novo });
+          }
+        : undefined,
       celula: (l) =>
         ehOportunidades && l.participacao ? (
           <div className="flex min-w-0 items-center gap-1">
@@ -983,6 +999,36 @@ export function ClientesCRM({
       titulo: ehOportunidades ? t("Status da oportunidade") : t("Etapa"),
       icone: <Kanban size={14} aria-hidden />,
       largura: 250,
+      // Cola o NOME da etapa (como aparece na tabela); nome que não existe no funil é ignorado.
+      colar: podeEditar
+        ? (l, texto) => {
+            const p = partes(l)[0];
+            if (!p) return;
+            const quer = texto
+              .replace(/[✓✕]/g, "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .trim()
+              .toLowerCase();
+            if (!quer) return;
+            const achada = etapasDoFunil(p.funil_id).find(
+              (e) =>
+                e.rotulo
+                  .replace(/[✓✕]/g, "")
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .trim()
+                  .toLowerCase() === quer,
+            );
+            if (!achada || achada.id === p.etapa_id) return;
+            // Ganho, perda e desqualificação pedem um diálogo (motivo, venda): não se cola em lote.
+            const destino = etapasPorId.get(achada.id);
+            if (destino?.is_won || destino?.is_lost || destino?.qualification === "disqualified") {
+              return;
+            }
+            return escolherEtapa(l, p, achada.id);
+          }
+        : undefined,
       celula: (l) => {
         const lista = partes(l);
         if (lista.length === 0) return semValor;
@@ -1120,6 +1166,20 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 190,
       padrao: ehOportunidades,
+      colar: podeEditar
+        ? (l, texto) => {
+            const alvo = alvoDaLinha(l);
+            if (!alvo) return;
+            const d = lerDiaDaColagem(texto, new Date().getFullYear());
+            if (d === undefined) return;
+            return salvarNegocio(
+              l,
+              alvo,
+              { expected_close_date: d },
+              { previsao_de_fechamento: d },
+            );
+          }
+        : undefined,
       celula: (l) => {
         const alvo = alvoDaLinha(l);
         if (!alvo) {
@@ -1364,6 +1424,16 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 280,
       padrao: ehOportunidades,
+      colar: podeEditar
+        ? (l, texto) => {
+            const p = l.participacao;
+            if (!p) return;
+            const novo = texto.trim();
+            if (novo === p.comentarios) return;
+            otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, comentarios: novo }));
+            return executar(() => apiClient.patch(`/api/v1/vendas/${p.lead_id}`, { notes: novo }));
+          }
+        : undefined,
       celula: (l) => {
         const p = l.participacao;
         if (!p) return semValor;
@@ -1419,6 +1489,18 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 170,
       padrao: ehOportunidades,
+      colar: podeEditar
+        ? (l, texto) => {
+            const p = l.participacao;
+            if (!p || p.status !== "open") return;
+            const v = lerDiaDaColagem(texto, new Date().getFullYear());
+            if (v === undefined || v === p.proxima_acao_em) return;
+            otimistaNegocio(l.contact_id, p.lead_id, (x) => ({ ...x, proxima_acao_em: v }));
+            return executar(() =>
+              apiClient.put(`/api/v1/leads/${p.lead_id}/proxima-acao`, { proxima_acao_em: v }),
+            );
+          }
+        : undefined,
       celula: (l) => {
         const p = l.participacao;
         if (!p) return semValor;
@@ -1741,6 +1823,13 @@ export function ClientesCRM({
       titulo: t("Telefone"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 180,
+      colar: podeEditar
+        ? (l, texto) => {
+            const fone = telefoneE164(texto);
+            if (!fone || fone === l.telefone) return;
+            return salvarContato(l, { phone_number: fone }, { telefone: fone });
+          }
+        : undefined,
       celula: (l) => (
         <div className="flex min-w-0 items-center gap-1">
           <div className="min-w-0 flex-1">
@@ -1778,6 +1867,13 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 230,
       padrao: false,
+      colar: podeEditar
+        ? (l, email) => {
+            const novo = email.trim();
+            if (!novo.includes("@") || novo === l.email) return;
+            return salvarContato(l, { email: novo }, { email: novo });
+          }
+        : undefined,
       celula: (l) => (
         <CelulaDeTexto
           valor={l.email ?? ""}
@@ -1796,6 +1892,15 @@ export function ClientesCRM({
       titulo: t("Origem"),
       icone: <TextAa size={14} aria-hidden />,
       largura: 170,
+      colar:
+        podeEditar && ehOportunidades
+          ? (l, source) => {
+              const alvo = alvoDaLinha(l);
+              const novo = source.trim();
+              if (!alvo || !novo || novo === (alvo.origem ?? l.origem ?? "")) return;
+              return salvarOrigem(l, alvo, { source: novo });
+            }
+          : undefined,
       celula: (l) => {
         // Na aba Clientes a origem é a do CADASTRO do lead (não a de uma oportunidade dele).
         if (!ehOportunidades) {
@@ -1828,6 +1933,19 @@ export function ClientesCRM({
       icone: <TextAa size={14} aria-hidden />,
       largura: 260,
       padrao: false,
+      colar: podeEditar
+        ? (l, texto) => {
+            const tags = [
+              ...new Set(
+                texto
+                  .split(/[;,]/)
+                  .map((x) => x.trim())
+                  .filter(Boolean),
+              ),
+            ];
+            return salvarContato(l, { tags }, { tags });
+          }
+        : undefined,
       celula: (l) => (
         <CelulaDeEtiquetas
           tags={l.tags}
@@ -3679,6 +3797,7 @@ export function ClientesCRM({
                 />
               ) : (
                 <TabelaDoMotor
+                  planilha
                   aoOrdenarPor={(coluna) =>
                     mudarConsulta({
                       filtros: preferencias.filtros,

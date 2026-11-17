@@ -60,6 +60,7 @@ import { ApiError } from "@/lib/api/types";
 import { autorizarCaptacaoParaIA, camposDaCaptacao } from "@/lib/ai/elegibilidade/formulario";
 import { autorizarContatoParaIA } from "@/lib/ai/elegibilidade/autorizacao";
 import { kickLocalPipeline } from "@/lib/dev/kick-local-pipeline";
+import { destinoDoWebhook } from "@/lib/webhooks/destino-do-lead";
 import {
   estamparOrigemMetaDaCaptacao,
   origemMetaDaCaptacao,
@@ -638,6 +639,19 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     }
   }
 
+  // O CRM novo é o único destino: fonte que ainda aponta para o funil antigo (o "Pedidos" padrão do
+  // sistema, ou um funil arquivado) manda o lead para o FUNIL DE CLIENTES. Campanha manda no seu funil.
+  let redirecionadoDoFunilAntigo = false;
+  if (!origemDaCampanha?.pipelineId) {
+    const destino = await destinoDoWebhook(admin, source.organization_id as string, {
+      pipelineId: funilDoLead,
+      stageId: etapaDoLead,
+    });
+    funilDoLead = destino.pipelineId as string;
+    etapaDoLead = destino.stageId as string;
+    redirecionadoDoFunilAntigo = destino.redirecionado;
+  }
+
   // Formulário que já qualificou o lead: ele nasce na etapa de MQL do funil, não na primeira.
   let qualificadoNaCaptacao = false;
   if (funilDoLead && veioQualificado(achatarPayload(payload))) {
@@ -667,6 +681,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
       webhook_source_id: source.id,
       ...(origemDaCampanha ? { demand_campaign_id: origemDaCampanha.campanhaId } : {}),
       ...(qualificadoNaCaptacao ? { qualificado_na_captacao: true } : {}),
+      ...(redirecionadoDoFunilAntigo ? { redirecionado_do_funil_antigo: true } : {}),
     },
     ...(externalId ? { external_id: externalId } : {}),
   };

@@ -2,6 +2,8 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { audit } from "@/lib/audit";
+import type { StatusDaCampanha } from "@/lib/marketing/campanhas";
 import { logger } from "@/lib/logger";
 import { janelaDaSync } from "@/lib/marketing/campanhas-resumo";
 import {
@@ -13,6 +15,7 @@ import {
   importarCriativosDoMeta,
 } from "@/lib/marketing/criativos-servidor";
 import { lerInsightsPorDia } from "@/lib/plataformas-de-anuncio/meta/insights-por-dia";
+import { statusAutomatico } from "@/lib/marketing/status-automatico";
 import { sincronizarConjuntos } from "@/lib/marketing/meta-por-anuncio-servidor";
 import { sincronizarBaseDiaria } from "@/lib/marketing/meta-por-anuncio-servidor";
 
@@ -49,6 +52,71 @@ interface CampanhaParaSync {
   platform_campaigns: Array<{ id: string | null; name: string }>;
 }
 
+/**
+ * Depois de cada sincronização: a campanha vira "Ativa" quando o Meta começa a entregar e
+ * "Finalizada" quando passa da data final e o Meta para (regra em `status-automatico.ts`).
+ * Falha aqui nunca derruba a sincronização.
+ */
+async function aplicarStatusAutomatico(
+  admin: SupabaseClient,
+  c: CampanhaParaSync,
+  agora: Date,
+): Promise<void> {
+  try {
+    const { data: linha } = await admin
+      .from("demand_campaigns")
+      .select("status, end_date, continuous")
+      .eq("id", c.id)
+      .eq("organization_id", c.organization_id)
+      .maybeSingle();
+    if (!linha) return;
+    const desde = new Date(agora.getTime() - 6 * 86_400_000).toISOString().slice(0, 10);
+    const { data: dias } = await admin
+      .from("demand_campaign_days")
+      .select("day, spend, impressions")
+      .eq("organization_id", c.organization_id)
+      .eq("campaign_id", c.id)
+      .eq("source", "meta")
+      .gte("day", desde);
+    const atual = linha as {
+      status: StatusDaCampanha;
+      end_date: string | null;
+      continuous: boolean;
+    };
+    const novo = statusAutomatico(
+      atual,
+      (
+        (dias ?? []) as Array<{ day: string; spend: number | null; impressions: number | null }>
+      ).map((d) => ({
+        day: d.day,
+        spend: Number(d.spend ?? 0),
+        impressions: Number(d.impressions ?? 0),
+      })),
+      agora.toISOString().slice(0, 10),
+    );
+    if (!novo || novo === atual.status) return;
+    const { error } = await admin
+      .from("demand_campaigns")
+      .update({ status: novo })
+      .eq("id", c.id)
+      .eq("organization_id", c.organization_id)
+      .eq("status", atual.status);
+    if (error) return;
+    await audit({
+      organizationId: c.organization_id,
+      action: "demand_campaign.status_automatic",
+      resourceType: "demand_campaign",
+      resourceId: c.id,
+      metadata: { de: atual.status, para: novo, motivo: "dados_do_meta" },
+    });
+  } catch (erro) {
+    logger.warn("[campanhas-meta] status automático falhou", {
+      campanha: c.id,
+      error: erro instanceof Error ? erro.message : String(erro),
+    });
+  }
+}
+
 export async function sincronizarCampanhaComMeta(
   admin: SupabaseClient,
   c: CampanhaParaSync,
@@ -82,6 +150,7 @@ export async function sincronizarCampanhaComMeta(
 
   const janela = janelaDaSync(c, agora);
   if (!janela) {
+    await aplicarStatusAutomatico(admin, c, agora);
     await marcar("");
     return { ok: true, dias: 0, de: c.start_date ?? "", ate: "" };
   }
@@ -168,6 +237,7 @@ export async function sincronizarCampanhaComMeta(
     ids,
     agora,
   );
+  await aplicarStatusAutomatico(admin, c, agora);
   await marcar("");
   return { ok: true, dias: leitura.dias.length, ...janela };
 }

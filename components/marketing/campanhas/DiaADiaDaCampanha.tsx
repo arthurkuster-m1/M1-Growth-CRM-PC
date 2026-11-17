@@ -306,7 +306,7 @@ export function DiaADiaDaCampanha({
   })();
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-3">
       {fora ? (
         <p role="status" className="rounded-xl bg-warning-bg px-3 py-2 text-sm text-warning-fg">
           {fora.total} {t("leads entraram fora do período da campanha")}

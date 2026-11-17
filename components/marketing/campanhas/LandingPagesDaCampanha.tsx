@@ -1,5 +1,7 @@
 "use client";
 
+import { TituloDaSecao } from "@/components/marketing/campanhas/visual/Pecas";
+import { Check, Globe, LinkSimple, Plus, TextAa, Trash } from "@/lib/ui/icons";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useEffect, useState } from "react";
 
@@ -34,7 +36,6 @@ import {
 } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { STATUS_DA_LP, metricasDaLp, type LandingPage } from "@/lib/marketing/landing-pages";
 import { moedaDoNumero } from "@/lib/marketing/produtos-csv";
-import { Check, LinkSimple, Plus, TextAa, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const CAMPO =
@@ -312,9 +313,11 @@ export function LandingPagesDaCampanha({
   ];
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-amber-500 bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{t("Landing pages")}</h2>
+        <TituloDaSecao icone={Globe} tom="amber">
+          {t("Landing pages")}
+        </TituloDaSecao>
         <div className="flex flex-wrap items-center gap-2">
           <FiltroDePeriodoDaCampanha periodo={periodo} />
           {podeEditar ? (

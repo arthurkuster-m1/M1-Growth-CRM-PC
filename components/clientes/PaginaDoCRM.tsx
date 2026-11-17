@@ -12,14 +12,14 @@ import { useT } from "@/hooks/i18n/useT";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
-const VISOES = ["clientes", "oportunidades", "vendas", "lixeira"] as const;
+const VISOES = ["oportunidades", "vendas", "clientes", "lixeira"] as const;
 type Visao = (typeof VISOES)[number];
 
 /**
- * A página CRM: três visões do mesmo negócio.
- *  - Clientes: as pessoas (o lead é o cliente), com o ciclo de vida.
+ * A página CRM: três visões do mesmo negócio, nesta ordem — e abre SEMPRE em Oportunidades.
  *  - Oportunidades: os negócios de cada funil/campanha, em quadro ou lista.
  *  - Vendas: os pagamentos e as parcelas.
+ *  - Clientes: as pessoas (o lead é o cliente), com o ciclo de vida.
  *  - Lixeira: os clientes excluídos nos últimos 7 dias (restaurar ou apagar de vez).
  * Cada visão tem as próprias visualizações salvas, filtros e colunas (o motor das Tarefas).
  */
@@ -34,12 +34,12 @@ export function PaginaDoCRM() {
   const pedida = parametros.get("visao");
   const visao: Visao =
     VISOES.find((v) => v === pedida && ((v !== "vendas" && v !== "lixeira") || podeVerVendas)) ??
-    "clientes";
+    "oportunidades";
 
   const abas: Array<{ id: Visao; rotulo: string }> = [
-    { id: "clientes", rotulo: t("Clientes") },
     { id: "oportunidades", rotulo: t("Oportunidades") },
     ...(podeVerVendas ? [{ id: "vendas" as const, rotulo: t("Vendas") }] : []),
+    { id: "clientes", rotulo: t("Clientes") },
     ...(podeVerVendas ? [{ id: "lixeira" as const, rotulo: t("Lixeira") }] : []),
   ];
 
@@ -59,7 +59,7 @@ export function PaginaDoCRM() {
             role="tab"
             aria-selected={visao === a.id}
             // Cada visão tem os próprios funis e abas: trocar de visão limpa o resto da URL.
-            href={a.id === "clientes" ? caminho : `${caminho}?visao=${a.id}`}
+            href={a.id === "oportunidades" ? caminho : `${caminho}?visao=${a.id}`}
             replace
             scroll={false}
             className={cn(
@@ -75,9 +75,9 @@ export function PaginaDoCRM() {
       </nav>
 
       <Suspense fallback={null}>
-        {visao === "clientes" ? <ClientesCRM key="clientes" modo="clientes" /> : null}
         {visao === "oportunidades" ? <ClientesCRM key="oportunidades" modo="oportunidades" /> : null}
         {visao === "vendas" ? <VendasCRM key="vendas" /> : null}
+        {visao === "clientes" ? <ClientesCRM key="clientes" modo="clientes" /> : null}
         {visao === "lixeira" ? <LixeiraDoCRM key="lixeira" /> : null}
       </Suspense>
     </div>

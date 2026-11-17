@@ -10,6 +10,17 @@ import { ConnectionsClient } from "./ConnectionsClient";
 import { TemplatesClient } from "./TemplatesClient";
 import { TemplatesParceiroClient } from "./TemplatesParceiroClient";
 import { MetaCapi, type DadosDaMetaCapi } from "@/components/connections/MetaCapi";
+import { SeletorDeConexao, type OpcaoDeConexao } from "@/components/connections/SeletorDeConexao";
+import { CartaoDePasso } from "@/components/marketing/campanhas/visual/Pecas";
+import {
+  ChatsCircle,
+  Lightning,
+  Megaphone,
+  QrCode,
+  ShareNetwork,
+  WebhooksLogo,
+  WhatsappLogo,
+} from "@/lib/ui/icons";
 import { FormularioDeMetaAds } from "@/app/app/settings/meta-ads/_form";
 import type { Idioma } from "@/lib/i18n/idiomas";
 import { WebhooksClient } from "@/app/app/webhooks/_components/WebhooksClient";
@@ -90,52 +101,107 @@ export function ConexoesShell({
     router.replace(qs ? `/app/connections?${qs}` : "/app/connections", { scroll: false });
   };
 
+  const opcoes: OpcaoDeConexao[] = [
+    {
+      id: "numeros",
+      icone: QrCode,
+      tom: "emerald",
+      titulo: t("Números por QR"),
+      descricao: t("Conecte o WhatsApp lendo o código no celular."),
+    },
+    {
+      id: "oficial",
+      icone: WhatsappLogo,
+      tom: "teal",
+      titulo: t("API Oficial (Meta)"),
+      descricao: t("O número oficial do WhatsApp Business e os templates."),
+    },
+    {
+      id: "sociais",
+      icone: ChatsCircle,
+      tom: "violet",
+      titulo: t("Redes sociais"),
+      descricao: t("Instagram e Messenger no mesmo atendimento."),
+    },
+    ...(graphParceiro
+      ? ([
+          {
+            id: "graph",
+            icone: ShareNetwork,
+            tom: "slate",
+            titulo: graphParceiro.label,
+            descricao: t("Canal parceiro da Cloud API, com modelos."),
+          },
+        ] satisfies OpcaoDeConexao[])
+      : []),
+    {
+      id: "webhooks",
+      icone: WebhooksLogo,
+      tom: "amber",
+      titulo: t("Webhooks"),
+      descricao: t("Receba leads de formulários, landing pages e n8n."),
+    },
+    {
+      id: "meta-ads",
+      icone: Megaphone,
+      tom: "blue",
+      titulo: t("Meta Ads"),
+      descricao: t("Leia o desempenho das campanhas e envie conversões (CAPI)."),
+      estado: metaAds.conectada
+        ? { texto: t("Conectada"), bom: true }
+        : { texto: t("Pendente"), bom: false },
+    },
+  ];
+
   return (
     <Tabs value={aba} onValueChange={(v) => irPara(v, sub)} className="flex flex-col gap-4">
-      {/* Uma fila só, que rola na horizontal no celular: abas que quebram em várias linhas
-          viravam um bloco confuso. Rótulos nunca quebram (whitespace-nowrap no gatilho). */}
-      <TabsList className="h-11 w-full justify-start gap-1 sm:w-auto">
-        <TabsTrigger value="numeros">{t("Números por QR")}</TabsTrigger>
-        <TabsTrigger value="oficial">{t("API Oficial (Meta)")}</TabsTrigger>
-        <TabsTrigger value="sociais">{t("Redes sociais")}</TabsTrigger>
-        {graphParceiro && <TabsTrigger value="graph">{graphParceiro.label}</TabsTrigger>}
-        <TabsTrigger value="webhooks">{t("Webhooks")}</TabsTrigger>
-        <TabsTrigger value="meta-ads">{t("Meta Ads")}</TabsTrigger>
-      </TabsList>
+      <SeletorDeConexao
+        rotulo={t("Tipos de conexão")}
+        ativa={aba}
+        aoEscolher={(v) => irPara(v, sub)}
+        opcoes={opcoes}
+      />
 
-      <TabsContent value="meta-ads" className="mt-0 flex max-w-3xl flex-col gap-4">
-        <p className="text-sm text-muted-foreground">
-          {t(
-            "Conecte um token de acesso para o sistema ler o desempenho das suas campanhas e mostrá-lo nos Dashboards. É uma conexão só de leitura: nada é criado, pausado ou alterado na sua conta de anúncios.",
+      <TabsContent value="meta-ads" className="mt-0 flex max-w-4xl flex-col gap-4">
+        <CartaoDePasso
+          numero={1}
+          icone={Megaphone}
+          tom="blue"
+          titulo={t("Ler o desempenho das campanhas")}
+          descricao={t(
+            "Conecte um token de acesso para o sistema ler o desempenho das suas campanhas e mostrá-lo nos Dashboards. É só leitura: nada é criado, pausado ou alterado na sua conta de anúncios.",
           )}
-        </p>
-        {/* A permissão exata está escrita aqui porque é o erro nº 1 desta integração: um token sem
-            `ads_read` conecta, salva, e só falha na hora de abrir a tabela. */}
-        <div className="rounded-md border border-sky-500/40 bg-sky-500/10 p-4 text-sm">
-          {t(
-            "O token precisa da permissão ads_read. Gere-o no Meta for Developers, na sua conta de aplicativo, e cole abaixo — ele fica guardado criptografado e nunca é mostrado de volta.",
-          )}
-        </div>
-        <FormularioDeMetaAds
-          conectada={metaAds.conectada}
-          contaPadrao={metaAds.contaPadrao}
-          idioma={idioma}
-        />
-        {metaAds.conectada && (
-          <p className="text-sm text-muted-foreground">
+          estado={metaAds.conectada ? "completo" : "pendente"}
+        >
+          {/* A permissão exata está escrita aqui porque é o erro nº 1 desta integração: um token sem
+              `ads_read` conecta, salva, e só falha na hora de abrir a tabela. */}
+          <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-3 text-sm">
             {t(
-              "Para trocar apenas a conta padrão, deixe o campo do token em branco — o token guardado é mantido.",
+              "O token precisa da permissão ads_read. Gere-o no Meta for Developers, na sua conta de aplicativo, e cole abaixo — ele fica guardado criptografado e nunca é mostrado de volta.",
             )}
-          </p>
-        )}
+          </div>
+          <FormularioDeMetaAds
+            conectada={metaAds.conectada}
+            contaPadrao={metaAds.contaPadrao}
+            idioma={idioma}
+          />
+          {metaAds.conectada && (
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "Para trocar apenas a conta padrão, deixe o campo do token em branco — o token guardado é mantido.",
+              )}
+            </p>
+          )}
+        </CartaoDePasso>
         <MetaCapi dados={capi} idioma={idioma} />
       </TabsContent>
 
       <TabsContent value="webhooks" className="mt-0">
         {/* Webhooks era página própria (/app/webhooks); agora é mais uma conexão. */}
-        <p className="mb-3 text-sm text-muted-foreground">
+        <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Lightning size={16} weight="duotone" className="text-amber-600" aria-hidden />
           {t(
-            "Receba contatos de fora (landing pages, formulários) e crie automações que agem sozinhas.",
+            "Receba contatos de fora (landing pages, formulários, n8n) e crie automações que agem sozinhas.",
           )}
         </p>
         <WebhooksClient />

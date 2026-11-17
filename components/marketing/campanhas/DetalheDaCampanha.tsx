@@ -96,6 +96,7 @@ import {
   CartaoDePasso,
   IconeDoCartao,
   ProgressoDoCadastro,
+  TituloDaSecao,
 } from "@/components/marketing/campanhas/visual/Pecas";
 import { cn } from "@/lib/utils";
 
@@ -104,32 +105,31 @@ const CAMPO =
 const AREA =
   "w-full rounded-xl border bg-card px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 
-const FAIXA_DO_BLOCO = {
-  blue: "border-l-blue-500",
-  emerald: "border-l-emerald-500",
-  violet: "border-l-violet-500",
-  amber: "border-l-amber-500",
-  teal: "border-l-teal-500",
-  rose: "border-l-rose-500",
+const TOM_DO_BLOCO = {
+  blue: "blue",
+  emerald: "emerald",
+  violet: "violet",
+  amber: "amber",
+  teal: "teal",
+  rose: "rose",
 } as const;
 
 function Bloco({
   titulo,
   children,
   tom = "blue",
+  ajuda,
 }: {
   titulo: string;
   children: ReactNode;
-  tom?: keyof typeof FAIXA_DO_BLOCO;
+  tom?: keyof typeof TOM_DO_BLOCO;
+  ajuda?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "grid grid-cols-1 gap-3 rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
-        FAIXA_DO_BLOCO[tom],
-      )}
-    >
-      <h2 className="text-sm font-semibold">{titulo}</h2>
+    <section className="grid grid-cols-1 gap-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+      <TituloDaSecao icone={NotePencil} tom={TOM_DO_BLOCO[tom]} ajuda={ajuda}>
+        {titulo}
+      </TituloDaSecao>
       {children}
     </section>
   );
@@ -415,26 +415,34 @@ export function DetalheDaCampanha({ id }: { id: string }) {
 
       {aba === "visao" ? (
         <>
-          <ResumoDaCampanha c={c} dias={dias.dias} hoje={hojeIso()} coorte={dias.coorte} />
+          <ResumoDaCampanha
+            c={c}
+            dias={dias.dias}
+            hoje={hojeIso()}
+            coorte={dias.coorte}
+            podeEditar={podeEditar}
+            aoGravarComentarios={(comments) => grava({ comments })}
+          />
           <OrigemDosLeads campanhaId={c.id} campanha={c} />
         </>
       ) : null}
 
       {aba === "dia" ? (
         <>
-          <section className="grid min-w-0 grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-blue-500 bg-card p-4 shadow-sm">
+          <section className="grid min-w-0 grid-cols-1 gap-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
             <button
               type="button"
               aria-expanded={diaAberto}
               onClick={() => setDiaAberto((v) => !v)}
-              className="flex w-full items-center gap-2 text-left"
+              className="flex w-full items-center gap-3 text-left"
             >
+              <IconeDoCartao icone={CalendarBlank} tom="blue" className="h-9 w-9" />
+              <span className="text-base font-semibold">{t("Dia a dia")}</span>
               {diaAberto ? (
                 <CaretDown size={14} weight="bold" aria-hidden />
               ) : (
                 <CaretRight size={14} weight="bold" aria-hidden />
               )}
-              <span className="text-sm font-semibold">{t("Dia a dia")}</span>
               <span className="ml-auto text-xs text-muted-foreground">
                 {diaAberto ? t("Fechar a tabela") : t("Abrir a tabela dos dias")}
               </span>
@@ -638,28 +646,32 @@ export function DetalheDaCampanha({ id }: { id: string }) {
             )}
             estado={periodoCompleto ? "completo" : "pendente"}
           >
-            <div className="flex flex-wrap items-center gap-3">
-              <SeletorDeData
-                valor={c.start_date ?? ""}
-                rotulo={t("Início")}
-                placeholder={t("Início")}
-                className="h-9 w-[9.5rem] px-2.5 text-sm"
-                aoMudar={(d) => !bloqueado && grava({ start_date: d || null })}
-              />
-              {c.continuous ? (
-                <span className="inline-flex h-9 items-center rounded-xl border border-dashed px-3 text-sm text-muted-foreground">
-                  {t("Sem fim")}
-                </span>
-              ) : (
+            <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <Rotulo texto={t("Início")}>
                 <SeletorDeData
-                  valor={c.end_date ?? ""}
-                  rotulo={t("Fim")}
-                  placeholder={t("Fim")}
-                  className="h-9 w-[9.5rem] px-2.5 text-sm"
-                  aoMudar={(d) => !bloqueado && grava({ end_date: d || null })}
+                  valor={c.start_date ?? ""}
+                  rotulo={t("Início")}
+                  placeholder={t("Início")}
+                  className="h-10 w-full px-3 text-sm"
+                  aoMudar={(d) => !bloqueado && grava({ start_date: d || null })}
                 />
-              )}
-              <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 text-sm">
+              </Rotulo>
+              <Rotulo texto={t("Fim")}>
+                {c.continuous ? (
+                  <span className="inline-flex h-10 w-full items-center rounded-xl border border-dashed px-3 text-sm text-muted-foreground">
+                    {t("Sem fim (campanha contínua)")}
+                  </span>
+                ) : (
+                  <SeletorDeData
+                    valor={c.end_date ?? ""}
+                    rotulo={t("Fim")}
+                    placeholder={t("Fim")}
+                    className="h-10 w-full px-3 text-sm"
+                    aoMudar={(d) => !bloqueado && grava({ end_date: d || null })}
+                  />
+                )}
+              </Rotulo>
+              <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm sm:col-span-2 xl:col-span-1">
                 <CaixaRedonda
                   disabled={bloqueado}
                   checked={c.continuous}

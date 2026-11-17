@@ -24,13 +24,28 @@ import {
   useId,
   useRef,
   useState,
+  type ClipboardEvent as EventoDeCopia,
+  type KeyboardEvent as EventoDeTecla,
   type MouseEvent as EventoDeMouse,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 
 import { useCelular } from "@/hooks/motor/useCelular";
 import { useT } from "@/hooks/i18n/useT";
+import { agruparDesfazer } from "@/lib/motor/desfazer";
 import { limitarLargura, type DefinicaoDeColuna } from "@/lib/motor/layout";
+import {
+  alvosDaColagem,
+  dentroDaFaixa,
+  faixaDa,
+  LIMITE_DE_CELULAS_POR_COLAGEM,
+  lerColagem,
+  montarTsv,
+  moverFoco,
+  type Posicao,
+  type Selecao,
+} from "@/lib/motor/planilha";
 import { estadoDoMarcarTodas } from "@/lib/motor/selecao";
 import {
   CaretDown,
@@ -49,6 +64,13 @@ export interface ColunaDoMotor<T> extends DefinicaoDeColuna {
   celula: (linha: T) => ReactNode;
   /** O total da coluna (soma, média, contagem…), na linha de totais do fim da tabela. */
   total?: (linhas: readonly T[]) => ReactNode;
+  /**
+   * Modo planilha: colar um texto nesta célula (e apagar, com texto vazio). Sem isto a coluna só
+   * pode ser selecionada e copiada. Devolva a promessa da gravação (o Ctrl+Z junta a faixa toda).
+   */
+  colar?: (linha: T, texto: string) => void | Promise<unknown>;
+  /** O texto desta célula ao copiar; sem ele, vale o texto que a célula mostra. */
+  texto?: (linha: T) => string;
 }
 
 interface Props<T> {
@@ -96,6 +118,12 @@ interface Props<T> {
   /** Mostrado quando não há nenhuma linha. */
   vazio?: ReactNode;
   rotuloDaTabela: string;
+  /**
+   * MODO PLANILHA (estilo Excel): clicar numa célula a seleciona, arrastar (ou Shift+clique/setas)
+   * seleciona uma faixa; Ctrl+C copia, Ctrl+V cola (um valor sobre a faixa preenche tudo), Delete
+   * apaga, Enter edita. Só as colunas com `colar` aceitam o que se cola.
+   */
+  planilha?: boolean;
 }
 
 const LARGURA_DA_SELECAO = 32;
@@ -350,6 +378,7 @@ export function TabelaDoMotor<T>({
   rotuloDeCriar,
   vazio,
   rotuloDaTabela,
+  planilha = false,
 }: Props<T>) {
   const t = useT();
   const celular = useCelular();
@@ -417,6 +446,194 @@ export function TabelaDoMotor<T>({
     useSensor(KeyboardSensor),
   );
 
+  // ── modo planilha ───────────────────────────────────────────────────────────────────────────
+  const raiz = useRef<HTMLDivElement | null>(null);
+  const [sel, setSel] = useState<Selecao | null>(null);
+  const arrastando = useRef(false);
+  const [arrastandoVisual, setArrastandoVisual] = useState(false);
+  useEffect(() => {
+    if (!planilha) return;
+    const soltar = () => {
+      arrastando.current = false;
+      setArrastandoVisual(false);
+    };
+    document.addEventListener("mouseup", soltar);
+    return () => document.removeEventListener("mouseup", soltar);
+  }, [planilha]);
+  // A seleção só vale enquanto a célula existe (filtrou, apagou, escondeu a coluna…).
+  const faixa = (() => {
+    if (!planilha || !sel) return null;
+    const f = faixaDa(sel);
+    return f.l2 < linhas.length && f.c2 < colunas.length ? f : null;
+  })();
+  const limites = { linhas: linhas.length, colunas: colunas.length };
+
+  const celulaEl = (l: number, c: number) =>
+    raiz.current?.querySelector<HTMLElement>(`[data-pl="${l}"][data-pc="${c}"]`) ?? null;
+  const textoDaCelula = (l: number, c: number): string => {
+    const linha = linhas[l];
+    const coluna = colunas[c];
+    if (!linha || !coluna) return "";
+    if (coluna.texto) return coluna.texto(linha);
+    const bruto = (celulaEl(l, c)?.textContent ?? "").replace(/\s+/g, " ").trim();
+    return bruto === "—" ? "" : bruto;
+  };
+  const textoDaFaixa = (): string => {
+    if (!faixa) return "";
+    const matriz: string[][] = [];
+    for (let l = faixa.l1; l <= faixa.l2; l++) {
+      const linha: string[] = [];
+      for (let c = faixa.c1; c <= faixa.c2; c++) linha.push(textoDaCelula(l, c));
+      matriz.push(linha);
+    }
+    return montarTsv(matriz);
+  };
+
+  /** Grava um valor em cada alvo (as colunas sem `colar` ficam de fora) e junta o Ctrl+Z. */
+  async function aplicar(alvos: { l: number; c: number; valor: string }[], rotulo: string) {
+    if (alvos.length > LIMITE_DE_CELULAS_POR_COLAGEM) {
+      toast.error(
+        `${t("Dá para mudar até")} ${LIMITE_DE_CELULAS_POR_COLAGEM} ${t("células por vez.")}`,
+      );
+      return;
+    }
+    let feitas = 0;
+    let semEdicao = 0;
+    const tarefas: Promise<unknown>[] = [];
+    for (const a of alvos) {
+      const linha = linhas[a.l];
+      const coluna = colunas[a.c];
+      if (!linha || !coluna) continue;
+      if (!coluna.colar) {
+        semEdicao += 1;
+        continue;
+      }
+      feitas += 1;
+      tarefas.push(Promise.resolve(coluna.colar(linha, a.valor)).catch(() => undefined));
+    }
+    await agruparDesfazer(rotulo, () => Promise.all(tarefas));
+    if (feitas > 0) {
+      toast.success(
+        `${feitas} ${feitas === 1 ? t("célula atualizada") : t("células atualizadas")}${
+          semEdicao > 0 ? ` · ${semEdicao} ${t("sem edição, ignoradas")}` : ""
+        }. ${t("Ctrl+Z desfaz.")}`,
+      );
+    } else if (semEdicao > 0) {
+      toast.message(t("Essas colunas não aceitam edição por aqui."));
+    }
+  }
+
+  function aoPressionarCelula(e: EventoDeMouse, p: Posicao) {
+    if (!planilha || e.button !== 0) return;
+    const interativo = (e.target as HTMLElement).closest(
+      "input, textarea, select, button, a, [role='combobox'], [contenteditable='true']",
+    );
+    setSel((atual) =>
+      e.shiftKey && atual ? { ancora: atual.ancora, foco: p } : { ancora: p, foco: p },
+    );
+    arrastando.current = true;
+    // Sem um controle clicado, o foco vai para a tabela (é ela que ouve as setas e o Ctrl+C/V).
+    if (!interativo) raiz.current?.focus({ preventScroll: true });
+  }
+  function aoEntrarNaCelula(p: Posicao) {
+    if (!planilha || !arrastando.current) return;
+    setArrastandoVisual(true);
+    setSel((atual) => (atual ? { ancora: atual.ancora, foco: p } : atual));
+  }
+
+  function aoTeclar(e: EventoDeTecla<HTMLDivElement>) {
+    if (!planilha || !sel || !faixa) return;
+    const alvo = e.target as HTMLElement;
+    // Janelas e menus (portais) não são da tabela; campos de texto são de quem está digitando.
+    if (!raiz.current?.contains(alvo)) return;
+    if (alvo.closest("input, textarea, select, [contenteditable='true']")) return;
+    const mod = e.ctrlKey || e.metaKey;
+    const k = e.key;
+    if (
+      [
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+        "Home",
+        "End",
+        "PageUp",
+        "PageDown",
+      ].includes(k)
+    ) {
+      e.preventDefault();
+      const foco = moverFoco(sel.foco, k, limites, mod);
+      setSel({ ancora: e.shiftKey ? sel.ancora : foco, foco });
+      requestAnimationFrame(() =>
+        celulaEl(foco.l, foco.c)?.scrollIntoView({ block: "nearest", inline: "nearest" }),
+      );
+      return;
+    }
+    if (k === "Escape") {
+      setSel(null);
+      return;
+    }
+    if (mod && k.toLowerCase() === "a") {
+      e.preventDefault();
+      setSel({
+        ancora: { l: 0, c: 0 },
+        foco: { l: limites.linhas - 1, c: limites.colunas - 1 },
+      });
+      return;
+    }
+    if (k === "Delete" || k === "Backspace") {
+      e.preventDefault();
+      const alvos = [];
+      for (let l = faixa.l1; l <= faixa.l2; l++)
+        for (let c = faixa.c1; c <= faixa.c2; c++) alvos.push({ l, c, valor: "" });
+      void aplicar(alvos, t("Apagar células"));
+      return;
+    }
+    if (k === "Enter" || k === "F2") {
+      const controle = celulaEl(sel.foco.l, sel.foco.c)?.querySelector<HTMLElement>(
+        "input, textarea, select, button, [role='combobox']",
+      );
+      if (controle && alvo !== controle) {
+        e.preventDefault();
+        controle.click();
+        controle.focus();
+      }
+    }
+  }
+
+  function aoCopiar(e: EventoDeCopia<HTMLDivElement>, cortar: boolean) {
+    if (!planilha || !faixa || !raiz.current?.contains(e.target as Node)) return;
+    if ((e.target as HTMLElement).closest("input, textarea, [contenteditable='true']")) return;
+    e.clipboardData.setData("text/plain", textoDaFaixa());
+    e.preventDefault();
+    if (cortar) {
+      const alvos = [];
+      for (let l = faixa.l1; l <= faixa.l2; l++)
+        for (let c = faixa.c1; c <= faixa.c2; c++) alvos.push({ l, c, valor: "" });
+      void aplicar(alvos, t("Recortar células"));
+    }
+  }
+
+  function aoColar(e: EventoDeCopia<HTMLDivElement>) {
+    if (!planilha || !faixa || !raiz.current?.contains(e.target as Node)) return;
+    if ((e.target as HTMLElement).closest("input, textarea, [contenteditable='true']")) return;
+    const texto = e.clipboardData.getData("text/plain");
+    if (texto === "") return;
+    e.preventDefault();
+    const alvos = alvosDaColagem(lerColagem(texto), faixa, limites);
+    if (alvos.length === 0) return;
+    const ultima = alvos[alvos.length - 1]!;
+    void aplicar(alvos, t("Colar células"));
+    // A seleção passa a cobrir o que foi colado.
+    setSel({ ancora: { l: faixa.l1, c: faixa.c1 }, foco: { l: ultima.l, c: ultima.c } });
+  }
+
+  const posicaoDaLinha = new Map<string, number>();
+  linhas.forEach((l, i) => {
+    const id = idDe(l);
+    if (!posicaoDaLinha.has(id)) posicaoDaLinha.set(id, i);
+  });
+
   const [recolhidos, setRecolhidos] = useState<ReadonlySet<string>>(() => new Set());
   const blocos = grupos ?? [{ chave: "", titulo: null, linhas }];
   // Único: agrupando por campo de vários valores, a mesma linha aparece em mais de um grupo.
@@ -436,7 +653,18 @@ export function TabelaDoMotor<T>({
   }
 
   return (
-    <div className="[container-type:inline-size] -mx-4 overflow-x-auto overscroll-x-contain border-y bg-card sm:mx-0 sm:rounded-2xl sm:border">
+    <div
+      ref={raiz}
+      tabIndex={planilha ? -1 : undefined}
+      onKeyDown={aoTeclar}
+      onCopy={(e) => aoCopiar(e, false)}
+      onCut={(e) => aoCopiar(e, true)}
+      onPaste={aoColar}
+      className={cn(
+        "[container-type:inline-size] -mx-4 overflow-x-auto overscroll-x-contain border-y bg-card outline-hidden sm:mx-0 sm:rounded-2xl sm:border",
+        arrastandoVisual && "select-none",
+      )}
+    >
       <div role="table" aria-label={rotuloDaTabela} style={{ minWidth: larguraTotal }}>
         <DndContext
           id={`${idDoMotor}-colunas`}
@@ -627,11 +855,35 @@ export function TabelaDoMotor<T>({
                               ) : undefined
                             }
                           >
-                            {colunas.map((c) => (
-                              <div key={c.id} role="cell" className="min-w-0 overflow-x-clip px-0.5 py-1">
-                                {c.celula(linha)}
-                              </div>
-                            ))}
+                            {colunas.map((c, ci) => {
+                              const li = posicaoDaLinha.get(idDe(linha)) ?? 0;
+                              const dentro = dentroDaFaixa(faixa, li, ci);
+                              const noFoco = Boolean(sel && sel.foco.l === li && sel.foco.c === ci);
+                              return (
+                                <div
+                                  key={c.id}
+                                  role="cell"
+                                  data-pl={planilha ? li : undefined}
+                                  data-pc={planilha ? ci : undefined}
+                                  aria-selected={planilha ? dentro : undefined}
+                                  onMouseDown={
+                                    planilha
+                                      ? (e) => aoPressionarCelula(e, { l: li, c: ci })
+                                      : undefined
+                                  }
+                                  onMouseEnter={
+                                    planilha ? () => aoEntrarNaCelula({ l: li, c: ci }) : undefined
+                                  }
+                                  className={cn(
+                                    "min-w-0 overflow-x-clip px-0.5 py-1",
+                                    dentro && "bg-primary/10",
+                                    dentro && noFoco && "ring-2 ring-primary/60 ring-inset",
+                                  )}
+                                >
+                                  {c.celula(linha)}
+                                </div>
+                              );
+                            })}
                             {comAcoes || comFim ? (
                               <div role="cell" className="grid place-items-center">
                                 {acoesDaLinha?.(linha)}

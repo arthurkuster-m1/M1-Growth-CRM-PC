@@ -1,10 +1,11 @@
 "use client";
 
 import { GrupoDeNumeros, NumeroQueCabe } from "@/components/ui/NumeroQueCabe";
-import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { FunilEmColunas } from "@/components/dashboards/funil";
-import { rotuloDaMetrica } from "@/components/marketing/campanhas/rotulos";
+import { rotuloDaMetrica, textoDoEstado } from "@/components/marketing/campanhas/rotulos";
 import { useT } from "@/hooks/i18n/useT";
 import type { CampanhaDeDemanda } from "@/lib/marketing/campanhas";
 import {
@@ -20,7 +21,9 @@ import {
   Funnel,
   Hourglass,
   Info,
+  Check,
   CheckCircle,
+  Copy,
   CurrencyDollar,
   Target,
   TrendUp,
@@ -224,10 +227,15 @@ export function ResumoDaCampanha({
   dias,
   hoje,
   coorte,
+  podeEditar,
+  aoGravarComentarios,
 }: {
   c: CampanhaDeDemanda;
   dias: DiaDaCampanha[];
   hoje: string;
+  /** A agência edita os comentários aqui mesmo; o cliente só lê. */
+  podeEditar: boolean;
+  aoGravarComentarios: (comentarios: string) => void;
   /** O funil dos leads que entraram na campanha (agendaram, fizeram a reunião, compraram). */
   coorte: {
     leads: number;
@@ -270,74 +278,208 @@ export function ResumoDaCampanha({
 
   return (
     <div className="grid grid-cols-1 gap-3">
-      <section
-        aria-label={t("Resumo da campanha")}
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5"
-      >
-        <Indicador
-          icone={Users}
-          tom="blue"
-          rotulo={t("Leads")}
-          valor={inteiro(r.funil.leads)}
-          progresso={progressoLeads}
-          detalhe={
-            r.metas.metaDeLeads === null
-              ? t("Sem meta de leads")
-              : `${t("Meta")}: ${inteiro(r.metas.metaDeLeads)}`
-          }
-        />
-        <Indicador
-          icone={CurrencyDollar}
-          tom="emerald"
-          rotulo={t("Investido")}
-          valor={moedaDoNumero(r.funil.investido)}
-          progresso={orcamentoGasto}
-          situacao={orcamentoGasto !== null && orcamentoGasto > 100 ? "ruim" : null}
-          detalhe={
-            r.investimentoLiquido === null
-              ? t("Sem orçamento definido")
-              : `${t("Orçamento líquido")}: ${moedaDoNumero(r.investimentoLiquido)}`
-          }
-        />
-        <Indicador
-          icone={Target}
-          tom="amber"
-          rotulo={t("CPL")}
-          valor={dinheiro(r.funil.cpl) ?? "—"}
-          situacao={
-            r.funil.cpl !== null && r.metas.metaDeCpl !== null
-              ? r.funil.cpl <= r.metas.metaDeCpl
-                ? "bom"
-                : "ruim"
-              : null
-          }
-          detalhe={
-            r.metas.metaDeCpl === null
-              ? t("Sem meta de CPL")
-              : `${t("Meta")}: ${moedaDoNumero(r.metas.metaDeCpl)}`
-          }
-        />
-        <Indicador
-          icone={TrendUp}
-          tom="violet"
-          rotulo={t("Vendas")}
-          valor={inteiro(funilCrm.vendas)}
-          detalhe={`${t("Faturamento")}: ${moedaDoNumero(funilCrm.faturamento)}`}
-        />
-        <Indicador
-          icone={Hourglass}
-          tom="rose"
-          rotulo={r.periodo?.mensal ? t("Dias do mês") : t("Dias restantes")}
-          valor={r.periodo ? inteiro(r.periodo.restantes) : "—"}
-          progresso={progresso}
-          detalhe={
-            r.periodo
-              ? `${inteiro(r.periodo.passados)} ${t("de")} ${inteiro(r.periodo.totais)} ${t("dias")}`
-              : t("Defina o período no Cadastro")
-          }
+      <section aria-label={t("Status atual")} className="grid grid-cols-1 gap-3">
+        <h2 className="text-base font-semibold">{t("Status atual")}</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Indicador
+            icone={Users}
+            tom="blue"
+            rotulo={t("Leads")}
+            valor={inteiro(r.funil.leads)}
+            progresso={progressoLeads}
+            detalhe={
+              r.metas.metaDeLeads === null
+                ? t("Sem meta de leads")
+                : `${t("Meta")}: ${inteiro(r.metas.metaDeLeads)}`
+            }
+          />
+          <Indicador
+            icone={CurrencyDollar}
+            tom="emerald"
+            rotulo={t("Investido")}
+            valor={moedaDoNumero(r.funil.investido)}
+            progresso={orcamentoGasto}
+            situacao={orcamentoGasto !== null && orcamentoGasto > 100 ? "ruim" : null}
+            detalhe={
+              r.investimentoLiquido === null
+                ? t("Sem orçamento definido")
+                : `${t("Orçamento líquido")}: ${moedaDoNumero(r.investimentoLiquido)}`
+            }
+          />
+          <Indicador
+            icone={Target}
+            tom="amber"
+            rotulo={t("CPL")}
+            valor={dinheiro(r.funil.cpl) ?? "—"}
+            situacao={
+              r.funil.cpl !== null && r.metas.metaDeCpl !== null
+                ? r.funil.cpl <= r.metas.metaDeCpl
+                  ? "bom"
+                  : "ruim"
+                : null
+            }
+            detalhe={
+              r.metas.metaDeCpl === null
+                ? t("Sem meta de CPL")
+                : `${t("Meta")}: ${moedaDoNumero(r.metas.metaDeCpl)}`
+            }
+          />
+          <Indicador
+            icone={TrendUp}
+            tom="violet"
+            rotulo={t("Vendas")}
+            valor={inteiro(funilCrm.vendas)}
+            detalhe={`${t("Faturamento")}: ${moedaDoNumero(funilCrm.faturamento)}`}
+          />
+          <Indicador
+            icone={Hourglass}
+            tom="rose"
+            rotulo={r.periodo?.mensal ? t("Dias do mês") : t("Dias restantes")}
+            valor={r.periodo ? inteiro(r.periodo.restantes) : "—"}
+            progresso={progresso}
+            detalhe={
+              r.periodo
+                ? `${inteiro(r.periodo.passados)} ${t("de")} ${inteiro(r.periodo.totais)} ${t("dias")}`
+                : t("Defina o período no Cadastro")
+            }
+          />
+        </div>
+        <CamposDoStatus
+          c={c}
+          podeEditar={podeEditar}
+          aoGravarComentarios={aoGravarComentarios}
+          textoDoEstado={textoDoEstado(t, c.estado)}
         />
       </section>
 
+      {trafego ? (
+        <SecaoRecolhivel
+          titulo={t("Funil completo")}
+          nota={t("Na ordem em que acontece")}
+          icone={Funnel}
+          tom="violet"
+          abertaPorPadrao
+        >
+          <FunilEmColunas
+            colunas={[
+              {
+                rotulo: t("Impressões"),
+                valor: inteiro(r.funil.impressoes),
+                itens: [
+                  {
+                    rotulo: t("Frequência"),
+                    valor:
+                      r.funil.alcance > 0
+                        ? (r.funil.impressoes / r.funil.alcance).toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : "—",
+                  },
+                  { rotulo: t("CPM"), valor: dinheiro(r.funil.cpm) ?? "—" },
+                ],
+              },
+              {
+                rotulo: t("Cliques no link"),
+                valor: inteiro(r.funil.cliques),
+                itens: [
+                  { rotulo: t("CPC"), valor: dinheiro(r.funil.cpc) ?? "—" },
+                  { rotulo: t("CTR"), valor: r.funil.ctr === null ? "—" : pct(r.funil.ctr) },
+                ],
+              },
+              {
+                rotulo: t("Visitas à LP"),
+                valor: inteiro(r.funil.visitas),
+                itens: [
+                  { rotulo: t("Custo por visita"), valor: dinheiro(r.funil.custoPorVisita) ?? "—" },
+                  {
+                    rotulo: t("Connect rate"),
+                    valor: r.funil.connectionRate === null ? "—" : pct(r.funil.connectionRate),
+                  },
+                ],
+              },
+              {
+                rotulo: t("Leads"),
+                valor: inteiro(r.funil.leads),
+                itens: [
+                  { rotulo: t("CPL"), valor: dinheiro(r.funil.cpl) ?? "—" },
+                  {
+                    rotulo: t("Conversão da LP"),
+                    valor: r.funil.conversaoDaLp === null ? "—" : pct(r.funil.conversaoDaLp),
+                  },
+                ],
+              },
+              ...(comReunioes
+                ? [
+                    {
+                      rotulo: t("Reuniões agendadas"),
+                      valor: inteiro(funilCrm.agendados),
+                      itens: [
+                        {
+                          rotulo: t("Custo por agendamento"),
+                          valor:
+                            funilCrm.agendados > 0 && r.funil.investido > 0
+                              ? moedaDoNumero(r.funil.investido / funilCrm.agendados)
+                              : "—",
+                        },
+                        {
+                          rotulo: t("Taxa de agendamento"),
+                          valor:
+                            funilCrm.leads > 0
+                              ? pct((funilCrm.agendados / funilCrm.leads) * 100)
+                              : "—",
+                        },
+                      ],
+                    },
+                    {
+                      rotulo: t("Reuniões feitas"),
+                      valor: inteiro(funilCrm.feitas),
+                      itens: [
+                        {
+                          rotulo: t("Custo por reunião"),
+                          valor:
+                            funilCrm.feitas > 0 && r.funil.investido > 0
+                              ? moedaDoNumero(r.funil.investido / funilCrm.feitas)
+                              : "—",
+                        },
+                        {
+                          rotulo: t("Taxa de comparecimento"),
+                          valor:
+                            funilCrm.agendados > 0
+                              ? pct((funilCrm.feitas / funilCrm.agendados) * 100)
+                              : "—",
+                        },
+                      ],
+                    },
+                  ]
+                : []),
+              {
+                rotulo: t("Vendas"),
+                valor: inteiro(funilCrm.vendas),
+                itens: [
+                  {
+                    rotulo: t("Total de vendas"),
+                    valor: moedaDoNumero(funilCrm.faturamento),
+                  },
+                  {
+                    rotulo: t("CAC"),
+                    valor:
+                      funilCrm.vendas > 0 && r.funil.investido > 0
+                        ? moedaDoNumero(r.funil.investido / funilCrm.vendas)
+                        : "—",
+                  },
+                  {
+                    rotulo: t("Conversão dos leads"),
+                    valor: funilCrm.leads > 0 ? pct((funilCrm.vendas / funilCrm.leads) * 100) : "—",
+                  },
+                ],
+              },
+            ]}
+          />
+        </SecaoRecolhivel>
+      ) : (
+        <FunilDoCanal c={c} dias={dias} leads={r.funil.leads} investido={r.funil.investido} />
+      )}
       {r.alertas.length > 0 ? (
         <section
           aria-label={t("O que fazer agora")}
@@ -502,36 +644,6 @@ export function ResumoDaCampanha({
         </SecaoRecolhivel>
       ) : null}
 
-      <Cartao titulo={t("Dias")} icone={Hourglass} tom="violet">
-        <Barra
-          rotulo={
-            r.periodo?.mensal
-              ? t("Tempo do mês da campanha que já passou")
-              : t("Tempo da campanha que já passou")
-          }
-          detalhe={
-            r.periodo ? `${inteiro(r.periodo.passados)} / ${inteiro(r.periodo.totais)}` : undefined
-          }
-          porcentagem={progresso}
-          tom="violet"
-        />
-        <Numero
-          rotulo={t("Dias totais")}
-          valor={r.periodo ? inteiro(r.periodo.totais) : null}
-          fundo="violet"
-        />
-        <Numero
-          rotulo={t("Dias passados")}
-          valor={r.periodo ? inteiro(r.periodo.passados) : null}
-          fundo="violet"
-        />
-        <Numero
-          rotulo={t("Dias restantes")}
-          valor={r.periodo ? inteiro(r.periodo.restantes) : null}
-          fundo="violet"
-        />
-      </Cartao>
-
       <SecaoRecolhivel
         titulo={t("Pace de gastos")}
         icone={Wallet}
@@ -597,135 +709,160 @@ export function ResumoDaCampanha({
         </div>
       </SecaoRecolhivel>
 
-      {trafego ? (
-        <SecaoRecolhivel
-          titulo={t("Funil completo")}
-          nota={t("Na ordem em que acontece")}
-          icone={Funnel}
+      <Cartao titulo={t("Dias")} icone={Hourglass} tom="violet">
+        <Barra
+          rotulo={
+            r.periodo?.mensal
+              ? t("Tempo do mês da campanha que já passou")
+              : t("Tempo da campanha que já passou")
+          }
+          detalhe={
+            r.periodo ? `${inteiro(r.periodo.passados)} / ${inteiro(r.periodo.totais)}` : undefined
+          }
+          porcentagem={progresso}
           tom="violet"
-          abertaPorPadrao
-        >
-          <FunilEmColunas
-            colunas={[
-              {
-                rotulo: t("Impressões"),
-                valor: inteiro(r.funil.impressoes),
-                itens: [
-                  {
-                    rotulo: t("Frequência"),
-                    valor:
-                      r.funil.alcance > 0
-                        ? (r.funil.impressoes / r.funil.alcance).toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                        : "—",
-                  },
-                  { rotulo: t("CPM"), valor: dinheiro(r.funil.cpm) ?? "—" },
-                ],
-              },
-              {
-                rotulo: t("Cliques no link"),
-                valor: inteiro(r.funil.cliques),
-                itens: [
-                  { rotulo: t("CPC"), valor: dinheiro(r.funil.cpc) ?? "—" },
-                  { rotulo: t("CTR"), valor: r.funil.ctr === null ? "—" : pct(r.funil.ctr) },
-                ],
-              },
-              {
-                rotulo: t("Visitas à LP"),
-                valor: inteiro(r.funil.visitas),
-                itens: [
-                  { rotulo: t("Custo por visita"), valor: dinheiro(r.funil.custoPorVisita) ?? "—" },
-                  {
-                    rotulo: t("Connect rate"),
-                    valor: r.funil.connectionRate === null ? "—" : pct(r.funil.connectionRate),
-                  },
-                ],
-              },
-              {
-                rotulo: t("Leads"),
-                valor: inteiro(r.funil.leads),
-                itens: [
-                  { rotulo: t("CPL"), valor: dinheiro(r.funil.cpl) ?? "—" },
-                  {
-                    rotulo: t("Conversão da LP"),
-                    valor: r.funil.conversaoDaLp === null ? "—" : pct(r.funil.conversaoDaLp),
-                  },
-                ],
-              },
-              ...(comReunioes
-                ? [
-                    {
-                      rotulo: t("Reuniões agendadas"),
-                      valor: inteiro(funilCrm.agendados),
-                      itens: [
-                        {
-                          rotulo: t("Custo por agendamento"),
-                          valor:
-                            funilCrm.agendados > 0 && r.funil.investido > 0
-                              ? moedaDoNumero(r.funil.investido / funilCrm.agendados)
-                              : "—",
-                        },
-                        {
-                          rotulo: t("Taxa de agendamento"),
-                          valor:
-                            funilCrm.leads > 0
-                              ? pct((funilCrm.agendados / funilCrm.leads) * 100)
-                              : "—",
-                        },
-                      ],
-                    },
-                    {
-                      rotulo: t("Reuniões feitas"),
-                      valor: inteiro(funilCrm.feitas),
-                      itens: [
-                        {
-                          rotulo: t("Custo por reunião"),
-                          valor:
-                            funilCrm.feitas > 0 && r.funil.investido > 0
-                              ? moedaDoNumero(r.funil.investido / funilCrm.feitas)
-                              : "—",
-                        },
-                        {
-                          rotulo: t("Taxa de comparecimento"),
-                          valor:
-                            funilCrm.agendados > 0
-                              ? pct((funilCrm.feitas / funilCrm.agendados) * 100)
-                              : "—",
-                        },
-                      ],
-                    },
-                  ]
-                : []),
-              {
-                rotulo: t("Vendas"),
-                valor: inteiro(funilCrm.vendas),
-                itens: [
-                  {
-                    rotulo: t("Total de vendas"),
-                    valor: moedaDoNumero(funilCrm.faturamento),
-                  },
-                  {
-                    rotulo: t("CAC"),
-                    valor:
-                      funilCrm.vendas > 0 && r.funil.investido > 0
-                        ? moedaDoNumero(r.funil.investido / funilCrm.vendas)
-                        : "—",
-                  },
-                  {
-                    rotulo: t("Conversão dos leads"),
-                    valor: funilCrm.leads > 0 ? pct((funilCrm.vendas / funilCrm.leads) * 100) : "—",
-                  },
-                ],
-              },
-            ]}
-          />
-        </SecaoRecolhivel>
-      ) : (
-        <FunilDoCanal c={c} dias={dias} leads={r.funil.leads} investido={r.funil.investido} />
-      )}
+        />
+        <Numero
+          rotulo={t("Dias totais")}
+          valor={r.periodo ? inteiro(r.periodo.totais) : null}
+          fundo="violet"
+        />
+        <Numero
+          rotulo={t("Dias passados")}
+          valor={r.periodo ? inteiro(r.periodo.passados) : null}
+          fundo="violet"
+        />
+        <Numero
+          rotulo={t("Dias restantes")}
+          valor={r.periodo ? inteiro(r.periodo.restantes) : null}
+          fundo="violet"
+        />
+      </Cartao>
     </div>
+  );
+}
+
+/** Uma nota da campanha como a tabela mostra: "dd/mm | texto". */
+const notaEmLinha = (n: { data: string; texto: string } | null | undefined) =>
+  n ? `${n.data.slice(5).split("-").reverse().join("/")} | ${n.texto}` : "—";
+
+/** Comentários: um texto que grava ao sair do campo, só se mudou. */
+function ComentariosEditaveis({
+  valor,
+  aoGravar,
+}: {
+  valor: string;
+  aoGravar: (v: string) => void;
+}) {
+  const t = useT();
+  const [v, setV] = useState(valor);
+  useEffect(() => setV(valor), [valor]);
+  return (
+    <textarea
+      value={v}
+      rows={2}
+      maxLength={4000}
+      aria-label={t("Comentários")}
+      placeholder={t("Escreva um comentário sobre a campanha…")}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => v !== valor && aoGravar(v)}
+      className="min-h-16 w-full resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+    />
+  );
+}
+
+/**
+ * As informações da TABELA de campanhas, no topo da Visão geral: o estado atual (com botão de copiar),
+ * os comentários (editáveis) e as últimas notas de análise, planejamento e otimização.
+ */
+function CamposDoStatus({
+  c,
+  podeEditar,
+  aoGravarComentarios,
+  textoDoEstado: estado,
+}: {
+  c: CampanhaDeDemanda;
+  podeEditar: boolean;
+  aoGravarComentarios: (comentarios: string) => void;
+  textoDoEstado: string;
+}) {
+  const t = useT();
+  const [copiado, setCopiado] = useState(false);
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(estado);
+      setCopiado(true);
+      toast.success(t("Estado atual copiado."));
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      toast.error(t("Não consegui copiar. Selecione o texto e copie à mão."));
+    }
+  }
+  const linha = "grid gap-1.5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-start sm:gap-4";
+  const rotulo = "pt-1.5 text-sm font-medium text-muted-foreground";
+  return (
+    <section
+      aria-label={t("Informações da campanha")}
+      className="grid gap-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5"
+    >
+      <div className={linha}>
+        <p className={rotulo}>{t("Estado atual")}</p>
+        <div className="flex min-w-0 items-start gap-2">
+          <p className="min-w-0 flex-1 rounded-xl bg-secondary/60 px-3 py-2 text-sm tabular-nums">
+            {estado}
+          </p>
+          <button
+            type="button"
+            onClick={() => void copiar()}
+            disabled={estado === "—"}
+            aria-label={t("Copiar o estado atual")}
+            title={t("Copiar o estado atual")}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
+          >
+            {copiado ? (
+              <Check size={14} weight="bold" aria-hidden />
+            ) : (
+              <Copy size={14} aria-hidden />
+            )}
+            {copiado ? t("Copiado") : t("Copiar")}
+          </button>
+        </div>
+      </div>
+
+      <div className={linha}>
+        <p className={rotulo}>{t("Comentários")}</p>
+        {podeEditar ? (
+          <ComentariosEditaveis valor={c.comments ?? ""} aoGravar={aoGravarComentarios} />
+        ) : (
+          <p className="rounded-xl bg-secondary/60 px-3 py-2 text-sm whitespace-pre-line">
+            {c.comments?.trim() || "—"}
+          </p>
+        )}
+      </div>
+
+      {podeEditar ? (
+        <>
+          <div className={linha}>
+            <p className={rotulo}>{t("Última análise")}</p>
+            <p className="rounded-xl bg-secondary/60 px-3 py-2 text-sm">
+              {notaEmLinha(c.ultima_analise)}
+            </p>
+          </div>
+          <div className={linha}>
+            <p className={rotulo}>{t("Último planejamento")}</p>
+            <p className="rounded-xl bg-secondary/60 px-3 py-2 text-sm">
+              {notaEmLinha(c.ultimo_planejamento)}
+            </p>
+          </div>
+          <div className={linha}>
+            <p className={rotulo}>{t("Última otimização")}</p>
+            <p className="rounded-xl bg-secondary/60 px-3 py-2 text-sm">
+              {notaEmLinha(c.ultima_otimizacao)}
+            </p>
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 

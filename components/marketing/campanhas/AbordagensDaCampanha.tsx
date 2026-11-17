@@ -1,5 +1,7 @@
 "use client";
 
+import { TituloDaSecao } from "@/components/marketing/campanhas/visual/Pecas";
+import { ChatsCircle, Plus, TextAa, Trash } from "@/lib/ui/icons";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import { useEffect, useState } from "react";
 
@@ -42,7 +44,6 @@ import {
   STATUS_DA_ABORDAGEM,
   type Abordagem,
 } from "@/lib/marketing/abordagens";
-import { Plus, TextAa, Trash } from "@/lib/ui/icons";
 
 const CAMPO =
   "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
@@ -334,9 +335,11 @@ export function AbordagensDaCampanha({
   ];
 
   return (
-    <section className="grid grid-cols-1 gap-3 rounded-2xl border border-l-4 border-l-rose-500 bg-card p-4 shadow-sm">
+    <section className="grid grid-cols-1 gap-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{t("Abordagens")}</h2>
+        <TituloDaSecao icone={ChatsCircle} tom="rose">
+          {t("Abordagens")}
+        </TituloDaSecao>
         <div className="flex flex-wrap items-center gap-2">
           <FiltroDePeriodoDaCampanha periodo={periodo} />
           {podeEditar ? (
@@ -363,7 +366,7 @@ export function AbordagensDaCampanha({
         )}
       </p>
       {metricas.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 rounded-xl border border-l-4 border-l-violet-500 p-3 sm:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 rounded-xl border bg-secondary/30 p-3 sm:grid-cols-4 xl:grid-cols-7">
           {metricas.map((m) => {
             const total = somaDoExtra(diasDoPeriodo, m.chave);
             return (

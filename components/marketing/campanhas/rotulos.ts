@@ -44,7 +44,7 @@ export function rotuloDoStatus(t: Traduz, s: StatusDaCampanha): string {
     case "pausada":
       return t("Pausada");
     case "encerrada":
-      return t("Encerrada");
+      return t("Finalizada");
   }
 }
 

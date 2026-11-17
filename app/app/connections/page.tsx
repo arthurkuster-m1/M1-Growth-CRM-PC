@@ -15,6 +15,7 @@ import { listarRegrasMeta } from "@/lib/conversoes/regras-meta";
 import { identidadeDaMeta } from "@/lib/plataformas-de-anuncio/meta/identidade";
 import { existeConexaoDeLeitura } from "@/lib/plataformas-de-anuncio/credenciais-de-leitura";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PlugsConnected } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Conexões" };
@@ -52,14 +53,22 @@ export default async function ConnectionsPage() {
 
   return (
     <div className="flex h-full flex-col gap-5 p-4 sm:gap-6 sm:p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Conexões", idioma)}</h1>
-        <p className="text-sm text-muted-foreground">
-          {traduzir(
-            "Por onde seu negócio fala com o cliente. Conecte números por QR ou o número oficial da Meta, e acompanhe a saúde de cada um.",
-            idioma,
-          )}
-        </p>
+      <header className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"
+        >
+          <PlugsConnected size={22} weight="duotone" />
+        </span>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Conexões", idioma)}</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            {traduzir(
+              "Por onde seu negócio fala com o cliente e recebe leads: WhatsApp, redes sociais, formulários e anúncios. Escolha uma conexão abaixo.",
+              idioma,
+            )}
+          </p>
+        </div>
       </header>
       <ConexoesShell
         wahaConfigured={wahaConfigured}
