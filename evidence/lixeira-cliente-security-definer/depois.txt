@@ -20,7 +20,7 @@ SET
 
  clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
 ----------+-------+---------+-----------+-----------+-----------+------------
-        2 |     2 |       2 |         2 |         2 |         9 |          1
+        2 |     2 |       2 |         2 |         2 |         8 |          1
 
 
 == 2. Apagar VÁRIOS em lote (como a rota POST /api/v1/clientes/lote): Clientes 2 e 3
@@ -31,7 +31,7 @@ SET
 
  clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
 ----------+-------+---------+-----------+-----------+-----------+------------
-        0 |     0 |       0 |         0 |         0 |         3 |          3
+        0 |     0 |       0 |         0 |         0 |         0 |          3
 
 
 == 3. Ver na Lixeira (leitura sob RLS, como a tela /app/lixeira)
@@ -51,7 +51,7 @@ SET
 
  clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
 ----------+-------+---------+-----------+-----------+-----------+------------
-        3 |     3 |       3 |         3 |         3 |        15 |          0
+        3 |     3 |       3 |         3 |         3 |        12 |          0
 
 
 == 5. Quem não pode: viewer, outra empresa e sem login recebem 42501; internas fechadas
