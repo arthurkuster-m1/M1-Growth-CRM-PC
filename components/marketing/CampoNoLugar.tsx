@@ -46,6 +46,16 @@ export interface CursorDoCampo {
   valor: string;
 }
 
+/** Blocos de texto corrido: o campo de edição não tem moldura nem fundo. */
+const TEXTO_LIVRE: ReadonlySet<Bloco["tipo"]> = new Set([
+  "texto",
+  "titulo",
+  "destaque",
+  "citacao",
+  "toggle",
+  "lista",
+]);
+
 export const emEdicao = (
   edicao: EdicaoNoLugar | undefined,
   bloco: Bloco,
@@ -177,7 +187,11 @@ export function CampoNoLugar({
         }
       }}
       className={cn(
-        "block w-full min-w-0 resize-none overflow-hidden rounded-xl border-0 bg-transparent p-0 ring-1 ring-primary/25 outline-hidden transition-shadow placeholder:font-normal placeholder:text-text-subtle focus:ring-2 focus:ring-primary/60",
+        "block w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-hidden placeholder:font-normal placeholder:text-text-subtle",
+        // Texto corrido: escrever PARECE o texto final (como num bloco de notas), sem moldura em volta.
+        // Os campos de blocos estruturados (cartões, tabela…) mantêm a moldura, que mostra onde digitar.
+        !TEXTO_LIVRE.has(bloco.tipo) &&
+          "rounded-xl ring-1 ring-primary/25 transition-shadow focus:ring-2 focus:ring-primary/60",
         className,
       )}
     />
