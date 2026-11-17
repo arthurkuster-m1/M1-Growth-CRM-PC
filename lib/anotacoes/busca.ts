@@ -56,12 +56,56 @@ function textoDosDados(bruto: unknown, saida: string[]): void {
   }
 }
 
+/** Campos dos blocos de hoje (formato da Estratégia) que não são texto de leitura. */
+const CAMPOS_QUE_NAO_SAO_TEXTO = new Set([
+  "id",
+  "tipo",
+  "linha",
+  "nivel",
+  "estilo",
+  "tom",
+  "forma",
+  "alinhamento",
+  "arquivo",
+  "imagem",
+  "imagens",
+  "hex",
+  "cor",
+  "lado",
+  "largura",
+  "altura",
+  "x",
+  "y",
+  "url",
+  "de",
+  "para",
+]);
+
+/** Todo texto de leitura de um bloco no formato da Estratégia (ele e o que estiver dentro dele). */
+function textoDoBlocoNovo(valor: unknown, saida: string[]): void {
+  if (typeof valor === "string") {
+    if (valor.trim() !== "") saida.push(valor);
+  } else if (Array.isArray(valor)) {
+    for (const v of valor) textoDoBlocoNovo(v, saida);
+  } else if (typeof valor === "object" && valor !== null) {
+    for (const [chave, v] of Object.entries(valor)) {
+      if (!CAMPOS_QUE_NAO_SAO_TEXTO.has(chave)) textoDoBlocoNovo(v, saida);
+    }
+  }
+}
+
 /** O texto corrido do documento: parágrafos, títulos, listas, células de tabela e blocos visuais. */
 export function textoDoDocumento(documento: readonly unknown[]): string {
   const partes: string[] = [];
   const anda = (blocos: readonly unknown[]) => {
     for (const b of blocos) {
       if (typeof b !== "object" || b === null) continue;
+      if (typeof (b as { tipo?: unknown }).tipo === "string") {
+        const linha: string[] = [];
+        textoDoBlocoNovo(b, linha);
+        if (linha.length) partes.push(linha.join(" "));
+        continue;
+      }
       const bloco = b as { content?: unknown; props?: { dados?: unknown }; children?: unknown };
       const linha: string[] = [];
       const c = bloco.content;

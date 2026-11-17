@@ -16,7 +16,7 @@ interface Lista {
 
 /** O que dá para mudar numa página sem mexer no conteúdo: tudo otimista, com volta se falhar. */
 export type MudancaNaArvore = Partial<
-  Pick<ResumoDaNota, "title" | "icon" | "parent_id" | "position" | "visible_to_client">
+  Pick<ResumoDaNota, "title" | "icon" | "parent_id" | "position" | "visible_to_client" | "tags">
 >;
 
 /**

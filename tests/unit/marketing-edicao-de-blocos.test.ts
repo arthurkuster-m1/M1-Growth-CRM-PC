@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 import { blocoEmBranco, type Bloco } from "@/lib/marketing/blocos";
 import {
   alvoDoAtalho,
+  alvoDoTeclado,
+  ATALHOS_DE_BLOCO,
+  atalhoDeMarkdown,
+  atalhoDoAlvo,
+  dividirNoCursor,
+  TODOS_OS_ALVOS,
   aplicarPropriedade,
   converterBloco,
   duplicarBlocos,
@@ -104,5 +110,73 @@ describe("edição visual dos blocos de Marketing", () => {
       "d",
     ]);
     expect(removerBlocos(lista, new Set(["a", "d"])).map((x) => x.id)).toEqual(["b", "c"]);
+  });
+});
+
+describe("todo bloco tem o seu atalho de teclado", () => {
+  it("há uma combinação única para cada bloco dos menus", () => {
+    expect(ATALHOS_DE_BLOCO.length).toBeGreaterThanOrEqual(TODOS_OS_ALVOS.length);
+    const rotulos = TODOS_OS_ALVOS.map((a) => atalhoDoAlvo(a)?.rotulo);
+    expect(rotulos.every(Boolean)).toBe(true);
+    expect(new Set(rotulos).size).toBe(TODOS_OS_ALVOS.length);
+  });
+
+  it("Ctrl+Shift+número = texto; Ctrl+Alt+número = visuais; depois Espaço e suas variações", () => {
+    const tecla = (code: string, shift = false, alt = false) =>
+      alvoDoTeclado({ code, ctrlKey: true, metaKey: false, shiftKey: shift, altKey: alt });
+    expect(tecla("Digit1", true)?.tipo).toBe("titulo");
+    expect(tecla("Digit0", true)?.tipo).toBe("texto");
+    expect(tecla("Digit1", false, true)?.tipo).toBe("canvas");
+    expect(tecla("Digit2", false, true)?.tipo).toBe("cards");
+    expect(tecla("Space")?.tipo).toBeDefined();
+    expect(tecla("Space", true)?.tipo).toBeDefined();
+    expect(tecla("Space", false, true)?.tipo).toBeDefined();
+    expect(tecla("Digit1", true, true)?.tipo).toBeDefined();
+    // sem Ctrl não é atalho de bloco
+    expect(
+      alvoDoTeclado({
+        code: "Digit1",
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: true,
+        altKey: false,
+      }),
+    ).toBeUndefined();
+    // Ctrl+1 sozinho é do navegador (trocar de aba): não é nosso
+    expect(tecla("Digit1")).toBeUndefined();
+  });
+
+  it("os blocos que mais se alcançam por teclado cobrem TODOS os tipos (nenhum fica só no mouse)", () => {
+    const tipos = new Set(TODOS_OS_ALVOS.map((a) => a.tipo));
+    for (const t of ["canvas", "tabela", "matriz", "oferta", "calculadora", "separador", "ficha"]) {
+      expect(tipos.has(t as never)).toBe(true);
+    }
+  });
+});
+
+describe("escrever como no Notion", () => {
+  it("marcadores no começo do texto viram o bloco certo", () => {
+    expect(atalhoDeMarkdown("# ")).toMatchObject({ alvo: { tipo: "titulo", nivel: 1 }, resto: "" });
+    expect(atalhoDeMarkdown("## Plano")).toMatchObject({ resto: "Plano" });
+    expect(atalhoDeMarkdown("## ")?.alvo).toMatchObject({ tipo: "titulo", nivel: 2 });
+    expect(atalhoDeMarkdown("### x")?.alvo).toMatchObject({ tipo: "titulo", nivel: 3 });
+    expect(atalhoDeMarkdown("- item")).toMatchObject({
+      alvo: { tipo: "lista", estilo: "marcadores" },
+      resto: "item",
+    });
+    expect(atalhoDeMarkdown("12. passo")).toMatchObject({
+      alvo: { tipo: "lista", estilo: "numerada" },
+      resto: "passo",
+    });
+    expect(atalhoDeMarkdown("[] tarefa")?.alvo).toMatchObject({ tipo: "lista", estilo: "check" });
+    expect(atalhoDeMarkdown("> mais")?.alvo.tipo).toBe("toggle");
+    expect(atalhoDeMarkdown("texto normal")).toBeNull();
+    expect(atalhoDeMarkdown("#sem espaço")).toBeNull();
+  });
+
+  it("Enter no meio divide o texto no cursor", () => {
+    expect(dividirNoCursor("abcdef", 2)).toEqual(["ab", "cdef"]);
+    expect(dividirNoCursor("abc", 99)).toEqual(["abc", ""]);
+    expect(dividirNoCursor("abc", -3)).toEqual(["", "abc"]);
   });
 });

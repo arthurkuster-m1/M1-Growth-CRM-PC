@@ -21,6 +21,7 @@ function nota(id: string, parent: string | null, position = 1, extra: Partial<Re
     position,
     visible_to_client: false,
     kind: null,
+    tags: [],
     deleted_at: null,
     updated_at: "2026-11-12T00:00:00Z",
     ...extra,

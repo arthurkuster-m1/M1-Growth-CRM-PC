@@ -77,6 +77,8 @@ export function useNomesDosTipos() {
         return t("Oferta");
       case "separador":
         return t("Quebra de slide");
+      case "canvas":
+        return t("Canvas (desenho e fluxograma)");
     }
   };
 }
@@ -257,6 +259,11 @@ export const COR_DO_TIPO: Record<string, { barra: string; fundo: string; etiquet
     fundo: "bg-rose-500/5",
     etiqueta: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
   },
+  canvas: {
+    barra: "border-l-violet-500",
+    fundo: "bg-violet-500/5",
+    etiqueta: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  },
   separador: {
     barra: "border-l-slate-400",
     fundo: "bg-slate-500/5",
@@ -267,6 +274,7 @@ const COR_PADRAO = COR_DO_TIPO.texto!;
 
 /** Uma linha de texto do bloco, para identificá-lo quando está fechado (só o título/começo). */
 export function resumoDoBloco(b: Bloco): string {
+  if (b.tipo === "canvas") return b.nos.length ? `${b.nos.length}` : "";
   const x = b as unknown as Record<string, unknown>;
   const curto = (v: string) => {
     const limpo = v.replace(/\s+/g, " ").trim();
@@ -289,7 +297,9 @@ export function resumoDoBloco(b: Bloco): string {
             (primeiro as Record<string, unknown> | null)?.texto ??
             "");
       const base = typeof nome === "string" ? curto(nome) : "";
-      return base ? `${base}${lista.length > 1 ? ` (+${lista.length - 1})` : ""}` : `${lista.length}`;
+      return base
+        ? `${base}${lista.length > 1 ? ` (+${lista.length - 1})` : ""}`
+        : `${lista.length}`;
     }
   }
   return "";
@@ -377,7 +387,9 @@ export function EditorDeBlocos({
             (COR_DO_TIPO[b.tipo] ?? COR_PADRAO).fundo,
           )}
         >
-          <div className={cn("flex items-center justify-between gap-2", abertos.has(b.id) && "mb-3")}>
+          <div
+            className={cn("flex items-center justify-between gap-2", abertos.has(b.id) && "mb-3")}
+          >
             <button
               type="button"
               aria-expanded={abertos.has(b.id)}
@@ -499,7 +511,10 @@ export function FormularioDoBloco({
             <SelectDoApp
               value={bloco.nivel}
               onChange={(e) =>
-                aoMudar({ ...bloco, nivel: e.target.value === "3" ? 3 : e.target.value === "2" ? 2 : 1 })
+                aoMudar({
+                  ...bloco,
+                  nivel: e.target.value === "3" ? 3 : e.target.value === "2" ? 2 : 1,
+                })
               }
               className={CAMPO}
             >
@@ -1277,6 +1292,36 @@ export function FormularioDoBloco({
         <p className="text-sm text-muted-foreground">
           {t("Na apresentação, o que vem depois começa num slide novo. Na página, vira uma linha.")}
         </p>
+      );
+
+    case "canvas":
+      return (
+        <div className="grid gap-2">
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "Dê dois cliques no bloco (ou aperte Enter nele) para abrir o canvas e desenhar com formas, texto e setas.",
+            )}
+          </p>
+          <Rotulo texto={t("Altura do desenho")}>
+            <SelectDoApp
+              value={String(bloco.altura)}
+              onChange={(e) => aoMudar({ ...bloco, altura: Number(e.target.value) })}
+              className={CAMPO}
+            >
+              {[240, 360, 520, 720].map((h) => (
+                <option key={h} value={h}>
+                  {h === 240
+                    ? t("Baixa")
+                    : h === 360
+                      ? t("Média")
+                      : h === 520
+                        ? t("Alta")
+                        : t("Muito alta")}
+                </option>
+              ))}
+            </SelectDoApp>
+          </Rotulo>
+        </div>
       );
   }
 }

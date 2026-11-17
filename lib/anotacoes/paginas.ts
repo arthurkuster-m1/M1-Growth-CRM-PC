@@ -16,6 +16,8 @@ export interface ResumoDaNota {
   visible_to_client: boolean;
   /** `inbox` = a Caixa de entrada da organização (a captura rápida cai nela). */
   kind: "inbox" | null;
+  /** Etiquetas da página (a vista em cartões filtra por elas). Vazio onde a migration 0694 não foi aplicada. */
+  tags: string[];
   deleted_at: string | null;
   updated_at: string;
 }
@@ -25,13 +27,63 @@ export interface NotaAberta extends ResumoDaNota {
   blocks: Documento;
 }
 
-export const COLUNAS_DO_RESUMO =
+export const COLUNAS_DO_RESUMO_SEM_TAGS =
   "id, parent_id, title, icon, position, visible_to_client, kind, deleted_at, updated_at";
+export const COLUNAS_DO_RESUMO = `${COLUNAS_DO_RESUMO_SEM_TAGS}, tags`;
 export const COLUNAS_DA_NOTA = `${COLUNAS_DO_RESUMO}, blocks`;
+
+interface ErroDoBanco {
+  code?: string;
+  message?: string;
+}
+
+/** O erro é de o banco ainda não ter `notes_pages.tags` (migration 0694 por aplicar)? */
+export function faltaAColunaDeTags(erro: ErroDoBanco | null | undefined): boolean {
+  if (!erro) return false;
+  return erro.code === "42703" || erro.code === "PGRST204" || /\btags\b/.test(erro.message ?? "");
+}
+
+/**
+ * Roda a consulta pedindo as colunas (com `tags`); se o banco ainda não tem a coluna, repete sem
+ * ela — as páginas seguem funcionando até a migration 0694 ser aplicada.
+ */
+export async function consultarComTags<R extends { error: ErroDoBanco | null }>(
+  consulta: (colunas: string) => PromiseLike<R>,
+  colunas: string = COLUNAS_DO_RESUMO,
+): Promise<R> {
+  const resposta = await consulta(colunas);
+  if (!faltaAColunaDeTags(resposta.error)) return resposta;
+  return consulta(colunas.replace(/,\s*tags\b/, ""));
+}
+
+/** Uma linha do banco como `ResumoDaNota` (posição numérica e etiquetas sempre presentes). */
+export function normalizarResumo(linha: ResumoDaNota): ResumoDaNota {
+  return {
+    ...linha,
+    position: Number(linha.position),
+    tags: Array.isArray(linha.tags) ? linha.tags : [],
+  };
+}
 
 const tituloSchema = z.string().trim().max(200);
 const iconeSchema = z.string().trim().max(16).nullable();
 const idSchema = z.string().uuid();
+
+export const MAXIMO_DE_ETIQUETAS = 20;
+export const TAMANHO_DA_ETIQUETA = 40;
+/** As etiquetas de uma página: sem repetir (sem ligar para maiúsculas), sem vazias, até 20. */
+export const etiquetasSchema = z
+  .array(z.string().trim().min(1).max(TAMANHO_DA_ETIQUETA))
+  .max(MAXIMO_DE_ETIQUETAS)
+  .transform((lista) => {
+    const vistas = new Set<string>();
+    return lista.filter((e) => {
+      const chave = e.toLowerCase();
+      if (vistas.has(chave)) return false;
+      vistas.add(chave);
+      return true;
+    });
+  });
 
 export const novaNotaSchema = z.object({
   parent_id: idSchema.nullable().default(null),
@@ -46,6 +98,7 @@ export const edicaoDeNotaSchema = z
     title: tituloSchema,
     icon: iconeSchema,
     blocks: documentoSchema,
+    tags: etiquetasSchema,
     parent_id: idSchema.nullable(),
     position: z.number().finite(),
     visible_to_client: z.boolean(),

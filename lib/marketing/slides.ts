@@ -28,7 +28,12 @@ export interface Slide {
 export const BLOCOS_POR_SLIDE = 4;
 
 /** Blocos que, sozinhos, já enchem uma tela. */
-const BLOCOS_GRANDES: ReadonlySet<Bloco["tipo"]> = new Set(["oferta", "tabela", "calculadora"]);
+const BLOCOS_GRANDES: ReadonlySet<Bloco["tipo"]> = new Set([
+  "oferta",
+  "tabela",
+  "calculadora",
+  "canvas",
+]);
 
 export function slidesDaPagina(blocos: readonly Bloco[]): Slide[] {
   const slides: Slide[] = [{ chave: "capa", tipo: "capa", titulo: null, blocos: [] }];
@@ -37,7 +42,13 @@ export function slidesDaPagina(blocos: readonly Bloco[]): Slide[] {
 
   const abrir = (titulo: string | null, nivel: 1 | 2 = 1): Slide => {
     aberto.contador += 1;
-    const novo: Slide = { chave: `s${aberto.contador}`, tipo: "conteudo", titulo, nivel, blocos: [] };
+    const novo: Slide = {
+      chave: `s${aberto.contador}`,
+      tipo: "conteudo",
+      titulo,
+      nivel,
+      blocos: [],
+    };
     slides.push(novo);
     aberto.slide = novo;
     return novo;

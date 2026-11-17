@@ -538,6 +538,10 @@ export function textoDaPagina(blocos: Bloco[]): { texto: string; ignorados: numb
       case "separador":
         saida.push("---");
         break;
+      case "canvas":
+        // O desenho não cabe em texto: sai a lista das caixas (para quem lê), e conta como ignorado.
+        ignorados++;
+        break;
       case "metricas":
         bloco(
           "metricas",

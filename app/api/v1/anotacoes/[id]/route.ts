@@ -17,7 +17,9 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
   COLUNAS_DA_NOTA,
-  COLUNAS_DO_RESUMO,
+  consultarComTags,
+  faltaAColunaDeTags,
+  normalizarResumo,
   PROFUNDIDADE_MAXIMA,
   alturaDaSubarvore,
   edicaoDeNotaSchema,
@@ -52,19 +54,22 @@ export async function GET(_req: NextRequest, ctx: Contexto): Promise<Response> {
   if (!id.success) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("notes_pages")
-    .select(COLUNAS_DA_NOTA)
-    .eq("organization_id", authz.org.orgId)
-    .eq("id", id.data)
-    .maybeSingle();
+  const { data, error } = await consultarComTags(
+    (colunas) =>
+      supabase
+        .from("notes_pages")
+        .select(colunas)
+        .eq("organization_id", authz.org.orgId)
+        .eq("id", id.data)
+        .maybeSingle(),
+    COLUNAS_DA_NOTA,
+  );
   if (error) return fail("internal_error", t("Erro ao carregar a página."), 500, { requestId });
   if (!data) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   const linha = data as unknown as NotaAberta;
   const page: NotaAberta = {
-    ...linha,
-    position: Number(linha.position),
+    ...normalizarResumo(linha),
     blocks: lerDocumento(linha.blocks),
   };
   return ok({ page }, { requestId });
@@ -74,15 +79,10 @@ async function resumosDaOrganizacao(
   supabase: Awaited<ReturnType<typeof createClient>>,
   orgId: string,
 ): Promise<ResumoDaNota[]> {
-  const { data } = await supabase
-    .from("notes_pages")
-    .select(COLUNAS_DO_RESUMO)
-    .eq("organization_id", orgId)
-    .limit(2000);
-  return ((data ?? []) as unknown as ResumoDaNota[]).map((n) => ({
-    ...n,
-    position: Number(n.position),
-  }));
+  const { data } = await consultarComTags((colunas) =>
+    supabase.from("notes_pages").select(colunas).eq("organization_id", orgId).limit(2000),
+  );
+  return ((data ?? []) as unknown as ResumoDaNota[]).map(normalizarResumo);
 }
 
 export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> {
@@ -175,7 +175,19 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
     .is("deleted_at", null)
     .select("id, updated_at")
     .maybeSingle();
-  if (error) return fail("internal_error", t("Erro ao salvar a página."), 500, { requestId });
+  if (error) {
+    if (resto.tags !== undefined && faltaAColunaDeTags(error)) {
+      return fail(
+        "internal_error",
+        t(
+          "As etiquetas ainda não estão disponíveis neste servidor (falta aplicar a migration 0694).",
+        ),
+        503,
+        { requestId },
+      );
+    }
+    return fail("internal_error", t("Erro ao salvar a página."), 500, { requestId });
+  }
   if (!data) return fail("not_found", t("Página não encontrada."), 404, { requestId });
 
   // Visibilidade da página e, se pedido, de tudo que está dentro dela.

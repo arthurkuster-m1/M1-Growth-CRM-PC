@@ -12,10 +12,12 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { blocosDaNota } from "@/lib/anotacoes/blocos-da-nota";
 import { camposDeBusca } from "@/lib/anotacoes/busca";
 import { lerDocumento, type Documento } from "@/lib/anotacoes/documento";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import type { Bloco } from "@/lib/marketing/blocos";
 import { createClient } from "@/lib/supabase/server";
 import { FUSO_PADRAO, fusoValido } from "@/lib/tempo/fusos";
 
@@ -58,15 +60,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   const orgId = authz.org.orgId;
   const fuso =
     authz.org.timezone && fusoValido(authz.org.timezone) ? authz.org.timezone : FUSO_PADRAO;
-  const novo = {
-    id: randomUUID(),
-    type: "paragraph",
-    props: {},
-    content: [
-      { type: "text", text: `${carimbo(fuso)} — `, styles: { bold: true } },
-      { type: "text", text: parsed.data.texto, styles: {} },
-    ],
-    children: [],
+  const novo: Bloco = {
+    id: randomUUID().slice(0, 12),
+    tipo: "texto",
+    texto: `**${carimbo(fuso)} —** ${parsed.data.texto}`.slice(0, 5000),
   };
 
   const supabase = await createClient();
@@ -84,7 +81,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (existente) {
     const linha = existente as { id: string; blocks: unknown; title: string };
     paginaId = linha.id;
-    const documento: Documento = [...lerDocumento(linha.blocks), novo];
+    const documento: Documento = [...blocosDaNota(lerDocumento(linha.blocks)), novo];
     const { error } = await supabase
       .from("notes_pages")
       .update({

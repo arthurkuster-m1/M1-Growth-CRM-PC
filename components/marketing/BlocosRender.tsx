@@ -4,6 +4,7 @@ import { CampoNoLugar, emEdicao, type EdicaoNoLugar } from "@/components/marketi
 
 import type { Alinhamento, Bloco, LarguraDaImagem } from "@/lib/marketing/blocos";
 import { agruparPorLinha } from "@/lib/marketing/edicao-de-blocos";
+import { CanvasVisualizacao } from "@/components/marketing/canvas/CanvasCarregavel";
 import { TextoRico } from "@/components/marketing/TextoRico";
 import { OfertaDaPagina } from "@/components/marketing/OfertaDaPagina";
 import {
@@ -268,6 +269,8 @@ function BlocosEmSequencia({ blocos, rotulos, escala = "pagina", edicao }: Props
             const teclasDoItem = (idx: number) => (e: KeyboardEvent<HTMLTextAreaElement>) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
+                // Enter num item vazio termina a lista e segue num texto novo (como no Notion).
+                if (b.itens[idx] === "" && edicao!.sairDaLista?.(b, idx)) return true;
                 const novos = [...b.itens];
                 novos.splice(idx + 1, 0, "");
                 edicao!.aoMudar({ ...b, itens: novos });
@@ -680,6 +683,9 @@ function BlocosEmSequencia({ blocos, rotulos, escala = "pagina", edicao }: Props
 
           case "separador":
             return <hr key={b.id} className="border-border" />;
+
+          case "canvas":
+            return <CanvasVisualizacao key={b.id} bloco={b} vazioComConvite={Boolean(edicao)} />;
         }
       })}
     </div>

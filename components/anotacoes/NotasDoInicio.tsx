@@ -19,23 +19,7 @@ function achatar(nos: NoDaArvore[], nivel = 0): Array<{ nota: ResumoDaNota; nive
 }
 
 /** Uma página aberta DENTRO do cartão: o mesmo editor e o mesmo salvamento sozinho da tela de Anotações. */
-function PaginaNoCartao({
-  id,
-  notas,
-  podeEditar,
-  aoAbrir,
-  aoCriarSubpagina,
-  aoRemoverSubpagina,
-  aoReordenarSubpaginas,
-}: {
-  id: string;
-  notas: ResumoDaNota[];
-  podeEditar: boolean;
-  aoAbrir: (id: string) => void;
-  aoCriarSubpagina: (paiId: string) => Promise<string | null>;
-  aoRemoverSubpagina: (id: string) => void;
-  aoReordenarSubpaginas: (ids: string[]) => void;
-}) {
+function PaginaNoCartao({ id, podeEditar }: { id: string; podeEditar: boolean }) {
   const t = useT();
   const { pagina, estado, editar, carregando, falhou } = useNota(id);
   if (carregando) {
@@ -66,13 +50,7 @@ function PaginaNoCartao({
         compacto
         inicial={pagina.blocks}
         editavel={podeEditar}
-        paginas={notas}
-        paginaId={id}
         aoMudar={editar}
-        aoAbrir={aoAbrir}
-        aoCriarSubpagina={() => aoCriarSubpagina(id)}
-        aoRemoverSubpagina={aoRemoverSubpagina}
-        aoReordenarSubpaginas={aoReordenarSubpaginas}
       />
     </div>
   );
@@ -184,22 +162,7 @@ export function NotasDoInicio() {
 
       {alvo ? (
         <div className="max-h-[36rem] overflow-y-auto pr-1">
-          <PaginaNoCartao
-            key={`${alvo.id}-${versao}`}
-            id={alvo.id}
-            notas={notas}
-            podeEditar={podeEditar}
-            aoAbrir={(id) => router.push(`/app/anotacoes?p=${id}`)}
-            aoCriarSubpagina={async (paiId) => (await arvore.criar(paiId))?.id ?? null}
-            aoRemoverSubpagina={(id) => void arvore.apagar(id)}
-            aoReordenarSubpaginas={(ids) => {
-              ids.forEach((id, i) => {
-                if (notas.find((n) => n.id === id)?.position !== i + 1) {
-                  void arvore.mudar(id, { position: i + 1 });
-                }
-              });
-            }}
-          />
+          <PaginaNoCartao key={`${alvo.id}-${versao}`} id={alvo.id} podeEditar={podeEditar} />
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 py-8 text-center">

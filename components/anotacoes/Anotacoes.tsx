@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AtalhosDeNotas } from "@/components/anotacoes/AtalhosDeNotas";
 import { CapturaRapida } from "@/components/anotacoes/CapturaRapida";
 import { ArvoreDeNotas } from "@/components/anotacoes/ArvoreDeNotas";
+import { GaleriaDeNotas } from "@/components/anotacoes/GaleriaDeNotas";
 import { LixeiraDeNotas } from "@/components/anotacoes/LixeiraDeNotas";
 import { MoverNota } from "@/components/anotacoes/MoverNota";
 import { PaginaDeNota } from "@/components/anotacoes/PaginaDeNota";
@@ -16,7 +17,7 @@ import { useBuscaDeNotas } from "@/hooks/anotacoes/useBuscaDeNotas";
 import { useEstadoDasNotas } from "@/hooks/anotacoes/useEstadoDasNotas";
 import { useT } from "@/hooks/i18n/useT";
 import { caminhoDaNota, idsDaSubarvore } from "@/lib/anotacoes/paginas";
-import { MagnifyingGlass, Note, Plus, Tray, X } from "@/lib/ui/icons";
+import { MagnifyingGlass, Plus, Tray, X } from "@/lib/ui/icons";
 
 /**
  * ANOTAÇÕES — o bloco de notas: árvore de páginas à esquerda, a página aberta à direita (no editor
@@ -262,34 +263,14 @@ export function Anotacoes() {
               const nova = await arvore.criar(paiId);
               return nova?.id ?? null;
             }}
-            aoReordenarSubpaginas={(ids) =>
-              reordenar(
-                ids
-                  .map((id, i) => ({ id, position: i + 1 }))
-                  .filter(
-                    ({ id, position }) => notas.find((n) => n.id === id)?.position !== position,
-                  ),
-              )
-            }
           />
         ) : (
-          <div className="grid place-items-center gap-3 rounded-3xl border border-dashed p-12 text-center">
-            <Note size={36} className="text-muted-foreground" aria-hidden />
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {podeEditar
-                ? t("Escolha uma página na lateral ou crie uma nova para começar a anotar.")
-                : t("Escolha uma página na lateral.")}
-            </p>
-            {podeEditar ? (
-              <button
-                type="button"
-                onClick={() => void criar(null)}
-                className="flex h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium shadow-sm hover:bg-secondary"
-              >
-                <Plus size={14} aria-hidden /> {t("Nova página")}
-              </button>
-            ) : null}
-          </div>
+          <GaleriaDeNotas
+            notas={notas}
+            podeEditar={podeEditar}
+            aoAbrir={abrir}
+            aoCriar={() => void criar(null)}
+          />
         )}
       </section>
 

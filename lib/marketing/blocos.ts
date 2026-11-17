@@ -33,10 +33,35 @@ export const TIPOS_DE_BLOCO = [
   "calculadora",
   "oferta",
   "separador",
+  "canvas",
 ] as const;
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
 
 export const MAXIMO_DE_BLOCOS = 150;
+
+/** As formas que um bloco do canvas pode ter (as chaves do dado; o rótulo vem da tela). */
+export const FORMAS_DO_CANVAS = [
+  "retangulo",
+  "arredondado",
+  "elipse",
+  "losango",
+  "nota",
+  "texto",
+] as const;
+export type FormaDoCanvas = (typeof FORMAS_DO_CANVAS)[number];
+/** As cores do canvas: nomes (a tela decide o tom, claro e escuro). */
+export const CORES_DO_CANVAS = [
+  "neutra",
+  "verde",
+  "azul",
+  "amarela",
+  "laranja",
+  "vermelha",
+  "roxa",
+] as const;
+export type CorDoCanvas = (typeof CORES_DO_CANVAS)[number];
+export const MAXIMO_DE_NOS_DO_CANVAS = 200;
+export const MAXIMO_DE_LIGACOES_DO_CANVAS = 400;
 
 /** Os dois lados do bloco "antes e depois" (as chaves do dado, não texto de tela). */
 export const LADOS_DO_ANTES_DEPOIS = ["antes", "depois"] as const;
@@ -291,6 +316,32 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
     objecoes: z.array(z.object({ objecao: curto, resposta: longo.max(600) })).max(10),
   }),
   z.object({ id, linha, tipo: z.literal("separador") }),
+  z.object({
+    id,
+    linha,
+    tipo: z.literal("canvas"),
+    /** Os blocos e formas do desenho (posição em pixels do espaço do canvas). */
+    nos: z
+      .array(
+        z.object({
+          id,
+          x: z.number().finite().min(-100000).max(100000),
+          y: z.number().finite().min(-100000).max(100000),
+          forma: z.enum(FORMAS_DO_CANVAS),
+          cor: z.enum(CORES_DO_CANVAS),
+          texto: z.string().max(400),
+          largura: z.number().finite().min(40).max(1200).optional(),
+          altura: z.number().finite().min(30).max(1200).optional(),
+        }),
+      )
+      .max(MAXIMO_DE_NOS_DO_CANVAS),
+    /** As setas entre os blocos (do `de` para o `para`). */
+    ligacoes: z
+      .array(z.object({ id, de: id, para: id, rotulo: z.string().max(120).optional() }))
+      .max(MAXIMO_DE_LIGACOES_DO_CANVAS),
+    /** A altura do desenho dentro da página, em pixels. */
+    altura: z.number().int().min(160).max(1200),
+  }),
 ]);
 
 export type Bloco = z.infer<typeof blocoSchema>;
@@ -441,5 +492,7 @@ export function blocoEmBranco(tipo: TipoDeBloco, novoId: string): Bloco {
       };
     case "separador":
       return { id: novoId, tipo };
+    case "canvas":
+      return { id: novoId, tipo, nos: [], ligacoes: [], altura: 360 };
   }
 }

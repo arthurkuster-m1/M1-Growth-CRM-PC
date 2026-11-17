@@ -159,4 +159,100 @@ describe("EditorVisualDeBlocos", () => {
     fireEvent.click(within(screen.getByRole("menu")).getByText("Oferta"));
     expect(screen.getByRole("button", { name: "Concluir" })).toBeTruthy();
   });
+
+  it("Enter num texto cria o bloco de baixo, levando o que vem depois do cursor", () => {
+    render(<Casca inicial={[{ id: "t", tipo: "texto", texto: "Olá mundo" }]} />);
+    fireEvent.doubleClick(alvo("t"));
+    const campo = screen.getByDisplayValue("Olá mundo") as HTMLTextAreaElement;
+    campo.setSelectionRange(4, 4);
+    fireEvent.keyDown(campo, { key: "Enter" });
+    expect(ultimo.map((b) => b.tipo)).toEqual(["texto", "texto"]);
+    expect(ultimo.map((b) => (b as { texto: string }).texto)).toEqual(["Olá ", "mundo"]);
+  });
+
+  it("Enter num título continua num texto; Shift+Enter não cria bloco", () => {
+    render(<Casca inicial={[{ id: "h", tipo: "titulo", nivel: 1, texto: "Plano" }]} />);
+    fireEvent.doubleClick(alvo("h"));
+    const campo = screen.getByDisplayValue("Plano");
+    const antes = ultimo;
+    fireEvent.keyDown(campo, { key: "Enter", shiftKey: true });
+    expect(ultimo).toBe(antes);
+    fireEvent.keyDown(campo, { key: "Enter" });
+    expect(ultimo.map((b) => b.tipo)).toEqual(["titulo", "texto"]);
+  });
+
+  it("Enter num item de lista vazio, no fim, sai da lista para um texto novo", () => {
+    render(
+      <Casca inicial={[{ id: "l", tipo: "lista", estilo: "marcadores", itens: ["a", ""] }]} />,
+    );
+    fireEvent.doubleClick(alvo("l"));
+    fireEvent.keyDown(document.querySelectorAll("textarea")[1]!, { key: "Enter" });
+    expect(ultimo.map((b) => b.tipo)).toEqual(["lista", "texto"]);
+    expect((ultimo[0] as { itens: string[] }).itens).toEqual(["a"]);
+  });
+
+  it("Backspace num texto vazio apaga o bloco; num título vazio vira texto", () => {
+    render(
+      <Casca
+        inicial={[
+          { id: "a", tipo: "texto", texto: "fica" },
+          { id: "b", tipo: "texto", texto: "" },
+        ]}
+      />,
+    );
+    fireEvent.doubleClick(alvo("b"));
+    fireEvent.keyDown(document.querySelectorAll("textarea")[0]!, { key: "Backspace" });
+    expect(ultimo.map((b) => b.id)).toEqual(["a"]);
+  });
+
+  it("escrever '# ' no começo de um texto vira título; '- ' vira lista", () => {
+    render(<Casca inicial={[{ id: "t", tipo: "texto", texto: "" }]} />);
+    fireEvent.doubleClick(alvo("t"));
+    fireEvent.change(document.querySelector("textarea")!, { target: { value: "## " } });
+    expect(ultimo[0]).toMatchObject({ id: "t", tipo: "titulo", nivel: 2 });
+  });
+
+  it("'/' num texto vazio abre a busca de blocos; filtrar e Enter troca o bloco", () => {
+    render(<Casca inicial={[{ id: "t", tipo: "texto", texto: "" }]} />);
+    fireEvent.doubleClick(alvo("t"));
+    fireEvent.keyDown(document.querySelector("textarea")!, { key: "/" });
+    const busca = screen.getByRole("textbox", { name: "Buscar bloco" });
+    fireEvent.change(busca, { target: { value: "tabel" } });
+    fireEvent.keyDown(busca, { key: "Enter" });
+    expect(ultimo[0]).toMatchObject({ id: "t", tipo: "tabela" });
+  });
+
+  it("os atalhos de bloco valem no meio da digitação e sem nada selecionado criam um bloco novo", () => {
+    render(<Casca inicial={[{ id: "t", tipo: "texto", texto: "ideia" }]} />);
+    fireEvent.doubleClick(alvo("t"));
+    fireEvent.keyDown(screen.getByDisplayValue("ideia"), {
+      code: "Digit2",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(ultimo[0]).toMatchObject({ id: "t", tipo: "titulo", nivel: 2, texto: "ideia" });
+    // sem nada selecionado/digitando: Ctrl+Alt+9 (pirâmide) cria um novo no fim
+    fireEvent.keyDown(raiz(), { key: "Escape" });
+    fireEvent.mouseDown(raiz(), { button: 0 });
+    fireEvent.keyDown(raiz(), { code: "Digit9", ctrlKey: true, altKey: true });
+    expect(ultimo).toHaveLength(2);
+    expect(ultimo[1]!.tipo).toBe("piramide");
+  });
+
+  it("clicar no vazio da página cria um bloco de texto no fim (ou reaproveita o vazio)", () => {
+    render(<Casca inicial={iniciais()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Escrever no fim da página" }));
+    expect(ultimo).toHaveLength(4);
+    expect(ultimo[3]).toMatchObject({ tipo: "texto", texto: "" });
+    fireEvent.click(screen.getByRole("button", { name: "Escrever no fim da página" }));
+    expect(ultimo).toHaveLength(4);
+  });
+
+  it("o bloco Canvas existe no menu de inserir, com o seu atalho", () => {
+    render(<Casca inicial={iniciais()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar bloco" }));
+    const menu = within(screen.getByRole("menu"));
+    expect(menu.getByText("Canvas (desenho e fluxograma)")).toBeTruthy();
+    expect(menu.getByText("Ctrl+Alt+1")).toBeTruthy();
+  });
 });

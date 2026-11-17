@@ -12,7 +12,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
-  COLUNAS_DO_RESUMO,
+  consultarComTags,
   idDeNotaSchema,
   idsDaSubarvore,
   type ResumoDaNota,
@@ -44,11 +44,9 @@ export async function POST(_req: NextRequest, ctx: Contexto): Promise<Response> 
   const orgId = authz.org.orgId;
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("notes_pages")
-    .select(COLUNAS_DO_RESUMO)
-    .eq("organization_id", orgId)
-    .limit(2000);
+  const { data } = await consultarComTags((colunas) =>
+    supabase.from("notes_pages").select(colunas).eq("organization_id", orgId).limit(2000),
+  );
   const arvore = (data ?? []) as unknown as ResumoDaNota[];
   const atual = arvore.find((n) => n.id === id.data);
   if (!atual) return fail("not_found", t("Página não encontrada."), 404, { requestId });

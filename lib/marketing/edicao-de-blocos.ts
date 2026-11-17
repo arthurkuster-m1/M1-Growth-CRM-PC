@@ -44,8 +44,13 @@ export const ALVOS_BASICOS: readonly AlvoDeConversao[] = [
   { tipo: "texto", rotulo: "Texto", glifo: "Aa", atalho: "0" },
 ];
 
-/** Os blocos visuais, sem atalho. */
+/**
+ * Os blocos visuais. A ORDEM aqui decide o atalho de cada um (ver `ATALHOS_DE_BLOCO`): os dez
+ * primeiros recebem Ctrl+Alt+1…9,0; os seguintes, Ctrl+Espaço, Ctrl+⇧+Espaço, Ctrl+Alt+Espaço e
+ * Ctrl+Alt+⇧+1…3.
+ */
 export const ALVOS_VISUAIS: readonly AlvoDeConversao[] = [
+  { tipo: "canvas", rotulo: "Canvas (desenho e fluxograma)", glifo: "✎" },
   { tipo: "cards", rotulo: "Cartões", glifo: "▦" },
   { tipo: "metricas", rotulo: "Números", glifo: "123" },
   { tipo: "antes-depois", rotulo: "Antes e depois", glifo: "⇄" },
@@ -63,11 +68,97 @@ export const ALVOS_VISUAIS: readonly AlvoDeConversao[] = [
   { tipo: "separador", rotulo: "Quebra de slide", glifo: "―" },
 ];
 
-export const TODOS_OS_ALVOS: readonly AlvoDeConversao[] = [...ALVOS_BASICOS, ...ALVOS_VISUAIS];
-
 export function alvoDoAtalho(digito: string): AlvoDeConversao | undefined {
   return ALVOS_BASICOS.find((a) => a.atalho === digito);
 }
+
+// ── atalhos de teclado: TODOS os blocos têm o seu ────────────────────────────────
+
+/** Uma combinação de teclas (sempre com Ctrl, ou ⌘ no Mac), pela tecla física (`KeyboardEvent.code`). */
+export interface AtalhoDeBloco {
+  code: string;
+  shift: boolean;
+  alt: boolean;
+  rotulo: string;
+}
+
+const DIGITOS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as const;
+
+/**
+ * As combinações, em ordem de uso: Ctrl+⇧+número (os 10 blocos de texto), Ctrl+Alt+número (os 10
+ * primeiros visuais), Ctrl+Espaço, Ctrl+⇧+Espaço, Ctrl+Alt+Espaço e Ctrl+Alt+⇧+1…3 (o resto).
+ */
+export const ATALHOS_DE_BLOCO: readonly AtalhoDeBloco[] = [
+  ...DIGITOS.map((d) => ({ code: `Digit${d}`, shift: true, alt: false, rotulo: `Ctrl+⇧+${d}` })),
+  ...DIGITOS.map((d) => ({ code: `Digit${d}`, shift: false, alt: true, rotulo: `Ctrl+Alt+${d}` })),
+  { code: "Space", shift: false, alt: false, rotulo: "Ctrl+Espaço" },
+  { code: "Space", shift: true, alt: false, rotulo: "Ctrl+⇧+Espaço" },
+  { code: "Space", shift: false, alt: true, rotulo: "Ctrl+Alt+Espaço" },
+  ...(["1", "2", "3"] as const).map((d) => ({
+    code: `Digit${d}`,
+    shift: true,
+    alt: true,
+    rotulo: `Ctrl+Alt+⇧+${d}`,
+  })),
+];
+
+/** O atalho de cada bloco, na ordem dos menus (texto primeiro, depois os visuais). */
+export function atalhoDoAlvo(alvo: AlvoDeConversao): AtalhoDeBloco | undefined {
+  const i = TODOS_OS_ALVOS.indexOf(alvo);
+  return i < 0 ? undefined : ATALHOS_DE_BLOCO[i];
+}
+
+/** O bloco que uma tecla pressionada pede (ou nada, se a combinação não é de bloco). */
+export function alvoDoTeclado(e: {
+  code: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}): AlvoDeConversao | undefined {
+  if (!(e.ctrlKey || e.metaKey)) return undefined;
+  const i = ATALHOS_DE_BLOCO.findIndex(
+    (a) => a.code === e.code && a.shift === e.shiftKey && a.alt === e.altKey,
+  );
+  return i < 0 ? undefined : TODOS_OS_ALVOS[i];
+}
+
+// ── escrever como no Notion: "# ", "- ", "1. "… no começo de uma linha viram o bloco ────────
+
+const ATALHOS_DE_MARKDOWN: readonly [string, () => AlvoDeConversao | undefined][] = [
+  ["### ", () => alvoDoAtalho("3")],
+  ["## ", () => alvoDoAtalho("2")],
+  ["# ", () => alvoDoAtalho("1")],
+  ["[] ", () => alvoDoAtalho("4")],
+  ["[ ] ", () => alvoDoAtalho("4")],
+  ["- ", () => alvoDoAtalho("5")],
+  ["* ", () => alvoDoAtalho("5")],
+  ["> ", () => alvoDoAtalho("7")],
+  ['" ', () => alvoDoAtalho("8")],
+];
+
+/**
+ * O texto de um bloco de texto começa com um marcador de bloco ("# ", "- ", "1. ", "[] ", "> ")?
+ * Devolve o bloco em que virar e o texto sem o marcador.
+ */
+export function atalhoDeMarkdown(texto: string): { alvo: AlvoDeConversao; resto: string } | null {
+  for (const [marca, alvo] of ATALHOS_DE_MARKDOWN) {
+    const a = alvo();
+    if (a && texto.startsWith(marca)) return { alvo: a, resto: texto.slice(marca.length) };
+  }
+  const numerada = /^\d{1,3}\. /.exec(texto);
+  const a = alvoDoAtalho("6");
+  if (numerada && a) return { alvo: a, resto: texto.slice(numerada[0].length) };
+  return null;
+}
+
+/** Parte o texto no cursor (Enter no meio de uma linha leva o resto para o bloco novo). */
+export function dividirNoCursor(texto: string, cursor: number): [string, string] {
+  const c = Math.max(0, Math.min(cursor, texto.length));
+  return [texto.slice(0, c), texto.slice(c)];
+}
+
+export const TODOS_OS_ALVOS: readonly AlvoDeConversao[] = [...ALVOS_BASICOS, ...ALVOS_VISUAIS];
 
 /** O texto corrido de um bloco (o que se leva para o novo tipo ao converter). */
 export function textoDoBloco(b: Bloco): string {
@@ -296,6 +387,20 @@ export function propriedadesDoBloco(b: Bloco): PropriedadeDoBloco[] {
             rotulo: valor === "swot" ? "SWOT (com cores)" : "Neutra",
           })),
           atual: b.estilo,
+        },
+      ];
+    case "canvas":
+      return [
+        {
+          campo: "altura",
+          rotulo: "Altura do desenho",
+          opcoes: [
+            { valor: 240, rotulo: "Baixa" },
+            { valor: 360, rotulo: "Média" },
+            { valor: 520, rotulo: "Alta" },
+            { valor: 720, rotulo: "Muito alta" },
+          ],
+          atual: b.altura,
         },
       ];
     case "oferta":

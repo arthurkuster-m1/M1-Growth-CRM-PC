@@ -29,7 +29,8 @@ import {
 } from "react";
 
 import { BlocosRender, type RotulosDosBlocos } from "@/components/marketing/BlocosRender";
-import type { EdicaoNoLugar } from "@/components/marketing/CampoNoLugar";
+import { EditorDeCanvas } from "@/components/marketing/canvas/CanvasCarregavel";
+import type { CursorDoCampo, EdicaoNoLugar } from "@/components/marketing/CampoNoLugar";
 import {
   COR_DO_TIPO,
   FormularioDoBloco,
@@ -50,6 +51,10 @@ import {
 } from "@/lib/marketing/blocos";
 import {
   alvoDoAtalho,
+  alvoDoTeclado,
+  atalhoDeMarkdown,
+  atalhoDoAlvo,
+  TODOS_OS_ALVOS,
   ALVOS_BASICOS,
   ALVOS_VISUAIS,
   aplicarPropriedade,
@@ -69,6 +74,7 @@ import {
 import { aplicarMarcaNoCampo, type MarcaDeEstilo } from "@/lib/marketing/texto-rico";
 import { lerTextoDaPagina, textoDaPagina } from "@/lib/marketing/texto-estruturado";
 import { modeloDaPagina } from "@/lib/marketing/modelos";
+import type { Caminho } from "@/lib/marketing/caminho";
 import { Copy, DotsSixVertical, PencilSimple, Plus, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +87,13 @@ const SEM_SELECAO: Selecao = { ids: new Set(), ancora: null, ponta: null };
 
 /** O bloco tem textos que se digitam direto nele (senão, só a caixa de edição). */
 function temCamposNoLugar(b: Bloco): boolean {
-  if (b.tipo === "oferta" || b.tipo === "calculadora" || b.tipo === "separador") return false;
+  if (
+    b.tipo === "oferta" ||
+    b.tipo === "calculadora" ||
+    b.tipo === "separador" ||
+    b.tipo === "canvas"
+  )
+    return false;
   if (b.tipo === "imagem") return b.arquivo !== "";
   return true;
 }
@@ -89,6 +101,7 @@ function temCamposNoLugar(b: Bloco): boolean {
 type Menu =
   | { tipo: "bloco"; x: number; y: number; blocoId: string }
   | { tipo: "inserir"; x: number; y: number; depoisDe: string | null }
+  | { tipo: "comandos"; x: number; y: number; blocoId: string }
   | { tipo: "modelos"; x: number; y: number };
 
 /** O que foi copiado por último aqui (para colar os blocos inteiros, não só o texto). */
@@ -130,7 +143,105 @@ const MOSTRA_CONVITE_SE_VAZIO: ReadonlySet<Bloco["tipo"]> = new Set([
   "ficha",
   "fluxo",
   "piramide",
+  "canvas",
 ]);
+
+/** O campo principal de cada bloco de texto: é nele que Enter continua a escrita no bloco de baixo. */
+const CAMPO_DE_FLUXO: Partial<Record<Bloco["tipo"], string>> = {
+  texto: "texto",
+  titulo: "texto",
+  destaque: "texto",
+  citacao: "texto",
+  toggle: "titulo",
+};
+
+const semAcento = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+/** O menu "/": uma busca com teclado (setas e Enter) para trocar o bloco em que se está escrevendo. */
+function MenuDeComandos({
+  alvos,
+  aoEscolher,
+  aoFechar,
+}: {
+  alvos: readonly AlvoDeConversao[];
+  aoEscolher: (alvo: AlvoDeConversao) => void;
+  aoFechar: () => void;
+}) {
+  const t = useT();
+  const [busca, setBusca] = useState("");
+  const [indice, setIndice] = useState(0);
+  const termo = semAcento(busca);
+  const lista = termo ? alvos.filter((a) => semAcento(t(a.rotulo)).includes(termo)) : alvos;
+  const atual = Math.min(indice, Math.max(0, lista.length - 1));
+  const itemAtivo = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    itemAtivo.current?.scrollIntoView?.({ block: "nearest" });
+  }, [atual, termo]);
+
+  return (
+    <div
+      data-menu-comandos
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const n = lista.length || 1;
+          setIndice((atual + (e.key === "ArrowDown" ? 1 : n - 1)) % n);
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (lista[atual]) aoEscolher(lista[atual]);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          aoFechar();
+        } else if (e.key === "Backspace" && busca === "") {
+          e.preventDefault();
+          aoFechar();
+        }
+      }}
+    >
+      <input
+        autoFocus
+        value={busca}
+        onChange={(e) => {
+          setBusca(e.target.value);
+          setIndice(0);
+        }}
+        placeholder={t("Digite para buscar um bloco…")}
+        aria-label={t("Buscar bloco")}
+        className="mb-1 h-9 w-full rounded-lg border bg-background px-2.5 text-sm outline-hidden focus:border-primary/60"
+      />
+      {lista.length === 0 ? (
+        <p className="px-2 py-3 text-sm text-muted-foreground">{t("Nenhum bloco encontrado.")}</p>
+      ) : (
+        lista.map((a, i) => (
+          <button
+            key={a.rotulo}
+            ref={i === atual ? itemAtivo : undefined}
+            type="button"
+            role="menuitem"
+            onMouseEnter={() => setIndice(i)}
+            onClick={() => aoEscolher(a)}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm",
+              i === atual ? "bg-secondary" : "hover:bg-secondary/60",
+            )}
+          >
+            <span className="grid w-6 shrink-0 place-items-center text-xs font-semibold text-muted-foreground">
+              {a.glifo}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{t(a.rotulo)}</span>
+            <span className="shrink-0 text-[10px] text-text-subtle">{atalhoDoAlvo(a)?.rotulo}</span>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
 
 const ehCampoDeTexto = (alvo: EventTarget | null) =>
   alvo instanceof HTMLElement &&
@@ -462,6 +573,8 @@ interface Props {
   tituloDaPagina?: string;
   chaveDaPagina?: string;
   rotulos: RotulosDosBlocos;
+  /** O teto de blocos da página (Marketing: 150; Anotações: mais, porque cada parágrafo é um bloco). */
+  maximo?: number;
 }
 
 /**
@@ -484,6 +597,7 @@ export function EditorVisualDeBlocos({
   tituloDaPagina,
   chaveDaPagina,
   rotulos,
+  maximo = MAXIMO_DE_BLOCOS,
 }: Props) {
   const t = useT();
   const nomeDoTipo = useNomesDosTipos();
@@ -496,6 +610,8 @@ export function EditorVisualDeBlocos({
   const [confirmarModelo, setConfirmarModelo] = useState<string | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [arrastandoMouse, setArrastandoMouse] = useState(false);
+  // O canvas aberto em tela cheia (o desenho todo, formas e setas).
+  const [canvasId, setCanvasId] = useState<string | null>(null);
   const historico = useHistoricoDeEdicao(blocos, aoMudarDeFora);
   const aoMudar = (novos: Bloco[], chave?: string) =>
     historico.mudar(normalizarLinhas(novos), chave);
@@ -519,11 +635,162 @@ export function EditorVisualDeBlocos({
       setDigitandoId(null);
       raiz.current?.focus({ preventScroll: true });
     },
+    aoEnter: (b, caminho, cursor) => continuarNoBlocoDeBaixo(b, caminho, cursor),
+    aoApagarNoInicio: (b, caminho, cursor) => apagarNoInicio(b, caminho, cursor),
+    aoBarra: (b, campo) => abrirBusca(b, campo),
+    navegar: (b, direcao, campo) => irParaOVizinho(b, direcao, campo),
+    aoDigitar: (b, caminho, valor) => virarBlocoPorMarcador(b, caminho, valor),
+    sairDaLista: (b, indice) => sairDaListaParaTexto(b, indice),
   };
+
+  // ── escrever com fluidez (estilo Notion): uma ação liga na outra sem tirar a mão do teclado ──
+  const ehCampoPrincipal = (b: Bloco, caminho: Caminho) =>
+    caminho.length === 1 && CAMPO_DE_FLUXO[b.tipo] === String(caminho[0]);
+
+  /** Enter: o que vem depois do cursor vai para um bloco de texto novo logo abaixo, já com o cursor nele. */
+  function continuarNoBlocoDeBaixo(b: Bloco, caminho: Caminho, cursor: CursorDoCampo): boolean {
+    if (!ehCampoPrincipal(b, caminho) || b.linha || blocos.length >= maximo) return false;
+    if (b.tipo === "toggle") {
+      // Enter na linha do toggle segue para o texto que ele esconde.
+      setFocoPedido(`${b.id}|texto`);
+      return true;
+    }
+    const campo = CAMPO_DE_FLUXO[b.tipo]!;
+    const atualizado = { ...b, [campo]: cursor.valor.slice(0, cursor.inicio) } as Bloco;
+    const novo = {
+      ...blocoEmBranco("texto", novoId()),
+      texto: cursor.valor.slice(cursor.fim),
+    } as Bloco;
+    const lista = blocos.map((x) => (x.id === b.id ? atualizado : x));
+    lista.splice(ids.indexOf(b.id) + 1, 0, novo);
+    aoMudar(lista);
+    selecionarUnico(novo.id);
+    digitarNoBloco(novo.id, undefined, undefined, "inicio");
+    return true;
+  }
+
+  /** Backspace no começo de um bloco vazio: vira texto; e um texto vazio some, voltando ao de cima. */
+  function apagarNoInicio(b: Bloco, caminho: Caminho, cursor: CursorDoCampo): boolean {
+    const listaVaziaDeUm =
+      b.tipo === "lista" && caminho[0] === "itens" && b.itens.length === 1 && b.itens[0] === "";
+    if (!listaVaziaDeUm && !(ehCampoPrincipal(b, caminho) && cursor.valor === "")) return false;
+    if (b.tipo !== "texto") {
+      const alvo = alvoDoAtalho("0")!;
+      aoMudar(blocos.map((x) => (x.id === b.id ? converterBloco(b, alvo) : x)));
+      digitarNoBloco(b.id);
+      return true;
+    }
+    if (blocos.length < 2) return false;
+    const i = ids.indexOf(b.id);
+    const restantes = removerBlocos(blocos, new Set([b.id]));
+    aoMudar(restantes);
+    const anterior = restantes[i - 1];
+    const vizinho = anterior ?? restantes[i];
+    if (!vizinho) return true;
+    selecionarUnico(vizinho.id);
+    if (temCamposNoLugar(vizinho)) {
+      digitarNoBloco(vizinho.id, undefined, undefined, anterior ? "ultimo-campo" : "inicio");
+    } else setDigitandoId(null);
+    return true;
+  }
+
+  /** "/" num texto vazio: abre a busca de blocos ali mesmo. */
+  function abrirBusca(b: Bloco, campo: HTMLTextAreaElement): boolean {
+    if (b.tipo !== "texto") return false;
+    const r = campo.getBoundingClientRect();
+    setMenu({ tipo: "comandos", x: r.left, y: r.bottom + 4, blocoId: b.id });
+    return true;
+  }
+
+  /** Seta na ponta do texto: anda para o campo ou bloco vizinho (pulando os que não têm texto). */
+  function irParaOVizinho(
+    b: Bloco,
+    direcao: "cima" | "baixo",
+    campo: HTMLTextAreaElement,
+  ): boolean {
+    const campos = Array.from(
+      document.querySelectorAll<HTMLTextAreaElement>(
+        `[data-bloco-id="${b.id}"] textarea[data-campo-no-lugar]`,
+      ),
+    );
+    const j = campos.indexOf(campo);
+    const proximo = campos[j + (direcao === "cima" ? -1 : 1)];
+    if (proximo) {
+      proximo.focus();
+      const pos = direcao === "cima" ? proximo.value.length : 0;
+      proximo.setSelectionRange(pos, pos);
+      return true;
+    }
+    const i = ids.indexOf(b.id);
+    const vizinho =
+      direcao === "cima"
+        ? blocos.slice(0, i).reverse().find(temCamposNoLugar)
+        : blocos.slice(i + 1).find(temCamposNoLugar);
+    if (!vizinho) return false;
+    selecionarUnico(vizinho.id);
+    digitarNoBloco(
+      vizinho.id,
+      undefined,
+      undefined,
+      direcao === "cima" ? "ultimo-campo" : "inicio",
+    );
+    return true;
+  }
+
+  /** "# ", "- ", "1. ", "[] ", "> " no começo de um texto viram o bloco certo (como no Notion). */
+  function virarBlocoPorMarcador(b: Bloco, caminho: Caminho, valor: string): boolean {
+    if (b.tipo !== "texto" || !ehCampoPrincipal(b, caminho)) return false;
+    const marca = atalhoDeMarkdown(valor);
+    if (!marca) return false;
+    const novo = converterBloco({ ...b, texto: marca.resto }, marca.alvo);
+    aoMudar(blocos.map((x) => (x.id === b.id ? novo : x)));
+    digitarNoBloco(b.id);
+    return true;
+  }
+
+  /** Enter num item vazio, no fim da lista: a lista termina e a escrita segue num texto novo. */
+  function sairDaListaParaTexto(b: Bloco, indice: number): boolean {
+    if (b.tipo !== "lista" || b.linha || indice !== b.itens.length - 1) return false;
+    if (b.itens.length > 1 && blocos.length >= maximo) return false;
+    const texto = blocoEmBranco("texto", novoId());
+    if (b.itens.length === 1) {
+      aoMudar(blocos.map((x) => (x.id === b.id ? ({ ...texto, id: b.id } as Bloco) : x)));
+      digitarNoBloco(b.id);
+      return true;
+    }
+    const lista = blocos.map((x) =>
+      x.id === b.id ? ({ ...b, itens: b.itens.slice(0, -1) } as Bloco) : x,
+    );
+    lista.splice(ids.indexOf(b.id) + 1, 0, texto);
+    aoMudar(lista);
+    selecionarUnico(texto.id);
+    digitarNoBloco(texto.id);
+    return true;
+  }
+
+  /** Clicar no vazio da página escreve: vai ao último texto em branco, ou cria um novo no fim. */
+  function escreverNoFim() {
+    const ultimo = blocos[blocos.length - 1];
+    if (ultimo && ultimo.tipo === "texto" && ultimo.texto.trim() === "") {
+      selecionarUnico(ultimo.id);
+      digitarNoBloco(ultimo.id);
+      return;
+    }
+    if (blocos.length >= maximo) return;
+    const novo = blocoEmBranco("texto", novoId());
+    aoMudar([...blocos, novo]);
+    selecionarUnico(novo.id);
+    digitarNoBloco(novo.id);
+  }
 
   const focarRaiz = () => raiz.current?.focus({ preventScroll: true });
   /** Põe o bloco para digitar direto: o cursor vai ao texto sob o clique (ou ao primeiro). */
-  const digitarNoBloco = (id: string, x?: number, y?: number) => {
+  const digitarNoBloco = (
+    id: string,
+    x?: number,
+    y?: number,
+    ponta: "fim" | "inicio" | "ultimo-campo" = "fim",
+  ) => {
     setEditandoId(null);
     setDigitandoId(id);
     requestAnimationFrame(() => {
@@ -539,10 +806,17 @@ export function EditorVisualDeBlocos({
               const r = c.getBoundingClientRect();
               return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
             });
-      const alvo = sob ?? campos[0];
+      const alvo = sob ?? (ponta === "ultimo-campo" ? campos[campos.length - 1] : campos[0]);
       alvo?.focus();
-      alvo?.setSelectionRange(alvo.value.length, alvo.value.length);
+      const pos = ponta === "inicio" ? 0 : (alvo?.value.length ?? 0);
+      alvo?.setSelectionRange(pos, pos);
     });
+  };
+  /** Depois de criar ou converter UM bloco: o que a pessoa faz em seguida (digitar, desenhar…). */
+  const comecarNo = (b: Bloco, ponta: "fim" | "inicio" = "fim") => {
+    if (temCamposNoLugar(b)) digitarNoBloco(b.id, undefined, undefined, ponta);
+    else if (b.tipo === "canvas") setCanvasId(b.id);
+    else if (b.tipo !== "separador") abrirCaixa(b.id);
   };
   const abrirCaixa = (id: string) => {
     setDigitandoId(null);
@@ -582,7 +856,7 @@ export function EditorVisualDeBlocos({
     if (vizinho) selecionarUnico(vizinho.id);
   };
   const duplicar = () => {
-    if (!selecionados.size || blocos.length + selecionados.size > MAXIMO_DE_BLOCOS) return;
+    if (!selecionados.size || blocos.length + selecionados.size > maximo) return;
     aoMudar(duplicarBlocos(blocos, selecionados, novoId));
   };
   const converter = (alvo: AlvoDeConversao) => {
@@ -599,15 +873,14 @@ export function EditorVisualDeBlocos({
     );
   };
   const inserir = (alvo: AlvoDeConversao, depoisDe: string | null) => {
-    if (blocos.length >= MAXIMO_DE_BLOCOS) return;
+    if (blocos.length >= maximo) return;
     const novo = converterBloco(blocoEmBranco(alvo.tipo, novoId()), alvo);
     const i = depoisDe ? ids.indexOf(depoisDe) : -1;
     const copia = [...blocos];
     copia.splice(i < 0 ? copia.length : i + 1, 0, novo);
     aoMudar(copia);
     selecionarUnico(novo.id);
-    if (temCamposNoLugar(novo)) digitarNoBloco(novo.id);
-    else if (novo.tipo !== "separador") abrirCaixa(novo.id);
+    comecarNo(novo);
   };
   const juntarLado = () => {
     if (selecionados.size > 1) {
@@ -633,7 +906,7 @@ export function EditorVisualDeBlocos({
   const separarLado = () => aoMudar(separarDaLinha(blocos, selecionados));
 
   const colar = (novos: Bloco[]) => {
-    if (!novos.length || blocos.length + novos.length > MAXIMO_DE_BLOCOS) return;
+    if (!novos.length || blocos.length + novos.length > maximo) return;
     // As linhas (colunas) copiadas continuam juntas, mas numa linha nova.
     const novaLinha = new Map<string, string>();
     const copias = novos.map((b) => {
@@ -736,6 +1009,13 @@ export function EditorVisualDeBlocos({
       }
       return;
     }
+    // Cada bloco tem o seu atalho (ver `ATALHOS_DE_BLOCO`) — vale até no meio da digitação.
+    const alvoDaTecla = alvoDoTeclado(e.nativeEvent);
+    if (alvoDaTecla && (!emCampo || digitando)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return aplicarAtalho(alvoDaTecla);
+    }
     if (emCampo) return;
 
     if (k === "arrowup" || k === "arrowdown") {
@@ -749,6 +1029,7 @@ export function EditorVisualDeBlocos({
       e.preventDefault();
       const unico = blocos.find((b) => b.id === [...selecionados][0]);
       if (unico && temCamposNoLugar(unico)) return digitarNoBloco(unico.id);
+      if (unico?.tipo === "canvas") return setCanvasId(unico.id);
       return abrirCaixa([...selecionados][0]!);
     }
     if (k === "backspace" || k === "delete") {
@@ -763,13 +1044,25 @@ export function EditorVisualDeBlocos({
       e.preventDefault();
       return duplicar();
     }
-    if (mod && e.shiftKey && /^Digit\d$/.test(e.code)) {
-      const alvo = alvoDoAtalho(e.code.slice(5));
-      if (alvo) {
-        e.preventDefault();
-        converter(alvo);
-      }
+  };
+
+  /** O atalho de um bloco: troca o que se está digitando ou o que está selecionado; sem nada, cria um novo no fim. */
+  const aplicarAtalho = (alvo: AlvoDeConversao) => {
+    if (digitando) {
+      const b = blocos.find((x) => x.id === digitando);
+      if (!b) return;
+      const novo = converterBloco(b, alvo);
+      aoMudar(blocos.map((x) => (x.id === b.id ? novo : x)));
+      selecionarUnico(b.id);
+      comecarNo(novo);
+      return;
     }
+    if (selecionados.size) {
+      converter(alvo);
+      if (alvo.tipo === "canvas" && selecionados.size === 1) setCanvasId([...selecionados][0]!);
+      return;
+    }
+    inserir(alvo, ids.at(-1) ?? null);
   };
 
   const aoCopiar = (e: ClipboardEvent<HTMLDivElement>, cortar: boolean) => {
@@ -809,7 +1102,7 @@ export function EditorVisualDeBlocos({
   ) => {
     const novos = montar(novoId);
     const resultado = modo === "substituir" ? novos : [...blocos, ...novos];
-    if (resultado.length > MAXIMO_DE_BLOCOS) {
+    if (resultado.length > maximo) {
       toast.error(t("A página passaria do limite de blocos."));
       return;
     }
@@ -831,6 +1124,26 @@ export function EditorVisualDeBlocos({
   );
   const fecharMenu = useCallback(() => setMenu(null), []);
 
+  const canvasAberto = (() => {
+    const b = canvasId ? blocos.find((x) => x.id === canvasId) : undefined;
+    return b?.tipo === "canvas" ? b : null;
+  })();
+  const escolherComando = (alvo: AlvoDeConversao) => {
+    if (menu?.tipo !== "comandos") return;
+    const b = blocos.find((x) => x.id === menu.blocoId);
+    setMenu(null);
+    if (!b) return;
+    const novo = converterBloco(b, alvo);
+    aoMudar(blocos.map((x) => (x.id === b.id ? novo : x)));
+    selecionarUnico(b.id);
+    comecarNo(novo);
+  };
+  const fecharComandos = () => {
+    const id = menu?.tipo === "comandos" ? menu.blocoId : null;
+    setMenu(null);
+    if (id) digitarNoBloco(id);
+  };
+
   const primario = menu?.tipo === "bloco" ? blocos.find((b) => b.id === menu.blocoId) : undefined;
   const propriedades = primario ? propriedadesDoBloco(primario) : [];
   const nome = (a: AlvoDeConversao) => t(a.rotulo);
@@ -840,7 +1153,7 @@ export function EditorVisualDeBlocos({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {t(
-            "Clique para selecionar · dois cliques para digitar no bloco · botão direito para tipo e ajustes · Ctrl+Z desfaz",
+            "Clique para selecionar · dois cliques para digitar no bloco · / escolhe o bloco · Enter cria o próximo · botão direito para tipo e ajustes · Ctrl+Z desfaz",
           )}
         </p>
         <div className="flex items-center gap-2">
@@ -931,10 +1244,14 @@ export function EditorVisualDeBlocos({
                       selecionarUnico(id);
                       const bloco = blocos.find((x2) => x2.id === id);
                       if (bloco && temCamposNoLugar(bloco)) digitarNoBloco(id, x, y);
+                      else if (bloco?.tipo === "canvas") setCanvasId(id);
                       else abrirCaixa(id);
                     }}
                     aoEditarTudo={abrirCaixa}
-                    aoSairDoTexto={() => setDigitandoId(null)}
+                    aoSairDoTexto={() => {
+                      // A busca de blocos ("/") tira o foco do texto sem encerrar a digitação.
+                      if (!document.querySelector("[data-menu-comandos]")) setDigitandoId(null);
+                    }}
                     edicao={edicao}
                     digitando={digitando === b.id}
                     aoAbrirMenu={abrirMenu}
@@ -993,7 +1310,46 @@ export function EditorVisualDeBlocos({
             })}
           </SortableContext>
         </DndContext>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={t("Escrever no fim da página")}
+          onClick={escreverNoFim}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopPropagation();
+              escreverNoFim();
+            }
+          }}
+          className={cn(
+            "cursor-text rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
+            blocos.length === 0
+              ? "grid min-h-40 place-items-center border-2 border-dashed p-4 text-center text-sm text-muted-foreground"
+              : "min-h-20 flex-1",
+          )}
+        >
+          {blocos.length === 0
+            ? t("Clique aqui e comece a escrever · / escolhe o bloco · Enter cria o próximo")
+            : null}
+        </div>
       </div>
+
+      {canvasAberto ? (
+        <EditorDeCanvas
+          bloco={canvasAberto}
+          aoMudar={(novo, chave) =>
+            aoMudar(
+              blocos.map((x) => (x.id === novo.id ? novo : x)),
+              chave,
+            )
+          }
+          aoFechar={() => {
+            setCanvasId(null);
+            focarRaiz();
+          }}
+        />
+      ) : null}
 
       <button
         type="button"
@@ -1011,8 +1367,18 @@ export function EditorVisualDeBlocos({
       <ImportarDeTexto blocos={blocos} aoMudar={aoMudar} novoId={novoId} />
 
       {menu ? (
-        <MenuFlutuante x={menu.x} y={menu.y} aoFechar={fecharMenu}>
-          {menu.tipo === "modelos" ? (
+        <MenuFlutuante
+          x={menu.x}
+          y={menu.y}
+          aoFechar={menu.tipo === "comandos" ? fecharComandos : fecharMenu}
+        >
+          {menu.tipo === "comandos" ? (
+            <MenuDeComandos
+              alvos={TODOS_OS_ALVOS}
+              aoEscolher={escolherComando}
+              aoFechar={fecharComandos}
+            />
+          ) : menu.tipo === "modelos" ? (
             <>
               <LinhaDeModelo
                 rotulo={t("Página em branco")}
@@ -1055,7 +1421,7 @@ export function EditorVisualDeBlocos({
                 <ItemDoMenu
                   key={a.rotulo}
                   glifo={a.glifo}
-                  dica={a.atalho ? `Ctrl+⇧+${a.atalho}` : undefined}
+                  dica={atalhoDoAlvo(a)?.rotulo}
                   onClick={() => {
                     setMenu(null);
                     inserir(a, menu.depoisDe);
@@ -1069,6 +1435,7 @@ export function EditorVisualDeBlocos({
                 <ItemDoMenu
                   key={a.rotulo}
                   glifo={a.glifo}
+                  dica={atalhoDoAlvo(a)?.rotulo}
                   onClick={() => {
                     setMenu(null);
                     inserir(a, menu.depoisDe);
@@ -1176,7 +1543,7 @@ export function EditorVisualDeBlocos({
                   key={a.rotulo}
                   glifo={a.glifo}
                   ativo={primario ? ehOAlvo(primario, a) : false}
-                  dica={a.atalho ? `Ctrl+⇧+${a.atalho}` : undefined}
+                  dica={atalhoDoAlvo(a)?.rotulo}
                   onClick={() => {
                     setMenu(null);
                     converter(a);
@@ -1191,6 +1558,7 @@ export function EditorVisualDeBlocos({
                   key={a.rotulo}
                   glifo={a.glifo}
                   ativo={primario ? ehOAlvo(primario, a) : false}
+                  dica={atalhoDoAlvo(a)?.rotulo}
                   onClick={() => {
                     setMenu(null);
                     converter(a);

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { CartoesDeNotas } from "@/components/anotacoes/CartoesDeNotas";
 import { EditorDeNotasCarregavel } from "@/components/anotacoes/EditorDeNotasCarregavel";
+import { EtiquetasDaNota } from "@/components/anotacoes/EtiquetasDaNota";
 import { SeletorDeIcone } from "@/components/anotacoes/SeletorDeIcone";
 import { Switch } from "@/components/ui/switch";
 import { useNota } from "@/hooks/anotacoes/useNota";
@@ -25,7 +27,6 @@ export function PaginaDeNota({
   aoApagar,
   aoAbrir,
   aoCriarSubpagina,
-  aoReordenarSubpaginas,
   favorita,
   aoFavoritar,
 }: {
@@ -36,19 +37,22 @@ export function PaginaDeNota({
   podeEditar: boolean;
   aoMudar: (
     id: string,
-    mudanca: Partial<Pick<ResumoDaNota, "title" | "icon" | "visible_to_client">>,
+    mudanca: Partial<Pick<ResumoDaNota, "title" | "icon" | "visible_to_client" | "tags">>,
     opcoes?: { cascade?: boolean },
   ) => Promise<boolean>;
   aoApagar: (id: string) => void;
   aoAbrir: (id: string) => void;
   aoCriarSubpagina: (paiId: string) => Promise<string | null>;
-  aoReordenarSubpaginas: (ids: string[]) => void;
 }) {
   const t = useT();
   const { pagina, estado, editar, carregando, falhou } = useNota(id);
   const resumo = notas.find((n) => n.id === id);
   const caminho = caminhoDaNota(notas, id);
-  const temFilhas = notas.some((n) => n.parent_id === id && !n.deleted_at);
+  const filhas = notas
+    .filter((n) => n.parent_id === id && !n.deleted_at)
+    .sort((a, b) => a.position - b.position);
+  const temFilhas = filhas.length > 0;
+  const etiquetasUsadas = [...new Set(notas.flatMap((n) => n.tags))];
 
   const [titulo, setTitulo] = useState<string | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -157,6 +161,13 @@ export function PaginaDeNota({
           </button>
         </div>
 
+        <EtiquetasDaNota
+          etiquetas={resumo.tags}
+          podeEditar={podeEditar}
+          sugestoes={etiquetasUsadas}
+          aoMudar={(tags) => void aoMudar(id, { tags })}
+        />
+
         {podeEditar ? (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b pb-3 text-xs text-muted-foreground">
             <label className="flex items-center gap-2">
@@ -202,17 +213,23 @@ export function PaginaDeNota({
         ) : null}
       </header>
 
-      <EditorDeNotasCarregavel
-        inicial={pagina.blocks}
-        editavel={podeEditar}
-        paginas={notas}
-        paginaId={id}
-        aoMudar={editar}
-        aoAbrir={aoAbrir}
-        aoCriarSubpagina={() => aoCriarSubpagina(id)}
-        aoRemoverSubpagina={aoApagar}
-        aoReordenarSubpaginas={aoReordenarSubpaginas}
-      />
+      <EditorDeNotasCarregavel inicial={pagina.blocks} editavel={podeEditar} aoMudar={editar} />
+
+      {temFilhas || podeEditar ? (
+        <section aria-label={t("Subpáginas")} className="flex flex-col gap-3 border-t pt-5">
+          <h2 className="text-lg font-semibold tracking-tight">{t("Subpáginas")}</h2>
+          {temFilhas || podeEditar ? (
+            <CartoesDeNotas
+              paginas={filhas}
+              todas={notas}
+              podeEditar={podeEditar}
+              aoAbrir={aoAbrir}
+              aoCriar={() => void aoCriarSubpagina(id).then((novo) => novo && aoAbrir(novo))}
+              rotuloDoNovo={t("Nova subpágina")}
+            />
+          ) : null}
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -22,6 +22,28 @@ export interface EdicaoNoLugar {
   pedirFoco: (chave: string | null) => void;
   /** Enter num campo de uma linha, ou Esc: encerra a digitação. */
   sair: () => void;
+  /**
+   * Fluidez de escrita (estilo Notion) — tudo opcional; quem não define mantém o comportamento
+   * antigo. Cada função devolve `true` quando tratou a tecla.
+   */
+  /** Enter (sem Shift): cria o bloco de texto de baixo, levando o que estava depois do cursor. */
+  aoEnter?: (bloco: Bloco, caminho: Caminho, cursor: CursorDoCampo) => boolean;
+  /** Backspace com o cursor no começo do campo: transforma ou apaga o bloco. */
+  aoApagarNoInicio?: (bloco: Bloco, caminho: Caminho, cursor: CursorDoCampo) => boolean;
+  /** "/" num campo vazio: abre a busca de blocos. */
+  aoBarra?: (bloco: Bloco, campo: HTMLTextAreaElement) => boolean;
+  /** Seta para cima/baixo na ponta do texto: passa para o bloco vizinho. */
+  navegar?: (bloco: Bloco, direcao: "cima" | "baixo", campo: HTMLTextAreaElement) => boolean;
+  /** O texto mudou: "# ", "- ", "1. "… no começo viram o bloco certo. `true` = já tratou. */
+  aoDigitar?: (bloco: Bloco, caminho: Caminho, valor: string) => boolean;
+  /** Enter num item vazio da lista: sai da lista para um texto novo. */
+  sairDaLista?: (bloco: Bloco, indice: number) => boolean;
+}
+
+export interface CursorDoCampo {
+  inicio: number;
+  fim: number;
+  valor: string;
 }
 
 export const emEdicao = (
@@ -84,11 +106,12 @@ export function CampoNoLugar({
       value={valor}
       placeholder={placeholder}
       aria-label={placeholder}
-      onChange={(e) =>
+      onChange={(e) => {
+        if (!gravar && edicao.aoDigitar?.(bloco, caminho, e.target.value)) return;
         edicao.aoMudar(
           gravar ? gravar(e.target.value) : gravarNoCaminho(bloco, caminho, e.target.value),
-        )
-      }
+        );
+      }}
       onKeyDown={(e) => {
         // Ctrl+B / Ctrl+I: negrito e itálico no trecho selecionado.
         if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
@@ -100,12 +123,48 @@ export function CampoNoLugar({
           }
         }
         if (aoTeclar?.(e)) return;
-        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+        const el = e.currentTarget;
+        const cursor: CursorDoCampo = {
+          inicio: el.selectionStart,
+          fim: el.selectionEnd,
+          valor: el.value,
+        };
+        if (e.nativeEvent.isComposing) return;
+        if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && el.value === "") {
+          if (edicao.aoBarra?.(bloco, el)) {
+            e.preventDefault();
+            return;
+          }
+        }
+        if (
+          e.key === "Backspace" &&
+          cursor.inicio === 0 &&
+          cursor.fim === 0 &&
+          edicao.aoApagarNoInicio?.(bloco, caminho, cursor)
+        ) {
           e.preventDefault();
-          // Enter sai do bloco; Shift+Enter quebra a linha (só onde o texto tem várias linhas).
-          if (!e.shiftKey) edicao.sair();
-          else if (multilinha) {
-            const el = e.currentTarget;
+          return;
+        }
+        if (
+          (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+          !e.shiftKey &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          cursor.inicio === cursor.fim &&
+          cursor.inicio === (e.key === "ArrowUp" ? 0 : cursor.valor.length) &&
+          edicao.navegar?.(bloco, e.key === "ArrowUp" ? "cima" : "baixo", el)
+        ) {
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          // Enter continua a escrita no bloco de baixo (ou sai, onde não faz sentido); Shift+Enter
+          // quebra a linha (só onde o texto tem várias linhas).
+          if (!e.shiftKey) {
+            if (!edicao.aoEnter?.(bloco, caminho, cursor)) edicao.sair();
+          } else if (multilinha) {
             const { selectionStart: a, selectionEnd: b, value } = el;
             const escrever = Object.getOwnPropertyDescriptor(
               HTMLTextAreaElement.prototype,

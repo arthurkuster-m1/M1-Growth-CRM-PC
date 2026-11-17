@@ -1602,3 +1602,22 @@
 html[data-embutido="1"] body {
   min-height: 0;
 }
+
+/* ---- Canvas do editor de blocos -----------------------------------------
+   Os quatro pontos de ligação de cada forma só aparecem ao passar o mouse (ou com o bloco
+   selecionado) — no desenho já pronto e na leitura ficam invisíveis, mas existem: é neles que as
+   setas se prendem. */
+.react-flow__node .canvas-ponto {
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.react-flow__node:hover .canvas-ponto,
+.react-flow__node.selected .canvas-ponto {
+  opacity: 1;
+}
+.react-flow.canvas-leitura .react-flow__node .canvas-ponto {
+  opacity: 0 !important;
+  pointer-events: none;
+}

@@ -1,23 +1,28 @@
 import { z } from "zod";
 
+import { blocoSchema } from "@/lib/marketing/blocos";
+
 /**
- * O DOCUMENTO de uma página de anotação: a lista de blocos do editor (BlockNote), guardada como
- * veio. O servidor não entende cada tipo de bloco — só garante o formato mínimo (cada bloco tem
- * `id` e `type`), o teto de blocos na raiz e, via o banco, o teto de tamanho. Quem desenha e valida
- * o conteúdo de cada bloco é o próprio editor.
- *
- * Páginas antigas, no formato da Estratégia (`tipo`, sem `type`), não casam e abrem em branco.
+ * O DOCUMENTO de uma página de anotação: a lista de blocos do editor. O formato de hoje é o da
+ * Estratégia (`tipo`, validado por `blocoSchema` — o mesmo motor de blocos); o formato do editor
+ * anterior (BlockNote, com `type`) segue aceito na leitura e é convertido ao abrir
+ * (`lib/anotacoes/blocos-da-nota.ts`). O servidor garante o formato mínimo, o teto de blocos na
+ * raiz e, via o banco, o teto de tamanho.
  */
 export const MAXIMO_DE_BLOCOS_NA_RAIZ = 3000;
 
-const blocoDoDocumento = z.looseObject({
+/** O bloco do editor anterior: só `id` e `type`; o resto é do editor e se converte ao abrir. */
+const blocoAntigo = z.looseObject({
   id: z.string().min(1).max(64),
   type: z.string().min(1).max(40),
 });
+/** O bloco de hoje: o de Marketing, validado inteiro. */
+const blocoDoDocumento = z.union([blocoSchema, blocoAntigo]);
 
 export const documentoSchema = z.array(blocoDoDocumento).max(MAXIMO_DE_BLOCOS_NA_RAIZ);
 
 export type BlocoDoDocumento = z.infer<typeof blocoDoDocumento>;
+/** Uma lista de blocos de qualquer um dos dois formatos (use `blocosDaNota` para ler). */
 export type Documento = BlocoDoDocumento[];
 
 /** O que veio do banco, só com os blocos que o editor entende (o resto some em vez de quebrar a tela). */
@@ -58,7 +63,7 @@ export function ajustarCartoes(documento: Documento, filhas: readonly string[]):
   const vistos = new Set<string>();
   const limpa = (blocos: readonly unknown[]): unknown[] =>
     blocos.flatMap((b) => {
-      const bloco = b as BlocoDoDocumento & { props?: { pageId?: unknown }; children?: unknown };
+      const bloco = b as { type?: unknown; props?: { pageId?: unknown }; children?: unknown };
       if (bloco.type === "subpagina") {
         const pageId = bloco.props?.pageId;
         if (typeof pageId !== "string" || !validas.has(pageId) || vistos.has(pageId)) return [];

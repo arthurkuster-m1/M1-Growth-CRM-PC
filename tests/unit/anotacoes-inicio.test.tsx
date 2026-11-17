@@ -17,6 +17,7 @@ const nota = (id: string, title: string, position: number): ResumoDaNota => ({
   position,
   visible_to_client: false,
   kind: null,
+  tags: [],
   deleted_at: null,
   updated_at: "2026-11-13T00:00:00Z",
 });
@@ -50,8 +51,8 @@ vi.mock("@/hooks/anotacoes/useNota", () => ({
   }),
 }));
 vi.mock("@/components/anotacoes/EditorDeNotasCarregavel", () => ({
-  EditorDeNotasCarregavel: ({ paginaId }: { paginaId: string }) => (
-    <div data-testid="editor">editor de {paginaId}</div>
+  EditorDeNotasCarregavel: ({ editavel }: { editavel: boolean }) => (
+    <div data-testid="editor">editor {editavel ? "editavel" : "leitura"}</div>
   ),
 }));
 
@@ -77,14 +78,14 @@ afterEach(() => {
 describe("NotasDoInicio", () => {
   it("abre a página fixada", () => {
     render(<NotasDoInicio />);
-    expect(screen.getByTestId("editor").textContent).toBe("editor de a");
+    expect(screen.getByTestId("editor").textContent).toBe("editor editavel");
     expect((screen.getByLabelText("Página das notas") as HTMLSelectElement).value).toBe("a");
   });
 
   it("trocar de página mostra a nova e a fixa no Início", () => {
     render(<NotasDoInicio />);
     fireEvent.change(screen.getByLabelText("Página das notas"), { target: { value: "b" } });
-    expect(screen.getByTestId("editor").textContent).toBe("editor de b");
+    expect((screen.getByLabelText("Página das notas") as HTMLSelectElement).value).toBe("b");
     expect(fixarNoInicio).toHaveBeenCalledWith("b");
   });
 

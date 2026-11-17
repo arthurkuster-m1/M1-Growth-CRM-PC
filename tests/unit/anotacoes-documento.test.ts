@@ -23,9 +23,15 @@ const cartao = (pageId: string): Documento[number] => ({
 });
 
 describe("anotações — documento do editor", () => {
-  it("lê só os blocos com id e type; o formato antigo da Estratégia some em vez de quebrar", () => {
-    const lido = lerDocumento([paragrafo("a"), { id: "x", tipo: "texto", texto: "oi" }, 5, null]);
-    expect(lido.map((b) => b.id)).toEqual(["a"]);
+  it("lê os blocos do editor antigo (id e type) e os de hoje (Estratégia); o resto some em vez de quebrar", () => {
+    const lido = lerDocumento([
+      paragrafo("a"),
+      { id: "x", tipo: "texto", texto: "oi" },
+      { id: "y", tipo: "texto" },
+      5,
+      null,
+    ]);
+    expect(lido.map((b) => b.id)).toEqual(["a", "x"]);
     expect(lerDocumento("lixo")).toEqual([]);
     expect(lerDocumento(null)).toEqual([]);
   });

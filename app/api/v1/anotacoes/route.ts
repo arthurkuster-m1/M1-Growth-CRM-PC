@@ -15,8 +15,9 @@ import { roleAtLeast } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
-  COLUNAS_DO_RESUMO,
   MAXIMO_DE_PAGINAS,
+  consultarComTags,
+  normalizarResumo,
   novaNotaSchema,
   type ResumoDaNota,
 } from "@/lib/anotacoes/paginas";
@@ -25,9 +26,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 /** O banco devolve `numeric` como número ou texto, conforme o driver: a tela só quer número. */
-function normalizar(linha: ResumoDaNota): ResumoDaNota {
-  return { ...linha, position: Number(linha.position) };
-}
+const normalizar = normalizarResumo;
 
 export async function GET(): Promise<Response> {
   const requestId = randomUUID();
@@ -40,12 +39,14 @@ export async function GET(): Promise<Response> {
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("notes_pages")
-    .select(COLUNAS_DO_RESUMO)
-    .eq("organization_id", authz.org.orgId)
-    .order("position", { ascending: true })
-    .limit(MAXIMO_DE_PAGINAS);
+  const { data, error } = await consultarComTags((colunas) =>
+    supabase
+      .from("notes_pages")
+      .select(colunas)
+      .eq("organization_id", authz.org.orgId)
+      .order("position", { ascending: true })
+      .limit(MAXIMO_DE_PAGINAS),
+  );
   if (error) return fail("internal_error", t("Erro ao carregar as anotações."), 500, { requestId });
 
   return ok(
@@ -111,19 +112,21 @@ export async function POST(req: NextRequest): Promise<Response> {
     posicao = ultima ? Number((ultima as { position: number }).position) + 1 : 1;
   }
 
-  const { data, error } = await supabase
-    .from("notes_pages")
-    .insert({
-      organization_id: authz.org.orgId,
-      parent_id,
-      title,
-      position: posicao,
-      visible_to_client: herdada,
-      created_by: authz.user.id,
-      updated_by: authz.user.id,
-    })
-    .select(COLUNAS_DO_RESUMO)
-    .single();
+  const { data, error } = await consultarComTags((colunas) =>
+    supabase
+      .from("notes_pages")
+      .insert({
+        organization_id: authz.org.orgId,
+        parent_id,
+        title,
+        position: posicao,
+        visible_to_client: herdada,
+        created_by: authz.user.id,
+        updated_by: authz.user.id,
+      })
+      .select(colunas)
+      .single(),
+  );
   if (error || !data) {
     return fail("internal_error", t("Erro ao criar a página."), 500, { requestId });
   }
