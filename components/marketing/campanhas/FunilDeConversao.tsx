@@ -17,7 +17,11 @@ import { useCallback, useEffect, useState } from "react";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Switch } from "@/components/ui/switch";
 import { ConfiguracaoDoFunil } from "@/components/funil/ConfiguracaoDoFunil";
-import { ancoraDasEtapas, JanelaDaEtapa } from "@/components/funil/config/_stages";
+import {
+  ancoraDasEtapas,
+  JanelaDaEtapa,
+  PassoPadraoDaEtapa,
+} from "@/components/funil/config/_stages";
 import { useT } from "@/hooks/i18n/useT";
 import { useCampanhasDeDemanda } from "@/hooks/marketing/useCampanhasDeDemanda";
 import { apiClient } from "@/lib/api/client";
@@ -39,6 +43,7 @@ interface Etapa {
   win_probability?: number | null;
   qualification?: "mql" | "disqualified" | null;
   avisar_na_central?: boolean | null;
+  proxima_acao_padrao?: string | null;
 }
 
 type Papel = "nenhum" | "won" | "lost" | "mql" | "disqualified";
@@ -592,7 +597,9 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       key={`janela-${atual.id}-${atual.expected_duration_hours ?? "padrao"}`}
                       etapa={atual}
                       desabilitado={!podeEditar}
-                      aoConfirmar={(valor) => void mexer(atual.id, { expected_duration_hours: valor })}
+                      aoConfirmar={(valor) =>
+                        void mexer(atual.id, { expected_duration_hours: valor })
+                      }
                     />
                   </div>
                   <label className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm sm:col-span-2">
@@ -606,6 +613,23 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       aria-label={`${t("Avisar a equipe na Central quando um negócio entrar em")} «${atual.name}»`}
                     />
                   </label>
+                  <div className="block sm:col-span-2">
+                    <span className="mb-1 block text-xs text-muted-foreground">
+                      {t(
+                        "Próximo passo padrão (aparece no negócio quando ele entra nesta etapa; a equipe pode trocar)",
+                      )}
+                    </span>
+                    <PassoPadraoDaEtapa
+                      key={`passo-${atual.id}-${atual.proxima_acao_padrao ?? ""}`}
+                      etapa={{
+                        id: atual.id,
+                        name: atual.name,
+                        proxima_acao_padrao: atual.proxima_acao_padrao ?? undefined,
+                      }}
+                      desabilitado={!podeEditar}
+                      aoConfirmar={(texto) => void mexer(atual.id, { proxima_acao_padrao: texto })}
+                    />
+                  </div>
                   <div className="flex flex-wrap items-end gap-2">
                     <button
                       type="button"

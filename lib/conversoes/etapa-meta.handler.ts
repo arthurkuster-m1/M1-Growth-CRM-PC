@@ -14,6 +14,9 @@
  *  - a etapa precisa ser desta organização e estar aberta (ganho é a compra, e
  *    é do consumidor de venda; perda não é conversão).
  *
+ * Entrar numa etapa inclui NASCER nela (`lead.created`): o lead do formulário que já chega na etapa
+ * de MQL, ou o "Lead enviado" da primeira etapa. A importação de planilha fica de fora.
+ *
  * O reenvio (`ad_conversion.retry_requested`) usa o RETRATO gravado no primeiro
  * envio — quando aconteceu e qual evento —, nunca a regra de agora.
  */
@@ -55,8 +58,18 @@ async function handle(row: EventRow): Promise<HandlerResult> {
       return await enviar(row, evento, registro.event_occurred_at, registro.meta_event_name);
     }
 
-    if (row.event_type !== "lead.stage_changed") return ignorar("outro_evento");
-    const etapaId = z.uuid().safeParse(row.payload.to_stage_id);
+    if (row.event_type !== "lead.stage_changed" && row.event_type !== "lead.created")
+      return ignorar("outro_evento");
+    // O lead que NASCE já dentro de uma etapa (formulário/n8n no primeiro estágio, ou direto no MQL
+    // com `qualificado`) também "entrou" nela: sem isto, o "Lead enviado" da primeira etapa e o
+    // "Lead qualificado" de quem já chega qualificado nunca sairiam. Importação de planilha não
+    // conta: despejar a base antiga na Meta não é o que a regra quer.
+    if (row.event_type === "lead.created" && row.metadata?.via) return ignorar("importacao");
+    const etapaId = z
+      .uuid()
+      .safeParse(
+        row.event_type === "lead.created" ? row.payload.stage_id : row.payload.to_stage_id,
+      );
     if (!etapaId.success || !row.created_at || !Number.isFinite(Date.parse(row.created_at)))
       return ignorar("sem_etapa_ou_data");
 
@@ -102,6 +115,6 @@ async function handle(row: EventRow): Promise<HandlerResult> {
 export const conversaoDeEtapaMetaHandler: EventHandler = {
   key: KEY,
   naOrgParada: "pula",
-  events: ["lead.stage_changed", "ad_conversion.retry_requested"],
+  events: ["lead.stage_changed", "lead.created", "ad_conversion.retry_requested"],
   handle,
 };

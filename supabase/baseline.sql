@@ -58931,3 +58931,14 @@ comment on column public.notes_pages.tags is
   'Etiquetas da página (texto livre, até 20), usadas na vista em cartões para filtrar.';
 
 notify pgrst, 'reload schema';
+
+-- ---- migration 0695 ----
+-- 0695 — EVENTO PERSONALIZADO NA META CAPI
+
+alter table public.meta_ads_conversion_rules
+  drop constraint if exists meta_ads_conversion_rules_evento_conhecido;
+alter table public.meta_ads_conversion_rules
+  add constraint meta_ads_conversion_rules_evento_conhecido
+  check (meta_event ~ '^[A-Za-z][A-Za-z0-9_]{0,39}$');
+
+notify pgrst, 'reload schema';

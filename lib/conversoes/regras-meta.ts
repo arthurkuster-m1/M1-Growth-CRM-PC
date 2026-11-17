@@ -40,6 +40,16 @@ export function ehEventoDaMeta(valor: unknown): valor is EventoDaMeta {
   );
 }
 
+/**
+ * Um nome de evento PERSONALIZADO válido: começa com letra, só letras/números/underscore, até 40.
+ * A Meta aceita o nome, mas evento personalizado não alimenta a otimização padrão — a tela avisa.
+ */
+export const PADRAO_DE_EVENTO_PERSONALIZADO = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+
+export function ehNomeDeEventoValido(valor: unknown): valor is string {
+  return typeof valor === "string" && PADRAO_DE_EVENTO_PERSONALIZADO.test(valor);
+}
+
 export function rotuloDoEventoDaMeta(valor: string): string {
   return EVENTOS_DA_META.find((e) => e.valor === valor)?.rotulo ?? valor;
 }
@@ -73,7 +83,8 @@ export interface RegraDeConversaoMeta {
   id: string;
   stageId: string;
   eventName: string;
-  metaEvent: EventoDaMeta;
+  /** Um dos eventos padrão (`EVENTOS_DA_META`) ou um nome personalizado. */
+  metaEvent: string;
   enabled: boolean;
   configuredAt: string;
 }
@@ -91,7 +102,7 @@ const COLUNAS = "id, stage_id, event_name, meta_event, enabled, configured_at";
 
 /** Linha com evento fora da lista (versão futura, dado corrompido) não vira regra. */
 function paraRegra(l: LinhaDaRegra): RegraDeConversaoMeta | null {
-  if (!ehEventoDaMeta(l.meta_event)) return null;
+  if (!ehNomeDeEventoValido(l.meta_event)) return null;
   return {
     id: l.id,
     stageId: l.stage_id,

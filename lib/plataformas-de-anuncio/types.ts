@@ -95,6 +95,10 @@ export interface ConversaoOffline {
   identificadoresGoogle?: IdentificadoresGoogle;
   /** E.164 sem `+`, ainda EM CLARO: o hash é responsabilidade do transporte. */
   telefone: string | null;
+  /** Só na Meta, sem clique: e-mail (em claro; o transporte faz o hash) e cookies do navegador. */
+  email?: string | null;
+  fbc?: string | null;
+  fbp?: string | null;
   valorCentavos: number | null;
   moeda: string;
   /**

@@ -60,6 +60,10 @@ import { ApiError } from "@/lib/api/types";
 import { autorizarCaptacaoParaIA, camposDaCaptacao } from "@/lib/ai/elegibilidade/formulario";
 import { autorizarContatoParaIA } from "@/lib/ai/elegibilidade/autorizacao";
 import { kickLocalPipeline } from "@/lib/dev/kick-local-pipeline";
+import {
+  estamparOrigemMetaDaCaptacao,
+  origemMetaDaCaptacao,
+} from "@/lib/webhooks/origem-meta-da-captacao";
 import { sinaisDoPayload } from "@/lib/marketing/origem-da-campanha";
 import {
   adotarLeadDaConversa,
@@ -572,6 +576,16 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
           Math.round(classificacaoInicial.percentual),
         );
       }
+    }
+  }
+
+  // Veio de anúncio da Meta (UTM `facebook`/`instagram`/`meta`, ou `fbclid`/`fbc`/`fbp`)? Então o
+  // contato carrega a origem e a venda deste lead volta à Meta pela CAPI. Primeiro toque vale: quem
+  // já tinha origem não é sobrescrito. Falha aqui nunca derruba a captação.
+  if (contactId) {
+    const origemMeta = origemMetaDaCaptacao(achatarPayload(payload), mapped.source_metadata);
+    if (origemMeta) {
+      await estamparOrigemMetaDaCaptacao(admin, source.organization_id, contactId, origemMeta);
     }
   }
 

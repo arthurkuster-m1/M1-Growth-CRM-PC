@@ -9,6 +9,7 @@ import { CanalOficialClient } from "./CanalOficialClient";
 import { ConnectionsClient } from "./ConnectionsClient";
 import { TemplatesClient } from "./TemplatesClient";
 import { TemplatesParceiroClient } from "./TemplatesParceiroClient";
+import { MetaCapi, type DadosDaMetaCapi } from "@/components/connections/MetaCapi";
 import { FormularioDeMetaAds } from "@/app/app/settings/meta-ads/_form";
 import type { Idioma } from "@/lib/i18n/idiomas";
 import { WebhooksClient } from "@/app/app/webhooks/_components/WebhooksClient";
@@ -42,9 +43,12 @@ export function ConexoesShell({
   wahaConfigured,
   graphParceiro = null,
   metaAds,
+  capi,
   idioma,
 }: {
   wahaConfigured: boolean;
+  /** A Meta CAPI (envio de conversões à Meta), na aba Meta Ads; lida no servidor. */
+  capi: DadosDaMetaCapi;
   /** A conexão de LEITURA da conta de anúncios (aba Meta Ads); lida no servidor. */
   metaAds: { conectada: boolean; contaPadrao: string | null };
   idioma: Idioma;
@@ -124,12 +128,15 @@ export function ConexoesShell({
             )}
           </p>
         )}
+        <MetaCapi dados={capi} idioma={idioma} />
       </TabsContent>
 
       <TabsContent value="webhooks" className="mt-0">
         {/* Webhooks era página própria (/app/webhooks); agora é mais uma conexão. */}
         <p className="mb-3 text-sm text-muted-foreground">
-          {t("Receba contatos de fora (landing pages, formulários) e crie automações que agem sozinhas.")}
+          {t(
+            "Receba contatos de fora (landing pages, formulários) e crie automações que agem sozinhas.",
+          )}
         </p>
         <WebhooksClient />
       </TabsContent>
@@ -138,16 +145,20 @@ export function ConexoesShell({
         <ConnectionsClient wahaConfigured={wahaConfigured} />
       </TabsContent>
 
-
-      <TabsContent value="sociais" className="mt-0"><RedesSociaisClient /></TabsContent>
-
+      <TabsContent value="sociais" className="mt-0">
+        <RedesSociaisClient />
+      </TabsContent>
 
       {graphParceiro && (
         <TabsContent value="graph" className="mt-0">
           {/* Sub-abas como nas demais: conectar e gerenciar modelos são tarefas
               diferentes. O componente de modelos é o MESMO do outro parceiro,
               apontado para a rota desta fonte. */}
-          <Tabs value={sub} onValueChange={(v) => irPara("graph", v)} className="flex flex-col gap-4">
+          <Tabs
+            value={sub}
+            onValueChange={(v) => irPara("graph", v)}
+            className="flex flex-col gap-4"
+          >
             <TabsList>
               <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
               <TabsTrigger value="templates">{t("Modelos")}</TabsTrigger>
@@ -167,7 +178,11 @@ export function ConexoesShell({
       )}
 
       <TabsContent value="oficial" className="mt-0">
-        <Tabs value={sub} onValueChange={(v) => irPara("oficial", v)} className="flex flex-col gap-4">
+        <Tabs
+          value={sub}
+          onValueChange={(v) => irPara("oficial", v)}
+          className="flex flex-col gap-4"
+        >
           <TabsList>
             <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
             {/* "Templates da Meta", não "Templates": a barra lateral já tem um item

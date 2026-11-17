@@ -17,7 +17,7 @@ import { audit } from "@/lib/audit";
 import { loadAuthUser, mfaEmDivida, resolveActiveOrg } from "@/lib/auth/server";
 import { podeAdministrarEmpresa } from "@/lib/auth/pode-administrar-empresa";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { eventoDaEtapaMeta, VALORES_DE_EVENTO_DA_META } from "@/lib/conversoes/regras-meta";
+import { eventoDaEtapaMeta, PADRAO_DE_EVENTO_PERSONALIZADO } from "@/lib/conversoes/regras-meta";
 
 export type SalvarRegrasMetaResult =
   | { ok: true }
@@ -37,7 +37,7 @@ export type SalvarRegrasMetaResult =
 const regraSchema = z.object({
   stage_id: z.uuid(),
   enabled: z.boolean(),
-  meta_event: z.enum(VALORES_DE_EVENTO_DA_META),
+  meta_event: z.string().regex(PADRAO_DE_EVENTO_PERSONALIZADO),
 });
 
 const entradaSchema = z

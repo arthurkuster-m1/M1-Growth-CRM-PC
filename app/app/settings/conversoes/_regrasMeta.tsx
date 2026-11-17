@@ -14,13 +14,15 @@ import { toast } from "sonner";
 import { salvarRegrasDeConversaoMeta } from "@/app/actions/settings/salvarRegrasDeConversaoMeta";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  ehNomeDeEventoValido,
   EVENTOS_DA_META,
   eventoRecomendadoParaMeta,
   rotuloDoEventoDaMeta,
-  type EventoDaMeta,
+  VALORES_DE_EVENTO_DA_META,
   type RegraDeConversaoMeta,
 } from "@/lib/conversoes/regras-meta";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -31,11 +33,16 @@ import { SelectDoApp } from "@/components/ui/SelectDoApp";
 
 interface Rascunho {
   enabled: boolean;
-  metaEvent: EventoDaMeta;
+  /** Um evento padrão da Meta ou o nome personalizado digitado. */
+  metaEvent: string;
 }
 
+const PERSONALIZADO = "__personalizado__";
+const ehPadrao = (v: string) => (VALORES_DE_EVENTO_DA_META as readonly string[]).includes(v);
+
 const ERRO_EM_PORTUGUES: Record<string, string> = {
-  validation_failed: "Escolha um evento da lista para cada etapa ligada.",
+  validation_failed:
+    "Escolha um evento da lista para cada etapa ligada. Nome personalizado: comece com letra e use só letras, números e _ (até 40).",
   unauthenticated: "Sua sessão expirou. Entre de novo.",
   forbidden_tenant: "Você não está em nenhuma organização ativa.",
   forbidden_role: "Só um administrador da organização pode mudar estas regras.",
@@ -72,6 +79,10 @@ export function RegrasDeConversaoMeta({
 
   const [rascunhos, setRascunhos] = useState(inicial);
   const ligadas = etapas.filter((e) => rascunhos[e.id]?.enabled).length;
+  const nomeInvalido = etapas.some((e) => {
+    const r = rascunhos[e.id];
+    return r?.enabled && !ehNomeDeEventoValido(r.metaEvent);
+  });
 
   function mudar(id: string, parcial: Partial<Rascunho>) {
     setRascunhos((atual) => ({ ...atual, [id]: { ...atual[id]!, ...parcial } }));
@@ -91,6 +102,10 @@ export function RegrasDeConversaoMeta({
   }
 
   function salvar() {
+    if (nomeInvalido) {
+      toast.error(t(ERRO_EM_PORTUGUES.validation_failed!));
+      return;
+    }
     startTransition(async () => {
       const resultado = await salvarRegrasDeConversaoMeta(
         etapas.map((e) => {
@@ -147,7 +162,11 @@ export function RegrasDeConversaoMeta({
                   <p className="text-xs text-muted-foreground">
                     {e.funil}
                     {" · "}
-                    {r.enabled ? t(rotuloDoEventoDaMeta(r.metaEvent)) : t("não envia evento")}
+                    {r.enabled
+                      ? ehPadrao(r.metaEvent)
+                        ? t(rotuloDoEventoDaMeta(r.metaEvent))
+                        : r.metaEvent || t("evento personalizado")
+                      : t("não envia evento")}
                   </p>
                 </div>
                 <Switch
@@ -163,15 +182,47 @@ export function RegrasDeConversaoMeta({
                   <SelectDoApp
                     id={`evento-meta-${e.id}`}
                     className="rounded-xl border bg-background p-2 text-sm"
-                    value={r.metaEvent}
-                    onChange={(ev) => mudar(e.id, { metaEvent: ev.target.value as EventoDaMeta })}
+                    value={ehPadrao(r.metaEvent) ? r.metaEvent : PERSONALIZADO}
+                    onChange={(ev) =>
+                      mudar(e.id, {
+                        metaEvent:
+                          ev.target.value === PERSONALIZADO
+                            ? ehPadrao(r.metaEvent)
+                              ? ""
+                              : r.metaEvent
+                            : ev.target.value,
+                      })
+                    }
                   >
                     {EVENTOS_DA_META.map((ev) => (
                       <option key={ev.valor} value={ev.valor}>
                         {t(ev.rotulo)} ({ev.valor})
                       </option>
                     ))}
+                    <option value={PERSONALIZADO}>{t("Evento personalizado (nome livre)")}</option>
                   </SelectDoApp>
+                  {!ehPadrao(r.metaEvent) && (
+                    <>
+                      <Input
+                        aria-label={t("Nome do evento personalizado")}
+                        value={r.metaEvent}
+                        maxLength={40}
+                        placeholder="AgendouVisita"
+                        onChange={(ev) => mudar(e.id, { metaEvent: ev.target.value.trim() })}
+                      />
+                      <p
+                        className={
+                          ehNomeDeEventoValido(r.metaEvent)
+                            ? "text-xs text-muted-foreground"
+                            : "text-xs text-destructive"
+                        }
+                      >
+                        {t(
+                          "Letras, números e _ (começa com letra, até 40). Evento personalizado chega à Meta e aparece nos relatórios, mas não alimenta a otimização padrão do anúncio como os eventos da lista.",
+                        )}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </li>
@@ -181,11 +232,11 @@ export function RegrasDeConversaoMeta({
 
       <p className="text-xs text-muted-foreground">
         {t(
-          "Os eventos só saem quando o negócio muda de etapa — pela equipe, pela IA ou por automação — e só para quem veio de anúncio da Meta. Saem sem valor: o valor vai na compra. Movimentos anteriores a ligar a regra não são enviados.",
+          "Os eventos saem quando o negócio ENTRA na etapa — movido pela equipe, pela IA ou por automação, ou já nascendo nela (formulário, n8n) — e só para quem veio de anúncio da Meta. Saem sem valor: o valor vai na compra. Movimentos anteriores a ligar a regra não são enviados.",
         )}
       </p>
       <div>
-        <Button type="button" onClick={salvar} disabled={isPending}>
+        <Button type="button" onClick={salvar} disabled={isPending || nomeInvalido}>
           {isPending ? t("Salvando...") : t("Salvar regras")}
         </Button>
       </div>

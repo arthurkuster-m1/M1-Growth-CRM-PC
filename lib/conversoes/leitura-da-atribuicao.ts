@@ -26,6 +26,13 @@ export interface AtribuicaoParaEnvio {
   cliqueDeOrigem: string;
   telefone: string | null;
   identificadoresGoogle?: IdentificadoresGoogle;
+  /**
+   * Só no caminho da PÁGINA (sem clique): quanto mais sinais da pessoa, melhor a Meta a reconhece.
+   * E-mail do contato (vai em hash) e os cookies `_fbc` / `_fbp` do navegador, quando o formulário os mandou.
+   */
+  email?: string | null;
+  fbc?: string | null;
+  fbp?: string | null;
 }
 
 export type LeituraDeAtribuicao =
@@ -48,7 +55,7 @@ export async function lerAtribuicao(
 
   const { data, error } = await admin
     .from("contacts")
-    .select("phone_number, source_metadata")
+    .select("phone_number, email, source_metadata")
     .eq("id", contactId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -56,7 +63,11 @@ export async function lerAtribuicao(
   if (error) throw new Error("Não foi possível ler a origem do contato.");
   if (!data) return { temAtribuicao: false, motivo: "sem_contato" };
 
-  const linha = data as { phone_number: string | null; source_metadata: unknown };
+  const linha = data as {
+    phone_number: string | null;
+    email?: string | null;
+    source_metadata: unknown;
+  };
   const meta =
     linha.source_metadata && typeof linha.source_metadata === "object"
       ? (linha.source_metadata as Record<string, unknown>)
@@ -72,7 +83,16 @@ export async function lerAtribuicao(
   if (!clique && meta.ad_platform === "site" && utmDaMeta(meta.utm_source)) {
     return {
       temAtribuicao: true,
-      atribuicao: { plataforma: "meta_ads", cliqueDeOrigem: "", telefone },
+      atribuicao: {
+        plataforma: "meta_ads",
+        cliqueDeOrigem: "",
+        telefone,
+        email: linha.email?.trim() || null,
+        fbc:
+          typeof meta.meta_fbc === "string" && meta.meta_fbc.trim() ? meta.meta_fbc.trim() : null,
+        fbp:
+          typeof meta.meta_fbp === "string" && meta.meta_fbp.trim() ? meta.meta_fbp.trim() : null,
+      },
     };
   }
 

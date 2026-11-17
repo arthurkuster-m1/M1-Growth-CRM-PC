@@ -146,6 +146,7 @@ export async function processarConversao(
   if (!leitura.temAtribuicao) return ok("skipped", leitura.motivo);
 
   const { plataforma, cliqueDeOrigem, telefone } = leitura.atribuicao;
+  const { email: emailDoContato, fbc, fbp } = leitura.atribuicao;
   const identificadoresGoogle =
     "identificadoresGoogle" in leitura.atribuicao
       ? leitura.atribuicao.identificadoresGoogle
@@ -404,6 +405,9 @@ export async function processarConversao(
     cliqueDeOrigem,
     identificadoresGoogle,
     telefone,
+    email: emailDoContato ?? null,
+    fbc: fbc ?? null,
+    fbp: fbp ?? null,
     // A coluna tem `DEFAULT 'BRL'` e um CHECK de ISO-4217; o fallback só cobre a
     // linha que teve a moeda apagada à mão.
     moeda: moedaDaVenda ?? "BRL",

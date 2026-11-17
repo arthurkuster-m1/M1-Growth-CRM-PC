@@ -120,15 +120,20 @@ async function enviar(
   // navegador que o CRM não tem — `system_generated` é a origem declarada para
   // venda registrada em sistema, casada pelo telefone em hash.
   const comClique = conversao.cliqueDeOrigem.trim() !== "";
-  if (!comClique && !conversao.telefone) {
+  const temSinalDaPessoa = Boolean(
+    conversao.telefone || conversao.email?.trim() || conversao.fbc || conversao.fbp,
+  );
+  if (!comClique && !temSinalDaPessoa) {
     return {
       tipo: "permanente",
       detalhe:
-        "Sem o clique do anúncio e sem telefone no contato, a Meta não tem como reconhecer o cliente.",
+        "Sem o clique do anúncio e sem telefone, e-mail ou cookie do navegador no contato, a Meta não tem como reconhecer o cliente.",
     };
   }
 
-  const userData: Record<string, unknown> = comClique ? { ctwa_clid: conversao.cliqueDeOrigem } : {};
+  const userData: Record<string, unknown> = comClique
+    ? { ctwa_clid: conversao.cliqueDeOrigem }
+    : {};
   // ─── Página ou WABA, só no clique-para-WhatsApp (#2098) ────────────────────
   //
   // A Meta cobra UM dos dois apenas quando a origem é `business_messaging` +
@@ -156,6 +161,13 @@ async function enviar(
   // Array de propósito: o formato aceita múltiplos valores por campo, e mandar
   // string crua onde ele espera lista é aceito com aviso e ignorado no match.
   if (conversao.telefone) userData.ph = [hash(conversao.telefone)];
+  // Quem veio pela página: e-mail em hash e os cookies do navegador (`_fbc` liga ao clique do
+  // anúncio, `_fbp` ao navegador) aumentam muito a chance de a Meta reconhecer a pessoa.
+  if (!comClique) {
+    if (conversao.email?.trim()) userData.em = [hash(conversao.email)];
+    if (conversao.fbc) userData.fbc = conversao.fbc;
+    if (conversao.fbp) userData.fbp = conversao.fbp;
+  }
 
   const customData: Record<string, unknown> = {};
   if (ehCompra && conversao.valorCentavos !== null) {
@@ -181,8 +193,7 @@ async function enviar(
   };
   if (credencial.testEventCode) corpo.test_event_code = credencial.testEventCode;
 
-  const url =
-    `${baseDaGraphDeAnuncio()}/${encodeURIComponent(credencial.datasetId)}/events`;
+  const url = `${baseDaGraphDeAnuncio()}/${encodeURIComponent(credencial.datasetId)}/events`;
 
   let resposta: Response;
   try {
