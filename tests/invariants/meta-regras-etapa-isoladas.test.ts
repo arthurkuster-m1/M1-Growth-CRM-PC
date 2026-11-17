@@ -21,10 +21,10 @@ describe("regras da Meta por etapa (0524)", () => {
   insert into public.meta_ads_conversion_rules(organization_id,stage_id,event_name,meta_event) values ('99999999-9999-4999-8999-999999999997','${GOV_STAGE}','MetaEtapa:${GOV_STAGE}','LeadSubmitted'); rollback;`),
     ).toThrow(/meta_ads_conversion_rules_stage_org_fk/);
   });
-  it("evento fora da lista padrão e chave do Google são recusados", () => {
+  it("nome de evento com formato inválido (0695: personalizado é aceito) e chave do Google são recusados", () => {
     expect(() =>
       sql(`begin;
-  insert into public.meta_ads_conversion_rules(organization_id,stage_id,event_name,meta_event) values ('${GOV_ORG}','${GOV_STAGE}','MetaEtapa:${GOV_STAGE}','Comprou'); rollback;`),
+  insert into public.meta_ads_conversion_rules(organization_id,stage_id,event_name,meta_event) values ('${GOV_ORG}','${GOV_STAGE}','MetaEtapa:${GOV_STAGE}','Comprou agora'); rollback;`),
     ).toThrow(/meta_ads_conversion_rules_evento_conhecido/);
     expect(() =>
       sql(`begin;

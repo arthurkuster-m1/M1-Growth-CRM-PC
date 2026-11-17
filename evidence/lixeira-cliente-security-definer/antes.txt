@@ -1,0 +1,88 @@
+Output format is aligned.
+== 0. Semente (como dono do banco): 1 empresa, 1 agente, 3 clientes, cada um com lead, tarefa, conversa, mensagem e histórico
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+DO
+CREATE VIEW
+GRANT
+ clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
+----------+-------+---------+-----------+-----------+-----------+------------
+        3 |     3 |       3 |         3 |         3 |        12 |          0
+
+SET
+
+== 1. Apagar 1 lead/cliente (como a rota DELETE /api/v1/contacts/[id])
+psql:evidence/lixeira-cliente-security-definer/prova.sql:46: ERROR:  permission denied for function fn_historico_apagar_do_contato
+ clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
+----------+-------+---------+-----------+-----------+-----------+------------
+        3 |     3 |       3 |         3 |         3 |        12 |          0
+
+
+== 2. Apagar VÁRIOS em lote (como a rota POST /api/v1/clientes/lote): Clientes 2 e 3
+psql:evidence/lixeira-cliente-security-definer/prova.sql:51: ERROR:  permission denied for function fn_historico_apagar_do_contato
+ clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
+----------+-------+---------+-----------+-----------+-----------+------------
+        3 |     3 |       3 |         3 |         3 |        12 |          0
+
+
+== 3. Ver na Lixeira (leitura sob RLS, como a tela /app/lixeira)
+ nome | telefone | oportunidades | mensagens 
+------+----------+---------------+-----------
+
+
+== 4. Restaurar um (Cliente 1) e depois os outros dois em lote (como POST /api/v1/lixeira/[id]/restaurar)
+ nome | restaurou 
+------+-----------
+
+ clientes | leads | tarefas | conversas | mensagens | historico | na_lixeira 
+----------+-------+---------+-----------+-----------+-----------+------------
+        3 |     3 |       3 |         3 |         3 |        12 |          0
+
+
+== 5. Quem não pode: viewer, outra empresa e sem login recebem 42501; internas fechadas
+RESET
+INSERT 0 2
+INSERT 0 1
+INSERT 0 2
+SET
+-- viewer da empresa A tenta excluir:
+psql:evidence/lixeira-cliente-security-definer/prova.sql:75: ERROR:  42501: new row violates row-level security policy for table "crm_lixeira"
+CONTEXT:  SQL statement "insert into public.crm_lixeira
+    (organization_id, contact_id, nome, telefone, email, resumo, snapshot, excluido_por)
+  values (
+    p_organization_id, p_contact_id, v_nome,
+    v_contato ->> 'phone_number', v_contato ->> 'email',
+    jsonb_build_object(
+      'oportunidades', coalesce(array_length(v_leads, 1), 0),
+      'parcelas', jsonb_array_length(v_snap -> 'parcelas'),
+      'pago_cents', v_ltv,
+      'mensagens', jsonb_array_length(v_snap -> 'mensagens')
+    ),
+    v_snap, auth.uid()
+  )"
+PL/pgSQL function fn_excluir_cliente_para_lixeira(uuid,uuid) line 43 at SQL statement
+LOCATION:  ExecWithCheckOptions, execMain.c:2234
+-- admin da empresa B aponta para a empresa A:
+ fn_excluir_cliente_para_lixeira 
+---------------------------------
+
+-- sem login:
+ fn_excluir_cliente_para_lixeira 
+---------------------------------
+
+-- chamar uma função interna direto:
+psql:evidence/lixeira-cliente-security-definer/prova.sql:83: ERROR:  42501: permission denied for function fn_historico_apagar_do_contato
+LOCATION:  aclcheck_error, aclchk.c:2812
+RESET
+
+-- privilégio de execução (authenticated | anon):
+                   funcao                    | authenticated | anon | definer 
+---------------------------------------------+---------------+------+---------
+ fn_excluir_cliente_para_lixeira(uuid,uuid)  | t             | t    | f
+ fn_historico_apagar_do_contato(uuid,uuid)   | f             | f    | t
+ fn_historico_inserir_da_lixeira(uuid,jsonb) | f             | f    | t
+ fn_recalcula_cliente_restaurado(uuid,uuid)  | f             | f    | t
+ fn_restaurar_cliente_da_lixeira(uuid,uuid)  | t             | t    | f
+
