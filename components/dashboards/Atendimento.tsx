@@ -218,7 +218,7 @@ export function Atendimento({
 
   return (
     <div className="grid min-w-0 gap-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-[22px] border bg-card p-3 text-sm">
         <span className="font-medium">{t("Horário de atendimento")}</span>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {t("Das")}
@@ -283,7 +283,7 @@ export function Atendimento({
         </span>
       </div>
 
-      <GradeDeKpis className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+      <GradeDeKpis className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 xl:grid-cols-3">
         <Kpi
           rotulo={t("Conversas iniciadas")}
           valor={inteiro(a.iniciadas)}
