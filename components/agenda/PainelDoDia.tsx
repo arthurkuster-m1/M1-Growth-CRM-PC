@@ -213,7 +213,7 @@ function PainelVisual({
       data-testid="painel-do-dia"
       data-dia={chaveDoDia}
       aria-label={rotuloDoDia}
-      className="m-2 rounded-2xl border border-border bg-surface p-3"
+      className="m-2 rounded-[22px] border border-border bg-surface p-4"
     >
       <div className="mb-2 flex flex-col gap-1">
         <h3 className="truncate text-sm font-semibold whitespace-nowrap capitalize">

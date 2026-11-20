@@ -731,7 +731,7 @@ function ColunaDeDia({
         <span
           className={cn(
             "flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs tabular-nums md:h-5 md:min-w-5 md:text-[11px]",
-            ehHoje ? "bg-accent font-semibold text-accent-foreground" : "text-text",
+            ehHoje ? "bg-deep font-bold text-deep-foreground" : "text-text",
           )}
         >
           {format(dia, "d")}
