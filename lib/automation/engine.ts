@@ -51,7 +51,7 @@ const GATILHOS_DO_TRIGGER = new Set<string>(GATILHOS_DO_TRIGGER_DE_LEAD);
  * Só para eles: em qualquer outro evento, o `entity_kind` gravado segue
  * mandando, que é a anti-duplicação de sempre.
  */
-function entidadeDoEvento(row: Pick<EventRow, "event_type" | "entity_kind">): string {
+export function entidadeDoEvento(row: Pick<EventRow, "event_type" | "entity_kind">): string {
   if (row.entity_kind === "lead" && GATILHOS_DO_TRIGGER.has(row.event_type)) return "crm_lead";
   return row.entity_kind;
 }

@@ -85,7 +85,7 @@ Lacunas a fechar (o trabalho real):
 O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/engine.ts`, ~50 usos de `contact_id`). Trocar isso de uma vez é arriscado, então a Fase 2 vai em três passos, cada um deixando o sistema como está:
 - **2a — banco (feita):** migration 0701. `followup_enrollments` ganha `subject_kind`/`subject_id`/`source_event_id`; `contact_id` aceita NULL, mas o trigger só permite em `surface='crm_automation'` (nenhuma tela cria ainda). Índice único de um fluxo vivo por (fluxo, sujeito). Provada num Postgres temporário: aplica 2x, follow-up sem contato é recusado, duplicado vivo é recusado, reinscrever após concluir funciona. **Não aplicada em nenhum banco real** (`lib/database.types.ts` também não foi regenerado — depende de aplicar).
 - **2b — motor sabe o sujeito (feita, 20/11/2026):** o engine passa a carregar lead/contato pelo sujeito quando `contact_id` é nulo; envio abre a conversa na hora (`serviceForAutomation`). Sem isto, inscrição sem contato não pode rodar.
-- **2c — handler único + gatilho `event`:** consome os eventos de `TRIGGER_EVENTS`, inscreve no sujeito do evento, e o publicar passa a aceitar o gatilho.
+- **2c — handler único + gatilho `event` (feita, 20/11/2026):** consome os eventos de `TRIGGER_EVENTS`, inscreve no sujeito do evento, e o publicar passa a aceitar o gatilho.
 
 **Como a 2b ficou** (`lib/followup/sujeito-do-fluxo.ts`, `engine.ts`, `node-handlers.ts`, `turn-bridge.ts`, `relogio/executar.ts`):
 - Fluxo sem contato **não confere** fronteira de atendimento nem agenda (só fazem sentido com conversa) e **não é considerado** pelo relógio de resposta de contato.
@@ -94,3 +94,12 @@ O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/e
 - Testes novos: `tests/unit/fluxo-sem-contato-no-motor.test.ts` (5). Controle: fluxo com contato segue conferindo fronteira, agenda e fatos pelo contato.
 - Regressão: a suíte `tests/unit` tem 142 testes vermelhos **antes e depois** (mesma lista, nenhum novo), todos em outras áreas. Um deles, `varredura-anon-e-o-ultimo-bloco`, já listava 16 funções criadas depois do bloco de anon no baseline e agora lista 17 (a função do trigger da 0701; ela revoga `anon` explicitamente).
 - Ainda não revisado: telas e rotas que listam inscrições (fila de follow-up) assumem contato; ficam para quando existir fluxo `crm_automation` de verdade (2c).
+
+**Como a 2c ficou** (`lib/followup/gatilho-evento.ts`, `gatilho-evento.handler.ts`, `api-schemas.ts`, publicar):
+- Novo gatilho `trigger_config.kind='event'` com `params: { event_type, conditions[] }` (as condições são as mesmas das regras: campo/operador/valor). **Só vale em `surface='crm_automation'`**; o publicar recusa em qualquer outra superfície e recusa `params` inválido.
+- Um handler (`followup-gatilho-evento.v1`) assina os mesmos 20 eventos das regras e inscreve o fluxo **no sujeito do evento** (lead, contato ou compromisso), sem contato nem conversa, com `source_event_id`. Reaproveita as guardas do motor de regras: anti-laço (`caused_by_rule`, `rule:` e `followup:`), entidade esperada por gatilho (sem rodar 2x o mesmo fato), canal desativado, contato pessoal e condições.
+- Evento "dirigido a uma regra" (`payload.rule_id`, varredura da data do funil) **não casa aqui**: é das regras antigas até a Fase 4. **Os gatilhos por tempo** (N dias sem mensagem, etapa parada, data do funil, aniversário) vêm dos crons atuais e precisam ser tratados na Fase 4 (hoje o cron aponta para uma regra, não para um fluxo).
+- Organização parada: o handler **pula** (como os outros gatilhos).
+- Um fluxo vivo por (fluxo, sujeito): o mesmo evento repetido enquanto o fluxo roda não duplica.
+- Guardas do repositório atendidas: `next_eval_at` fica a cargo do relógio do banco; o seletor de gatilho do follow-up **não** oferece `event` (exceção escrita em `tests/unit/gatilhos-oferecidos-tem-motor.test.ts`, que reprova a entrada quando a tela passar a oferecê-lo — Fase 5); `EVENTOS_DO_CRM` em `vocabulario.ts` espelha os rótulos das regras, com teste de não divergência.
+- **Ainda nenhum fluxo `crm_automation` existe** (nenhuma tela ou rota cria), então nada muda para ninguém hoje. Quem o cria até a Fase 5 é a API.

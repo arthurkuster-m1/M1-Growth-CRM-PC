@@ -5,6 +5,7 @@
  * live in `validate-publish.ts`. This file only covers request bodies.
  */
 import { z } from "zod";
+import { conditionSchema, TRIGGER_EVENTS } from "@/lib/schemas/webhooks";
 import { flowGraphSchema } from "./graph-schema";
 import { MAX_THRESHOLD_MINUTES, MIN_THRESHOLD_MINUTES } from "./gap-de-retorno";
 import { BASES_DA_PAUSA, MAX_PAUSA_DE_REENTRADA_MINUTES } from "./pausa-de-reentrada";
@@ -82,6 +83,17 @@ export const triggerConfigSchema = z.discriminatedUnion("kind", [
     // falha seria muda. Sem params porque não há o que casar: todo caso aberto
     // da organização dispara todo fluxo armado por caso.
     params: z.strictObject({}).optional(),
+    ...CANCEL_ON_REPLY,
+  }),
+  // Motor único (docs/PLANO-MOTOR-UNICO-M1.md): o gatilho das AUTOMAÇÕES DE CRM — qualquer evento do
+  // `event_log` que as regras já escutavam, com as condições do gatilho (campo/operador/valor) já
+  // aplicadas. Só vale em `surface='crm_automation'`: o publicar recusa em qualquer outra.
+  z.strictObject({
+    kind: z.literal("event"),
+    params: z.strictObject({
+      event_type: z.enum(TRIGGER_EVENTS),
+      conditions: z.array(conditionSchema).max(10).default([]),
+    }),
     ...CANCEL_ON_REPLY,
   }),
   z.strictObject({

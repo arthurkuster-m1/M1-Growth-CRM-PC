@@ -19,7 +19,7 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { carregaEtapasCitadas } from "@/lib/followup/etapas-citadas";
-import type { FollowupFlowSurface } from "@/lib/followup/api-schemas";
+import { triggerConfigSchema, type FollowupFlowSurface } from "@/lib/followup/api-schemas";
 import { moduloLigado } from "@/lib/instalacao/modulos";
 import {
   algumCanalExigeModeloForaDaJanela,
@@ -97,8 +97,9 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
   // `stage_change` (gatilho-etapa), `case_opened` (gatilho-caso),
   // `appointment_no_show` (followup-gatilho-presenca.v1, confirmação humana),
   // `inbound_after_silence` (gatilho-retorno, cliente que voltou) e
-  // `lead_created` (gatilho-lead, negócio que acabou de nascer).
-  const KINDS_COM_MOTOR = new Set(["manual", "webhook", "silence", "stage_change", "case_opened", "appointment_no_show", "inbound_after_silence", "lead_created"]);
+  // `lead_created` (gatilho-lead, negócio que acabou de nascer) e
+  // `event` (gatilho-evento, automação de CRM — só na superfície `crm_automation`).
+  const KINDS_COM_MOTOR = new Set(["manual", "webhook", "silence", "stage_change", "case_opened", "appointment_no_show", "inbound_after_silence", "lead_created", "event"]);
   const trigger = (pointer.trigger_config ?? { kind: "manual" }) as {
     kind?: string;
     params?: { stage_id?: string };
@@ -111,6 +112,30 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
       422,
       { requestId },
     );
+  }
+
+  // Gatilho por EVENTO é o gatilho das automações de CRM: o motor que o consome só olha pointers
+  // `crm_automation`, então publicar `event` em outra superfície seria fluxo morto com cara de vivo.
+  // E o jsonb não passa pelo Zod do PATCH — o evento e as condições são lidos aqui, pela mesma tupla
+  // que o handler usa, para o fluxo não nascer ativo e nunca disparar.
+  if (triggerKind === "event") {
+    if (surface !== "crm_automation") {
+      return fail(
+        "trigger_event_so_em_automacao",
+        t("O gatilho «acontecer algo no CRM» só existe nas automações do CRM."),
+        422,
+        { requestId },
+      );
+    }
+    const lido = triggerConfigSchema.safeParse(pointer.trigger_config);
+    if (!lido.success) {
+      return fail(
+        "trigger_event_invalido",
+        t("Escolha o que dispara esta automação antes de publicar."),
+        422,
+        { requestId },
+      );
+    }
   }
 
   // ⚠️ ETAPA QUE NÃO EXISTE MAIS É FLUXO MORTO COM CARA DE VIVO. O gatilho casa

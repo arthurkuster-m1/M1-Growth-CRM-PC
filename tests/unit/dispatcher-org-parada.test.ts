@@ -34,6 +34,7 @@ import { avisoDeCasoAoSuporteHandler } from "@/lib/escalacao/aviso-ao-suporte.ha
 import { casoNaCentralHandler } from "@/lib/escalacao/caso-na-central.handler";
 import { followupGatilhoCasoHandler } from "@/lib/followup/gatilho-caso.handler";
 import { followupGatilhoEtapaHandler } from "@/lib/followup/gatilho-etapa.handler";
+import { followupGatilhoEventoHandler } from "@/lib/followup/gatilho-evento.handler";
 import { followupGatilhoLeadHandler } from "@/lib/followup/gatilho-lead.handler";
 import { followupGatilhoPresencaHandler } from "@/lib/followup/gatilho-presenca.handler";
 import { followupGatilhoRetornoHandler } from "@/lib/followup/gatilho-retorno.handler";
@@ -75,6 +76,7 @@ const PULA: EventHandler[] = [
   followupGatilhoRetornoHandler,
   followupGatilhoEtapaHandler,
   followupGatilhoLeadHandler,
+  followupGatilhoEventoHandler,
   followupGatilhoCasoHandler,
   followupGatilhoPresencaHandler,
   webPushInboundHandler,

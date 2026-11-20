@@ -68,12 +68,38 @@ describe("o seletor de gatilho e o publish falam da mesma lista", () => {
     ).toEqual([]);
   });
 
+  /**
+   * Gatilhos com motor que, POR ENQUANTO, só se criam pela API, com a razão escrita. Só encolhe: a
+   * entrada some quando a tela passa a oferecer o gatilho — o teste abaixo reprova a entrada velha.
+   *
+   * `event` (motor único, Fase 2c): é o gatilho das automações de CRM (`surface='crm_automation'`).
+   * O editor delas é a Fase 5 do plano (docs/PLANO-MOTOR-UNICO-M1.md); oferecê-lo no seletor do
+   * follow-up seria controle decorativo — o publish o recusa fora de `crm_automation`.
+   */
+  const SO_PELA_API_POR_ENQUANTO: Record<string, string> = {
+    event: "editor das automações de CRM = Fase 5 do motor único",
+  };
+
   it("⭐ nenhum gatilho com motor fica escondido da tela (capacidade órfã)", () => {
     const oferecidos = new Set(kindsOferecidos());
-    const escondidos = kindsComMotor().filter((k) => !oferecidos.has(k));
+    const escondidos = kindsComMotor().filter(
+      (k) => !oferecidos.has(k) && !(k in SO_PELA_API_POR_ENQUANTO),
+    );
     expect(
       escondidos,
       "existe motor de enrollment que nenhuma tela alcança — só se chega nele pela API",
+    ).toEqual([]);
+  });
+
+  it("a lista de exceções não apodrece: só tem gatilho que ainda tem motor e ainda não está na tela", () => {
+    const oferecidos = new Set(kindsOferecidos());
+    const motor = new Set(kindsComMotor());
+    const velhas = Object.keys(SO_PELA_API_POR_ENQUANTO).filter(
+      (k) => oferecidos.has(k) || !motor.has(k),
+    );
+    expect(
+      velhas,
+      "tire da exceção o gatilho que a tela já oferece (ou que perdeu o motor)",
     ).toEqual([]);
   });
 });

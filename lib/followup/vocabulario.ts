@@ -39,6 +39,7 @@
  */
 import type { z } from "zod";
 import type { PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
+import type { TRIGGER_EVENTS } from "@/lib/schemas/webhooks";
 
 import type { TriggerConfig } from "./api-schemas";
 import { conditionLabel } from "./edge-condition-options";
@@ -614,6 +615,36 @@ export const GATILHOS: Record<TipoDeGatilho, string> = {
   case_opened: "Quando o agente pede ajuda de um humano",
   inbound_after_silence: "Cliente voltou",
   conversation_end: "Fim da conversa",
+  // Automação de CRM (motor único): o evento exato e as condições moram nos parâmetros do gatilho.
+  event: "Quando acontecer algo no CRM",
+};
+
+/**
+ * O que dispara uma automação de CRM (`trigger_config.params.event_type`), na frase que a tela das regras já
+ * usa. É a MESMA lista de `TRIGGER_LABELS` (`app/app/webhooks/_components/labels.ts`), copiada aqui porque
+ * `lib` não importa de `app`; `lib/followup/gatilho-evento.test.ts` trava as duas para não divergirem.
+ */
+export const EVENTOS_DO_CRM: Record<(typeof TRIGGER_EVENTS)[number], string> = {
+  "lead.created": "Quando entrar um contato novo (webhook)",
+  "lead.stage_changed": "Quando um lead mudar de etapa",
+  "lead.won": "Quando um negócio for ganho",
+  "lead.lost": "Quando um negócio for perdido",
+  "lead.reopened": "Quando um lead encerrado for reaberto",
+  "lead.assigned": "Quando o responsável do lead mudar",
+  "message.received": "Quando chegar mensagem no WhatsApp",
+  "message.failed": "Quando uma mensagem não for entregue",
+  "lead.tag_added": "Quando um lead ganhar uma tag",
+  "contact.tag_added": "Quando um contato ganhar uma tag",
+  "appointment.created": "Quando um horário for marcado",
+  "appointment.confirmed": "Quando um horário pendente for confirmado",
+  "appointment.rescheduled": "Quando um horário for remarcado",
+  "appointment.cancelled": "Quando um horário for cancelado",
+  "appointment.completed": "Quando alguém comparecer ao compromisso",
+  "appointment.no_show": "Quando alguém faltar ao compromisso",
+  "contact.birthday": "No aniversário de um contato",
+  "lead.date_field_due": "Quando faltarem N dias para uma data do funil",
+  "lead.silent_for": "Quando ficar N dias sem mensagem",
+  "lead.stage_stale": "Quando um lead ficar N dias na mesma etapa",
 };
 
 /**

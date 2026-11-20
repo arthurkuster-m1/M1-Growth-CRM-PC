@@ -19,6 +19,7 @@ import { agendaRespostaDeConfirmacaoHandler } from "@/lib/agenda/confirmacao.han
 import { campanhaRespostaHandler } from "@/lib/campanhas/resposta.handler";
 import { followupGatilhoEtapaHandler } from "@/lib/followup/gatilho-etapa.handler";
 import { followupGatilhoLeadHandler } from "@/lib/followup/gatilho-lead.handler";
+import { followupGatilhoEventoHandler } from "@/lib/followup/gatilho-evento.handler";
 import { followupGatilhoCasoHandler } from "@/lib/followup/gatilho-caso.handler";
 import { casoNaCentralHandler } from "@/lib/escalacao/caso-na-central.handler";
 import { mediaPersistHandler } from "@/workers/media-persist-worker.handler";
@@ -65,6 +66,8 @@ export function ensureHandlersRegistered(): void {
   // que consome o mesmo evento.
   registerHandler(avisoDeEtapaHandler);
   registerHandler(followupGatilhoLeadHandler);
+  // Motor único: o gatilho por evento das automações de CRM (`surface=crm_automation`).
+  registerHandler(followupGatilhoEventoHandler);
   registerHandler(followupGatilhoCasoHandler);
   // O caso aberto na Central, na hora — escrita curta no banco (um item), ao
   // lado do outro consumidor de `ai.case_opened` que só escreve no banco, e
