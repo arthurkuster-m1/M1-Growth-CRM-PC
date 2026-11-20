@@ -159,7 +159,10 @@ export function SincronizacaoDoCompromisso({
           {t("Tentar sincronizar novamente")}
         </Button>
       )}
-      <Link href="/app/settings/tenant/agenda" className="block text-xs underline">
+      <Link
+        href="/app/settings/tenant/agenda"
+        className="inline-flex h-9 w-fit items-center rounded-full border bg-card px-4 text-xs font-medium hover:bg-secondary"
+      >
         {t("Configurar suas agendas")}
       </Link>
     </section>

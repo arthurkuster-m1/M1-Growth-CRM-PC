@@ -114,7 +114,7 @@ export function MeetDoCompromisso({
       {meeting.state === "ready" && meeting.url && (
         <div className="flex flex-wrap gap-2">
           <a
-            className="text-sm underline"
+            className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-accent-hover"
             href={meeting.url}
             target="_blank"
             rel="noopener noreferrer"
