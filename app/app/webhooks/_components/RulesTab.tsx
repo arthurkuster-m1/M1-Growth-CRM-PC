@@ -287,6 +287,13 @@ export function RulesTab() {
                 <GitBranch size={14} aria-hidden />
                 {comFluxo[r.id] ? t("Esconder o fluxo") : t("Ver como fluxo")}
               </button>
+              <Link
+                href={`/app/automacoes/${r.id}`}
+                className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-primary hover:underline"
+              >
+                <FlowArrow size={14} aria-hidden />
+                {t("Abrir diagrama")}
+              </Link>
               <div className="flex items-center justify-between gap-2">
                 <Switch
                   checked={r.is_active}
