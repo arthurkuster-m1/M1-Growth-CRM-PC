@@ -18,6 +18,25 @@ import { paraPush } from "./aviso-pessoal";
 import type { Entrega } from "./montar-avisos";
 import { enviarPushAosUsuarios } from "./web_push";
 
+async function desligaramNoCelular(
+  admin: SupabaseClient,
+  organizationId: string,
+  categoria: string,
+  userIds: string[],
+): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
+  const { data, error } = await admin
+    .from("notificacoes_preferencias")
+    .select("user_id")
+    .eq("organization_id", organizationId)
+    .eq("categoria", categoria)
+    .eq("no_celular", false)
+    .in("user_id", userIds);
+  // Sem a tabela (0698 não aplicada): ninguém desligou nada.
+  if (error) return new Set();
+  return new Set(((data ?? []) as Array<{ user_id: string }>).map((l) => l.user_id));
+}
+
 export async function entregarNotificacao(
   admin: SupabaseClient,
   organizationId: string,
@@ -55,6 +74,10 @@ export async function entregarNotificacao(
     novos = ((data ?? []) as Array<{ user_id: string }>).map((l) => l.user_id);
   }
 
-  const { sent } = await enviarPushAosUsuarios(organizationId, novos, paraPush(aviso));
+  // Quem desligou esta categoria "no celular" (migration 0698) não recebe o push; a
+  // notificação continua no sino.
+  const desligaram = await desligaramNoCelular(admin, organizationId, aviso.categoria, novos);
+  const paraOCelular = novos.filter((u) => !desligaram.has(u));
+  const { sent } = await enviarPushAosUsuarios(organizationId, paraOCelular, paraPush(aviso));
   return { gravadas: error ? 0 : novos.length, push: sent };
 }

@@ -32,8 +32,6 @@ export const KIND_LABEL = {
   event_dead: "Um evento recebido não pôde ser processado",
   budget_exceeded: "O orçamento de IA foi atingido",
   handoff: "O assistente passou um atendimento para um humano",
-  promotion_review: "Proposta de melhoria do assistente aguardando sua revisão",
-  judge_unaligned: "O avaliador de qualidade precisa de recalibragem",
   followup_dead: "Um fluxo de follow-up parou de tentar",
   snooze_expired: "O lead não respondeu no prazo que você definiu",
   next_action_ambiguous: "Próxima ação sem negócio definido — precisa da sua escolha",
@@ -80,9 +78,6 @@ export const KIND_LABEL = {
   // conseguiu. O motivo cru do upstream (`user_ended`, `do_not_disturb`) nunca
   // chega à tela — vira frase de gente no corpo do aviso, escrito pelo worker.
   voice_call_missed: "Alguém ligou e ninguém atendeu",
-  proposal_expired_notice: "Uma proposta venceu sem decisão",
-  proposal_acceptance_rate_drop: "A taxa de aceite de propostas caiu",
-  proposal_promised_not_created: "Uma proposta prometida não foi criada",
   // Diz o que NÃO aconteceu do ponto de vista de quem opera — "não chegou ao
   // WhatsApp da equipe" —, e nunca "a entrega falhou": quem lê precisa entender
   // que o caso continua aberto e que ninguém foi avisado por fora do CRM. O
@@ -99,7 +94,6 @@ export const KIND_LABEL = {
   // nem o contato bloqueado. O que fazer vai no corpo.
   jev_pedido_de_humano: "Pedido para falar com uma pessoa, percebido pelo Jev",
   jev_parar_de_receber: "Pedido para parar de receber mensagens, percebido pelo Jev",
-  proposta_travada: "Uma proposta ficou presa em envio e voltou a rascunho",
   proposta_pronta_para_revisao: "Uma proposta está pronta para revisão",
   // Igual ao `title` que fn_reativar_organizacao grava: diz o que a pessoa tem
   // de FAZER agora — as conversas que chegaram durante a suspensão ficaram sem resposta.

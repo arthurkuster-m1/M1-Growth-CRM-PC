@@ -2,7 +2,7 @@
 
 import { useT } from "@/hooks/i18n/useT";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -13,18 +13,22 @@ import {
   getPrefsSnapshot,
   getPrefsSnapshotDoServidor,
   gravarCanal,
+  sincronizarPrefsDoServidor,
   type NotifyCategory,
   type NotifyChannelPref,
 } from "@/lib/notifications/prefs";
+import { syncPushSubscription } from "@/lib/notifications/push_client";
 
 const LABELS: Record<NotifyCategory, string> = {
-  message: "Nova mensagem nas suas conversas",
-  lead_new: "Novo lead",
-  lead_assigned: "Lead atribuído a você",
-  mention: "Você foi mencionado",
-  task: "Nova tarefa para você",
-  alerts: "Avisos de atendimento, CRM e sistema",
-  call_inbound: "Ligação recebida",
+  mensagem: "Mensagem nova nas suas conversas",
+  lead_novo: "Novo lead",
+  lead_atribuido: "Lead atribuído a você",
+  mencao: "Você foi mencionado",
+  tarefa: "Nova tarefa para você",
+  atendimento: "Atendimento (IA passou a conversa, ligação perdida…)",
+  crm: "CRM (etapa que avisa, proposta pronta)",
+  sistema: "Erros de sistema (WhatsApp caiu, IA sem saldo…)",
+  ligacao: "Ligação tocando",
 };
 
 export function NotificationPrefsClient() {
@@ -32,6 +36,11 @@ export function NotificationPrefsClient() {
   const { permission, request } = useNotificationPermission();
   const prefs = useSyncExternalStore(assinarPrefs, getPrefsSnapshot, getPrefsSnapshotDoServidor);
   const denied = permission === "denied";
+
+  // A escolha mora no servidor (vale em todo aparelho); a tela abre com o espelho local e troca.
+  useEffect(() => {
+    void sincronizarPrefsDoServidor();
+  }, []);
   const unsupported = permission === "unsupported";
 
   async function onToggle(category: NotifyCategory, channel: NotifyChannelPref, on: boolean) {
@@ -42,6 +51,8 @@ export function NotificationPrefsClient() {
       }
     }
     gravarCanal(category, channel, on);
+    // Ligou o celular: garante que este aparelho está inscrito para receber o push.
+    if (channel === "push" && on) void syncPushSubscription();
   }
 
   return (
@@ -50,9 +61,8 @@ export function NotificationPrefsClient() {
         <thead className="border-b">
           <tr>
             <th className="px-4 py-3 text-left font-medium">{t("Categoria")}</th>
-            <th className="px-4 py-3 text-center font-medium">Email</th>
-            <th className="px-4 py-3 text-center font-medium">In-app</th>
-            <th className="px-4 py-3 text-center font-medium">Push</th>
+            <th className="px-4 py-3 text-center font-medium">{t("Na tela")}</th>
+            <th className="px-4 py-3 text-center font-medium">{t("No celular")}</th>
           </tr>
         </thead>
         <tbody>
@@ -60,16 +70,13 @@ export function NotificationPrefsClient() {
             <tr key={cat} className="border-b last:border-0">
               <td className="px-4 py-3">
                 {t(LABELS[cat])}
-                {cat === "message" && denied ? (
+                {cat === "mensagem" && denied ? (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t(
                       "O navegador bloqueou as notificações. Libere-as nas configurações do site e recarregue.",
                     )}
                   </p>
                 ) : null}
-              </td>
-              <td className="px-4 py-3 text-center">
-                <Switch checked={false} disabled aria-label={`${t(LABELS[cat])} via email`} />
               </td>
               <td className="px-4 py-3 text-center">
                 <Switch
@@ -85,8 +92,8 @@ export function NotificationPrefsClient() {
                   onCheckedChange={(on) => void onToggle(cat, "push", on)}
                   aria-label={`${t(LABELS[cat])} via push`}
                   data-testid={
-                    cat === "message"
-                      ? prefs.message.push
+                    cat === "mensagem"
+                      ? prefs.mensagem.push
                         ? "alerts-toggle"
                         : "alerts-enable"
                       : undefined

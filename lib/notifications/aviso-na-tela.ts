@@ -6,20 +6,16 @@
 import type { AcaoDoAviso, CategoriaDeNotificacao } from "./aviso-pessoal";
 import type { EntregarAvisoInput } from "./deliver";
 import type { NotifyKind } from "./kinds";
-import type { NotifyCategory } from "./prefs";
 
-const POR_CATEGORIA: Record<
-  CategoriaDeNotificacao,
-  { category: NotifyCategory; kind: NotifyKind }
-> = {
-  mensagem: { category: "message", kind: "message_inbound" },
-  lead_novo: { category: "lead_new", kind: "lead_new" },
-  lead_atribuido: { category: "lead_assigned", kind: "lead_assigned" },
-  mencao: { category: "mention", kind: "mention" },
-  tarefa: { category: "task", kind: "task" },
-  atendimento: { category: "alerts", kind: "alert" },
-  crm: { category: "alerts", kind: "alert" },
-  sistema: { category: "alerts", kind: "alert" },
+const SOM_POR_CATEGORIA: Record<CategoriaDeNotificacao, NotifyKind> = {
+  mensagem: "message_inbound",
+  lead_novo: "lead_new",
+  lead_atribuido: "lead_assigned",
+  mencao: "mention",
+  tarefa: "task",
+  atendimento: "alert",
+  crm: "alert",
+  sistema: "alert",
 };
 
 function acoesValidas(v: unknown): AcaoDoAviso[] {
@@ -45,15 +41,14 @@ export function avisoDaLinha(
   // Notificação de outra empresa: o botão abriria no contexto errado (a do celular cobre).
   if (contexto.organizacaoAtiva && linha.organization_id !== contexto.organizacaoAtiva) return null;
   const categoria = linha.categoria as CategoriaDeNotificacao;
-  const alvo = Object.hasOwn(POR_CATEGORIA, categoria) ? POR_CATEGORIA[categoria] : null;
-  if (!alvo) return null;
+  if (!Object.hasOwn(SOM_POR_CATEGORIA, categoria)) return null;
   const tag = typeof linha.tag === "string" ? linha.tag : undefined;
   // A pessoa já está lendo esta conversa: não precisa de aviso.
   if (contexto.conversaAbertaEmFoco && tag === `conversa:${contexto.conversaAbertaEmFoco}`)
     return null;
   return {
-    category: alvo.category,
-    kind: alvo.kind,
+    category: categoria,
+    kind: SOM_POR_CATEGORIA[categoria],
     title: linha.titulo,
     body: typeof linha.corpo === "string" ? linha.corpo : "",
     tag,

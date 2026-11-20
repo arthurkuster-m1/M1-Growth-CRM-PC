@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { canalLigado, gravarCanal, lerPrefs } from "./prefs";
+import { NOTIFY_UI_CATEGORIES, canalLigado, gravarCanal, lerPrefs } from "./prefs";
 
 describe("prefs de notificação", () => {
   afterEach(() => {
@@ -8,16 +8,18 @@ describe("prefs de notificação", () => {
   });
 
   it("liga e desliga canal por categoria", () => {
-    expect(canalLigado("lead_assigned", "in_app")).toBe(true);
-    gravarCanal("lead_assigned", "in_app", false);
-    expect(lerPrefs().lead_assigned.in_app).toBe(false);
-    expect(canalLigado("lead_new", "push")).toBe(true);
+    expect(canalLigado("lead_atribuido", "in_app")).toBe(true);
+    gravarCanal("lead_atribuido", "in_app", false);
+    expect(lerPrefs().lead_atribuido.in_app).toBe(false);
+    expect(canalLigado("lead_novo", "push")).toBe(true);
   });
 
-  it("espelha push de mensagem no interruptor legado", () => {
-    gravarCanal("message", "push", false);
+  it("a inscrição do celular fica viva enquanto alguma categoria quiser o celular", () => {
+    gravarCanal("mensagem", "push", false);
+    expect(window.localStorage.getItem("alerts.enabled")).toBe("1");
+    for (const c of NOTIFY_UI_CATEGORIES) gravarCanal(c, "push", false);
     expect(window.localStorage.getItem("alerts.enabled")).toBe("0");
-    gravarCanal("message", "push", true);
+    gravarCanal("sistema", "push", true);
     expect(window.localStorage.getItem("alerts.enabled")).toBe("1");
   });
 });

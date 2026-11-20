@@ -37,7 +37,6 @@ export const REFERENCIAS_DE_AVISO = {
 export type InboxRefKind = keyof typeof REFERENCIAS_DE_AVISO | "organization" | "ai_budget" | "job_queue" | "cron_jobs";
 type ContextoGeral = { papel: Role; href: string; rotulo: string };
 interface Politica { refs: readonly InboxRefKind[]; orientacao: string; geral?: ContextoGeral }
-const EVOLUCAO: ContextoGeral = { papel: "manager", href: "/app/ai/evolution", rotulo: "Abrir evolução do assistente" };
 const CONEXOES: ContextoGeral = { papel: "admin", href: "/app/connections", rotulo: "Revisar conexões" };
 
 /** Completude em compile time; pares desconhecidos em clones falham fechados. */
@@ -64,8 +63,6 @@ export const POLITICAS_DE_AVISO = {
   // protege). `contact` continua na lista por causa dos itens de clone antigo,
   // gravados antes da troca — tirá-lo faria aqueles avisos perderem o destino.
   handoff: { refs: ["conversation", "contact"], orientacao: "Abra a conversa: o cartão no fim do fio diz por que a IA passou, o que ela já tentou e se o cliente foi avisado." },
-  promotion_review: { refs: [], orientacao: "Na evolução do assistente, confira as propostas disponíveis. Este aviso não identifica uma proposta específica.", geral: EVOLUCAO },
-  judge_unaligned: { refs: [], orientacao: "Na evolução do assistente, confira a avaliação de qualidade. Este aviso não identifica uma avaliação específica.", geral: EVOLUCAO },
   followup_dead: { refs: ["followup_enrollment"], orientacao: "Peça ao gestor para revisar o acompanhamento que parou." },
   snooze_expired: { refs: ["conversation"], orientacao: "Confira se cabe retomar o atendimento descrito neste aviso." },
   next_action_ambiguous: { refs: ["contact"], orientacao: "Confira os negócios do contato e escolha a qual deles pertence a próxima ação." },
@@ -96,18 +93,6 @@ export const POLITICAS_DE_AVISO = {
   // cai em "sem destino" com a orientação abaixo: o telefone está no corpo do
   // aviso, escrito pelo worker.
   voice_call_missed: { refs: ["contact"], orientacao: "Retorne a ligação quando puder — quem ligou não foi atendido." },
-  proposal_expired_notice: {
-    refs: ["proposal"],
-    orientacao: "A validade passou sem decisão do cliente. Confirme se ainda vale a pena manter a oferta ou revise o preço.",
-  },
-  proposal_acceptance_rate_drop: {
-    refs: ["organization"],
-    orientacao: "A proporção de propostas aceitas caiu de forma sustentada — revise preço, prazo ou o texto padrão.",
-  },
-  proposal_promised_not_created: {
-    refs: ["lead"],
-    orientacao: "Uma promessa de proposta venceu sem que a proposta tenha sido criada. Abra o negócio e monte o rascunho.",
-  },
   // Leva AO CASO (`REFERENCIAS_DE_AVISO.agent_case` já aponta para
   // `/app/ai/cases?caso=<id>`), e não a uma tela genérica de conexões: o que
   // está pendente é o ATENDIMENTO, e quem abre o aviso precisa cair nele. A
@@ -117,9 +102,6 @@ export const POLITICAS_DE_AVISO = {
   // leva a ela, onde está o que o cliente escreveu — a Central não o repete.
   jev_pedido_de_humano: { refs: ["conversation"], orientacao: "Abra a conversa e decida se alguém da equipe assume o atendimento." },
   jev_parar_de_receber: { refs: ["conversation"], orientacao: "Abra a conversa e confira se o cliente quer mesmo parar de receber mensagens." },
-  // Mesmo par de `message_send_stuck`, para a proposta — o cron devolve a
-  // rascunho sozinho, sem reenviar; quem lê decide se envia de novo.
-  proposta_travada: { refs: ["proposal"], orientacao: "Confira a proposta antes de decidir se precisa enviar novamente." },
   proposta_pronta_para_revisao: {
     refs: ["proposal"],
     orientacao: "A IA rascunhou esta proposta — confirme o modelo sugerido (ou escolha outro) e confira se todos os itens têm preço antes de enviar.",
@@ -150,7 +132,6 @@ export const POLITICAS_DE_AVISO = {
  */
 const ROTULO_POR_KIND: Record<string, string> = {
   message_send_stuck: "Abrir uma conversa afetada",
-  proposta_travada: "Abrir proposta",
   voice_call_missed: "Ligar de volta",
   // "Abrir o fluxo" convida a olhar; o aviso pede CONFERIR qual fluxo está
   // parado antes de ir ligá-lo no agente.

@@ -59,14 +59,6 @@ export const RESUMO_DO_ALERTA = {
     curto: "IA passou para humano",
     oQueE: "O assistente entendeu que precisa de uma pessoa e passou a conversa para a equipe.",
   },
-  promotion_review: {
-    curto: "Melhoria para revisar",
-    oQueE: "O assistente sugeriu uma melhoria no próprio comportamento e aguarda a sua aprovação.",
-  },
-  judge_unaligned: {
-    curto: "Avaliador desregulado",
-    oQueE: "O avaliador de qualidade das respostas perdeu a calibragem e precisa ser ajustado.",
-  },
   followup_dead: {
     curto: "Follow-up parado",
     oQueE: "Um fluxo de follow-up deixou de tentar falar com o cliente.",
@@ -130,18 +122,6 @@ export const RESUMO_DO_ALERTA = {
     curto: "Ligação perdida",
     oQueE: "Alguém ligou e ninguém atendeu. Retorne quando puder.",
   },
-  proposal_expired_notice: {
-    curto: "Proposta venceu",
-    oQueE: "A validade de uma proposta passou sem decisão do cliente.",
-  },
-  proposal_acceptance_rate_drop: {
-    curto: "Menos propostas aceitas",
-    oQueE: "A proporção de propostas aceitas caiu de forma sustentada.",
-  },
-  proposal_promised_not_created: {
-    curto: "Proposta prometida",
-    oQueE: "Foi prometida uma proposta ao cliente e ela ainda não foi criada.",
-  },
   aviso_de_caso_nao_entregue: {
     curto: "Aviso não entregue",
     oQueE:
@@ -161,10 +141,6 @@ export const RESUMO_DO_ALERTA = {
     curto: "Cliente quer parar",
     oQueE:
       "O Jev percebeu um pedido para parar de receber mensagens. O contato ainda não foi bloqueado.",
-  },
-  proposta_travada: {
-    curto: "Proposta travada",
-    oQueE: "Uma proposta ficou presa no envio e voltou a rascunho. Nada foi reenviado.",
   },
   proposta_pronta_para_revisao: {
     curto: "Proposta para revisar",

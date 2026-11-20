@@ -332,7 +332,7 @@ describe("texto, botões e tela", () => {
     ).toBeNull();
     expect(
       avisoDaLinha(linha, { organizacaoAtiva: ORG, conversaAbertaEmFoco: null })?.category,
-    ).toBe("message");
+    ).toBe("mensagem");
   });
 
   it("botão com link para fora do CRM é descartado", () => {

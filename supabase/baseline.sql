@@ -10038,6 +10038,18 @@ on conflict (model) do update set
 -- proíbe. Quem acrescentar um `kind` mexe em DOIS lugares: esta lista e a última
 -- migration que reconstrói a constraint. `kind-check-migration-x-baseline.test.ts`
 -- reprova quando as duas divergem.
+--
+-- (migration 0699) Saíram seis valores que nenhum código emitia: `promotion_review`,
+-- `judge_unaligned`, `proposal_expired_notice`, `proposal_acceptance_rate_drop`,
+-- `proposal_promised_not_created` e `proposta_travada`. Linha antiga com um deles vira
+-- `other` ANTES de a constraint ser reconstruída, para o ALTER não falhar.
+update public.agent_inbox_items
+   set kind = 'other'
+ where kind in (
+   'promotion_review', 'judge_unaligned',
+   'proposal_expired_notice', 'proposal_acceptance_rate_drop', 'proposal_promised_not_created',
+   'proposta_travada'
+ );
 
 alter table public.agent_inbox_items
   drop constraint if exists agent_inbox_items_kind_check;
@@ -10052,8 +10064,6 @@ alter table public.agent_inbox_items
     'event_dead',
     'budget_exceeded',
     'handoff',
-    'promotion_review',
-    'judge_unaligned',
     'followup_dead',
     'snooze_expired',
     'next_action_ambiguous',
@@ -10142,12 +10152,6 @@ alter table public.agent_inbox_items
     -- mesma constraint em N blocos quebra o `update.sh` de todo clone com
     -- vocabulário posterior (lição do #159).
     'canal_mudo_sem_numero',
-    -- (migration 0464) a proposta comercial: vencimento sem decisão, queda da taxa
-    -- de aceite e promessa de proposta que não virou proposta.
-    'proposal_expired_notice', 'proposal_acceptance_rate_drop', 'proposal_promised_not_created',
-    -- (migration 0466, D3) proposta presa em 'enviando' há mais de 5min — o
-    -- mesmo padrão do 'message_send_stuck', cron próprio (proposta-travada).
-    'proposta_travada',
     -- (migration 0475) a IA rascunhou uma proposta e falta confirmar o modelo
     -- sugerido (plano N1) ou falta preço de catálogo — a Central acompanha
     -- até as duas pendências sumirem, ou até a proposta ser enviada/descartada.
@@ -59313,5 +59317,51 @@ end $$;
 
 comment on table public.notificacoes is
   'Notificação por pessoa (0697): uma linha por destinatário, com título, texto e até dois botões (acoes). Alimenta o push e o aviso na tela. Só o servidor escreve; cada pessoa lê só as dela.';
+
+notify pgrst, 'reload schema';
+
+-- ---- migration 0698 ----
+-- 0698 — NOTIFICAÇÕES: LIDAS E PREFERÊNCIAS
+
+-- ── 1. Marcar como lida ─────────────────────────────────────────────────────
+grant update (lida_em) on public.notificacoes to authenticated;
+
+drop policy if exists notificacoes_marcar_lida on public.notificacoes;
+create policy notificacoes_marcar_lida on public.notificacoes
+  for update
+  using (user_id = auth.uid() and organization_id in (select public.fn_user_org_ids()))
+  with check (user_id = auth.uid() and organization_id in (select public.fn_user_org_ids()));
+
+create index if not exists notificacoes_pessoa_nao_lidas
+  on public.notificacoes (user_id, organization_id)
+  where lida_em is null;
+
+-- ── 2. Preferências por pessoa ──────────────────────────────────────────────
+create table if not exists public.notificacoes_preferencias (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  categoria text not null,
+  na_tela boolean not null default true,
+  no_celular boolean not null default true,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, organization_id, categoria)
+);
+
+alter table public.notificacoes_preferencias drop constraint if exists notificacoes_preferencias_categoria_check;
+alter table public.notificacoes_preferencias add constraint notificacoes_preferencias_categoria_check
+  check (categoria in ('mensagem', 'lead_novo', 'lead_atribuido', 'mencao', 'tarefa', 'atendimento', 'crm', 'sistema', 'ligacao'));
+
+alter table public.notificacoes_preferencias enable row level security;
+
+drop policy if exists notificacoes_preferencias_da_pessoa on public.notificacoes_preferencias;
+create policy notificacoes_preferencias_da_pessoa on public.notificacoes_preferencias
+  using (user_id = auth.uid() and organization_id in (select public.fn_user_org_ids()))
+  with check (user_id = auth.uid() and organization_id in (select public.fn_user_org_ids()));
+
+revoke all on public.notificacoes_preferencias from anon;
+grant select, insert, update on public.notificacoes_preferencias to authenticated;
+
+comment on table public.notificacoes_preferencias is
+  'Preferência de notificação por pessoa e categoria (0698): na_tela (aviso no canto) e no_celular (push). Sem linha = ligado. O servidor não manda push de categoria com no_celular = false.';
 
 notify pgrst, 'reload schema';

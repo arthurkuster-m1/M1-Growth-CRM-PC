@@ -71,7 +71,7 @@ export function useInboundCallAlerts(): void {
     const row = rowFromRealtime(payload);
     if (!row) return;
     if (!deveAvisarChamadaEntrante(row)) return;
-    if (!canalLigado("call_inbound", "in_app") && !canalLigado("call_inbound", "push")) return;
+    if (!canalLigado("ligacao", "in_app") && !canalLigado("ligacao", "push")) return;
 
     const fromNumber = typeof row.peer_phone === "string" ? row.peer_phone : "número desconhecido";
     const contactId = typeof row.contact_id === "string" ? row.contact_id : null;
@@ -80,7 +80,7 @@ export function useInboundCallAlerts(): void {
     void (async () => {
       const name = await callerName(contactId, fromNumber);
       entregarAviso({
-        category: "call_inbound",
+        category: "ligacao",
         kind: "call_inbound",
         title: "Ligação recebida",
         body: name ? `${name} · ${fromNumber}` : fromNumber,

@@ -1,13 +1,21 @@
 import { setAlertsEnabled } from "./permission";
 
+/**
+ * As categorias são as MESMAS das notificações do servidor (`notificacoes.categoria`, migration
+ * 0697) mais `ligacao` (a ligação tocando, que só existe na tela). A escolha fica guardada no
+ * servidor (`notificacoes_preferencias`, migration 0698) e vale em todo aparelho; o
+ * `localStorage` é só o espelho para a primeira pintura e para quando a rede falha.
+ */
 export const NOTIFY_UI_CATEGORIES = [
-  "message",
-  "lead_new",
-  "lead_assigned",
-  "mention",
-  "task",
-  "alerts",
-  "call_inbound",
+  "mensagem",
+  "lead_novo",
+  "lead_atribuido",
+  "mencao",
+  "tarefa",
+  "atendimento",
+  "crm",
+  "sistema",
+  "ligacao",
 ] as const;
 
 export type NotifyCategory = (typeof NOTIFY_UI_CATEGORIES)[number];
@@ -15,26 +23,24 @@ export type NotifyChannelPref = "in_app" | "push";
 
 export type NotifyPrefs = Record<NotifyCategory, Record<NotifyChannelPref, boolean>>;
 
-const KEY = "notify.prefs.v1";
+const KEY = "notify.prefs.v2";
+
+function tudoLigado(): NotifyPrefs {
+  return Object.fromEntries(
+    NOTIFY_UI_CATEGORIES.map((c) => [c, { in_app: true, push: true }]),
+  ) as NotifyPrefs;
+}
 
 export function prefsPadrao(): NotifyPrefs {
-  let pushMsg = true;
+  const base = tudoLigado();
   if (typeof window !== "undefined") {
     try {
-      if (window.localStorage.getItem("alerts.enabled") === "0") pushMsg = false;
+      if (window.localStorage.getItem("alerts.enabled") === "0") base.mensagem.push = false;
     } catch {
       // ignore
     }
   }
-  return {
-    message: { in_app: true, push: pushMsg },
-    lead_new: { in_app: true, push: true },
-    lead_assigned: { in_app: true, push: true },
-    mention: { in_app: true, push: true },
-    task: { in_app: true, push: true },
-    alerts: { in_app: true, push: true },
-    call_inbound: { in_app: true, push: true },
-  };
+  return base;
 }
 
 export function lerPrefs(): NotifyPrefs {
@@ -97,18 +103,7 @@ export function getPrefsSnapshot(): NotifyPrefs {
   return prefsEmCache;
 }
 
-const PREFS_DO_SERVIDOR: NotifyPrefs = {
-  message: { in_app: true, push: true },
-  // Ligação chegando (módulo de telefonia, #677). Entra aqui porque
-  // `NotifyPrefs` exige uma linha por tipo: sem ela o tipo não fecha, e o
-  // servidor decidiria por ausência em vez de por declaração.
-  call_inbound: { in_app: true, push: true },
-  lead_new: { in_app: true, push: true },
-  lead_assigned: { in_app: true, push: true },
-  mention: { in_app: true, push: true },
-  task: { in_app: true, push: true },
-  alerts: { in_app: true, push: true },
-};
+const PREFS_DO_SERVIDOR: NotifyPrefs = tudoLigado();
 
 /**
  * Sem `window`, `prefsPadrao()` devolve exatamente este valor — congelado aqui.
@@ -146,8 +141,52 @@ export function gravarCanal(
       // ignore
     }
   }
-  if (category === "message" && channel === "push") setAlertsEnabled(on);
+  // A inscrição do celular fica viva enquanto ALGUMA categoria quiser o celular.
+  if (channel === "push") setAlertsEnabled(NOTIFY_UI_CATEGORIES.some((c) => next[c].push));
   prefsEmCache = next;
   for (const ouvinte of ouvintesDePrefs) ouvinte();
+  salvarCanalNoServidor(category, channel, on);
   return next;
+}
+
+/** Grava no servidor (fire-and-forget: a tela já mudou; a próxima sincronização corrige). */
+export function salvarCanalNoServidor(
+  category: NotifyCategory,
+  channel: NotifyChannelPref,
+  on: boolean,
+): void {
+  if (typeof fetch === "undefined") return;
+  void fetch("/api/v1/notificacoes/preferencias", {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      categoria: category,
+      canal: channel === "push" ? "no_celular" : "na_tela",
+      ligado: on,
+    }),
+  }).catch(() => undefined);
+}
+
+/** Troca o espelho local pelo que está no servidor (a escolha feita em outro aparelho). */
+export async function sincronizarPrefsDoServidor(): Promise<void> {
+  if (typeof window === "undefined" || typeof fetch === "undefined") return;
+  try {
+    const r = await fetch("/api/v1/notificacoes/preferencias", { credentials: "include" });
+    if (!r.ok) return;
+    const json = (await r.json()) as {
+      data?: { prefs?: Array<{ categoria: string; na_tela: boolean; no_celular: boolean }> };
+    };
+    const next = tudoLigado();
+    for (const linha of json.data?.prefs ?? []) {
+      if (!(NOTIFY_UI_CATEGORIES as readonly string[]).includes(linha.categoria)) continue;
+      const c = linha.categoria as NotifyCategory;
+      next[c] = { in_app: linha.na_tela, push: linha.no_celular };
+    }
+    window.localStorage.setItem(KEY, JSON.stringify(next));
+    prefsEmCache = next;
+    for (const ouvinte of ouvintesDePrefs) ouvinte();
+  } catch {
+    // sem rede: segue o espelho local
+  }
 }

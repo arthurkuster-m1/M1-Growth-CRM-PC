@@ -65,6 +65,21 @@ const DIR_MIGRATIONS = path.join(process.cwd(), "supabase", "migrations");
  * dado existente faz o `update.sh` de um clone quebrar no meio.
  */
 const REMOCOES_DELIBERADAS: Record<string, { valores: string[]; porque: string }> = {
+  "20261120120000_0699_central_sem_avisos_mortos.sql::agent_inbox_items_kind_check": {
+    valores: [
+      "promotion_review",
+      "judge_unaligned",
+      "proposal_expired_notice",
+      "proposal_acceptance_rate_drop",
+      "proposal_promised_not_created",
+      "proposta_travada",
+    ],
+    porque:
+      "Remoção DE PROPÓSITO (decisão do dono do produto, limpeza da Central em 20/11/2026): " +
+      "nenhum código emitia estes seis kinds — existiam só no CHECK, no tipo TypeScript e nas " +
+      "tabelas de rótulo. As linhas antigas que tivessem um deles viram `other` na própria 0699, " +
+      "ANTES da reconstrução, então o `update.sh` de um clone não quebra no meio.",
+  },
   "20260918231000_0312_aviso_de_followup_sem_agente.sql::agent_inbox_items_kind_check": {
     valores: ["aviso_de_caso_nao_entregue"],
     porque:

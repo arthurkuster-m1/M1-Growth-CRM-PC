@@ -52,7 +52,7 @@ vi.mock("@/hooks/notifications/useNotificationPermission", () => ({
   }),
 }));
 
-const CHAVE = "notify.prefs.v1";
+const CHAVE = "notify.prefs.v2";
 
 let NotificationPrefsClient: typeof NotificationPrefsClientType;
 let prefs: typeof Prefs;
@@ -102,7 +102,7 @@ function montar(): HTMLDivElement {
 
 describe("as preferências de notificação não divergem entre o SSR e a primeira renderização do cliente", () => {
   it("com o push de mensagem desligado, a primeira passada do cliente bate com o servidor", () => {
-    window.localStorage.setItem(CHAVE, JSON.stringify({ message: { in_app: true, push: false } }));
+    window.localStorage.setItem(CHAVE, JSON.stringify({ mensagem: { in_app: true, push: false } }));
 
     const doServidor = renderizarComoServidor();
     const doCliente = renderizarComoPrimeiraPassadaDoCliente();
@@ -138,7 +138,7 @@ describe("as preferências de notificação não divergem entre o SSR e a primei
     // localStorage — "sempre ligado" bateria com "sempre ligado" para sempre, e
     // o defeito oposto (a preferência do usuário nunca é aplicada) ficaria
     // invisível.
-    window.localStorage.setItem(CHAVE, JSON.stringify({ message: { in_app: true, push: false } }));
+    window.localStorage.setItem(CHAVE, JSON.stringify({ mensagem: { in_app: true, push: false } }));
 
     expect(montar().innerHTML).toContain('data-testid="alerts-enable"');
   });
@@ -148,7 +148,7 @@ describe("as preferências de notificação não divergem entre o SSR e a primei
     expect(container.innerHTML).toContain('data-testid="alerts-toggle"');
 
     act(() => {
-      prefs.gravarCanal("message", "push", false);
+      prefs.gravarCanal("mensagem", "push", false);
     });
 
     expect(container.innerHTML).toContain('data-testid="alerts-enable"');

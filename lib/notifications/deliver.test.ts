@@ -22,7 +22,7 @@ describe("entregarAviso", () => {
 
   it("manda toast e notificação do navegador quando os dois canais estão ligados", () => {
     entregarAviso({
-      category: "lead_assigned",
+      category: "lead_atribuido",
       kind: "lead_assigned",
       title: "Lead atribuído",
       body: "Carlos",
@@ -32,8 +32,8 @@ describe("entregarAviso", () => {
   });
 
   it("omite a notificação do navegador quando o canal está desligado", () => {
-    gravarCanal("lead_new", "push", false);
-    entregarAviso({ category: "lead_new", kind: "lead_new", title: "Novo lead: Ana", body: "ok" });
+    gravarCanal("lead_novo", "push", false);
+    entregarAviso({ category: "lead_novo", kind: "lead_new", title: "Novo lead: Ana", body: "ok" });
     expect(toast).toHaveBeenCalledTimes(1);
     expect(emitNotification).not.toHaveBeenCalled();
   });
@@ -46,7 +46,7 @@ describe("entregarAviso", () => {
     });
 
     entregarAviso({
-      category: "message",
+      category: "mensagem",
       kind: "message_inbound",
       title: "Maria Souza",
       body: "oi",
@@ -67,7 +67,7 @@ describe("entregarAviso", () => {
 
   it("aviso sem destino não ganha botão — botão morto não é conserto", () => {
     entregarAviso({
-      category: "lead_assigned",
+      category: "lead_atribuido",
       kind: "lead_assigned",
       title: "Lead atribuído",
       body: "Carlos",
