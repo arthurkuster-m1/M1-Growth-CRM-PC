@@ -46,11 +46,12 @@
   --color-border: #e0e6ef;
   --color-border-strong: #cbd5e3;
   /* Marca estrutural — azul-marinho (a estrutura do app, como na Família Kuster).
-     A cor da MARCA (verde) segue em --color-accent: botão, foco, destaque. O
+     A cor da MARCA (verde) segue em --color-accent: botão, foco, destaque.
+     NÃO chamar de --color-brand: esse nome é a semente do cliente (lib/branding). O
      marinho é só estrutura: banner, menu ativo, superfícies de peso. */
-  --color-brand: #182a4a;
-  --color-brand-fg: #ffffff;
-  --color-brand-muted: #9db3da;
+  --color-navy: #182a4a;
+  --color-navy-fg: #ffffff;
+  --color-navy-muted: #9db3da;
 
   /* Accent — Sage (11 stops) */
   --color-accent-50: #f0f6f6;
@@ -279,11 +280,12 @@
   --color-border: #e0e6ef;
   --color-border-strong: #cbd5e3;
   /* Marca estrutural — azul-marinho (a estrutura do app, como na Família Kuster).
-     A cor da MARCA (verde) segue em --color-accent: botão, foco, destaque. O
+     A cor da MARCA (verde) segue em --color-accent: botão, foco, destaque.
+     NÃO chamar de --color-brand: esse nome é a semente do cliente (lib/branding). O
      marinho é só estrutura: banner, menu ativo, superfícies de peso. */
-  --color-brand: #182a4a;
-  --color-brand-fg: #ffffff;
-  --color-brand-muted: #9db3da;
+  --color-navy: #182a4a;
+  --color-navy-fg: #ffffff;
+  --color-navy-muted: #9db3da;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
@@ -366,9 +368,9 @@
   /* Borders (dark) */
   --color-border: #1f2b42;
   --color-border-strong: #2c3a56;
-  --color-brand: #1b2d4d;
-  --color-brand-fg: #eaf0fa;
-  --color-brand-muted: #9aa8c0;
+  --color-navy: #1b2d4d;
+  --color-navy-fg: #eaf0fa;
+  --color-navy-muted: #9aa8c0;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
   --color-accent-50: #f0f6f6;
@@ -486,9 +488,9 @@
   --color-surface: var(--color-surface);
   --color-surface-elevated: var(--color-surface-elevated);
   --color-overlay: var(--color-overlay);
-  --color-brand: var(--color-brand);
-  --color-brand-foreground: var(--color-brand-fg);
-  --color-brand-muted: var(--color-brand-muted);
+  --color-navy: var(--color-navy);
+  --color-navy-foreground: var(--color-navy-fg);
+  --color-navy-muted: var(--color-navy-muted);
 
   --color-text: var(--color-text);
   --color-text-muted: var(--color-text-muted);
