@@ -1,9 +1,9 @@
 /**
  * O cartão "Notas" do Início: abre a página fixada, trocar de página fixa a nova (a escolhida por
- * último é a que fica), Enter na captura rápida guarda, e quem não é da agência sem páginas
+ * último é a que fica), e o cartão não tem mais a "Captura rápida" (agora é o lápis da barra), e quem não é da agência sem páginas
  * liberadas não vê o cartão.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { NotasDoInicio } from "@/components/anotacoes/NotasDoInicio";
@@ -33,14 +33,11 @@ const arvore = {
 };
 const fixarNoInicio = vi.fn();
 const estado = { carregado: true, inicio: "a" as string | null, fixarNoInicio };
-const capturar = vi.fn(async () => true);
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/anotacoes/useArvoreDeNotas", () => ({ useArvoreDeNotas: () => arvore }));
 vi.mock("@/hooks/anotacoes/useEstadoDasNotas", () => ({ useEstadoDasNotas: () => estado }));
-vi.mock("@/hooks/anotacoes/useCapturaDeNotas", () => ({
-  useCapturaDeNotas: () => ({ capturar, versao: 0 }),
-}));
+vi.mock("@/hooks/anotacoes/useVersaoDasNotas", () => ({ useVersaoDasNotas: () => 0 }));
 vi.mock("@/hooks/anotacoes/useNota", () => ({
   useNota: (id: string) => ({
     pagina: { id, blocks: [] },
@@ -89,15 +86,9 @@ describe("NotasDoInicio", () => {
     expect(fixarNoInicio).toHaveBeenCalledWith("b");
   });
 
-  it("Enter na captura rápida guarda; Shift+Enter não", async () => {
+  it("não tem mais o botão de Captura rápida (virou o lápis da barra)", () => {
     render(<NotasDoInicio />);
-    fireEvent.click(screen.getByRole("button", { name: /Captura rápida/ }));
-    const campo = await screen.findByPlaceholderText("Escreva ou cole aqui…");
-    fireEvent.change(campo, { target: { value: "ligar para o fornecedor" } });
-    fireEvent.keyDown(campo, { key: "Enter", shiftKey: true });
-    expect(capturar).not.toHaveBeenCalled();
-    fireEvent.keyDown(campo, { key: "Enter" });
-    await waitFor(() => expect(capturar).toHaveBeenCalledWith("ligar para o fornecedor"));
+    expect(screen.queryByRole("button", { name: /Captura rápida/ })).toBeNull();
   });
 
   it("sem página escolhida, pede para escolher no seletor", () => {
@@ -112,11 +103,5 @@ describe("NotasDoInicio", () => {
     arvore.notas = [];
     const { container } = render(<NotasDoInicio />);
     expect(container.textContent).toBe("");
-  });
-
-  it("quem só lê não vê o botão de captura", () => {
-    arvore.podeEditar = false;
-    render(<NotasDoInicio />);
-    expect(screen.queryByRole("button", { name: /Captura rápida/ })).toBeNull();
   });
 });

@@ -2,15 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { CartoesDeNotas } from "@/components/anotacoes/CartoesDeNotas";
 import { EditorDeNotasCarregavel } from "@/components/anotacoes/EditorDeNotasCarregavel";
 import { EtiquetasDaNota } from "@/components/anotacoes/EtiquetasDaNota";
+import { Botao, Esqueleto } from "@/components/anotacoes/kit-visual";
+import { CardsDasNotas } from "@/components/anotacoes/ListaDeNotas";
 import { SeletorDeIcone } from "@/components/anotacoes/SeletorDeIcone";
 import { Switch } from "@/components/ui/switch";
 import { useNota } from "@/hooks/anotacoes/useNota";
 import { useT } from "@/hooks/i18n/useT";
 import { caminhoDaNota, type ResumoDaNota } from "@/lib/anotacoes/paginas";
-import { CaretRight, Eye, Star, Trash } from "@/lib/ui/icons";
+import { CaretRight, DotsThree, Eye, Plus, Star, Trash } from "@/lib/ui/icons";
 
 const ESPERA_DO_TITULO_MS = 600;
 
@@ -27,6 +28,7 @@ export function PaginaDeNota({
   aoApagar,
   aoAbrir,
   aoCriarSubpagina,
+  aoOpcoes,
   favorita,
   aoFavoritar,
 }: {
@@ -43,6 +45,8 @@ export function PaginaDeNota({
   aoApagar: (id: string) => void;
   aoAbrir: (id: string) => void;
   aoCriarSubpagina: (paiId: string) => Promise<string | null>;
+  /** A "⋯" de um cartão de subpágina. */
+  aoOpcoes: (id: string) => void;
 }) {
   const t = useT();
   const { pagina, estado, editar, carregando, falhou } = useNota(id);
@@ -57,6 +61,28 @@ export function PaginaDeNota({
   const [titulo, setTitulo] = useState<string | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tituloAtual = titulo ?? resumo?.title ?? "";
+
+  // o menu "⋯": visibilidade, subpáginas, lixeira
+  const [menu, setMenu] = useState(false);
+  const caixaMenu = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const fora = (e: PointerEvent) => {
+      if (!caixaMenu.current?.contains(e.target as Node)) setMenu(false);
+    };
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenu(false);
+      }
+    };
+    document.addEventListener("pointerdown", fora, true);
+    document.addEventListener("keydown", tecla, true);
+    return () => {
+      document.removeEventListener("pointerdown", fora, true);
+      document.removeEventListener("keydown", tecla, true);
+    };
+  }, [menu]);
 
   function digitarTitulo(valor: string) {
     setTitulo(valor);
@@ -81,12 +107,10 @@ export function PaginaDeNota({
     }
   }
 
-  if (carregando) {
-    return <div className="h-48 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
-  }
+  if (carregando) return <Esqueleto h={192} />;
   if (falhou || !pagina || !resumo) {
     return (
-      <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg">
+      <p className="an-t-corpo" role="alert" style={{ color: "var(--color-error-fg)" }}>
         {t("Não foi possível carregar a página.")}
       </p>
     );
@@ -100,30 +124,34 @@ export function PaginaDeNota({
         : estado === "erro"
           ? t("Não foi possível salvar")
           : t("Salvo");
+  const tom =
+    estado === "salvando"
+      ? "salvando"
+      : estado === "pendente"
+        ? "aviso"
+        : estado === "erro"
+          ? "erro"
+          : "salvo";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="an-pagina" data-testid="pagina-aberta">
       {caminho.length > 1 ? (
-        <nav aria-label={t("Caminho")} className="flex flex-wrap items-center gap-1 text-xs">
+        <nav aria-label={t("Caminho")} className="an-migalha">
           {caminho.slice(0, -1).map((c) => (
-            <span key={c.id} className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => aoAbrir(c.id)}
-                className="max-w-[16rem] truncate text-muted-foreground hover:text-foreground hover:underline"
-              >
+            <span key={c.id}>
+              <button type="button" onClick={() => aoAbrir(c.id)}>
                 {c.icon ? `${c.icon} ` : ""}
                 {c.title || t("Sem título")}
               </button>
-              <CaretRight size={10} aria-hidden className="text-muted-foreground" />
+              <CaretRight size={10} aria-hidden />
             </span>
           ))}
-          <span className="font-medium">{resumo.title || t("Sem título")}</span>
+          <b>{resumo.title || t("Sem título")}</b>
         </nav>
       ) : null}
 
-      <header className="flex flex-col gap-3">
-        <div className="flex items-start gap-3">
+      <header className="an-cabeca">
+        <div className="an-cabeca__linha">
           <SeletorDeIcone
             icone={resumo.icon}
             podeEditar={podeEditar}
@@ -131,101 +159,157 @@ export function PaginaDeNota({
           />
           {podeEditar ? (
             <input
+              className="an-titulo-pagina"
               value={tituloAtual}
               onChange={(e) => digitarTitulo(e.target.value)}
               onBlur={fecharTitulo}
               maxLength={200}
               placeholder={t("Sem título")}
               aria-label={t("Título da página")}
-              className="w-full min-w-0 bg-transparent text-3xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/60"
+              data-testid="titulo-pagina"
             />
           ) : (
-            <h1 className="w-full min-w-0 text-3xl font-bold tracking-tight">
-              {resumo.title || t("Sem título")}
-            </h1>
+            <h1 className="an-titulo-pagina">{resumo.title || t("Sem título")}</h1>
           )}
           <button
             type="button"
+            className="an-favorito"
             onClick={() => aoFavoritar(!favorita)}
             aria-pressed={favorita}
             aria-label={favorita ? t("Tirar dos favoritos") : t("Favoritar")}
             title={favorita ? t("Tirar dos favoritos") : t("Favoritar")}
-            className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+            data-testid="favoritar"
           >
             <Star
               size={20}
               weight={favorita ? "fill" : "regular"}
-              className={favorita ? "text-warning" : undefined}
+              className={favorita ? "an-favorito__ligado" : undefined}
               aria-hidden
             />
           </button>
+          {podeEditar ? (
+            <span
+              className="an-ponto"
+              data-tom={tom}
+              role="status"
+              aria-label={textoDoEstado}
+              title={textoDoEstado}
+              data-testid="ponto-salvamento"
+            />
+          ) : null}
+          {podeEditar ? (
+            <div className="an-menu-pagina" ref={caixaMenu}>
+              <button
+                type="button"
+                className="an-favorito"
+                onClick={() => setMenu((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menu}
+                aria-label={t("Mais opções da página")}
+                title={t("Mais opções")}
+                data-testid="menu-pagina"
+              >
+                <DotsThree size={22} weight="bold" aria-hidden />
+              </button>
+              {menu ? (
+                <div
+                  className="an-menu an-menu--pagina"
+                  role="menu"
+                  data-testid="menu-pagina-itens"
+                >
+                  <div className="an-menu__linha-comp">
+                    <Eye size={16} aria-hidden />
+                    <span className="an-menu__texto">
+                      <b>{t("Visível ao cliente")}</b>
+                      <small>{t("o cliente só lê")}</small>
+                    </span>
+                    <Switch
+                      checked={resumo.visible_to_client}
+                      onCheckedChange={(valor) =>
+                        void aoMudar(id, { visible_to_client: valor }, { cascade: false })
+                      }
+                      aria-label={t("Visível ao cliente")}
+                    />
+                  </div>
+                  {temFilhas ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="an-menu__item an-menu__item--linha"
+                      onClick={() => {
+                        void aoMudar(
+                          id,
+                          { visible_to_client: resumo.visible_to_client },
+                          { cascade: true },
+                        );
+                        setMenu(false);
+                      }}
+                    >
+                      <span className="an-menu__texto">
+                        <b>
+                          {resumo.visible_to_client
+                            ? t("Liberar também as subpáginas")
+                            : t("Esconder também as subpáginas")}
+                        </b>
+                      </span>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="an-menu__item an-menu__item--linha is-perigo"
+                    onClick={() => {
+                      setMenu(false);
+                      aoApagar(id);
+                    }}
+                    data-testid="menu-lixeira"
+                  >
+                    <Trash size={16} aria-hidden />
+                    <span className="an-menu__texto">
+                      <b>{t("Mandar para a lixeira")}</b>
+                    </span>
+                  </button>
+                  <p className="an-menu__estado" aria-live="polite" data-testid="estado-salvamento">
+                    {textoDoEstado}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-
         <EtiquetasDaNota
           etiquetas={resumo.tags}
           podeEditar={podeEditar}
           sugestoes={etiquetasUsadas}
           aoMudar={(tags) => void aoMudar(id, { tags })}
         />
-
-        {podeEditar ? (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b pb-3 text-xs text-muted-foreground">
-            <label className="flex items-center gap-2">
-              <Switch
-                checked={resumo.visible_to_client}
-                onCheckedChange={(valor) =>
-                  void aoMudar(id, { visible_to_client: valor }, { cascade: false })
-                }
-                aria-label={t("Visível ao cliente")}
-              />
-              <span className="flex items-center gap-1">
-                <Eye size={14} aria-hidden />
-                {t("Visível ao cliente")}
-              </span>
-            </label>
-            {temFilhas ? (
-              <button
-                type="button"
-                onClick={() =>
-                  void aoMudar(
-                    id,
-                    { visible_to_client: resumo.visible_to_client },
-                    { cascade: true },
-                  )
-                }
-                className="underline-offset-2 hover:text-foreground hover:underline"
-              >
-                {resumo.visible_to_client
-                  ? t("Liberar também as subpáginas")
-                  : t("Esconder também as subpáginas")}
-              </button>
-            ) : null}
-            <span aria-live="polite">{textoDoEstado}</span>
-            <button
-              type="button"
-              onClick={() => aoApagar(id)}
-              className="ml-auto flex items-center gap-1 hover:text-error-fg"
-            >
-              <Trash size={14} aria-hidden />
-              {t("Mandar para a lixeira")}
-            </button>
-          </div>
-        ) : null}
       </header>
 
       <EditorDeNotasCarregavel inicial={pagina.blocks} editavel={podeEditar} aoMudar={editar} />
 
       {temFilhas || podeEditar ? (
-        <section aria-label={t("Subpáginas")} className="flex flex-col gap-3 border-t pt-5">
-          <h2 className="text-lg font-semibold tracking-tight">{t("Subpáginas")}</h2>
-          {temFilhas || podeEditar ? (
-            <CartoesDeNotas
+        <section aria-label={t("Subpáginas")} className="an-subpaginas">
+          <div className="an-lista-cab" style={{ alignItems: "center" }}>
+            <h2 className="an-t-h2">{t("Subpáginas")}</h2>
+            {podeEditar ? (
+              <Botao
+                variant="secondary"
+                size="sm"
+                icon={<Plus size={14} weight="bold" aria-hidden />}
+                onClick={() => void aoCriarSubpagina(id).then((novo) => novo && aoAbrir(novo))}
+                data-testid="nova-subpagina"
+              >
+                {t("Nova subpágina")}
+              </Botao>
+            ) : null}
+          </div>
+          {temFilhas ? (
+            <CardsDasNotas
               paginas={filhas}
-              todas={notas}
+              favoritas={[]}
               podeEditar={podeEditar}
               aoAbrir={aoAbrir}
-              aoCriar={() => void aoCriarSubpagina(id).then((novo) => novo && aoAbrir(novo))}
-              rotuloDoNovo={t("Nova subpágina")}
+              aoOpcoes={aoOpcoes}
             />
           ) : null}
         </section>

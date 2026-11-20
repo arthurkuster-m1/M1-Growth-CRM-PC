@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { CapturaRapida } from "@/components/anotacoes/CapturaRapida";
 import { EditorDeNotasCarregavel } from "@/components/anotacoes/EditorDeNotasCarregavel";
 import { useArvoreDeNotas } from "@/hooks/anotacoes/useArvoreDeNotas";
-import { useCapturaDeNotas } from "@/hooks/anotacoes/useCapturaDeNotas";
+import { useVersaoDasNotas } from "@/hooks/anotacoes/useVersaoDasNotas";
 import { useEstadoDasNotas } from "@/hooks/anotacoes/useEstadoDasNotas";
 import { useNota } from "@/hooks/anotacoes/useNota";
 import { useT } from "@/hooks/i18n/useT";
@@ -48,6 +46,7 @@ function PaginaNoCartao({ id, podeEditar }: { id: string; podeEditar: boolean })
       ) : null}
       <EditorDeNotasCarregavel
         compacto
+        limpo
         inicial={pagina.blocks}
         editavel={podeEditar}
         aoMudar={editar}
@@ -65,13 +64,11 @@ function PaginaNoCartao({ id, podeEditar }: { id: string; podeEditar: boolean })
  */
 export function NotasDoInicio() {
   const t = useT();
-  const router = useRouter();
   const arvore = useArvoreDeNotas();
   const estado = useEstadoDasNotas();
   const { notas, podeEditar } = arvore;
   const [escolhida, setEscolhida] = useState<string | null>(null);
-  const [capturando, setCapturando] = useState(false);
-  const { capturar, versao } = useCapturaDeNotas((id) => router.push(`/app/anotacoes?p=${id}`));
+  const versao = useVersaoDasNotas();
 
   const vivas = useMemo(() => notas.filter((n) => !n.deleted_at), [notas]);
   const opcoes = useMemo(() => achatar(montarArvore(vivas)), [vivas]);
@@ -110,15 +107,6 @@ export function NotasDoInicio() {
           {t("Notas")}
         </h2>
         <div className="flex min-w-0 items-center gap-2">
-          {podeEditar ? (
-            <button
-              type="button"
-              onClick={() => setCapturando(true)}
-              className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium shadow-sm hover:bg-secondary"
-            >
-              <Plus size={14} aria-hidden /> {t("Captura rápida")}
-            </button>
-          ) : null}
           <div className="relative min-w-0">
             <PushPin
               size={14}
@@ -182,13 +170,6 @@ export function NotasDoInicio() {
           ) : null}
         </div>
       )}
-
-      <CapturaRapida
-        enterSalva
-        aberto={capturando}
-        aoFechar={() => setCapturando(false)}
-        aoCapturar={capturar}
-      />
     </section>
   );
 }

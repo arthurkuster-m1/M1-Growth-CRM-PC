@@ -67,6 +67,7 @@ export {
   PushPin,
   Trash,
   PencilSimple,
+  PencilSimpleLine,
   MagnifyingGlass,
   Pause,
   Play,
@@ -174,6 +175,7 @@ export {
   ArrowsDownUp,
   Rows,
   SquaresFour,
+  Table,
   // aba Marketing (módulos da estratégia, 09/10/2026)
   Rocket,
   Compass,
