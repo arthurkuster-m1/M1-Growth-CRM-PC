@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { autorizarFinancas, lerCorpo, respostaDeErroDoBanco } from "@/lib/financas/servidor";
 import { aberturaSchema, mesIso } from "@/lib/financas/validacao";
 
@@ -46,16 +47,19 @@ export async function GET(req: NextRequest): Promise<Response> {
 }
 
 export async function PUT(req: NextRequest): Promise<Response> {
+  // a guarda do modo somente leitura do suporte vem ANTES de qualquer efeito
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
   const a = await autorizarFinancas(true);
   if (!a.ok) return a.response;
   const { supabase, orgId, requestId } = a.ctx;
   const corpo = await lerCorpo(req, aberturaSchema, requestId);
   if (!corpo.ok) return corpo.response;
-  const { conta, mes, saldo_cents } = corpo.dados;
+  const { conta: contaId, mes, saldo_cents } = corpo.dados;
   const { data: c } = await supabase
     .from("fin_accounts")
     .select("id")
-    .eq("id", conta)
+    .eq("id", contaId)
     .eq("organization_id", orgId)
     .maybeSingle();
   if (!c) return fail("not_found", "Conta não encontrada.", 404, { requestId });
@@ -65,19 +69,19 @@ export async function PUT(req: NextRequest): Promise<Response> {
           .from("fin_balance_snapshots")
           .delete()
           .eq("organization_id", orgId)
-          .eq("account_id", conta)
+          .eq("account_id", contaId)
           .eq("mes", `${mes}-01`)
       : await supabase
           .from("fin_balance_snapshots")
           .upsert(
-            { organization_id: orgId, account_id: conta, mes: `${mes}-01`, saldo_cents },
+            { organization_id: orgId, account_id: contaId, mes: `${mes}-01`, saldo_cents },
             { onConflict: "account_id,mes" },
           );
   if (r.error) return respostaDeErroDoBanco(r.error, requestId, "abertura.gravar");
   await audit({
     action: "financas.abertura_alterada",
     resourceType: "fin_balance_snapshot",
-    resourceId: conta,
+    resourceId: contaId,
     requestId,
     metadata: { mes, removida: saldo_cents === null },
   });

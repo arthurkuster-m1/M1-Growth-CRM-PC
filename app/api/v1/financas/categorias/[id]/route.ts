@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
   COLUNAS_DA_CATEGORIA,
   autorizarFinancas,
@@ -20,6 +21,9 @@ export const dynamic = "force-dynamic";
 type Contexto = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Contexto): Promise<Response> {
+  // a guarda do modo somente leitura do suporte vem ANTES de qualquer efeito
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
   const a = await autorizarFinancas(true);
   if (!a.ok) return a.response;
   const { supabase, orgId, requestId } = a.ctx;
@@ -72,6 +76,9 @@ export async function PATCH(req: NextRequest, { params }: Contexto): Promise<Res
 }
 
 export async function DELETE(_req: NextRequest, { params }: Contexto): Promise<Response> {
+  // a guarda do modo somente leitura do suporte vem ANTES de qualquer efeito
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
   const a = await autorizarFinancas(true);
   if (!a.ok) return a.response;
   const { supabase, orgId, requestId } = a.ctx;

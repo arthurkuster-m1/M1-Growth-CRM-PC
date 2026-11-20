@@ -136,12 +136,12 @@ function ListaVista() {
       <div className="fi-row fi-row--wrap seletores-topo" data-testid="seletores-lista">
         <NavegadorDeMes value={mes} onChange={irPara} />
         <Button
+          onClick={() => (selecionando ? sairDaSelecao() : setSelecionando(true))}
           variant={selecionando ? "primary" : "secondary"}
           size="sm"
           icon={<PencilSimple size={16} />}
           aria-pressed={selecionando}
           data-testid="editar-varios"
-          onClick={() => (selecionando ? sairDaSelecao() : setSelecionando(true))}
         >
           {selecionando ? "Sair da seleção" : "Editar vários"}
         </Button>

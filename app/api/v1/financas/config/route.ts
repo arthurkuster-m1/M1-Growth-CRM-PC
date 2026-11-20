@@ -8,12 +8,16 @@ import type { NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { autorizarFinancas, lerCorpo, respostaDeErroDoBanco } from "@/lib/financas/servidor";
 import { configSchema } from "@/lib/financas/validacao";
 
 export const dynamic = "force-dynamic";
 
 export async function PUT(req: NextRequest): Promise<Response> {
+  // a guarda do modo somente leitura do suporte vem ANTES de qualquer efeito
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
   const a = await autorizarFinancas(true);
   if (!a.ok) return a.response;
   const { supabase, orgId, requestId } = a.ctx;

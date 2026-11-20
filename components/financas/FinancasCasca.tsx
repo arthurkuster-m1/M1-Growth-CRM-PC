@@ -36,8 +36,8 @@ function Abas() {
         ))}
       </div>
       <Button
-        icon={<Plus size={16} weight="bold" aria-hidden />}
         onClick={() => router.push("/app/financas/lancar")}
+        icon={<Plus size={16} weight="bold" aria-hidden />}
         data-testid="lancar"
       >
         Lançar

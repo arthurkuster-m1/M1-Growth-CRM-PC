@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { faturaPadrao, hoje } from "@/lib/financas/formato";
+import { dataBR, faturaPadrao, hoje } from "@/lib/financas/formato";
 import { OpcoesContas, SeletorFatura } from "./comuns";
 import { CriarCategoriaSheet } from "./FormCategoria";
 import {
@@ -54,6 +54,8 @@ function Formulario({
   const { contas, categorias } = useFinancas();
   const [valor, setValor] = useState(l.valor_cents);
   const [data, setData] = useState(l.data);
+  // Entrada que veio de uma venda (ou cobrança da Meta): valor, data e situação são da origem; aqui só se ajusta conta, categoria e anotação.
+  const bloqueado = l.origem === "venda" || l.origem === "meta";
   const [status, setStatus] = useState<StatusLancamento>(l.status);
   const [nota, setNota] = useState(l.nota ?? "");
   const [cat, setCat] = useState(l.category_id);
@@ -93,6 +95,15 @@ function Formulario({
     if (!transf && !cat) return setErro("Escolha a categoria.");
     if (transf && (!conta || !destino || conta === destino))
       return setErro("Escolha duas contas diferentes.");
+    if (bloqueado) {
+      return void executar(() =>
+        atualizarLancamento(l.id, {
+          nota: nota.trim() || null,
+          category_id: cat,
+          account_id: conta,
+        }),
+      );
+    }
     void executar(() =>
       atualizarLancamento(l.id, {
         valor_cents: valor,
@@ -132,25 +143,38 @@ function Formulario({
         {l.tipo === "entrada" ? "Entrada" : l.tipo === "saida" ? "Saída" : "Transferência"} · era{" "}
         {brl(l.valor_cents)}
       </p>
-      <Field label="Valor">
-        <ValorInput value={valor} onChange={setValor} />
-      </Field>
-      <Segmented
-        block
-        value={status}
-        onChange={(s) => {
-          setStatus(s);
-          if (s === "pago" && data > hoje()) setData(hoje());
-        }}
-        options={[
-          { value: "pendente", label: "Previsto" },
-          { value: "pago", label: "Pago" },
-          { value: "cancelado", label: "Cancelado" },
-        ]}
-      />
-      <Field label="Data">
-        <DateField value={data} onChange={(e) => setData(e.target.value)} />
-      </Field>
+      {bloqueado ? (
+        <p className="t-body-sm" data-testid="origem-bloqueada" style={{ margin: 0 }}>
+          {l.origem === "venda"
+            ? "Entrada vinda de uma venda: o valor, a data e a situação seguem a parcela da venda (altere lá). Aqui você ajusta a conta, a categoria e a anotação."
+            : "Cobrança vinda da Meta: o valor, a data e a situação seguem a cobrança. Aqui você ajusta a categoria e a anotação."}
+          <br />
+          <b>{brl(l.valor_cents)}</b> · {dataBR(l.data)} ·{" "}
+          {l.status === "pago" ? "pago" : l.status === "pendente" ? "previsto" : "cancelado"}
+        </p>
+      ) : (
+        <>
+          <Field label="Valor">
+            <ValorInput value={valor} onChange={setValor} />
+          </Field>
+          <Segmented
+            block
+            value={status}
+            onChange={(s) => {
+              setStatus(s);
+              if (s === "pago" && data > hoje()) setData(hoje());
+            }}
+            options={[
+              { value: "pendente", label: "Previsto" },
+              { value: "pago", label: "Pago" },
+              { value: "cancelado", label: "Cancelado" },
+            ]}
+          />
+          <Field label="Data">
+            <DateField value={data} onChange={(e) => setData(e.target.value)} />
+          </Field>
+        </>
+      )}
       {!transf && (
         <Field label="Categoria">
           <Combobox
@@ -196,32 +220,36 @@ function Formulario({
       <Button size="lg" block loading={ocupado} onClick={salvar}>
         Salvar
       </Button>
-      <div className="fi-row fi-row--between">
-        {status !== "cancelado" ? (
-          <Button
-            variant="ghost"
-            disabled={ocupado}
-            onClick={() => void executar(() => atualizarLancamento(l.id, { status: "cancelado" }))}
-          >
-            Cancelar lançamento
-          </Button>
-        ) : (
-          <span />
-        )}
-        {confirmaExcluir ? (
-          <Button
-            variant="danger"
-            disabled={ocupado}
-            onClick={() => void executar(() => excluirLancamento(l.id))}
-          >
-            Confirmar exclusão
-          </Button>
-        ) : (
-          <Button variant="ghost" disabled={ocupado} onClick={() => setConfirmaExcluir(true)}>
-            Excluir
-          </Button>
-        )}
-      </div>
+      {!bloqueado && (
+        <div className="fi-row fi-row--between">
+          {status !== "cancelado" ? (
+            <Button
+              variant="ghost"
+              disabled={ocupado}
+              onClick={() =>
+                void executar(() => atualizarLancamento(l.id, { status: "cancelado" }))
+              }
+            >
+              Cancelar lançamento
+            </Button>
+          ) : (
+            <span />
+          )}
+          {confirmaExcluir ? (
+            <Button
+              variant="danger"
+              disabled={ocupado}
+              onClick={() => void executar(() => excluirLancamento(l.id))}
+            >
+              Confirmar exclusão
+            </Button>
+          ) : (
+            <Button variant="ghost" disabled={ocupado} onClick={() => setConfirmaExcluir(true)}>
+              Excluir
+            </Button>
+          )}
+        </div>
+      )}
       <CriarCategoriaSheet
         aberto={criandoCat !== null}
         nome={criandoCat ?? ""}

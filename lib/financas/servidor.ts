@@ -6,7 +6,6 @@ import type { NextResponse } from "next/server";
 
 import { fail, type ApiError } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { requireSupportWrite } from "@/lib/impersonate/support";
 import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,19 +19,16 @@ export type ContextoDeFinancas = {
 
 /**
  * Piso `manager` em TODA rota das Finanças (decisão do Arthur: o dinheiro da empresa é de gerente
- * para cima); a RLS das tabelas `fin_*` repete o piso. Rota que escreve passa antes pelo travamento
- * do modo somente leitura do suporte.
+ * para cima); a RLS das tabelas `fin_*` repete o piso. A rota que ESCREVE chama
+ * `requireSupportWrite()` (modo somente leitura do suporte) antes desta função, de forma explícita:
+ * a cerca `suporte-cobertura-de-efeitos` procura a chamada no próprio arquivo da rota.
  */
 export async function autorizarFinancas(
-  escrita: boolean,
+  _escrita: boolean,
 ): Promise<
   { ok: true; ctx: ContextoDeFinancas } | { ok: false; response: NextResponse<ApiError> | Response }
 > {
   const requestId = randomUUID();
-  if (escrita) {
-    const negado = await requireSupportWrite();
-    if (negado) return { ok: false, response: negado };
-  }
   const authz = await requireRole("manager", { requestId, resource: "financas" });
   if (!authz.ok) return { ok: false, response: authz.response };
   return {

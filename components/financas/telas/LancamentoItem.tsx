@@ -83,17 +83,21 @@ export function LancamentoItem({
           {l.status === "cancelado" && <Badge tone="neutral">cancelado</Badge>}
         </span>
       </button>
-      {l.status === "pendente" && onPagar && !onMarcar && (
-        <button
-          type="button"
-          className="fi-btn fi-btn--secondary fi-btn--sm"
-          onClick={onPagar}
-          aria-label={`Marcar como pago: ${titulo}`}
-        >
-          <Check size={16} weight="bold" />
-          Pagar
-        </button>
-      )}
+      {l.status === "pendente" &&
+        onPagar &&
+        !onMarcar &&
+        l.origem !== "venda" &&
+        l.origem !== "meta" && (
+          <button
+            type="button"
+            className="fi-btn fi-btn--secondary fi-btn--sm"
+            onClick={onPagar}
+            aria-label={`Marcar como pago: ${titulo}`}
+          >
+            <Check size={16} weight="bold" />
+            Pagar
+          </button>
+        )}
     </li>
   );
 }

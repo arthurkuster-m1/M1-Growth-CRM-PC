@@ -50,7 +50,7 @@ export function BarraSelecao({
       <b>
         {n} {n === 1 ? "selecionado" : "selecionados"}
       </b>
-      <Button size="sm" icon={<PencilSimple size={16} />} disabled={n === 0} onClick={onEditar}>
+      <Button size="sm" onClick={onEditar} disabled={n === 0} icon={<PencilSimple size={16} />}>
         Editar selecionados
       </Button>
       {onPagar && (
@@ -64,7 +64,7 @@ export function BarraSelecao({
           Marcar como pago
         </Button>
       )}
-      <Button size="sm" variant="ghost" icon={<X size={16} />} onClick={onLimpar}>
+      <Button size="sm" variant="ghost" onClick={onLimpar} icon={<X size={16} />}>
         Limpar
       </Button>
     </div>

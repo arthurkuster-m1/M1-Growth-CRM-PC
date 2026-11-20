@@ -141,8 +141,8 @@ function ContasAba() {
         </p>
         <Button
           size="sm"
-          icon={<Plus size={16} weight="bold" />}
           onClick={() => setEditando("nova")}
+          icon={<Plus size={16} weight="bold" />}
         >
           Nova conta
         </Button>
@@ -383,8 +383,8 @@ function CartoesAba() {
         </p>
         <Button
           size="sm"
-          icon={<Plus size={16} weight="bold" />}
           onClick={() => setEditando("nova")}
+          icon={<Plus size={16} weight="bold" />}
         >
           Novo cartão
         </Button>

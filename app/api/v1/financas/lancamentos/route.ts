@@ -18,6 +18,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { criarLancamentosSchema, dataIso, mesIso } from "@/lib/financas/validacao";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
   COLUNAS_DO_LANCAMENTO,
   autorizarFinancas,
@@ -163,6 +164,9 @@ export async function GET(req: NextRequest): Promise<Response> {
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
+  // a guarda do modo somente leitura do suporte vem ANTES de qualquer efeito
+  const negado = await requireSupportWrite();
+  if (negado) return negado;
   const a = await autorizarFinancas(true);
   if (!a.ok) return a.response;
   const { supabase, orgId, userId, requestId } = a.ctx;

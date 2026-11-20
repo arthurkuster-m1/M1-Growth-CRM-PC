@@ -172,6 +172,34 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    // As telas de dentro das Finanças: o caminho normal é a barra de abas da própria tela; aqui elas
+    // existem para o ⌘K e para o teste de completude.
+    href: "/app/financas/lancar",
+    label: "Finanças · Lançar",
+    description:
+      "Lance uma entrada, saída ou transferência (inclusive compra parcelada no cartão).",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/lancamentos",
+    label: "Finanças · Lançamentos",
+    description:
+      "Todos os lançamentos do mês: entradas das vendas, saídas, filtros e edição em lote.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/configuracoes",
+    label: "Finanças · Configurações",
+    description: "Contas, cartões (fechamento e vencimento), categorias e grupos.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
     // ANOTAÇÕES: página solta no menu lateral, logo abaixo de Finanças (o Sidebar desenha o link, e
     // por isso não leva `sidebar: true`). O bloco de notas da agência sobre a empresa, em páginas.
     href: "/app/anotacoes",
