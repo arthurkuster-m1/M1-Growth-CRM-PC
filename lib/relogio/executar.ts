@@ -69,6 +69,8 @@ export async function aplicarRespostasQueChegaram(admin: SupabaseClient, deps: T
   );
   for (const row of linhas) {
     const enrollment = row as EnrollmentRow;
+    // Fluxo de automação sem contato não tem resposta de contato a considerar.
+    if (enrollment.contact_id === null) continue;
     // Contato pessoal (spec 21, caminho 5 — follow-up morno): a resposta dele
     // não move enrollment nenhum. Uma leitura por linha, e não um join: são no
     // máximo 40 por tick, e o filtro já cortou a org parada no banco.

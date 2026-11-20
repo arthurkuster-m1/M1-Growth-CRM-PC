@@ -50,7 +50,13 @@ export interface EnrollmentRow {
   organization_id: string;
   pointer_id: string;
   version_id: string;
-  contact_id: string;
+  /**
+   * NULL só em fluxo de automação de CRM (`surface='crm_automation'`, migration 0701): ali o fluxo
+   * é do SUJEITO do evento (`subject_*`), e a conversa só nasce quando um nó envia mensagem.
+   */
+  contact_id: string | null;
+  subject_kind?: "lead" | "contact" | "appointment" | null;
+  subject_id?: string | null;
   conversation_id: string | null;
   current_node_id: string;
   status: EnrollmentStatus;

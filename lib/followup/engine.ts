@@ -60,6 +60,13 @@ import "@/lib/automation/actions/add-tag";
 import type { EventRow } from "@/lib/event-log/dispatcher";
 import { quandoDoRetornoVivo, reavaliarDepoisDoRetorno } from "./retorno-segura-o-fluxo";
 import { triggerConfigSchema } from "./api-schemas";
+import {
+  ERRO_FLUXO_SEM_CONTATO,
+  exigeContato,
+  semContato,
+  sujeitoDe,
+  type SujeitoDoFluxo,
+} from "./sujeito-do-fluxo";
 
 const MAX_STEPS = 80;
 const CLAIM_LEASE_SECONDS = 120;
@@ -136,6 +143,16 @@ export interface AdminClient {
     contact_name?: string | null;
     custom_fields?: Record<string, unknown>;
   }>;
+  /**
+   * Os mesmos fatos do lead para um fluxo SEM contato (automação de CRM): vêm do sujeito do
+   * evento. Opcional como os demais avisos do adaptador; omitida, o fluxo roda com fatos vazios.
+   */
+  loadLeadFactsDoSujeito?(orgId: string, sujeito: SujeitoDoFluxo | null): Promise<{
+    lead_stage: string | null;
+    tags: string[];
+    contact_name?: string | null;
+    custom_fields?: Record<string, unknown>;
+  }>;
   loadEnrollmentEvents(enrollmentId: string): Promise<EnrollmentEventRef[]>;
   /** Latest inbound `messages.body` for the contact (optionally scoped to the enrollment conversation). */
   loadLastInboundBody(
@@ -167,7 +184,9 @@ export interface AdminClient {
    */
   criarTarefaInterna?(item: {
     organization_id: string;
-    contact_id: string;
+    contact_id: string | null;
+    /** O sujeito do evento, quando o fluxo não tem contato (automação de CRM). */
+    subject?: SujeitoDoFluxo | null;
     enrollment_id: string;
     /** O config do nó, já validado pelo `flowGraphSchema.parse`. */
     config: Extract<FlowNode, { type: "internal_task" }>["config"];
@@ -180,7 +199,9 @@ export interface AdminClient {
    */
   moverLeadNoFunil?(item: {
     organization_id: string;
-    contact_id: string;
+    contact_id: string | null;
+    /** O sujeito do evento, quando o fluxo não tem contato (automação de CRM). */
+    subject?: SujeitoDoFluxo | null;
     enrollment_id: string;
     config: Extract<FlowNode, { type: "move_lead" }>["config"];
   }): Promise<void>;
@@ -190,7 +211,9 @@ export interface AdminClient {
    */
   editarTagDoLead?(item: {
     organization_id: string;
-    contact_id: string;
+    contact_id: string | null;
+    /** O sujeito do evento, quando o fluxo não tem contato (automação de CRM). */
+    subject?: SujeitoDoFluxo | null;
     enrollment_id: string;
     config: Extract<FlowNode, { type: "edit_lead_tag" }>["config"];
   }): Promise<void>;
@@ -414,7 +437,7 @@ async function applyResult(
   respostaParaGravar: string | null = null,
 ): Promise<void> {
   const { db, clock, enqueueJob } = deps;
-  await db.assertServiceBoundary?.(enrollment);
+  if (!semContato(enrollment)) await db.assertServiceBoundary?.(enrollment);
 
   if (result.kind === "fail") {
     await applyHandlerFailure(deps, enrollment, result.error, summary);
@@ -451,6 +474,7 @@ async function applyResult(
       await db.criarTarefaInterna?.({
         organization_id: enrollment.organization_id,
         contact_id: enrollment.contact_id,
+        subject: sujeitoDe(enrollment),
         enrollment_id: enrollment.id,
         config: node.config,
       });
@@ -480,6 +504,7 @@ async function applyResult(
       await db.moverLeadNoFunil?.({
         organization_id: enrollment.organization_id,
         contact_id: enrollment.contact_id,
+        subject: sujeitoDe(enrollment),
         enrollment_id: enrollment.id,
         config: node.config,
       });
@@ -497,6 +522,7 @@ async function applyResult(
       await db.editarTagDoLead?.({
         organization_id: enrollment.organization_id,
         contact_id: enrollment.contact_id,
+        subject: sujeitoDe(enrollment),
         enrollment_id: enrollment.id,
         config: node.config,
       });
@@ -576,6 +602,9 @@ async function applyResult(
           : ACTION_RECHECK_MS;
       patch.next_eval_at = new Date(clock().getTime() + graceMs).toISOString();
       if (!isReplay) {
+        // Só os nós que falam com o cliente enfileiram turno, e esses já falham antes de chegar
+        // aqui num fluxo sem contato (`exigeContato`); a guarda é para o tipo e para o futuro.
+        if (enrollment.contact_id === null) throw new Error(ERRO_FLUXO_SEM_CONTATO);
         await db.assertServiceBoundary?.(enrollment);
         await enqueueJob({
           organization_id: enrollment.organization_id,
@@ -625,6 +654,7 @@ async function applyResult(
     !((node.config.if_exists ?? "overwrite") === "confirm" && ehConfirmacao(respostaParaGravar))
   ) {
     try {
+      if (enrollment.contact_id === null) throw new Error(ERRO_FLUXO_SEM_CONTATO);
       await db.assertServiceBoundary?.(enrollment);
       await db.persistirRespostaFollowup({
         organization_id: enrollment.organization_id,
@@ -672,7 +702,9 @@ async function processEnrollment(
   inboundBodyOverride?: string,
 ): Promise<void> {
   const { db, clock } = deps;
-  try { await db.assertServiceBoundary?.(enrollment); await db.assertAgenda?.(enrollment); }
+  try {
+    if (!semContato(enrollment)) { await db.assertServiceBoundary?.(enrollment); await db.assertAgenda?.(enrollment); }
+  }
   catch (error) {
     if(error instanceof AgendaDeferredError){
       if(error.protection.motivo === "leitura_indisponivel") throw error;
@@ -747,7 +779,20 @@ async function processEnrollment(
     return;
   }
 
-  const leadRow = await db.loadLeadFacts(enrollment.organization_id, enrollment.contact_id);
+  // Fluxo SEM contato (automação de CRM): nó que fala com o cliente falha de forma controlada
+  // (retenta e morre com aviso na Central) — o envio por automação é a Fase 3 do motor único.
+  if (semContato(enrollment) && exigeContato(node.type)) {
+    await applyHandlerFailure(deps, enrollment, ERRO_FLUXO_SEM_CONTATO, summary);
+    return;
+  }
+
+  const leadRow =
+    enrollment.contact_id === null
+      ? ((await db.loadLeadFactsDoSujeito?.(enrollment.organization_id, sujeitoDe(enrollment))) ?? {
+          lead_stage: null,
+          tags: [],
+        })
+      : await db.loadLeadFacts(enrollment.organization_id, enrollment.contact_id);
   const lead: LeadFacts = {
     lead_stage: leadRow.lead_stage,
     tags: leadRow.tags,
@@ -837,8 +882,9 @@ async function processEnrollment(
   if (textoInbound && node.type === "match_reply") {
     lastInboundBody = textoInbound;
   } else if (
-    (node.type === "match_reply" && (wokeEarly || waitElapsed || matchReplyOcupado)) ||
-    (node.type === "repeat" && repeatTotal == null)
+    enrollment.contact_id !== null &&
+    ((node.type === "match_reply" && (wokeEarly || waitElapsed || matchReplyOcupado)) ||
+      (node.type === "repeat" && repeatTotal == null))
   ) {
     // Sempre no contato inteiro: a captação e o WhatsApp podem ser conversas
     // diferentes, e filtrar pela conversation_id do enrollment esconde o SIM.
@@ -932,11 +978,63 @@ export async function runFollowupTick(deps: TickDeps, opts?: { limit?: number })
 }
 
 /** Production adapter: `AdminClient` backed by the real Supabase service-role client. */
+/**
+ * O negócio de um item dos nós internos (tarefa, mover etapa, tag). Com contato: o mais recente do
+ * contato (opcionalmente só no funil pedido) — o comportamento de sempre. Sem contato (automação de
+ * CRM): o do SUJEITO do evento. Sempre filtra `organization_id` (admin client ignora RLS).
+ */
+async function negocioDoItem(
+  admin: SupabaseClient,
+  item: { organization_id: string; contact_id: string | null; subject?: SujeitoDoFluxo | null },
+  colunas: string,
+  pipelineId?: string,
+): Promise<Record<string, unknown> | null> {
+  let contatoId = item.contact_id;
+  if (contatoId === null) {
+    const sujeito = item.subject ?? null;
+    if (!sujeito) return null;
+    if (sujeito.kind === "lead") {
+      let q = admin
+        .from("crm_leads")
+        .select(colunas)
+        .eq("organization_id", item.organization_id)
+        .eq("id", sujeito.id);
+      if (pipelineId) q = q.eq("pipeline_id", pipelineId);
+      const { data, error } = await q.maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data as unknown as Record<string, unknown> | null) ?? null;
+    }
+    if (sujeito.kind === "contact") {
+      contatoId = sujeito.id;
+    } else {
+      const { data, error } = await admin
+        .from("calendar_appointments")
+        .select("contact_id")
+        .eq("organization_id", item.organization_id)
+        .eq("id", sujeito.id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      contatoId = (data as { contact_id: string | null } | null)?.contact_id ?? null;
+      if (contatoId === null) return null;
+    }
+  }
+  let q = admin
+    .from("crm_leads")
+    .select(colunas)
+    .eq("organization_id", item.organization_id)
+    .eq("contact_id", contatoId);
+  if (pipelineId) q = q.eq("pipeline_id", pipelineId);
+  const { data, error } = await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as unknown as Record<string, unknown> | null) ?? null;
+}
+
 export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
   const revisions=new Map<string,number>();
   return {
-    async assertServiceBoundary(enrollment) { if(!revisions.has(enrollment.id) && enrollment.revision!==undefined) revisions.set(enrollment.id,enrollment.revision); await assertServiceBoundarySupabase(admin, enrollment.service_boundary ?? null); },
+    async assertServiceBoundary(enrollment) { if(enrollment.contact_id===null)return; if(!revisions.has(enrollment.id) && enrollment.revision!==undefined) revisions.set(enrollment.id,enrollment.revision); await assertServiceBoundarySupabase(admin, enrollment.service_boundary ?? null); },
     async retornoQueSeguraOFluxo(enrollment) {
+      if (enrollment.contact_id === null) return null;
       const quando = await quandoDoRetornoVivo(admin, enrollment.organization_id, enrollment.contact_id);
       if (quando === null) return null;
       const { data, error } = await admin
@@ -950,7 +1048,7 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
       if (!gatilho.success || gatilho.data.kind !== "silence") return null;
       return reavaliarDepoisDoRetorno(quando);
     },
-    async assertAgenda(enrollment){await assertAgendaEffectSupabase(admin,{organizationId:enrollment.organization_id,contactId:enrollment.contact_id,enrollmentId:enrollment.id,nodeId:enrollment.current_node_id});},
+    async assertAgenda(enrollment){if(enrollment.contact_id===null)return;await assertAgendaEffectSupabase(admin,{organizationId:enrollment.organization_id,contactId:enrollment.contact_id,enrollmentId:enrollment.id,nodeId:enrollment.current_node_id});},
     async claimDueEnrollments(limit, leaseSeconds) {
       const { data, error } = await admin.rpc("fn_claim_due_followup_enrollments", {
         p_limit: limit,
@@ -993,6 +1091,25 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
         lead_stage: lead?.stage_id ?? null,
         tags: lead?.tags ?? [],
         contact_name: contact?.name ?? null,
+        custom_fields: custom,
+      };
+    },
+    async loadLeadFactsDoSujeito(orgId, sujeito) {
+      const lead = sujeito
+        ? await negocioDoItem(
+            admin,
+            { organization_id: orgId, contact_id: null, subject: sujeito },
+            "stage_id, tags, custom_fields",
+          )
+        : null;
+      const custom =
+        lead?.custom_fields && typeof lead.custom_fields === "object" && !Array.isArray(lead.custom_fields)
+          ? (lead.custom_fields as Record<string, unknown>)
+          : {};
+      return {
+        lead_stage: (lead?.stage_id as string | null | undefined) ?? null,
+        tags: (lead?.tags as string[] | null | undefined) ?? [],
+        contact_name: null,
         custom_fields: custom,
       };
     },
@@ -1078,15 +1195,7 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
       // negócio mais recente do contato. Sem negócio a tarefa nasce só com o
       // contato — e `dono_do_lead` sem dono é `sem_dono`, recusa registrada,
       // nunca tarefa órfã na lista.
-      const { data: lead, error: leadErr } = await admin
-        .from("crm_leads")
-        .select("id")
-        .eq("organization_id", item.organization_id)
-        .eq("contact_id", item.contact_id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (leadErr) throw new Error(leadErr.message);
+      const lead = await negocioDoItem(admin, item, "id");
 
       const resultado = await criarTarefaNoCrm(admin, {
         organizationId: item.organization_id,
@@ -1095,7 +1204,7 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
         atribuirA: item.config.atribuir_a,
         prioridade: item.config.prioridade,
         leadId: (lead as { id: string } | null)?.id ?? null,
-        contactId: item.contact_id,
+        contactId: item.contact_id ?? (item.subject?.kind === "contact" ? item.subject.id : null),
         descricao: null,
         origem: `followup:${item.enrollment_id}`,
       });
@@ -1135,16 +1244,7 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
       if (etapaErr) throw new Error(etapaErr.message);
       if (!etapa) throw new Error("etapa_destino_inexistente");
 
-      const { data: lead, error } = await admin
-        .from("crm_leads")
-        .select("id")
-        .eq("organization_id", item.organization_id)
-        .eq("contact_id", item.contact_id)
-        .eq("pipeline_id", etapa.pipeline_id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
+      const lead = (await negocioDoItem(admin, item, "id", etapa.pipeline_id)) as { id: string } | null;
       if (!lead) {
         // Contato sem negócio neste funil não tem card para mover — não é defeito do fluxo.
         logger.warn("followup_move_lead_skipped", {
@@ -1178,27 +1278,21 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
      *   que não existe no `event_log` para viajar no payload do evento gravado.
      */
     async editarTagDoLead(item) {
-      const { data: lead, error } = await admin
-        .from("crm_leads")
-        .select("*")
-        .eq("organization_id", item.organization_id)
-        .eq("contact_id", item.contact_id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
+      const lead = await negocioDoItem(admin, item, "*");
 
       const context: Record<string, unknown> = {};
+      const contatoDoItem =
+        item.contact_id ?? (item.subject?.kind === "contact" ? item.subject.id : null);
       if (lead) {
         context.lead = lead;
-      } else {
+      } else if (contatoDoItem !== null) {
         // Sem negócio, a `add_tag` grava no CONTATO — é o alvo dela, não um
         // fallback inventado aqui.
         const { data: contato, error: contatoErr } = await admin
           .from("contacts")
           .select("*")
           .eq("organization_id", item.organization_id)
-          .eq("id", item.contact_id)
+          .eq("id", contatoDoItem)
           .maybeSingle();
         if (contatoErr) throw new Error(contatoErr.message);
         if (contato) context.contact = contato;

@@ -332,8 +332,8 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
       const {rows}=await pool.query("select fn_followup_job_current($1,$2,$3,$4) current",[orgId,jobId,enrollmentId,nodeId]);
       if(!rows[0]?.current) throw new StaleServiceBoundaryError();
     },
-    async assertServiceBoundary(enrollment) { if(!revisions.has(enrollment.id)&&enrollment.revision!==undefined) revisions.set(enrollment.id,enrollment.revision); await requireCurrentServiceBoundary(pool, enrollment.service_boundary ?? null); },
-    async assertAgenda(enrollment){await assertAgendaEffectPg(pool,{organizationId:enrollment.organization_id,contactId:enrollment.contact_id,enrollmentId:enrollment.id,nodeId:enrollment.current_node_id});},
+    async assertServiceBoundary(enrollment) { if(enrollment.contact_id===null)return; if(!revisions.has(enrollment.id)&&enrollment.revision!==undefined) revisions.set(enrollment.id,enrollment.revision); await requireCurrentServiceBoundary(pool, enrollment.service_boundary ?? null); },
+    async assertAgenda(enrollment){if(enrollment.contact_id===null)return;await assertAgendaEffectPg(pool,{organizationId:enrollment.organization_id,contactId:enrollment.contact_id,enrollmentId:enrollment.id,nodeId:enrollment.current_node_id});},
     async claimDueEnrollments(limit, leaseSeconds) {
       const { rows } = await pool.query(`select * from fn_claim_due_followup_enrollments($1, $2)`, [
         limit,
