@@ -140,11 +140,11 @@ function Pilula({
       role="tab"
       aria-selected={ativa}
       className={cn(
-        "h-8 max-w-60 shrink-0 truncate rounded-lg border px-3 text-sm font-medium whitespace-nowrap transition-colors",
+        "h-8 max-w-60 shrink-0 truncate rounded-full border px-3.5 text-sm font-medium whitespace-nowrap transition-colors",
         isDragging && "z-10 opacity-70 shadow-md",
         ativa
-          ? "border-primary bg-primary/10 text-foreground"
-          : "bg-card text-muted-foreground hover:text-foreground",
+          ? "border-navy bg-navy font-bold text-navy-foreground"
+          : "bg-card text-foreground hover:bg-secondary",
       )}
     >
       {funil.nome}
@@ -342,10 +342,10 @@ export function BarraDeFunis({
             aria-selected={escolhido === todosId}
             onClick={() => aoEscolher(todosId)}
             className={cn(
-              "h-8 shrink-0 rounded-lg border px-3 text-sm font-medium whitespace-nowrap transition-colors",
+              "h-8 shrink-0 rounded-full border px-3.5 text-sm font-medium whitespace-nowrap transition-colors",
               escolhido === todosId
-                ? "border-primary bg-primary/10 text-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground",
+                ? "border-navy bg-navy font-bold text-navy-foreground"
+                : "bg-card text-foreground hover:bg-secondary",
             )}
           >
             {rotuloTodos ?? t("Todos")}

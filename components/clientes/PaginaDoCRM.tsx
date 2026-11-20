@@ -50,7 +50,7 @@ export function PaginaDoCRM() {
         aria-label={t("CRM")}
         className="sticky top-0 z-30 -mx-1 flex items-center gap-1 overflow-x-auto border-b bg-background px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <span className="mr-3 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+        <span className="mr-3 text-sm font-bold tracking-wide text-foreground uppercase">
           {t("CRM")}
         </span>
         {abas.map((a) => (
@@ -65,7 +65,7 @@ export function PaginaDoCRM() {
             className={cn(
               "-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
               visao === a.id
-                ? "border-primary text-foreground"
+                ? "border-primary font-bold text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >

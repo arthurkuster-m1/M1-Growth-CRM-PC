@@ -3212,7 +3212,7 @@ export function ClientesCRM({
               <button
                 type="button"
                 onClick={() => setNovaOportunidade(true)}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-card px-4 text-sm font-medium hover:bg-secondary"
               >
                 <Plus size={14} weight="bold" aria-hidden />
                 {t("Nova oportunidade")}
@@ -3222,7 +3222,7 @@ export function ClientesCRM({
                 <button
                   type="button"
                   onClick={() => setNovoLeadAberto(true)}
-                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-card px-4 text-sm font-medium hover:bg-secondary"
                 >
                   <Plus size={14} weight="bold" aria-hidden />
                   {t("Novo lead")}
@@ -3230,7 +3230,7 @@ export function ClientesCRM({
                 <button
                   type="button"
                   onClick={() => router.push("/app/clientes/importar")}
-                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-4 text-sm font-medium hover:bg-secondary"
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-card px-4 text-sm font-medium hover:bg-secondary"
                 >
                   <UploadSimple size={14} weight="bold" aria-hidden />
                   {t("Importar leads")}
@@ -3253,7 +3253,7 @@ export function ClientesCRM({
 
       <section
         aria-label={t("Resumo")}
-        className={`grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 ${
+        className={`grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border bg-border sm:grid-cols-3 ${
           ehOportunidades ? "xl:grid-cols-4" : "xl:grid-cols-5"
         } max-sm:flex max-sm:[scrollbar-width:none] max-sm:gap-2 max-sm:overflow-x-auto max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden`}
       >
@@ -3283,7 +3283,7 @@ export function ClientesCRM({
               <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 {n.rotulo}
               </p>
-              <p className="mt-1 text-xl font-semibold tabular-nums">
+              <p className="mt-1 text-2xl font-bold tabular-nums">
                 <NumeroQueCabe>{n.valor}</NumeroQueCabe>
               </p>
               {n.detalhe ? (
@@ -3302,7 +3302,7 @@ export function ClientesCRM({
               onClick={() => setNovaOportunidade(true)}
               aria-label={t("Nova oportunidade")}
               title={t("Nova oportunidade")}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-card hover:bg-secondary sm:hidden"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-card hover:bg-secondary sm:hidden"
             >
               <Plus size={16} weight="bold" aria-hidden />
             </button>
@@ -3312,7 +3312,7 @@ export function ClientesCRM({
             aria-pressed={destaque === "ligarhoje"}
             title={t("Próxima ação vencida ou de hoje, e sem resposta há mais de 24h")}
             onClick={() => setDestaque(destaque === "ligarhoje" ? null : "ligarhoje")}
-            className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
+            className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
               destaque === "ligarhoje" ? "border-primary bg-primary/10" : "bg-card"
             }`}
           >
@@ -3327,7 +3327,7 @@ export function ClientesCRM({
             aria-pressed={destaque === "proximos5"}
             title={t("Leads com o próximo passo marcado de hoje até daqui a 4 dias")}
             onClick={() => setDestaque(destaque === "proximos5" ? null : "proximos5")}
-            className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
+            className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
               destaque === "proximos5" ? "border-primary bg-primary/10" : "bg-card"
             }`}
           >
@@ -3343,7 +3343,7 @@ export function ClientesCRM({
               aria-pressed={destaque === "cadencia"}
               title={t("Leads cujo passo da cadência vence hoje ou já venceu")}
               onClick={() => setDestaque(destaque === "cadencia" ? null : "cadencia")}
-              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
+              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary ${
                 destaque === "cadencia" ? "border-primary bg-primary/10" : "bg-card"
               }`}
             >
@@ -3358,7 +3358,7 @@ export function ClientesCRM({
             type="button"
             onClick={() => setProspectando(true)}
             title={t("Trabalha a lista que está filtrada, um lead de cada vez")}
-            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary"
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full border bg-card px-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-secondary"
           >
             <Phone size={14} aria-hidden />
             <span className="max-sm:hidden">{t("Modo prospecção")}</span>
@@ -3369,7 +3369,7 @@ export function ClientesCRM({
             onClick={() => setConfigProspeccao(true)}
             aria-label={t("Configurar a prospecção")}
             title={t("Configurar a prospecção")}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-card transition-colors hover:bg-secondary"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-card transition-colors hover:bg-secondary"
           >
             <Gear size={16} aria-hidden />
           </button>
@@ -3381,7 +3381,7 @@ export function ClientesCRM({
           <button
             type="button"
             onClick={() => setNovoLeadAberto(true)}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 text-sm font-medium hover:bg-secondary"
           >
             <Plus size={14} weight="bold" aria-hidden />
             {t("Novo lead")}
@@ -3389,7 +3389,7 @@ export function ClientesCRM({
           <button
             type="button"
             onClick={() => router.push("/app/clientes/importar")}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-3 text-sm font-medium hover:bg-secondary"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 text-sm font-medium hover:bg-secondary"
           >
             <UploadSimple size={14} weight="bold" aria-hidden />
             {t("Importar")}
@@ -3400,7 +3400,7 @@ export function ClientesCRM({
       {ehOportunidades ? null : (
         <section
           aria-label={t("Ciclo de vida")}
-          className="rounded-2xl border bg-card px-4 py-3 max-sm:px-3 max-sm:py-2"
+          className="rounded-[22px] border bg-card px-4 py-3 max-sm:px-3 max-sm:py-2"
         >
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
