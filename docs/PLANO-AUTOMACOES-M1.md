@@ -81,7 +81,7 @@ do **nome** (provisório; vira uma coluna própria na unificação). Código: `l
 | 3b | **Modelos de follow-up M1, um por vez e construídos junto com o Arthur** (janela de envio e anti-banimento): Anti-No-show (cópia editável por cliente), Lead que não respondeu e Compareceu e não comprou. A galeria hoje é só de clínica: criar o nicho "agência/comercial" | A fazer |
 | 4 | **Editor visual** da regra pelo fluxo vertical: "+" entre os passos, reordenar, painel lateral com os formulários que já existem; depois, espera e "se… senão" | A fazer |
 | 5 | **Catálogo novo de ações/gatilhos** (ver §5), sempre uma de cada vez | A fazer |
-| 6 | **Motor único**: decidir com dados de uso reais (quais automações o Arthur realmente roda) | A decidir |
+| 6 | **Motor único** — **decidido em 20/11/2026: fazer agora (Opção B)**, sem esperar dados de uso. Plano em [`PLANO-MOTOR-UNICO-M1.md`](PLANO-MOTOR-UNICO-M1.md) | Em andamento |
 | 7 | **Integrar a IA às automações** (depois da revisão dos agentes; Assistido primeiro) | Depois da frente 11 |
 
 ## 5. Catálogo: o que considerar acrescentar (backlog, a decidir item a item)
