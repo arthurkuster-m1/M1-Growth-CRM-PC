@@ -262,6 +262,8 @@ type Ctx = {
   plano: PlanoOrcamento;
   conta: (id: string | null) => Conta | undefined;
   categoria: (id: string | null) => Categoria | undefined;
+  /** Por ano não há orçamento de categoria (só o teto do mês): devolve as mesmas categorias, para as telas da família. */
+  categoriasDoAno: (ano: number) => Categoria[];
   /** Aplica uma nova ordem na tela na hora (depois de arrastar), sem esperar o banco responder. */
   aplicarOrdem: (alvo: "categoria" | "grupo", plano: { id: string; ordem: number }[]) => void;
   /** Põe uma categoria recém-criada na lista na hora (sem esperar a recarga), para já poder ser escolhida. */
@@ -270,6 +272,8 @@ type Ctx = {
 };
 const FinCtx = createContext<Ctx | null>(null);
 
+/** O modelo final não tem categoria "esporádica": o único orçamento de gastos é o teto do mês. */
+const SEM_ESPORADICAS = new Set<string>();
 const SEM_PLANO: PlanoOrcamento = { tetoPadrao: 0, tetos: {}, metaPadrao: 0, metas: {} };
 const SEM_CONFIG: Base["config"] = {
   teto_padrao_cents: 0,
@@ -306,6 +310,7 @@ export function FinancasProvider({ children }: { children: ReactNode }) {
       grupos: b?.grupos ?? [],
       config: b?.config ?? SEM_CONFIG,
       plano: b?.plano ?? SEM_PLANO,
+      categoriasDoAno: () => categorias,
       conta: (id) => (id ? cm.get(id) : undefined),
       categoria: (id) => (id ? km.get(id) : undefined),
       aplicarOrdem: (alvo, plano) =>
@@ -352,7 +357,14 @@ export function useFinancas(): Ctx {
  */
 export function usePlano() {
   const { plano, carregando, erro, recarregar } = useFinancas();
-  return { ...plano, carregando, erro, faltaTabela: false, recarregar };
+  return {
+    ...plano,
+    esporadicas: SEM_ESPORADICAS,
+    carregando,
+    erro,
+    faltaTabela: false,
+    recarregar,
+  };
 }
 
 /**

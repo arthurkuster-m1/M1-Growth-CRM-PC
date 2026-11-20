@@ -191,6 +191,15 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    href: "/app/financas/ano",
+    label: "Finanças · Ano",
+    description:
+      "O ano: entradas × saídas por mês, renda por fonte, gasto por categoria e comparar anos.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
     href: "/app/financas/faturas",
     label: "Finanças · Faturas",
     description: "Faturas dos cartões: total do app × total do banco, em aberto, e pagar a fatura.",
