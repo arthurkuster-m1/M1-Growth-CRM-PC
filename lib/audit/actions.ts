@@ -655,6 +655,22 @@ export const AUDIT_ACTIONS = [
   "fidelidade.ponto_dado",
   "fidelidade.ponto_resgatado",
   "financeiro.recorrencia_gerada",
+  // As Finanças novas (0700): o dinheiro da empresa. Audita tudo o que ESCREVE — lançamento,
+  // conta/cartão, categoria/grupo, teto/meta e saldo de abertura —, porque mexer nisso muda o que o
+  // caixa diz, e sem a linha a única explicação para um número diferente seria "mudou".
+  "financas.lancamento_criado",
+  "financas.lancamento_alterado",
+  "financas.lancamento_removido",
+  "financas.conta_criada",
+  "financas.conta_alterada",
+  "financas.categoria_criada",
+  "financas.categoria_alterada",
+  "financas.categoria_removida",
+  "financas.grupo_criado",
+  "financas.grupo_alterado",
+  "financas.grupo_removido",
+  "financas.config_alterada",
+  "financas.abertura_alterada",
   "comanda.faturada_em_lote",
   // A rodada de renovação — e ela só audita quando FEZ algo, como manda a regra
   // do cron desta base. Uma linha por rodada com efeito, carregando a contagem:
