@@ -2,6 +2,13 @@
 
 import { TituloDaSecao } from "@/components/marketing/campanhas/visual/Pecas";
 import { ArrowRight, Funnel, Plus } from "@/lib/ui/icons";
+import { EVENTOS_DA_META } from "@/lib/conversoes/regras-meta";
+import { EventoMetaDaEtapa } from "@/components/marketing/campanhas/EventoMetaDaEtapa";
+import {
+  lerRegrasMetaDoFunil,
+  type LeituraDasRegrasMeta,
+  type RegraMetaDaEtapa,
+} from "@/app/actions/settings/regraMetaDaEtapa";
 import { SelectDoApp } from "@/components/ui/SelectDoApp";
 import {
   MODELOS_DE_FUNIL_FIXOS,
@@ -67,6 +74,8 @@ interface Modelo {
   name: string;
   stages: unknown[];
 }
+
+const EVENTOS_PADRAO: ReadonlySet<string> = new Set(EVENTOS_DA_META.map((e) => e.valor));
 
 const CAMPO =
   "h-10 w-full rounded-xl border bg-card px-3 text-sm outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
@@ -175,6 +184,34 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  // A Meta CAPI por etapa: as regras do funil, os eventos personalizados já criados e o estado da conexão.
+  const [capi, setCapi] = useState<Extract<LeituraDasRegrasMeta, { ok: true }> | null>(null);
+  useEffect(() => {
+    if (!c.pipeline_id) return;
+    let vivo = true;
+    void lerRegrasMetaDoFunil(c.pipeline_id).then((r) => {
+      if (vivo) setCapi(r.ok ? r : null);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [c.pipeline_id, etapas?.length]);
+  const aoSalvarRegraMeta = (regra: RegraMetaDaEtapa) =>
+    setCapi((atual) =>
+      atual
+        ? {
+            ...atual,
+            regras: [...atual.regras.filter((r) => r.stageId !== regra.stageId), regra],
+            personalizados: [
+              ...new Set([
+                ...atual.personalizados,
+                ...(EVENTOS_PADRAO.has(regra.metaEvent) ? [] : [regra.metaEvent]),
+              ]),
+            ].sort(),
+          }
+        : atual,
+    );
 
   async function criarFunil(modeloId: string | null) {
     setCriando(true);
@@ -635,6 +672,18 @@ export function FunilDeConversao({ c, podeEditar }: { c: CampanhaDeDemanda; pode
                       aoConfirmar={(texto) => void mexer(atual.id, { proxima_acao_padrao: texto })}
                     />
                   </div>
+                  {capi ? (
+                    <EventoMetaDaEtapa
+                      key={`meta-${atual.id}-${capi.regras.find((r) => r.stageId === atual.id)?.metaEvent ?? ""}`}
+                      etapa={atual}
+                      regra={capi.regras.find((r) => r.stageId === atual.id) ?? null}
+                      personalizados={capi.personalizados}
+                      conectada={capi.conectada}
+                      ligada={capi.ligada}
+                      podeEditar={podeEditar && capi.podeEditar}
+                      aoSalvar={aoSalvarRegraMeta}
+                    />
+                  ) : null}
                   <div className="flex flex-wrap items-end gap-2">
                     <button
                       type="button"
