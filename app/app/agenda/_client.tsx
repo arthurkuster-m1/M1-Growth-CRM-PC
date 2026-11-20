@@ -403,7 +403,7 @@ export function AgendaClient({
       <Button
         variant="outline"
         size="sm"
-        className="h-10 w-full max-w-xs gap-2 rounded-xl px-4 text-sm"
+        className="h-10 w-full max-w-xs gap-2 rounded-full px-4 text-sm"
         data-testid="sincronizar-google-celular"
         disabled={sincronizando}
         onClick={sincronizarComGoogle}
@@ -432,7 +432,7 @@ export function AgendaClient({
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("Agenda")}</h1>
           <p className="hidden text-sm text-muted-foreground sm:block">
             {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
           </p>
@@ -472,7 +472,7 @@ export function AgendaClient({
             <Button
               variant="outline"
               size="sm"
-              className="hidden h-9 gap-2 rounded-xl px-3 text-xs sm:inline-flex lg:h-8"
+              className="hidden h-9 gap-2 rounded-full px-3 text-xs sm:inline-flex lg:h-8"
               data-testid="sincronizar-google"
               disabled={sincronizando}
               onClick={sincronizarComGoogle}
@@ -484,7 +484,7 @@ export function AgendaClient({
           {podeMarcar && (
             <Button
               size="sm"
-              className="h-10 w-full max-w-xs gap-2 rounded-xl px-4 text-sm sm:h-9 sm:w-auto sm:max-w-none sm:px-3 sm:text-xs lg:h-8"
+              className="h-10 w-full max-w-xs gap-2 rounded-full px-4 text-sm sm:h-9 sm:w-auto sm:max-w-none sm:px-3 sm:text-xs lg:h-8"
               disabled={!tipo}
               // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
               // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
@@ -512,7 +512,7 @@ export function AgendaClient({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 shrink-0 rounded-xl px-3 text-xs lg:h-8"
+            className="h-9 shrink-0 rounded-full px-4 text-xs font-bold lg:h-8"
             onClick={() => setAncora(ancoraLocalDoDia(hojeNaOrganizacao))}
           >
             {t("Hoje")}
@@ -583,7 +583,7 @@ export function AgendaClient({
                 size="sm"
                 data-testid="alternador-de-visao"
                 aria-label={t("Escolher a visualização")}
-                className="h-9 shrink-0 gap-1.5 rounded-xl px-3 text-xs sm:h-9 sm:gap-2 sm:text-xs lg:h-8"
+                className="h-9 shrink-0 gap-1.5 rounded-full px-4 text-xs font-bold sm:h-9 sm:gap-2 sm:text-xs lg:h-8"
               >
                 <span data-testid="visao-atual">
                   {t(VISOES.find((v) => v.id === visao)?.rotulo ?? "Semana")}

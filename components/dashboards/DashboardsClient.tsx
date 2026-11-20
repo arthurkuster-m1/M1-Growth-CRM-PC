@@ -184,31 +184,38 @@ export function DashboardsClient({
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-[2000px] min-w-0 flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+    <div
+      className={cn(
+        // No celular a tela ocupa a largura toda: cancela o `p-4` lateral do <main> (o conteúdo
+        // ficava com duas camadas de margem) e deixa só uma faixa fina de respiro. Na página pública
+        // não há <main> em volta, então não há padding a cancelar.
+        "flex max-w-[2000px] min-w-0 flex-col gap-3 px-2.5 pb-4 sm:mx-auto sm:w-full sm:gap-4 sm:p-6",
+        !publico && "-mx-4 sm:mx-auto",
+      )}
+    >
+      <header className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[22px] bg-deep p-4 text-deep-foreground shadow-md sm:p-6">
         <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/16 text-sm font-bold text-deep-foreground"
           >
             {empresa.trim().slice(0, 2).toUpperCase() || "M1"}
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight sm:text-xl">
+            <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
               {t("Dashboards")}
             </h1>
-            <p className="truncate text-xs text-muted-foreground sm:text-sm">
+            <p className="truncate text-sm text-deep-foreground opacity-85">
               {empresa} · {t("Performance ao vivo")}
             </p>
           </div>
         </div>
         <span
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
-            "border-green-500/50 bg-green-500/10 text-green-800 dark:text-green-300",
+            "inline-flex items-center gap-2 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-deep-foreground",
           )}
         >
-          <span className={cn("h-2 w-2 rounded-full", "bg-green-500")} aria-hidden />
+          <span className={cn("h-2 w-2 rounded-full", "bg-green-400")} aria-hidden />
           {painel === "trafego"
             ? t("Dados reais · Meta Ads + CRM")
             : painel === "business"
@@ -236,10 +243,10 @@ export function DashboardsClient({
             aria-selected={painel === a.id}
             onClick={() => setPainel(a.id)}
             className={cn(
-              "inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-medium whitespace-nowrap transition-colors",
+              "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors",
               painel === a.id
-                ? "border-primary bg-primary/10 text-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground",
+                ? "border-deep bg-deep font-bold text-deep-foreground"
+                : "bg-card text-foreground hover:bg-secondary",
             )}
           >
             {a.icone}
@@ -257,7 +264,7 @@ export function DashboardsClient({
               <button
                 type="button"
                 title={t("Escolher quais dashboards esta empresa usa")}
-                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border bg-card px-3 text-sm text-muted-foreground hover:text-foreground"
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border bg-card px-4 text-sm text-foreground hover:bg-secondary"
               >
                 <Eye size={16} aria-hidden />
                 {t("Dashboards desta empresa")}
@@ -292,11 +299,11 @@ export function DashboardsClient({
       </div>
 
       {!publico && !noModoAgencia && podeVerPerdas ? (
-        <div className="flex justify-end">
+        <div className="flex sm:justify-end">
           <button
             type="button"
             onClick={() => setCompartilhando(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary sm:w-auto"
           >
             <ShareNetwork size={16} aria-hidden />
             {t("Compartilhar com o cliente")}
@@ -313,7 +320,7 @@ export function DashboardsClient({
       {/* No celular os filtros dividem a largura do bloco por igual (sem sobra à direita).
           Atividades tem o próprio seletor de período dentro da página. */}
       {painel === "atividades" ? null : (
-        <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border bg-card p-3 sm:flex sm:flex-wrap">
+        <div className="grid grid-cols-2 items-center gap-2 rounded-[22px] border bg-card p-3 sm:flex sm:flex-wrap sm:p-4">
           <div
             className={cn(
               "min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto",
@@ -354,13 +361,13 @@ export function DashboardsClient({
 
       {painel === "trafego" ? (
         trafego.isLoading ? (
-          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+          <div className="h-48 animate-pulse rounded-[22px] bg-secondary" aria-busy="true" />
         ) : trafego.isError || !trafego.data ? (
-          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="rounded-[22px] border border-dashed bg-card p-6 text-sm text-muted-foreground">
             {t("Não consegui carregar os números de tráfego agora. Tente de novo em instantes.")}
           </p>
         ) : trafego.data.catalogo.length === 0 ? (
-          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="rounded-[22px] border border-dashed bg-card p-6 text-sm text-muted-foreground">
             {t(
               "Nenhuma campanha de tráfego pago cadastrada. Crie uma em Campanhas para ver os números aqui.",
             )}
@@ -371,9 +378,9 @@ export function DashboardsClient({
       ) : null}
       {painel === "business" ? (
         business.isLoading ? (
-          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+          <div className="h-48 animate-pulse rounded-[22px] bg-secondary" aria-busy="true" />
         ) : business.isError || !business.data ? (
-          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="rounded-[22px] border border-dashed bg-card p-6 text-sm text-muted-foreground">
             {t("Não consegui carregar os números do Business agora. Tente de novo em instantes.")}
           </p>
         ) : (
@@ -382,9 +389,9 @@ export function DashboardsClient({
       ) : null}
       {painel === "atendimento" ? (
         atendimento.isLoading ? (
-          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+          <div className="h-48 animate-pulse rounded-[22px] bg-secondary" aria-busy="true" />
         ) : atendimento.isError || !atendimento.data ? (
-          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="rounded-[22px] border border-dashed bg-card p-6 text-sm text-muted-foreground">
             {t(
               "Não consegui carregar os números de atendimento agora. Tente de novo em instantes.",
             )}
@@ -413,9 +420,9 @@ export function DashboardsClient({
       {painel === "atividades" ? <Relatorios abaInicial="atividades" /> : null}
       {painel === "prospeccao" ? (
         prospeccao.isLoading ? (
-          <div className="h-48 animate-pulse rounded-2xl bg-secondary" aria-busy="true" />
+          <div className="h-48 animate-pulse rounded-[22px] bg-secondary" aria-busy="true" />
         ) : prospeccao.isError || !prospeccao.data ? (
-          <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="rounded-[22px] border border-dashed bg-card p-6 text-sm text-muted-foreground">
             {t("Não consegui carregar os números de prospecção agora. Tente de novo em instantes.")}
           </p>
         ) : (

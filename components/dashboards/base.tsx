@@ -82,18 +82,18 @@ export function Kpi({
 }) {
   const p = meta ? Math.max(0, Math.min(100, meta.progresso)) : 0;
   return (
-    <div className="relative min-w-0 overflow-hidden rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+    <div className="relative min-w-0 overflow-hidden rounded-[22px] border bg-card p-5 shadow-sm sm:p-6">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-primary/10 blur-2xl"
       />
-      <p className="relative text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      <p className="relative text-xs font-bold tracking-wide text-muted-foreground uppercase">
         {rotulo}
       </p>
       <div className="relative mt-1.5 flex flex-wrap items-baseline gap-x-2">
         <p
           className={cn(
-            "min-w-0 flex-1 basis-32 text-2xl font-bold tracking-tight tabular-nums sm:text-3xl",
+            "min-w-0 flex-1 basis-32 text-3xl font-bold tracking-tight tabular-nums sm:text-3xl",
             destaque && "text-primary",
           )}
         >
@@ -101,7 +101,7 @@ export function Kpi({
         </p>
         {variacao}
       </div>
-      {apoio ? <p className="relative mt-1 text-xs text-muted-foreground">{apoio}</p> : null}
+      {apoio ? <p className="relative mt-1.5 text-sm text-muted-foreground">{apoio}</p> : null}
       {meta ? (
         <div className="relative mt-3">
           <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
@@ -134,9 +134,11 @@ export function Painel({
   className?: string;
 }) {
   return (
-    <section className={cn("min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5", className)}>
+    <section
+      className={cn("min-w-0 rounded-[22px] border bg-card p-4 shadow-sm sm:p-6", className)}
+    >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold">{titulo}</h2>
+        <h2 className="text-base font-bold tracking-tight">{titulo}</h2>
         <div className="flex items-center gap-2">
           {nota ? <span className="text-xs text-muted-foreground">{nota}</span> : null}
           {acao}
@@ -154,7 +156,7 @@ export function GradeDeNumeros({
   itens: Array<{ rotulo: string; valor: string; destaque?: boolean }>;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">
       {itens.map((i) => (
         <div key={i.rotulo} className="bg-card px-4 py-3">
           <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -218,7 +220,7 @@ export function Visoes<T extends string>({
   return (
     <div
       role="tablist"
-      className="flex max-w-full [scrollbar-width:none] gap-1 overflow-x-auto rounded-xl bg-secondary p-1 [&::-webkit-scrollbar]:hidden"
+      className="flex max-w-full [scrollbar-width:none] gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden"
     >
       {opcoes.map((o) => (
         <button
@@ -228,10 +230,10 @@ export function Visoes<T extends string>({
           aria-selected={valor === o.id}
           onClick={() => aoMudar(o.id)}
           className={cn(
-            "h-9 shrink-0 rounded-lg px-3.5 text-sm font-medium whitespace-nowrap transition-colors",
+            "h-10 shrink-0 rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors",
             valor === o.id
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
+              ? "border-deep bg-deep font-bold text-deep-foreground"
+              : "bg-card text-foreground hover:bg-secondary",
           )}
         >
           {o.rotulo}
@@ -252,7 +254,7 @@ export function TabelaDeDados({
   rodape?: ReactNode[];
 }) {
   return (
-    <div className="max-w-full overflow-x-auto rounded-xl border">
+    <div className="max-w-full overflow-x-auto rounded-2xl border">
       <table className="w-full min-w-max text-sm">
         <thead className="bg-secondary/60 text-xs text-muted-foreground">
           <tr>

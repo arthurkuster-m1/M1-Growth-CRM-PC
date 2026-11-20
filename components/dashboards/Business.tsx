@@ -128,7 +128,7 @@ export function Business({
 
   return (
     <div className="grid min-w-0 gap-4">
-      <GradeDeKpis className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <GradeDeKpis className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 xl:grid-cols-4">
         <Kpi
           rotulo={t("Entrou (recebido)")}
           valor={brl(dados.recebido)}

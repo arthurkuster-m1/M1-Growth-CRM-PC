@@ -713,6 +713,8 @@ export function CampanhasDeDemanda() {
           : "—";
       case "plataforma":
         return c.platform_campaigns.map((p) => p.name).join(", ") || "—";
+      case "comentarios":
+        return c.comments?.trim() ? <span className="line-clamp-3">{c.comments}</span> : "—";
       default:
         return "—";
     }
@@ -734,41 +736,99 @@ export function CampanhasDeDemanda() {
     "meta-faturamento",
   ]);
 
+  // O card agrupa as propriedades da visualização por papel, em vez de empilhar tudo em duas
+  // colunas: situação (status e canal) no topo, os três números do período em destaque, e o resto
+  // em pares com o rótulo em cima do valor. Só aparece o que está ligado na visualização.
+  const temNoCard = (id: string) => cartao.some((col) => col.id === id);
+  const colunaDoCard = (id: string) => cartao.find((col) => col.id === id);
+  const mostraEstado = ["estado-atual", "investido", "leads", "cpl"].some(temNoCard);
+  const NO_TOPO_DO_CARD = new Set(["canal", "status"]);
+  const NO_ESTADO_DO_CARD = new Set(["estado-atual", "investido", "leads", "cpl"]);
+  const LARGAS_NO_CARD = new Set(["plataforma", "comentarios", "funil"]);
+  const restoDoCard = cartao.filter(
+    (col) => !NO_TOPO_DO_CARD.has(col.id) && !NO_ESTADO_DO_CARD.has(col.id),
+  );
+  const valorEditavel = (col: (typeof cartao)[number], c: CampanhaDeDemanda) =>
+    podeEditar && EDITAVEIS_NO_CARD.has(col.id) ? col.celula(c) : valorDoCartao(col.id, c);
+  // As células editáveis ficam por cima do link que cobre o card.
+  const porCimaDoLink = (id: string) =>
+    podeEditar && EDITAVEIS_NO_CARD.has(id) ? "relative z-10" : undefined;
+
   const cartoes = (lista: CampanhaDeDemanda[]) => (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {lista.map((c) => (
         <li key={c.id} className="min-w-0">
-          <div className="relative flex h-full min-w-0 flex-col gap-2 rounded-2xl border-[1.5px] border-primary bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
-            <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
+          <div className="relative flex h-full min-w-0 flex-col gap-4 rounded-[22px] border bg-card p-5 shadow-xs transition-[border-color,box-shadow] hover:border-accent hover:shadow-md">
+            {temNoCard("status") || temNoCard("canal") ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {(["status", "canal"] as const).map((id) => {
+                  const col = colunaDoCard(id);
+                  return col ? (
+                    <div key={id} className={cn("min-w-0", porCimaDoLink(id))}>
+                      {valorEditavel(col, c)}
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            ) : null}
+            <h3 className="min-w-0 text-lg leading-snug font-bold tracking-tight [overflow-wrap:anywhere]">
               <Link
                 href={`${BASE}/${c.id}`}
-                className="after:absolute after:inset-0 after:rounded-2xl after:content-[''] hover:text-primary hover:underline"
+                className="after:absolute after:inset-0 after:rounded-[22px] after:content-[''] hover:text-primary"
               >
                 {c.name}
               </Link>
             </h3>
-            {/* As propriedades do card são as da visualização: as que estão ligadas, na ordem. */}
-            <dl className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              {cartao.map((col) => (
-                <div key={col.id} className="contents">
-                  <dt className="truncate">{col.titulo}</dt>
-                  <dd
-                    className={cn(
-                      "min-w-0 text-sm [overflow-wrap:anywhere] text-foreground",
-                      // As células editáveis ficam por cima do link que cobre o card.
-                      podeEditar && EDITAVEIS_NO_CARD.has(col.id) && "relative z-10",
-                    )}
-                  >
-                    {podeEditar && EDITAVEIS_NO_CARD.has(col.id)
-                      ? col.celula(c)
-                      : valorDoCartao(col.id, c)}
-                  </dd>
+
+            {mostraEstado ? (
+              <div>
+                <p className="mb-2 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                  {t("Estado atual")}
+                  {c.estado ? ` · ${t("até")} ${dataCurta(c.estado.ate)}` : ""}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "investido", rotulo: t("Investido") },
+                    { id: "leads", rotulo: t("Leads") },
+                    { id: "cpl", rotulo: t("CPL") },
+                  ].map((m) => (
+                    <div key={m.id} className="min-w-0 rounded-2xl bg-secondary/60 px-3 py-2.5">
+                      <p className="text-[11px] font-medium text-muted-foreground">{m.rotulo}</p>
+                      <p className="mt-0.5 text-base font-bold [overflow-wrap:anywhere] tabular-nums">
+                        {valorDoCartao(m.id, c)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </dl>
+              </div>
+            ) : null}
+
+            {restoDoCard.length > 0 ? (
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4">
+                {restoDoCard.map((col) => (
+                  <div
+                    key={col.id}
+                    className={cn("min-w-0", LARGAS_NO_CARD.has(col.id) && "col-span-2")}
+                  >
+                    <dt className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                      {col.titulo}
+                    </dt>
+                    <dd
+                      className={cn(
+                        "mt-0.5 min-w-0 text-sm [overflow-wrap:anywhere] text-foreground",
+                        porCimaDoLink(col.id),
+                      )}
+                    >
+                      {valorEditavel(col, c)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+
             <Link
               href={`${BASE}/${c.id}`}
-              className="group mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-semibold text-primary"
+              className="group mt-auto inline-flex h-10 w-fit items-center gap-2 rounded-full bg-accent-soft px-4 text-sm font-bold text-primary transition-colors hover:bg-accent-100"
             >
               {t("Abrir")}
               <ArrowRight
