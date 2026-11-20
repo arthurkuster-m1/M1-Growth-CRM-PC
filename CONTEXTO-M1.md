@@ -48,7 +48,7 @@
 - Rota mutante: `requireRole`/`requireSupportWrite`, `ok()/fail()`, `audit()`. Tela nova: porta em `lib/navigation/catalogo.ts`.
 
 ## Documentos (fonte da verdade)
-`docs/PLANO-M1.md` (plano-mãe, 15 frentes) · `docs/PLANO-CRM-M1.md` · `docs/PLANO-CAMPANHAS-M1.md` (C1 feito; C2 = planilha no app) · `docs/PLANO-MARKETING-M1.md` · `docs/PLANO-REDES-SOCIAIS-M1.md` (só plano) · `docs/HANDOFF-VPS-M1.md`.
+`docs/PLANO-M1.md` (plano-mãe, 15 frentes) · `docs/PLANO-CRM-M1.md` · `docs/PLANO-CAMPANHAS-M1.md` (C1 feito; C2 = planilha no app) · `docs/PLANO-MARKETING-M1.md` · `docs/PLANO-REDES-SOCIAIS-M1.md` (só plano) · `docs/PLANO-GUIA-M1.md` (Guia/cônsul de cada empresa; só plano, aguardando decisões) · `docs/HANDOFF-VPS-M1.md`.
 
 ## Estado do produto (fim de 11/10/2026; confira os planos para o resto)
 Feito e no ar: Tarefas (motor Notion: tabela/kanban/calendário/timeline, filtros, propriedades, massa), Cronograma, Produtos em escala, aba Marketing completa (páginas em blocos, link público `/p/<token>`, histórico, ofertas → `catalog_products`), CRM sessões 1–2, Campanhas C1. Fluxo "Arthur manda os dados, Claude monta": `npx tsx scripts/marketing-preencher.ts <id-empresa> <módulo> <blocos.json>` (grava só rascunho).
