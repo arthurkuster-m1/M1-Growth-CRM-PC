@@ -194,7 +194,18 @@ export function DashboardsClient({
       )}
     >
       <header className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[22px] bg-deep p-4 text-deep-foreground shadow-md sm:p-6">
-        <div className="flex min-w-0 items-center gap-3">
+        {!publico && !noModoAgencia && podeVerPerdas ? (
+          <button
+            type="button"
+            onClick={() => setCompartilhando(true)}
+            aria-label={t("Compartilhar com o cliente")}
+            title={t("Compartilhar com o cliente")}
+            className="absolute top-3 right-3 grid size-10 place-items-center rounded-full bg-white/14 text-deep-foreground transition-colors hover:bg-white/25 sm:top-4 sm:right-4"
+          >
+            <ShareNetwork size={18} aria-hidden />
+          </button>
+        ) : null}
+        <div className="flex min-w-0 items-center gap-3 pr-10">
           <span
             aria-hidden
             className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/16 text-sm font-bold text-deep-foreground"
@@ -299,32 +310,21 @@ export function DashboardsClient({
       </div>
 
       {!publico && !noModoAgencia && podeVerPerdas ? (
-        <div className="flex sm:justify-end">
-          <button
-            type="button"
-            onClick={() => setCompartilhando(true)}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary sm:w-auto"
-          >
-            <ShareNetwork size={16} aria-hidden />
-            {t("Compartilhar com o cliente")}
-          </button>
-          <CompartilharPagina
-            aberto={compartilhando}
-            aoFechar={() => setCompartilhando(false)}
-            chave={CHAVE_DOS_DASHBOARDS}
-            temPublicado
-          />
-        </div>
+        <CompartilharPagina
+          aberto={compartilhando}
+          aoFechar={() => setCompartilhando(false)}
+          chave={CHAVE_DOS_DASHBOARDS}
+          temPublicado
+        />
       ) : null}
 
       {/* No celular os filtros dividem a largura do bloco por igual (sem sobra à direita).
           Atividades tem o próprio seletor de período dentro da página. */}
       {painel === "atividades" ? null : (
-        <div className="grid grid-cols-2 items-center gap-2 rounded-[22px] border bg-card p-3 sm:flex sm:flex-wrap sm:p-4">
+        <div className="grid grid-cols-1 items-center gap-2 rounded-[22px] border bg-card p-3 sm:flex sm:flex-wrap sm:p-4">
           <div
             className={cn(
               "min-w-0 [&_button]:w-full [&_button]:justify-center sm:[&_button]:w-auto",
-              painel !== "prospeccao" && painel !== "trafego" && "col-span-2",
             )}
           >
             <SeletorDePeriodo
@@ -353,7 +353,7 @@ export function DashboardsClient({
               />
             </div>
           ) : null}
-          <span className="col-span-2 text-center text-xs text-muted-foreground sm:ml-auto sm:text-right">
+          <span className="text-center text-xs text-muted-foreground sm:ml-auto sm:text-right">
             {t("Variações (▲▼) comparam com o período anterior de mesmo tamanho.")}
           </span>
         </div>

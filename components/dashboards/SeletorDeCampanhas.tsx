@@ -40,12 +40,12 @@ export function SeletorDeCampanhas({
           type="button"
           aria-label={t("Campanhas")}
           className={cn(
-            "inline-flex h-11 max-w-full items-center gap-2 rounded-full border bg-secondary/60 px-4 text-sm font-medium transition-colors hover:bg-secondary",
+            "inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border bg-secondary/60 px-4 py-2 text-left text-sm font-medium transition-colors hover:bg-secondary",
             escolhidas.length > 0 && "border-primary bg-primary/10",
           )}
         >
           <Megaphone size={15} aria-hidden className="shrink-0 text-muted-foreground" />
-          <span className="max-w-[16rem] truncate">{rotulo}</span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">{rotulo}</span>
           <CaretDown size={13} weight="bold" aria-hidden className="shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
