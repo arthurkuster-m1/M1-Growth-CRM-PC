@@ -658,6 +658,12 @@ export const AUDIT_ACTIONS = [
   // As Finanças novas (0700): o dinheiro da empresa. Audita tudo o que ESCREVE — lançamento,
   // conta/cartão, categoria/grupo, teto/meta e saldo de abertura —, porque mexer nisso muda o que o
   // caixa diz, e sem a linha a única explicação para um número diferente seria "mudou".
+  // O Guia de marketing (0702): perfil do cliente, passo marcado/reaberto à mão e tarefa criada a
+  // partir de um passo. Muda o que o diagnóstico diz e o que a equipe vai fazer, então deixa rastro.
+  "guia.perfil_salvo",
+  "guia.passo_marcado",
+  "guia.passo_reaberto",
+  "guia.tarefa_criada",
   "financas.lancamento_criado",
   "financas.lancamento_alterado",
   "financas.lancamento_removido",

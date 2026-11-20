@@ -22,6 +22,7 @@ import {
   ListChecks,
   PlugsConnected,
   Robot,
+  Signpost,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -169,7 +170,9 @@ export function SidebarContent({
       ? [
           {
             group: marketing.group,
-            items: marketing.items.filter((i) => i.href !== "/app/automacoes"),
+            items: marketing.items.filter(
+              (i) => i.href !== "/app/automacoes" && i.href !== "/app/guia",
+            ),
           },
         ]
       : []),
@@ -380,6 +383,10 @@ export function SidebarContent({
             <div className="space-y-0.5">
               {[
                 { href: "/app/inicio", rotulo: t("Início"), Icone: House },
+                // O Guia (só gerente ou acima: o filtro de papel vem do catálogo) fica logo abaixo de Início.
+                ...(itemDe("/app/guia")
+                  ? [{ href: "/app/guia", rotulo: t("Guia"), Icone: Signpost }]
+                  : []),
                 { href: "/app/tarefas", rotulo: t("Tarefas"), Icone: ListChecks },
               ].map(({ href, rotulo, Icone }) => {
                 const ativo = pathname === href || pathname.startsWith(href + "/");

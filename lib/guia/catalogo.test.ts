@@ -59,7 +59,7 @@ describe("catálogo do Guia (o mapa em código)", () => {
   it("todo detector respeita leitura que falhou: vira 'não verificado', nunca 'feito'", () => {
     const s = sinaisQueFalharam();
     for (const p of PASSOS) {
-      if (!p.detectar || p.id === "P00.1") continue; // o perfil não vem do banco
+      if (!p.detectar || p.id === "P00.1" || p.id === "P00.6") continue; // vêm do perfil, não dos sinais
       expect(p.detectar(s, null).estado, p.id).toBe("nao_verificado");
     }
   });

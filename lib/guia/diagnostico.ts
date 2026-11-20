@@ -52,6 +52,8 @@ export interface EntradaDoDiagnostico {
   sinais: Sinais;
   /** O que alguém marcou à mão, por id do passo (a G2 lê da tabela; a G1 passa vazio). */
   manuais?: Readonly<Record<string, RegistroManual>>;
+  /** A tarefa criada a partir de cada passo (id do passo → id da tarefa). */
+  tarefas?: Readonly<Record<string, string>>;
   /** "Agora", para o prazo de validade. */
   agora: Date;
   /** Só os testes trocam o catálogo. */
@@ -92,6 +94,7 @@ export function diagnosticar(entrada: EntradaDoDiagnostico): Diagnostico {
       onde: passo.onde,
       aguardando: [] as string[],
       ordem,
+      tarefaId: entrada.tarefas?.[passo.id] ?? null,
     };
 
     if (classificacao === "-") {

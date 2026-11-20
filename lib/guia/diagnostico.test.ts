@@ -260,6 +260,31 @@ describe("diagnosticar", () => {
     });
   });
 
+  describe("tarefa e canais", () => {
+    it("mostra a tarefa criada a partir do passo", () => {
+      const d = diagnosticar({
+        perfil: clinica,
+        sinais: sinaisVazios(),
+        tarefas: { P10: "tarefa-1" },
+        agora: AGORA,
+      });
+      expect(estadoDe(d.passos, "P10").tarefaId).toBe("tarefa-1");
+      expect(estadoDe(d.passos, "P21").tarefaId).toBeNull();
+    });
+
+    it("P00.6 lê os links do perfil", () => {
+      const sem = diagnosticar({ perfil: clinica, sinais: sinaisVazios(), agora: AGORA });
+      const com = diagnosticar({
+        perfil: { ...clinica, canaisOnline: 2 },
+        sinais: sinaisVazios(),
+        agora: AGORA,
+      });
+      expect(estadoDe(sem.passos, "P00.6").estado).toBe("falta");
+      expect(estadoDe(com.passos, "P00.6").estado).toBe("feito");
+      expect(estadoDe(com.passos, "P00.6").evidencia).toMatch(/2 canais informados/);
+    });
+  });
+
   describe("leitura que falhou", () => {
     it("vira 'não verificado': nunca 'feito', fica fora da prontidão e não bloqueia quem depende", () => {
       const sinais = { ...sinaisVazios(), paginas: { ok: false, motivo: "x" } as Leitura<never> };

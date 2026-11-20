@@ -21,6 +21,24 @@ export interface Perfil {
    * passam de essenciais a recomendados e deixam de bloquear a captação e a campanha.
    */
   jaTemOferta: boolean;
+  /** Quantos canais online o perfil informa (site, Instagram, Google): alimenta o passo P00.6. */
+  canaisOnline?: number;
+}
+
+export const OBJETIVOS = ["mais_leads", "leads_melhores", "mais_vendas", "reativar_base"] as const;
+export type Objetivo = (typeof OBJETIVOS)[number];
+
+/** O perfil como está gravado em `guia_perfil` (o `Perfil` do diagnóstico sai dele). */
+export interface PerfilGravado {
+  nicho: Nicho;
+  modelos: ModeloDeVenda[];
+  jaTemOferta: boolean;
+  objetivo: Objetivo | null;
+  ticketMedioCents: number | null;
+  metaLeadsMes: number | null;
+  siteUrl: string | null;
+  instagramUrl: string | null;
+  googleNegocioUrl: string | null;
 }
 
 /** E essencial · R recomendado · O opcional · `-` não se aplica a este perfil. */
@@ -152,6 +170,8 @@ export interface PassoDiagnosticado {
   quando: string | null;
   /** Posição no catálogo (desempate estável). */
   ordem: number;
+  /** A tarefa criada a partir deste passo (em Tarefas), se houver. */
+  tarefaId: string | null;
 }
 
 export interface ProntidaoDaFase {

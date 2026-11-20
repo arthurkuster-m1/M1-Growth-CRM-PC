@@ -12,7 +12,8 @@
  *
  * Sem `detectar` o passo é manual (o documento marca com 🔴). Alguns que o documento marcou 🟡
  * começam manuais na G1 porque ainda não têm um sinal confiável:
- *   P00.3 marca · P00.6 canais · P26 lead magnet · P46 1ª resposta (G6 mede) · P48 checkout.
+ *   P00.3 marca · P26 lead magnet · P46 1ª resposta (G6 mede) · P48 checkout.
+ * (P00.6 passou a ler os links do perfil na G2.)
  */
 import {
   NICHOS,
@@ -172,7 +173,14 @@ export const PASSOS: readonly PassoDoMapa[] = [
     porque: "É o ponto de partida do Posicionamento.",
     classes: m("RRRRR"),
     depende: ["P00.1"],
-    confianca: "manual",
+    confianca: "parcial",
+    detectar: (_s, perfil) =>
+      (perfil?.canaisOnline ?? 0) > 0
+        ? {
+            estado: "feito",
+            evidencia: `${plural(perfil?.canaisOnline ?? 0, "canal informado", "canais informados")} no perfil`,
+          }
+        : { estado: "falta", evidencia: "Nenhum canal online informado no perfil" },
     onde: estrategia("posicionamento-zmot", "Estratégia › Posicionamento"),
     venceDias: 365,
   },
