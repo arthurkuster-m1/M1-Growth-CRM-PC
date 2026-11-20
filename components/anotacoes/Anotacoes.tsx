@@ -4,27 +4,34 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { AtalhosDeNotas } from "@/components/anotacoes/AtalhosDeNotas";
 import { CapturaRapida } from "@/components/anotacoes/CapturaRapida";
-import { ArvoreDeNotas } from "@/components/anotacoes/ArvoreDeNotas";
-import { GaleriaDeNotas } from "@/components/anotacoes/GaleriaDeNotas";
+import { Botao, Esqueleto, Folha } from "@/components/anotacoes/kit-visual";
+import { ListaDeNotas } from "@/components/anotacoes/ListaDeNotas";
 import { LixeiraDeNotas } from "@/components/anotacoes/LixeiraDeNotas";
 import { MoverNota } from "@/components/anotacoes/MoverNota";
 import { PaginaDeNota } from "@/components/anotacoes/PaginaDeNota";
 import { useArvoreDeNotas } from "@/hooks/anotacoes/useArvoreDeNotas";
 import { useCapturaDeNotas } from "@/hooks/anotacoes/useCapturaDeNotas";
-import { useBuscaDeNotas } from "@/hooks/anotacoes/useBuscaDeNotas";
 import { useEstadoDasNotas } from "@/hooks/anotacoes/useEstadoDasNotas";
 import { useT } from "@/hooks/i18n/useT";
-import { caminhoDaNota, idsDaSubarvore } from "@/lib/anotacoes/paginas";
-import { MagnifyingGlass, Plus, Tray, X } from "@/lib/ui/icons";
+import { idsDaSubarvore } from "@/lib/anotacoes/paginas";
+import { ArrowBendUpLeft, ArrowLeft, Eye, Plus, Trash } from "@/lib/ui/icons";
 
 /**
- * ANOTAÇÕES — o bloco de notas: árvore de páginas à esquerda, a página aberta à direita (no editor
- * de blocos da Estratégia). A página aberta fica na URL (`?p=`), então dá para voltar e compartilhar.
+ * ANOTAÇÕES — igual ao app da Família Kuster: o início é a lista de páginas (tabela ou cards);
+ * clicar numa página abre ela INTEIRA (editor de blocos da Estratégia), sem menu lateral. A página
+ * aberta fica na URL (`?p=`), então dá para voltar e compartilhar o link; "← Anotações" volta à lista.
  * A mesma tela serve à agência (na organização dela) e a cada cliente.
  */
-export function Anotacoes() {
+export function Anotacoes({
+  rotuloSuperior,
+  descricao,
+}: {
+  /** Linha pequena acima do título da lista (ex.: "Modo agência"). */
+  rotuloSuperior?: string;
+  /** O texto de apoio sob o título. */
+  descricao?: string;
+} = {}) {
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
@@ -33,18 +40,16 @@ export function Anotacoes() {
   const { notas, podeEditar } = arvore;
 
   const pedida = parametros.get("p");
-  const selecionada = useMemo(() => {
-    const viva = (id: string | null) =>
-      id ? notas.find((n) => n.id === id && !n.deleted_at) : undefined;
-    return viva(pedida)?.id ?? null;
-  }, [notas, pedida]);
+  const selecionada = useMemo(
+    () => (pedida && notas.find((n) => n.id === pedida && !n.deleted_at) ? pedida : null),
+    [notas, pedida],
+  );
 
   const estado = useEstadoDasNotas();
-  const [busca, setBusca] = useState("");
-  const resultados = useBuscaDeNotas(busca);
   const [capturando, setCapturando] = useState(false);
   const { capturar, versao } = useCapturaDeNotas(abrir);
-  const caixa = notas.find((n) => n.kind === "inbox" && !n.deleted_at);
+  const [movendo, setMovendo] = useState<string | null>(null);
+  const [opcoesDe, setOpcoesDe] = useState<string | null>(null);
 
   // Abrir uma página a coloca em "Recentes" (preferência pessoal, gravada em silêncio).
   const { registrarAbertura } = estado;
@@ -52,39 +57,14 @@ export function Anotacoes() {
     if (selecionada) registrarAbertura(selecionada);
   }, [selecionada, registrarAbertura]);
 
-  const [abertas, setAbertas] = useState<Set<string>>(new Set());
-  const [movendo, setMovendo] = useState<string | null>(null);
-
-  // A página aberta mostra o caminho até ela: ao trocar de página, abre as mães (ajuste durante o
-  // desenho, o jeito do React para derivar estado de uma mudança de entrada).
-  const [vista, setVista] = useState<string | null>(null);
-  if (selecionada !== vista) {
-    setVista(selecionada);
-    if (selecionada) {
-      const maes = caminhoDaNota(notas, selecionada)
-        .slice(0, -1)
-        .map((n) => n.id);
-      if (maes.some((m) => !abertas.has(m))) setAbertas(new Set([...abertas, ...maes]));
-    }
-  }
-
   function abrir(id: string | null) {
     const url = id ? `${pathname}?p=${id}` : pathname;
     router.replace(url, { scroll: false });
   }
 
-  function alternar(id: string) {
-    setAbertas((atual) => {
-      const novo = new Set(atual);
-      if (!novo.delete(id)) novo.add(id);
-      return novo;
-    });
-  }
-
   async function criar(parentId: string | null) {
     const nova = await arvore.criar(parentId);
     if (!nova) return;
-    if (parentId) setAbertas((a) => new Set([...a, parentId]));
     abrir(nova.id);
   }
 
@@ -105,7 +85,6 @@ export function Anotacoes() {
     const posicao = irmas.length ? Math.max(...irmas.map((n) => n.position)) + 1 : 1;
     const anterior = { parent_id: nota.parent_id, position: nota.position };
     if (!(await arvore.mudar(id, { parent_id: parentId, position: posicao }))) return;
-    if (parentId) setAbertas((a) => new Set([...a, parentId]));
     toast(t("Página movida."), {
       action: { label: t("Desfazer"), onClick: () => void arvore.mudar(id, anterior) },
     });
@@ -115,140 +94,42 @@ export function Anotacoes() {
     for (const m of mudancas) void arvore.mudar(m.id, { position: m.position });
   }
 
-  const nota = movendo ? (notas.find((n) => n.id === movendo) ?? null) : null;
+  const alvoOpcoes = opcoesDe ? (notas.find((n) => n.id === opcoesDe) ?? null) : null;
+  const alvoMover = movendo ? (notas.find((n) => n.id === movendo) ?? null) : null;
 
   if (arvore.carregando) {
-    return <div className="h-64 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
+    return (
+      <div className="an-raiz">
+        <Esqueleto h={256} />
+      </div>
+    );
   }
   if (arvore.falhou) {
     return (
-      <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg">
-        {t("Não foi possível carregar as anotações.")}
-      </p>
+      <div className="an-raiz">
+        <div className="an-cartao">
+          <p className="an-t-corpo" role="alert" style={{ color: "var(--color-error-fg)" }}>
+            {t("Não foi possível carregar as anotações.")}
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
-      <aside
-        aria-label={t("Páginas")}
-        className="rounded-2xl border bg-card/40 p-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto"
-      >
-        <div className="mb-2 flex flex-col gap-1">
-          <div className="relative">
-            <MagnifyingGlass
-              size={14}
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="search"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder={t("Buscar nas anotações")}
-              aria-label={t("Buscar nas anotações")}
-              className="h-8 w-full rounded-lg border bg-background pr-7 pl-8 text-[13px] outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            {busca ? (
-              <button
-                type="button"
-                aria-label={t("Limpar busca")}
-                onClick={() => setBusca("")}
-                className="absolute top-1/2 right-1.5 grid h-5 w-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-secondary"
-              >
-                <X size={12} aria-hidden />
-              </button>
-            ) : null}
-          </div>
-          {podeEditar ? (
-            <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() => setCapturando(true)}
-                className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border bg-card text-[13px] font-medium shadow-sm hover:bg-secondary"
-              >
-                <Plus size={13} aria-hidden /> {t("Captura rápida")}
-              </button>
-              {caixa ? (
-                <button
-                  type="button"
-                  onClick={() => abrir(caixa.id)}
-                  title={t("Abrir a Caixa de entrada")}
-                  aria-label={t("Abrir a Caixa de entrada")}
-                  className="grid h-8 w-8 place-items-center rounded-lg border bg-card shadow-sm hover:bg-secondary"
-                >
-                  <Tray size={15} aria-hidden />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        {resultados.ativa ? (
-          <ul aria-label={t("Resultados da busca")} className="flex flex-col gap-px">
-            {resultados.procurando && resultados.resultados.length === 0 ? (
-              <li className="px-2 py-3 text-xs text-muted-foreground">{t("Buscando…")}</li>
-            ) : resultados.resultados.length === 0 ? (
-              <li className="px-2 py-3 text-xs text-muted-foreground">{t("Nada encontrado.")}</li>
-            ) : (
-              resultados.resultados.map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      abrir(r.id);
-                      setBusca("");
-                    }}
-                    className="flex w-full flex-col gap-0.5 rounded-lg px-2 py-1.5 text-left hover:bg-card/70"
-                  >
-                    <span className="truncate text-[13px] font-medium">
-                      {r.icon ? `${r.icon} ` : ""}
-                      {r.title || t("Sem título")}
-                    </span>
-                    {r.trecho ? (
-                      <span className="line-clamp-2 text-xs text-muted-foreground">{r.trecho}</span>
-                    ) : null}
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        ) : (
-          <>
-            <AtalhosDeNotas
-              favoritas={estado.favoritas}
-              recentes={estado.recentes}
-              notas={notas}
-              selecionada={selecionada}
-              aoAbrir={abrir}
-            />
-            <ArvoreDeNotas
-              notas={notas}
-              selecionada={selecionada}
-              podeEditar={podeEditar}
-              abertas={abertas}
-              aoAlternar={alternar}
-              aoAbrir={abrir}
-              aoCriar={(pai) => void criar(pai)}
-              aoApagar={(id) => void apagar(id)}
-              aoMover={setMovendo}
-              aoMudarVisibilidade={(id, visivel) =>
-                void arvore.mudar(id, { visible_to_client: visivel })
-              }
-              aoReordenar={reordenar}
-            />
-            {podeEditar ? (
-              <LixeiraDeNotas
-                notas={notas}
-                aoRestaurar={(id) => void arvore.restaurar(id)}
-                aoApagarDeVez={(id) => void arvore.apagarDeVez(id)}
-              />
-            ) : null}
-          </>
-        )}
-      </aside>
-
-      <section className="min-w-0">
-        {selecionada ? (
+    <div className="an-raiz" data-testid="anotacoes">
+      {selecionada ? (
+        <>
+          <Botao
+            variant="ghost"
+            size="sm"
+            className="an-voltar"
+            icon={<ArrowLeft size={14} aria-hidden />}
+            onClick={() => abrir(null)}
+            data-testid="voltar-lista"
+          >
+            {t("Anotações")}
+          </Botao>
           <PaginaDeNota
             key={`${selecionada}-${versao}`}
             id={selecionada}
@@ -259,20 +140,39 @@ export function Anotacoes() {
             aoMudar={arvore.mudar}
             aoApagar={(id) => void apagar(id)}
             aoAbrir={abrir}
+            aoOpcoes={setOpcoesDe}
             aoCriarSubpagina={async (paiId) => {
               const nova = await arvore.criar(paiId);
               return nova?.id ?? null;
             }}
           />
-        ) : (
-          <GaleriaDeNotas
+        </>
+      ) : (
+        <div className="an-pilha" style={{ gap: 20 }}>
+          <ListaDeNotas
             notas={notas}
+            favoritas={estado.favoritas}
             podeEditar={podeEditar}
+            rotuloSuperior={rotuloSuperior}
+            descricao={
+              descricao ??
+              t("Clique numa página para abri-la e editar. Arraste pela alça (⋮⋮) para reordenar.")
+            }
             aoAbrir={abrir}
             aoCriar={() => void criar(null)}
+            aoCapturar={() => setCapturando(true)}
+            aoOpcoes={setOpcoesDe}
+            aoReordenar={reordenar}
           />
-        )}
-      </section>
+          {podeEditar ? (
+            <LixeiraDeNotas
+              notas={notas}
+              aoRestaurar={(id) => void arvore.restaurar(id)}
+              aoApagarDeVez={(id) => void arvore.apagarDeVez(id)}
+            />
+          ) : null}
+        </div>
+      )}
 
       <CapturaRapida
         aberto={capturando}
@@ -281,7 +181,7 @@ export function Anotacoes() {
       />
 
       <MoverNota
-        nota={nota}
+        nota={alvoMover}
         notas={notas}
         aoFechar={() => setMovendo(null)}
         aoEscolher={(pai) => {
@@ -289,6 +189,74 @@ export function Anotacoes() {
           setMovendo(null);
         }}
       />
+
+      <Folha
+        open={alvoOpcoes !== null}
+        onClose={() => setOpcoesDe(null)}
+        title={
+          alvoOpcoes
+            ? `${alvoOpcoes.icon ?? "📄"} ${alvoOpcoes.title || t("Sem título")}`
+            : t("Opções")
+        }
+      >
+        {alvoOpcoes ? (
+          <div className="an-pilha" style={{ gap: 8 }}>
+            <Botao
+              variant="secondary"
+              block
+              icon={<Plus size={14} aria-hidden />}
+              onClick={() => {
+                const id = alvoOpcoes.id;
+                setOpcoesDe(null);
+                void criar(id);
+              }}
+            >
+              {t("Nova subpágina")}
+            </Botao>
+            {alvoOpcoes.kind === null ? (
+              <Botao
+                variant="secondary"
+                block
+                icon={<ArrowBendUpLeft size={14} aria-hidden />}
+                onClick={() => {
+                  setMovendo(alvoOpcoes.id);
+                  setOpcoesDe(null);
+                }}
+              >
+                {t("Mover para…")}
+              </Botao>
+            ) : null}
+            <Botao
+              variant="secondary"
+              block
+              icon={<Eye size={14} aria-hidden />}
+              onClick={() => {
+                void arvore.mudar(alvoOpcoes.id, {
+                  visible_to_client: !alvoOpcoes.visible_to_client,
+                });
+                setOpcoesDe(null);
+              }}
+            >
+              {alvoOpcoes.visible_to_client
+                ? t("Esconder do cliente")
+                : t("Mostrar para o cliente")}
+            </Botao>
+            <Botao
+              variant="danger"
+              block
+              icon={<Trash size={14} aria-hidden />}
+              onClick={() => {
+                const id = alvoOpcoes.id;
+                setOpcoesDe(null);
+                void apagar(id);
+              }}
+              data-testid="opcao-lixeira"
+            >
+              {t("Mandar para a lixeira")}
+            </Botao>
+          </div>
+        ) : null}
+      </Folha>
     </div>
   );
 }
