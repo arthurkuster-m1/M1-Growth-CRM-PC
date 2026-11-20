@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   MAXIMO_POR_REQUISICAO,
   aberturaSchema,
+  conferenciaDeFaturaSchema,
+  conferenciaSchema,
   configSchema,
   criarLancamentosSchema,
   mudancaDeLancamentoSchema,
@@ -144,5 +146,40 @@ describe("contas, categorias, config e abertura", () => {
     expect(aberturaSchema.safeParse({ conta: "x", mes: "2026-11", saldo_cents: 1 }).success).toBe(
       false,
     );
+  });
+});
+
+describe("conferências", () => {
+  const conta = "11111111-1111-4111-8111-111111111111";
+
+  it("conferência de saldo: destino conhecido, valores inteiros, nada vindo de fora", () => {
+    const base = {
+      conta,
+      data: "2026-11-20",
+      saldo_sistema_cents: 1180000,
+      saldo_real_cents: 1200000,
+      destino: "ajuste" as const,
+    };
+    expect(conferenciaSchema.safeParse(base).success).toBe(true);
+    expect(conferenciaSchema.safeParse({ ...base, destino: "sumir" }).success).toBe(false);
+    expect(conferenciaSchema.safeParse({ ...base, saldo_real_cents: 10.5 }).success).toBe(false);
+    expect(conferenciaSchema.safeParse({ ...base, organization_id: conta }).success).toBe(false);
+  });
+
+  it("conferência de fatura: total do banco nunca negativo; nulo remove", () => {
+    expect(
+      conferenciaDeFaturaSchema.safeParse({ conta, mes: "2026-12", total_banco_cents: 409900 })
+        .success,
+    ).toBe(true);
+    expect(
+      conferenciaDeFaturaSchema.safeParse({ conta, mes: "2026-12", total_banco_cents: null })
+        .success,
+    ).toBe(true);
+    expect(
+      conferenciaDeFaturaSchema.safeParse({ conta, mes: "2026-12", total_banco_cents: -1 }).success,
+    ).toBe(false);
+    expect(
+      conferenciaDeFaturaSchema.safeParse({ conta, mes: "dezembro", total_banco_cents: 1 }).success,
+    ).toBe(false);
   });
 });

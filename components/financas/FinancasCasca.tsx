@@ -11,6 +11,7 @@ import { Badge, Button, Page, Skeleton, ToastProvider } from "./kit";
 const ABAS = [
   { caminho: "/app/financas", rotulo: "Visão geral" },
   { caminho: "/app/financas/mes", rotulo: "Mês" },
+  { caminho: "/app/financas/faturas", rotulo: "Faturas" },
   { caminho: "/app/financas/lancamentos", rotulo: "Lançamentos" },
   { caminho: "/app/financas/configuracoes", rotulo: "Configurações" },
 ] as const;

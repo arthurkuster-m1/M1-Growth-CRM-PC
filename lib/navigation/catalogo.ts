@@ -191,6 +191,14 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    href: "/app/financas/faturas",
+    label: "Finanças · Faturas",
+    description: "Faturas dos cartões: total do app × total do banco, em aberto, e pagar a fatura.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
     href: "/app/financas/lancamentos",
     label: "Finanças · Lançamentos",
     description:

@@ -21,6 +21,7 @@ import { apiClient } from "@/lib/api/client";
 
 import type {
   Categoria,
+  ConferenciaFatura,
   Conta,
   GrupoCategoria,
   Lancamento,
@@ -29,6 +30,7 @@ import type {
   Saldo,
   TipoConta,
 } from "./tipos";
+import { hoje as hojeIso } from "./formato";
 import type { PlanoMeta, PlanoTeto } from "./teto";
 
 export type {
@@ -182,6 +184,61 @@ export const removerMetaDoMes = (mes: string) =>
   config({ meta_do_mes: { mes, valor_cents: null } });
 export const salvarContaDasVendas = (contaId: string | null) =>
   config({ conta_vendas_id: contaId });
+
+/* ───── Conferência de fatura (o total que o banco diz) ───── */
+export async function obterConferenciaFatura(
+  contaId: string,
+  mes: string,
+): Promise<ConferenciaFatura | null> {
+  return (
+    (await dado(
+      apiClient.get<{ data: ConferenciaFatura | null }>(
+        `${BASE}/conferencia-fatura?conta=${contaId}&mes=${mes}`,
+      ),
+    )) ?? null
+  );
+}
+export async function salvarConferenciaFatura(
+  contaId: string,
+  mes: string,
+  totalBancoCents: number,
+): Promise<void> {
+  await apiClient.put(`${BASE}/conferencia-fatura`, {
+    conta: contaId,
+    mes,
+    total_banco_cents: totalBancoCents,
+  });
+}
+export async function removerConferenciaFatura(contaId: string, mes: string): Promise<void> {
+  await apiClient.put(`${BASE}/conferencia-fatura`, {
+    conta: contaId,
+    mes,
+    total_banco_cents: null,
+  });
+}
+
+/* ───── Conferência de saldo: o que o banco diz × o que o app calcula ───── */
+/**
+ * Registra a conferência. A diferença (real − sistema) vira um lançamento pago hoje: rendimento positivo →
+ * entrada em "Rendimentos"; qualquer outra diferença → "Ajuste de saldo" (entrada ou saída). "ignorar" só
+ * guarda o registro, sem mexer no saldo. Quem faz tudo é a rota (um passo só, com a categoria do sistema).
+ */
+export async function registrarConferencia(a: {
+  contaId: string;
+  saldoSistema: number;
+  saldoReal: number;
+  destino: "rendimento" | "ajuste" | "ignorar";
+  nota?: string;
+}): Promise<void> {
+  await apiClient.post(`${BASE}/conferencia`, {
+    conta: a.contaId,
+    data: hojeIso(),
+    saldo_sistema_cents: a.saldoSistema,
+    saldo_real_cents: a.saldoReal,
+    destino: a.destino,
+    nota: a.nota?.trim() || null,
+  });
+}
 
 /* ───── Provedor: contas, categorias e plano à mão em todas as telas ───── */
 type Base = {

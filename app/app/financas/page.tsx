@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
-import { VisaoGeralEmBreve } from "@/components/financas/VisaoGeralEmBreve";
+import { Geral } from "@/components/financas/telas/Geral";
 
 export const metadata: Metadata = { title: "Finanças" };
 
-/** A Visão geral (F5) ainda não existe: por enquanto mostra a base carregada. */
+/** A Visão geral: patrimônio, evolução, médias, alertas, contas e conferência de saldo. */
 export default function FinancasPage() {
-  return <VisaoGeralEmBreve />;
+  return <Geral />;
 }

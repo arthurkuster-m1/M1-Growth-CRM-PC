@@ -102,3 +102,24 @@ export const aberturaSchema = z
     saldo_cents: z.number().int().min(-1_000_000_000_000).max(1_000_000_000_000).nullable(),
   })
   .strict();
+
+/** Conferência de saldo: o que o banco diz × o que o app calcula; a diferença vira rendimento, ajuste ou só registro. */
+export const conferenciaSchema = z
+  .object({
+    conta: z.string().uuid(),
+    data: dataIso,
+    saldo_sistema_cents: z.number().int().min(-1_000_000_000_000).max(1_000_000_000_000),
+    saldo_real_cents: z.number().int().min(-1_000_000_000_000).max(1_000_000_000_000),
+    destino: z.enum(["rendimento", "ajuste", "ignorar"]),
+    nota: z.string().trim().max(500).nullish(),
+  })
+  .strict();
+
+/** Conferência de fatura: o total que o banco diz; valor nulo remove a conferência do mês. */
+export const conferenciaDeFaturaSchema = z
+  .object({
+    conta: z.string().uuid(),
+    mes: mesIso,
+    total_banco_cents: z.number().int().min(0).max(1_000_000_000_000).nullable(),
+  })
+  .strict();
