@@ -195,7 +195,7 @@ export function AbasDeVisualizacao({
                   className={cn(
                     "flex h-8 shrink-0 items-center rounded-full text-sm transition-colors",
                     ativa
-                      ? "bg-navy font-bold text-navy-foreground"
+                      ? "bg-deep font-bold text-deep-foreground"
                       : "font-medium text-foreground hover:bg-secondary",
                   )}
                 >

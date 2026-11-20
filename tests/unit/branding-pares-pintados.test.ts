@@ -353,15 +353,15 @@ describe("controle positivo — o produto sem marca não pode se mexer", () => {
     // Escuro: 6,30 e 5,22 na rampa DERIVADA da semente; os literais do
     // `globals.css` (`#82a077`) dão 6,31 e 5,23 — a rampa reproduz a Sage com
     // Δ ≤ 2/255 por canal, e a diferença de 0,01 é esse arredondamento.
-    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(6.433, 2);
-    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(5.383, 2);
+    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(6.3, 2);
+    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(5.19, 2);
     // No escuro o anel NÃO fica apertado contra as bases: quem aperta é o
     // `-soft` COMPOSTO. 4,58 aqui — é este o par que a prova em tela reportou
     // como "4,58 no escuro", e não `foco × --color-bg` (6,30). Nos literais do
     // `globals.css` o mesmo par dá 4,59, e `superficiesDoTema` documenta o trio
     // 4,99 · 4,59 · 4,02.
-    expect(foco(p.escuro, "--color-accent-soft@--color-surface")).toBeCloseTo(4.647, 2);
-    expect(foco(p.escuro, "--color-accent-soft@--color-surface-elevated")).toBeCloseTo(4.179, 2);
+    expect(foco(p.escuro, "--color-accent-soft@--color-surface")).toBeCloseTo(4.545, 2);
+    expect(foco(p.escuro, "--color-accent-soft@--color-surface-elevated")).toBeCloseTo(3.996, 2);
   });
 
   it("sem marca configurada nada é injetado, e a tela fica como está", () => {
@@ -380,8 +380,8 @@ describe("a navy #0f172a — o defeito que a prova em tela achou", () => {
     const p = pintadosDaSemente("#0f172a");
     expect(foco(p.claro, "--color-bg")).toBeCloseTo(10.385, 2);
     expect(foco(p.claro, "--color-surface-elevated")).toBeCloseTo(9.822, 2);
-    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(5.413, 2);
-    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(4.53, 2);
+    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(5.301, 2);
+    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(4.367, 2);
     for (const superficie of ["--color-bg", "--color-surface-elevated"] as const) {
       expect(foco(p.escuro, superficie), superficie).toBeGreaterThanOrEqual(PISOS.componente);
     }

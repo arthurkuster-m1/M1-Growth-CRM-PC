@@ -322,29 +322,29 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
       {/* ── saudação ─────────────────────────────────────────────────────── */}
       <section
         aria-labelledby="inicio-saudacao"
-        className="relative overflow-hidden rounded-[22px] bg-navy p-6 text-navy-foreground shadow-md sm:p-8"
+        className="relative overflow-hidden rounded-[22px] bg-deep p-6 text-deep-foreground shadow-md sm:p-8"
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent-600/35"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent-400/25"
         />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 id="inicio-saudacao" className="text-3xl font-bold tracking-tight sm:text-4xl">
               {saudacao}, {nome}!
             </h1>
-            <p className="mt-1 text-sm text-navy-foreground opacity-85">{dataPorExtenso}</p>
-            <blockquote className="mt-5 border-l-2 border-accent-400 pl-3 text-sm text-navy-foreground italic opacity-85">
+            <p className="mt-1 text-sm text-deep-foreground opacity-85">{dataPorExtenso}</p>
+            <blockquote className="mt-5 border-l-2 border-accent-200 pl-3 text-sm text-deep-foreground italic opacity-85">
               “{frase}”
             </blockquote>
           </div>
           {pendencias === 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-navy-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-deep-foreground">
               <CheckCircle size={14} aria-hidden />
               {t("Tudo em dia!")}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-navy-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-deep-foreground">
               {pendencias} {t(pendencias === 1 ? "pendência" : "pendências")}
             </span>
           )}

@@ -393,7 +393,7 @@ export function SidebarContent({
                     className={cn(
                       "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                       ativo
-                        ? "bg-navy font-bold text-navy-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                        ? "bg-deep font-bold text-deep-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-200"
                         : "font-medium text-foreground hover:bg-surface-elevated",
                       collapsed && "justify-center px-2",
                     )}
@@ -401,7 +401,7 @@ export function SidebarContent({
                     <Icone
                       size={18}
                       weight={ativo ? "fill" : "regular"}
-                      className={ativo ? "text-navy-foreground" : undefined}
+                      className={ativo ? "text-deep-foreground" : undefined}
                       aria-hidden
                     />
                     {!collapsed && <span className="truncate">{rotulo}</span>}
@@ -472,7 +472,7 @@ export function SidebarContent({
                               className={cn(
                                 "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                                 isActive
-                                  ? "bg-navy font-bold text-navy-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                                  ? "bg-deep font-bold text-deep-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-200"
                                   : "font-medium text-foreground hover:bg-surface-elevated",
                                 collapsed && "justify-center px-2",
                               )}
@@ -480,7 +480,7 @@ export function SidebarContent({
                               <Icon
                                 size={18}
                                 weight={isActive ? "fill" : "regular"}
-                                className={isActive ? "text-navy-foreground" : undefined}
+                                className={isActive ? "text-deep-foreground" : undefined}
                                 aria-hidden
                               />
                               {!collapsed && <span className="truncate">{t(item.label)}</span>}
@@ -512,7 +512,7 @@ export function SidebarContent({
                             className={cn(
                               "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                               pathname === group.hub.href
-                                ? "bg-navy font-bold text-navy-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                                ? "bg-deep font-bold text-deep-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-200"
                                 : "font-medium text-foreground hover:bg-surface-elevated",
                               collapsed && "justify-center px-2",
                             )}
@@ -572,7 +572,7 @@ export function SidebarContent({
                   className={cn(
                     "relative flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase transition-colors",
                     ativo
-                      ? "bg-navy font-bold text-navy-foreground shadow-sm"
+                      ? "bg-deep font-bold text-deep-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
                     collapsed && "justify-center px-2",
                   )}
@@ -609,7 +609,7 @@ export function SidebarContent({
             className={cn(
               "relative mb-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
               pathname.startsWith(rodape.href)
-                ? "bg-navy font-bold text-navy-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                ? "bg-deep font-bold text-deep-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-200"
                 : "font-medium text-foreground hover:bg-surface-elevated",
               collapsed && "justify-center px-2",
             )}
@@ -683,7 +683,7 @@ function ItensDoModoAgencia({
                 className={cn(
                   "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                   ativo
-                    ? "bg-navy font-bold text-navy-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                    ? "bg-deep font-bold text-deep-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-200"
                     : "font-medium text-foreground hover:bg-surface-elevated",
                   collapsed && "justify-center px-2",
                 )}
@@ -691,7 +691,7 @@ function ItensDoModoAgencia({
                 <Icone
                   size={18}
                   weight={ativo ? "fill" : "regular"}
-                  className={ativo ? "text-navy-foreground" : undefined}
+                  className={ativo ? "text-deep-foreground" : undefined}
                   aria-hidden
                 />
                 {!collapsed && <span className="truncate">{rotulo}</span>}

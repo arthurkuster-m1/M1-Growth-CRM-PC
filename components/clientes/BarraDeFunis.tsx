@@ -143,7 +143,7 @@ function Pilula({
         "h-8 max-w-60 shrink-0 truncate rounded-full border px-3.5 text-sm font-medium whitespace-nowrap transition-colors",
         isDragging && "z-10 opacity-70 shadow-md",
         ativa
-          ? "border-navy bg-navy font-bold text-navy-foreground"
+          ? "border-deep bg-deep font-bold text-deep-foreground"
           : "bg-card text-foreground hover:bg-secondary",
       )}
     >
@@ -344,7 +344,7 @@ export function BarraDeFunis({
             className={cn(
               "h-8 shrink-0 rounded-full border px-3.5 text-sm font-medium whitespace-nowrap transition-colors",
               escolhido === todosId
-                ? "border-navy bg-navy font-bold text-navy-foreground"
+                ? "border-deep bg-deep font-bold text-deep-foreground"
                 : "bg-card text-foreground hover:bg-secondary",
             )}
           >
