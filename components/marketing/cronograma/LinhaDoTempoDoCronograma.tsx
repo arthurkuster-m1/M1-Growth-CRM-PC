@@ -29,7 +29,6 @@ import {
 
 import lt from "./LinhaDoTempoDoCronograma.module.css";
 
-const FOLGA_ESQ = 60;
 const FOLGA_DIR = 120;
 const BORDA = 500;
 const DIAS_INICIAIS = 560;
@@ -100,18 +99,24 @@ export function LinhaDoTempoDoCronograma({
   const larguraDia = LARGURA_DO_DIA[escala];
   const base = useMemo(() => baseDoCronograma(dataInicio, hoje), [dataInicio, hoje]);
 
-  // O eixo começa um pouco antes de hoje (ou da primeira ação, se for antes) e cresce nas bordas.
-  const [origem, setOrigem] = useState(() => {
+  // O eixo COMEÇA no início do projeto (a semana 1 do cronograma) e não volta além disso: antes da
+  // primeira ação não há nada para mostrar, e uma linha que crescia para a esquerda sem fim fazia a
+  // tela "voltar para sempre". Se o projeto ainda não começou, o eixo abre uma semana antes de hoje.
+  // Só o lado DIREITO cresce, e só quando a pessoa rola até lá.
+  const origem = useMemo(() => {
     const primeira = grupos
       .flatMap((g) => g.itens)
       .reduce<string | null>((m, i) => {
         const ini = periodoDoItem(base, i.semana_inicio, i.semana_fim).inicio;
         return m === null || ini < m ? ini : m;
       }, null);
-    const alvo = somarDias(hoje, -45);
-    return primeira && primeira < alvo ? somarDias(primeira, -14) : alvo;
-  });
-  const [dias, setDias] = useState(DIAS_INICIAIS);
+    const inicioDoProjeto = primeira && primeira < base ? primeira : base;
+    const maisAntigo = inicioDoProjeto < hoje ? inicioDoProjeto : somarDias(hoje, -7);
+    return somarDias(maisAntigo, -7);
+  }, [grupos, base, hoje]);
+  const [dias, setDias] = useState(() =>
+    Math.max(DIAS_INICIAIS, diferencaEmDias(origem, hoje) + 365),
+  );
   const larguraEixo = dias * larguraDia;
 
   const rolagem = useRef<HTMLDivElement>(null);
@@ -171,12 +176,7 @@ export function LinhaDoTempoDoCronograma({
     const el = rolagem.current;
     if (!el || aplicarScroll.current !== null) return;
     const x = el.scrollLeft;
-    if (x < BORDA) {
-      aplicarScroll.current = x + FOLGA_ESQ * larguraDia;
-      setOrigem((o) => somarDias(o, -FOLGA_ESQ));
-      setDias((d) => d + FOLGA_ESQ);
-      return;
-    }
+    // Para a esquerda não há mais o que carregar: o eixo termina no início do projeto.
     if (x + el.clientWidth > larguraEsq + larguraEixo - BORDA) setDias((d) => d + FOLGA_DIR);
   };
 
