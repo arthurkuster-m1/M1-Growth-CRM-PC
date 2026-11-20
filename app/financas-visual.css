@@ -1018,3 +1018,18 @@
 /* a página mora dentro da casca do CRM: sem a folga de baixo da barra flutuante do celular da família */
 .fi-raiz .fi-page { padding: 0; max-width: none; margin: 0; animation: none; }
 .fi-raiz .fi-page--wide { max-width: 1120px; }
+
+/* cores dos gráficos (categorias): as 10 da família, claras e escuras; o CRM não as tinha */
+.fi-raiz {
+  --chart-1: #2f4f87; --chart-2: #3f8f8a; --chart-3: #b07a2b; --chart-4: #8a5fb0; --chart-5: #b5554a;
+  --chart-6: #5a8a5f; --chart-7: #4a7a93; --chart-8: #8c6a4a; --chart-9: #6b7a99; --chart-10: #a85a8c;
+}
+:root[data-theme="dark"] .fi-raiz {
+  --chart-1: #7e9ed6; --chart-2: #5fb3ac; --chart-3: #d09455; --chart-4: #b894d9; --chart-5: #d9877b;
+  --chart-6: #82a077; --chart-7: #7da9bf; --chart-8: #c29c78; --chart-9: #94a3c2; --chart-10: #d68bb8;
+}
+/* celular: as abas das Finanças cabem na tela */
+@media (max-width: 600px) {
+  .fi-abas .fi-segmented { width: 100%; }
+  .fi-abas .fi-segmented button { padding: 0 8px; font-size: 13px; min-height: 40px; }
+}

@@ -142,6 +142,8 @@ export {
   Bank,
   CreditCard,
   ListMagnifyingGlass,
+  WarningCircle,
+  CaretUpDown,
   SignOut,
   WebhooksLogo,
   PuzzlePiece,

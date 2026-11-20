@@ -183,6 +183,14 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    href: "/app/financas/mes",
+    label: "Finanças · Mês",
+    description: "O mês: quanto ainda pode gastar, entradas, saídas, resultado e alertas.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
     href: "/app/financas/lancamentos",
     label: "Finanças · Lançamentos",
     description:
