@@ -80,3 +80,9 @@ Lacunas a fechar (o trabalho real):
 - Fases 3 a 8 sem mudança.
 
 **Pergunta ao Arthur (não bloqueia a Fase 1):** podemos migrar as regras mesmo que, no começo, as automações de leads **sem contato** só façam passos internos (tag, tarefa, mover etapa) e peçam um contato para qualquer mensagem? É o que as regras de hoje já fazem.
+
+## 7. Fase 2 — dividida em três (20/11/2026)
+O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/engine.ts`, ~50 usos de `contact_id`). Trocar isso de uma vez é arriscado, então a Fase 2 vai em três passos, cada um deixando o sistema como está:
+- **2a — banco (feita):** migration 0701. `followup_enrollments` ganha `subject_kind`/`subject_id`/`source_event_id`; `contact_id` aceita NULL, mas o trigger só permite em `surface='crm_automation'` (nenhuma tela cria ainda). Índice único de um fluxo vivo por (fluxo, sujeito). Provada num Postgres temporário: aplica 2x, follow-up sem contato é recusado, duplicado vivo é recusado, reinscrever após concluir funciona. **Não aplicada em nenhum banco real** (`lib/database.types.ts` também não foi regenerado — depende de aplicar).
+- **2b — motor sabe o sujeito:** o engine passa a carregar lead/contato pelo sujeito quando `contact_id` é nulo; envio abre a conversa na hora (`serviceForAutomation`). Sem isto, inscrição sem contato não pode rodar.
+- **2c — handler único + gatilho `event`:** consome os eventos de `TRIGGER_EVENTS`, inscreve no sujeito do evento, e o publicar passa a aceitar o gatilho.
