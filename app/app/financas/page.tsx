@@ -1,71 +1,40 @@
-import { FaixaEmBreve } from "@/components/shell/FaixaEmBreve";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { moedaDaOrganizacao } from "@/lib/catalogo/moeda-da-org";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { createClient } from "@/lib/supabase/server";
 
-import { CatalogoFinanceiro } from "@/app/app/settings/tenant/financeiro/_client";
-
-import { FinancasAbas } from "./_abas";
-import { Faturamento } from "./_client";
+import { FinancasCasca } from "./_casca";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Finanças" };
 
 /**
- * FINANÇAS (antes "Faturamento") — a terceira ponta do módulo financeiro. Página solta no menu
- * lateral, fora de Análise.
+ * FINANÇAS — o controle financeiro da empresa, no modelo do app de Finanças da Família Kuster
+ * (docs/PLANO-FINANCAS-M1.md): contas e cartões, lançamentos, visão do mês, do ano e geral, faturas.
+ * As entradas vêm das VENDAS (Oportunidades › Vendas) sozinhas; as saídas são lançadas aqui.
  *
- * Configurações › Financeiro descreve para onde o dinheiro vai. CRM › Comandas é
- * onde o dia acontece. Esta tela responde "quanto entrou, de que forma, e quanto
- * cada pessoa tem a receber" — a pergunta que se faz no fim do mês, e a razão de
- * ela ficar em Análise.
- *
- * `viewer` porque conferir o faturamento não é privilégio de quem lança. O que a
- * RLS impede é ele ver o de outra organização.
- *
- * Os LANÇAMENTOS moram aqui e não numa tela própria, pelo mesmo motivo que o
- * catálogo financeiro tem três listas numa página: registrar o aluguel e ver o
- * saldo do mês são o mesmo ato mental. Separá-los obrigaria a pular entre telas
- * para responder "já paguei isso?".
- *
- * A MOEDA DA ORGANIZAÇÃO vem daqui, do servidor, e não do relatório: ela não é
- * uma conta, é a ordem dos blocos (a da casa primeiro) e a moeda do período sem
- * movimento — sem ela, um mês vazio não teria em que moeda escrever "0,00".
- * Enquanto a escrita não herdar a moeda da organização, as linhas nascem em
- * BRL: o limite está descrito em `blocosPorMoeda` (_client.tsx).
+ * Só gerente ou acima vê e lança (decisão do Arthur); a RLS das tabelas `fin_*` repete o piso. A tela
+ * antiga (faturamento por forma de pagamento + comandas) saiu do fluxo.
  */
-export default async function Page() {
+export default async function FinancasPage() {
   const user = await requireAuth();
   const org = await resolveActiveOrg(user);
   if (!org) redirect("/app");
+  const plataforma = user.is_platform_admin && !user.support;
+  if (!plataforma && ROLE_RANK[org.role] < ROLE_RANK.manager) redirect("/app");
 
   const t = (texto: string) => traduzir(texto, user.idioma);
-  const moedaDaOrg = await moedaDaOrganizacao(await createClient(), org.orgId);
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{t("Finanças")}</h1>
-        <p className="text-sm text-text-muted">
-          {t("Quanto entrou, de que forma, e quanto cada pessoa tem a receber.")}
+    <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-5 p-4 sm:px-8 sm:py-6 2xl:px-12">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Finanças")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("Quanto entrou, quanto saiu e quanto sobra — com as vendas entrando sozinhas.")}
         </p>
-      </div>
-      <FaixaEmBreve
-        selo={t("Em breve")}
-        texto={t("Esta área está em construção: pode mudar nas próximas atualizações.")}
-      />
-      <FinancasAbas
-        visao={
-          <Faturamento
-            podeLancar={ROLE_RANK[org.role] >= ROLE_RANK.agent}
-            moedaDaOrg={moedaDaOrg}
-          />
-        }
-        contas={<CatalogoFinanceiro podeEditar={ROLE_RANK[org.role] >= ROLE_RANK.manager} />}
-      />
+      </header>
+      <FinancasCasca />
     </div>
   );
 }

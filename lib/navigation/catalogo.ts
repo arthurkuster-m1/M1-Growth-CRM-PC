@@ -17,8 +17,7 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId =
-  "atendimento" | "marketing" | "crm" | "ia" | "canais" | "organizacao";
+export type NavGroupId = "atendimento" | "marketing" | "crm" | "ia" | "canais" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -167,10 +166,10 @@ export const NAV_CATALOG = [
     // Aqui ela existe para o ⌘K e para o teste de completude.
     href: "/app/financas",
     label: "Finanças",
-    description: "Quanto entrou, de que forma, e quanto cada pessoa tem a receber.",
+    description: "Quanto entrou, quanto saiu e quanto sobra, com as vendas entrando sozinhas.",
     icon: "CurrencyDollar",
     group: "atendimento",
-    minRole: "viewer",
+    minRole: "manager",
   },
   {
     // ANOTAÇÕES: página solta no menu lateral, logo abaixo de Finanças (o Sidebar desenha o link, e

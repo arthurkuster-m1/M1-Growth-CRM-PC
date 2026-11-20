@@ -35,7 +35,11 @@ function semComentarios(sql: string): string {
 const bloco = (() => {
   const i = baseline.indexOf("-- ---- comanda, financeiro");
   expect(i, "o bloco do módulo financeiro sumiu do baseline").toBeGreaterThan(-1);
-  return semComentarios(baseline.slice(i));
+  // Até o PRÓXIMO bloco do apêndice: o módulo das comandas não inclui as tabelas de migrations que
+  // vieram depois (ex.: `fin_*`, onde o saldo de ABERTURA é digitado de propósito, e não derivado).
+  const resto = baseline.slice(i + 10);
+  const proximo = resto.search(/\n-- ---- /);
+  return semComentarios(proximo < 0 ? baseline.slice(i) : baseline.slice(i, i + 10 + proximo));
 })();
 
 /**
