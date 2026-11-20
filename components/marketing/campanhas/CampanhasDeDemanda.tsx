@@ -754,6 +754,22 @@ export function CampanhasDeDemanda() {
   const porCimaDoLink = (id: string) =>
     podeEditar && EDITAVEIS_NO_CARD.has(id) ? "relative z-10" : undefined;
 
+  // Alerta de CPL: compara o custo por lead do período com a meta de CPL da campanha. Até 15% acima
+  // da meta é atenção; acima disso, ruim. Sem meta ou sem leads não há o que comparar.
+  const SITUACAO_DO_CPL = {
+    bom: { fundo: "bg-success-bg", texto: "text-success-fg", rotulo: "Dentro da meta" },
+    atencao: { fundo: "bg-warning-bg", texto: "text-warning-fg", rotulo: "Perto do limite" },
+    ruim: { fundo: "bg-error-bg", texto: "text-error-fg", rotulo: "Acima da meta" },
+  } as const;
+  const situacaoDoCpl = (c: CampanhaDeDemanda) => {
+    if (!c.estado || !c.goal_cpl || c.goal_cpl <= 0) return null;
+    if (c.estado.leads <= 0 || c.estado.investido <= 0) return null;
+    const cpl = c.estado.investido / c.estado.leads;
+    const nivel: keyof typeof SITUACAO_DO_CPL =
+      cpl <= c.goal_cpl ? "bom" : cpl <= c.goal_cpl * 1.15 ? "atencao" : "ruim";
+    return { nivel };
+  };
+
   const cartoes = (lista: CampanhaDeDemanda[]) => (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {lista.map((c) => (
@@ -791,15 +807,75 @@ export function CampanhasDeDemanda() {
                     { id: "investido", rotulo: t("Investido") },
                     { id: "leads", rotulo: t("Leads") },
                     { id: "cpl", rotulo: t("CPL") },
-                  ].map((m) => (
-                    <div key={m.id} className="min-w-0 rounded-2xl bg-secondary/60 px-3 py-2.5">
-                      <p className="text-[11px] font-medium text-muted-foreground">{m.rotulo}</p>
-                      <p className="mt-0.5 text-base font-bold [overflow-wrap:anywhere] tabular-nums">
-                        {valorDoCartao(m.id, c)}
-                      </p>
-                    </div>
-                  ))}
+                  ].map((m) => {
+                    const situacao = m.id === "cpl" ? situacaoDoCpl(c) : null;
+                    return (
+                      <div
+                        key={m.id}
+                        className={cn(
+                          "min-w-0 rounded-2xl px-3 py-2.5",
+                          situacao ? SITUACAO_DO_CPL[situacao.nivel].fundo : "bg-secondary/60",
+                        )}
+                      >
+                        <p className="text-[11px] font-medium text-muted-foreground">{m.rotulo}</p>
+                        <p
+                          className={cn(
+                            "mt-0.5 text-base font-bold [overflow-wrap:anywhere] tabular-nums",
+                            situacao && SITUACAO_DO_CPL[situacao.nivel].texto,
+                          )}
+                        >
+                          {valorDoCartao(m.id, c)}
+                        </p>
+                        {situacao ? (
+                          <p
+                            className={cn(
+                              "mt-0.5 text-[11px] font-medium",
+                              SITUACAO_DO_CPL[situacao.nivel].texto,
+                            )}
+                          >
+                            {t(SITUACAO_DO_CPL[situacao.nivel].rotulo)} · {t("meta")}{" "}
+                            {dinheiro(c.goal_cpl)}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
+                {c.goal_leads && c.goal_leads > 0 && c.estado ? (
+                  <div className="mt-3">
+                    <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {t("Meta de leads")}
+                        {c.goal_period === "mensal" ? ` (${t("mensal")})` : ""}
+                      </span>
+                      <span className="font-bold tabular-nums">
+                        {c.estado.leads} {t("de")} {c.goal_leads} ·{" "}
+                        {Math.round((c.estado.leads / c.goal_leads) * 100)}%
+                      </span>
+                    </div>
+                    <div
+                      role="progressbar"
+                      aria-label={t("Progresso da meta de leads")}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.min(
+                        100,
+                        Math.round((c.estado.leads / c.goal_leads) * 100),
+                      )}
+                      className="h-2 overflow-hidden rounded-full bg-secondary"
+                    >
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-[width]",
+                          c.estado.leads >= c.goal_leads ? "bg-success" : "bg-primary",
+                        )}
+                        style={{
+                          width: `${Math.min(100, (c.estado.leads / c.goal_leads) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
