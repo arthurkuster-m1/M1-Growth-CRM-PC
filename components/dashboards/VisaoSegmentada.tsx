@@ -218,11 +218,11 @@ function Comparacao({
             </th>
             {itens.map((x) => (
               <th key={x.item.id} scope="col" className="max-w-56 px-3 py-2 text-right font-medium">
-                <span className="block truncate text-foreground" title={x.item.nome}>
+                <span className="block text-foreground [overflow-wrap:anywhere]" title={x.item.nome}>
                   {x.item.nome}
                 </span>
                 {x.item.apoio ? (
-                  <span className="block truncate text-[10px] font-normal">{x.item.apoio}</span>
+                  <span className="block text-[10px] font-normal [overflow-wrap:anywhere]">{x.item.apoio}</span>
                 ) : null}
               </th>
             ))}
@@ -366,7 +366,7 @@ export function VisaoSegmentada({
                 {t("Comparar")}
               </button>
             </div>
-            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+            <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto">
               {ordenados.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("Nada neste período.")}</p>
               ) : null}
@@ -380,13 +380,13 @@ export function VisaoSegmentada({
                     onClick={() => escolher(i.id)}
                     title={i.apoio ? `${i.nome} — ${i.apoio}` : i.nome}
                     className={cn(
-                      "max-w-64 rounded-full border px-3.5 py-1.5 text-left text-sm font-medium transition-colors",
+                      "max-w-full rounded-2xl border px-3.5 py-2 text-left text-sm font-medium transition-colors",
                       marcado
                         ? "border-deep bg-deep font-bold text-deep-foreground"
                         : "bg-card hover:bg-secondary",
                     )}
                   >
-                    <span className="block truncate">{i.nome}</span>
+                    <span className="block [overflow-wrap:anywhere]">{i.nome}</span>
                   </button>
                 );
               })}

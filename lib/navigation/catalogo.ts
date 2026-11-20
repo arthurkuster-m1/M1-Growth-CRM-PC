@@ -235,6 +235,19 @@ export const NAV_CATALOG = [
     minRole: "viewer",
   },
   {
+    // GUIA — o "cônsul" de cada empresa: o que já está pronto no marketing, o que falta e o
+    // próximo passo (docs/PLANO-GUIA-M1.md). O link é desenhado pelo Sidebar, solto
+    // logo abaixo de Início (por isso fica fora da lista do grupo Marketing); aqui ela existe para o
+    // ⌘K, o teste de completude e o filtro de papel (gerente ou acima).
+    href: "/app/guia",
+    label: "Guia",
+    description: "O que já está pronto no marketing da empresa, o que falta e o próximo passo.",
+    icon: "Signpost",
+    group: "marketing",
+    minRole: "manager",
+    sidebar: true,
+  },
+  {
     // MARKETING — a vitrine do trabalho da agência. Quatro de cinco telas sobem para o menu
     // porque o Arthur quer entrar direto em cada uma; a visão geral é o hub do grupo.
     href: "/app/marketing/estrategia",
