@@ -188,7 +188,7 @@ export const NAV_CATALOG = [
     href: "/app/guia",
     label: "Guia",
     description: "O que já está pronto no marketing da empresa, o que falta e o próximo passo.",
-    icon: "Compass",
+    icon: "Signpost",
     group: "marketing",
     minRole: "manager",
   },
