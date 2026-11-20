@@ -391,17 +391,17 @@ export function SidebarContent({
                     aria-current={ativo ? "page" : undefined}
                     onClick={onNavigate}
                     className={cn(
-                      "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                      "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                       ativo
-                        ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                        : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                        ? "bg-brand font-bold text-brand-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                        : "font-medium text-foreground hover:bg-surface-elevated",
                       collapsed && "justify-center px-2",
                     )}
                   >
                     <Icone
                       size={18}
                       weight={ativo ? "fill" : "regular"}
-                      className={ativo ? "text-primary" : undefined}
+                      className={ativo ? "text-brand-foreground" : undefined}
                       aria-hidden
                     />
                     {!collapsed && <span className="truncate">{rotulo}</span>}
@@ -470,17 +470,17 @@ export function SidebarContent({
                               aria-current={isActive ? "page" : undefined}
                               onClick={onNavigate}
                               className={cn(
-                                "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                                "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                                 isActive
-                                  ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                                  ? "bg-brand font-bold text-brand-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                                  : "font-medium text-foreground hover:bg-surface-elevated",
                                 collapsed && "justify-center px-2",
                               )}
                             >
                               <Icon
                                 size={18}
                                 weight={isActive ? "fill" : "regular"}
-                                className={isActive ? "text-primary" : undefined}
+                                className={isActive ? "text-brand-foreground" : undefined}
                                 aria-hidden
                               />
                               {!collapsed && <span className="truncate">{t(item.label)}</span>}
@@ -510,10 +510,10 @@ export function SidebarContent({
                             aria-current={pathname === group.hub.href ? "page" : undefined}
                             onClick={onNavigate}
                             className={cn(
-                              "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                              "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                               pathname === group.hub.href
-                                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                                ? "bg-brand font-bold text-brand-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                                : "font-medium text-foreground hover:bg-surface-elevated",
                               collapsed && "justify-center px-2",
                             )}
                           >
@@ -572,7 +572,7 @@ export function SidebarContent({
                   className={cn(
                     "relative flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase transition-colors",
                     ativo
-                      ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
+                      ? "bg-brand font-bold text-brand-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
                     collapsed && "justify-center px-2",
                   )}
@@ -607,10 +607,10 @@ export function SidebarContent({
             aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "relative mb-1 flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+              "relative mb-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
               pathname.startsWith(rodape.href)
-                ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                ? "bg-brand font-bold text-brand-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                : "font-medium text-foreground hover:bg-surface-elevated",
               collapsed && "justify-center px-2",
             )}
           >
@@ -681,17 +681,17 @@ function ItensDoModoAgencia({
                 aria-current={ativo ? "page" : undefined}
                 onClick={onNavigate}
                 className={cn(
-                  "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                  "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                   ativo
-                    ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/70 before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                    ? "bg-brand font-bold text-brand-foreground shadow-sm before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-accent-400"
+                    : "font-medium text-foreground hover:bg-surface-elevated",
                   collapsed && "justify-center px-2",
                 )}
               >
                 <Icone
                   size={18}
                   weight={ativo ? "fill" : "regular"}
-                  className={ativo ? "text-primary" : undefined}
+                  className={ativo ? "text-brand-foreground" : undefined}
                   aria-hidden
                 />
                 {!collapsed && <span className="truncate">{rotulo}</span>}
@@ -738,7 +738,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         // `duration-base` em vez do `duration-200` literal: 200ms é o mesmo
         // número, mas vindo de `--duration-base`. A Lei de movimento fecha a
         // tabela de durações, e número solto é o que a faz apodrecer.
-        "sticky top-0 z-30 flex h-dvh shrink-0 flex-col border-r border-border/60 bg-[color-mix(in_oklab,var(--color-accent)_6%,var(--color-surface))] transition-[width] duration-base",
+        "sticky top-0 z-30 flex h-dvh shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-base",
         collapsed ? "w-16" : "w-64",
       )}
     >

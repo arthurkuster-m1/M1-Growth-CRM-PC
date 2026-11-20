@@ -72,7 +72,7 @@ const COR_DA_GRAVIDADE = {
 } as const;
 
 const CARTAO =
-  "flex min-h-[22rem] min-w-0 flex-1 basis-[22rem] flex-col rounded-2xl border bg-card p-4 shadow-sm sm:p-5";
+  "flex min-h-[22rem] min-w-0 flex-1 basis-[22rem] flex-col rounded-[22px] border bg-card p-4 shadow-sm sm:p-6";
 
 /** O bloco inteiro é clicável: um botão invisível cobre o cartão e os controles internos ficam por cima. */
 const COBERTURA_CLICAVEL =
@@ -117,7 +117,7 @@ function CabecalhoDoCartao({
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <h2 id={id} className="flex items-center gap-2 text-base font-semibold tracking-tight">
+      <h2 id={id} className="flex items-center gap-2 text-lg font-bold tracking-tight">
         {icone ? <span className="text-muted-foreground">{icone}</span> : null}
         {titulo}
       </h2>
@@ -322,29 +322,29 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
       {/* ── saudação ─────────────────────────────────────────────────────── */}
       <section
         aria-labelledby="inicio-saudacao"
-        className="relative overflow-hidden rounded-2xl border bg-card p-6 shadow-sm"
+        className="relative overflow-hidden rounded-[22px] bg-brand p-6 text-brand-foreground shadow-md sm:p-8"
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent-soft"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent-600/35"
         />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 id="inicio-saudacao" className="text-2xl font-bold tracking-tight sm:text-3xl">
+            <h1 id="inicio-saudacao" className="text-3xl font-bold tracking-tight sm:text-4xl">
               {saudacao}, {nome}!
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">{dataPorExtenso}</p>
-            <blockquote className="mt-5 border-l-2 border-border-strong pl-3 text-sm text-muted-foreground italic">
+            <p className="mt-1 text-sm text-brand-muted">{dataPorExtenso}</p>
+            <blockquote className="mt-5 border-l-2 border-accent-400 pl-3 text-sm text-brand-muted italic">
               “{frase}”
             </blockquote>
           </div>
           {pendencias === 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success-bg px-3 py-1 text-xs font-medium text-success-fg">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-brand-foreground">
               <CheckCircle size={14} aria-hidden />
               {t("Tudo em dia!")}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning-bg px-3 py-1 text-xs font-medium text-warning-fg">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-brand-foreground">
               {pendencias} {t(pendencias === 1 ? "pendência" : "pendências")}
             </span>
           )}
