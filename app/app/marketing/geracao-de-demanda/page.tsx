@@ -35,6 +35,8 @@ export default async function GeracaoDeDemandaPage() {
       titulo={t("Campanhas")}
       descricao={t("As campanhas do cliente, com o funil e os resultados de cada uma.")}
     >
+      <CampanhasDeDemanda />
+
       <section
         aria-label={t("Telas relacionadas")}
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
@@ -43,7 +45,9 @@ export default async function GeracaoDeDemandaPage() {
           voltarPara={{ href: "/app/marketing/geracao-de-demanda", rotulo: t("Campanhas") }}
           href="/app/marketing/dashboards?painel=trafego"
           titulo={t("Resultados das campanhas")}
-          descricao={t("Dashboard de Tráfego Pago: investido, leads, vendas e faturamento por período")}
+          descricao={t(
+            "Dashboard de Tráfego Pago: investido, leads, vendas e faturamento por período",
+          )}
           icone={<ChartBar weight="duotone" aria-hidden />}
           tom="blue"
         />
@@ -64,8 +68,6 @@ export default async function GeracaoDeDemandaPage() {
           tom="purple"
         />
       </section>
-
-      <CampanhasDeDemanda />
     </PaginaDeMarketing>
   );
 }
