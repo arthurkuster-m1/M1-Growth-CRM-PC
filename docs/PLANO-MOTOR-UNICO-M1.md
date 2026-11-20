@@ -57,3 +57,26 @@ Lacunas a fechar (o trabalho real):
 - Toda migration: arquivo `<timestamp>_<NNNN>_<slug>.sql` (próximo após 0700) **e** apêndice idempotente no `baseline.sql`; função nova em `public` com `revoke execute ... from public, anon`.
 - RLS e `organization_id` em tudo; rotas mutantes com `requireRole` + `requireSupportWrite(` + `audit()` + Zod.
 - Telas existentes (follow-up, regras) seguem funcionando até a fase 8.
+
+## 6. Resultado da Fase 0 — sondagem (20/11/2026, nada foi alterado no código)
+
+**Achados, com arquivo:**
+1. **O follow-up é preso à conversa.** `followup_enrollments` exige `contact_id` e carrega uma `service_boundary` (contato + conversa + revisão; `lib/atendimento/fronteira.ts`). Se a conversa muda de rumo, o fluxo é descartado como "origem obsoleta" (`stale_origin`). Já as regras agem sobre **evento** (lead, agenda, aniversário) e abrem/reabrem a conversa só na hora de enviar (`lib/automation/start-conversation.ts`, `serviceForAutomation`).
+2. **Lead pode ficar sem contato.** `crm_leads.contact_id` é anulável (`ON DELETE SET NULL`). Hoje o gatilho de lead criado conta esses casos como `sem_contato` e **pula** (`lib/followup/gatilho-lead.ts`). Não medi quantos existem (ainda não há dados reais; consulta ao banco não foi feita).
+3. **Cada gatilho do follow-up tem o seu próprio handler** no dispatcher (`gatilho-lead`, `gatilho-etapa`, `gatilho-caso`, `gatilho-retorno`, `gatilho-presenca` + varredura de silêncio no cron). Não existe um "gatilho por evento" genérico. As regras, ao contrário, assinam todos os ~20 eventos num handler só (`lib/automation/engine.handler.ts`).
+4. **Cobertura de gatilhos hoje no grafo:** cobre lead criado, mudou de etapa (só para **uma** etapa escolhida), faltou ao compromisso, silêncio e retorno depois de silêncio. **Não cobre** ganho, perdido, reaberto, responsável mudou, tag no lead/contato, mensagem recebida/falhou, horário marcado/confirmado/remarcado/cancelado/compareceu, aniversário, data do funil e etapa parada. São **15 de 20**.
+5. **`surface='crm_automation'` existe só no papel:** o banco aceita e `validate-publish.ts` lista os nós, mas nenhuma tela ou rota cria fluxo nessa superfície.
+6. **Ações já seguem uma cadeia de proteção** (janela do canal, limite diário, ritmo, trava de contato pessoal, agenda) em `lib/automation/actions/*`. Os nós novos precisam **chamar essas mesmas ações**, não reescrever o envio.
+
+**Decisão técnica que isso força (a mais importante do projeto):** o sujeito do fluxo não pode ser sempre "contato + conversa".
+- **Proposta:** na superfície `crm_automation`, a inscrição guarda o **sujeito do evento** (`subject_kind` + `subject_id`: lead, contato ou compromisso), com `contact_id` e `conversation_id` **opcionais**. A conversa só é aberta/validada quando um nó **envia mensagem** (reaproveitando `serviceForAutomation`).
+- A superfície `followup` fica como está (continua presa à conversa). Assim nada do que já roda quebra.
+- Exige migration (colunas novas + relaxar a restrição só para `crm_automation`), com apêndice no `baseline.sql`.
+
+**Plano ajustado:**
+- **Fase 1** (diagrama só de leitura das regras) segue igual.
+- **Fase 2** passa a ser: migration do sujeito + **um handler único de eventos** para `crm_automation` (pode reaproveitar a lista de `TRIGGER_EVENTS`), que inscreve o fluxo no sujeito do evento.
+- Os gatilhos por tempo (N dias sem mensagem, etapa parada, data do funil, aniversário) continuam sendo emitidos pelos crons atuais como evento; o handler único só os consome.
+- Fases 3 a 8 sem mudança.
+
+**Pergunta ao Arthur (não bloqueia a Fase 1):** podemos migrar as regras mesmo que, no começo, as automações de leads **sem contato** só façam passos internos (tag, tarefa, mover etapa) e peçam um contato para qualquer mensagem? É o que as regras de hoje já fazem.
