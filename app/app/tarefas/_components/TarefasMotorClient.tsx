@@ -299,6 +299,7 @@ export function TarefasMotorClient({
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
   const [apagarVariasAberto, setApagarVariasAberto] = useState(false);
   const ultimoMarcado = useRef<string | null>(null);
+  const ultimaPosicao = useRef(0);
 
   const titulosDosGrupos = {
     pending: t("A fazer"),
@@ -984,7 +985,8 @@ export function TarefasMotorClient({
    *     vale mais que o filtro sobre o mesmo campo; o grupo "Sem valor" deixa o campo vazio;
    *  3. o DIA em que a pessoa clicou no Calendário (vira o prazo).
    */
-  function novaTarefa(origem?: { dia?: string; grupo?: { campo: string; chave: string } }) {
+  type OrigemDaNova = { dia?: string; grupo?: { campo: string; chave: string }; titulo?: string };
+  function montarRascunho(origem?: OrigemDaNova): Tarefa {
     const herdados: Record<string, string | number | boolean | string[]> = {
       ...valoresDeNascimento(preferencias.filtros, camposConsultaveis, {
         hoje: hojeNoFuso(agora, fuso),
@@ -1016,10 +1018,10 @@ export function TarefasMotorClient({
       opcoes.find((o) => o.grupo === "pending") ??
       opcoes[0];
     const agoraIsoDoRascunho = new Date().toISOString();
-    setRascunho({
+    return {
       id: ID_DO_RASCUNHO,
       organization_id: "",
-      title: tituloVeioDoFiltro ? tarefa.title : "",
+      title: origem?.titulo ?? (tituloVeioDoFiltro ? tarefa.title : ""),
       description: tarefa.description ?? null,
       due_date: tarefa.due_date ?? null,
       start_date: tarefa.start_date ?? null,
@@ -1035,40 +1037,67 @@ export function TarefasMotorClient({
       updated_at: agoraIsoDoRascunho,
       custom_fields: personalizados,
       cronograma_lado: null,
+    };
+  }
+
+  /** O pop-up (painel lateral) de "Nova tarefa", já preenchido com o que a tela pede. */
+  function novaTarefa(origem?: OrigemDaNova) {
+    setRascunho(montarRascunho(origem));
+  }
+
+  // `ultimaPosicao`: duas criações na mesma fração de segundo (Enter, Enter) não podem empatar nem
+  // trocar de ordem, e a lista na tela pode ainda não ter a anterior.
+  function proximaPosicao() {
+    const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
+    const posicao = Math.max(maiorPosicao + 1, relogioEmSegundos(), ultimaPosicao.current + 1);
+    ultimaPosicao.current = posicao;
+    return posicao;
+  }
+
+  /** Grava uma tarefa montada (rascunho) de uma vez, com tudo o que ela traz. Lança se a API falhar. */
+  async function gravarRascunho(r: Tarefa) {
+    const personalizados = r.custom_fields ?? {};
+    const criada = await criarTarefa({
+      title: r.title.trim() || t("Sem título"),
+      description: r.description,
+      due_date: r.due_date,
+      start_date: r.start_date ?? null,
+      priority: r.priority,
+      status_option_id: r.status_option_id ?? null,
+      assigned_to: r.assigned_to,
+      contact_id: r.contact_id,
+      position: proximaPosicao(),
+    });
+    // A criação não aceita propriedades personalizadas nem o cronograma: entram logo em seguida.
+    const extras: EdicaoDaTarefa = {};
+    if (Object.keys(personalizados).length > 0) extras.custom_fields = personalizados;
+    if (r.cronograma_lado) extras.cronograma_lado = r.cronograma_lado;
+    if (Object.keys(extras).length > 0) void editarTarefaBase(criada.id, extras);
+    garantirQueAparece({
+      ...criada,
+      custom_fields: { ...criada.custom_fields, ...personalizados },
+      cronograma_lado: r.cronograma_lado ?? null,
     });
   }
 
-  /** "Criar tarefa" no pop-up: grava o rascunho de uma vez, com tudo o que a pessoa preencheu. */
+  /** "Criar tarefa" no painel: grava o rascunho; se falhar, o painel fica aberto com o que foi preenchido. */
   async function criarDoRascunho() {
     if (!rascunho) return;
-    const maiorPosicao = tarefas.reduce((m, tarefa) => Math.max(m, tarefa.position ?? 0), 0);
-    const personalizados = rascunho.custom_fields ?? {};
     try {
-      const criada = await criarTarefa({
-        title: rascunho.title.trim() || t("Sem título"),
-        description: rascunho.description,
-        due_date: rascunho.due_date,
-        start_date: rascunho.start_date ?? null,
-        priority: rascunho.priority,
-        status_option_id: rascunho.status_option_id ?? null,
-        assigned_to: rascunho.assigned_to,
-        contact_id: rascunho.contact_id,
-        position: Math.max(maiorPosicao + 1, relogioEmSegundos()),
-      });
-      // A criação não aceita propriedades personalizadas nem o cronograma: entram logo em seguida.
-      const extras: EdicaoDaTarefa = {};
-      if (Object.keys(personalizados).length > 0) extras.custom_fields = personalizados;
-      if (rascunho.cronograma_lado) extras.cronograma_lado = rascunho.cronograma_lado;
-      if (Object.keys(extras).length > 0) void editarTarefaBase(criada.id, extras);
-      garantirQueAparece({
-        ...criada,
-        custom_fields: { ...criada.custom_fields, ...personalizados },
-        cronograma_lado: rascunho.cronograma_lado ?? null,
-      });
+      await gravarRascunho(rascunho);
       setRascunho(null);
     } catch {
-      // O hook já mostrou o erro da API; o pop-up fica aberto com o que a pessoa preencheu.
+      // O hook já mostrou o erro da API.
     }
+  }
+
+  /**
+   * O campo de baixo da tabela: título + Enter e a tarefa nasce, com o que a tela pede (filtros,
+   * como no botão "Nova tarefa"). Devolve a promessa para o campo restaurar o texto se falhar.
+   */
+  async function criarRapida(titulo: string) {
+    // Se a API falhar, o hook já mostrou o erro e o campo recebe o texto de volta (a promessa rejeita).
+    await gravarRascunho(montarRascunho({ titulo }));
   }
 
   if (soPainel) {
@@ -1400,6 +1429,8 @@ export function TarefasMotorClient({
           aoSelecionarTodas={podeEditar ? selecionarTodas : undefined}
           aoReordenar={(id, destino) => void reordenar(id, destino)}
           aoCriar={podeEditar ? () => novaTarefa() : undefined}
+          aoCriarRapido={podeEditar ? criarRapida : undefined}
+          aoCriarComDetalhes={podeEditar ? (titulo) => novaTarefa({ titulo }) : undefined}
           aoCriarNoGrupo={
             podeEditar && preferencias.agrupar
               ? (chave) =>
