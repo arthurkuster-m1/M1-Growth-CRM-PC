@@ -86,6 +86,7 @@ export function useInboundCallAlerts(): void {
         body: name ? `${name} · ${fromNumber}` : fromNumber,
         tag: callId,
         href: "/app/calls",
+        rotulo: "Abrir ligações",
       });
     })();
   }, []);

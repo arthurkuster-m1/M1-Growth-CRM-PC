@@ -11,10 +11,9 @@ import { BotaoVoltar } from "@/components/shell/BotaoVoltar";
 import { BarraInferior } from "@/components/shell/BarraInferior";
 import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNavegacao";
 import { useSinalDePresenca } from "@/hooks/atendimento/useSinalDePresenca";
-import { useInboundMessageAlerts } from "@/hooks/notifications/useInboundMessageAlerts";
+import { useNotificacoesPessoais } from "@/hooks/notifications/useNotificacoesPessoais";
 import { useInboundCallAlerts } from "@/hooks/calls/useInboundCallAlerts";
 import { useAtalhoDesfazer } from "@/hooks/motor/useAtalhoDesfazer";
-import { useCrmAlerts } from "@/hooks/notifications/useCrmAlerts";
 import { useNotifyOpenFromServiceWorker } from "@/lib/notifications/notify_open";
 import { estiloDaReserva, useOcupacaoDoRodape } from "@/lib/ui/rodape-ocupado";
 
@@ -33,9 +32,9 @@ interface AppShellProps {
 }
 
 export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellProps) {
-  useInboundMessageAlerts();
+  // Mensagem, lead novo/atribuído, menção, tarefa e avisos: só os da pessoa (migration 0697).
+  useNotificacoesPessoais();
   useInboundCallAlerts();
-  useCrmAlerts();
   useAtalhoDesfazer();
   useNotifyOpenFromServiceWorker();
   // A ROLAGEM MORA NO <main>, não na janela: o Next só volta ao topo da JANELA ao navegar, então a

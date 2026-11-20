@@ -1,3 +1,4 @@
+import type { AcaoDoAviso } from "./aviso-pessoal";
 import { NOTIFY_KINDS, type NotifyKind } from "./kinds";
 import { areAlertsEnabled, getPermission } from "./permission";
 import { ensureNotifyServiceWorker } from "./service_worker";
@@ -11,6 +12,8 @@ export interface EmitNotificationInput {
   body: string;
   tag?: string;
   href?: string;
+  /** Botões da notificação (só o service worker sabe desenhá-los). */
+  acoes?: AcaoDoAviso[];
   icon?: string;
   sound?: SoundId;
   force?: boolean;
@@ -52,14 +55,20 @@ export function emitNotification(input: EmitNotificationInput): void {
   const icon = absUrl(input.icon || "/app-icon/192");
   const badge = absUrl("/notification-badge");
   const href = input.href ? absUrl(input.href) : "";
-  const opts: NotificationOptions & { renotify?: boolean } = {
+  const acoes = (input.acoes ?? [])
+    .slice(0, 2)
+    .map((a) => ({ rotulo: a.rotulo, href: absUrl(a.href) }));
+  const opts: NotificationOptions & {
+    renotify?: boolean;
+    actions?: Array<{ action: string; title: string }>;
+  } = {
     body,
     tag,
     silent: false,
     renotify: true,
     icon,
     badge,
-    data: { href },
+    data: { href, acoes },
   };
 
   if (typeof document !== "undefined" && document.visibilityState === "visible") {
@@ -68,6 +77,15 @@ export function emitNotification(input: EmitNotificationInput): void {
     } catch {
       // AudioContext recusa
     }
+  }
+
+  // Com botões, só o service worker desenha (`new Notification` recusa `actions`).
+  if (acoes.length > 0) {
+    void showInOsTray(input.title, {
+      ...opts,
+      actions: acoes.map((a, i) => ({ action: `acao-${i}`, title: a.rotulo })),
+    } as NotificationOptions);
+    return;
   }
 
   try {

@@ -11,7 +11,7 @@ describe("prefs de notificação", () => {
     expect(canalLigado("lead_assigned", "in_app")).toBe(true);
     gravarCanal("lead_assigned", "in_app", false);
     expect(lerPrefs().lead_assigned.in_app).toBe(false);
-    expect(canalLigado("lead_won", "push")).toBe(true);
+    expect(canalLigado("lead_new", "push")).toBe(true);
   });
 
   it("espelha push de mensagem no interruptor legado", () => {

@@ -1,115 +1,97 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PushPayload } from "./push_payload";
 
-// `state.vapidPronto` é mutável de propósito: os testes de grupo abaixo
-// precisam de VAPID "pronto" (senão o handler nem chega na ramificação), e o
-// teste original precisa dele "ausente" — um só `vi.mock` por módulo por
-// arquivo, então a alternância é por flag, não por uma segunda chamada.
-const state = { vapidPronto: false };
-vi.mock("@/lib/notifications/vapid", () => ({
-  vapidPronto: () => state.vapidPronto,
+const entrega = (destinatarios: string[]) => ({
+  destinatarios,
+  aviso: { categoria: "mensagem", titulo: "Maria", corpo: "oi", acoes: [], tag: "conversa:c1" },
+});
+
+const montar = {
+  mensagem: vi.fn(async (..._a: unknown[]) => entrega(["u-1"]) as unknown),
+  grupo: vi.fn(async (..._a: unknown[]) => entrega(["u-1"]) as unknown),
+  leadNovo: vi.fn(async (..._a: unknown[]) => entrega(["u-2"]) as unknown),
+  leadAtribuido: vi.fn(async (..._a: unknown[]) => entrega(["u-3"]) as unknown),
+  mencao: vi.fn(async (..._a: unknown[]) => entrega(["u-4"]) as unknown),
+  central: vi.fn(async (..._a: unknown[]) => null as unknown),
+};
+vi.mock("./montar-avisos", () => ({
+  montarAvisoDeMensagem: (...a: unknown[]) => montar.mensagem(...a),
+  montarAvisoDeGrupo: (...a: unknown[]) => montar.grupo(...a),
+  montarAvisoDeLeadNovo: (...a: unknown[]) => montar.leadNovo(...a),
+  montarAvisoDeLeadAtribuido: (...a: unknown[]) => montar.leadAtribuido(...a),
+  montarAvisoDeMencao: (...a: unknown[]) => montar.mencao(...a),
+  montarAvisoDaCentral: (...a: unknown[]) => montar.central(...a),
 }));
 
-const enviarPushDaOrgMock = vi.fn(async (_organizationId: string, _payload: PushPayload) => ({ sent: 1, gone: 0 }));
-const enviarPushAoUsuarioMock = vi.fn(
-  async (_organizationId: string, _userId: string | null, _payload: PushPayload) => ({ sent: 0, gone: 0 }),
-);
-vi.mock("./web_push", () => ({
-  // Referências indiretas de propósito: o factory do `vi.mock` é hoisted
-  // acima das declarações `const` deste arquivo, então gravar o mock
-  // diretamente como valor (`enviarPushDaOrg: enviarPushDaOrgMock`) estoura
-  // "Cannot access before initialization". Fechos lazy (chamados só quando o
-  // handler de fato invoca) resolvem — mesmo padrão de
-  // `tests/unit/media-persist-worker.test.ts`.
-  enviarPushDaOrg: (organizationId: string, payload: PushPayload) => enviarPushDaOrgMock(organizationId, payload),
-  enviarPushAoUsuario: (organizationId: string, userId: string | null, payload: PushPayload) =>
-    enviarPushAoUsuarioMock(organizationId, userId, payload),
+const entregar = vi.fn(async (..._a: unknown[]) => ({ gravadas: 1, push: 1 }));
+vi.mock("./entregar-notificacao", () => ({
+  entregarNotificacao: (...a: unknown[]) => entregar(...a),
 }));
-
-// A rota 1:1 (`handleInbound`) usa o admin client para buscar nome/avatar em
-// `contacts`. A rota de grupo NUNCA deveria — é exatamente o que os testes
-// abaixo travam. O client em si a rota de grupo pede (a régua do canal
-// desativado, #2329, lê `channel_sessions`), então a trava é `from("contacts")`,
-// não `createAdminClient`.
-const fromMock = vi.fn();
-const createAdminClientMock = vi.fn(() => ({ from: fromMock }) as unknown);
-vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => createAdminClientMock(),
-}));
+vi.mock("@/lib/channels/desativado", () => ({ canalDoEventoDesativado: async () => false }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
 
 import { webPushInboundHandler } from "./push.handler";
 
-function grupoRow(payload: Record<string, unknown> = {}) {
+function row(event_type: string, over: Record<string, unknown> = {}) {
   return {
-    id: "e-grupo",
+    id: "ev-1",
     organization_id: "org1",
-    event_type: "message.group_received",
-    entity_kind: "message",
-    entity_id: "m-grupo",
-    payload: { conversation_id: "conv-1", contact_id: "contato-placeholder-grupo", body_preview: "bom dia, grupo", type: "text", ...payload },
+    event_type,
+    entity_kind: "x",
+    entity_id: "ent-1",
+    payload: {},
     metadata: {},
     consumed_by: [],
     attempts: 0,
+    ...over,
   };
 }
 
 describe("webPushInboundHandler", () => {
   beforeEach(() => {
-    state.vapidPronto = false;
-    enviarPushDaOrgMock.mockClear();
-    enviarPushAoUsuarioMock.mockClear();
-    createAdminClientMock.mockClear();
-    fromMock.mockClear();
+    vi.clearAllMocks();
   });
 
-  it("pula quando VAPID não está configurado", async () => {
-    const result = await webPushInboundHandler.handle({
-      id: "e1",
-      organization_id: "org",
-      event_type: "message.received",
-      entity_kind: "message",
-      entity_id: "m1",
-      payload: { conversation_id: "c1", body_preview: "oi", type: "text" },
-      metadata: {},
-      consumed_by: [],
-      attempts: 0,
-    });
-    expect(result.status).toBe("skipped");
-    expect(result.detail).toBe("vapid_ausente");
+  it("assina mensagem, lead novo, lead atribuído, menção e avisos da Central — e não mais ganho/perdido", () => {
+    expect(webPushInboundHandler.events).toEqual([
+      "message.received",
+      "message.group_received",
+      "lead.created",
+      "lead.assigned",
+      "user.mentioned",
+      "central.aviso_criado",
+    ]);
   });
 
-  describe("grupo (message.group_received) — nunca a cópia do 1:1", () => {
-    beforeEach(() => {
-      state.vapidPronto = true;
-    });
+  it("entrega a notificação montada, com o id do evento para não repetir no reprocessamento", async () => {
+    const r = await webPushInboundHandler.handle(
+      row("message.received", { payload: { conversation_id: "c1" } }),
+    );
+    expect(r.status).toBe("ok");
+    expect(entregar).toHaveBeenCalledTimes(1);
+    expect(entregar.mock.calls[0]![1]).toBe("org1");
+    expect(entregar.mock.calls[0]![3]).toBe("ev-1");
+  });
 
-    it("título é a cópia de grupo, href aponta pra conversa, envia pela ORG (não por usuário)", async () => {
-      const result = await webPushInboundHandler.handle(grupoRow());
+  it("lead novo usa o id da entidade; lead atribuído passa quem recebeu", async () => {
+    await webPushInboundHandler.handle(
+      row("lead.created", { entity_id: "lead-9", metadata: { via: "planilha" } }),
+    );
+    expect(montar.leadNovo.mock.calls[0]!.slice(1)).toEqual([
+      "org1",
+      "lead-9",
+      { via: "planilha" },
+    ]);
+    await webPushInboundHandler.handle(
+      row("lead.assigned", { payload: { lead_id: "lead-9", to_user_id: "u-3" } }),
+    );
+    expect(montar.leadAtribuido.mock.calls[0]!.slice(1)).toEqual(["org1", "lead-9", "u-3"]);
+  });
 
-      expect(result.status).toBe("ok");
-      expect(enviarPushDaOrgMock).toHaveBeenCalledTimes(1);
-      const [orgId, payload] = enviarPushDaOrgMock.mock.calls[0]!;
-      expect(orgId).toBe("org1");
-      expect(payload).toMatchObject({
-        title: "Nova mensagem no grupo",
-        href: "/app/inbox?id=conv-1",
-      });
-      // Nunca o desfecho do 1:1 ("Nova mensagem" quando não há nome de contato).
-      expect(payload.title).not.toBe("Nova mensagem");
-      // Recipiente é a ORG inteira — nunca `enviarPushAoUsuario` (que é o
-      // caminho de lead.assigned/user.mentioned, dirigido a UM usuário).
-      expect(enviarPushAoUsuarioMock).not.toHaveBeenCalled();
-    });
-
-    it("não busca nome/avatar do contato — `contacts` nunca é lido", async () => {
-      await webPushInboundHandler.handle(grupoRow());
-      expect(fromMock).not.toHaveBeenCalledWith("contacts");
-    });
-
-    it("sem conversation_id: href cai para /app/inbox (mesma forma do 1:1 sem conversa)", async () => {
-      await webPushInboundHandler.handle(grupoRow({ conversation_id: undefined }));
-      const [, payload] = enviarPushDaOrgMock.mock.calls[0]!;
-      expect(payload).toMatchObject({ title: "Nova mensagem no grupo", href: "/app/inbox" });
-    });
+  it("nada a avisar (aviso que fica só na Central) → skipped, nada entregue", async () => {
+    const r = await webPushInboundHandler.handle(
+      row("central.aviso_criado", { payload: { item_id: "av-1" } }),
+    );
+    expect(r).toMatchObject({ status: "skipped", detail: "ninguem_a_avisar" });
+    expect(entregar).not.toHaveBeenCalled();
   });
 });

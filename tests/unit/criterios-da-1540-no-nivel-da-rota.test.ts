@@ -47,10 +47,9 @@ vi.mock("@/lib/agenda/protecao-followup", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/agenda/protecao-followup")>()),
   protecaoAgendaSupabase: dubles.protecao,
 }));
-// Push de verdade gravaria em `web_push_subscriptions` no meio do teste.
-vi.mock("@/lib/notifications/web_push", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/notifications/web_push")>()),
-  enviarPushAoUsuario: vi.fn(async () => undefined),
+// A notificação de verdade gravaria em `notificacoes` e mandaria push no meio do teste.
+vi.mock("@/lib/notifications/entregar-notificacao", () => ({
+  entregarNotificacao: vi.fn(async () => ({ gravadas: 0, push: 0 })),
 }));
 
 import "@/lib/automation/actions/register-all";

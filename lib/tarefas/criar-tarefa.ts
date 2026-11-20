@@ -21,8 +21,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { audit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
-import { truncar } from "@/lib/notifications/push_payload";
-import { enviarPushAoUsuario } from "@/lib/notifications/web_push";
+import { entregarNotificacao } from "@/lib/notifications/entregar-notificacao";
+import { montarAvisoDeTarefa } from "@/lib/notifications/montar-avisos";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
 import { PRIORIDADES_DA_TAREFA, type PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
 
@@ -239,12 +239,16 @@ export async function criarTarefaInterna(
 
   if (assignedTo) {
     try {
-      await enviarPushAoUsuario(pedido.organizationId, assignedTo, {
-        title: "Nova tarefa",
-        body: truncar(titulo),
-        tag: `task:${tarefaId}`,
-        href: "/app/tarefas",
+      // A notificação da pessoa (tela + celular): título da tarefa, cliente e os botões
+      // "Abrir tarefas" / "Abrir no CRM".
+      const entrega = await montarAvisoDeTarefa(db, pedido.organizationId, {
+        tarefaId,
+        titulo,
+        paraUserId: assignedTo,
+        leadId: lead?.id ?? null,
+        contatoId: contactId,
       });
+      await entregarNotificacao(db, pedido.organizationId, entrega);
     } catch (err) {
       logger.warn("task_push_failed", {
         organization_id: pedido.organizationId,

@@ -2,10 +2,11 @@ import { setAlertsEnabled } from "./permission";
 
 export const NOTIFY_UI_CATEGORIES = [
   "message",
+  "lead_new",
   "lead_assigned",
-  "lead_won",
-  "lead_lost",
   "mention",
+  "task",
+  "alerts",
   "call_inbound",
 ] as const;
 
@@ -27,10 +28,11 @@ export function prefsPadrao(): NotifyPrefs {
   }
   return {
     message: { in_app: true, push: pushMsg },
+    lead_new: { in_app: true, push: true },
     lead_assigned: { in_app: true, push: true },
-    lead_won: { in_app: true, push: true },
-    lead_lost: { in_app: true, push: true },
     mention: { in_app: true, push: true },
+    task: { in_app: true, push: true },
+    alerts: { in_app: true, push: true },
     call_inbound: { in_app: true, push: true },
   };
 }
@@ -101,10 +103,11 @@ const PREFS_DO_SERVIDOR: NotifyPrefs = {
   // `NotifyPrefs` exige uma linha por tipo: sem ela o tipo não fecha, e o
   // servidor decidiria por ausência em vez de por declaração.
   call_inbound: { in_app: true, push: true },
+  lead_new: { in_app: true, push: true },
   lead_assigned: { in_app: true, push: true },
-  lead_won: { in_app: true, push: true },
-  lead_lost: { in_app: true, push: true },
   mention: { in_app: true, push: true },
+  task: { in_app: true, push: true },
+  alerts: { in_app: true, push: true },
 };
 
 /**

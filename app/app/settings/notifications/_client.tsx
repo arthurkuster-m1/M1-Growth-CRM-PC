@@ -18,11 +18,12 @@ import {
 } from "@/lib/notifications/prefs";
 
 const LABELS: Record<NotifyCategory, string> = {
-  message: "Nova mensagem",
+  message: "Nova mensagem nas suas conversas",
+  lead_new: "Novo lead",
   lead_assigned: "Lead atribuído a você",
-  lead_won: "Lead ganho",
-  lead_lost: "Lead perdido",
   mention: "Você foi mencionado",
+  task: "Nova tarefa para você",
+  alerts: "Avisos de atendimento, CRM e sistema",
   call_inbound: "Ligação recebida",
 };
 
@@ -83,7 +84,13 @@ export function NotificationPrefsClient() {
                   disabled={denied || unsupported}
                   onCheckedChange={(on) => void onToggle(cat, "push", on)}
                   aria-label={`${t(LABELS[cat])} via push`}
-                  data-testid={cat === "message" ? (prefs.message.push ? "alerts-toggle" : "alerts-enable") : undefined}
+                  data-testid={
+                    cat === "message"
+                      ? prefs.message.push
+                        ? "alerts-toggle"
+                        : "alerts-enable"
+                      : undefined
+                  }
                 />
               </td>
             </tr>

@@ -1,9 +1,9 @@
 /**
  * Ação `create_task` — o lembrete interno da automação (#1540).
  *
- * Grava `crm_tasks`, audita e avisa o responsável pelo MESMO caminho do
- * `push.handler` (`enviarPushAoUsuario`) — só que dirigido ao dono da tarefa e
- * não ao canal. Nada aqui chega ao cliente: o título é lido por uma pessoa na
+ * Grava `crm_tasks`, audita e avisa o responsável pelo MESMO caminho das outras
+ * notificações (`lib/notifications/entregar-notificacao.ts`) — só para o dono da
+ * tarefa. Nada aqui chega ao cliente: o título é lido por uma pessoa na
  * tela de tarefas.
  *
  * Toda a regra (placeholders, prazo, atribuição, audit, push) mora em
@@ -16,7 +16,10 @@ import { registerAction } from "@/lib/automation/actions";
 import type { ActionCtx, ActionResultDetail } from "@/lib/automation/types";
 import { criarTarefaInterna, type AtribuicaoDaTarefa } from "@/lib/tarefas/criar-tarefa";
 
-async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise<ActionResultDetail> {
+async function execute(
+  ctx: ActionCtx,
+  config: Record<string, unknown>,
+): Promise<ActionResultDetail> {
   const titulo = typeof config.titulo === "string" ? config.titulo : "";
   const venceEmDias = typeof config.vence_em_dias === "number" ? config.vence_em_dias : null;
   const prioridade = typeof config.prioridade === "string" ? config.prioridade : null;

@@ -62,7 +62,7 @@ export default async function NotificationsPage() {
           className="border-amber-500/40 bg-amber-50/40 p-4 text-sm dark:bg-amber-900/10"
         >
           {t(
-            "Email ainda não está disponível. In-app (toast) e Push (Chrome) já funcionam para as cinco categorias, inclusive com a aba fechada.",
+            "Você recebe só o que é seu: mensagens das conversas atribuídas a você, seus leads, menções, tarefas e avisos. Cada aviso tem um botão que leva direto para resolver. Ele aparece na tela e, com a aba fechada, no celular ou no computador. Email ainda não está disponível.",
           )}
         </Card>
       ) : (

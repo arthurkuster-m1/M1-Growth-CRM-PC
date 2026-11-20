@@ -326,8 +326,8 @@ test.describe("Lote 12 — #907 o nome editado vence o nome do perfil do WhatsAp
     await captura(page, "907-07-inbox-com-nome-escolhido");
 
     // ── A NOTIFICAÇÃO do navegador ───────────────────────────────────────
-    // `useInboundMessageAlerts` monta o título com `nomeDoContato(row)` sobre a
-    // MESMA linha que a lista de conversas recebe. Medir a linha é medir o
+    // `lib/notifications/montar-avisos.ts` monta o título com `nomeDoContato` sobre a
+    // MESMA linha de contato que a lista de conversas recebe. Medir a linha é medir o
     // título; simular a permissão de notificação não acrescentaria nada.
     const resp = await page.request.get(`/api/v1/conversations?limit=50`);
     const corpo = await resp.text();

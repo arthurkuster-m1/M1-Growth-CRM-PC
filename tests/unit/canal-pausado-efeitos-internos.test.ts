@@ -75,13 +75,19 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 // ─── 1. push ────────────────────────────────────────────────────────────────
-const enviarPushDaOrg = vi.fn(async (_org: string, _payload: unknown) => ({ sent: 1, gone: 0 }));
-vi.mock("@/lib/notifications/web_push", () => ({
-  enviarPushDaOrg: (org: string, payload: unknown) => enviarPushDaOrg(org, payload),
-  enviarPushAoUsuario: async () => ({ sent: 0, gone: 0 }),
+const entrega = { destinatarios: ["u-1"], aviso: { categoria: "mensagem", titulo: "x", corpo: "", acoes: [], tag: "t" } };
+const entregarNotificacao = vi.fn(async (..._args: unknown[]) => ({ gravadas: 1, push: 1 }));
+vi.mock("@/lib/notifications/montar-avisos", () => ({
+  montarAvisoDeMensagem: async () => entrega,
+  montarAvisoDeGrupo: async () => entrega,
+  montarAvisoDeLeadNovo: async () => null,
+  montarAvisoDeLeadAtribuido: async () => null,
+  montarAvisoDeMencao: async () => null,
+  montarAvisoDaCentral: async () => null,
 }));
-vi.mock("@/lib/notifications/vapid", () => ({ vapidPronto: () => true }));
-vi.mock("@/lib/branding/saida", () => ({ marcaDaSaida: async () => ({ nome: "Marca" }) }));
+vi.mock("@/lib/notifications/entregar-notificacao", () => ({
+  entregarNotificacao: (...args: unknown[]) => entregarNotificacao(...args),
+}));
 
 // ─── 2. reatividade do fluxo ────────────────────────────────────────────────
 const applyReactivityEvent = vi.fn(async (_db: unknown, _clock: unknown, _row: unknown) => ({
@@ -162,7 +168,7 @@ function evento(over: Partial<EventRow> = {}): EventRow {
 beforeEach(() => {
   canal.desativado = true;
   canal.leituraFalha = false;
-  enviarPushDaOrg.mockClear();
+  entregarNotificacao.mockClear();
   applyReactivityEvent.mockClear();
   aplicarTextoNosFollowups.mockClear();
   aplicaGatilhoDeRetorno.mockClear();
@@ -195,14 +201,14 @@ describe("consumidor 1 — push no celular", () => {
   it("canal pausado → skipped e NENHUM push sai", async () => {
     const r = await webPushInboundHandler.handle(evento());
     expect(r).toMatchObject({ status: "skipped", detail: "canal_desativado" });
-    expect(enviarPushDaOrg).not.toHaveBeenCalled();
+    expect(entregarNotificacao).not.toHaveBeenCalled();
   });
 
   it("canal ligado → o push sai (a guarda não engoliu o caminho bom)", async () => {
     canal.desativado = false;
     const r = await webPushInboundHandler.handle(evento());
     expect(r.status).toBe("ok");
-    expect(enviarPushDaOrg).toHaveBeenCalledTimes(1);
+    expect(entregarNotificacao).toHaveBeenCalledTimes(1);
   });
 
   // O grupo é o irmão que a primeira passada não viu: `message.group_received`
@@ -211,14 +217,14 @@ describe("consumidor 1 — push no celular", () => {
   it("grupo em canal pausado → skipped e NENHUM push sai", async () => {
     const r = await webPushInboundHandler.handle(evento({ event_type: "message.group_received" }));
     expect(r).toMatchObject({ status: "skipped", detail: "canal_desativado" });
-    expect(enviarPushDaOrg).not.toHaveBeenCalled();
+    expect(entregarNotificacao).not.toHaveBeenCalled();
   });
 
   it("grupo em canal ligado → o push sai", async () => {
     canal.desativado = false;
     const r = await webPushInboundHandler.handle(evento({ event_type: "message.group_received" }));
     expect(r.status).toBe("ok");
-    expect(enviarPushDaOrg).toHaveBeenCalledTimes(1);
+    expect(entregarNotificacao).toHaveBeenCalledTimes(1);
   });
 });
 

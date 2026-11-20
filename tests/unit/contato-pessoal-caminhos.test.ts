@@ -49,10 +49,11 @@ function evento(over: Partial<EventRow> = {}): EventRow {
 }
 
 describe("caminho 1 — alerta no navegador não entrega aviso", () => {
-  it("o hook pula o entregarAviso quando o contato é pessoal", () => {
-    const src = semComentarios(fonte("hooks", "notifications", "useInboundMessageAlerts.ts"));
-    expect(src).toMatch(/pessoal/);
-    expect(src).toMatch(/if \(bits\.pessoal\) return;/);
+  it("a tela só desenha as notificações da pessoa — nunca olha `messages` direto", () => {
+    // O aviso da tela nasce da MESMA notificação do push (caminho 3, que pula pessoal).
+    const src = semComentarios(fonte("hooks", "notifications", "useNotificacoesPessoais.ts"));
+    expect(src).toMatch(/table:\s*"notificacoes"/);
+    expect(src).not.toMatch(/table:\s*"messages"/);
   });
 });
 
@@ -64,10 +65,9 @@ describe("caminho 2 — realtime do inbox é consequência da lista (etapa 7)", 
 });
 
 describe("caminho 3 — push no celular pula pessoal", () => {
-  it("handleInbound devolve skipped/contato_pessoal", () => {
-    const src = semComentarios(fonte("lib", "notifications", "push.handler.ts"));
-    expect(src).toMatch(/is_personal/);
-    expect(src).toMatch(/detail:\s*"contato_pessoal"/);
+  it("a notificação de mensagem não é montada para contato pessoal", () => {
+    const src = semComentarios(fonte("lib", "notifications", "montar-avisos.ts"));
+    expect(src).toMatch(/contato\?\.is_personal === true\) return null;/);
   });
 });
 
@@ -194,9 +194,7 @@ describe("caminho 9 — distribuição não distribui pessoal", () => {
 
 describe("caminho 10 — métricas não somam pessoal", () => {
   it("uso da plataforma exclui mensagens de pessoal", () => {
-    const src = semComentarios(
-      fonte("app", "api", "v1", "admin", "usage", "route.ts"),
-    );
+    const src = semComentarios(fonte("app", "api", "v1", "admin", "usage", "route.ts"));
     expect(src).toMatch(/is_personal/);
     expect(src).toMatch(/\.not\("contact_id",\s*"in"/);
   });

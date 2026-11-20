@@ -60,10 +60,9 @@ vi.mock("@/components/shell/BarraDeProgressoNavegacao", () => ({
 // `components/shell/BarraInferior.celular.test.tsx`, que prova a regra da tela.
 vi.mock("@/components/shell/BarraInferior", () => ({ BarraInferior: () => null }));
 vi.mock("@/hooks/atendimento/useSinalDePresenca", () => ({ useSinalDePresenca: () => {} }));
-vi.mock("@/hooks/notifications/useInboundMessageAlerts", () => ({
-  useInboundMessageAlerts: () => {},
+vi.mock("@/hooks/notifications/useNotificacoesPessoais", () => ({
+  useNotificacoesPessoais: () => {},
 }));
-vi.mock("@/hooks/notifications/useCrmAlerts", () => ({ useCrmAlerts: () => {} }));
 // O AppShell passou a avisar de ligação ao vivo (#677). O hook lê `useActiveOrg`
 // e `usePermission` do AuthProvider, que esta árvore de teste não monta — mesma
 // razão dos três mocks acima, e mesma forma.

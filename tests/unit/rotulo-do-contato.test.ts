@@ -318,7 +318,7 @@ describe("a sétima cópia não nasce", () => {
     expect(arquivos.length).toBeGreaterThan(100);
     // Os dois diretórios que a versão anterior não varria, e onde moravam dois
     // dos oito pontos da #906. Tirá-los de `DIRETORIOS` fica vermelho aqui.
-    expect(arquivos).toContain("hooks/notifications/useInboundMessageAlerts.ts");
+    expect(arquivos).toContain("hooks/notifications/useNotificacoesPessoais.ts");
     expect(arquivos).toContain("workers/ai-response-worker.ts");
   });
 });

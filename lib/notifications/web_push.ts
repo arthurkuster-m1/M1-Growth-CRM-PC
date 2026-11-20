@@ -13,34 +13,31 @@ export type PushSubRow = {
   auth: string;
 };
 
-type AdminLike = {
-  from: (table: string) => {
-    select: (cols: string) => {
-      eq: (col: string, val: string) => Promise<{ data: PushSubRow[] | null; error: { message: string } | null }>;
-    };
-    delete: () => {
-      eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
-    };
-  };
-};
-
-function store(admin: AdminLike) {
-  return admin.from("push_subscriptions");
-}
-
-export async function enviarPushDaOrg(
+/**
+ * Manda o push SÓ para os aparelhos destas pessoas, nesta organização.
+ *
+ * Não existe mais "mandar para a organização inteira": quem decide os destinatários é
+ * `montar-avisos.ts` (o responsável pela conversa/lead, ou a equipe que distribui). Inscrição
+ * que o navegador declarou morta (404/410) é apagada no caminho.
+ */
+export async function enviarPushAosUsuarios(
   organizationId: string,
+  userIds: readonly string[],
   payload: PushPayload,
-  admin: AdminLike = createAdminClient() as unknown as AdminLike,
 ): Promise<{ sent: number; gone: number }> {
-  if (!vapidPronto()) return { sent: 0, gone: 0 };
+  if (!vapidPronto() || userIds.length === 0) return { sent: 0, gone: 0 };
+  const admin = createAdminClient();
 
-  const { data, error } = await store(admin).select("id, endpoint, p256dh, auth").eq("organization_id", organizationId);
+  const { data, error } = await admin
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("organization_id", organizationId)
+    .in("user_id", [...new Set(userIds)]);
   if (error) {
     logger.warn("push_subscriptions_list_failed", { detail: error.message });
     return { sent: 0, gone: 0 };
   }
-  const rows = data ?? [];
+  const rows = (data ?? []) as PushSubRow[];
   if (rows.length === 0) return { sent: 0, gone: 0 };
 
   webpush.setVapidDetails(await vapidSubject(), vapidPublica()!, env.VAPID_PRIVATE_KEY.trim());
@@ -61,7 +58,11 @@ export async function enviarPushDaOrg(
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) {
           gone += 1;
-          await store(admin).delete().eq("id", row.id);
+          await admin
+            .from("push_subscriptions")
+            .delete()
+            .eq("organization_id", organizationId)
+            .eq("id", row.id);
           return;
         }
         logger.warn("web_push_send_failed", { status: status ?? 0 });
@@ -70,35 +71,4 @@ export async function enviarPushDaOrg(
   );
 
   return { sent, gone };
-}
-
-export async function enviarPushAoUsuario(
-  organizationId: string,
-  userId: string,
-  payload: PushPayload,
-): Promise<{ sent: number; gone: number }> {
-  if (!vapidPronto()) return { sent: 0, gone: 0 };
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
-    .eq("organization_id", organizationId)
-    .eq("user_id", userId);
-  if (error) {
-    logger.warn("push_subscriptions_user_list_failed", { detail: error.message });
-    return { sent: 0, gone: 0 };
-  }
-  return enviarPushDaOrg(organizationId, payload, {
-    from: (table: string) => ({
-      select: () => ({
-        eq: async () => ({ data: (data ?? []) as PushSubRow[], error: null }),
-      }),
-      delete: () => ({
-        eq: async (col: string, val: string) => {
-          const { error: delErr } = await admin.from(table).delete().eq(col, val);
-          return { error: delErr };
-        },
-      }),
-    }),
-  });
 }
