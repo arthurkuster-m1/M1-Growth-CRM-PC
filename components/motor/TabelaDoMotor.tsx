@@ -33,6 +33,7 @@ import { toast } from "sonner";
 
 import { useCelular } from "@/hooks/motor/useCelular";
 import { useT } from "@/hooks/i18n/useT";
+import { LinhaDeCriacaoRapida } from "./LinhaDeCriacaoRapida";
 import { agruparDesfazer } from "@/lib/motor/desfazer";
 import { limitarLargura, type DefinicaoDeColuna } from "@/lib/motor/layout";
 import {
@@ -104,6 +105,13 @@ interface Props<T> {
   /** O botão "⋯" do fim da linha (menu de ações). */
   acoesDaLinha?: (linha: T) => ReactNode;
   aoCriar?: () => void;
+  /**
+   * CRIAÇÃO RÁPIDA: no lugar do botão do rodapé, um campo de texto (clica, escreve, Enter e a
+   * linha nasce; o campo continua pronto para a próxima).
+   */
+  aoCriarRapido?: (titulo: string) => Promise<unknown> | void;
+  /** O botão "Mais detalhes" do campo de criação rápida: abre o formulário completo com o texto digitado. */
+  aoCriarComDetalhes?: (titulo: string) => void;
   /**
    * Clicar no título da coluna ordena por ela (crescente, decrescente, nada). `ordenacao` é a
    * ordem atual (para a seta); `colunasOrdenaveis` diz quais colunas têm campo para ordenar.
@@ -373,6 +381,8 @@ export function TabelaDoMotor<T>({
   grupos,
   acoesDaLinha,
   aoCriar,
+  aoCriarRapido,
+  aoCriarComDetalhes,
   aoCriarNoGrupo,
   rotuloDeCriarNoGrupo,
   rotuloDeCriar,
@@ -916,7 +926,13 @@ export function TabelaDoMotor<T>({
           </div>
         ) : null}
 
-        {aoCriar ? (
+        {aoCriarRapido ? (
+          <LinhaDeCriacaoRapida
+            rotulo={rotuloDeCriar ?? t("Novo item")}
+            aoCriar={aoCriarRapido}
+            aoDetalhar={aoCriarComDetalhes}
+          />
+        ) : aoCriar ? (
           <button
             type="button"
             onClick={aoCriar}

@@ -18,14 +18,10 @@ export default async function AnotacoesPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-5 p-4 sm:px-8 sm:py-6 2xl:px-12">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Anotações")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("Informações importantes e ideias para revisitar, organizadas em páginas.")}
-        </p>
-      </header>
       <Suspense fallback={<div className="h-64 animate-pulse rounded-3xl bg-secondary" />}>
-        <Anotacoes />
+        <Anotacoes
+          descricao={t("Informações importantes e ideias para revisitar, organizadas em páginas.")}
+        />
       </Suspense>
     </div>
   );

@@ -17,6 +17,8 @@ export interface PropsDoEditorDeNotas {
   aoMudar: (documento: Documento) => void;
   /** Dentro de um cartão (Início): sem a folga de tela cheia embaixo. */
   compacto?: boolean;
+  /** Bloco de notas limpo: só o texto, sem dicas nem botões em volta (cartão do Início). */
+  limpo?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function EditorDeNotas({
   editavel,
   aoMudar,
   compacto = false,
+  limpo = false,
 }: PropsDoEditorDeNotas) {
   const t = useT();
   const [blocos, setBlocos] = useState<Bloco[]>(() => blocosDaNota(inicial));
@@ -63,6 +66,7 @@ export default function EditorDeNotas({
         novoId={randomId}
         rotulos={rotulos}
         maximo={MAXIMO_DE_BLOCOS_DA_NOTA}
+        limpo={limpo}
       />
     </div>
   );

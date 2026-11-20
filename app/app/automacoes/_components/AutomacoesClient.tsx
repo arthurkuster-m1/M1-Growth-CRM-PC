@@ -9,7 +9,11 @@ import { RulesTab } from "@/app/app/webhooks/_components/RulesTab";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/hooks/i18n/useT";
-import { ArrowRight } from "@/lib/ui/icons";
+import { ArrowRight, FlowArrow, Sparkle } from "@/lib/ui/icons";
+
+/** Aba em pílula: ativa em verde profundo, as outras em cartão branco. */
+const ABA =
+  "h-10 rounded-full border border-border bg-card px-4 font-medium text-foreground shadow-none hover:bg-secondary data-[state=active]:border-deep data-[state=active]:bg-deep data-[state=active]:font-bold data-[state=active]:text-deep-foreground data-[state=active]:shadow-none lg:h-9";
 
 /**
  * As abas da central. "Regras" e "Execuções" são o motor de sempre (o mesmo editor e o mesmo
@@ -35,11 +39,19 @@ export function AutomacoesClient({
 
   return (
     <Tabs defaultValue="regras" className="flex flex-1 flex-col gap-4">
-      <TabsList className="w-full justify-start sm:w-auto">
-        <TabsTrigger value="regras">{t("Regras")}</TabsTrigger>
-        <TabsTrigger value="execucoes">{t("Execuções")}</TabsTrigger>
-        <TabsTrigger value="followups">{t("Follow-ups")}</TabsTrigger>
-        <TabsTrigger value="ajustes">{t("Ajustes")}</TabsTrigger>
+      <TabsList className="h-auto w-full justify-start gap-2 bg-transparent p-0 sm:w-auto">
+        {(
+          [
+            ["regras", t("Regras")],
+            ["execucoes", t("Execuções")],
+            ["followups", t("Follow-ups")],
+            ["ajustes", t("Ajustes")],
+          ] as const
+        ).map(([valor, rotulo]) => (
+          <TabsTrigger key={valor} value={valor} className={ABA}>
+            {rotulo}
+          </TabsTrigger>
+        ))}
       </TabsList>
       <TabsContent value="regras" className="mt-0">
         <RulesTab />
@@ -57,9 +69,9 @@ export function AutomacoesClient({
           rotulo={t("Abrir Follow-ups")}
         />
       </TabsContent>
-      <TabsContent value="ajustes" className="mt-0 flex max-w-2xl flex-col gap-3">
+      <TabsContent value="ajustes" className="mt-0 flex max-w-2xl flex-col gap-4">
         <div>
-          <h2 className="text-base font-semibold">{t('Freio do passo "a IA decide"')}</h2>
+          <h2 className="text-lg font-bold tracking-tight">{t('Freio do passo "a IA decide"')}</h2>
           <p className="text-sm text-muted-foreground">
             {t(
               "O freio único do passo em que a IA escolhe entre as opções de uma regra, para a empresa inteira.",
@@ -69,7 +81,7 @@ export function AutomacoesClient({
         {freioDaIa.erroDeLeitura ? (
           <p
             role="alert"
-            className="rounded-md border border-destructive/40 p-4 text-sm text-destructive"
+            className="rounded-2xl border border-destructive/40 bg-error-bg p-4 text-sm text-error-fg"
           >
             {t(
               "Não consegui ler agora o estado deste interruptor. Enquanto ele não puder ser lido, nenhum passo a IA decide consulta o modelo. Recarregue a página; se continuar, avise quem cuida da instalação.",
@@ -95,16 +107,22 @@ function Porta({
   rotulo: string;
 }) {
   return (
-    <div className="flex max-w-2xl flex-col gap-2 rounded-2xl border border-border bg-card/50 p-4">
-      <h2 className="text-base font-semibold">{titulo}</h2>
-      <p className="text-sm text-muted-foreground">{texto}</p>
-      <Link
-        href={href}
-        className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline"
-      >
-        {rotulo}
-        <ArrowRight size={14} aria-hidden />
-      </Link>
+    <div className="flex max-w-2xl items-start gap-4 rounded-[22px] border border-border bg-card p-5 shadow-xs sm:p-6">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-primary">
+        <FlowArrow size={22} aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-col gap-2">
+        <h2 className="text-lg font-bold tracking-tight">{titulo}</h2>
+        <p className="text-sm text-muted-foreground">{texto}</p>
+        <Link
+          href={href}
+          className="mt-1 inline-flex h-10 w-fit items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-accent-hover"
+        >
+          <Sparkle size={14} aria-hidden />
+          {rotulo}
+          <ArrowRight size={14} aria-hidden />
+        </Link>
+      </div>
     </div>
   );
 }

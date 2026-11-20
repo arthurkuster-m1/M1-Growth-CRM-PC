@@ -1,4 +1,5 @@
 "use client";
+import { AnotacaoRapida } from "@/components/anotacoes/AnotacaoRapida";
 import { AlertsBell } from "./AlertsBell";
 import { MobileSidebar } from "./MobileSidebar";
 import { TenantSwitcher } from "./TenantSwitcher";
@@ -16,6 +17,7 @@ export function TopBar() {
         <SearchTrigger />
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <AnotacaoRapida />
         <AlertsBell />
         <UserMenu />
       </div>

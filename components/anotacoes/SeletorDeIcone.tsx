@@ -2,54 +2,77 @@
 
 import { useState } from "react";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Botao, Folha } from "@/components/anotacoes/kit-visual";
 import { useT } from "@/hooks/i18n/useT";
 import { FileText } from "@/lib/ui/icons";
 
 const ICONES = [
   "📝",
   "📌",
-  "📎",
   "📚",
   "📖",
   "📋",
   "📊",
-  "📈",
+  "📕",
+  "📘",
+  "🗂️",
+  "✏️",
+  "✒️",
   "💡",
   "🎯",
   "✅",
   "⭐",
+  "✨",
   "🔥",
+  "⚡",
   "🚀",
   "⚠️",
   "❗",
   "❓",
-  "💬",
+  "🚨",
+  "❌",
+  "⛔",
+  "🚫",
   "📞",
-  "📧",
   "🗓️",
+  "📅",
   "⏰",
   "💰",
-  "🧾",
+  "💵",
   "🔑",
   "🔒",
   "🛠️",
   "🧠",
+  "🧬",
+  "🧲",
   "🎨",
   "🎬",
   "📷",
-  "🌐",
-  "🏢",
+  "🏠",
   "👤",
   "👥",
   "🤝",
   "🛒",
-  "🏷️",
-  "📦",
   "🔍",
+  "🍼",
+  "🏋️",
+  "🙏",
+  "✝️",
+  "🧭",
+  "🗺️",
+  "📍",
+  "🌎",
+  "🌄",
+  "🌪️",
+  "🥂",
+  "🍎",
+  "🍴",
+  "🎄",
+  "⚔️",
+  "🛡️",
 ];
 
-/** O ícone da página (um emoji): clica, escolhe ou tira. Sem permissão de editar, só mostra. */
+/** O ícone da página (um emoji): toque, escolha ou tire. Sem permissão de editar, só mostra. */
 export function SeletorDeIcone({
   icone,
   podeEditar,
@@ -62,51 +85,54 @@ export function SeletorDeIcone({
   const t = useT();
   const [aberto, setAberto] = useState(false);
   const conteudo = icone ? (
-    <span className="text-4xl leading-none">{icone}</span>
+    <span className="an-icone-grande">{icone}</span>
   ) : (
-    <FileText size={32} className="text-muted-foreground" aria-hidden />
+    <FileText size={32} className="an-t-mudo" aria-hidden />
   );
-  if (!podeEditar) return <span className="grid h-11 w-11 place-items-center">{conteudo}</span>;
+  if (!podeEditar) return <span className="an-icone-caixa">{conteudo}</span>;
   return (
-    <Popover open={aberto} onOpenChange={setAberto}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={t("Escolher ícone")}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl hover:bg-secondary"
-        >
-          {conteudo}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-3">
-        <div className="grid grid-cols-10 gap-1">
-          {ICONES.map((e) => (
+    <>
+      <button
+        type="button"
+        className="an-icone-caixa is-botao"
+        onClick={() => setAberto(true)}
+        aria-label={t("Escolher o ícone da página")}
+        title={t("Escolher o ícone")}
+        data-testid="icone-pagina"
+      >
+        {conteudo}
+      </button>
+      <Folha open={aberto} onClose={() => setAberto(false)} title={t("Ícone da página")}>
+        <div className="an-icones" role="listbox" aria-label={t("Ícones")}>
+          {ICONES.map((i) => (
             <button
-              key={e}
+              key={i}
               type="button"
+              role="option"
+              aria-selected={i === icone}
+              className={i === icone ? "is-atual" : undefined}
               onClick={() => {
-                aoEscolher(e);
+                aoEscolher(i);
                 setAberto(false);
               }}
-              className="grid h-6 w-6 place-items-center rounded text-base hover:bg-secondary"
             >
-              {e}
+              {i}
             </button>
           ))}
         </div>
         {icone ? (
-          <button
-            type="button"
+          <Botao
+            variant="ghost"
+            block
             onClick={() => {
               aoEscolher(null);
               setAberto(false);
             }}
-            className="mt-3 text-xs text-muted-foreground hover:text-foreground hover:underline"
           >
-            {t("Tirar ícone")}
-          </button>
+            {t("Tirar o ícone")}
+          </Botao>
         ) : null}
-      </PopoverContent>
-    </Popover>
+      </Folha>
+    </>
   );
 }

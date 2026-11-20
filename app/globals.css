@@ -1,4 +1,6 @@
 @import "tailwindcss" source(none);
+/* O visual das Anotações (trazido do app da Família Kuster); tudo dentro de `.an-raiz`. */
+@import "./anotacoes-visual.css";
 
 /* Alcance do scanner. O v4 acha os arquivos sozinho a partir da raiz do git,
    mas isso varreria `docs/` (149 markdowns cheios de exemplo de classe) e
