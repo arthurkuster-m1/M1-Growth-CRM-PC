@@ -182,6 +182,17 @@ export const NAV_CATALOG = [
     minRole: "viewer",
   },
   {
+    // GUIA — o "cônsul" de cada empresa: o que já está pronto no marketing, o que falta e o
+    // próximo passo (docs/PLANO-GUIA-M1.md). Na G1 é uma tela provisória, só com porta (⌘K e o
+    // teste de completude); a G2 a sobe para o menu lateral, logo abaixo de Início.
+    href: "/app/guia",
+    label: "Guia",
+    description: "O que já está pronto no marketing da empresa, o que falta e o próximo passo.",
+    icon: "Compass",
+    group: "marketing",
+    minRole: "manager",
+  },
+  {
     // MARKETING — a vitrine do trabalho da agência. Quatro de cinco telas sobem para o menu
     // porque o Arthur quer entrar direto em cada uma; a visão geral é o hub do grupo.
     href: "/app/marketing/estrategia",

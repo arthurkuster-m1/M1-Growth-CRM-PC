@@ -1,8 +1,10 @@
-# Mapa do processo de marketing — M1 (rascunho G0, 20/11/2026)
+# Mapa do processo de marketing — M1 (G0 aprovado em 20/11/2026; em código desde a G1)
 
 > Insumo da fase **G0** do `docs/PLANO-GUIA-M1.md`. É a lista de tudo que existe no marketing de uma empresa e que o Guia vai acompanhar.
 > **Rascunho feito só com o que já está no projeto** (módulos da Estratégia, telas do menu, prompts do método, planos). **Falta o Notion/checklist da agência**: onde o Arthur discordar, ele corrige aqui e esta página vira o catálogo (`lib/guia/catalogo.ts`) na G1.
 > Todo "onde se faz" abaixo é uma tela que **já existe**; nomes de tabelas e sinais se confirmam na G1.
+
+> **G1 (20/11/2026):** este mapa virou `lib/guia/catalogo.ts`. Ajustes feitos ao codificar: P00.3 (marca), P00.6, P26 e P48 começam **manuais** (ainda não há sinal confiável) e P46 também (a medição de tempo de resposta entra na G6); P55 abre a página de estratégias (a Prospecção não tem porta no menu); P00.3 abre "Sua empresa e marca". Decisão tomada ao codificar: o perfil "já tem oferta" (pergunta 5) existe e rebaixa Produto e Oferta para recomendado.
 
 ## 1. Como ler
 
