@@ -180,6 +180,9 @@ function TituloDaColuna({
   );
 }
 
+const LARGURA_MINIMA = 70;
+const LARGURA_MAXIMA = 800;
+
 const ALTURA_DA_LINHA = 38;
 /** Espaço da barra de rolagem horizontal (dentro da tabela) e um respiro. */
 const FOLGA_DA_BARRA = 28;
@@ -199,16 +202,47 @@ export default function GradeDeLeads({
   /** Clicou no × do título. */
   aoOcultarColuna: (id: string) => void;
 }) {
+  // Larguras que a pessoa definiu arrastando a borda do título (id → px); as demais usam a sugerida.
+  const [larguras, setLarguras] = useState<Record<string, number>>({});
+  const [aoVivo, setAoVivo] = useState<{ id: string; px: number } | null>(null);
+  const larg = (id: string) => larguras[id] ?? largura(id);
+  const chaveDasLarguras = colunas.map((c) => larg(c.id)).join("|");
+
+  function comecarRedimensionar(e: React.PointerEvent<HTMLDivElement>, id: string) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const x0 = e.clientX;
+    const w0 = larg(id);
+    let atual = w0;
+    document.body.classList.add("leads-redimensionando");
+    const mover = (ev: PointerEvent) => {
+      atual = Math.min(LARGURA_MAXIMA, Math.max(LARGURA_MINIMA, Math.round(w0 + ev.clientX - x0)));
+      setAoVivo({ id, px: atual });
+    };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      window.removeEventListener("pointercancel", soltar);
+      document.body.classList.remove("leads-redimensionando");
+      setAoVivo(null);
+      setLarguras((l) => ({ ...l, [id]: atual }));
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    window.addEventListener("pointercancel", soltar);
+  }
+
   // As funções vão por ref: a lista de colunas não é refeita (e o cabeçalho não pisca) a cada render.
   const mover = useRef(aoMoverColuna);
   const ocultar = useRef(aoOcultarColuna);
   // A seleção atual (várias células) e o que a tela tem agora, para o colar como o do Excel.
   const selecao = useRef<SelecaoDaGrade | null>(null);
-  const ultimas = useRef({ colunas, linhas, aoMudar });
+  const ultimas = useRef({ colunas, linhas, aoMudar, larg });
   useEffect(() => {
     mover.current = aoMoverColuna;
     ocultar.current = aoOcultarColuna;
-    ultimas.current = { colunas, linhas, aoMudar };
+    ultimas.current = { colunas, linhas, aoMudar, larg };
   });
 
   // A grade remonta quando as colunas mudam: a seleção de antes não existe mais.
@@ -267,7 +301,7 @@ export default function GradeDeLeads({
       const cont = raiz.querySelector<HTMLElement>(".dsg-container");
       if (!calha || !cont) return;
       const gutter = Math.round(calha.getBoundingClientRect().width * 10) / 10;
-      const cols = ultimas.current.colunas.map((c) => largura(c.id));
+      const cols = ultimas.current.colunas.map((c) => ultimas.current.larg(c.id));
       const fixo = gutter + cols.reduce((a, b) => a + b, 0);
       // A coluna de situação cresce para ocupar o que sobra (mínimo 760).
       const situacao = Math.max(LARGURA_DA_SITUACAO, Math.floor(cont.clientWidth - fixo));
@@ -286,7 +320,7 @@ export default function GradeDeLeads({
     if (cont) ro.observe(cont);
     ro.observe(raiz);
     return () => ro.disconnect();
-  }, [chaveDasColunas, linhas.length]);
+  }, [chaveDasColunas, chaveDasLarguras, linhas.length]);
 
   /* A biblioteca usa null para célula vazia; nossas linhas usam undefined: o cast só concilia os dois. */
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -295,13 +329,14 @@ export default function GradeDeLeads({
       ...colunas.map((c) => ({
         ...keyColumn<LinhaGrade, any>(c.id, textColumn as any),
         title: c.rotulo,
-        minWidth: largura(c.id),
-        basis: largura(c.id),
+        minWidth: larg(c.id),
+        basis: larg(c.id),
         grow: 0,
       })),
       COLUNA_DE_SITUACAO,
     ],
-    [colunas],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [colunas, chaveDasLarguras],
   );
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -319,13 +354,23 @@ export default function GradeDeLeads({
             <div
               key={c.id}
               className="leads-cab-celula"
-              style={{ width: medidas?.colunas[i] ?? largura(c.id) }}
+              style={{
+                width: aoVivo?.id === c.id ? aoVivo.px : (medidas?.colunas[i] ?? larg(c.id)),
+              }}
             >
               <TituloDaColuna
                 id={c.id}
                 texto={c.obrigatoria ? `${c.rotulo} *` : c.rotulo}
                 aoMover={(a, b) => mover.current(a, b)}
                 aoOcultar={(id) => ocultar.current(id)}
+              />
+              <div
+                className={`leads-redimensionar${aoVivo?.id === c.id ? "is-ativa" : ""}`}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={`Largura de ${c.rotulo}`}
+                title="Arraste para mudar a largura"
+                onPointerDown={(e) => comecarRedimensionar(e, c.id)}
               />
             </div>
           ))}
@@ -341,7 +386,7 @@ export default function GradeDeLeads({
         {/* `key`: a biblioteca não redesenha o cabeçalho nem as células quando a lista de colunas muda
             (ocultar, mostrar, reordenar). Trocar o conjunto/ordem das colunas remonta a grade. */}
         <DataSheetGrid<LinhaGrade>
-          key={chaveDasColunas}
+          key={`${chaveDasColunas}#${chaveDasLarguras}`}
           value={linhas}
           onChange={(v) => aoMudar(v.map(semSituacao))}
           onSelectionChange={({ selection }) => {
