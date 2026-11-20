@@ -47,13 +47,13 @@
   /* Borders (light) */
   --color-border: #e0e6ef;
   --color-border-strong: #cbd5e3;
-  /* Marca estrutural — azul-marinho (a estrutura do app, como na Família Kuster).
+  /* Marca estrutural — verde-água PROFUNDO (mesma família do accent, só mais intenso).
      A cor da MARCA (verde) segue em --color-accent: botão, foco, destaque.
      NÃO chamar de --color-brand: esse nome é a semente do cliente (lib/branding). O
-     marinho é só estrutura: banner, menu ativo, superfícies de peso. */
-  --color-navy: #182a4a;
-  --color-navy-fg: #ffffff;
-  --color-navy-muted: #9db3da;
+     verde profundo é só estrutura: banner, menu ativo, abas ativas. */
+  --color-deep: #1d5f61;
+  --color-deep-fg: #ffffff;
+  --color-deep-muted: #b4d8d8;
 
   /* Accent — Sage (11 stops) */
   --color-accent-50: #f0f6f6;
@@ -281,13 +281,13 @@
   --color-text-subtle: #64718a;
   --color-border: #e0e6ef;
   --color-border-strong: #cbd5e3;
-  /* Marca estrutural — azul-marinho (a estrutura do app, como na Família Kuster).
+  /* Marca estrutural — verde-água PROFUNDO (mesma família do accent, só mais intenso).
      A cor da MARCA (verde) segue em --color-accent: botão, foco, destaque.
      NÃO chamar de --color-brand: esse nome é a semente do cliente (lib/branding). O
-     marinho é só estrutura: banner, menu ativo, superfícies de peso. */
-  --color-navy: #182a4a;
-  --color-navy-fg: #ffffff;
-  --color-navy-muted: #9db3da;
+     verde profundo é só estrutura: banner, menu ativo, abas ativas. */
+  --color-deep: #1d5f61;
+  --color-deep-fg: #ffffff;
+  --color-deep-muted: #b4d8d8;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
@@ -357,22 +357,22 @@
 
 [data-theme="dark"] {
   /* Surfaces (dark — drawn) */
-  --color-bg: #0b1220;
-  --color-surface: #111a2c;
-  --color-surface-elevated: #18233a;
+  --color-bg: #0f151d;
+  --color-surface: #151d27;
+  --color-surface-elevated: #1d2733;
   --color-overlay: rgba(0, 0, 0, 0.55);
 
   /* Text (dark) */
-  --color-text: #eaf0fa;
-  --color-text-muted: #9aa8c0;
-  --color-text-subtle: #7787a3;
+  --color-text: #eef2f6;
+  --color-text-muted: #8b98a8;
+  --color-text-subtle: #657386;
 
   /* Borders (dark) */
-  --color-border: #1f2b42;
-  --color-border-strong: #2c3a56;
-  --color-navy: #1b2d4d;
-  --color-navy-fg: #eaf0fa;
-  --color-navy-muted: #9aa8c0;
+  --color-border: #27323f;
+  --color-border-strong: #344254;
+  --color-deep: #1f5557;
+  --color-deep-fg: #eef2f6;
+  --color-deep-muted: #a9cfd0;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
   --color-accent-50: #f0f6f6;
@@ -490,9 +490,9 @@
   --color-surface: var(--color-surface);
   --color-surface-elevated: var(--color-surface-elevated);
   --color-overlay: var(--color-overlay);
-  --color-navy: var(--color-navy);
-  --color-navy-foreground: var(--color-navy-fg);
-  --color-navy-muted: var(--color-navy-muted);
+  --color-deep: var(--color-deep);
+  --color-deep-foreground: var(--color-deep-fg);
+  --color-deep-muted: var(--color-deep-muted);
 
   --color-text: var(--color-text);
   --color-text-muted: var(--color-text-muted);

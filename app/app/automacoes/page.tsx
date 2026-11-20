@@ -43,14 +43,26 @@ export default async function AutomacoesPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 sm:p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Automações")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t(
-            "Tudo o que o sistema faz sozinho, num lugar só: regras, tags, tarefas, mensagens e follow-ups.",
-          )}
-        </p>
+    <div className="mx-auto flex h-full w-full max-w-[1400px] flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[22px] bg-deep p-6 text-deep-foreground shadow-md sm:p-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent-400/25"
+        />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-deep-foreground opacity-85">{t("Central")}</p>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t("Automações")}</h1>
+            <p className="mt-2 max-w-2xl text-sm text-deep-foreground opacity-85">
+              {t(
+                "Tudo o que o sistema faz sozinho, num lugar só: regras, tags, tarefas, mensagens e follow-ups.",
+              )}
+            </p>
+          </div>
+          <span className="inline-flex items-center rounded-full bg-white/14 px-3.5 py-1.5 text-xs font-bold text-deep-foreground">
+            {t("Em breve")}
+          </span>
+        </div>
       </header>
       <FaixaEmBreve
         selo={t("Em breve")}

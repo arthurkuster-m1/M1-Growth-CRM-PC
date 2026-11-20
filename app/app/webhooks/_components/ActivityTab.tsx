@@ -263,7 +263,7 @@ function ActionLine({ action, run }: { action: AutomationRuleRunActionResult; ru
         // `action.error` é texto de fora (resposta do webhook externo) — sem
         // tamanho garantido. `flex-wrap` + `break-words` impedem que um erro
         // comprido empurre o botão "Reenviar" pra fora da tela.
-        <div className="ml-6 flex flex-wrap items-center justify-between gap-2 rounded-sm bg-muted px-2 py-1.5">
+        <div className="ml-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted px-3 py-2">
           <div className="min-w-0 space-y-0.5">
             <p className="break-words text-xs text-muted-foreground">
               {/* A frase ANTES do código cru. `action.error` já é texto de gente
@@ -301,7 +301,7 @@ function ActionLine({ action, run }: { action: AutomationRuleRunActionResult; ru
       ) : explicacao ? (
         // Pular e adiar também precisam de razão visível: o ícone sozinho fazia
         // "não fiz nada" parecer "fiz e deu certo, só sem alarde".
-        <div className="ml-6 rounded-sm bg-muted px-2 py-1.5">
+        <div className="ml-6 rounded-xl bg-muted px-3 py-2">
           <p className="break-words text-xs text-muted-foreground">
             {explicacao}
             {retorno ? ` ${t("Nova tentativa em")} ${retorno}.` : null}
@@ -324,14 +324,15 @@ export function ActivityTab() {
   const runs = data?.data ?? [];
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="flex sm:justify-end">
+    <div className="space-y-4 pt-2">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold tracking-tight">{t("Execuções recentes")}</h2>
         <Button
           type="button"
           variant="secondary"
           onClick={() => refetch()}
           disabled={isRefetching}
-          className="w-full sm:w-auto"
+          className="shrink-0"
         >
           <ArrowsClockwise className={cn(isRefetching && "animate-spin")} /> {t("Atualizar")}
         </Button>
@@ -343,9 +344,9 @@ export function ActivityTab() {
           <Skeleton className="h-24 w-full" />
         </div>
       ) : runs.length === 0 ? (
-        <div className="flex justify-center pt-10">
-          <Card className="max-w-md">
-            <CardContent className="pt-6 text-center text-sm text-muted-foreground">
+        <div className="flex justify-center pt-6">
+          <Card className="w-full">
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
               {t(
                 "Nenhuma automação rodou ainda. Assim que uma regra ligada disparar, o histórico aparece aqui.",
               )}
@@ -358,7 +359,7 @@ export function ActivityTab() {
             <Card key={run.id}>
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="truncate text-sm">
+                  <CardTitle className="truncate text-base">
                     {run.automation_rules?.name ?? t("Automação removida")}
                   </CardTitle>
                   <Badge variant={statusBadgeVariant(run.status)}>{statusBadgeLabel(run.status, t)}</Badge>

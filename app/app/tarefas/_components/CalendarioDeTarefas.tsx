@@ -154,7 +154,7 @@ export function CalendarioDeTarefas({
         onDragCancel={() => setArrastandoId(null)}
         onDragEnd={aoSoltar}
       >
-        <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="overflow-hidden rounded-[22px] border bg-card shadow-sm">
           <div className="grid grid-cols-7 border-b bg-secondary/50 text-center text-xs font-medium text-muted-foreground">
             {dias.slice(0, 7).map((d) => (
               <div key={d} className="py-2 capitalize">
@@ -195,7 +195,7 @@ export function CalendarioDeTarefas({
         {/* Celular: a lista do dia tocado. No computador também serve de detalhe do dia. */}
         <section
           aria-label={nomeDoDia(escolhido, "longo")}
-          className="rounded-2xl border bg-card p-3 md:hidden"
+          className="rounded-[22px] border bg-card p-3 md:hidden"
         >
           {/* O título numa linha só e o botão "Nova tarefa", pequeno, na linha de baixo, à direita —
               nada quebra em duas linhas no celular. */}
@@ -255,7 +255,7 @@ export function CalendarioDeTarefas({
         </section>
 
         {semPrazo.length > 0 ? (
-          <section className="rounded-2xl border bg-card p-3">
+          <section className="rounded-[22px] border bg-card p-3">
             <h3 className="mb-2 text-sm font-semibold">
               {t("Sem prazo")} <span className="text-muted-foreground">{semPrazo.length}</span>
             </h3>

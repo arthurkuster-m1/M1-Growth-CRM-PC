@@ -117,16 +117,16 @@ export function RulesTab() {
   );
 
   const filtroDeCategoria = (
-    <div className="flex flex-wrap gap-1.5" data-testid="categorias-de-automacao">
+    <div className="flex flex-wrap gap-2" data-testid="categorias-de-automacao">
       <button
         type="button"
         aria-pressed={categoria === "todas"}
         onClick={() => setCategoria("todas")}
         className={cn(
-          "rounded-full border px-3 py-1 text-xs font-medium",
+          "h-9 rounded-full border px-4 text-sm font-medium transition-colors",
           categoria === "todas"
-            ? "border-primary bg-primary/10 text-primary"
-            : "hover:bg-secondary",
+            ? "border-deep bg-deep font-bold text-deep-foreground"
+            : "bg-card text-foreground hover:bg-secondary",
         )}
       >
         {t("Todas")} ({rules.length + fluxosDeFollowup.length})
@@ -139,8 +139,10 @@ export function RulesTab() {
           title={t(c.descricao)}
           onClick={() => setCategoria(c.id)}
           className={cn(
-            "rounded-full border px-3 py-1 text-xs font-medium",
-            categoria === c.id ? "border-primary bg-primary/10 text-primary" : "hover:bg-secondary",
+            "h-9 rounded-full border px-4 text-sm font-medium transition-colors",
+            categoria === c.id
+              ? "border-deep bg-deep font-bold text-deep-foreground"
+              : "bg-card text-foreground hover:bg-secondary",
           )}
         >
           {t(c.titulo)} ({contagem(c.id)})
@@ -150,21 +152,31 @@ export function RulesTab() {
   );
 
   const modelosProntos = (
-    <div className="space-y-2" data-testid="modelos-prontos">
-      <p className="text-sm font-medium">{t("Modelos prontos")}</p>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <section className="space-y-3" data-testid="modelos-prontos">
+      <div>
+        <h2 className="text-lg font-bold tracking-tight">{t("Modelos prontos")}</h2>
+        <p className="text-sm text-muted-foreground">
+          {t("Comece por um modelo e ajuste do seu jeito.")}
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {modelosVisiveis.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => abrirModelo(m)}
-            className="rounded-xl border border-border bg-card/50 p-3 text-left transition-colors hover:bg-secondary/60"
+            className="group flex items-start gap-3 rounded-[22px] border border-border bg-card p-4 text-left shadow-xs transition-[border-color,box-shadow] hover:border-accent hover:shadow-md"
           >
-            <span className="mb-1 block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {t(tituloDaCategoria(m.categoria))}
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-primary">
+              <Plus size={16} aria-hidden />
             </span>
-            <span className="block text-sm font-semibold">{t(m.titulo)}</span>
-            <span className="mt-1 block text-xs text-muted-foreground">{t(m.descricao)}</span>
+            <span className="min-w-0">
+              <span className="mb-0.5 block text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                {t(tituloDaCategoria(m.categoria))}
+              </span>
+              <span className="block text-sm font-bold">{t(m.titulo)}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{t(m.descricao)}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -173,39 +185,35 @@ export function RulesTab() {
           {t("Ainda não há modelo pronto nesta categoria.")}
         </p>
       ) : null}
-    </div>
-  );
-  const modelosDeTag = (
-    <>
-      {filtroDeCategoria}
-      {modelosProntos}
-    </>
+    </section>
   );
 
   if (isLoading) {
     return (
       <div className="grid gap-3 pt-4 sm:grid-cols-2">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full rounded-[22px]" />
+        <Skeleton className="h-24 w-full rounded-[22px]" />
       </div>
     );
   }
 
   if (rules.length === 0) {
     return (
-      <div className="space-y-6 pt-6">
-        {modelosDeTag}
-        <div className="flex justify-center pt-4">
-          <Card className="max-w-md">
+      <div className="space-y-6 pt-2">
+        {filtroDeCategoria}
+        <div className="flex">
+          <Card className="w-full">
             <CardHeader className="items-center text-center">
-              <Robot className="mb-2 h-10 w-10 text-accent" />
-              <CardTitle>{t("Crie sua primeira automação")}</CardTitle>
+              <span className="mb-1 grid h-14 w-14 place-items-center rounded-full bg-accent-soft text-primary">
+                <Robot className="h-7 w-7" />
+              </span>
+              <CardTitle className="text-lg">{t("Crie sua primeira automação")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
                 {t("Ex.: quando entrar um contato novo, enviar uma mensagem de boas-vindas.")}
               </p>
-              <Button onClick={openCreate}>
+              <Button onClick={openCreate} size="lg">
                 <Plus /> {t("Nova automação")}
               </Button>
             </CardContent>
@@ -217,40 +225,51 @@ export function RulesTab() {
             modelo={modelo}
           />
         </div>
+        {modelosProntos}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 pt-4">
-      {modelosDeTag}
-      <div className="flex sm:justify-end">
-        <Button onClick={openCreate} className="w-full sm:w-auto">
+    <div className="space-y-6 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {filtroDeCategoria}
+        <Button onClick={openCreate} size="lg" className="w-full sm:w-auto">
           <Plus /> {t("Nova automação")}
         </Button>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <h2 className="-mb-2 text-lg font-bold tracking-tight">{t("Suas automações")}</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {regrasVisiveis.map((r) => (
-          <Card key={r.id}>
-            <CardHeader className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="truncate">{r.name}</CardTitle>
+          <Card key={r.id} className="flex flex-col">
+            <CardHeader className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-primary">
+                  <FlowArrow size={20} aria-hidden />
+                </span>
                 <Badge variant={r.is_active ? "success" : "neutral"}>
                   {r.is_active ? t("Ativa") : t("Pausada")}
                 </Badge>
               </div>
-              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                {t(tituloDaCategoria(categoriaDaRegra(r)))}
-              </p>
-              <p className="text-xs text-muted-foreground">{triggerLabel(r.trigger_event, t)}</p>
-              <p className="text-xs text-muted-foreground">
-                {r.actions.length} {r.actions.length === 1 ? t("ação") : t("ações")}
-              </p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                  {t(tituloDaCategoria(categoriaDaRegra(r)))}
+                </p>
+                <CardTitle className="mt-0.5 truncate text-base">{r.name}</CardTitle>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
+                  {triggerLabel(r.trigger_event, t)}
+                </span>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {r.actions.length} {r.actions.length === 1 ? t("ação") : t("ações")}
+                </span>
+              </div>
               {/* Uma regra ligada roda sozinha para sempre: quem a ligou é parte
                   do estado dela, não um detalhe de auditoria. */}
               <SeloDeAutoria kind={r.last_change_actor_kind} em={r.last_change_at} />
             </CardHeader>
-            <CardContent className="grid gap-3">
+            <CardContent className="mt-auto grid gap-3 border-t pt-4">
               {comFluxo[r.id] ? (
                 <FluxoVertical
                   passos={passosDaRegra(r, {
@@ -301,24 +320,26 @@ export function RulesTab() {
         ))}
       </div>
       {regrasVisiveis.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
+        <p className="rounded-[22px] border border-dashed bg-card p-6 text-sm text-muted-foreground">
           {t("Nenhuma automação nesta categoria ainda. Escolha um modelo pronto acima.")}
         </p>
       ) : null}
 
       {fluxosVisiveis.length > 0 ? (
-        <div className="space-y-2" data-testid="followups-na-central">
-          <p className="text-sm font-medium">{t("Follow-ups da IA")}</p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="space-y-3" data-testid="followups-na-central">
+          <h2 className="text-lg font-bold tracking-tight">{t("Follow-ups da IA")}</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {fluxosVisiveis.map((f) => (
               <Link
                 key={f.id}
                 href={`/app/ai/followups/${f.id}`}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3 transition-colors hover:bg-secondary/60"
+                className="flex items-center gap-3 rounded-[22px] border border-border bg-card p-4 shadow-xs transition-[border-color,box-shadow] hover:border-accent hover:shadow-md"
               >
-                <FlowArrow size={18} aria-hidden className="shrink-0 text-primary" />
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-primary">
+                  <FlowArrow size={18} aria-hidden />
+                </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{f.name}</span>
+                  <span className="block truncate text-sm font-bold">{f.name}</span>
                   <span className="block text-xs text-muted-foreground">
                     {t(tituloDaCategoria(categoriaDoFluxo(f.name)))}
                   </span>
@@ -333,8 +354,10 @@ export function RulesTab() {
               </Link>
             ))}
           </div>
-        </div>
+        </section>
       ) : null}
+
+      {modelosProntos}
 
       <RuleEditor open={editorOpen} onOpenChange={setEditorOpen} rule={editing} modelo={modelo} />
 

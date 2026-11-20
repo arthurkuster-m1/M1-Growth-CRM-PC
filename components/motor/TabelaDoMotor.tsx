@@ -671,7 +671,7 @@ export function TabelaDoMotor<T>({
       onCut={(e) => aoCopiar(e, true)}
       onPaste={aoColar}
       className={cn(
-        "[container-type:inline-size] -mx-4 overflow-x-auto overscroll-x-contain border-y bg-card outline-hidden sm:mx-0 sm:rounded-2xl sm:border",
+        "[container-type:inline-size] -mx-4 overflow-x-auto overscroll-x-contain border-y bg-card outline-hidden sm:mx-0 sm:rounded-[22px] sm:border",
         arrastandoVisual && "select-none",
       )}
     >
@@ -687,7 +687,7 @@ export function TabelaDoMotor<T>({
             <div
               role="row"
               style={{ gridTemplateColumns: grade }}
-              className="grid items-stretch border-b bg-secondary/50 text-xs font-medium text-muted-foreground"
+              className="grid items-stretch border-b bg-secondary/50 text-xs font-bold text-muted-foreground"
             >
               {comSelecao ? (
                 <div role="columnheader" className="grid place-items-center">

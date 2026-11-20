@@ -183,15 +183,15 @@ export const REGUA_DO_PRODUTO: Regua = {
     base: [
       {
         chave: "--color-bg",
-        hex: "#0b1220",
+        hex: "#0f151d",
       },
       {
         chave: "--color-surface",
-        hex: "#111a2c",
+        hex: "#151d27",
       },
       {
         chave: "--color-surface-elevated",
-        hex: "#18233a",
+        hex: "#1d2733",
       },
     ],
     tingidas: [
