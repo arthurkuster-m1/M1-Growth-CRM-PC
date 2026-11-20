@@ -22,14 +22,14 @@ export function CRMSidePanel({ conversation }: Props) {
 
   if (!conversation) {
     return (
-      <aside className="flex h-full items-center justify-center border-l border-border p-4 text-center text-xs text-muted-foreground">
+      <aside className="flex h-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
         {t("Selecione uma conversa para ver detalhes do contato.")}
       </aside>
     );
   }
 
   return (
-    <aside className="flex h-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto border-l border-border bg-background p-3 pt-6 max-md:pt-8">
+    <aside className="flex h-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto bg-card p-3 pt-6 max-md:pt-8">
       {contactId ? (
         <>
           <FichaDoInbox

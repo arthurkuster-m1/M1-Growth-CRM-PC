@@ -437,7 +437,7 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
         // de verdade) — senão a barra tapa o Responder/Nota interna e o campo de texto.
         selectedId &&
           "max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:bottom-[var(--rodape-ocupado,0px)] max-md:z-40 max-md:h-auto max-md:bg-background",
-        "grid h-[calc(100dvh-3.5rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] w-full grid-cols-1 md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]",
+        "grid h-[calc(100dvh-3.5rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] w-full grid-cols-1 md:gap-3 md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]",
       )}
       /*
        * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
@@ -477,7 +477,7 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
       */}
       <div
         className={cn(
-          "h-full min-h-0 flex-col border-r border-border md:flex",
+          "h-full min-h-0 flex-col md:flex md:overflow-hidden md:rounded-[22px] md:border md:border-border md:bg-card md:shadow-xs",
           colunas.lista,
         )}
       >
@@ -512,7 +512,7 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
       */}
       <div
         className={cn(
-          "h-full min-h-0 min-w-0 flex-col md:flex",
+          "h-full min-h-0 min-w-0 flex-col md:flex md:overflow-hidden md:rounded-[22px] md:border md:border-border md:bg-card md:shadow-xs",
           colunas.conversa,
         )}
       >
@@ -663,7 +663,7 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
         )}
       </div>
 
-      <div className="hidden h-full min-h-0 min-w-0 xl:block">
+      <div className="hidden h-full min-h-0 min-w-0 overflow-hidden rounded-[22px] border border-border bg-card shadow-xs xl:block">
         <CRMSidePanel conversation={selectedConversation} />
       </div>
 
