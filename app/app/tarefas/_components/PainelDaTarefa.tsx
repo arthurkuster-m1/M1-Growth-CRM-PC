@@ -6,10 +6,11 @@ import { EditorDeBlocos } from "@/components/editor/EditorDeBlocos";
 import { escreverBlocos, LIMITE_DA_DESCRICAO, lerBlocos, type Bloco } from "@/lib/tarefas/blocos";
 
 import type { ColunaDoMotor } from "@/components/motor/TabelaDoMotor";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useT } from "@/hooks/i18n/useT";
 import type { Tarefa } from "@/lib/tarefas/tipos";
 import { Trash } from "@/lib/ui/icons";
+import { cn } from "@/lib/utils";
 
 interface Props {
   tarefa: Tarefa | null;
@@ -29,9 +30,10 @@ interface Props {
 }
 
 /**
- * O PAINEL DA TAREFA — o pop-up que abre ao clicar numa tarefa, em qualquer visualização
- * (como a página da tarefa do Notion). Título grande, uma linha por propriedade e a
- * descrição por baixo.
+ * O PAINEL DA TAREFA — a página lateral que abre ao clicar numa tarefa, em qualquer
+ * visualização (como o "peek" do Notion): sai da direita, larga o bastante para escrever. Título
+ * grande, uma linha por propriedade e a descrição por baixo, com a maior parte da altura. Só o
+ * miolo rola; o título e o rodapé (Criar / Apagar) ficam sempre à vista.
  *
  * Não tem campo próprio: cada linha é a MESMA célula editável da tabela (`coluna.celula`),
  * então tudo o que se edita lá — status, prioridade, início, prazo, responsável, as
@@ -50,66 +52,76 @@ export function PainelDaTarefa({
   const t = useT();
   const titulo = colunas.find((c) => c.id === "titulo");
   const propriedades = colunas.filter(
-    (c) => c.id !== "titulo" && c.id !== "descricao" && !(nova && (c.id === "criada" || c.id === "tempo")),
+    (c) =>
+      c.id !== "titulo" &&
+      c.id !== "descricao" &&
+      !(nova && (c.id === "criada" || c.id === "tempo")),
   );
 
   return (
-    <Dialog open={tarefa !== null} onOpenChange={(aberto) => !aberto && aoFechar()}>
+    <Sheet open={tarefa !== null} onOpenChange={(aberto) => !aberto && aoFechar()}>
       {/* A tarefa já está aberta: o botão "Abrir" da linha da tabela fica escondido aqui dentro. */}
-      <DialogContent className="w-[calc(100%-1.5rem)] max-w-2xl gap-5 overflow-x-hidden rounded-2xl p-4 sm:p-6 [&>*]:min-w-0">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:w-[46rem] sm:max-w-[94vw] [&>*]:min-w-0"
+      >
         {tarefa ? (
           <>
-            <DialogTitle className="sr-only">{nova ? t("Nova tarefa") : tarefa.title}</DialogTitle>
-            <DialogDescription className="sr-only">{t("Propriedades da tarefa")}</DialogDescription>
-            {nova ? (
-              <div className="min-w-0 pr-8">
-                <p className="mb-1 text-xs font-semibold tracking-wider text-text-subtle uppercase">
-                  {t("Nova tarefa")}
-                </p>
-                <input
-                  autoFocus
-                  value={tarefa.title}
-                  maxLength={255}
-                  placeholder={t("Título da tarefa")}
-                  aria-label={t("Título da tarefa")}
-                  onChange={(e) => nova.aoMudarTitulo(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      nova.aoCriar();
-                    }
-                  }}
-                  className="w-full rounded-xl border bg-card px-3 py-2 text-xl font-semibold outline-hidden placeholder:font-normal focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            ) : (
-              <div className="min-w-0 pr-8 text-xl font-semibold [overflow-wrap:anywhere] [&_[data-abrir-tarefa]]:hidden [&_button]:text-xl [&_input]:text-lg">
-                {titulo?.celula(tarefa)}
-              </div>
-            )}
-            <dl className="grid gap-1">
-              {propriedades.map((c) => (
-                <div
-                  key={c.id}
-                  className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-[6rem_minmax(0,1fr)]"
-                >
-                  <dt className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-                    {c.icone}
-                    <span className="truncate">{c.titulo}</span>
-                  </dt>
-                  <dd className="min-w-0">{c.celula(tarefa)}</dd>
+            <SheetTitle className="sr-only">{nova ? t("Nova tarefa") : tarefa.title}</SheetTitle>
+            <SheetDescription className="sr-only">{t("Propriedades da tarefa")}</SheetDescription>
+            <div className="shrink-0 px-4 pt-5 pb-3 sm:px-8 sm:pt-7">
+              {nova ? (
+                <div className="min-w-0 pr-8">
+                  <p className="mb-1 text-xs font-semibold tracking-wider text-text-subtle uppercase">
+                    {t("Nova tarefa")}
+                  </p>
+                  <input
+                    autoFocus
+                    value={tarefa.title}
+                    maxLength={255}
+                    placeholder={t("Título da tarefa")}
+                    aria-label={t("Título da tarefa")}
+                    onChange={(e) => nova.aoMudarTitulo(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        nova.aoCriar();
+                      }
+                    }}
+                    className="w-full rounded-xl border bg-card px-3 py-2 text-xl font-semibold outline-hidden placeholder:font-normal focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
-              ))}
-            </dl>
-            <Descricao
-              key={tarefa.id}
-              valor={tarefa.description ?? ""}
-              podeEditar={podeEditar}
-              aoSalvar={(texto) => aoSalvarDescricao(tarefa, texto)}
-              aCadaTecla={nova !== undefined}
-            />
+              ) : (
+                <div className="min-w-0 pr-8 text-2xl font-semibold [overflow-wrap:anywhere] [&_[data-abrir-tarefa]]:hidden [&_button]:text-2xl [&_input]:text-xl">
+                  {titulo?.celula(tarefa)}
+                </div>
+              )}
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto px-4 pb-6 sm:px-8">
+              <dl className="grid shrink-0 gap-1">
+                {propriedades.map((c) => (
+                  <div
+                    key={c.id}
+                    className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-[6rem_minmax(0,1fr)]"
+                  >
+                    <dt className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                      {c.icone}
+                      <span className="truncate">{c.titulo}</span>
+                    </dt>
+                    <dd className="min-w-0">{c.celula(tarefa)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Descricao
+                key={tarefa.id}
+                valor={tarefa.description ?? ""}
+                podeEditar={podeEditar}
+                aoSalvar={(texto) => aoSalvarDescricao(tarefa, texto)}
+                aCadaTecla={nova !== undefined}
+              />
+            </div>
             {nova ? (
-              <div className="flex justify-end gap-2 border-t pt-3">
+              <div className="flex shrink-0 justify-end gap-2 border-t px-4 py-3 sm:px-8">
                 <button
                   type="button"
                   onClick={aoFechar}
@@ -126,7 +138,7 @@ export function PainelDaTarefa({
                 </button>
               </div>
             ) : podeEditar ? (
-              <div className="flex justify-end border-t pt-3">
+              <div className="flex shrink-0 justify-end border-t px-4 py-3 sm:px-8">
                 <button
                   type="button"
                   onClick={() => aoApagar(tarefa)}
@@ -139,9 +151,21 @@ export function PainelDaTarefa({
             ) : null}
           </>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
+}
+
+/** Põe o cursor no fim do último bloco de texto da caixa (o clique no espaço vazio embaixo). */
+function focarOUltimoBloco(caixa: HTMLElement) {
+  const blocos = caixa.querySelectorAll<HTMLElement>("[data-bloco]");
+  const ultimo = blocos[blocos.length - 1];
+  if (!ultimo) return;
+  ultimo.focus();
+  if (ultimo instanceof HTMLTextAreaElement || ultimo instanceof HTMLInputElement) {
+    const fim = ultimo.value.length;
+    ultimo.setSelectionRange(fim, fim);
+  }
 }
 
 function Descricao({
@@ -192,9 +216,21 @@ function Descricao({
   };
 
   return (
-    <div onBlur={(e) => !aCadaTecla && !e.currentTarget.contains(e.relatedTarget) && gravar()}>
+    <div
+      className="flex min-h-[18rem] flex-1 flex-col"
+      onBlur={(e) => !aCadaTecla && !e.currentTarget.contains(e.relatedTarget) && gravar()}
+    >
       <p className="mb-1 block text-sm text-muted-foreground">{t("Descrição")}</p>
-      <div className="rounded-xl border bg-card px-2 py-2 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+      <div
+        // O espaço vazio da caixa também é "campo": clicar nele leva o cursor ao fim do texto.
+        onClick={(e) =>
+          e.target === e.currentTarget && podeEditar && focarOUltimoBloco(e.currentTarget)
+        }
+        className={cn(
+          "min-h-0 flex-1 rounded-xl border bg-card px-3 py-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
+          podeEditar && "cursor-text",
+        )}
+      >
         <EditorDeBlocos blocos={blocos} aoMudar={mudar} podeEditar={podeEditar} />
       </div>
       {grandeDemais ? (
