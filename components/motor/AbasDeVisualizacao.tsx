@@ -193,10 +193,10 @@ export function AbasDeVisualizacao({
                   id={aba.id}
                   movel={podeArrastar && !aba.fixa}
                   className={cn(
-                    "flex h-8 shrink-0 items-center rounded-lg text-sm transition-colors",
+                    "flex h-8 shrink-0 items-center rounded-full text-sm transition-colors",
                     ativa
-                      ? "bg-secondary font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                      ? "bg-navy font-bold text-navy-foreground"
+                      : "font-medium text-foreground hover:bg-secondary",
                   )}
                 >
                   <button
@@ -229,7 +229,7 @@ export function AbasDeVisualizacao({
                       if (ativa) e.preventDefault();
                     }}
                     className={cn(
-                      "flex h-8 max-w-48 items-center gap-1.5 rounded-lg pl-2.5 select-none",
+                      "flex h-8 max-w-48 items-center gap-1.5 rounded-full pl-3 select-none",
                       ativa ? "pr-1" : "pr-2.5",
                     )}
                   >

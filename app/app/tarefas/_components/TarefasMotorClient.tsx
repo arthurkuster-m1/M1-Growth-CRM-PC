@@ -1218,7 +1218,7 @@ export function TarefasMotorClient({
               {contatoFixo ? (
                 <h2 className="text-base font-semibold">{t("Tarefas deste lead")}</h2>
               ) : (
-                <h1 className="text-2xl font-bold tracking-tight">{t("Tarefas")}</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t("Tarefas")}</h1>
               )}
               <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
                 {t("Clique para editar. Arraste pelo ícone para reordenar.")}

@@ -234,7 +234,7 @@ function Cartao({
         transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
       }
       className={cn(
-        "min-w-0 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm",
+        "min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-sm",
         arrastavel && "cursor-grab active:cursor-grabbing",
         isDragging && "relative z-10 opacity-90 shadow-lg",
       )}
