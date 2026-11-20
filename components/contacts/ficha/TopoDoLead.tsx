@@ -357,24 +357,52 @@ export function TopoDoLead({
       {/* A ficha: o telefone (com Ligar e Inbox) e as etiquetas do ciclo e do gestor na primeira
           linha; o e-mail (com Copiar) na segunda; os demais campos na terceira. */}
       {comNome ? (
-        <CampoInline
-          valor={contact.name ?? contact.display_name ?? ""}
-          placeholder={t("Adicionar nome")}
-          rotulo={t("Nome")}
-          podeEditar={podeEditar}
-          classeDoTexto="text-base font-semibold text-foreground"
-          className="max-w-full"
-          aoSalvar={(novo) => (novo ? gravarContato({ name: novo }) : false)}
-        />
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <CampoInline
+            valor={contact.name ?? contact.display_name ?? ""}
+            placeholder={t("Adicionar nome")}
+            rotulo={t("Nome")}
+            podeEditar={podeEditar}
+            classeDoTexto="text-base font-bold text-foreground"
+            className="max-w-full min-w-0"
+            aoSalvar={(novo) => (novo ? gravarContato({ name: novo }) : false)}
+          />
+          {podeEditar && !contact.is_anonymized ? (
+            <button
+              type="button"
+              aria-label={t("Excluir lead")}
+              title={t("Excluir lead")}
+              data-testid="excluir-lead"
+              onClick={() => setExcluirAberto(true)}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-error-fg transition-colors hover:bg-error-bg"
+            >
+              <Trash size={16} aria-hidden />
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {comNome ? (
-        telefoneEl
+        <div className="flex min-w-0 items-center gap-1.5">
+          <div className="min-w-0">{telefoneEl}</div>
+          {telefone && !contact.is_anonymized ? (
+            <a
+              href={`tel:${telefone}`}
+              aria-label={t("Ligar")}
+              title={t("Ligar")}
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-primary transition-colors hover:bg-accent-100"
+            >
+              <Phone size={15} weight="fill" aria-hidden />
+            </a>
+          ) : null}
+        </div>
       ) : (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {telefoneEl}
           {tagsEl}
         </div>
       )}
+
+      {comNome ? <div className="flex min-w-0 flex-wrap items-center gap-1.5">{tagsEl}</div> : null}
 
       <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
         <EnvelopeSimple size={15} aria-hidden className="shrink-0" />
@@ -470,9 +498,32 @@ export function TopoDoLead({
         </form>
       ) : null}
 
-      {comNome ? <div className="flex min-w-0 flex-wrap items-center gap-1.5">{tagsEl}</div> : null}
+      {comNome && !contact.is_anonymized && podeEditar ? (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={`${botao} justify-center`}
+            aria-label={t("Registrar ação")}
+            title={t("Registrar ação")}
+            onClick={() => setAcaoAberta(true)}
+          >
+            <PencilSimple size={15} aria-hidden />
+            {t("Ação")}
+          </button>
+          <button
+            type="button"
+            className={`${botao} justify-center`}
+            aria-label={t("Registrar anotação")}
+            title={t("Registrar anotação")}
+            onClick={() => setAnotacaoAberta(true)}
+          >
+            <NotePencil size={15} aria-hidden />
+            {t("Anotação")}
+          </button>
+        </div>
+      ) : null}
 
-      {!contact.is_anonymized ? (
+      {!comNome && !contact.is_anonymized ? (
         <div className="flex flex-wrap items-center gap-2">
           {telefone ? (
             <a href={`tel:${telefone}`} className={botao}>

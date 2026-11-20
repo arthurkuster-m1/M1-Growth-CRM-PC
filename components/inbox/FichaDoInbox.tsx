@@ -262,11 +262,11 @@ export function FichaDoInbox({
 
 function Numero({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-border bg-card/50 p-3">
+    <div className="min-w-0 rounded-2xl bg-secondary/60 px-3 py-2">
       <p className="truncate text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
         {rotulo}
       </p>
-      <p className="mt-1 text-base font-semibold tabular-nums">
+      <p className="text-sm font-bold tabular-nums">
         <NumeroQueCabe>{valor}</NumeroQueCabe>
       </p>
     </div>

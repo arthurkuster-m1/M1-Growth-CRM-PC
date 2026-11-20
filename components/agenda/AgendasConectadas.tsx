@@ -73,7 +73,7 @@ export function AgendasConectadas() {
     }
   }
   return (
-    <section className="space-y-3 rounded-md border p-4" aria-label={t("Suas agendas Google")}>
+    <section className="space-y-3 rounded-2xl border p-4" aria-label={t("Suas agendas Google")}>
       <h2 className="font-medium">{t("Suas agendas Google")}</h2>
       <p className="text-sm text-muted-foreground">
         {t(
@@ -90,9 +90,9 @@ export function AgendasConectadas() {
         </div>
       )}
       {data?.connections.length === 0 && (
-        <Link className="text-sm underline" href="/app/agenda">
-          {t("Conecte sua conta pela Agenda")}
-        </Link>
+        <Button asChild className="w-fit rounded-full">
+          <Link href="/app/agenda">{t("Conecte sua conta pela Agenda")}</Link>
+        </Button>
       )}
       {data?.connections.map((connection) => (
         <div key={connection.id} className="space-y-2 border-t pt-3">

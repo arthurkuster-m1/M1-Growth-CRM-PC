@@ -25,6 +25,7 @@ import {
   type ColunaDaTabela,
   type LinhaDeMetricas,
 } from "@/components/dashboards/TabelaDeMetricas";
+import { VisaoSegmentada, type ItemSegmentado } from "@/components/dashboards/VisaoSegmentada";
 import { derivarTrafego, type BrutoDeTrafego } from "@/lib/dashboards/metricas-de-trafego";
 import type { DiaDeTrafego } from "@/lib/dashboards/trafego";
 import { useT } from "@/hooks/i18n/useT";
@@ -154,6 +155,24 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
   const p2 = (v: number | null) => (v === null ? "—" : pct(v, 2));
   const p1 = (v: number | null) => (v === null ? "—" : pct(v, 1));
 
+  const canais: ItemSegmentado[] = [
+    { id: "meta", nome: "Meta Ads", bruto: hoje(dados.totais) },
+    {
+      id: "google",
+      nome: `Google Ads (${t("não conectado")})`,
+      bruto: {
+        impressoes: 0,
+        cliques: 0,
+        viewsLP: 0,
+        leads: 0,
+        vendas: 0,
+        investimento: 0,
+        recebido: 0,
+      },
+      semMidia: true,
+    },
+  ];
+
   const linhasDeDias: LinhaDeMetricas[] = dias.map((d) => ({
     chave: d.data,
     textos: { nome: `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}` },
@@ -175,58 +194,60 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
         ]}
       />
 
-      <GradeDeKpis className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 lg:grid-cols-4">
-        <Kpi
-          rotulo={t("Faturamento recebido")}
-          valor={brl(a.recebido)}
-          destaque
-          variacao={<Variacao atual={a.recebido} anterior={p.recebido} />}
-          apoio={`${t("Faturamento Total")} ${brl(dados.fechamento.fechado)} · ${t("A Receber")} ${brl(dados.fechamento.aReceber)}`}
-        />
-        <Kpi
-          rotulo={t("Investido no período")}
-          valor={brl(a.investimento)}
-          variacao={<Variacao atual={a.investimento} anterior={p.investimento} menorEMelhor />}
-          apoio={t("Meta Ads")}
-        />
-        <Kpi
-          rotulo={t("Lucro")}
-          valor={brl(a.lucro)}
-          variacao={<Variacao atual={a.lucro} anterior={p.lucro} />}
-          apoio={t("Recebido − investido")}
-        />
-        <Kpi
-          rotulo={t("ROAS")}
-          valor={vezes(a.roas)}
-          destaque
-          variacao={<Variacao atual={a.roas} anterior={p.roas} />}
-          apoio={t("Recebido ÷ investido")}
-        />
-        <Kpi
-          rotulo={t("Leads")}
-          valor={inteiro(a.leads)}
-          variacao={<Variacao atual={a.leads} anterior={p.leads} />}
-          apoio={`${t("Média")}: ${inteiro(a.leads / Math.max(1, dias.length))} ${t("leads/dia")}`}
-        />
-        <Kpi
-          rotulo={t("CPL")}
-          valor={brl(a.cpl)}
-          variacao={<Variacao atual={a.cpl} anterior={p.cpl} menorEMelhor />}
-          apoio={t("Investido ÷ leads")}
-        />
-        <Kpi
-          rotulo={t("Vendas")}
-          valor={inteiro(a.vendas)}
-          variacao={<Variacao atual={a.vendas} anterior={p.vendas} />}
-          apoio={`${t("Ticket Médio")} ${dados.fechamento.ticketMedio === null ? "—" : brl(dados.fechamento.ticketMedio)}`}
-        />
-        <Kpi
-          rotulo={t("CAC")}
-          valor={brl(a.cac)}
-          variacao={<Variacao atual={a.cac} anterior={p.cac} menorEMelhor />}
-          apoio={t("Investido ÷ vendas")}
-        />
-      </GradeDeKpis>
+      {visao === "geral" ? (
+        <GradeDeKpis className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 lg:grid-cols-4">
+          <Kpi
+            rotulo={t("Faturamento recebido")}
+            valor={brl(a.recebido)}
+            destaque
+            variacao={<Variacao atual={a.recebido} anterior={p.recebido} />}
+            apoio={`${t("Faturamento Total")} ${brl(dados.fechamento.fechado)} · ${t("A Receber")} ${brl(dados.fechamento.aReceber)}`}
+          />
+          <Kpi
+            rotulo={t("Investido no período")}
+            valor={brl(a.investimento)}
+            variacao={<Variacao atual={a.investimento} anterior={p.investimento} menorEMelhor />}
+            apoio={t("Meta Ads")}
+          />
+          <Kpi
+            rotulo={t("Lucro")}
+            valor={brl(a.lucro)}
+            variacao={<Variacao atual={a.lucro} anterior={p.lucro} />}
+            apoio={t("Recebido − investido")}
+          />
+          <Kpi
+            rotulo={t("ROAS")}
+            valor={vezes(a.roas)}
+            destaque
+            variacao={<Variacao atual={a.roas} anterior={p.roas} />}
+            apoio={t("Recebido ÷ investido")}
+          />
+          <Kpi
+            rotulo={t("Leads")}
+            valor={inteiro(a.leads)}
+            variacao={<Variacao atual={a.leads} anterior={p.leads} />}
+            apoio={`${t("Média")}: ${inteiro(a.leads / Math.max(1, dias.length))} ${t("leads/dia")}`}
+          />
+          <Kpi
+            rotulo={t("CPL")}
+            valor={brl(a.cpl)}
+            variacao={<Variacao atual={a.cpl} anterior={p.cpl} menorEMelhor />}
+            apoio={t("Investido ÷ leads")}
+          />
+          <Kpi
+            rotulo={t("Vendas")}
+            valor={inteiro(a.vendas)}
+            variacao={<Variacao atual={a.vendas} anterior={p.vendas} />}
+            apoio={`${t("Ticket Médio")} ${dados.fechamento.ticketMedio === null ? "—" : brl(dados.fechamento.ticketMedio)}`}
+          />
+          <Kpi
+            rotulo={t("CAC")}
+            valor={brl(a.cac)}
+            variacao={<Variacao atual={a.cac} anterior={p.cac} menorEMelhor />}
+            apoio={t("Investido ÷ vendas")}
+          />
+        </GradeDeKpis>
+      ) : null}
 
       {visao === "geral" ? (
         <>
@@ -325,129 +346,152 @@ export function TrafegoPago({ dados }: { dados: DadosDeTrafego }) {
       ) : null}
 
       {visao === "campanhas" ? (
-        <Painel
-          titulo={t("Por campanha")}
-          nota={t("Escolha as propriedades e arraste para o lado")}
-        >
-          <TabelaDeMetricas
-            id="trafego-campanhas"
-            colunas={[
-              texto("nome", t("Campanha")),
-              texto("canal", t("Canal")),
-              ...colunasDoFunil({ roas: true }),
-            ]}
-            linhas={dados.campanhas.map((c) => ({
-              chave: c.id,
-              textos: { nome: c.nome, canal: c.canal },
-              bruto: bruto(c),
-            }))}
-          />
-        </Painel>
+        <VisaoSegmentada
+          tituloDoSeletor={t("Campanhas")}
+          itens={dados.campanhas.map((c) => ({
+            id: c.id,
+            nome: c.nome,
+            apoio: c.canal,
+            bruto: bruto(c),
+          }))}
+          tabela={
+            <TabelaDeMetricas
+              id="trafego-campanhas"
+              colunas={[
+                texto("nome", t("Campanha")),
+                texto("canal", t("Canal")),
+                ...colunasDoFunil({ roas: true }),
+              ]}
+              linhas={dados.campanhas.map((c) => ({
+                chave: c.id,
+                textos: { nome: c.nome, canal: c.canal },
+                bruto: bruto(c),
+              }))}
+            />
+          }
+        />
       ) : null}
 
       {visao === "conjuntos" ? (
-        <Painel titulo={t("Por conjunto de anúncios")} nota={t("Campanha, entrega e resultado")}>
-          <TabelaDeMetricas
-            id="trafego-conjuntos"
-            colunas={[
-              texto("nome", t("Conjunto")),
-              texto("campanha", t("Campanha")),
-              ...colunasDoFunil({ roas: true, desqualificados: true }),
-            ]}
-            linhas={dados.conjuntos.map((c) => ({
-              chave: c.id,
-              textos: { nome: c.nome, campanha: c.campanha },
-              bruto: bruto(c),
-            }))}
-          />
-        </Painel>
+        <VisaoSegmentada
+          tituloDoSeletor={t("Conjuntos de anúncios")}
+          itens={dados.conjuntos.map((c) => ({
+            id: c.id,
+            nome: c.nome,
+            apoio: c.campanha,
+            bruto: bruto(c),
+          }))}
+          tabela={
+            <TabelaDeMetricas
+              id="trafego-conjuntos"
+              colunas={[
+                texto("nome", t("Conjunto")),
+                texto("campanha", t("Campanha")),
+                ...colunasDoFunil({ roas: true, desqualificados: true }),
+              ]}
+              linhas={dados.conjuntos.map((c) => ({
+                chave: c.id,
+                textos: { nome: c.nome, campanha: c.campanha },
+                bruto: bruto(c),
+              }))}
+            />
+          }
+        />
       ) : null}
 
       {visao === "anuncios" ? (
-        <Painel
-          titulo={t("Por criativo")}
+        <VisaoSegmentada
+          tituloDoSeletor={t("Criativos")}
           nota={t("Mesmo nome em conjuntos diferentes aparece separado: veja campanha e conjunto")}
-        >
-          <TabelaDeMetricas
-            id="trafego-criativos"
-            colunas={[
-              texto("nome", t("Criativo")),
-              texto("campanha", t("Campanha")),
-              texto("conjunto", t("Conjunto")),
-              ...colunasDoFunil({ roas: true, desqualificados: true }),
-            ]}
-            linhas={dados.anuncios.map((c) => ({
-              chave: c.id,
-              textos: { nome: c.nome, campanha: c.campanha || "—", conjunto: c.conjunto || "—" },
-              bruto: bruto(c),
-            }))}
-          />
-        </Painel>
+          itens={dados.anuncios.map((c) => ({
+            id: c.id,
+            nome: c.nome,
+            apoio: [c.campanha, c.conjunto].filter(Boolean).join(" · ") || undefined,
+            bruto: bruto(c),
+          }))}
+          tabela={
+            <TabelaDeMetricas
+              id="trafego-criativos"
+              colunas={[
+                texto("nome", t("Criativo")),
+                texto("campanha", t("Campanha")),
+                texto("conjunto", t("Conjunto")),
+                ...colunasDoFunil({ roas: true, desqualificados: true }),
+              ]}
+              linhas={dados.anuncios.map((c) => ({
+                chave: c.id,
+                textos: { nome: c.nome, campanha: c.campanha || "—", conjunto: c.conjunto || "—" },
+                bruto: bruto(c),
+              }))}
+            />
+          }
+        />
       ) : null}
 
       {visao === "paginas" ? (
-        <Painel
-          titulo={t("Por landing page")}
+        <VisaoSegmentada
+          tituloDoSeletor={t("Landing pages")}
           nota={t("Gasto e visitas só aparecem quando a campanha tem uma única página")}
-        >
-          <TabelaDeMetricas
-            id="trafego-paginas"
-            colunas={[
-              texto("nome", t("Página")),
-              ...colunasDoFunil({
-                roas: true,
-                incluir: new Set([
-                  "cliques",
-                  "viewsLP",
-                  "cpVisitaLP",
-                  "connect",
-                  "convLP",
-                  "leads",
-                  "cpl",
-                  "convVenda",
-                  "vendas",
-                  "cac",
-                  "investimento",
-                  "recebido",
-                  "lucro",
-                  "roas",
-                ]),
-              }),
-            ]}
-            linhas={dados.paginas.map((c) => ({
-              chave: c.id,
-              textos: { nome: c.nome },
-              bruto: bruto(c),
-              semMidia: c.semMidia,
-            }))}
-          />
-        </Painel>
+          itens={dados.paginas.map((c) => ({
+            id: c.id,
+            nome: c.nome,
+            bruto: bruto(c),
+            semMidia: c.semMidia,
+          }))}
+          tabela={
+            <TabelaDeMetricas
+              id="trafego-paginas"
+              colunas={[
+                texto("nome", t("Página")),
+                ...colunasDoFunil({
+                  roas: true,
+                  incluir: new Set([
+                    "cliques",
+                    "viewsLP",
+                    "cpVisitaLP",
+                    "connect",
+                    "convLP",
+                    "leads",
+                    "cpl",
+                    "convVenda",
+                    "vendas",
+                    "cac",
+                    "investimento",
+                    "recebido",
+                    "lucro",
+                    "roas",
+                  ]),
+                }),
+              ]}
+              linhas={dados.paginas.map((c) => ({
+                chave: c.id,
+                textos: { nome: c.nome },
+                bruto: bruto(c),
+                semMidia: c.semMidia,
+              }))}
+            />
+          }
+        />
       ) : null}
 
       {visao === "canais" ? (
-        <Painel titulo={t("Por canal")} nota={t("Meta × Google × outras origens")}>
-          <TabelaDeMetricas
-            id="trafego-canais"
-            colunas={[texto("nome", t("Canal")), ...colunasDoFunil({ roas: true })]}
-            linhas={[
-              { chave: "meta", textos: { nome: "Meta Ads" }, bruto: hoje(dados.totais) },
-              {
-                chave: "google",
-                textos: { nome: `Google Ads (${t("não conectado")})` },
-                bruto: {
-                  impressoes: 0,
-                  cliques: 0,
-                  viewsLP: 0,
-                  leads: 0,
-                  vendas: 0,
-                  investimento: 0,
-                  recebido: 0,
-                },
-                semMidia: true,
-              },
-            ]}
-          />
-        </Painel>
+        <VisaoSegmentada
+          tituloDoSeletor={t("Canais")}
+          nota={t("Meta × Google × outras origens")}
+          itens={canais}
+          tabela={
+            <TabelaDeMetricas
+              id="trafego-canais"
+              colunas={[texto("nome", t("Canal")), ...colunasDoFunil({ roas: true })]}
+              linhas={canais.map((c) => ({
+                chave: c.id,
+                textos: { nome: c.nome },
+                bruto: c.bruto,
+                semMidia: c.semMidia,
+              }))}
+            />
+          }
+        />
       ) : null}
     </div>
   );

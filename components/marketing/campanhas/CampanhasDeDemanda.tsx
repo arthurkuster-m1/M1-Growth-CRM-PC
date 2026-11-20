@@ -61,7 +61,17 @@ import {
 import { alternarId, faixaEntre, podarSelecao } from "@/lib/motor/selecao";
 import type { CorDaOpcao } from "@/lib/tarefas/opcoes-de-status";
 import { cn } from "@/lib/utils";
-import { ArrowRight, CalendarBlank, Check, Megaphone, Plus, TextAa, Trash } from "@/lib/ui/icons";
+import {
+  ArrowRight,
+  CalendarBlank,
+  Check,
+  Copy,
+  Megaphone,
+  Plus,
+  TextAa,
+  Trash,
+} from "@/lib/ui/icons";
+import { toast } from "sonner";
 
 const ID_DA_PADRAO = "padrao";
 const TIPOS_DAS_CAMPANHAS = ["tabela", "galeria", "timeline"] as const;
@@ -86,6 +96,7 @@ export function CampanhasDeDemanda() {
   const { campanhas, funis, podeEditar, carregando, falhou, criar, editar, apagar } =
     useCampanhasDeDemanda();
   const [busca, setBusca] = useState("");
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [configurando, setConfigurando] = useState(false);
   const [nova, setNova] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set());
@@ -770,6 +781,32 @@ export function CampanhasDeDemanda() {
     return { nivel };
   };
 
+  // Texto pronto para mandar ao cliente no WhatsApp.
+  const copiarEstado = async (c: CampanhaDeDemanda) => {
+    if (!c.estado) return;
+    const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: FUSO_DO_CRONOGRAMA });
+    const cpl =
+      c.estado.leads > 0 && c.estado.investido > 0
+        ? dinheiro(c.estado.investido / c.estado.leads)
+        : "—";
+    const texto = [
+      `*${c.name}*`,
+      `${t("Estado atual")} · ${hoje}`,
+      "",
+      `${t("Investido")}: ${dinheiro(c.estado.investido)}`,
+      `${t("Leads")}: ${c.estado.leads}`,
+      `${t("CPL")}: ${cpl}`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiadoId(c.id);
+      toast.success(t("Estado atual copiado."));
+      setTimeout(() => setCopiadoId((x) => (x === c.id ? null : x)), 2000);
+    } catch {
+      toast.error(t("Não consegui copiar. Selecione o texto e copie à mão."));
+    }
+  };
+
   const cartoes = (lista: CampanhaDeDemanda[]) => (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {lista.map((c) => (
@@ -798,11 +835,28 @@ export function CampanhasDeDemanda() {
 
             {mostraEstado ? (
               <div>
-                <p className="mb-2 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
-                  {t("Estado atual")}
-                  {c.estado ? ` · ${t("até")} ${dataCurta(c.estado.ate)}` : ""}
-                </p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="relative z-10 mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                    {t("Estado atual")}
+                    {c.estado ? ` · ${t("até")} ${dataCurta(c.estado.ate)}` : ""}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={!c.estado}
+                    onClick={() => void copiarEstado(c)}
+                    aria-label={t("Copiar o estado atual")}
+                    title={t("Copiar o estado atual")}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border bg-card px-2.5 text-xs font-medium hover:bg-secondary disabled:opacity-40"
+                  >
+                    {copiadoId === c.id ? (
+                      <Check size={14} weight="bold" aria-hidden />
+                    ) : (
+                      <Copy size={14} aria-hidden />
+                    )}
+                    {copiadoId === c.id ? t("Copiado") : t("Copiar")}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
                   {[
                     { id: "investido", rotulo: t("Investido") },
                     { id: "leads", rotulo: t("Leads") },
@@ -813,14 +867,14 @@ export function CampanhasDeDemanda() {
                       <div
                         key={m.id}
                         className={cn(
-                          "min-w-0 rounded-2xl px-3 py-2.5",
+                          "min-w-0 rounded-2xl px-4 py-3",
                           situacao ? SITUACAO_DO_CPL[situacao.nivel].fundo : "bg-secondary/60",
                         )}
                       >
-                        <p className="text-[11px] font-medium text-muted-foreground">{m.rotulo}</p>
+                        <p className="text-sm font-medium text-muted-foreground">{m.rotulo}</p>
                         <p
                           className={cn(
-                            "mt-0.5 text-base font-bold [overflow-wrap:anywhere] tabular-nums",
+                            "mt-0.5 text-xl font-bold [overflow-wrap:anywhere] tabular-nums",
                             situacao && SITUACAO_DO_CPL[situacao.nivel].texto,
                           )}
                         >
@@ -829,7 +883,7 @@ export function CampanhasDeDemanda() {
                         {situacao ? (
                           <p
                             className={cn(
-                              "mt-0.5 text-[11px] font-medium",
+                              "mt-0.5 text-sm font-medium",
                               SITUACAO_DO_CPL[situacao.nivel].texto,
                             )}
                           >

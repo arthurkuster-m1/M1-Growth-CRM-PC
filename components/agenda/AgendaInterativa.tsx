@@ -358,7 +358,7 @@ export function AgendaInterativa({
           <button
             type="button"
             onClick={() => setRecusa(null)}
-            className="shrink-0 text-xs font-medium text-text-muted underline underline-offset-2 hover:text-text"
+            className="inline-flex h-8 shrink-0 items-center rounded-full border bg-card px-3 text-xs font-medium hover:bg-secondary"
           >
             {t("Entendi")}
           </button>
