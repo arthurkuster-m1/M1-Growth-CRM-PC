@@ -11,10 +11,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { useTheme } from "@/lib/theme";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useT } from "@/hooks/i18n/useT";
 import Link from "next/link";
-import { SignOut, ShieldCheck } from "@/lib/ui/icons";
+import { SignOut, ShieldCheck, Sun, Moon, MonitorPlay } from "@/lib/ui/icons";
 
 function initials(name: string | null, email: string): string {
   if (name && name.trim()) {
@@ -28,10 +29,15 @@ export function UserMenu() {
   const user = useUser();
   const { signOut } = useAuth();
   const [isPending, startTransition] = useTransition();
+  const { theme, setTheme } = useTheme();
+  const trocarTema = () => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light");
+  // O atalho do tema (Ctrl/⌘+Shift+L) continua valendo, mesmo sem o botão na barra.
+  useHotkeys("mod+shift+l", trocarTema, { preventDefault: true }, [theme]);
+  const IconeDoTema = theme === "dark" ? Moon : theme === "system" ? MonitorPlay : Sun;
+  const nomeDoTema = theme === "dark" ? t("Escuro") : theme === "system" ? t("Do sistema") : t("Claro");
 
   return (
     <div className="flex items-center gap-2">
-      <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="rounded-full" aria-label={t("Menu do usuário")}>
@@ -85,6 +91,16 @@ export function UserMenu() {
               <DropdownMenuSeparator />
             </>
           )}
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              trocarTema();
+            }}
+            data-testid="menu-tema"
+          >
+            <IconeDoTema size={16} className="mr-2" aria-hidden suppressHydrationWarning />
+            {t("Tema")}: {nomeDoTema}
+          </DropdownMenuItem>
           <DropdownMenuItem disabled={isPending} onClick={() => startTransition(async () => { await signOut(); })}>
             <SignOut size={16} className="mr-2" aria-hidden />
             {t("Sair")}

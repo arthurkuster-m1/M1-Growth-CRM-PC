@@ -67,6 +67,7 @@ export {
   PushPin,
   Trash,
   PencilSimple,
+  PencilSimpleLine,
   MagnifyingGlass,
   Pause,
   Play,

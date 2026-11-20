@@ -5,19 +5,18 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AtalhosDeNotas } from "@/components/anotacoes/AtalhosDeNotas";
-import { CapturaRapida } from "@/components/anotacoes/CapturaRapida";
 import { ArvoreDeNotas } from "@/components/anotacoes/ArvoreDeNotas";
 import { GaleriaDeNotas } from "@/components/anotacoes/GaleriaDeNotas";
 import { LixeiraDeNotas } from "@/components/anotacoes/LixeiraDeNotas";
 import { MoverNota } from "@/components/anotacoes/MoverNota";
 import { PaginaDeNota } from "@/components/anotacoes/PaginaDeNota";
 import { useArvoreDeNotas } from "@/hooks/anotacoes/useArvoreDeNotas";
-import { useCapturaDeNotas } from "@/hooks/anotacoes/useCapturaDeNotas";
+import { useVersaoDasNotas } from "@/hooks/anotacoes/useVersaoDasNotas";
 import { useBuscaDeNotas } from "@/hooks/anotacoes/useBuscaDeNotas";
 import { useEstadoDasNotas } from "@/hooks/anotacoes/useEstadoDasNotas";
 import { useT } from "@/hooks/i18n/useT";
 import { caminhoDaNota, idsDaSubarvore } from "@/lib/anotacoes/paginas";
-import { MagnifyingGlass, Plus, Tray, X } from "@/lib/ui/icons";
+import { MagnifyingGlass, Tray, X } from "@/lib/ui/icons";
 
 /**
  * ANOTAÇÕES — o bloco de notas: árvore de páginas à esquerda, a página aberta à direita (no editor
@@ -42,8 +41,7 @@ export function Anotacoes() {
   const estado = useEstadoDasNotas();
   const [busca, setBusca] = useState("");
   const resultados = useBuscaDeNotas(busca);
-  const [capturando, setCapturando] = useState(false);
-  const { capturar, versao } = useCapturaDeNotas(abrir);
+  const versao = useVersaoDasNotas();
   const caixa = notas.find((n) => n.kind === "inbox" && !n.deleted_at);
 
   // Abrir uma página a coloca em "Recentes" (preferência pessoal, gravada em silêncio).
@@ -162,13 +160,6 @@ export function Anotacoes() {
           </div>
           {podeEditar ? (
             <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() => setCapturando(true)}
-                className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border bg-card text-[13px] font-medium shadow-sm hover:bg-secondary"
-              >
-                <Plus size={13} aria-hidden /> {t("Captura rápida")}
-              </button>
               {caixa ? (
                 <button
                   type="button"
@@ -273,12 +264,6 @@ export function Anotacoes() {
           />
         )}
       </section>
-
-      <CapturaRapida
-        aberto={capturando}
-        aoFechar={() => setCapturando(false)}
-        aoCapturar={capturar}
-      />
 
       <MoverNota
         nota={nota}

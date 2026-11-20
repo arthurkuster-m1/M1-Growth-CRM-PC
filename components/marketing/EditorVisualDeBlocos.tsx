@@ -596,6 +596,8 @@ interface Props {
   rotulos: RotulosDosBlocos;
   /** O teto de blocos da página (Marketing: 150; Anotações: mais, porque cada parágrafo é um bloco). */
   maximo?: number;
+  /** Bloco de notas limpo (cartão do Início): sem a linha de dicas, sem "Adicionar bloco" e sem caixa no vazio. */
+  limpo?: boolean;
 }
 
 /**
@@ -619,6 +621,7 @@ export function EditorVisualDeBlocos({
   chaveDaPagina,
   rotulos,
   maximo = MAXIMO_DE_BLOCOS,
+  limpo = false,
 }: Props) {
   const t = useT();
   const nomeDoTipo = useNomesDosTipos();
@@ -1172,7 +1175,7 @@ export function EditorVisualDeBlocos({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
+        <p className={cn("text-xs text-muted-foreground", limpo && "hidden")}>
           {t(
             "Clique para selecionar · dois cliques para digitar no bloco · / escolhe o bloco · Enter cria o próximo · botão direito para tipo e ajustes · Ctrl+Z desfaz",
           )}
@@ -1345,12 +1348,14 @@ export function EditorVisualDeBlocos({
           }}
           className={cn(
             "cursor-text rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
-            blocos.length === 0
+            blocos.length === 0 && !limpo
               ? "grid min-h-40 place-items-center border-2 border-dashed p-4 text-center text-sm text-muted-foreground"
-              : "min-h-20 flex-1",
+              : limpo
+                ? "min-h-24 flex-1"
+                : "min-h-20 flex-1",
           )}
         >
-          {blocos.length === 0
+          {blocos.length === 0 && !limpo
             ? t("Clique aqui e comece a escrever · / escolhe o bloco · Enter cria o próximo")
             : null}
         </div>
@@ -1375,6 +1380,7 @@ export function EditorVisualDeBlocos({
       <button
         type="button"
         aria-haspopup="menu"
+        hidden={limpo}
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           setMenu({ tipo: "inserir", x: r.left, y: r.bottom + 4, depoisDe: null });
@@ -1385,7 +1391,7 @@ export function EditorVisualDeBlocos({
         {t("Adicionar bloco")}
       </button>
 
-      <ImportarDeTexto blocos={blocos} aoMudar={aoMudar} novoId={novoId} />
+      {limpo ? null : <ImportarDeTexto blocos={blocos} aoMudar={aoMudar} novoId={novoId} />}
 
       {menu ? (
         <MenuFlutuante

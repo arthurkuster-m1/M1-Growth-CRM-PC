@@ -53,3 +53,8 @@ Feito e no ar: Tarefas (motor Notion: tabela/kanban/calendário/timeline, filtro
 Próximos (o Arthur escolhe UM de cada vez): otimizar tela de Campanhas; Campanhas C2; CRM sessões 3–9; dashboard meta × realizado; IA ajudante (prompts em `docs/metodo-m1-referencia/`); Inbox; Conexões; Agenda.
 Pendências técnicas: restringir porta 81 do NPM; Advanced do host `app.` no NPM (`client_max_body_size 100m` + buffers 32k) se sumir após salvar; Meta Ads, Google Agenda (URL de retorno OAuth) e ramo paralelo no n8n (Fase 4); limpeza do que veio do projeto original e instalador para VPS nova (depois de terminar a edição do software).
 Regra do Arthur: um único chat, uma coisa por vez.
+
+## Anotação rápida (lápis na barra do topo)
+- O lápis (`components/anotacoes/AnotacaoRapida.tsx`, montado no `TopBar`) abre a janela "Anotação rápida", igual ao app Família Kuster: escolhe a página de destino pela busca (padrão: Caixa de entrada), Ctrl+Enter envia. A nota entra no TOPO da página com carimbo em negrito `dd/mm/aaaa · hh:mm`, um parágrafo por linha e um separador (`lib/anotacoes/anotacao-rapida.ts`, rota `POST /api/v1/anotacoes/captura` com `page_id` opcional).
+- Substituiu o botão "Captura rápida" (removido do cartão Notas e da tela Anotações). O tema claro/escuro saiu da barra e foi para o menu do avatar (atalho Ctrl/⌘+Shift+L mantido).
+- Cartão Notas do Início usa o editor em modo `limpo` (sem dicas, sem "Adicionar bloco", sem caixa no vazio).

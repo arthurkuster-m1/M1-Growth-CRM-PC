@@ -58,7 +58,7 @@ describe("anotações — documento do editor", () => {
     expect(cartoesDoDocumento(ajustado)).toEqual(["p1", "p2"]);
     expect(ajustado.some((b) => b.id === "t")).toBe(true);
     // O cartão novo vai para o fim.
-    expect(ajustado[ajustado.length - 1]!.type).toBe("subpagina");
+    expect((ajustado[ajustado.length - 1] as { type?: string }).type).toBe("subpagina");
   });
 
   it("sem filhas, não deixa cartão nenhum", () => {
