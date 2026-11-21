@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/types";
 import { FASES } from "@/lib/guia/tipos";
 
 import { DossieEIa } from "./_dossie";
+import { IdeiasDoGuia } from "./_ideias";
 import { PlanoDoGuia } from "./_plano";
 import { FormularioDoPerfil } from "./_perfil";
 import { PassoDoGuia } from "./_passo";
@@ -22,7 +23,7 @@ export function GuiaTela() {
   const q = useDiagnosticoDoGuia();
   const [verTodos, setVerTodos] = useState(false);
   const [editandoPerfil, setEditandoPerfil] = useState(false);
-  const [aba, setAba] = useState<"guia" | "plano" | "dossie">("guia");
+  const [aba, setAba] = useState<"guia" | "plano" | "ideias" | "dossie">("guia");
 
   if (q.isLoading)
     return <div className="h-40 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
@@ -54,6 +55,7 @@ export function GuiaTela() {
           [
             ["guia", t("Guia")],
             ["plano", t("Plano")],
+            ["ideias", t("Ideias")],
             ["dossie", t("Dossiê e IA")],
           ] as const
         ).map(([id, rotulo]) => (
@@ -71,6 +73,7 @@ export function GuiaTela() {
       </div>
       {aba === "dossie" ? <DossieEIa /> : null}
       {aba === "plano" ? <PlanoDoGuia resposta={q.data} /> : null}
+      {aba === "ideias" ? <IdeiasDoGuia temPerfil={!!perfil} /> : null}
       {aba === "guia" ? (
         <>
           <section

@@ -90,6 +90,10 @@ CRONS="
 */15 * * * *|45|api/v1/cron/agenda-expira-pendentes
 # O compromisso que se aproxima sem o cliente ter respondido ao lembrete vira tarefa (ligar).
 */10 * * * *|45|api/v1/cron/agenda-sem-confirmacao
+# O GUIA DE MARKETING. Uma vez por dia (06:20 em São Paulo): olha os números das campanhas de cada
+# empresa que já tem perfil no Guia, sugere ideias novas e mede de novo as aceitas que chegaram na
+# data. Só gera SUGESTÃO; nada é enviado a ninguém. Rodada vazia não grava nada.
+20 9 * * *|300|api/v1/cron/guia
 # AS TAREFAS REPETIDAS. A cada 5 minutos: a tarefa "toda segunda às 7h" nasce até 5 min
 # depois da hora marcada. Rodada vazia (quase todas) não grava nada: só consulta os
 # modelos que repetem e já venceram.

@@ -50,6 +50,15 @@ export interface CriativoParaDossie {
   cliques: number;
 }
 
+export interface AprendizadoParaDossie {
+  titulo: string;
+  hipotese: string | null;
+  resultado: string | null;
+  veredito: "funcionou" | "nao_funcionou" | "inconclusivo";
+  /** YYYY-MM-DD */
+  em: string;
+}
+
 export interface DadosDoDossie {
   empresa: string;
   perfil: PerfilGravado | null;
@@ -57,6 +66,7 @@ export interface DadosDoDossie {
   paginas: Leitura<PaginaParaDossie[]>;
   campanhas: Leitura<CampanhaParaDossie[]>;
   criativos: Leitura<CriativoParaDossie[]>;
+  aprendizados: Leitura<AprendizadoParaDossie[]>;
   geradoEm: Date;
 }
 
@@ -250,6 +260,25 @@ function criativos(lista: CriativoParaDossie[], max: number): string {
   ].join("\n");
 }
 
+const ROTULO_DO_VEREDITO = {
+  funcionou: "FUNCIONOU",
+  nao_funcionou: "NÃO FUNCIONOU",
+  inconclusivo: "inconclusivo",
+} as const;
+
+function aprendizados(lista: AprendizadoParaDossie[]): string {
+  if (lista.length === 0)
+    return "_Nenhum aprendizado registrado ainda: não se sabe, por este dossiê, o que já foi tentado e deu certo ou errado._";
+  return [
+    "O que já foi tentado neste projeto (use para NÃO repetir o que não funcionou):",
+    "",
+    ...lista.map(
+      (a) =>
+        `- **${ROTULO_DO_VEREDITO[a.veredito]}** — ${a.titulo} (${a.em})${a.hipotese ? `. Hipótese: ${a.hipotese}` : ""}${a.resultado ? `. Resultado: ${a.resultado}` : ""}`,
+    ),
+  ].join("\n");
+}
+
 function plano(d: Diagnostico): string {
   const comTarefa = d.passos.filter((p) => p.tarefaId);
   if (comTarefa.length === 0) return "_Nenhuma tarefa criada a partir do Guia ainda._";
@@ -287,13 +316,15 @@ export function montarDossie(
     secaoDeLeitura(d.criativos, (l) => criativos(l, lim.criativos)),
     "## 8. Plano em andamento",
     plano(d.diagnostico),
-    "## 9. O que este dossiê NÃO inclui",
+    "## 9. Aprendizados (o que funcionou e o que não funcionou)",
+    secaoDeLeitura(d.aprendizados, aprendizados),
+    "## 10. O que este dossiê NÃO inclui",
     [
       "- Funil do CRM por etapa, tempo de resposta ao lead e taxa de no-show: ainda não fazem parte do dossiê.",
-      "- O que funcionou e o que não funcionou em campanhas passadas: ainda não é registrado no sistema; se a pessoa contar, trate como informação dela, não do dossiê.",
+      "- Aprendizados que ninguém registrou no sistema: se a pessoa contar algo de fora, trate como informação dela, não do dossiê.",
       "- Dados individuais de leads (nome, telefone, e-mail, conversas): nunca entram, por privacidade.",
     ].join("\n"),
-    "## 10. Pergunta atual",
+    "## 11. Pergunta atual",
     pergunta ||
       "_(sem pergunta específica: indique os 3 próximos passos de maior impacto e por quê.)_",
   ].join("\n\n");

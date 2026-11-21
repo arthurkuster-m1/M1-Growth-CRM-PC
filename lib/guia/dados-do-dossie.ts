@@ -9,7 +9,13 @@ import { textoDaPagina } from "@/lib/marketing/texto-estruturado";
 import type { Bloco } from "@/lib/marketing/blocos";
 
 import { dados, ler } from "./coletar-sinais";
-import type { CampanhaParaDossie, CriativoParaDossie, PaginaParaDossie } from "./dossie";
+import type {
+  AprendizadoParaDossie,
+  CampanhaParaDossie,
+  CriativoParaDossie,
+  PaginaParaDossie,
+} from "./dossie";
+import { faltaMigrationDoGuia } from "./guardado";
 import type { Leitura } from "./tipos";
 
 const soma = (xs: (number | null | undefined)[]) =>
@@ -162,6 +168,40 @@ export function lerCriativosDoDossie(
       gasto: Number(l.spend),
       impressoes: l.impressions,
       cliques: l.link_clicks,
+    }));
+  });
+}
+
+/** Os aprendizados registrados. Banco sem a 0704 = ninguém registrou nada ainda (lista vazia). */
+export function lerAprendizadosDoDossie(
+  supabase: SupabaseClient,
+  orgId: string,
+): Promise<Leitura<AprendizadoParaDossie[]>> {
+  return ler(async () => {
+    const r = await supabase
+      .from("guia_aprendizados")
+      .select("titulo,hipotese,resultado,veredito,created_at")
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (r.error) {
+      if (faltaMigrationDoGuia(r.error)) return [];
+      throw r.error;
+    }
+    return (
+      (r.data ?? []) as {
+        titulo: string;
+        hipotese: string | null;
+        resultado: string | null;
+        veredito: AprendizadoParaDossie["veredito"];
+        created_at: string;
+      }[]
+    ).map((a) => ({
+      titulo: a.titulo,
+      hipotese: a.hipotese,
+      resultado: a.resultado,
+      veredito: a.veredito,
+      em: a.created_at.slice(0, 10),
     }));
   });
 }
