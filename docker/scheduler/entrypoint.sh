@@ -99,6 +99,9 @@ CRONS="
 # O META NAS CAMPANHAS DE DEMANDA. De hora em hora: a cota do Meta é o recurso escasso e o
 # dia corrente só fecha à noite — mais frequente que isso gasta chamada sem número novo.
 17 * * * *|120|api/v1/cron/campanhas-meta
+# AS COBRANÇAS DA META NAS FINANÇAS. De hora em hora: cobrança recusada precisa de aviso no mesmo dia, e a
+# leitura é barata (uma conta, as atividades do período).
+37 * * * *|120|api/v1/cron/financas-meta
 */15 * * * *|60|api/v1/cron/risk-watcher
 # O CASO PARADO. De hora em hora, e não a cada 5 minutos: o prazo é de 24h, e
 # uma varredura mais frequente só gastaria consulta para descobrir o mesmo nada.

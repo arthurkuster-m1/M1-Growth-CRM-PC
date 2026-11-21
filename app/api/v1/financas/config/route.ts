@@ -1,6 +1,6 @@
 /**
  * PUT /api/v1/financas/config — teto de gastos e meta de ganhos do mês, e a conta que recebe as vendas.
- * Corpo (qualquer combinação): { teto_padrao_cents, meta_padrao_cents, conta_vendas_id,
+ * Corpo (qualquer combinação): { teto_padrao_cents, meta_padrao_cents, conta_vendas_id, conta_meta_id,
  *   teto_do_mes: { mes, valor_cents|null }, meta_do_mes: { mes, valor_cents|null } }
  * `valor_cents: null` num mês remove a exceção (volta ao padrão). Piso `manager`.
  */
@@ -11,6 +11,7 @@ import { audit } from "@/lib/audit";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { autorizarFinancas, lerCorpo, respostaDeErroDoBanco } from "@/lib/financas/servidor";
 import { configSchema } from "@/lib/financas/validacao";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +44,24 @@ export async function PUT(req: NextRequest): Promise<Response> {
       );
   }
 
+  if (c.conta_meta_id) {
+    const { data: cartao } = await supabase
+      .from("fin_accounts")
+      .select("id,tipo")
+      .eq("id", c.conta_meta_id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (!cartao || cartao.tipo !== "cartao")
+      return fail("validation_failed", "Escolha um cartão para as cobranças da Meta.", 422, {
+        requestId,
+      });
+  }
+
   const padrao: Record<string, unknown> = {};
   if (c.teto_padrao_cents !== undefined) padrao.teto_padrao_cents = c.teto_padrao_cents;
   if (c.meta_padrao_cents !== undefined) padrao.meta_padrao_cents = c.meta_padrao_cents;
   if (c.conta_vendas_id !== undefined) padrao.conta_vendas_id = c.conta_vendas_id;
+  if (c.conta_meta_id !== undefined) padrao.conta_meta_id = c.conta_meta_id;
   if (Object.keys(padrao).length > 0) {
     const { error } = await supabase
       .from("fin_orcamento_config")
@@ -55,6 +70,14 @@ export async function PUT(req: NextRequest): Promise<Response> {
         { onConflict: "organization_id" },
       );
     if (error) return respostaDeErroDoBanco(error, requestId, "config.padrao");
+  }
+  // Ligou, trocou ou desligou o cartão da Meta: os lançamentos das cobranças já guardadas acompanham
+  // (desligar tira as saídas da Meta do caixa; ligar de novo as traz de volta). Org da sessão.
+  if (c.conta_meta_id !== undefined) {
+    const { error } = await createAdminClient().rpc("fn_fin_importar_cobrancas_meta", {
+      p_org: orgId,
+    });
+    if (error) return respostaDeErroDoBanco(error, requestId, "config.cobrancas_meta");
   }
   for (const [chave, tabela] of [
     ["teto_do_mes", "fin_teto_mensal"],

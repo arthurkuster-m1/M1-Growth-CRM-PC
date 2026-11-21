@@ -54,6 +54,7 @@ export const LINKS = {
   atendimento: (id: string) => `/app/ai/cases?caso=${id}`,
   inbox: "/app/inbox",
   tarefas: "/app/tarefas",
+  faturas: "/app/financas/faturas",
   conexoes: "/app/connections",
   credenciaisDeIa: "/app/ai/credentials",
   usoDeIa: "/app/ai/usage",
@@ -239,6 +240,38 @@ export function avisoDeTarefa(input: {
     corpo: input.pessoa ? `Cliente: ${nomeComTelefone(input.pessoa)}` : "",
     acoes,
     tag: `tarefa:${input.tarefaId}`,
+  });
+}
+
+/** A cobrança da Meta no cartão foi recusada: sem pagamento, os anúncios podem parar. */
+export function avisoDeCobrancaRecusada(input: {
+  /** Chave estável da cobrança (a mesma notificação não se repete no celular). */
+  chave: string;
+  /** "10/11" — o dia da tentativa. */
+  dia: string;
+  /** "R$ 1.234,56" ou null quando a plataforma não informou o valor. */
+  valor: string | null;
+}): AvisoPessoal {
+  return fechar({
+    categoria: "sistema",
+    titulo: "Cobrança da Meta recusada",
+    corpo:
+      `A cobrança de ${input.dia}${input.valor ? ` (${input.valor})` : ""} não passou no cartão. ` +
+      "Atualize a forma de pagamento no Meta para os anúncios não pararem.",
+    acoes: [{ rotulo: "Ver faturas", href: LINKS.faturas }],
+    tag: `fin-meta-recusada:${input.chave}`,
+  });
+}
+
+/** A conta de anúncio está com pagamento pendente (situação 3 da plataforma). */
+export function avisoDeContaComPagamentoPendente(): AvisoPessoal {
+  return fechar({
+    categoria: "sistema",
+    titulo: "Conta de anúncios da Meta com pagamento pendente",
+    corpo:
+      "A Meta não conseguiu cobrar o cartão. Regularize o pagamento para os anúncios voltarem.",
+    acoes: [{ rotulo: "Ver faturas", href: LINKS.faturas }],
+    tag: "fin-meta-pagamento-pendente",
   });
 }
 

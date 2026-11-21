@@ -1033,3 +1033,9 @@
   .fi-abas .fi-segmented { width: 100%; }
   .fi-abas .fi-segmented button { padding: 0 8px; font-size: 13px; min-height: 40px; }
 }
+
+/* faixa de alerta (cobrança da Meta recusada, pagamento pendente) */
+.fi-faixa { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg, 12px); border: 1px solid transparent; }
+.fi-faixa--erro { background: var(--color-error-bg); color: var(--color-error-fg); border-color: var(--color-error-fg); }
+.fi-faixa__texto { flex: 1; min-width: 0; }
+.fi-faixa__texto strong { display: block; }

@@ -23,6 +23,11 @@
 import { logger } from "@/lib/logger";
 
 import { classificarErroGraph, montarUrl } from "./insights";
+import {
+  interpretarAtividade,
+  type AtividadeCrua,
+  type CobrancaLida,
+} from "./cobrancas-interpretar";
 import type { FalhaDeLeitura } from "../types";
 
 const TEMPO_LIMITE_MS = 20_000;
@@ -127,12 +132,13 @@ async function lerLista(
   urlInicial: string,
   token: string,
   contexto: string,
+  maximoDePaginas = MAXIMO_DE_PAGINAS,
 ): Promise<ChamadaDaSonda & { itens?: unknown[] }> {
   const itens: unknown[] = [];
   let url: string | null = urlInicial;
   let paginas = 0;
   let temMais = false;
-  while (url && paginas < MAXIMO_DE_PAGINAS) {
+  while (url && paginas < maximoDePaginas) {
     paginas += 1;
     const r = await ler(url, token, contexto);
     if (!r.ok)
@@ -147,7 +153,7 @@ async function lerLista(
         : r;
     itens.push(...(r.json.data ?? []));
     url = r.json.paging?.next ?? null;
-    if (url && paginas >= MAXIMO_DE_PAGINAS) temMais = true;
+    if (url && paginas >= maximoDePaginas) temMais = true;
   }
   return {
     ok: true,
@@ -264,4 +270,77 @@ export async function sondarCobrancas(
   }
 
   return { conta, periodo: { de, ate }, chamadas, tiposDeAtividade, atividadesDeCobranca };
+}
+
+/** Atividades por cobrança: busca mais fundo que a sonda, porque as trocas de campanha enchem a lista. */
+const PAGINAS_DA_LEITURA = 12;
+
+export type LeituraDeCobrancas =
+  | {
+      ok: true;
+      cobrancas: CobrancaLida[];
+      /** Quantas atividades foram lidas (cobrança ou não). */
+      atividadesLidas: number;
+      /** A lista foi cortada pelo teto de páginas: pode haver cobrança mais antiga não lida. */
+      cortada: boolean;
+      /** `account_status` da conta (3 = pagamento pendente). */
+      statusDaConta: number | null;
+      moeda: string;
+    }
+  | Extract<ChamadaDaSonda, { ok: false }>;
+
+/**
+ * As cobranças da conta no período, lidas das atividades. Só leitura. O token vai no header.
+ * Falha em qualquer chamada devolve o motivo cru (token vencido, permissão…), nunca lança.
+ */
+export async function lerCobrancasDaConta(
+  token: string,
+  contaId: string,
+  de: string,
+  ate: string,
+): Promise<LeituraDeCobrancas> {
+  const conta = comPrefixo(contaId);
+  const lida = await lerObjeto(
+    montarUrl(conta, { fields: "account_status,currency" }),
+    token,
+    "cobrancas.conta",
+  );
+  if (!lida.ok) return lida;
+  const dadosDaConta = lida.dados as { account_status?: number; currency?: string };
+  const moeda = typeof dadosDaConta.currency === "string" ? dadosDaConta.currency : "BRL";
+  const statusDaConta =
+    typeof dadosDaConta.account_status === "number" ? dadosDaConta.account_status : null;
+
+  const desde = Math.floor(new Date(`${de}T00:00:00-03:00`).getTime() / 1000);
+  const ateS = Math.floor(new Date(`${ate}T23:59:59-03:00`).getTime() / 1000);
+  const atividades = await lerLista(
+    montarUrl(`${conta}/activities`, {
+      fields: "event_type,event_time,object_id,extra_data",
+      since: String(desde),
+      until: String(ateS),
+      limit: "100",
+    }),
+    token,
+    "cobrancas.atividades",
+    PAGINAS_DA_LEITURA,
+  );
+  if (!atividades.ok) return atividades;
+
+  const itens = (atividades.itens ?? []) as AtividadeCrua[];
+  const cobrancas: CobrancaLida[] = [];
+  const vistos = new Set<string>();
+  for (const item of itens) {
+    const c = interpretarAtividade(item, conta, moeda);
+    if (!c || vistos.has(c.metaId)) continue;
+    vistos.add(c.metaId);
+    cobrancas.push(c);
+  }
+  return {
+    ok: true,
+    cobrancas,
+    atividadesLidas: itens.length,
+    cortada: atividades.cortado === true && itens.length >= PAGINAS_DA_LEITURA * 100,
+    statusDaConta,
+    moeda,
+  };
 }

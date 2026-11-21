@@ -685,6 +685,7 @@ export const AUDIT_ACTIONS = [
   "financas.saldo_conferido",
   "financas.fatura_conferida",
   "financas.lancamentos_importados",
+  "financas.meta_sincronizada",
   "comanda.faturada_em_lote",
   // A rodada de renovação — e ela só audita quando FEZ algo, como manda a regra
   // do cron desta base. Uma linha por rodada com efeito, carregando a contagem:

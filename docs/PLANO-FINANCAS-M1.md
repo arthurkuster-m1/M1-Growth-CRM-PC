@@ -1,6 +1,6 @@
 # PLANO — Finanças do CRM (réplica do app de Finanças da Família Kuster, adaptada à empresa)
 
-> **Andamento (20/11/2026): M0, F1, F2 e F3 feitos** (ver `CONTEXTO-M1.md`). Escrito a partir da leitura do app `familia-kuster` (`src/pages/financas`, `src/lib/financas`, `supabase/migrations/*financas*`, `docs/plano-financas.md`) e do que o CRM já tem. **Nada disto foi construído ainda.** O Arthur escolhe a ordem; uma fase de cada vez, testada.
+> **Andamento (21/11/2026): M0 e F1–F9 feitos** (ver `CONTEXTO-M1.md`). Escrito a partir da leitura do app `familia-kuster` (`src/pages/financas`, `src/lib/financas`, `supabase/migrations/*financas*`, `docs/plano-financas.md`) e do que o CRM já tem. **Nada disto foi construído ainda.** O Arthur escolhe a ordem; uma fase de cada vez, testada.
 
 ## 1. O que vem da família (igual, tela por tela)
 

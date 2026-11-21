@@ -7,6 +7,7 @@ import { FinancasProvider, useFinancas } from "@/lib/financas/dados";
 import { Plus, Warning } from "@/lib/ui/icons";
 
 import { Badge, Button, Page, Skeleton, ToastProvider } from "./kit";
+import { AvisoDaMeta } from "./telas/MetaCobrancas";
 
 const ABAS = [
   { caminho: "/app/financas", rotulo: "Visão geral" },
@@ -92,6 +93,7 @@ export function FinancasCasca({ children }: { children: ReactNode }) {
               </p>
             </header>
             <Abas />
+            <AvisoDaMeta />
             <Suspense fallback={<Skeleton h={256} />}>
               <Porteiro>{children}</Porteiro>
             </Suspense>

@@ -83,6 +83,7 @@ export const configSchema = z
     teto_padrao_cents: z.number().int().min(0).max(1_000_000_000_000),
     meta_padrao_cents: z.number().int().min(0).max(1_000_000_000_000),
     conta_vendas_id: z.string().uuid().nullable(),
+    conta_meta_id: z.string().uuid().nullable(),
     teto_do_mes: z.object({
       mes: mesIso,
       valor_cents: z.number().int().min(0).max(1_000_000_000_000).nullable(),
