@@ -1,10 +1,12 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { useDiagnosticoDoGuia } from "@/hooks/guia/useDiagnosticoDoGuia";
 import { ApiError } from "@/lib/api/types";
+import { abaDoGuia } from "@/lib/guia/retorno";
 import { FASES } from "@/lib/guia/tipos";
 
 import { DossieEIa } from "./_dossie";
@@ -23,7 +25,9 @@ export function GuiaTela() {
   const q = useDiagnosticoDoGuia();
   const [verTodos, setVerTodos] = useState(false);
   const [editandoPerfil, setEditandoPerfil] = useState(false);
-  const [aba, setAba] = useState<"guia" | "plano" | "ideias" | "dossie">("guia");
+  // Quem volta de uma tela de configuração (`?aba=plano`) cai na aba de onde saiu.
+  const parametros = useSearchParams();
+  const [aba, setAba] = useState(() => abaDoGuia(parametros.get("aba")));
 
   if (q.isLoading)
     return <div className="h-40 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;

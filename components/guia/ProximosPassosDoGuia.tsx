@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useDiagnosticoDoGuia } from "@/hooks/guia/useDiagnosticoDoGuia";
 import { useT } from "@/hooks/i18n/useT";
 import { roleAtLeast } from "@/lib/auth/types";
+import { comVoltar } from "@/lib/navigation/voltar";
 import { cn } from "@/lib/utils";
 
 const MOSTRAR = 3;
@@ -51,7 +52,7 @@ export function ProximosPassosDoGuia() {
           {proximos.map((p) => (
             <li key={p.id}>
               <Link
-                href={p.onde.href}
+                href={comVoltar(p.onde.href, { href: "/app/inicio", rotulo: "Início" })}
                 className={cn(
                   "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors hover:bg-secondary/60",
                 )}

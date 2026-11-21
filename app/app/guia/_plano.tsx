@@ -15,6 +15,7 @@ import {
   type ItemDoPlanoVisao,
   type LadoDoPlano,
 } from "@/lib/guia/tipos";
+import { comRetornoAoGuia } from "@/lib/guia/retorno";
 import { registrarDesfazer } from "@/lib/motor/desfazer";
 import { posicaoEntre } from "@/lib/motor/ordem";
 import { cn } from "@/lib/utils";
@@ -361,7 +362,10 @@ export function PlanoDoGuia({ resposta }: { resposta: RespostaDoGuia }) {
               ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
-                <Link href={v.passo.onde.href} className={cn(BOTAO, "text-primary")}>
+                <Link
+                  href={comRetornoAoGuia(v.passo.onde.href, "plano")}
+                  className={cn(BOTAO, "text-primary")}
+                >
                   {t("Abrir")}: {v.passo.onde.rotulo}
                 </Link>
                 {v.item.tarefaId ? (
