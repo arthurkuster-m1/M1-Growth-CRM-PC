@@ -14,6 +14,7 @@ import {
   VENDIDAS,
 } from "@/components/agenda/PaginaDoCompromisso";
 import { NotasDoInicio } from "@/components/anotacoes/NotasDoInicio";
+import { ProximosPassosDoGuia } from "@/components/guia/ProximosPassosDoGuia";
 import { SeletorEmPopup } from "@/components/ui/SeletorEmPopup";
 import { resumoDoAlerta } from "@/lib/ai/alerta-resumo";
 import { TarefasMotorClient } from "@/app/app/tarefas/_components/TarefasMotorClient";
@@ -666,6 +667,9 @@ export function InicioClient({ nome, fuso, usuarioId, podeEditar, agoraIso }: Pr
           )}
         </section>
       </div>
+
+      {/* ── Guia de marketing: os próximos passos da empresa (só gerente ou acima) ── */}
+      <ProximosPassosDoGuia />
 
       {/* ── notas: a página de Anotações fixada, para despejar ideias sem sair do Início ── */}
       <NotasDoInicio />

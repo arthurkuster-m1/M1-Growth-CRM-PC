@@ -42,7 +42,7 @@ export async function GET(): Promise<Response> {
   const supabase = await createClient();
 
   async function ler() {
-    const [contas, grupos, categorias, config] = await Promise.all([
+    const [contas, grupos, categorias, config, tetos, metas] = await Promise.all([
       supabase
         .from("fin_accounts")
         .select(COLUNAS_CONTA)
@@ -64,12 +64,20 @@ export async function GET(): Promise<Response> {
         .select("teto_padrao_cents,meta_padrao_cents,conta_vendas_id")
         .eq("organization_id", orgId)
         .maybeSingle(),
+      supabase.from("fin_teto_mensal").select("mes,valor_cents").eq("organization_id", orgId),
+      supabase.from("fin_meta_mensal").select("mes,valor_cents").eq("organization_id", orgId),
     ]);
-    return { contas, grupos, categorias, config };
+    return { contas, grupos, categorias, config, tetos, metas };
   }
 
   let r = await ler();
-  const erro = r.contas.error ?? r.grupos.error ?? r.categorias.error ?? r.config.error;
+  const erro =
+    r.contas.error ??
+    r.grupos.error ??
+    r.categorias.error ??
+    r.config.error ??
+    r.tetos.error ??
+    r.metas.error;
   if (erro) {
     if (faltaMigration(erro)) {
       return fail(
@@ -113,6 +121,17 @@ export async function GET(): Promise<Response> {
         teto_padrao_cents: Number(r.config.data?.teto_padrao_cents ?? 0),
         meta_padrao_cents: Number(r.config.data?.meta_padrao_cents ?? 0),
         conta_vendas_id: (r.config.data?.conta_vendas_id as string | null) ?? null,
+      },
+      // teto e meta do mês: o padrão + a exceção de cada mês ("AAAA-MM" → centavos)
+      plano: {
+        tetoPadrao: Number(r.config.data?.teto_padrao_cents ?? 0),
+        tetos: Object.fromEntries(
+          (r.tetos.data ?? []).map((x) => [String(x.mes).slice(0, 7), Number(x.valor_cents)]),
+        ),
+        metaPadrao: Number(r.config.data?.meta_padrao_cents ?? 0),
+        metas: Object.fromEntries(
+          (r.metas.data ?? []).map((x) => [String(x.mes).slice(0, 7), Number(x.valor_cents)]),
+        ),
       },
     },
     { requestId },

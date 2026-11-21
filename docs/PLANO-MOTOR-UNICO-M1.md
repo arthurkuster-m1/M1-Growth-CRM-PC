@@ -83,7 +83,7 @@ Lacunas a fechar (o trabalho real):
 
 ## 7. Fase 2 — dividida em três (20/11/2026)
 O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/engine.ts`, ~50 usos de `contact_id`). Trocar isso de uma vez é arriscado, então a Fase 2 vai em três passos, cada um deixando o sistema como está:
-- **2a — banco (feita):** migration 0701. `followup_enrollments` ganha `subject_kind`/`subject_id`/`source_event_id`; `contact_id` aceita NULL, mas o trigger só permite em `surface='crm_automation'` (nenhuma tela cria ainda). Índice único de um fluxo vivo por (fluxo, sujeito). Provada num Postgres temporário: aplica 2x, follow-up sem contato é recusado, duplicado vivo é recusado, reinscrever após concluir funciona. **Não aplicada em nenhum banco real** (`lib/database.types.ts` também não foi regenerado — depende de aplicar).
+- **2a — banco (feita):** migration 0703. `followup_enrollments` ganha `subject_kind`/`subject_id`/`source_event_id`; `contact_id` aceita NULL, mas o trigger só permite em `surface='crm_automation'` (nenhuma tela cria ainda). Índice único de um fluxo vivo por (fluxo, sujeito). Provada num Postgres temporário: aplica 2x, follow-up sem contato é recusado, duplicado vivo é recusado, reinscrever após concluir funciona. **Não aplicada em nenhum banco real** (`lib/database.types.ts` também não foi regenerado — depende de aplicar).
 - **2b — motor sabe o sujeito (feita, 20/11/2026):** o engine passa a carregar lead/contato pelo sujeito quando `contact_id` é nulo; envio abre a conversa na hora (`serviceForAutomation`). Sem isto, inscrição sem contato não pode rodar.
 - **2c — handler único + gatilho `event` (feita, 20/11/2026):** consome os eventos de `TRIGGER_EVENTS`, inscreve no sujeito do evento, e o publicar passa a aceitar o gatilho.
 
@@ -92,7 +92,7 @@ O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/e
 - Fatos do lead vêm do sujeito (`loadLeadFactsDoSujeito`); os nós **tag, mover etapa e tarefa** acham o lead pelo sujeito (`negocioDoItem`, sempre filtrando `organization_id`).
 - Nós que falam com o cliente ou esperam resposta (`action`, `ai_classify`, `match_reply`, `collect`, `skill`) falham de forma **controlada** com `fluxo_sem_contato` (tentativas, depois morte com aviso na Central) — o envio por automação, abrindo a conversa na hora, é a **Fase 3**.
 - Testes novos: `tests/unit/fluxo-sem-contato-no-motor.test.ts` (5). Controle: fluxo com contato segue conferindo fronteira, agenda e fatos pelo contato.
-- Regressão: a suíte `tests/unit` tem 142 testes vermelhos **antes e depois** (mesma lista, nenhum novo), todos em outras áreas. Um deles, `varredura-anon-e-o-ultimo-bloco`, já listava 16 funções criadas depois do bloco de anon no baseline e agora lista 17 (a função do trigger da 0701; ela revoga `anon` explicitamente).
+- Regressão: a suíte `tests/unit` tem 142 testes vermelhos **antes e depois** (mesma lista, nenhum novo), todos em outras áreas. Um deles, `varredura-anon-e-o-ultimo-bloco`, já listava 16 funções criadas depois do bloco de anon no baseline e agora lista 17 (a função do trigger da 0703; ela revoga `anon` explicitamente).
 - Ainda não revisado: telas e rotas que listam inscrições (fila de follow-up) assumem contato; ficam para quando existir fluxo `crm_automation` de verdade (2c).
 
 **Como a 2c ficou** (`lib/followup/gatilho-evento.ts`, `gatilho-evento.handler.ts`, `api-schemas.ts`, publicar):

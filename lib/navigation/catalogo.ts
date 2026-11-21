@@ -172,6 +172,59 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    // As telas de dentro das Finanças: o caminho normal é a barra de abas da própria tela; aqui elas
+    // existem para o ⌘K e para o teste de completude.
+    href: "/app/financas/lancar",
+    label: "Finanças · Lançar",
+    description:
+      "Lance uma entrada, saída ou transferência (inclusive compra parcelada no cartão).",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/mes",
+    label: "Finanças · Mês",
+    description: "O mês: quanto ainda pode gastar, entradas, saídas, resultado e alertas.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/ano",
+    label: "Finanças · Ano",
+    description:
+      "O ano: entradas × saídas por mês, renda por fonte, gasto por categoria e comparar anos.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/faturas",
+    label: "Finanças · Faturas",
+    description: "Faturas dos cartões: total do app × total do banco, em aberto, e pagar a fatura.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/lancamentos",
+    label: "Finanças · Lançamentos",
+    description:
+      "Todos os lançamentos do mês: entradas das vendas, saídas, filtros e edição em lote.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
+    href: "/app/financas/configuracoes",
+    label: "Finanças · Configurações",
+    description: "Contas, cartões (fechamento e vencimento), categorias e grupos.",
+    icon: "CurrencyDollar",
+    group: "atendimento",
+    minRole: "manager",
+  },
+  {
     // ANOTAÇÕES: página solta no menu lateral, logo abaixo de Finanças (o Sidebar desenha o link, e
     // por isso não leva `sidebar: true`). O bloco de notas da agência sobre a empresa, em páginas.
     href: "/app/anotacoes",
@@ -180,6 +233,19 @@ export const NAV_CATALOG = [
     icon: "Note",
     group: "atendimento",
     minRole: "viewer",
+  },
+  {
+    // GUIA — o "cônsul" de cada empresa: o que já está pronto no marketing, o que falta e o
+    // próximo passo (docs/PLANO-GUIA-M1.md). O link é desenhado pelo Sidebar, solto
+    // logo abaixo de Início (por isso fica fora da lista do grupo Marketing); aqui ela existe para o
+    // ⌘K, o teste de completude e o filtro de papel (gerente ou acima).
+    href: "/app/guia",
+    label: "Guia",
+    description: "O que já está pronto no marketing da empresa, o que falta e o próximo passo.",
+    icon: "Signpost",
+    group: "marketing",
+    minRole: "manager",
+    sidebar: true,
   },
   {
     // MARKETING — a vitrine do trabalho da agência. Quatro de cinco telas sobem para o menu
