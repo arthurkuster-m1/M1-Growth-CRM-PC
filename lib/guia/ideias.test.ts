@@ -11,6 +11,7 @@ import {
   quinzenaDe,
   semestreDe,
   type CampanhaParaIdeias,
+  type IdeiaCandidata,
 } from "./ideias";
 import { paginasPublicadas, sinaisCompletos, sinaisVazios } from "./sinais-de-teste";
 import type { Leitura, Perfil } from "./tipos";
@@ -211,14 +212,14 @@ describe("janelas", () => {
 });
 
 describe("escolherNovas", () => {
-  const base = {
+  const base: Omit<IdeiaCandidata, "regra" | "titulo" | "prioridade"> = {
     alvoTipo: "campanha",
     alvoId: "c1",
     janela: "j",
     acaoHref: "/x",
     passoRelacionado: null,
     evidencia: [],
-  } as const;
+  };
   const c = (regra: string, prioridade: 1 | 2 | 3) => ({
     ...base,
     regra,
