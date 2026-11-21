@@ -8,8 +8,7 @@
  * contato pessoal e condições — e inscreve o fluxo no SUJEITO do evento (lead, contato ou compromisso), SEM
  * contato nem conversa: o envio de mensagem abre a conversa na hora (Fase 3).
  *
- * Eventos "dirigidos a uma regra" (`payload.rule_id`, a varredura de data do funil) NÃO casam aqui: pertencem às
- * regras antigas até a migração (Fase 4).
+ * Eventos APONTADOS (`payload.rule_id`, os relógios por tempo e data) só inscrevem o fluxo de mesmo id.
  *
  * Um fluxo vivo por (fluxo, sujeito): `23505` → `skipped_existing`. Trigger Postgres nunca faz HTTP: quem consome
  * é o drain do `event_log`.
@@ -34,7 +33,12 @@ export interface PointerDeEvento {
 }
 
 export interface GatilhoEventoDb {
-  carregaPointersDeEvento(orgId: string, eventType: string): Promise<PointerDeEvento[]>;
+  /** `soEste`: o evento é apontado para UM fluxo (relógios) — só ele vale. */
+  carregaPointersDeEvento(
+    orgId: string,
+    eventType: string,
+    soEste?: string,
+  ): Promise<PointerDeEvento[]>;
   /** O contexto que as condições leem (lead, contato, compromisso, evento) — o mesmo do motor de regras. */
   carregaContexto(row: EventRow): Promise<Record<string, unknown>>;
   carregaNoDeGatilho(orgId: string, versionId: string): Promise<{ id: string } | null>;
@@ -120,8 +124,9 @@ export async function aplicaGatilhoDeEvento(
     return pula("caused_by_rule");
   }
 
-  // Evento de uma regra específica (relógio da data do funil): é das regras antigas.
-  if (regraDoEvento(row.payload)) return pula("evento_dirigido_a_regra");
+  // Evento APONTADO (os relógios por tempo/data): vale só para o fluxo de mesmo id. Para as regras antigas,
+  // o `rule_id` é o da regra e aqui não casa com nenhum fluxo — as duas fontes nunca respondem ao mesmo evento.
+  const apontado = regraDoEvento(row.payload);
 
   const esperada = (ENTIDADE_ESPERADA_POR_GATILHO as Record<string, string>)[row.event_type];
   if (!esperada) return pula("evento_sem_gatilho");
@@ -131,7 +136,11 @@ export async function aplicaGatilhoDeEvento(
   if (!sujeito) return pula("sem_sujeito");
   summary.matched = true;
 
-  const armados = await deps.db.carregaPointersDeEvento(row.organization_id, row.event_type);
+  const armados = await deps.db.carregaPointersDeEvento(
+    row.organization_id,
+    row.event_type,
+    apontado ?? undefined,
+  );
   summary.pointers_armados = armados.length;
   if (armados.length === 0) return summary;
 
@@ -184,7 +193,7 @@ export function createSupabaseGatilhoEventoDb(
   contexto: (row: EventRow) => Promise<Record<string, unknown>>,
 ): GatilhoEventoDb {
   return {
-    async carregaPointersDeEvento(orgId, eventType) {
+    async carregaPointersDeEvento(orgId, eventType, soEste) {
       const { data, error } = await admin
         .from("followup_flow_pointers")
         .select("id, organization_id, active_version_id, trigger_config")
@@ -202,6 +211,7 @@ export function createSupabaseGatilhoEventoDb(
         trigger_config: unknown;
       }>) {
         if (!row.active_version_id) continue;
+        if (soEste !== undefined && row.id !== soEste) continue;
         const parsed = triggerConfigSchema.safeParse(row.trigger_config);
         if (!parsed.success || parsed.data.kind !== "event") continue;
         if (parsed.data.params.event_type !== eventType) continue;

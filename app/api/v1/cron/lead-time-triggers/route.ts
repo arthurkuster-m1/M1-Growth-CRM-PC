@@ -56,6 +56,7 @@ import {
   naoDisparadosTemporais,
 } from "@/lib/automation/gatilhos-de-tempo";
 import { autorizaCron } from "@/lib/auth/cron-auth";
+import { carregaRegrasDeRelogio } from "@/lib/automation/regras-de-relogio";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -87,11 +88,11 @@ async function handle(req: NextRequest): Promise<Response> {
   const admin = createAdminClient();
   const agora = new Date();
 
-  const { data: regras, error: erroRegras } = await admin
-    .from("automation_rules")
-    .select("id, organization_id, trigger_event, trigger_config")
-    .in("trigger_event", [GATILHO_SILENCIO, GATILHO_ETAPA_PARADA])
-    .eq("is_active", true);
+  // As regras E os fluxos de automação de CRM (motor único): `regras-de-relogio.ts`.
+  const { data: regras, error: erroRegras } = await carregaRegrasDeRelogio(admin, [
+    GATILHO_SILENCIO,
+    GATILHO_ETAPA_PARADA,
+  ]);
 
   if (erroRegras) {
     logger.error("[lead-time-triggers] consulta de regras falhou", {

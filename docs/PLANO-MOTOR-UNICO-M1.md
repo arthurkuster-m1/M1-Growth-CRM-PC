@@ -119,3 +119,17 @@ O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/e
 
 **Não provado ainda (precisa de banco/WhatsApp real):** a fronteira de atendimento (`serviceForEvent`) é amarrada ao **evento de origem**. Num fluxo com espera longa antes de enviar, ela pode estar obsoleta quando a ação rodar — nesse caso a ação falha com o motivo (não envia para conversa errada). Confirmar com um fluxo real "esperar 2 dias → enviar" é o primeiro teste da Fase 4/5.
 **Ainda sem tela:** não há editor para criar um fluxo `crm_automation` (Fase 5); o nó já aparece nos resumos, no canvas e no dossiê do fluxo.
+
+## 9. Fase 4 — migrar as regras para o motor único (plano, 21/11/2026)
+
+### Mudança de abordagem, a decidir: "sombra" = simulação, não execução dupla
+O plano original dizia "executar em paralelo (sombra) comparando resultados". **Executar as duas ao mesmo tempo mandaria cada WhatsApp, webhook e tarefa em dobro.** Troco por:
+1. **Simulação (a "sombra")**: converter TODAS as regras em memória e rodar o validador de publicação, sem gravar nada, com um relatório "esta regra converte / esta não, por quê". É o ensaio.
+2. **Virada reversível**: por organização, numa transação, cria o fluxo `crm_automation` ativo **e desliga a regra original** (a linha da regra fica guardada, com `migrated_to_pointer_id`). **Voltar atrás** = religar a regra e pausar o fluxo. Nunca há dois ativos para a mesma coisa.
+Como ainda não há dados reais de clientes, o risco é baixo; a simulação serve para o caso de haver regra "esquisita".
+
+### Etapas
+- **4a (sem tocar em dados):** conversor puro `regraParaFluxo` (gatilho + condições → `trigger_config.event`; cada ação → um nó `crm_action` em cadeia; fim) + testes, validado pelo mesmo `flowGraphSchema` e `validateFlowForPublish` do publicar. Gatilho `event` ganha `params.config` (os parâmetros dos gatilhos por tempo: dias, direção, funil, campo, proteger pela agenda).
+- **4b (relógios):** os 3 crons por tempo (`lead-time-triggers`, `lead-date-field-due`, `contact-birthdays`) hoje só leem `automation_rules`. Passam a ler **as duas fontes** (regras + fluxos `crm_automation` com gatilho `event` desse tipo), emitindo o evento "apontado" (`rule_id` = id do fluxo). O gatilho por evento passa a aceitar evento apontado quando o `rule_id` é o id do próprio fluxo (hoje ele o ignora). Trava de disparo (`regra:negócio:âncora`) continua igual.
+- **4c (virada):** migration (`automation_rules.migrated_to_pointer_id`), função de migrar por organização com `dry_run` por padrão (a simulação), a virada e o desfazer. Backup/export das regras antes. **Eu não aplico em banco nenhum sem você mandar.**
+- **4d:** prova ponta a ponta com banco e WhatsApp reais (fluxo "esperar 2 dias → enviar", janela de envio, silêncio por tempo).

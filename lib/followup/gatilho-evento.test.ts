@@ -140,13 +140,31 @@ describe("aplicaGatilhoDeEvento", () => {
     }
   });
 
-  it("evento dirigido a uma regra (relógio da data do funil) é das regras antigas", async () => {
-    const c = cenario();
+  it("evento APONTADO (relógio) só vale para o fluxo de mesmo id; sem apontar, vale para todos", async () => {
+    const apontado = cenario();
+    const r = await aplicaGatilhoDeEvento(
+      { db: apontado.db },
+      evento({ event_type: "lead.date_field_due", payload: { rule_id: "p1" } }),
+    );
+    expect(apontado.db.carregaPointersDeEvento).toHaveBeenCalledWith(
+      ORG,
+      "lead.date_field_due",
+      "p1",
+    );
+    expect(r.enrolled).toBe(1);
+
+    const solto = cenario();
+    await aplicaGatilhoDeEvento({ db: solto.db }, evento());
+    expect(solto.db.carregaPointersDeEvento).toHaveBeenCalledWith(ORG, "lead.tag_added", undefined);
+  });
+
+  it("evento apontado para uma REGRA antiga não inscreve fluxo nenhum (o banco filtra pelo id)", async () => {
+    const c = cenario({ pointers: [] });
     const r = await aplicaGatilhoDeEvento(
       { db: c.db },
-      evento({ event_type: "lead.date_field_due", payload: { rule_id: "r1" } }),
+      evento({ event_type: "lead.silent_for", payload: { rule_id: "regra-antiga" } }),
     );
-    expect(r.motivo_de_pular).toBe("evento_dirigido_a_regra");
+    expect(r).toMatchObject({ enrolled: 0, pointers_armados: 0 });
     expect(c.inseridos).toEqual([]);
   });
 

@@ -93,6 +93,9 @@ export const triggerConfigSchema = z.discriminatedUnion("kind", [
     params: z.strictObject({
       event_type: z.enum(TRIGGER_EVENTS),
       conditions: z.array(conditionSchema).max(10).default([]),
+      // Os parâmetros do gatilho por TEMPO ou por data (`automation_rules.trigger_config`: dias, direção do
+      // silêncio, funil, campo...). Lidos pelos relógios (`lead-time-triggers`, `lead-date-field-due`).
+      config: z.record(z.string(), z.unknown()).optional(),
     }),
     ...CANCEL_ON_REPLY,
   }),

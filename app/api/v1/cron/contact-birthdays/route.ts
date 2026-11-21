@@ -39,6 +39,7 @@ import { audit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { autorizaCron } from "@/lib/auth/cron-auth";
+import { carregaRegrasDeRelogio } from "@/lib/automation/regras-de-relogio";
 
 export const dynamic = "force-dynamic";
 
@@ -87,11 +88,8 @@ async function handle(req: NextRequest): Promise<Response> {
   const admin = createAdminClient();
   const agora = new Date();
 
-  const { data: regras, error: erroRegras } = await admin
-    .from("automation_rules")
-    .select("organization_id")
-    .eq("trigger_event", "contact.birthday")
-    .eq("is_active", true);
+  // As regras E os fluxos de automação de CRM (motor único): `regras-de-relogio.ts`.
+  const { data: regras, error: erroRegras } = await carregaRegrasDeRelogio(admin, ["contact.birthday"]);
 
   if (erroRegras) {
     logger.error("[contact-birthdays] consulta de regras falhou", {
