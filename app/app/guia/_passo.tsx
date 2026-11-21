@@ -12,6 +12,9 @@ import { desfazerUltimo, registrarDesfazer } from "@/lib/motor/desfazer";
 import type { EstadoDoPasso, PassoDiagnosticado } from "@/lib/guia/tipos";
 import { cn } from "@/lib/utils";
 
+import { promptsDoPasso, montarPrompt } from "@/lib/guia/prompts";
+
+import { buscarDossie, copiarTexto } from "./_copiar";
 import { COR_DO_ESTADO, rotuloDoEstado } from "./_rotulos";
 
 type Marca = { estado: "feito" | "dispensado"; motivo?: string } | null;
@@ -92,6 +95,26 @@ export function PassoDoGuia({ p, destaque }: { p: PassoDiagnosticado; destaque?:
       toast.success(t("Tarefa criada em Tarefas."));
     } catch {
       toast.error(t("Não foi possível criar a tarefa."));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  // O "modo na minha conta": copia o prompt do passo já com o Dossiê dentro (cada cópia gera o
+  // dossiê na hora e fica registrada na auditoria).
+  async function copiarPrompt(id: string) {
+    const prompt = promptsDoPasso(p.id).find((x) => x.id === id);
+    if (!prompt) return;
+    setOcupado(true);
+    try {
+      const dossie = await buscarDossie("completo");
+      if (await copiarTexto(montarPrompt(prompt, dossie.markdown))) {
+        toast.success(t("Prompt copiado. Cole na sua IA."));
+      } else {
+        toast.error(t("Não foi possível copiar. Gere o dossiê na aba Dossiê e IA."));
+      }
+    } catch {
+      toast.error(t("Não foi possível gerar o dossiê agora."));
     } finally {
       setOcupado(false);
     }
@@ -190,6 +213,17 @@ export function PassoDoGuia({ p, destaque }: { p: PassoDiagnosticado; destaque?:
               {t("Reabrir")}
             </button>
           ) : null}
+          {promptsDoPasso(p.id).map((x) => (
+            <button
+              key={x.id}
+              type="button"
+              disabled={ocupado}
+              className={BOTAO}
+              onClick={() => void copiarPrompt(x.id)}
+            >
+              {t("Copiar prompt")}: {x.titulo}
+            </button>
+          ))}
           {p.tarefaId ? (
             <Link href="/app/tarefas" className={BOTAO}>
               {t("Tarefa criada · ver em Tarefas")}

@@ -664,6 +664,8 @@ export const AUDIT_ACTIONS = [
   "guia.passo_marcado",
   "guia.passo_reaberto",
   "guia.tarefa_criada",
+  // Gerar o Dossiê tira informação do sistema (vai para uma IA fora): rastro, sem guardar o conteúdo.
+  "guia.dossie_gerado",
   "financas.lancamento_criado",
   "financas.lancamento_alterado",
   "financas.lancamento_removido",

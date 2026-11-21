@@ -27,7 +27,7 @@ const MOTIVO_SEM_ATUALIZACAO = "o banco ainda não recebeu uma atualização nec
 const MOTIVO_ERRO = "não foi possível ler esta informação agora";
 
 /** Roda uma leitura; qualquer falha vira `{ ok: false, motivo }` — nunca derruba as outras. */
-async function ler<T>(f: () => Promise<T>): Promise<Leitura<T>> {
+export async function ler<T>(f: () => Promise<T>): Promise<Leitura<T>> {
   try {
     return { ok: true, valor: await f() };
   } catch (e) {
@@ -37,7 +37,10 @@ async function ler<T>(f: () => Promise<T>): Promise<Leitura<T>> {
 }
 
 /** Desembrulha `{ data, error }` do Supabase, lançando o erro (o `ler` o traduz). */
-function dados<T>(r: { data: T | null; error: { code?: string; message?: string } | null }): T {
+export function dados<T>(r: {
+  data: T | null;
+  error: { code?: string; message?: string } | null;
+}): T {
   if (r.error) throw r.error;
   return (r.data ?? ([] as unknown)) as T;
 }
