@@ -116,6 +116,61 @@ export interface Sinais {
   autoavaliacao: Leitura<{ ultimaEm: string | null }>;
 }
 
+/** Quem faz o passo na visão do cliente (o mesmo vocabulário do Cronograma). */
+export const LADOS_DO_PLANO = ["agencia", "cliente"] as const;
+export type LadoDoPlano = (typeof LADOS_DO_PLANO)[number];
+
+/** Um passo escolhido para o plano do cliente (linha de `guia_passos` com `no_plano`). */
+export interface ItemDoPlano {
+  passoId: string;
+  lado: LadoDoPlano | null;
+  responsavelId: string | null;
+  /** YYYY-MM-DD */
+  prazo: string | null;
+  ordem: number;
+  tarefaId: string | null;
+}
+
+/** O que a tarefa ligada ao passo diz (de `crm_tasks`). */
+export interface SituacaoDaTarefa {
+  status: string;
+  /** YYYY-MM-DD (no fuso do cronograma) ou nulo. */
+  prazo: string | null;
+}
+
+export type SugestaoDoPlano = "confirmar_passo" | "concluir_tarefa";
+
+/** Um item do plano já cruzado com o diagnóstico e com a tarefa. */
+export interface ItemDoPlanoVisao {
+  item: ItemDoPlano;
+  passo: PassoDiagnosticado;
+  lado: LadoDoPlano;
+  tarefa: SituacaoDaTarefa | null;
+  atrasado: boolean;
+  /** Sugestão para fechar o laço entre o passo e a tarefa (nunca é aplicada sozinha). */
+  sugestao: SugestaoDoPlano | null;
+}
+
+export const ACOES_DO_HISTORICO = [
+  "plano_montado",
+  "plano_adicionado",
+  "plano_removido",
+  "plano_alterado",
+  "passo_marcado",
+  "passo_reaberto",
+  "tarefa_criada",
+] as const;
+export type AcaoDoHistorico = (typeof ACOES_DO_HISTORICO)[number];
+
+export interface EntradaDoHistorico {
+  id: string;
+  passoId: string | null;
+  acao: AcaoDoHistorico;
+  detalhe: Record<string, unknown>;
+  feitoPor: string | null;
+  feitoEm: string;
+}
+
 export interface PassoDoMapa {
   /** "P21" — estável: é a chave do que a agência marca à mão e dos avisos. */
   id: string;
@@ -140,6 +195,8 @@ export interface PassoDoMapa {
   venceSe?: (s: Sinais) => boolean;
   /** `false` = não entra na porcentagem de prontidão (recorrentes e rotinas). */
   contaNaProntidao?: boolean;
+  /** Quem costuma fazer o passo. Sem isto, a agência. */
+  lado?: LadoDoPlano;
 }
 
 /** O que alguém marcou à mão (G2 grava na tabela; a G1 só aceita o formato). */

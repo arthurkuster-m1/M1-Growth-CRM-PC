@@ -9,7 +9,13 @@
 import { fail, ok } from "@/lib/api/wrappers";
 import { coletarSinais } from "@/lib/guia/coletar-sinais";
 import { diagnosticar } from "@/lib/guia/diagnostico";
-import { GuiaSemMigration, lerGuardado } from "@/lib/guia/guardado";
+import {
+  GuiaSemMigration,
+  lerGuardado,
+  lerHistorico,
+  lerTarefasDoPlano,
+} from "@/lib/guia/guardado";
+import { prazoDaTarefa, visaoDoPlano } from "@/lib/guia/plano";
 import { perfilParaDiagnostico } from "@/lib/guia/perfil";
 import { SEM_MIGRATION, autorizarGuia } from "@/lib/guia/servidor";
 import { logger } from "@/lib/logger";
@@ -26,14 +32,34 @@ export async function GET(): Promise<Response> {
       lerGuardado(supabase, orgId),
       coletarSinais(supabase, orgId),
     ]);
+    const agora = new Date();
     const diagnostico = diagnosticar({
       perfil: guardado.perfil ? perfilParaDiagnostico(guardado.perfil) : null,
       sinais,
       manuais: guardado.manuais,
       tarefas: guardado.tarefas,
-      agora: new Date(),
+      agora,
     });
-    return ok({ perfil: guardado.perfil, diagnostico }, { requestId });
+    const [situacaoDasTarefas, historico] = await Promise.all([
+      lerTarefasDoPlano(
+        supabase,
+        orgId,
+        guardado.plano.flatMap((i) => (i.tarefaId ? [i.tarefaId] : [])),
+      ),
+      guardado.planoDisponivel ? lerHistorico(supabase, orgId) : Promise.resolve([]),
+    ]);
+    const hoje = prazoDaTarefa(agora.toISOString()) ?? agora.toISOString().slice(0, 10);
+    const plano = visaoDoPlano(diagnostico, guardado.plano, situacaoDasTarefas, hoje);
+    return ok(
+      {
+        perfil: guardado.perfil,
+        diagnostico,
+        plano,
+        historico,
+        planoDisponivel: guardado.planoDisponivel,
+      },
+      { requestId },
+    );
   } catch (e) {
     if (e instanceof GuiaSemMigration)
       return fail("guia_sem_migration", SEM_MIGRATION, 503, { requestId });

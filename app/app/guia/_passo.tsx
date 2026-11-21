@@ -42,7 +42,17 @@ function Selo({ estado }: { estado: EstadoDoPasso }) {
 }
 
 /** Um passo do mapa: o que é, como sei o estado, e as ações (abrir, marcar, dispensar, criar tarefa). */
-export function PassoDoGuia({ p, destaque }: { p: PassoDiagnosticado; destaque?: boolean }) {
+export function PassoDoGuia({
+  p,
+  destaque,
+  noPlano = false,
+  planoDisponivel = false,
+}: {
+  p: PassoDiagnosticado;
+  destaque?: boolean;
+  noPlano?: boolean;
+  planoDisponivel?: boolean;
+}) {
   const t = useT();
   const qc = useQueryClient();
   const [ocupado, setOcupado] = useState(false);
@@ -115,6 +125,28 @@ export function PassoDoGuia({ p, destaque }: { p: PassoDiagnosticado; destaque?:
       }
     } catch {
       toast.error(t("Não foi possível gerar o dossiê agora."));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function porNoPlano() {
+    setOcupado(true);
+    try {
+      await apiClient.put(`/api/v1/guia/plano/${p.id}`, { noPlano: true });
+      registrarDesfazer({
+        rotulo: p.titulo,
+        desfazer: async () => {
+          await apiClient.put(`/api/v1/guia/plano/${p.id}`, { noPlano: false });
+          await atualizar();
+        },
+      });
+      await atualizar();
+      toast.success(t("Passo no plano."), {
+        action: { label: t("Desfazer"), onClick: () => void desfazerUltimo() },
+      });
+    } catch {
+      toast.error(t("Não foi possível pôr no plano."));
     } finally {
       setOcupado(false);
     }
@@ -211,6 +243,20 @@ export function PassoDoGuia({ p, destaque }: { p: PassoDiagnosticado; destaque?:
               onClick={() => marcar(null, t("Passo reaberto."))}
             >
               {t("Reabrir")}
+            </button>
+          ) : null}
+          {noPlano ? (
+            <span className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-medium">
+              {t("No plano")}
+            </span>
+          ) : planoDisponivel && pedeAcao ? (
+            <button
+              type="button"
+              disabled={ocupado}
+              className={BOTAO}
+              onClick={() => void porNoPlano()}
+            >
+              {t("Pôr no plano")}
             </button>
           ) : null}
           {promptsDoPasso(p.id).map((x) => (
