@@ -666,6 +666,9 @@ export const AUDIT_ACTIONS = [
   "guia.tarefa_criada",
   // Gerar o Dossiê tira informação do sistema (vai para uma IA fora): rastro, sem guardar o conteúdo.
   "guia.dossie_gerado",
+  // O plano do cliente (0703): montar o plano padrão e mexer num item (responsável, prazo, lado, ordem).
+  "guia.plano_montado",
+  "guia.plano_item_alterado",
   "financas.lancamento_criado",
   "financas.lancamento_alterado",
   "financas.lancamento_removido",

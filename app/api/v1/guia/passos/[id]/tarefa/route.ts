@@ -6,7 +6,8 @@
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { passoPorId } from "@/lib/guia/catalogo";
-import { faltaMigrationDoGuia } from "@/lib/guia/guardado";
+import { faltaMigrationDoGuia, registrarHistorico } from "@/lib/guia/guardado";
+import { prazoParaTarefa } from "@/lib/guia/plano";
 import { SEM_MIGRATION, autorizarGuia } from "@/lib/guia/servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 
@@ -23,20 +24,34 @@ export async function POST(_req: Request, { params }: Contexto): Promise<Respons
   const passo = passoPorId(id);
   if (!passo) return fail("validation_failed", "Passo desconhecido.", 422, { requestId });
 
-  const atual = await supabase
-    .from("guia_passos")
-    .select("task_id")
-    .eq("organization_id", orgId)
-    .eq("passo_id", id)
-    .maybeSingle();
+  // Com a 0703 o passo pode estar no plano (responsável, prazo e lado); sem ela só existe o vínculo.
+  type Linha = {
+    task_id: string | null;
+    no_plano?: boolean;
+    lado?: "agencia" | "cliente" | null;
+    responsavel_id?: string | null;
+    prazo?: string | null;
+  };
+  const ler = (colunas: string) =>
+    supabase
+      .from("guia_passos")
+      .select(colunas)
+      .eq("organization_id", orgId)
+      .eq("passo_id", id)
+      .maybeSingle();
+  let atual = await ler("task_id,no_plano,lado,responsavel_id,prazo");
+  if (atual.error && faltaMigrationDoGuia(atual.error)) atual = await ler("task_id");
   if (atual.error) {
     if (faltaMigrationDoGuia(atual.error))
       return fail("guia_sem_migration", SEM_MIGRATION, 503, { requestId });
     return fail("internal_error", "Não foi possível criar a tarefa.", 500, { requestId });
   }
-  if (atual.data?.task_id) {
-    return ok({ taskId: atual.data.task_id as string, criada: false }, { requestId });
+  const linha = (atual.data ?? null) as unknown as Linha | null;
+  if (linha?.task_id) {
+    return ok({ taskId: linha.task_id, criada: false }, { requestId });
   }
+  // Passo no plano: a tarefa nasce com quem faz e até quando, e entra na semana do Cronograma.
+  const noPlano = linha?.no_plano === true;
 
   const { data: tarefa, error } = await supabase
     .from("crm_tasks")
@@ -47,23 +62,28 @@ export async function POST(_req: Request, { params }: Contexto): Promise<Respons
       description: `${passo.porque}\n\nOnde fazer: ${passo.onde.rotulo} (${passo.onde.href})\nPasso ${passo.id} do Guia de marketing.`,
       priority: "medium",
       status: "pending",
+      ...(noPlano
+        ? {
+            assigned_to: linha?.responsavel_id ?? null,
+            due_date: linha?.prazo ? prazoParaTarefa(linha.prazo) : null,
+            cronograma_lado: linha?.lado ?? null,
+          }
+        : {}),
     })
     .select("id")
     .single();
   if (error || !tarefa)
     return fail("internal_error", "Não foi possível criar a tarefa.", 500, { requestId });
 
-  const { error: erroDoVinculo } = await supabase
-    .from("guia_passos")
-    .upsert(
-      {
-        organization_id: orgId,
-        passo_id: id,
-        task_id: tarefa.id,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "organization_id,passo_id" },
-    );
+  const { error: erroDoVinculo } = await supabase.from("guia_passos").upsert(
+    {
+      organization_id: orgId,
+      passo_id: id,
+      task_id: tarefa.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "organization_id,passo_id" },
+  );
   if (erroDoVinculo) {
     // A tarefa já existe em Tarefas; só o vínculo falhou. Diz a verdade em vez de fingir sucesso.
     return fail(
@@ -74,6 +94,13 @@ export async function POST(_req: Request, { params }: Contexto): Promise<Respons
     );
   }
 
+  await registrarHistorico(supabase, {
+    orgId,
+    userId,
+    passoId: id,
+    acao: "tarefa_criada",
+    detalhe: { noPlano },
+  });
   await audit({
     organizationId: orgId,
     actorUserId: userId,

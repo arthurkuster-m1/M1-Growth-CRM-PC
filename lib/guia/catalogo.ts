@@ -130,6 +130,7 @@ export const PASSOS: readonly PassoDoMapa[] = [
   },
   {
     id: "P00.4",
+    lado: "cliente",
     fase: "cadastros",
     titulo: "Equipe e papéis",
     porque: "Cada tarefa e cada lead precisa de uma pessoa responsável.",
@@ -146,6 +147,7 @@ export const PASSOS: readonly PassoDoMapa[] = [
   },
   {
     id: "P00.5",
+    lado: "cliente",
     fase: "cadastros",
     titulo: "Acessos de anúncio (Business Manager, conta, Página, Pixel)",
     porque: "É por aqui que os anúncios e as vendas se encontram.",
@@ -414,6 +416,7 @@ export const PASSOS: readonly PassoDoMapa[] = [
   },
   {
     id: "P35",
+    lado: "cliente",
     fase: "captacao",
     titulo: "Google Meu Negócio e presença local",
     porque: "Quem procura perto de casa acha a empresa sem pagar anúncio.",
@@ -564,6 +567,7 @@ export const PASSOS: readonly PassoDoMapa[] = [
   },
   {
     id: "P47",
+    lado: "cliente",
     fase: "venda",
     titulo: "Registro de vendas no CRM",
     porque: "É o que fecha o ciclo: sem venda registrada, não dá para saber o que deu resultado.",
