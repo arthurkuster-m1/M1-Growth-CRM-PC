@@ -10,3 +10,4 @@ export * from "./Feedback";
 export * from "./Layout";
 export { cx, brl } from "./cx";
 export * from "./Ordenavel";
+export * from "./ListaCelula";

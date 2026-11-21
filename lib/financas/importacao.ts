@@ -370,9 +370,15 @@ export function chavesComOcorrencia(chaves: string[]): string[] {
   });
 }
 
+import { sha256HexPuro } from "./sha256";
+
 export async function sha256Hex(texto: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  // `crypto.subtle` só existe em conexão segura (https/localhost): fora dela, vale o SHA-256 em JS puro.
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  return sha256HexPuro(texto);
 }
 
 export type Existente = {

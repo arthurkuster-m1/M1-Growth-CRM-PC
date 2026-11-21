@@ -123,3 +123,19 @@ export const conferenciaDeFaturaSchema = z
     total_banco_cents: z.number().int().min(0).max(1_000_000_000_000).nullable(),
   })
   .strict();
+
+/** Importação em massa: lançamentos já com a impressão digital (SHA-256 da linha), para não duplicar ao reimportar. */
+export const importarLancamentosSchema = z.object({
+  lancamentos: z
+    .array(
+      z
+        .object({
+          ...campos,
+          status: campos.status.default("pago"),
+          import_hash: z.string().regex(/^[0-9a-f]{64}$/, "Impressão digital inválida."),
+        })
+        .strict(),
+    )
+    .min(1)
+    .max(500),
+});
