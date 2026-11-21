@@ -1,6 +1,6 @@
 -- manifest: **Finanças: cobranças da Meta no cartão.** `fin_orcamento_config.conta_meta_id` marca qual cartão a Meta cobra. `fin_cobrancas_meta` guarda cada cobrança lida da plataforma de anúncios (id da Meta, data/hora, valor cobrado, moeda, estado paga/recusada/estornada, JSON cru) — única por empresa e id; escrita só pelo servidor (service role). Cobrança paga vira UMA saída no cartão (`origem = 'meta'`, `ref_externa = 'meta:<id>'`, categoria "Tráfego pago", fatura pelo fechamento do cartão); estorno vira entrada no mesmo cartão; recusada não vira lançamento (nada saiu) — vira alerta. `fin_meta_estado` guarda a última leitura, o último erro e a situação da conta de anúncio (para a faixa de alerta). Gatilho só escreve em `fin_transactions` (nada de HTTP). `fn_fin_importar_cobrancas_meta(org)` refaz os lançamentos das cobranças já guardadas (usada ao ligar o cartão). Aditiva e idempotente.
 
--- 0704 — FINANÇAS: COBRANÇAS DA META NO CARTÃO
+-- 0705 — FINANÇAS: COBRANÇAS DA META NO CARTÃO
 --
 -- O valor lançado é o que a Meta COBROU (com imposto), não o gasto das campanhas. A cobrança é a fonte
 -- da verdade: valor, data e tipo vêm dela; a empresa ajusta só categoria e anotação.
@@ -8,7 +8,7 @@
 alter table public.fin_orcamento_config
   add column if not exists conta_meta_id uuid references public.fin_accounts(id) on delete set null;
 comment on column public.fin_orcamento_config.conta_meta_id is
-  'Cartão que a Meta cobra (0704). As cobranças lidas da plataforma viram saídas neste cartão.';
+  'Cartão que a Meta cobra (0705). As cobranças lidas da plataforma viram saídas neste cartão.';
 
 create table if not exists public.fin_cobrancas_meta (
   id uuid primary key default gen_random_uuid(),

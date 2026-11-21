@@ -23,7 +23,7 @@ export async function GET(): Promise<Response> {
     .select("conta_meta_id")
     .eq("organization_id", orgId)
     .maybeSingle();
-  // Sem a migration das cobranças (0704) a tela some com a parte da Meta, sem quebrar o resto.
+  // Sem a migration das cobranças (0705) a tela some com a parte da Meta, sem quebrar o resto.
   if (faltaMigration(cfg.error) || (cfg.error && /conta_meta_id/.test(cfg.error.message ?? "")))
     return ok({ disponivel: false }, { requestId });
   if (cfg.error) return respostaDeErroDoBanco(cfg.error, requestId, "meta.estado.config");

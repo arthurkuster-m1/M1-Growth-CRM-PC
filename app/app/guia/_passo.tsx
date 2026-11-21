@@ -14,7 +14,10 @@ import { cn } from "@/lib/utils";
 
 import { promptsDoPasso, montarPrompt } from "@/lib/guia/prompts";
 
+import { comRetornoAoGuia } from "@/lib/guia/retorno";
+
 import { buscarDossie, copiarTexto } from "./_copiar";
+import { AssistenteDeHorarios } from "./_horarios";
 import { COR_DO_ESTADO, rotuloDoEstado } from "./_rotulos";
 
 type Marca = { estado: "feito" | "dispensado"; motivo?: string } | null;
@@ -58,6 +61,7 @@ export function PassoDoGuia({
   const [ocupado, setOcupado] = useState(false);
   const [dispensando, setDispensando] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [horariosAbertos, setHorariosAbertos] = useState(false);
 
   const atualizar = () => qc.invalidateQueries({ queryKey: CHAVE_DO_GUIA });
   const gravar = (marca: Marca) =>
@@ -212,7 +216,7 @@ export function PassoDoGuia({
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={p.onde.href} className={cn(BOTAO, "text-primary")}>
+          <Link href={comRetornoAoGuia(p.onde.href)} className={cn(BOTAO, "text-primary")}>
             {t("Abrir")}: {p.onde.rotulo}
           </Link>
           {pedeAcao ? (
@@ -243,6 +247,15 @@ export function PassoDoGuia({
               onClick={() => marcar(null, t("Passo reaberto."))}
             >
               {t("Reabrir")}
+            </button>
+          ) : null}
+          {p.id === "P42" && pedeAcao ? (
+            <button
+              type="button"
+              className={cn(BOTAO, "border-primary")}
+              onClick={() => setHorariosAbertos(true)}
+            >
+              {t("Definir os horários aqui")}
             </button>
           ) : null}
           {noPlano ? (
@@ -281,6 +294,9 @@ export function PassoDoGuia({
           ) : null}
         </div>
       )}
+      {p.id === "P42" ? (
+        <AssistenteDeHorarios aberto={horariosAbertos} aoFechar={() => setHorariosAbertos(false)} />
+      ) : null}
     </li>
   );
 }

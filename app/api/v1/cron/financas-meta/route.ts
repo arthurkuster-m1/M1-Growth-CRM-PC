@@ -38,9 +38,9 @@ export async function GET(req: NextRequest): Promise<Response> {
     .not("conta_meta_id", "is", null)
     .limit(LIMITE);
   if (error) {
-    // sem a migration 0704 ainda: não há nada para ler, e isso não é falha do relógio
+    // sem a migration 0705 ainda: não há nada para ler, e isso não é falha do relógio
     if (/conta_meta_id|does not exist|schema cache/i.test(error.message)) {
-      return ok({ lidas: 0, falhas: 0, motivo: "migration_0704_pendente" }, { requestId });
+      return ok({ lidas: 0, falhas: 0, motivo: "migration_0705_pendente" }, { requestId });
     }
     logger.error("[financas-meta] a consulta falhou", {
       request_id: requestId,

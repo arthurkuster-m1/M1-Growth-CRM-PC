@@ -12,6 +12,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { coletarSinais } from "@/lib/guia/coletar-sinais";
 import {
+  lerAprendizadosDoDossie,
   lerCampanhasDoDossie,
   lerCriativosDoDossie,
   lerPaginasDoDossie,
@@ -44,14 +45,16 @@ export async function GET(req: Request): Promise<Response> {
   if (!consulta.success) return fail("validation_failed", "Pedido inválido.", 422, { requestId });
 
   try {
-    const [guardado, sinais, empresa, paginas, campanhas, criativos] = await Promise.all([
-      lerGuardado(supabase, orgId),
-      coletarSinais(supabase, orgId),
-      nomeDaEmpresa(supabase, orgId),
-      lerPaginasDoDossie(supabase, orgId),
-      lerCampanhasDoDossie(supabase, orgId),
-      lerCriativosDoDossie(supabase, orgId),
-    ]);
+    const [guardado, sinais, empresa, paginas, campanhas, criativos, aprendizados] =
+      await Promise.all([
+        lerGuardado(supabase, orgId),
+        coletarSinais(supabase, orgId),
+        nomeDaEmpresa(supabase, orgId),
+        lerPaginasDoDossie(supabase, orgId),
+        lerCampanhasDoDossie(supabase, orgId),
+        lerCriativosDoDossie(supabase, orgId),
+        lerAprendizadosDoDossie(supabase, orgId),
+      ]);
     const agora = new Date();
     const diagnostico = diagnosticar({
       perfil: guardado.perfil ? perfilParaDiagnostico(guardado.perfil) : null,
@@ -68,6 +71,7 @@ export async function GET(req: Request): Promise<Response> {
         paginas,
         campanhas,
         criativos,
+        aprendizados,
         geradoEm: agora,
       },
       consulta.data,

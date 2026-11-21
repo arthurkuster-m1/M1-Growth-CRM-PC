@@ -30,6 +30,8 @@ export function useDiagnosticoDoGuia(opts: { ativo?: boolean } = {}) {
       (await apiClient.get<{ data: RespostaDoGuia }>("/api/v1/guia/diagnostico")).data,
     retry: false,
     staleTime: 30_000,
+    // Quem volta de uma tela de configuração (botão "Voltar") precisa ver o passo já feito.
+    refetchOnMount: "always",
     enabled: opts.ativo ?? true,
   });
 }

@@ -51,3 +51,6 @@ export async function lerCorpo<S extends z.ZodType>(
 
 export const SEM_MIGRATION =
   "O banco ainda não recebeu a atualização do Guia (migration 0702). Peça para aplicá-la na VPS.";
+
+export const SEM_IDEIAS =
+  "O banco ainda não recebeu a atualização das ideias do Guia (migration 0704). Peça para aplicá-la na VPS.";

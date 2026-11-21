@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { janelasDaAgenda } from "./horarios";
 import type { Leitura, Sinais } from "./tipos";
 
 type Cliente = SupabaseClient;
@@ -273,9 +274,8 @@ export async function coletarSinais(supabase: Cliente, orgId: string): Promise<S
       );
       return {
         tipos,
-        atendentesComHorario: horarios.filter(
-          (h) => h.schedule && Object.keys(h.schedule).length > 0,
-        ).length,
+        // Só conta quem tem janela de verdade: agenda vazia ou sem janelas = "sempre disponível".
+        atendentesComHorario: horarios.filter((h) => janelasDaAgenda(h.schedule).length > 0).length,
       };
     }),
 

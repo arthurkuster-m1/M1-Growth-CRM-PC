@@ -669,6 +669,14 @@ export const AUDIT_ACTIONS = [
   // O plano do cliente (0703): montar o plano padrão e mexer num item (responsável, prazo, lado, ordem).
   "guia.plano_montado",
   "guia.plano_item_alterado",
+  // As ideias do Guia (0704): aceitar/dispensar/reabrir, o veredito humano e os aprendizados.
+  "guia.ideias_geradas",
+  "guia.ideia_aceita",
+  "guia.ideia_dispensada",
+  "guia.ideia_feita",
+  "guia.ideia_reaberta",
+  "guia.ideia_veredito",
+  "guia.aprendizado_criado",
   "financas.lancamento_criado",
   "financas.lancamento_alterado",
   "financas.lancamento_removido",

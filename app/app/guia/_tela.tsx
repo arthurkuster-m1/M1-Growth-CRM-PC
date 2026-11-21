@@ -1,13 +1,16 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { useDiagnosticoDoGuia } from "@/hooks/guia/useDiagnosticoDoGuia";
 import { ApiError } from "@/lib/api/types";
+import { abaDoGuia } from "@/lib/guia/retorno";
 import { FASES } from "@/lib/guia/tipos";
 
 import { DossieEIa } from "./_dossie";
+import { IdeiasDoGuia } from "./_ideias";
 import { PlanoDoGuia } from "./_plano";
 import { FormularioDoPerfil } from "./_perfil";
 import { PassoDoGuia } from "./_passo";
@@ -22,7 +25,9 @@ export function GuiaTela() {
   const q = useDiagnosticoDoGuia();
   const [verTodos, setVerTodos] = useState(false);
   const [editandoPerfil, setEditandoPerfil] = useState(false);
-  const [aba, setAba] = useState<"guia" | "plano" | "dossie">("guia");
+  // Quem volta de uma tela de configuração (`?aba=plano`) cai na aba de onde saiu.
+  const parametros = useSearchParams();
+  const [aba, setAba] = useState(() => abaDoGuia(parametros.get("aba")));
 
   if (q.isLoading)
     return <div className="h-40 animate-pulse rounded-3xl bg-secondary" aria-busy="true" />;
@@ -54,6 +59,7 @@ export function GuiaTela() {
           [
             ["guia", t("Guia")],
             ["plano", t("Plano")],
+            ["ideias", t("Ideias")],
             ["dossie", t("Dossiê e IA")],
           ] as const
         ).map(([id, rotulo]) => (
@@ -71,6 +77,7 @@ export function GuiaTela() {
       </div>
       {aba === "dossie" ? <DossieEIa /> : null}
       {aba === "plano" ? <PlanoDoGuia resposta={q.data} /> : null}
+      {aba === "ideias" ? <IdeiasDoGuia temPerfil={!!perfil} /> : null}
       {aba === "guia" ? (
         <>
           <section

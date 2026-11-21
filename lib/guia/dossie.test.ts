@@ -33,6 +33,7 @@ function dados(sobre: Partial<DadosDoDossie> = {}): DadosDoDossie {
     paginas: ok([]),
     campanhas: ok([]),
     criativos: ok([]),
+    aprendizados: ok([]),
     geradoEm: AGORA,
     ...sobre,
   };
@@ -41,11 +42,11 @@ function dados(sobre: Partial<DadosDoDossie> = {}): DadosDoDossie {
 const semEspacosEspeciais = (s: string) => s.replace(/ /g, " ");
 
 describe("montarDossie", () => {
-  it("traz as 10 seções, em ordem, e o nome da empresa", () => {
+  it("traz as 11 seções, em ordem, e o nome da empresa", () => {
     const { markdown } = montarDossie(dados(), { tamanho: "completo" });
     expect(markdown).toMatch(/^# Dossiê do projeto — Clínica Sorriso/);
     const titulos = [...markdown.matchAll(/^## (\d+)\. /gm)].map((m) => Number(m[1]));
-    expect(titulos).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(titulos).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
   it("diz à IA para não inventar e deixa claro que não há dado pessoal de lead", () => {
@@ -138,14 +139,44 @@ describe("montarDossie", () => {
 
   it("parte que não pôde ser lida vira aviso, não buraco nem erro", () => {
     const { markdown } = montarDossie(
-      dados({ campanhas: falhou, criativos: falhou, paginas: falhou }),
+      dados({ campanhas: falhou, criativos: falhou, paginas: falhou, aprendizados: falhou }),
       {
         tamanho: "completo",
       },
     );
     expect(
       markdown.match(/Não consegui ler esta parte agora \(banco indisponível\)/g),
-    ).toHaveLength(4);
+    ).toHaveLength(5);
+  });
+
+  it("os aprendizados entram, dizendo o que NÃO repetir; sem nenhum, avisa que não se sabe", () => {
+    const com = montarDossie(
+      dados({
+        aprendizados: ok([
+          {
+            titulo: "Criativo em vídeo curto",
+            hipotese: "CTR baixo",
+            resultado: "CPL caiu 30%",
+            veredito: "funcionou",
+            em: "2026-11-10",
+          },
+          {
+            titulo: "Público amplo",
+            hipotese: null,
+            resultado: "CPL subiu",
+            veredito: "nao_funcionou",
+            em: "2026-11-12",
+          },
+        ]),
+      }),
+      { tamanho: "completo" },
+    ).markdown;
+    expect(com).toMatch(
+      /\*\*FUNCIONOU\*\* — Criativo em vídeo curto \(2026-11-10\)\. Hipótese: CTR baixo\. Resultado: CPL caiu 30%/,
+    );
+    expect(com).toMatch(/\*\*NÃO FUNCIONOU\*\* — Público amplo/);
+    const sem = montarDossie(dados(), { tamanho: "completo" }).markdown;
+    expect(sem).toMatch(/Nenhum aprendizado registrado ainda/);
   });
 
   it("a pergunta entra, limitada; sem pergunta pede os 3 próximos passos", () => {
