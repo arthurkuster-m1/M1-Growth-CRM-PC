@@ -27,6 +27,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   const corpo = await lerCorpo(req, conferenciaSchema, requestId);
   if (!corpo.ok) return corpo.response;
   const c = corpo.dados;
+  const contaId = c.conta;
 
   const { data: conta } = await supabase
     .from("fin_accounts")
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   await audit({
     action: "financas.saldo_conferido",
     resourceType: "fin_account",
-    resourceId: c.conta,
+    resourceId: contaId,
     requestId,
     metadata: { destino: c.destino, diferenca_cents: dif },
   });

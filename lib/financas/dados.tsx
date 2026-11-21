@@ -31,6 +31,7 @@ import type {
   TipoConta,
 } from "./tipos";
 import { hoje as hojeIso } from "./formato";
+import type { Existente } from "./importacao";
 import type { PlanoMeta, PlanoTeto } from "./teto";
 
 export type {
@@ -94,6 +95,45 @@ export async function atualizarLancamento(
 }
 export async function excluirLancamento(id: string): Promise<void> {
   await apiClient.delete(`${BASE}/lancamentos/${id}`);
+}
+
+/* ───── Importação em massa ───── */
+export type LancamentoImportado = NovoLancamento & { import_hash: string };
+export const listarParaImportacao = (de: string, ate: string) =>
+  lerLancamentos({ modo: "importacao", de, ate }) as unknown as Promise<Existente[]>;
+
+export class ErroImportacao extends Error {
+  constructor(
+    mensagem: string,
+    public inseridas: number,
+  ) {
+    super(mensagem);
+  }
+}
+/**
+ * Grava em lotes de 100 (o servidor pula as linhas que já entraram, pela impressão digital): pode ser repetida à
+ * vontade — o que já entrou não entra de novo.
+ */
+export async function importarLancamentos(
+  linhas: LancamentoImportado[],
+): Promise<{ inseridas: number; repetidas: number }> {
+  let inseridas = 0;
+  let repetidas = 0;
+  try {
+    for (let i = 0; i < linhas.length; i += 100) {
+      const r = await dado(
+        apiClient.post<{ data: { inseridas: number; repetidas: number } }>(
+          `${BASE}/lancamentos/importar`,
+          { lancamentos: linhas.slice(i, i + 100) },
+        ),
+      );
+      inseridas += r.inseridas;
+      repetidas += r.repetidas;
+    }
+  } catch (e) {
+    throw new ErroImportacao((e as Error).message, inseridas);
+  }
+  return { inseridas, repetidas };
 }
 
 /* ───── Saldos e patrimônio ───── */

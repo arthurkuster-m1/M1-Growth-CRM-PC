@@ -666,6 +666,17 @@ export const AUDIT_ACTIONS = [
   "guia.tarefa_criada",
   // Gerar o Dossiê tira informação do sistema (vai para uma IA fora): rastro, sem guardar o conteúdo.
   "guia.dossie_gerado",
+  // O plano do cliente (0703): montar o plano padrão e mexer num item (responsável, prazo, lado, ordem).
+  "guia.plano_montado",
+  "guia.plano_item_alterado",
+  // As ideias do Guia (0704): aceitar/dispensar/reabrir, o veredito humano e os aprendizados.
+  "guia.ideias_geradas",
+  "guia.ideia_aceita",
+  "guia.ideia_dispensada",
+  "guia.ideia_feita",
+  "guia.ideia_reaberta",
+  "guia.ideia_veredito",
+  "guia.aprendizado_criado",
   "financas.lancamento_criado",
   "financas.lancamento_alterado",
   "financas.lancamento_removido",
@@ -681,6 +692,7 @@ export const AUDIT_ACTIONS = [
   "financas.abertura_alterada",
   "financas.saldo_conferido",
   "financas.fatura_conferida",
+  "financas.lancamentos_importados",
   "comanda.faturada_em_lote",
   // A rodada de renovação — e ela só audita quando FEZ algo, como manda a regra
   // do cron desta base. Uma linha por rodada com efeito, carregando a contagem:

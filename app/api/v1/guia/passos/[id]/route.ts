@@ -9,7 +9,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { passoPorId } from "@/lib/guia/catalogo";
-import { faltaMigrationDoGuia } from "@/lib/guia/guardado";
+import { faltaMigrationDoGuia, registrarHistorico } from "@/lib/guia/guardado";
 import { SEM_MIGRATION, autorizarGuia, lerCorpo } from "@/lib/guia/servidor";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 
@@ -60,15 +60,22 @@ export async function PUT(req: Request, { params }: Contexto): Promise<Response>
       })
       .eq("organization_id", orgId)
       .eq("passo_id", id));
-    // Sem marcação e sem tarefa ligada, a linha não tem mais nada a guardar.
+    // Sem marcação, sem tarefa ligada e fora do plano, a linha não tem mais nada a guardar.
     if (!erro) {
-      ({ error: erro } = await supabase
-        .from("guia_passos")
-        .delete()
-        .eq("organization_id", orgId)
-        .eq("passo_id", id)
-        .is("estado", null)
-        .is("task_id", null));
+      const apagar = (soForaDoPlano: boolean) => {
+        const q = supabase
+          .from("guia_passos")
+          .delete()
+          .eq("organization_id", orgId)
+          .eq("passo_id", id)
+          .is("estado", null)
+          .is("task_id", null);
+        return soForaDoPlano ? q.eq("no_plano", false) : q;
+      };
+      let r = await apagar(true);
+      // Banco sem a 0703: não há plano, então nenhuma linha está nele.
+      if (r.error && faltaMigrationDoGuia(r.error)) r = await apagar(false);
+      erro = r.error;
     }
   }
   if (erro) {
@@ -77,6 +84,15 @@ export async function PUT(req: Request, { params }: Contexto): Promise<Response>
     return fail("internal_error", "Não foi possível salvar a marcação.", 500, { requestId });
   }
 
+  await registrarHistorico(supabase, {
+    orgId,
+    userId,
+    passoId: id,
+    acao: estado ? "passo_marcado" : "passo_reaberto",
+    detalhe: estado
+      ? { estado, ...(estado === "dispensado" && motivo ? { motivo: motivo.slice(0, 200) } : {}) }
+      : {},
+  });
   await audit({
     organizationId: orgId,
     actorUserId: userId,

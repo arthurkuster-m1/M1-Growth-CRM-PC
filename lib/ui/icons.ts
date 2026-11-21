@@ -143,6 +143,8 @@ export {
   CreditCard,
   ListMagnifyingGlass,
   WarningCircle,
+  FileCsv,
+  XCircle,
   CaretUpDown,
   SignOut,
   WebhooksLogo,
