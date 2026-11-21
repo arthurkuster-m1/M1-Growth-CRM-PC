@@ -60032,8 +60032,8 @@ begin
   end loop;
 end $$;
 
--- ---- migration 0703 ----
--- 0703 — MOTOR ÚNICO, PASSO 2a: o sujeito do fluxo de automação
+-- ---- migration 0705 ----
+-- 0705 — MOTOR ÚNICO, PASSO 2a: o sujeito do fluxo de automação
 --
 -- Só ESTRUTURA. Nenhum fluxo existente muda: toda linha de `followup_enrollments` de hoje continua
 -- exigindo contato (a regra nova vive no trigger, e só afrouxa para `surface = 'crm_automation'`,

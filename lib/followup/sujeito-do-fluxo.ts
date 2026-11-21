@@ -3,7 +3,7 @@
  *
  * Um fluxo de follow-up é do CONTATO. Um fluxo de automação de CRM (`surface='crm_automation'`) é do
  * OBJETO DO EVENTO — um lead, um contato ou um compromisso — e pode não ter contato nem conversa
- * (migration 0703). Este arquivo é o único lugar que diz o que isso muda para o motor.
+ * (migration 0705). Este arquivo é o único lugar que diz o que isso muda para o motor.
  */
 import type { NodeType } from "./graph-schema";
 import type { EnrollmentRow } from "./node-handlers";
