@@ -57,6 +57,8 @@ export interface EnrollmentRow {
   contact_id: string | null;
   subject_kind?: "lead" | "contact" | "appointment" | null;
   subject_id?: string | null;
+  /** O evento do `event_log` que inscreveu o fluxo (automação de CRM). */
+  source_event_id?: string | null;
   conversation_id: string | null;
   current_node_id: string;
   status: EnrollmentStatus;
@@ -906,6 +908,15 @@ export function processNode(input: {
       // este nó não está em `NOS_QUE_ENVIAM`).
       const edge = selectEdge(edges, node.id, { type: "always" });
       if (!edge) return { kind: "fail", error: `edit_lead_tag node "${node.id}" has no outbound edge` };
+      return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+    }
+
+    case "crm_action": {
+      // Motor único (Fase 3): a ação de automação de CRM é PASSAGEM no relógio, como o `edit_lead_tag`. O
+      // motor a executa ao aplicar o `advance`, depois do evento do passo (a trava de idempotência), e antes
+      // dela consulta o adiamento da ação (janela de envio do canal) — ver `engine.ts`.
+      const edge = selectEdge(edges, node.id, { type: "always" });
+      if (!edge) return { kind: "fail", error: `crm_action node "${node.id}" has no outbound edge` };
       return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
     }
 

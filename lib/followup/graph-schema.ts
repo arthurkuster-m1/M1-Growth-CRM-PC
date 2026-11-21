@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { actionSchema } from '@/lib/schemas/webhooks';
 import { PRIORIDADES_DA_TAREFA } from '@/lib/tarefas/tipos';
 
 /**
@@ -28,6 +29,10 @@ export const NODE_TYPES = [
   // fora desta fatia e é o passo seguinte da issue.
   'move_lead',
   'edit_lead_tag',
+  // Motor único (docs/PLANO-MOTOR-UNICO-M1.md, Fase 3): UMA ação de automação de CRM — qualquer das que as
+  // regras já executam (WhatsApp, atribuir, webhook, criar/mover lead, plano de tarefas, "a IA decide"...).
+  // Só existe em `surface='crm_automation'`; roda a MESMA ação registrada em `lib/automation/actions/`.
+  'crm_action',
   'end',
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -297,6 +302,13 @@ export const internalTaskConfigSchema = z.strictObject({
 export const moveLeadConfigSchema = z.strictObject({
   stage_id: z.string().max(64),
 });
+
+/**
+ * Nó `crm_action` — uma ação de automação de CRM. `action` é exatamente o que `automation_rules.actions[]`
+ * guarda (`{ type, config }`), validado pelo MESMO `actionSchema` das regras: uma ação que a regra recusa,
+ * o fluxo também recusa, e uma regra migrada vira nó sem tradução de formato.
+ */
+export const crmActionConfigSchema = z.strictObject({ action: actionSchema });
 
 /**
  * Nó `edit_lead_tag` (#2065) — grava tag no lead, o merge idempotente da ação
@@ -580,6 +592,17 @@ export const flowNodeSchema = z.discriminatedUnion('type', [
       y: z.number(),
     }),
     config: editLeadTagConfigSchema,
+  }),
+  // Ação de automação de CRM (motor único): o config é a ação INTEIRA, no mesmo formato das regras.
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('crm_action'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: crmActionConfigSchema,
   }),
   // End node: terminal state
   z.strictObject({

@@ -103,3 +103,19 @@ O motor de follow-up inteiro lê o lead **a partir do contato** (`lib/followup/e
 - Um fluxo vivo por (fluxo, sujeito): o mesmo evento repetido enquanto o fluxo roda não duplica.
 - Guardas do repositório atendidas: `next_eval_at` fica a cargo do relógio do banco; o seletor de gatilho do follow-up **não** oferece `event` (exceção escrita em `tests/unit/gatilhos-oferecidos-tem-motor.test.ts`, que reprova a entrada quando a tela passar a oferecê-lo — Fase 5); `EVENTOS_DO_CRM` em `vocabulario.ts` espelha os rótulos das regras, com teste de não divergência.
 - **Ainda nenhum fluxo `crm_automation` existe** (nenhuma tela ou rota cria), então nada muda para ninguém hoje. Quem o cria até a Fase 5 é a API.
+
+## 8. Fase 3 — nós de ação (feita, 21/11/2026)
+**Decisão de desenho:** UM tipo de nó, `crm_action`, cujo config é a **ação inteira no formato das regras** (`{ action: { type, config } }`), validada pelo mesmo `actionSchema` (inclui `ai_decide`). Em vez de 9 nós novos (e 9 formulários, 9 visuais...), todas as ações das regras viram o mesmo nó; uma regra migrada (Fase 4) vira nó sem traduzir formato.
+
+**Como roda** (`lib/followup/acao-de-crm.ts`, `engine.ts`):
+- Executa a **mesma ação registrada** em `lib/automation/actions/` (WhatsApp, IA, tag, atribuir, webhook, criar/mover lead, tarefa, plano de tarefas, iniciar fluxo de mensagem, "a IA decide"), com o contexto que elas esperam: o **evento de origem** relido do `event_log` (filtrando a organização), lead/contato hidratados por `buildContext`, `ruleId = followup:<inscrição>` (marca anti-laço), `actionIndex` e lista de ações **na ordem do grafo** (compõem o id da entrega do webhook).
+- Janela do canal, limite diário, ritmo, trava de contato pessoal, consentimento e a **conversa aberta na hora de enviar** continuam vivendo nas ações — nada de envio foi reescrito.
+- **Adiamento:** antes do passo o motor pergunta à ação (`postponeUntil`). Se pede para esperar, **não executa, não avança**, grava `crm_action_adiada` e reagenda para a hora pedida (avançar daria como feito um envio que não saiu).
+- **Execução** depois do evento do passo (a trava de idempotência): replay do tick não manda duas vezes (na dúvida, nunca duas). O **resultado** vai para o histórico (`crm_action_result`: sucesso, pulou ou falhou, com o motivo) e o fluxo segue mesmo se a ação falhou, como as regras seguem para a próxima.
+- **Publicar:** `crm_action` só vale em `surface='crm_automation'`; ação que reabriria o próprio gatilho (`assign_owner`/`create_or_move_lead` nos gatilhos do trigger do banco) é recusada com `acao_fecha_laco` — o mesmo veto da API das regras; na execução há a mesma defesa em profundidade.
+- Vocabulário: `ACOES_DO_CRM` e `ALVOS_DA_TAG` em `vocabulario.ts`, com teste de não divergência contra `ACTION_LABELS`.
+
+**Testes novos:** `tests/unit/acao-de-crm-no-motor.test.ts` (9), `lib/followup/acao-de-crm.test.ts` (7), `lib/followup/validate-publish-crm-action.test.ts` (5) e os de rótulos. Regressão: `tests/unit` com as mesmas 142 falhas de antes, nenhuma nova.
+
+**Não provado ainda (precisa de banco/WhatsApp real):** a fronteira de atendimento (`serviceForEvent`) é amarrada ao **evento de origem**. Num fluxo com espera longa antes de enviar, ela pode estar obsoleta quando a ação rodar — nesse caso a ação falha com o motivo (não envia para conversa errada). Confirmar com um fluxo real "esperar 2 dias → enviar" é o primeiro teste da Fase 4/5.
+**Ainda sem tela:** não há editor para criar um fluxo `crm_automation` (Fase 5); o nó já aparece nos resumos, no canvas e no dossiê do fluxo.

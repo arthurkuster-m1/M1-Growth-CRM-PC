@@ -648,6 +648,30 @@ export const EVENTOS_DO_CRM: Record<(typeof TRIGGER_EVENTS)[number], string> = {
 };
 
 /**
+ * As ações de uma automação de CRM (`crm_action`), na frase que a tela das regras já usa — a MESMA lista de
+ * `ACTION_LABELS` (`app/app/webhooks/_components/labels.ts`), copiada porque `lib` não importa de `app`
+ * (`lib/followup/gatilho-evento.test.ts` trava as duas). `ai_decide` não está lá: é do motor, não da lista.
+ */
+export const ACOES_DO_CRM: Record<string, string> = {
+  create_or_move_lead: "Criar/mover lead no funil",
+  send_whatsapp_message: "Enviar mensagem no WhatsApp",
+  send_ai_message: "Mensagem escrita pela IA",
+  add_tag: "Adicionar tag",
+  assign_owner: "Atribuir a um atendente",
+  call_webhook: "Avisar outro sistema (webhook)",
+  start_message_flow: "Iniciar fluxo de mensagem",
+  create_task: "Criar tarefa interna (sem mensagem ao cliente)",
+  apply_task_plan: "Aplicar um plano de tarefas ao negócio",
+  ai_decide: "A IA decide",
+};
+
+/** Onde a ação "adicionar tag" grava quando o evento traz lead e contato (`action.config.alvo`). */
+export const ALVOS_DA_TAG: Record<"lead" | "contato", string> = {
+  lead: "No lead",
+  contato: "No contato",
+};
+
+/**
  * De onde conta a pausa antes de o gatilho de silêncio recomeçar
  * (`params.reentry_pause_basis`). A tela a oferece como um interruptor, mas o
  * valor não pode chegar cru a quem lê o gatilho em outro lugar.

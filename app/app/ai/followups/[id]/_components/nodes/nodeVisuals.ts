@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 
-import { Bell, Play, Clock, GitBranch, Brain, ChatCircle, ArrowsClockwise, PaperPlaneTilt, Flag, Question, PuzzlePiece, Funnel, Tag } from "@/lib/ui/icons";
+import { Bell, Play, Clock, GitBranch, Brain, ChatCircle, ArrowsClockwise, PaperPlaneTilt, Flag, Question, PuzzlePiece, Funnel, Tag, Lightning } from "@/lib/ui/icons";
 import type { FlowNode, NodeType } from "@/lib/followup/graph-schema";
-import { RESULTADOS_DO_FIM } from "@/lib/followup/vocabulario";
+import { ACOES_DO_CRM, RESULTADOS_DO_FIM } from "@/lib/followup/vocabulario";
 import { NOS_DA_SUPERFICIE } from "@/lib/followup/validate-publish";
 
 /**
@@ -187,6 +187,16 @@ export const NODE_VISUALS: Record<NodeType, NodeVisual> = {
     defaultLabel: "Gravar tag no lead",
     defaultConfig: () => ({ tags: [] }),
   },
+  crm_action: {
+    type: "crm_action",
+    paletteLabel: "Ação da automação",
+    icon: Lightning,
+    chipClassName: "bg-success-bg text-success-fg",
+    borderClassName: "border-l-success",
+    defaultLabel: "Ação da automação",
+    // Sem ação padrão que faça algo por engano: o editor das automações (Fase 5) escolhe a ação.
+    defaultConfig: () => ({ action: { type: "add_tag", config: { tags: ["Nova tag"] } } }) as FlowNode["config"],
+  },
   end: {
     type: "end",
     paletteLabel: "Fim",
@@ -292,6 +302,10 @@ export function describeNodeConfig(
     case "edit_lead_tag": {
       const c = config as ConfigOf<"edit_lead_tag">;
       return c.tags.length ? c.tags.join(", ") : t("sem tag escolhida");
+    }
+    case "crm_action": {
+      const c = config as ConfigOf<"crm_action">;
+      return t(ACOES_DO_CRM[c.action.type] ?? "executa uma ação");
     }
     case "end": {
       const c = config as ConfigOf<"end">;

@@ -42,6 +42,8 @@ describe('graph-schema', () => {
         // #2065 — dois tipos de ação que não falam com o cliente.
         'move_lead',
         'edit_lead_tag',
+        // Motor único (Fase 3): uma ação de automação de CRM.
+        'crm_action',
         'end',
       ]);
     });

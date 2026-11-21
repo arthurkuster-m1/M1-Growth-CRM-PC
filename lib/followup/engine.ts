@@ -54,12 +54,14 @@ import { criarTarefaInterna as criarTarefaNoCrm } from "@/lib/tarefas/criar-tare
 import { moveLeadHandler } from "@/app/api/v1/leads/_handler";
 import type { HandlerCtx } from "@/lib/api/handlers/types";
 import { getAction } from "@/lib/automation/actions";
+import type { ActionResultDetail } from "@/lib/automation/types";
 // Efeito de import: registra a ação `add_tag` no MESMO mapa que o motor de
 // automação usa. A tag do follow-up é a tag da automação — não uma segunda.
 import "@/lib/automation/actions/add-tag";
 import type { EventRow } from "@/lib/event-log/dispatcher";
 import { quandoDoRetornoVivo, reavaliarDepoisDoRetorno } from "./retorno-segura-o-fluxo";
 import { triggerConfigSchema } from "./api-schemas";
+import type { ItemDeAcaoDeCrm } from "./acao-de-crm";
 import {
   ERRO_FLUXO_SEM_CONTATO,
   exigeContato,
@@ -205,6 +207,16 @@ export interface AdminClient {
     enrollment_id: string;
     config: Extract<FlowNode, { type: "move_lead" }>["config"];
   }): Promise<void>;
+  /**
+   * Nó `crm_action` (motor único): até quando a ação pede para esperar (janela de envio, limite diário), ou
+   * `null` se pode rodar agora. Opcional; omitida, a ação nunca adia.
+   */
+  adiarAcaoDeCrm?(item: ItemDeAcaoDeCrm): Promise<string | null>;
+  /**
+   * Nó `crm_action`: executa a ação das regras (a MESMA, de `lib/automation/actions/`). Opcional; omitida, o
+   * nó AVANÇA sem executar — é o que um teste de engine puro observa.
+   */
+  executarAcaoDeCrm?(item: ItemDeAcaoDeCrm): Promise<ActionResultDetail>;
   /**
    * Nó `edit_lead_tag` (#2065): merge idempotente de tags no lead — a MESMA
    * `add_tag` do motor de automação. Opcional pelas mesmas razões acima.
@@ -435,6 +447,7 @@ async function applyResult(
   smartWaits: EsperaAdaptativa[] = [],
   events: EnrollmentEventRef[] = [],
   respostaParaGravar: string | null = null,
+  acaoDeCrm: ItemDeAcaoDeCrm | null = null,
 ): Promise<void> {
   const { db, clock, enqueueJob } = deps;
   if (!semContato(enrollment)) await db.assertServiceBoundary?.(enrollment);
@@ -528,6 +541,55 @@ async function applyResult(
       });
     } catch (err) {
       logger.warn("followup_edit_lead_tag_failed", {
+        organization_id: enrollment.organization_id,
+        enrollment_id: enrollment.id,
+        node_id: node.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // ── Motor único (Fase 3): a ação de automação de CRM ─────────────────────
+  //
+  // Mesma forma do `edit_lead_tag`: a ação nasce DEPOIS do evento do passo, e a chave de idempotência
+  // (`${nó}:${passo}`) é a trava — replay do tick não manda a mensagem duas vezes (na dúvida, nunca duas).
+  // Diferente dele, o RESULTADO é gravado como evento próprio: "executou", "pulou" ou "falhou" é o que a
+  // pessoa lê no histórico da automação, e uma ação que não saiu NÃO pode parecer feita. O fluxo segue
+  // mesmo assim, como as regras seguem para a próxima ação.
+  if (result.kind === "advance" && !isReplay && node.type === "crm_action" && acaoDeCrm) {
+    let resultado: ActionResultDetail;
+    try {
+      resultado = (await db.executarAcaoDeCrm?.(acaoDeCrm)) ?? {
+        type: acaoDeCrm.action.type,
+        status: "skipped",
+        error: "executor_indisponivel",
+      };
+    } catch (err) {
+      const mensagem = err instanceof Error ? err.message : String(err);
+      logger.warn("followup_crm_action_failed", {
+        organization_id: enrollment.organization_id,
+        enrollment_id: enrollment.id,
+        node_id: node.id,
+        error: mensagem,
+      });
+      resultado = { type: acaoDeCrm.action.type, status: "failed", error: mensagem };
+    }
+    try {
+      await db.insertEnrollmentEvent({
+        organization_id: enrollment.organization_id,
+        enrollment_id: enrollment.id,
+        node_id: node.id,
+        event_type: "crm_action_result",
+        payload: {
+          action_type: resultado.type,
+          status: resultado.status,
+          ...(resultado.error ? { error: resultado.error.slice(0, MAX_ERROR_LEN) } : {}),
+          ...(resultado.detail ? { detail: resultado.detail } : {}),
+        },
+        idempotency_key: `${idemKey}:acao`,
+      });
+    } catch (err) {
+      logger.warn("followup_crm_action_result_not_recorded", {
         organization_id: enrollment.organization_id,
         enrollment_id: enrollment.id,
         node_id: node.id,
@@ -687,6 +749,32 @@ export async function aplicarRespostaInbound(
 
 /** Um passo do grafo sem claim global — captação arranca o fluxo novo sem
  *  tratar `waiting_reply` de outro lead como timeout. */
+/** Monta o item da ação do nó `crm_action`: a ação, a posição dela entre as do fluxo e o sujeito do evento. */
+function itemDeAcaoDeCrm(
+  enrollment: EnrollmentRow,
+  nodes: ReadonlyArray<FlowNode>,
+  node: Extract<FlowNode, { type: "crm_action" }>,
+): ItemDeAcaoDeCrm {
+  const doFluxo = nodes.filter(
+    (n): n is Extract<FlowNode, { type: "crm_action" }> => n.type === "crm_action",
+  );
+  const indice = doFluxo.findIndex((n) => n.id === node.id);
+  return {
+    organization_id: enrollment.organization_id,
+    enrollment_id: enrollment.id,
+    pointer_id: enrollment.pointer_id,
+    node_id: node.id,
+    source_event_id: enrollment.source_event_id ?? null,
+    subject: sujeitoDe(enrollment),
+    action: { type: node.config.action.type, config: (node.config.action.config ?? {}) as Record<string, unknown> },
+    indice: Math.max(indice, 0),
+    acoes: doFluxo.map((n) => ({
+      type: n.config.action.type,
+      config: (n.config.action.config ?? {}) as Record<string, unknown>,
+    })),
+  };
+}
+
 export async function avancarEnrollmentAtivo(
   deps: TickDeps,
   enrollment: EnrollmentRow,
@@ -905,6 +993,30 @@ async function processEnrollment(
   const nextAlways = selectEdge(graph.edges, node.id, { type: "always" });
   const proximo = nextAlways ? (graph.nodes.find((n) => n.id === nextAlways.target) ?? null) : null;
 
+  // Nó `crm_action`: antes de passar por ele, a ação pode pedir para esperar (janela de envio do número,
+  // limite diário). Esperar NÃO avança o fluxo — avançar daria como feito um envio que não saiu.
+  const acaoDeCrm = node.type === "crm_action" ? itemDeAcaoDeCrm(enrollment, graph.nodes, node) : null;
+  if (acaoDeCrm) {
+    const ate = await db.adiarAcaoDeCrm?.(acaoDeCrm);
+    if (ate) {
+      await db.insertEnrollmentEvent({
+        organization_id: enrollment.organization_id,
+        enrollment_id: enrollment.id,
+        node_id: node.id,
+        event_type: "crm_action_adiada",
+        payload: { action_type: acaoDeCrm.action.type, retry_at: ate },
+        idempotency_key: `${node.id}:${enrollment.steps_taken}:adiada:${ate}`,
+      });
+      await db.updateEnrollment(enrollment.id, enrollment.organization_id, {
+        next_eval_at: ate,
+        claimed_until: null,
+        updated_at: clock().toISOString(),
+      });
+      summary.scheduled++;
+      return;
+    }
+  }
+
   const result = processNode({
     node,
     edges: graph.edges,
@@ -933,6 +1045,7 @@ async function processEnrollment(
     smartWaits,
     events,
     node.type === "match_reply" && wokeEarly ? (lastInboundBody ?? "").trim() || null : null,
+    acaoDeCrm,
   );
 }
 
@@ -1093,6 +1206,15 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
         contact_name: contact?.name ?? null,
         custom_fields: custom,
       };
+    },
+    // Motor único: a ação de automação de CRM vive em módulo próprio, carregado só quando um nó a pede.
+    async adiarAcaoDeCrm(item) {
+      const { adiarAcaoDeCrm } = await import("./acao-de-crm");
+      return adiarAcaoDeCrm(admin, item);
+    },
+    async executarAcaoDeCrm(item) {
+      const { executarAcaoDeCrm } = await import("./acao-de-crm");
+      return executarAcaoDeCrm(admin, item);
     },
     async loadLeadFactsDoSujeito(orgId, sujeito) {
       const lead = sujeito

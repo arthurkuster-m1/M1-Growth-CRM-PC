@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { EventRow } from "@/lib/event-log/dispatcher";
-import { TRIGGER_LABELS } from "@/app/app/webhooks/_components/labels";
+import { ACTION_LABELS, TRIGGER_LABELS } from "@/app/app/webhooks/_components/labels";
 import { TRIGGER_EVENTS } from "@/lib/schemas/webhooks";
 import { triggerConfigSchema } from "./api-schemas";
 import {
@@ -10,7 +10,7 @@ import {
   type GatilhoEventoDb,
   type PointerDeEvento,
 } from "./gatilho-evento";
-import { EVENTOS_DO_CRM } from "./vocabulario";
+import { ACOES_DO_CRM, EVENTOS_DO_CRM } from "./vocabulario";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const LEAD = "44444444-4444-4444-8444-444444444444";
@@ -231,5 +231,11 @@ describe("EVENTOS_DO_CRM", () => {
   it("diz a mesma frase da tela das regras para cada evento — as duas listas não divergem", () => {
     expect(Object.keys(EVENTOS_DO_CRM).sort()).toEqual([...TRIGGER_EVENTS].sort());
     expect(EVENTOS_DO_CRM).toEqual(TRIGGER_LABELS);
+  });
+});
+
+describe("ACOES_DO_CRM", () => {
+  it("diz a mesma frase da tela das regras para cada ação (e a IA decide a mais) — as listas não divergem", () => {
+    expect(ACOES_DO_CRM).toEqual({ ...ACTION_LABELS, ai_decide: "A IA decide" });
   });
 });

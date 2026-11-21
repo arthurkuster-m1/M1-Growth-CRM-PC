@@ -2,6 +2,7 @@ import type { FlowGraph, FlowEdge, FlowNode, NodeType } from './graph-schema';
 import type { FollowupFlowSurface } from './api-schemas';
 import { branchIdForCondition, nodeBranches } from './graph-schema';
 import { rotuloDoRamo } from './rotulo-do-ramo';
+import { acoesQueFechamLaco, MENSAGEM_DO_LACO_DE_LEAD } from '../schemas/webhooks';
 import type { NomesDeValor } from './vocabulario';
 import { capabilitiesOf, transportaMensagem, type ChannelProvider } from '../channels/capabilities';
 
@@ -39,6 +40,8 @@ export const PUBLISH_ERROR_CODES = [
   'etapa_destino_ausente',
   'etapa_destino_arquivada',
   'tag_ausente',
+  // Motor único: ação de automação de CRM que reabriria o próprio gatilho (laço).
+  'acao_fecha_laco',
 ] as const;
 export type PublishErrorCode = (typeof PUBLISH_ERROR_CODES)[number];
 
@@ -79,6 +82,12 @@ export interface ContextoDoPublish {
    * canal não os tem. Ausente = exige (o comportamento de antes).
    */
   exigeModeloForaDaJanela?: boolean;
+  /**
+   * O evento que dispara a automação de CRM (`trigger_config.params.event_type`). Com ele, a ação que
+   * regravaria o próprio lead e reabriria o gatilho (`assign_owner`, `create_or_move_lead` nos gatilhos do
+   * trigger do banco) é recusada na publicação — o mesmo veto da API das regras. Ausente, não confere.
+   */
+  eventoDoGatilho?: string;
 }
 
 /**
@@ -152,7 +161,7 @@ function cicloDoEncadeamento(
  */
 export const NOS_DA_SUPERFICIE: Record<FollowupFlowSurface, readonly NodeType[]> = {
   followup: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'end'],
-  crm_automation: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'end'],
+  crm_automation: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'crm_action', 'end'],
   atendimento: ['trigger', 'collect', 'skill', 'end'],
 };
 
@@ -740,6 +749,9 @@ export function validateFlowForPublish(
   for (const node of [...nodes].sort(byId)) {
     if (node.type === 'move_lead') conferirEtapaDestino(node, contexto, errors);
     if (node.type === 'edit_lead_tag') conferirTags(node, errors);
+    if (node.type === 'crm_action' && acoesQueFechamLaco(contexto.eventoDoGatilho, [node.config.action]).length) {
+      errors.push({ node_id: node.id, code: 'acao_fecha_laco', message: MENSAGEM_DO_LACO_DE_LEAD });
+    }
   }
 
   for (const node of [...nodes].sort(byId)) {

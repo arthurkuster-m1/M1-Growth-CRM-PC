@@ -51,6 +51,8 @@ const TYPE_ORDER: Record<NodeType, number> = {
   // porque são o MEIO do caminho (mover o card, etiquetar) e não o epílogo.
   move_lead: 8.5,
   edit_lead_tag: 8.6,
+  // Ação de automação de CRM (motor único): o mesmo papel de MEIO do caminho das ações acima.
+  crm_action: 8.7,
   end: 9,
 };
 

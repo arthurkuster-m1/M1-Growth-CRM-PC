@@ -33,6 +33,12 @@ import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
 
+/** O evento do gatilho `event` (automação de CRM), ou `undefined` em qualquer outro gatilho. */
+function eventoDoGatilho(triggerConfig: unknown): string | undefined {
+  const lido = triggerConfigSchema.safeParse(triggerConfig);
+  return lido.success && lido.data.kind === "event" ? lido.data.params.event_type : undefined;
+}
+
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type RouteCtx = { params: Promise<{ id: string }> };
@@ -248,6 +254,7 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
     surface,
     roteiro,
     exigeModeloForaDaJanela,
+    eventoDoGatilho: eventoDoGatilho(pointer.trigger_config),
   });
   if (!validation.ok) {
     return fail("validation_failed", t("Fluxo reprovado na validação de publish."), 422, {

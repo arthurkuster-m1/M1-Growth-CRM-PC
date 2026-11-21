@@ -29,6 +29,7 @@ import {
   type FlowNode,
 } from "./graph-schema";
 import {
+  ACOES_DO_CRM,
   FRASE_DE_OUTROS_CASOS,
   RAMOS_RESERVADOS_EM_FRASE,
   fraseDaClasse,
@@ -137,6 +138,7 @@ const TIPO_DO_NO: Record<FlowNode["type"], string> = {
   // #2065 — as duas ações que também não falam com o cliente.
   move_lead: "Mover no funil",
   edit_lead_tag: "Editar tag",
+  crm_action: "Ação da automação",
   end: "Fim",
 };
 
@@ -207,6 +209,8 @@ export function resumoDoNo(node: FlowNode): NoDoDossie {
     }
     case "move_lead":
       return { ...base, resumo: "move o card para outra etapa do funil — sem mensagem ao cliente" };
+    case "crm_action":
+      return { ...base, resumo: `${ACOES_DO_CRM[node.config.action.type] ?? "executa uma ação"} (automação de CRM)` };
     case "edit_lead_tag":
       return {
         ...base,
