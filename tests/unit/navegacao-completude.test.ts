@@ -52,8 +52,6 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/contacts":
     "a lista de contatos virou a visão Clientes da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app/calls": "não será usada; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
-  "/app/comandas":
-    "as comandas viraram a visão Vendas da página CRM; MARCADA PARA EXCLUIR ao final da reorganização do CRM",
   "/app": "redirect para /app/inbox — não é tela, é o ponto de entrada",
   "/app/ai/agents/new":
     "sub-fluxo de criar agente, alcançado pelo botão dentro da lista de Agentes",
@@ -92,7 +90,7 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/settings/tenant/agenda":
     "os Tipos de agendamento são configuração da Agenda e vivem DENTRO dela (ConteudoDaConfiguracaoDaAgenda); a rota segue como o endereço direto da mesma tela",
   "/app/settings/tenant/financeiro":
-    "o catálogo financeiro (contas e formas de pagamento) virou a aba \"Contas e formas de pagamento\" de Finanças; a rota segue como o endereço direto da mesma tela",
+    "as taxas de pagamento (o que a operadora desconta) são ajuste que se faz uma vez; o diálogo da venda também as edita. A rota é o endereço direto da tela",
   "/app/settings/automacoes":
     "o freio do passo \"a IA decide\" vive na aba Ajustes de Automações; a rota segue como o endereço direto da mesma tela",
   "/app/settings/meta-ads":
