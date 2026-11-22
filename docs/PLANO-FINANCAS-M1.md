@@ -98,3 +98,24 @@ Ordem sugerida: **M0 → F1 → F2 → F3 → F4 → F5 → F6 → F9 → F7 →
 2. **Uma conta/cartão por empresa ou várias?** (a família suporta várias; sugestão: várias, com "conta padrão de vendas".)
 3. **Qual cartão a Meta cobra** em cada empresa (cadastrado em Configurações › Cartões, com dia de fechamento e vencimento).
 4. **Autorizar a sonda da Meta** (M0): ela só lê, usa o token que já está salvo, e mostra o resultado só para administradores.
+
+## 9. Para retomar (estado em 22/11/2026)
+
+**Feito e no ar (main):** M0 e F1–F9. Migrations **0700, 0701 e 0705 aplicadas na VPS** (a 0705 trouxe a tabela das cobranças da Meta). Linha do cron `financas-meta` **instalada** no crontab de `ubuntu` (minuto 37, de hora em hora; cópia do crontab antigo em `~/crontab-antes-financas-meta.txt`).
+
+**Pausado a pedido do Arthur — a parte do cartão da Meta (só falta ligar, o código está pronto):**
+1. Conectar a Meta em Conexões › Meta Ads (se ainda não estiver) com a conta de anúncios padrão.
+2. Finanças › Configurações › Cartões: cadastrar o cartão que a Meta cobra (dia de fechamento e vencimento, conta que paga a fatura).
+3. No mesmo lugar, escolher esse cartão em **"Cartão que a Meta cobra"** (sem isso nada é lançado).
+4. Abrir `/api/v1/financas/meta/sonda` logado como administrador e colar o resultado na conversa.
+5. Com o resultado, conferir/ajustar **em um lugar só**, `lib/plataformas-de-anuncio/meta/cobrancas-interpretar.ts`: (a) os nomes dos eventos (`ad_account_billing_charge`, `…_charge_failed`, `…_decline`, `…_chargeback`, `…_refund`); (b) de qual campo de `extra_data` vem o valor (`new_value`, `amount`…) e se está em centavos; (c) se há id da cobrança (`transaction_id`) para não duplicar. Se a Meta não entregar nada pela API: **plano B** = importar o CSV de cobranças em Lançamentos › Em massa.
+6. Clicar em **Atualizar agora** em Faturas, ver as cobranças e a saída no cartão; conferir a fatura contra o banco. Testar o alerta de recusada (faixa vermelha + notificação) quando houver um caso real.
+
+**O que ainda falta para considerar as Finanças fechadas (além do cartão):**
+- **Textos em português/espanhol (F10).** As telas de Finanças foram portadas com o texto fixo em português; a regra da casa é `t("português")` + espanhol em `lib/i18n/dicionario.ts`. Fazer uma passada em `components/financas/**` (incluindo `MetaCobrancas.tsx` e as mensagens das rotas). Não afeta quem usa em português.
+- **Limpar o fluxo antigo (F11, só com autorização do Arthur — é remoção).** Ainda existem no repositório `app/app/comandas`, `app/api/v1/financeiro` e as tabelas/código das comandas; hoje `/app/comandas` só redireciona. Decisão dele: não usar mais. Listar o que sai, confirmar, e só então apagar (tabelas do banco só com SQL passado a ele e autorização).
+- **Uso real pelo Arthur.** Conferir com dados reais: saldo de abertura das contas (Configurações › Contas), conta que recebe as vendas, teto do mês, e se as vendas de Oportunidades › Vendas aparecem como entradas.
+- **Ideias que ficaram de fora de propósito** (voltar só se pedirem): repasse mensal/salário, lembrete de backup, planejamento de renda por cliente, orçamento por categoria e anual.
+
+**Problemas conhecidos que não são das Finanças:** vários testes de proteção já falhavam na `main` antes (lista em `CONTEXTO-M1.md`/histórico da sessão); `supabase/baseline.sql` tem blocos criados depois da "varredura anon" (vale para todo o fork, não só aqui).
+
