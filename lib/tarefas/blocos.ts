@@ -15,6 +15,8 @@ export const TIPOS_DE_BLOCO = [
   "toggle",
   "quote",
   "callout",
+  /** Caixa de texto corrido para colar prompts: várias linhas, com botão "Copiar". */
+  "prompt",
 ] as const;
 
 export type TipoDeBloco = (typeof TIPOS_DE_BLOCO)[number];
@@ -31,8 +33,12 @@ export interface Bloco {
   filhos?: Bloco[];
 }
 
-/** O limite da coluna na API (`description`). */
-export const LIMITE_DA_DESCRICAO = 20000;
+/**
+ * O limite da coluna na API (`description`). A coluna é `text` (sem teto no banco) e o texto que
+ * vai para ela é o JSON dos blocos, que gasta ~60 caracteres de `id`/`tipo` por bloco — por isso
+ * o teto é folgado: colar prompts e documentos grandes é o uso normal.
+ */
+export const LIMITE_DA_DESCRICAO = 500000;
 
 /** Ctrl+Shift+<tecla> → tipo. */
 export const ATALHO_DO_TIPO: Record<TipoDeBloco, string> = {
@@ -46,6 +52,8 @@ export const ATALHO_DO_TIPO: Record<TipoDeBloco, string> = {
   quote: "8",
   callout: "9",
   texto: "0",
+  /** Sem atalho de teclado: nasce pelo menu "/" ou por "```". */
+  prompt: "",
 };
 
 export function novoId(): string {
@@ -224,6 +232,7 @@ const PREFIXO_DO_TIPO: Record<TipoDeBloco, string> = {
   toggle: "> ",
   quote: '" ',
   callout: "",
+  prompt: "",
 };
 
 /** Os blocos como texto (é o que vai para a área de transferência), um por linha, recuados. */
@@ -318,6 +327,68 @@ export function desindentarIds(blocos: Bloco[], ids: ReadonlySet<string>): Bloco
     const saem = b.filhos.filter((f) => ids.has(f.id));
     const ficam = b.filhos.filter((f) => !ids.has(f.id));
     saida.push(comFilhos(b, desindentarIds(ficam, ids)), ...saem);
+  }
+  return saida;
+}
+
+// ── colar texto em markdown ──────────────────────────────────────────────────────
+
+const LINHAS_DE_MARKDOWN: {
+  regra: RegExp;
+  tipo: TipoDeBloco;
+  marcado?: (m: RegExpMatchArray) => boolean;
+}[] = [
+  { regra: /^#{3,6}\s+(.*)$/, tipo: "h3" },
+  { regra: /^##\s+(.*)$/, tipo: "h2" },
+  { regra: /^#\s+(.*)$/, tipo: "h1" },
+  {
+    regra: /^(?:[-*]\s+)?\[([ xX]?)\]\s+(.*)$/,
+    tipo: "todo",
+    marcado: (m) => m[1] === "x" || m[1] === "X",
+  },
+  { regra: /^[-*•]\s+(.*)$/, tipo: "bullet" },
+  { regra: /^\d+[.)]\s+(.*)$/, tipo: "numero" },
+  { regra: /^>\s?(.*)$/, tipo: "quote" },
+];
+
+/** Tira os marcadores de negrito (`**x**`, `__x__`): o bloco não tem formatação por dentro. */
+function semNegrito(texto: string): string {
+  return texto.replace(/\*\*(.+?)\*\*/g, "$1").replace(/__(.+?)__/g, "$1");
+}
+
+function blocoDaLinha(linha: string): Bloco {
+  const limpa = linha.trimStart();
+  for (const { regra, tipo, marcado } of LINHAS_DE_MARKDOWN) {
+    const m = limpa.match(regra);
+    if (!m) continue;
+    const bloco = novoBloco(tipo, semNegrito(m[m.length - 1] ?? ""));
+    if (marcado?.(m)) bloco.marcado = true;
+    return bloco;
+  }
+  return novoBloco("texto", semNegrito(linha));
+}
+
+/**
+ * Texto colado (de um chat, de um documento) → blocos: `#`, `##`, `###` viram títulos; `-`, `1.`,
+ * `[ ]` e `>` viram lista, lista numerada, tarefa e citação; e o que está entre cercas ``` vira
+ * UM bloco de prompt, com as linhas intactas.
+ */
+export function blocosDeMarkdown(texto: string): Bloco[] {
+  const linhas = texto.replace(/\r\n?/g, "\n").split("\n");
+  const saida: Bloco[] = [];
+  let i = 0;
+  while (i < linhas.length) {
+    const linha = linhas[i]!;
+    if (/^\s*```/.test(linha)) {
+      const dentro: string[] = [];
+      i++;
+      while (i < linhas.length && !/^\s*```\s*$/.test(linhas[i]!)) dentro.push(linhas[i++]!);
+      i++; // pula a cerca que fecha
+      saida.push(novoBloco("prompt", dentro.join("\n")));
+      continue;
+    }
+    saida.push(blocoDaLinha(linha));
+    i++;
   }
   return saida;
 }
