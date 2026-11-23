@@ -46,7 +46,7 @@ const COLUNAS = `id, organization_id, title, description, due_date, start_date, 
 
 const criacaoSchema = z.object({
   title: z.string().trim().min(1).max(255),
-  description: z.string().max(20000).nullable().optional(),
+  description: z.string().max(500000).nullable().optional(),
   due_date: z.string().datetime({ offset: true }).nullable().optional(),
   start_date: z.string().datetime({ offset: true }).nullable().optional(),
   priority: z.enum(PRIORIDADES_DA_TAREFA).default("medium"),

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 
 import { EditorDeBlocos } from "@/components/editor/EditorDeBlocos";
 import { escreverBlocos, LIMITE_DA_DESCRICAO, lerBlocos, type Bloco } from "@/lib/tarefas/blocos";
@@ -11,6 +18,103 @@ import { useT } from "@/hooks/i18n/useT";
 import type { Tarefa } from "@/lib/tarefas/tipos";
 import { Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
+
+const LARGURA_PADRAO = 736; // 46rem
+const LARGURA_MINIMA = 420;
+const MARGEM_DA_TELA = 24;
+const CHAVE_DA_LARGURA = "m1.painel-da-tarefa.largura";
+
+const maximaDaTela = () =>
+  typeof window === "undefined"
+    ? 1400
+    : Math.max(LARGURA_MINIMA, window.innerWidth - MARGEM_DA_TELA);
+const limitar = (px: number) => Math.round(Math.min(Math.max(px, LARGURA_MINIMA), maximaDaTela()));
+
+function lerLarguraSalva(): number {
+  try {
+    const salva = Number(window.localStorage.getItem(CHAVE_DA_LARGURA));
+    return Number.isFinite(salva) && salva > 0 ? limitar(salva) : LARGURA_PADRAO;
+  } catch {
+    return LARGURA_PADRAO;
+  }
+}
+
+/**
+ * A largura do painel, que a pessoa muda arrastando a borda esquerda (e que fica guardada neste
+ * navegador). Clicar na borda, sem arrastar, alterna entre "largo" (a tela toda) e a largura de antes.
+ */
+function useLarguraDoPainel() {
+  const [largura, setLargura] = useState(lerLarguraSalva);
+  const [arrastando, setArrastando] = useState(false);
+  const antes = useRef(largura);
+  const gesto = useRef<{ x: number; largura: number; moveu: boolean } | null>(null);
+
+  const guardar = (px: number) => {
+    try {
+      window.localStorage.setItem(CHAVE_DA_LARGURA, String(px));
+    } catch {
+      // sem armazenamento: vale só nesta abertura
+    }
+  };
+
+  const alternar = () => {
+    const cheia = maximaDaTela();
+    if (largura < cheia - 8) {
+      antes.current = largura;
+      setLargura(cheia);
+      guardar(cheia);
+    } else {
+      const volta = antes.current < cheia - 8 ? antes.current : LARGURA_PADRAO;
+      setLargura(volta);
+      guardar(volta);
+    }
+  };
+
+  const alca = {
+    onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      gesto.current = { x: e.clientX, largura, moveu: false };
+      setArrastando(true);
+    },
+    onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
+      const g = gesto.current;
+      if (!g) return;
+      const dx = e.clientX - g.x;
+      if (!g.moveu && Math.abs(dx) < 4) return;
+      g.moveu = true;
+      // O painel é preso à direita: puxar a borda para a esquerda alarga.
+      setLargura(limitar(g.largura - dx));
+    },
+    onPointerUp: (e: PointerEvent<HTMLDivElement>) => {
+      const g = gesto.current;
+      gesto.current = null;
+      setArrastando(false);
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+      if (!g) return;
+      if (g.moveu) guardar(limitar(g.largura - (e.clientX - g.x)));
+      else alternar();
+    },
+    onPointerCancel: () => {
+      gesto.current = null;
+      setArrastando(false);
+    },
+    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        alternar();
+        return;
+      }
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      const novo = limitar(largura + (e.key === "ArrowLeft" ? 32 : -32));
+      setLargura(novo);
+      guardar(novo);
+    },
+  };
+
+  return { largura, arrastando, alca };
+}
 
 interface Props {
   tarefa: Tarefa | null;
@@ -50,6 +154,7 @@ export function PainelDaTarefa({
   nova,
 }: Props) {
   const t = useT();
+  const { largura, arrastando, alca } = useLarguraDoPainel();
   const titulo = colunas.find((c) => c.id === "titulo");
   const propriedades = colunas.filter(
     (c) =>
@@ -63,8 +168,34 @@ export function PainelDaTarefa({
       {/* A tarefa já está aberta: o botão "Abrir" da linha da tabela fica escondido aqui dentro. */}
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:w-[46rem] sm:max-w-[94vw] [&>*]:min-w-0"
+        style={{ "--largura-do-painel": `${largura}px` } as CSSProperties}
+        className={cn(
+          "flex w-full flex-col gap-0 overflow-hidden p-0 sm:w-[var(--largura-do-painel)] sm:max-w-[calc(100vw-1.5rem)] [&>*]:min-w-0",
+          arrastando && "select-none",
+        )}
       >
+        {/* A borda esquerda: arrastar muda a largura; clicar alterna largo/normal. Só em tela larga. */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t("Arraste para mudar a largura do painel (clique para alargar ou voltar)")}
+          title={t("Arraste para mudar a largura · clique para alargar ou voltar")}
+          tabIndex={0}
+          {...alca}
+          className={cn(
+            "group absolute inset-y-0 left-0 z-20 hidden w-3 cursor-col-resize touch-none items-center justify-center outline-hidden sm:flex",
+            "hover:bg-primary/10 focus-visible:bg-primary/15",
+            arrastando && "bg-primary/15",
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "h-12 w-1 rounded-full bg-border-strong transition-colors group-hover:bg-primary/60",
+              arrastando && "bg-primary",
+            )}
+          />
+        </div>
         {tarefa ? (
           <>
             <SheetTitle className="sr-only">{nova ? t("Nova tarefa") : tarefa.title}</SheetTitle>
@@ -217,7 +348,9 @@ function Descricao({
 
   return (
     <div
-      className="flex min-h-[18rem] flex-1 flex-col"
+      // `shrink-0` + `basis-auto`: a descrição ocupa a altura do que está escrito (e sobra, se for
+      // curta); quem rola é o miolo do painel, nunca a caixa por dentro.
+      className="flex flex-1 shrink-0 basis-auto flex-col"
       onBlur={(e) => !aCadaTecla && !e.currentTarget.contains(e.relatedTarget) && gravar()}
     >
       <p className="mb-1 block text-sm text-muted-foreground">{t("Descrição")}</p>
@@ -227,7 +360,7 @@ function Descricao({
           e.target === e.currentTarget && podeEditar && focarOUltimoBloco(e.currentTarget)
         }
         className={cn(
-          "min-h-0 flex-1 rounded-xl border bg-card px-3 py-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
+          "min-h-[18rem] flex-1 rounded-xl border bg-card px-3 py-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
           podeEditar && "cursor-text",
         )}
       >
