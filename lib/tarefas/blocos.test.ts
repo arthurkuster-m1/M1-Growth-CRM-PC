@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  blocosDeMarkdown,
   desindentarIds,
   escreverBlocos,
   indentarIds,
+  LIMITE_DA_DESCRICAO,
   lerBlocos,
   moverIds,
   novoBloco,
@@ -96,5 +98,35 @@ describe("vários blocos de uma vez", () => {
     const r = desindentarIds([{ ...a, filhos: [b, c] }, d], new Set([b.id, c.id]));
     expect(nomes(r)).toEqual(["a", "b", "c", "d"]);
     expect(r[0]!.filhos).toBeUndefined();
+  });
+});
+
+describe("colar texto em markdown", () => {
+  it("vira títulos, listas, citação e tira o negrito", () => {
+    const blocos = blocosDeMarkdown(
+      "## 1. Título\n- item **forte**\n2. segundo\n- [x] feito\n> **Objetivo:** algo\nlinha solta",
+    );
+    expect(blocos.map((b) => [b.tipo, b.texto])).toEqual([
+      ["h2", "1. Título"],
+      ["bullet", "item forte"],
+      ["numero", "segundo"],
+      ["todo", "feito"],
+      ["quote", "Objetivo: algo"],
+      ["texto", "linha solta"],
+    ]);
+    expect(blocos[3]?.marcado).toBe(true);
+  });
+
+  it("o que está entre cercas ``` vira UM bloco de prompt, com as linhas intactas", () => {
+    const blocos = blocosDeMarkdown("antes\n```\n# não é título\n\n- nem lista\n```\ndepois");
+    expect(blocos.map((b) => b.tipo)).toEqual(["texto", "prompt", "texto"]);
+    expect(blocos[1]?.texto).toBe("# não é título\n\n- nem lista");
+  });
+
+  it("bloco de prompt vai e volta do banco e cabe texto grande", () => {
+    const grande = "linha de prompt\n".repeat(5000);
+    const lido = lerBlocos(escreverBlocos([novoBloco("prompt", grande)]));
+    expect(lido[0]).toMatchObject({ tipo: "prompt", texto: grande });
+    expect(escreverBlocos([novoBloco("prompt", grande)])!.length).toBeLessThan(LIMITE_DA_DESCRICAO);
   });
 });

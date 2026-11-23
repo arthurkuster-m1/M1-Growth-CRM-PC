@@ -34,13 +34,12 @@ import { COLUNAS_COM_CLIENTE, comNomeDoCliente } from "@/lib/tarefas/cliente-da-
 
 export const dynamic = "force-dynamic";
 
-const COLUNAS =
-  `id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado, ${COLUNAS_COM_CLIENTE}`;
+const COLUNAS = `id, organization_id, title, description, due_date, start_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at, status_option_id, position, custom_fields, cronograma_lado, ${COLUNAS_COM_CLIENTE}`;
 
 const edicaoSchema = z
   .object({
     title: z.string().trim().min(1).max(255).optional(),
-    description: z.string().max(20000).nullable().optional(),
+    description: z.string().max(500000).nullable().optional(),
     due_date: z.string().datetime({ offset: true }).nullable().optional(),
     start_date: z.string().datetime({ offset: true }).nullable().optional(),
     priority: z.enum(PRIORIDADES_DA_TAREFA).optional(),
@@ -144,9 +143,7 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
     return fail("internal_error", t("Erro ao salvar a tarefa."), 500, { requestId });
   }
 
-  const tarefa = comNomeDoCliente(
-    data as unknown as Record<string, unknown>,
-  ) as unknown as Tarefa;
+  const tarefa = comNomeDoCliente(data as unknown as Record<string, unknown>) as unknown as Tarefa;
 
   await audit({
     organizationId: authz.org.orgId,

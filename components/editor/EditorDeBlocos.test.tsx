@@ -167,4 +167,76 @@ describe("EditorDeBlocos", () => {
     fireEvent.keyDown(campos()[0]!, { key: "z", ctrlKey: true });
     expect(ultimo[0]?.tipo).toBe("texto");
   });
+
+  it("'/' abre o menu de tipos e 'toggle' vira uma lista recolhível aberta", () => {
+    render(<Casca inicial="" />);
+    fireEvent.change(campos()[0]!, { target: { value: "/tog" } });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+    fireEvent.keyDown(campos()[0]!, { key: "Enter" });
+    expect(ultimo[0]).toMatchObject({ tipo: "toggle", texto: "", aberto: true });
+  });
+
+  it("Esc fecha o menu '/' e o texto fica", () => {
+    render(<Casca inicial="" />);
+    fireEvent.change(campos()[0]!, { target: { value: "/pro" } });
+    fireEvent.keyDown(campos()[0]!, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(ultimo[0]?.texto).toBe("/pro");
+  });
+
+  it("'```' no começo vira bloco de prompt; Enter dentro dele quebra linha (não cria bloco)", () => {
+    render(<Casca inicial="" />);
+    fireEvent.change(campos()[0]!, { target: { value: "```" } });
+    expect(ultimo[0]?.tipo).toBe("prompt");
+    const antes = ultimo.length;
+    fireEvent.keyDown(campos()[0]!, { key: "Enter" });
+    expect(ultimo).toHaveLength(antes);
+    fireEvent.keyDown(campos()[0]!, { key: "Enter", ctrlKey: true });
+    expect(ultimo.map((b) => b.tipo)).toEqual(["prompt", "texto"]);
+  });
+
+  it("o botão Copiar do bloco de prompt copia o texto todo", async () => {
+    const escreveu: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (t: string) => void escreveu.push(t) },
+    });
+    const longo = "# linha 1\n\nlinha 3 ".repeat(200);
+    render(
+      <Casca inicial={JSON.stringify({ v: 1, b: [{ id: "p", tipo: "prompt", texto: longo }] })} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Copiar prompt" }));
+    await screen.findByText("Copiado!");
+    expect(escreveu).toEqual([longo]);
+  });
+
+  it("colar texto grande no bloco de prompt não o quebra em vários blocos", () => {
+    render(
+      <Casca inicial={JSON.stringify({ v: 1, b: [{ id: "p", tipo: "prompt", texto: "" }] })} />,
+    );
+    ultimo = [];
+    const naoCancelado = fireEvent.paste(campos()[0]!, {
+      clipboardData: { getData: () => "## a\n- b\nc" },
+    });
+    // O editor não tomou a colagem para si: o navegador cola o texto inteiro dentro do campo.
+    expect(naoCancelado).toBe(true);
+    expect(ultimo).toHaveLength(0);
+  });
+
+  it("colar markdown num bloco de texto vira títulos e listas", () => {
+    render(<Casca inicial="" />);
+    fireEvent.paste(campos()[0]!, { clipboardData: { getData: () => "## Título\n- item" } });
+    expect(ultimo.map((b) => b.tipo)).toEqual(["h2", "bullet"]);
+  });
+
+  it("links viram chips clicáveis fora da edição e voltam a texto ao focar", () => {
+    render(<Casca inicial="veja https://www.instagram.com/p/AbC123/ já" />);
+    const chip = screen.getByRole("link");
+    expect(chip.getAttribute("href")).toBe("https://www.instagram.com/p/AbC123/");
+    expect(chip.textContent).toContain("Instagram");
+    fireEvent.focus(campos()[0]!);
+    expect(screen.queryByRole("link")).toBeNull();
+    fireEvent.blur(campos()[0]!);
+    expect(screen.getByRole("link")).toBeTruthy();
+  });
 });

@@ -20,11 +20,13 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ClipboardEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
 } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -32,6 +34,7 @@ import { useT } from "@/hooks/i18n/useT";
 import {
   acharBloco,
   ATALHO_DO_TIPO,
+  blocosDeMarkdown,
   clonar,
   desindentarIds,
   duplicarIds,
@@ -49,7 +52,8 @@ import {
   type Bloco,
   type TipoDeBloco,
 } from "@/lib/tarefas/blocos";
-import { CaretRight, Copy, DotsSixVertical, Trash } from "@/lib/ui/icons";
+import { partirEmLinks, rotuloDoLink } from "@/lib/tarefas/links";
+import { Check, CaretRight, Copy, DotsSixVertical, LinkSimple, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const ROTULO_DO_TIPO: Record<TipoDeBloco, string> = {
@@ -60,9 +64,10 @@ const ROTULO_DO_TIPO: Record<TipoDeBloco, string> = {
   todo: "Lista de tarefas",
   bullet: "Lista com marcadores",
   numero: "Lista numerada",
-  toggle: "Lista recolhível",
+  toggle: "Toggle (lista recolhível)",
   quote: "Citação",
   callout: "Destaque",
+  prompt: "Bloco de prompt",
 };
 
 const GLIFO_DO_TIPO: Record<TipoDeBloco, string> = {
@@ -76,6 +81,7 @@ const GLIFO_DO_TIPO: Record<TipoDeBloco, string> = {
   toggle: "▸",
   quote: "❝",
   callout: "💡",
+  prompt: "</>",
 };
 
 const ESTILO_DO_TEXTO: Record<TipoDeBloco, string> = {
@@ -89,7 +95,52 @@ const ESTILO_DO_TEXTO: Record<TipoDeBloco, string> = {
   toggle: "text-sm font-medium leading-6",
   quote: "text-sm italic leading-6",
   callout: "text-sm leading-6",
+  prompt: "font-mono text-[13px] leading-5",
 };
+
+/** Palavras extras para achar o tipo no menu "/" (sem acento, minúsculas). */
+const BUSCA_DO_TIPO: Record<TipoDeBloco, string> = {
+  texto: "texto paragrafo normal",
+  h1: "titulo 1 h1 heading grande",
+  h2: "titulo 2 h2 heading medio",
+  h3: "titulo 3 h3 heading pequeno",
+  todo: "lista de tarefas todo checkbox check",
+  bullet: "lista com marcadores bullet topicos",
+  numero: "lista numerada numero",
+  toggle: "toggle lista recolhivel recolher expandir",
+  quote: "citacao quote",
+  callout: "destaque callout aviso",
+  prompt: "prompt codigo code caixa colar copiar",
+};
+
+const semAcento = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+/** Copia para a área de transferência; sem `navigator.clipboard` (http), cai no jeito antigo. */
+async function copiarTexto(texto: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    try {
+      const area = document.createElement("textarea");
+      area.value = texto;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
 
 /** Quantos níveis de "afilhados" cabem (o leitor em `lerBlocos` aceita o mesmo). */
 const LIMITE_DE_NIVEIS = 5;
@@ -113,6 +164,7 @@ const ATALHOS_DE_MARKDOWN: { regra: RegExp; tipo: TipoDeBloco }[] = [
   { regra: /^\d+\. /, tipo: "numero" },
   { regra: /^> /, tipo: "toggle" },
   { regra: /^" /, tipo: "quote" },
+  { regra: /^```/, tipo: "prompt" },
 ];
 
 interface Contexto {
@@ -146,6 +198,28 @@ function duplicar(b: Bloco): Bloco {
   return { ...b, id: novoId(), filhos: b.filhos?.map(duplicar) };
 }
 
+/** O chip de um link (a "menção" do Notion): ícone, nome do site e o começo do caminho. */
+function Mencao({ url }: { url: string }) {
+  const { site, detalhe } = rotuloDoLink(url);
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={url}
+      // Clicar no chip abre o link; não leva o cursor para o texto.
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-1.5 align-bottom text-[0.95em] leading-[1.4] font-medium text-foreground no-underline transition-colors hover:bg-accent-soft hover:text-primary"
+    >
+      <LinkSimple size={13} weight="bold" className="shrink-0 text-muted-foreground" aria-hidden />
+      <span className="truncate">
+        {site}
+        {detalhe ? <span className="font-normal text-muted-foreground"> {detalhe}</span> : null}
+      </span>
+    </a>
+  );
+}
+
 function AreaDeTexto({
   valor,
   aoMudar,
@@ -154,6 +228,7 @@ function AreaDeTexto({
   className,
   placeholder,
   somenteLeitura,
+  mencoes,
 }: {
   valor: string;
   aoMudar: (v: string) => void;
@@ -162,31 +237,112 @@ function AreaDeTexto({
   className: string;
   placeholder: string;
   somenteLeitura: boolean;
+  /** Mostra os links como chips quando o bloco não está sendo editado (não vale no prompt). */
+  mencoes: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const [focado, setFocado] = useState(false);
+  const segmentos = useMemo(() => (mencoes ? partirEmLinks(valor) : []), [mencoes, valor]);
+  const comMencoes = !focado && segmentos.some((s) => s.tipo === "link");
   // Cresce com o texto: sem barra de rolagem por bloco.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (comMencoes) {
+      el.style.height = ""; // quem dá a altura agora são os chips
+      return;
+    }
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-  }, [valor]);
+  }, [valor, comMencoes]);
   return (
-    <textarea
-      ref={ref}
-      id={id}
-      data-bloco
-      rows={1}
-      value={valor}
-      readOnly={somenteLeitura}
-      placeholder={placeholder}
-      onChange={(e) => aoMudar(e.target.value)}
-      onKeyDown={aoTeclar}
-      className={cn(
-        "block min-w-0 flex-1 resize-none overflow-hidden bg-transparent outline-hidden placeholder:text-text-subtle",
-        className,
-      )}
-    />
+    <div className="relative min-w-0 flex-1">
+      {comMencoes ? (
+        <div
+          onClick={() => {
+            // O clique no texto (fora do chip) vira edição: o cursor vai para o fim.
+            const el = ref.current;
+            if (!el || somenteLeitura) return;
+            el.focus();
+            el.setSelectionRange(el.value.length, el.value.length);
+          }}
+          className={cn(
+            "min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap",
+            !somenteLeitura && "cursor-text",
+            className,
+          )}
+        >
+          {segmentos.map((seg, i) =>
+            seg.tipo === "link" ? (
+              <Mencao key={i} url={seg.valor} />
+            ) : (
+              <span key={i}>{seg.valor}</span>
+            ),
+          )}
+        </div>
+      ) : null}
+      <textarea
+        ref={ref}
+        id={id}
+        data-bloco
+        rows={1}
+        value={valor}
+        readOnly={somenteLeitura}
+        placeholder={placeholder}
+        onChange={(e) => aoMudar(e.target.value)}
+        onKeyDown={aoTeclar}
+        onFocus={() => setFocado(true)}
+        onBlur={() => setFocado(false)}
+        className={cn(
+          "block w-full min-w-0 resize-none overflow-hidden bg-transparent outline-hidden placeholder:text-text-subtle",
+          className,
+          // Com chips à mostra, o campo fica por baixo (invisível) só para o foco e o teclado.
+          comMencoes && "pointer-events-none absolute inset-0 h-full opacity-0",
+        )}
+      />
+    </div>
+  );
+}
+
+/** A caixa do bloco de prompt: rótulo e botão "Copiar" no canto superior direito. */
+function CaixaDePrompt({ texto, children }: { texto: string; children: ReactNode }) {
+  const t = useT();
+  const [copiado, setCopiado] = useState(false);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (temporizador.current) clearTimeout(temporizador.current);
+    },
+    [],
+  );
+  const copiar = async () => {
+    if (!(await copiarTexto(texto))) return;
+    setCopiado(true);
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => setCopiado(false), 1800);
+  };
+  return (
+    <div className="min-w-0 flex-1 rounded-xl border bg-secondary/50">
+      <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
+        <span className="text-[11px] font-semibold tracking-wider text-text-subtle uppercase">
+          {t("Prompt")}
+        </span>
+        <button
+          type="button"
+          onClick={copiar}
+          aria-label={t("Copiar prompt")}
+          title={t("Copiar todo o texto deste bloco")}
+          className={cn(
+            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border bg-card px-2.5 text-xs font-medium transition-colors hover:bg-secondary",
+            copiado && "border-primary/40 text-primary",
+          )}
+        >
+          {copiado ? <Check size={13} weight="bold" aria-hidden /> : <Copy size={13} aria-hidden />}
+          <span aria-live="polite">{copiado ? t("Copiado!") : t("Copiar")}</span>
+        </button>
+      </div>
+      <div className="px-3 py-2.5">{children}</div>
+    </div>
   );
 }
 
@@ -214,6 +370,22 @@ function LinhaDoBloco({
 }) {
   const t = useT();
   const [menuAberto, setMenuAberto] = useState(false);
+  // Menu "/" (como no Notion): digitar "/" no começo de um bloco de texto abre a lista de tipos.
+  const [ativo, setAtivo] = useState(0);
+  const [fechadoEm, setFechadoEm] = useState<string | null>(null);
+  const consulta =
+    ctx.podeEditar && bloco.tipo === "texto" && /^\/[^\n]{0,24}$/.test(bloco.texto)
+      ? semAcento(bloco.texto.slice(1).trim())
+      : null;
+  const opcoes: TipoDeBloco[] =
+    consulta === null
+      ? []
+      : TIPOS_DE_BLOCO.filter((tipo) => {
+          const alvo = semAcento(`${t(ROTULO_DO_TIPO[tipo])} ${BUSCA_DO_TIPO[tipo]}`);
+          return consulta.split(/\s+/).every((palavra) => alvo.includes(palavra));
+        });
+  const menuDeTiposAberto = opcoes.length > 0 && fechadoEm !== bloco.texto;
+  const indiceAtivo = Math.min(ativo, Math.max(opcoes.length - 1, 0));
   const selecionado = ctx.selecionados.has(bloco.id);
   const emMassa = selecionado && ctx.selecionados.size > 1;
   const {
@@ -234,7 +406,14 @@ function LinhaDoBloco({
     ctx.pedirFoco(bloco.id, "fim");
   };
 
+  const escolherDoMenu = (tipo: TipoDeBloco) => {
+    atualizar({ tipo, texto: "", ...(tipo === "toggle" ? { aberto: true } : {}) });
+    setFechadoEm(null);
+    ctx.pedirFoco(bloco.id, 0);
+  };
+
   const aoDigitar = (valor: string) => {
+    setAtivo(0);
     if (bloco.tipo === "texto") {
       const atalho = ATALHOS_DE_MARKDOWN.find((a) => a.regra.test(valor));
       if (atalho) {
@@ -255,6 +434,26 @@ function LinhaDoBloco({
     const campo = e.currentTarget;
     const inicio = campo.selectionStart;
     const fim = campo.selectionEnd;
+
+    // Menu "/" aberto: setas escolhem, Enter/Tab aplicam, Esc fecha.
+    if (menuDeTiposAberto) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const passo = e.key === "ArrowDown" ? 1 : -1;
+        setAtivo((indiceAtivo + passo + opcoes.length) % opcoes.length);
+        return;
+      }
+      if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+        escolherDoMenu(opcoes[indiceAtivo]!);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setFechadoEm(bloco.texto);
+        return;
+      }
+    }
 
     // Ctrl+Shift+0…9: troca o tipo do bloco (usa `code`: com Shift, `key` vira símbolo).
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && /^Digit\d$/.test(e.code)) {
@@ -287,6 +486,18 @@ function LinhaDoBloco({
       return;
     }
 
+    // No bloco de prompt o Enter é uma quebra de linha; Ctrl+Enter sai para um bloco novo embaixo.
+    if (e.key === "Enter" && bloco.tipo === "prompt" && !e.nativeEvent.isComposing) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const novo = novoBloco();
+      const copia = [...lista];
+      copia.splice(indice + 1, 0, novo);
+      aoMudarLista(copia);
+      ctx.pedirFoco(novo.id, 0);
+      return;
+    }
+
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!bloco.texto && SAEM_DO_TIPO_AO_FICAR_VAZIOS.includes(bloco.tipo)) {
@@ -314,6 +525,7 @@ function LinhaDoBloco({
     }
 
     if (e.key === "Backspace" && inicio === 0 && fim === 0) {
+      if (bloco.tipo === "prompt" && bloco.texto) return;
       if (bloco.tipo !== "texto") {
         e.preventDefault();
         atualizar({ tipo: "texto" });
@@ -375,12 +587,15 @@ function LinhaDoBloco({
       aoMudar={aoDigitar}
       aoTeclar={aoTeclar}
       somenteLeitura={!ctx.podeEditar}
+      mencoes={bloco.tipo !== "prompt"}
       placeholder={
-        bloco.tipo === "texto"
-          ? unico
-            ? t("Escreva uma descrição… (Ctrl+Shift+1 a 9 muda o tipo do bloco)")
-            : ""
-          : t(ROTULO_DO_TIPO[bloco.tipo])
+        bloco.tipo === "prompt"
+          ? t("Cole aqui o prompt (texto grande, várias linhas)")
+          : bloco.tipo === "texto"
+            ? unico
+              ? t("Escreva uma descrição… (Ctrl+Shift+1 a 9 muda o tipo do bloco)")
+              : ""
+            : t(ROTULO_DO_TIPO[bloco.tipo])
       }
       className={cn(
         ESTILO_DO_TEXTO[bloco.tipo],
@@ -503,9 +718,11 @@ function LinhaDoBloco({
                       {GLIFO_DO_TIPO[tipo]}
                     </span>
                     <span className="flex-1 truncate">{t(ROTULO_DO_TIPO[tipo])}</span>
-                    <span className="shrink-0 text-[10px] text-text-subtle">
-                      Ctrl+⇧+{ATALHO_DO_TIPO[tipo]}
-                    </span>
+                    {ATALHO_DO_TIPO[tipo] ? (
+                      <span className="shrink-0 text-[10px] text-text-subtle">
+                        Ctrl+⇧+{ATALHO_DO_TIPO[tipo]}
+                      </span>
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -544,17 +761,51 @@ function LinhaDoBloco({
           <span className="w-5 shrink-0" />
         )}
 
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-start gap-1.5",
-            bloco.tipo === "quote" && "border-l-[3px] border-foreground/70 pl-3",
-            bloco.tipo === "callout" && "rounded-xl bg-secondary px-3 py-2",
-          )}
-        >
-          {marcador}
-          {campo}
-        </div>
+        {bloco.tipo === "prompt" ? (
+          <CaixaDePrompt texto={bloco.texto}>{campo}</CaixaDePrompt>
+        ) : (
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-start gap-1.5",
+              bloco.tipo === "quote" && "border-l-[3px] border-foreground/70 pl-3",
+              bloco.tipo === "callout" && "rounded-xl bg-secondary px-3 py-2",
+            )}
+          >
+            {marcador}
+            {campo}
+          </div>
+        )}
       </div>
+
+      {menuDeTiposAberto ? (
+        <div
+          role="listbox"
+          aria-label={t("Tipos de bloco")}
+          // Clicar numa opção não tira o foco do texto.
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute top-full left-6 z-30 mt-1 max-h-72 w-64 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg"
+        >
+          {opcoes.map((tipo, i) => (
+            <button
+              key={tipo}
+              type="button"
+              role="option"
+              aria-selected={i === indiceAtivo}
+              onClick={() => escolherDoMenu(tipo)}
+              onMouseEnter={() => setAtivo(i)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
+                i === indiceAtivo ? "bg-accent-soft text-primary" : "hover:bg-secondary",
+              )}
+            >
+              <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">
+                {GLIFO_DO_TIPO[tipo]}
+              </span>
+              <span className="flex-1 truncate">{t(ROTULO_DO_TIPO[tipo])}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {(bloco.tipo === "toggle" ? bloco.aberto : filhos.length > 0) ? (
         <div className="ml-6 pl-1">
@@ -981,18 +1232,16 @@ export function EditorDeBlocos({ blocos, aoMudar: aoMudarDeFora, podeEditar }: P
     if (!podeEditar) return;
     const texto = e.clipboardData.getData("text/plain");
     const campo = (e.target as HTMLElement).closest<HTMLTextAreaElement>("textarea[data-bloco]");
+    // Dentro de um bloco de prompt o texto entra inteiro, como veio (é para isso que ele serve).
+    const atual = campo ? acharBloco(blocos, campo.id.slice(prefixo.length + 1)) : null;
+    if (atual?.tipo === "prompt") return;
     const interno = copiado && copiado.texto === texto ? copiado.blocos.map(clonar) : null;
-    const novos =
-      interno ??
-      (campo && texto.includes("\n")
-        ? texto.split(/\r?\n/).map((l) => novoBloco("texto", l))
-        : null);
+    const novos = interno ?? (campo && texto.includes("\n") ? blocosDeMarkdown(texto) : null);
     if (!novos?.length) return;
     let alvo: string | null = null;
     let substituir = false;
     if (campo) {
       alvo = campo.id.slice(prefixo.length + 1);
-      const atual = acharBloco(blocos, alvo);
       substituir = Boolean(atual && !atual.texto && !atual.filhos?.length);
     } else if (sel.ids.size) {
       alvo = [...visiveis].reverse().find((v) => sel.ids.has(v)) ?? null;
