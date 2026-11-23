@@ -225,6 +225,9 @@ export const removerMetaDoMes = (mes: string) =>
 export const salvarContaDasVendas = (contaId: string | null) =>
   config({ conta_vendas_id: contaId });
 
+/** Cartão que a Meta cobra (ou null para desligar): as cobranças já lidas passam a cair nele. */
+export const salvarCartaoDaMeta = (contaId: string | null) => config({ conta_meta_id: contaId });
+
 /* ───── Conferência de fatura (o total que o banco diz) ───── */
 export async function obterConferenciaFatura(
   contaId: string,
@@ -448,3 +451,53 @@ export const useLancamentosDoMes = (de: string, ate: string) =>
 
 /** Mês "AAAA-MM" → dia 1 (para quem monta consulta à mão). */
 export { diaUm };
+
+/* ───── Cobranças da Meta no cartão ───── */
+export type AlertaMeta =
+  | { tipo: "pagamento_pendente"; desde: string | null }
+  | { tipo: "recusada"; em: string; valor_cents: number | null };
+export type CobrancaMeta = {
+  id: string;
+  cobrada_em: string;
+  valor_cents: number | null;
+  moeda: string;
+  estado: "paga" | "recusada" | "estornada";
+};
+export type EstadoMeta =
+  | { disponivel: false }
+  | {
+      disponivel: true;
+      cartao_id: string | null;
+      conectado: boolean;
+      ultima_leitura_em: string | null;
+      ultimo_erro: string | null;
+      conta_status: number | null;
+      alerta: AlertaMeta | null;
+      cobrancas: CobrancaMeta[];
+    };
+const CHAVE_META = ["financas", "meta-estado"] as const;
+
+/** A situação das cobranças da Meta (alerta, última leitura, cobranças recentes). Atualiza a cada 5 min. */
+export function useMetaEstado() {
+  const consulta = useQuery({
+    queryKey: CHAVE_META,
+    queryFn: () => dado(apiClient.get<{ data: EstadoMeta }>(`${BASE}/meta/estado`)),
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: false,
+  });
+  return consulta.data ?? null;
+}
+
+export function useRecarregarMeta() {
+  const queryClient = useQueryClient();
+  return useCallback(() => queryClient.invalidateQueries({ queryKey: CHAVE_META }), [queryClient]);
+}
+
+/** "Atualizar agora": lê as cobranças da Meta já. `recente` = alguém atualizou há menos de 1 minuto. */
+export const atualizarCobrancasDaMeta = () =>
+  dado(
+    apiClient.post<{
+      data: { recente?: boolean; lidas?: number; novas?: number; alteradas?: number };
+    }>(`${BASE}/meta/sincronizar`, {}),
+  );

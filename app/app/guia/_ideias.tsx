@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api/types";
 import { passoPorId } from "@/lib/guia/catalogo";
 import type { LIMIARES, REGRAS_DE_IDEIA } from "@/lib/guia/ideias";
 import type { AprendizadoDoGuia, IdeiaDoGuia, VereditoHumano } from "@/lib/guia/ideias-guardadas";
+import { comRetornoAoGuia } from "@/lib/guia/retorno";
 import { desfazerUltimo, registrarDesfazer } from "@/lib/motor/desfazer";
 import { cn } from "@/lib/utils";
 
@@ -209,7 +210,10 @@ function CartaoDaIdeia({ i }: { i: IdeiaDoGuia }) {
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           {i.acaoHref ? (
-            <Link href={i.acaoHref} className={cn(BOTAO, "text-primary")}>
+            <Link
+              href={comRetornoAoGuia(i.acaoHref, "ideias")}
+              className={cn(BOTAO, "text-primary")}
+            >
               {t("Abrir")}
             </Link>
           ) : null}

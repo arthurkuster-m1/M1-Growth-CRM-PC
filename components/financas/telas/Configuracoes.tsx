@@ -27,7 +27,10 @@ import {
   obterAbertura,
   removerAbertura,
   salvarAbertura,
+  salvarCartaoDaMeta,
   useFinancas,
+  useMetaEstado,
+  useRecarregarMeta,
   type Conta,
   type DadosConta,
   type Saldo,
@@ -369,6 +372,52 @@ function FormConta({
 }
 
 /* ───────── CARTÕES ───────── */
+/** Qual cartão a Meta cobra: as cobranças lidas da plataforma caem nele, na fatura certa. Só aparece com a Meta conectada. */
+function CartaoDaMeta({ cartoes }: { cartoes: Conta[] }) {
+  const estado = useMetaEstado();
+  const recarregarMeta = useRecarregarMeta();
+  const { recarregar } = useFinancas();
+  const toast = useToast();
+  const [salvando, setSalvando] = useState(false);
+  if (!estado || !estado.disponivel || !estado.conectado || cartoes.length === 0) return null;
+  async function escolher(id: string) {
+    setSalvando(true);
+    try {
+      await salvarCartaoDaMeta(id || null);
+      await recarregarMeta();
+      recarregar();
+      toast(id ? "Cartão da Meta salvo" : "Cartão da Meta desligado");
+    } catch (e) {
+      toast((e as Error).message || "Não foi possível salvar");
+    } finally {
+      setSalvando(false);
+    }
+  }
+  return (
+    <Card>
+      <Field
+        label="Cartão que a Meta cobra"
+        hint="As cobranças da Meta (com o valor exato e a data) entram sozinhas na fatura deste cartão. Desligar tira essas saídas do caixa."
+      >
+        <Select
+          value={estado.cartao_id ?? ""}
+          disabled={salvando}
+          onChange={(e) => void escolher(e.target.value)}
+        >
+          <option value="">Nenhum (não lançar as cobranças da Meta)</option>
+          {cartoes
+            .filter((c) => c.ativa)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+        </Select>
+      </Field>
+    </Card>
+  );
+}
+
 function CartoesAba() {
   const { contas, conta, recarregar } = useFinancas();
   const { saldos, carregar } = useSaldos();
@@ -389,6 +438,7 @@ function CartoesAba() {
           Novo cartão
         </Button>
       </div>
+      <CartaoDaMeta cartoes={cartoes} />
       {cartoes.length === 0 ? (
         <Card>
           <EmptyState icon={<CreditCard size={30} />} title="Nenhum cartão ainda">

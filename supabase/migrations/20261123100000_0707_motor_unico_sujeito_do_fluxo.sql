@@ -1,6 +1,6 @@
 -- manifest: **Motor único, passo 2a: o sujeito do fluxo de automação.** `followup_enrollments` ganha `subject_kind`/`subject_id` (lead, contato ou compromisso do evento) e `source_event_id`; `contact_id` aceita NULL no banco, mas o trigger `fn_enrollment_superficie_coerente` só o permite em `surface='crm_automation'` (que nenhuma tela cria ainda) — todo fluxo de hoje continua exigindo contato. Novo índice único de um fluxo vivo por (fluxo, sujeito). Só estrutura, sem mudar comportamento. Idempotente.
 
--- 0705 — MOTOR ÚNICO, PASSO 2a: o sujeito do fluxo de automação
+-- 0707 — MOTOR ÚNICO, PASSO 2a: o sujeito do fluxo de automação
 --
 -- Só ESTRUTURA. Nenhum fluxo existente muda: toda linha de `followup_enrollments` de hoje continua
 -- exigindo contato (a regra nova vive no trigger, e só afrouxa para `surface = 'crm_automation'`,

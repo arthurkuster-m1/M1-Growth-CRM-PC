@@ -2,47 +2,36 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { traduzir } from "@/lib/i18n/dicionario";
 
-import { CatalogoFinanceiro } from "./_client";
+import { TaxasDePagamento } from "./_taxas";
 
 export const dynamic = "force-dynamic";
 
 /**
- * O CATÁLOGO FINANCEIRO — a camada que a comanda vai precisar.
+ * AS TAXAS DE PAGAMENTO — o que a operadora desconta de cada forma de recebimento (Pix, cartão…).
  *
- * Contas, formas de pagamento e plano de contas não movimentam dinheiro: eles
- * definem PARA ONDE ele vai. A forma de pagamento é quem decide em que conta a
- * entrada cai quando uma comanda é fechada — por isso esta tela existe antes de
- * qualquer tela de venda, e não depois.
- *
- * Fica em Configurações, junto de Agenda, pelo mesmo motivo que os tipos de
- * agendamento ficam: é onde o negócio se DESCREVE. O dia acontece em outro lugar.
+ * É o que sobrou do antigo "Financeiro" das comandas (contas, formas de pagamento, plano de contas,
+ * comissão e recorrências), que saiu do fluxo do CRM: o dinheiro agora vem das Vendas (Oportunidades ›
+ * Vendas) e é acompanhado em Finanças. As taxas ficam porque o diálogo da venda e os dashboards usam
+ * o valor líquido do recebimento.
  *
  * Escrita é de manager+ — a RLS diz isso e esta página só decide o que mostrar.
- * Quem atende não define plano de contas.
  */
 export default async function Page() {
   const user = await requireAuth();
   const org = await resolveActiveOrg(user);
-  // Sem organização ativa não há catálogo — mesmo caminho da tela irmã de
-  // Agenda, e não um 500 por `org.role` de null.
   if (!org) redirect("/app");
   const podeEditar = ROLE_RANK[org.role] >= ROLE_RANK.manager;
-  // Server Component não tem `useT`: a tradução vem do idioma do usuário, como
-  // na tela irmã de Agenda. Texto solto aqui reprova o gate de espanhol — e com
-  // razão, porque é texto que a pessoa lê.
-  const t = (texto: string) => traduzir(texto, user.idioma);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold">{t("Financeiro")}</h1>
+        <h1 className="text-xl font-semibold">Taxas de pagamento</h1>
         <p className="text-sm text-text-muted">
-          {t("Onde o dinheiro fica, como o cliente paga e como cada lançamento é classificado.")}
+          Quanto a operadora desconta em cada forma de recebimento. A venda mostra o valor líquido.
         </p>
       </div>
-      <CatalogoFinanceiro podeEditar={podeEditar} />
+      <TaxasDePagamento podeEditar={podeEditar} />
     </div>
   );
 }

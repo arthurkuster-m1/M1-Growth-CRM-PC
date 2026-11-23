@@ -19,7 +19,7 @@ Next.js 16 (App Router) + React 19 + TypeScript estrito + Tailwind 4 (CSS-first,
 - **Rota mutante:** `requireRole` + `requireSupportWrite(` antes do efeito, `ok()/fail()` (`lib/api/wrappers.ts`), `audit()` com ação em `lib/audit/actions.ts`, Zod no input.
 - **Trigger Postgres nunca faz HTTP** (emite em `event_log`).
 - **Migration:** arquivo em `supabase/migrations/<timestamp>_<NNNN>_<slug>.sql` (com `-- manifest:`) **e** apêndice idempotente no fim de `supabase/baseline.sql`. NNNN = próximo sequencial (hoje as do M1 passam de 0595). Função nova em `public`: `revoke execute ... from public, anon`.
-- **i18n:** texto da tela = `t("português")` + espanhol em `lib/i18n/dicionario.ts`.
+- **Texto da tela:** só português (o espanhol foi removido do produto em 11/10/2026); escreva direto, `t("...")` é opcional.
 - **Tela nova** precisa de porta em `lib/navigation/catalogo.ts`.
 - Sem `console.log`; env nova vai em `.env.example` + `lib/env.ts`.
 - Padrões do motor (edição otimista, Ctrl+Z, posição `numeric`): ver `CONTEXTO-M1.md`.

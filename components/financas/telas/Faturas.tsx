@@ -46,6 +46,7 @@ import {
   type FaturaDoCartao,
 } from "@/lib/financas/faturas";
 import { PagarFatura } from "./PagarFatura";
+import { CobrancasDaMeta } from "./MetaCobrancas";
 import { LancamentoItem } from "./LancamentoItem";
 import { descreverFatura } from "./comuns";
 import { EditarLancamento } from "./EditarLancamento";
@@ -250,6 +251,8 @@ export function Faturas() {
         <strong>{descreverFatura(mes, cartao.dia_fechamento, cartao.dia_vencimento)}</strong>
         <span className="t-muted"> · a fatura leva o nome do mês em que é paga</span>
       </p>
+
+      <CobrancasDaMeta />
 
       <Card className="fi-stack" data-testid="faturas-abertas">
         <h2 className="t-h3">Faturas em aberto</h2>
