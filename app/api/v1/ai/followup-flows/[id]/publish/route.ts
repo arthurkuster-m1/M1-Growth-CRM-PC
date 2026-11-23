@@ -20,6 +20,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { carregaEtapasCitadas } from "@/lib/followup/etapas-citadas";
 import { triggerConfigSchema, type FollowupFlowSurface } from "@/lib/followup/api-schemas";
+import { configDoGatilhoEstaCompleta } from "@/lib/followup/config-do-gatilho";
 import { moduloLigado } from "@/lib/instalacao/modulos";
 import {
   algumCanalExigeModeloForaDaJanela,
@@ -120,6 +121,17 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
     );
   }
 
+  // Automação de CRM só começa por evento: manual/silêncio/etapa... são gatilhos do follow-up, que o motor
+  // de automação não consome — publicar assim seria fluxo ativo que nunca dispara.
+  if (surface === "crm_automation" && triggerKind !== "event") {
+    return fail(
+      "trigger_event_obrigatorio",
+      t("Escolha o que dispara esta automação antes de publicar."),
+      422,
+      { requestId },
+    );
+  }
+
   // Gatilho por EVENTO é o gatilho das automações de CRM: o motor que o consome só olha pointers
   // `crm_automation`, então publicar `event` em outra superfície seria fluxo morto com cara de vivo.
   // E o jsonb não passa pelo Zod do PATCH — o evento e as condições são lidos aqui, pela mesma tupla
@@ -138,6 +150,16 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
       return fail(
         "trigger_event_invalido",
         t("Escolha o que dispara esta automação antes de publicar."),
+        422,
+        { requestId },
+      );
+    }
+    // Os gatilhos por tempo e por data precisam dos parâmetros que o relógio lê (dias, direção, funil...):
+    // sem eles o fluxo publica "ativo" e o relógio nunca o dispara. A mesma conferência que a rota das regras faz.
+    if (lido.data.kind === "event" && !configDoGatilhoEstaCompleta(lido.data.params)) {
+      return fail(
+        "trigger_event_config_invalida",
+        t("Complete o tempo (ou a data) que dispara esta automação antes de publicar."),
         422,
         { requestId },
       );

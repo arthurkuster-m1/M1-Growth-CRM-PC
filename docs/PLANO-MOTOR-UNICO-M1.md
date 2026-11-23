@@ -144,3 +144,16 @@ Como ainda não há dados reais de clientes, o risco é baixo; a simulação ser
   - Rota `POST /api/v1/automation-rules/migrar` (admin): `{"acao":"simular"}` é o padrão e **não grava**; `migrar`/`desfazer` exigem o aval de suporte e vão para o audit (`automation.rules_migrated`, `automation.rule_migration_reverted`).
 - **Antes de usar em dados reais** (4d): (1) rodar `simular` e ler o relatório; (2) **exportar as regras** (backup); (3) migrar uma organização; (4) provar um fluxo "esperar 2 dias → enviar", a janela de envio e o silêncio por tempo, com banco e WhatsApp reais.
 - **Pendência conhecida:** o gatilho `event` de um fluxo migrado com gatilho por tempo/data guarda os parâmetros em `params.config`, mas o publicar ainda não os valida por tipo de evento (a regra os validava na criação). Só a simulação/migração os cria hoje; o editor (Fase 5) precisa validá-los.
+
+## 10. Fase 5a — o editor das automações de CRM (21–23/11/2026)
+**Decisão:** reaproveitar o canvas do follow-up (o diagrama que o Arthur já gosta) em vez de escrever outro. A automação de CRM abre em `/app/automacoes/[id]`, com a paleta, o painel por passo e a barra de publicar do editor de follow-up, mais três peças novas:
+- **Barra «Quando»** (`GatilhoDaAutomacao.tsx`): o evento (os mesmos 20 das regras), as condições (campo/operador/valor, até 10) e, nos gatilhos por tempo, os dias/unidade/direção. A data do funil passa como veio da regra. O que ela grava já passou pelo mesmo `triggerConfigSchema` + validadores de tempo do servidor.
+- **Nó «Ação da automação»** (`forms/CrmActionForm.tsx`): escolhe o tipo e usa **o mesmo formulário de cada ação das regras**. Só grava no fluxo o que passa no schema; incompleta, mostra "Falta preencher… o fluxo continua com a ação anterior".
+- **Lista** (aba Regras): seção «Automações no diagrama» com cartões e o botão «Nova automação no diagrama» (cria já com gatilho → fim e abre o editor).
+
+**Regras de servidor que vieram junto:**
+- A paleta da superfície `crm_automation` só oferece o que roda sem conversa (gatilho, esperar, condição, repetir, tarefa interna, mover etapa, tag, ação, fim); mensagem e IA entram pelo nó de ação.
+- **Publicar** exige gatilho por evento e os parâmetros de tempo/data completos (`config-do-gatilho.ts`, fecha a pendência da Fase 4), recusa ação que reabriria o próprio gatilho e **recusa segredo de webhook em claro**.
+- **Segredo do webhook:** o formulário grava o segredo em texto puro; o PATCH do rascunho passa o grafo por `cifrarSegredosDoGrafo` (a mesma cifra das regras, inclusive dentro de "a IA decide") e recusa com `encryption_unavailable` se a chave não está ativa. Sem isso o segredo ficaria legível no banco e nas versões publicadas.
+
+**Ainda não feito:** modelos prontos como fluxos (hoje abrem o editor antigo de regra), botão de **migrar regras** na tela (a rota existe), liga/desliga na lista, histórico de execuções por automação, e a prova visual (nada disto foi aberto num navegador — o ambiente daqui não sobe o app).

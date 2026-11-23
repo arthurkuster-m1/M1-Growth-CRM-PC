@@ -19,6 +19,7 @@ import { audit } from "@/lib/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { moduloLigado } from "@/lib/instalacao/modulos";
 import { createFollowupFlowSchema } from "@/lib/followup/api-schemas";
+import { grafoInicialDaAutomacao } from "@/lib/followup/grafo-inicial-da-automacao";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       organization_id: organizationId,
       name: parsed.data.name,
       ...(parsed.data.surface !== undefined ? { surface: parsed.data.surface } : {}),
+      // Automação de CRM nasce com um caminho (gatilho → fim) para a pessoa continuar de onde clicar.
+      ...(parsed.data.surface === "crm_automation" ? { draft_graph: grafoInicialDaAutomacao() } : {}),
     })
     .select("*")
     .single();

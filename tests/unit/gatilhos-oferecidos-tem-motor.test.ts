@@ -73,11 +73,11 @@ describe("o seletor de gatilho e o publish falam da mesma lista", () => {
    * entrada some quando a tela passa a oferecer o gatilho — o teste abaixo reprova a entrada velha.
    *
    * `event` (motor único, Fase 2c): é o gatilho das automações de CRM (`surface='crm_automation'`).
-   * O editor delas é a Fase 5 do plano (docs/PLANO-MOTOR-UNICO-M1.md); oferecê-lo no seletor do
-   * follow-up seria controle decorativo — o publish o recusa fora de `crm_automation`.
+   * Quem o escolhe é a barra «Quando» do editor das automações (`GatilhoDaAutomacao.tsx`); oferecê-lo no
+   * seletor do follow-up seria controle decorativo — o publish o recusa fora de `crm_automation`.
    */
   const SO_PELA_API_POR_ENQUANTO: Record<string, string> = {
-    event: "editor das automações de CRM = Fase 5 do motor único",
+    event: "oferecido pela barra «Quando» da automação (GatilhoDaAutomacao), não pelo seletor do follow-up",
   };
 
   it("⭐ nenhum gatilho com motor fica escondido da tela (capacidade órfã)", () => {

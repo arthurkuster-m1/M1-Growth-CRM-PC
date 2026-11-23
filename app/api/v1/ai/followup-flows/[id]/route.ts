@@ -16,6 +16,8 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { cifrarSegredosDoGrafo } from "@/lib/followup/segredos-do-grafo";
 import { patchFollowupFlowSchema } from "@/lib/followup/api-schemas";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -124,6 +126,20 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
   if (!existing) return fail("not_found", t("Fluxo não encontrado."), 404, { requestId });
 
   const patch = parsed.data;
+  // O segredo de um webhook (nó `crm_action` de automação de CRM) nunca fica em claro no rascunho: a mesma
+  // troca por `secret_enc` que a rota das regras faz. Sem a chave de cifra ativa, recusa em vez de gravar aberto.
+  if (patch.draft_graph) {
+    const cifrado = await cifrarSegredosDoGrafo(createAdminClient(), patch.draft_graph);
+    if (cifrado === null) {
+      return fail(
+        "encryption_unavailable",
+        t("Não foi possível guardar o segredo do webhook com segurança: a chave de cifra desta instalação não está ativa. Quem administra o servidor resolve rodando o update.sh, que gera e ativa a chave. Enquanto isso, você pode criar a ação sem segredo."),
+        422,
+        { requestId },
+      );
+    }
+    patch.draft_graph = cifrado;
+  }
   if (Object.keys(patch).length === 0) {
     const { data: unchanged, error: reloadErr } = await supabase
       .from("followup_flow_pointers")

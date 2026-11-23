@@ -10,6 +10,7 @@ import { RulesTab } from "@/app/app/webhooks/_components/RulesTab";
 vi.mock("@/lib/api/client", () => ({ apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/feedback/ApiErrorToast", () => ({ showApiError: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const regra = (id: string, name: string, trigger_event: string, actions: unknown[]) => ({
   id,
@@ -40,6 +41,8 @@ function montar() {
 describe("Central de Automações", () => {
   beforeEach(() => {
     vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      // As automações do diagrama (motor único) vêm de outra consulta, por superfície: nenhuma neste cenário.
+      if (url.includes("followup-flows") && url.includes("surface=crm_automation")) return { data: [] };
       if (url.includes("followup-flows")) {
         return {
           data: [

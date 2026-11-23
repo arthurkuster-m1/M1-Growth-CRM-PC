@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Robot, Plus, Trash, PencilSimple, FlowArrow, GitBranch } from "@/lib/ui/icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SeloDeAutoria } from "@/components/operacao/SeloDeAutoria";
 import {
   useAutomationRules,
@@ -31,6 +32,7 @@ import { TRIGGER_LABELS, type TriggerEvent } from "./labels";
 import { RuleEditor } from "./RuleEditor";
 import { useT } from "@/hooks/i18n/useT";
 import { FluxoVertical } from "@/components/automacoes/FluxoVertical";
+import { NewFlowDialog } from "@/app/app/ai/followups/_components/NewFlowDialog";
 import { useFollowupFlows } from "@/hooks/followup/useFollowupFlows";
 import {
   CATEGORIAS_DE_AUTOMACAO,
@@ -66,6 +68,10 @@ export function RulesTab() {
   const [comFluxo, setComFluxo] = React.useState<Record<string, boolean>>({});
   // Os follow-ups da IA: vivem em outro motor, mas aparecem aqui na mesma lista (só leitura).
   const fluxos = useFollowupFlows();
+  // O motor único: as automações montadas no editor visual (diagrama), criadas aqui.
+  const router = useRouter();
+  const automacoesVisuais = useFollowupFlows({ surface: "crm_automation" });
+  const [novaVisualAberta, setNovaVisualAberta] = React.useState(false);
 
   const rules = data?.data ?? [];
 
@@ -151,6 +157,55 @@ export function RulesTab() {
     </div>
   );
 
+  const fluxosDoEditorNovo = automacoesVisuais.data ?? [];
+  const secaoDoEditorNovo = (
+    <section className="space-y-3" data-testid="automacoes-visuais">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight">{t("Automações no diagrama")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("Abra uma para ver e editar o que dispara, as condições e cada passo.")}
+          </p>
+        </div>
+        <Button onClick={() => setNovaVisualAberta(true)} data-testid="nova-automacao-visual">
+          <Plus /> {t("Nova automação no diagrama")}
+        </Button>
+      </div>
+      {fluxosDoEditorNovo.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {fluxosDoEditorNovo.map((f) => (
+            <Link
+              key={f.id}
+              href={`/app/automacoes/${f.id}`}
+              className="flex items-center gap-3 rounded-[22px] border border-border bg-card p-4 shadow-xs transition-[border-color,box-shadow] hover:border-accent hover:shadow-md"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-primary">
+                <GitBranch size={18} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold">{f.name}</span>
+                <span className="block text-xs text-muted-foreground">{t("Abrir o diagrama")}</span>
+              </span>
+              <Badge variant={f.status === "active" ? "success" : "neutral"}>
+                {f.status === "active"
+                  ? t("Ligada")
+                  : f.status === "draft"
+                    ? t("Rascunho")
+                    : t("Pausada")}
+              </Badge>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+      <NewFlowDialog
+        open={novaVisualAberta}
+        onOpenChange={setNovaVisualAberta}
+        surface="crm_automation"
+        onCriado={(id) => router.push(`/app/automacoes/${id}`)}
+      />
+    </section>
+  );
+
   const modelosProntos = (
     <section className="space-y-3" data-testid="modelos-prontos">
       <div>
@@ -225,6 +280,7 @@ export function RulesTab() {
             modelo={modelo}
           />
         </div>
+        {secaoDoEditorNovo}
         {modelosProntos}
       </div>
     );
@@ -363,6 +419,8 @@ export function RulesTab() {
           </div>
         </section>
       ) : null}
+
+      {secaoDoEditorNovo}
 
       {modelosProntos}
 

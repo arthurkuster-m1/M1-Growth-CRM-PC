@@ -15,7 +15,7 @@ interface RegraParaPassos {
   trigger_config?: Record<string, unknown> | null;
 }
 
-const CAMPOS: Record<string, string> = {
+export const CAMPOS_DAS_CONDICOES: Record<string, string> = {
   "lead.title": "Nome do lead",
   "lead.tags": "Tags do lead",
   "contact.tags": "Tags do contato",
@@ -29,7 +29,7 @@ const CAMPOS: Record<string, string> = {
   "lead.source_metadata.utm_ad": "Anúncio",
   "lead.source_metadata.utm_placement": "Posicionamento",
 };
-const OPS = { eq: "é", neq: "não é", contains: "contém" } as const;
+export const OPERADORES_DAS_CONDICOES = { eq: "é", neq: "não é", contains: "contém" } as const;
 
 const texto = (v: unknown): string => (typeof v === "string" ? v : "");
 const numero = (v: unknown): number | null =>
@@ -88,7 +88,7 @@ export function passosDaRegra(
   for (const c of r.conditions) {
     passos.push({
       tipo: "condicao",
-      titulo: `Só se ${CAMPOS[c.field] ?? c.field} ${OPS[c.op]} “${corta(c.value, 60)}”`,
+      titulo: `Só se ${CAMPOS_DAS_CONDICOES[c.field] ?? c.field} ${OPERADORES_DAS_CONDICOES[c.op]} “${corta(c.value, 60)}”`,
     });
   }
   for (const a of r.actions) {

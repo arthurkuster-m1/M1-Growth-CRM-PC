@@ -40,6 +40,7 @@ import { Trash, TreeStructure } from "@/lib/ui/icons";
 import { FlowStatusBadge } from "../../_components/FlowStatusBadge";
 import { DeleteFollowupFlowButton } from "../../_components/DeleteFollowupFlowButton";
 import { RenameFollowupFlowButton } from "../../_components/RenameFollowupFlowButton";
+import { GatilhoDaAutomacao } from "./GatilhoDaAutomacao";
 import { TriggerConfigControl } from "./TriggerConfigControl";
 
 interface Props {
@@ -83,6 +84,7 @@ export function PublishBar({
   const rollback = useRollbackFollowupFlow(flowId);
   const handoffPolicy = useUpdateHandoffPolicy(flowId);
   const deRoteiro = flow.surface === "atendimento";
+  const deAutomacao = flow.surface === "crm_automation";
 
   const onSave = () => {
     save.mutate(graph, { onSuccess: () => onSaved(graph) });
@@ -151,9 +153,14 @@ export function PublishBar({
             Início do grafo) e encerra quando um humano assume (0397): o gatilho
             de relógio e a política de handoff do follow-up não valem para ele —
             na prova do #1130 esta barra aparecia igual e confundia. */}
-        {!deRoteiro && <TriggerConfigControl flowId={flowId} triggerConfig={flow.trigger_config} />}
+        {!deRoteiro && !deAutomacao && (
+          <TriggerConfigControl flowId={flowId} triggerConfig={flow.trigger_config} />
+        )}
+        {deAutomacao && <GatilhoDaAutomacao flowId={flowId} triggerConfig={flow.trigger_config} />}
 
-        {!deRoteiro && (
+        {/* A política de handoff é do follow-up (pausar quando um humano assume a conversa): a automação
+            de CRM não tem conversa própria, então não a oferece. */}
+        {!deRoteiro && !deAutomacao && (
           <Select value={flow.handoff_policy} onValueChange={(v) => handoffPolicy.mutate(v as FollowupFlowDetailRow["handoff_policy"])}>
             <SelectTrigger className="w-56" aria-label={t("Política de handoff")}>
               <SelectValue />
@@ -251,7 +258,7 @@ export function PublishBar({
             flowId={flowId}
             flowName={flow.name}
             redirectToList
-            listHref={deRoteiro ? "/app/ai/atendimento" : "/app/ai/followups"}
+            listHref={deRoteiro ? "/app/ai/atendimento" : deAutomacao ? "/app/automacoes" : "/app/ai/followups"}
           />
         )}
       </div>

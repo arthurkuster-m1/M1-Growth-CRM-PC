@@ -3,6 +3,7 @@ import type { FollowupFlowSurface } from './api-schemas';
 import { branchIdForCondition, nodeBranches } from './graph-schema';
 import { rotuloDoRamo } from './rotulo-do-ramo';
 import { acoesQueFechamLaco, MENSAGEM_DO_LACO_DE_LEAD } from '../schemas/webhooks';
+import { temSegredoEmClaro } from './segredo-em-claro';
 import type { NomesDeValor } from './vocabulario';
 import { capabilitiesOf, transportaMensagem, type ChannelProvider } from '../channels/capabilities';
 
@@ -42,6 +43,8 @@ export const PUBLISH_ERROR_CODES = [
   'tag_ausente',
   // Motor único: ação de automação de CRM que reabriria o próprio gatilho (laço).
   'acao_fecha_laco',
+  // Motor único: o segredo do webhook tem de estar cifrado (`secret_enc`), nunca em claro no fluxo.
+  'segredo_em_claro',
 ] as const;
 export type PublishErrorCode = (typeof PUBLISH_ERROR_CODES)[number];
 
@@ -161,7 +164,10 @@ function cicloDoEncadeamento(
  */
 export const NOS_DA_SUPERFICIE: Record<FollowupFlowSurface, readonly NodeType[]> = {
   followup: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'end'],
-  crm_automation: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'crm_action', 'end'],
+  // Automação de CRM: SÓ o que roda sem conversa (o fluxo é do objeto do evento, não do contato). Mensagem,
+  // resposta do cliente e IA que classifica entram pelo nó `crm_action` (enviar WhatsApp, mensagem da IA...),
+  // que abre a conversa na hora de enviar.
+  crm_automation: ['trigger', 'wait', 'condition', 'repeat', 'internal_task', 'move_lead', 'edit_lead_tag', 'crm_action', 'end'],
   atendimento: ['trigger', 'collect', 'skill', 'end'],
 };
 
@@ -749,6 +755,13 @@ export function validateFlowForPublish(
   for (const node of [...nodes].sort(byId)) {
     if (node.type === 'move_lead') conferirEtapaDestino(node, contexto, errors);
     if (node.type === 'edit_lead_tag') conferirTags(node, errors);
+    if (node.type === 'crm_action' && temSegredoEmClaro(node.config.action)) {
+      errors.push({
+        node_id: node.id,
+        code: 'segredo_em_claro',
+        message: `A caixa "${node.label}" guarda um segredo de webhook sem cifrar — salve o rascunho de novo para cifrá-lo.`,
+      });
+    }
     if (node.type === 'crm_action' && acoesQueFechamLaco(contexto.eventoDoGatilho, [node.config.action]).length) {
       errors.push({ node_id: node.id, code: 'acao_fecha_laco', message: MENSAGEM_DO_LACO_DE_LEAD });
     }

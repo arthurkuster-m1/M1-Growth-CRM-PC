@@ -13,6 +13,7 @@ import { Trash } from "@/lib/ui/icons";
 import { useT } from "@/hooks/i18n/useT";
 
 import { ActionForm } from "./forms/ActionForm";
+import { CrmActionForm } from "./forms/CrmActionForm";
 import { ClassifyForm } from "./forms/ClassifyForm";
 import { CollectForm } from "./forms/CollectForm";
 import { ConditionForm } from "./forms/ConditionForm";
@@ -107,9 +108,13 @@ export function NodeConfigPanel({
         {type === "trigger" && surface !== "atendimento" && (
           <div className="space-y-4">
             <p className="text-sm text-text-muted">
-              {t(
-                "Início do fluxo — sem configuração adicional. O disparo (manual, mudança de etapa, silêncio ou fim de conversa) é definido nas configurações do fluxo.",
-              )}
+              {surface === "crm_automation"
+                ? t(
+                    "Início da automação. O que a dispara (e as condições) é definido em «Quando», na barra de cima.",
+                  )
+                : t(
+                    "Início do fluxo — sem configuração adicional. O disparo (manual, mudança de etapa, silêncio ou fim de conversa) é definido nas configurações do fluxo.",
+                  )}
             </p>
             <MarcadorDeSomenteInterno settings={settings} onSettingsChange={onSettingsChange} />
           </div>
@@ -167,6 +172,14 @@ export function NodeConfigPanel({
         {type === "edit_lead_tag" && (
           <EditLeadTagForm
             config={node.data.config as ConfigOf<"edit_lead_tag">}
+            onChange={(config) => onChange({ config })}
+          />
+        )}
+        {/* Motor único: a ação de automação de CRM (mesmos formulários das regras). */}
+        {type === "crm_action" && (
+          <CrmActionForm
+            key={node.id}
+            config={node.data.config as ConfigOf<"crm_action">}
             onChange={(config) => onChange({ config })}
           />
         )}
